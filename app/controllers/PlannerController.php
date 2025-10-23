@@ -1,12 +1,14 @@
 <?php
 require_once __DIR__ . '/../models/DailyPlanner.php';
 require_once __DIR__ . '/../models/Department.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 
 class PlannerController {
     private $plannerModel;
     private $departmentModel;
     
     public function __construct() {
+        AuthMiddleware::requireAuth();
         $this->plannerModel = new DailyPlanner();
         $this->departmentModel = new Department();
     }

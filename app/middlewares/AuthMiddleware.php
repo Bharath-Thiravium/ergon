@@ -18,7 +18,7 @@ class AuthMiddleware {
         }
         
         // Check session
-        if (isset($_SESSION['user_id']) && isset($_SESSION['user_role'])) {
+        if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
             // Check session timeout
             if (isset($_SESSION['last_activity']) && 
                 (time() - $_SESSION['last_activity']) > SESSION_TIMEOUT) {
@@ -38,7 +38,7 @@ class AuthMiddleware {
             
             if ($payload && isset($payload->user_id)) {
                 $_SESSION['user_id'] = $payload->user_id;
-                $_SESSION['user_role'] = $payload->role;
+                $_SESSION['role'] = $payload->role;
                 $_SESSION['last_activity'] = time();
                 return true;
             }
@@ -55,7 +55,7 @@ class AuthMiddleware {
             return false;
         }
         
-        $userRole = $_SESSION['role'] ?? $_SESSION['user_role'] ?? null;
+        $userRole = $_SESSION['role'] ?? null;
         
         if (!$userRole) {
             return false;
@@ -118,7 +118,7 @@ class AuthMiddleware {
      * Get current user role
      */
     public static function getCurrentUserRole() {
-        return $_SESSION['user_role'] ?? null;
+        return $_SESSION['role'] ?? null;
     }
     
     /**

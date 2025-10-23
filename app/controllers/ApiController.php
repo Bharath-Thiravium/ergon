@@ -18,6 +18,22 @@ class ApiController {
     /**
      * API Login - Returns JWT token
      */
+    public function login() {
+        $this->apiLogin();
+    }
+    
+    public function attendance() {
+        $this->apiAttendance();
+    }
+    
+    public function tasks() {
+        $this->apiTasks();
+    }
+    
+    public function updateTask() {
+        $this->apiTaskUpdate();
+    }
+    
     public function apiLogin() {
         header('Content-Type: application/json');
         
@@ -187,7 +203,7 @@ class ApiController {
         }
     }
     
-    public function apiActivityLog() {
+    public function generateEmployeeId() {
         header('Content-Type: application/json');
         
         if (session_status() === PHP_SESSION_NONE) {
@@ -200,33 +216,65 @@ class ApiController {
             exit;
         }
         
-        $input = json_decode(file_get_contents('php://input'), true);
-        
         try {
             require_once __DIR__ . '/../../config/database.php';
             $database = new Database();
-            $db = $database->getConnection();
+            $conn = $database->getConnection();
             
-            $stmt = $db->prepare("
-                INSERT INTO activity_logs (user_id, activity_type, description, ip_address, user_agent, is_active) 
-                VALUES (?, ?, ?, ?, ?, ?)
-            ");
+            // Get company name from settings
+            $stmt = $conn->prepare("SELECT company_name FROM settings LIMIT 1");
+            $stmt->execute();
+            $settings = $stmt->fetch();
+            $companyName = $settings['company_name'] ?? 'ERGON';
             
-            $stmt->execute([
-                $_SESSION['user_id'],
-                $input['activity_type'] ?? 'system_ping',
-                $input['description'] ?? '',
-                $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-                $_SERVER['HTTP_USER_AGENT'] ?? '',
-                $input['is_active'] ?? true
+            // Generate prefix
+            $prefix = $this->getCompanyPrefix($companyName);
+            
+            // Get next employee number
+            $stmt = $conn->prepare("SELECT COUNT(*) + 1 as next_num FROM users WHERE employee_id IS NOT NULL");
+            $stmt->execute();
+            $result = $stmt->fetch();
+            $nextNum = str_pad($result['next_num'], 3, '0', STR_PAD_LEFT);
+            
+            $employeeId = $prefix . $nextNum;
+            
+            echo json_encode([
+                'success' => true,
+                'employee_id' => $employeeId
             ]);
-            
-            echo json_encode(['success' => true]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['error' => 'Failed to log activity']);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to generate Employee ID: ' . $e->getMessage()
+            ]);
         }
         exit;
+    }
+    
+    private function getCompanyPrefix($companyName) {
+        $words = explode(' ', strtoupper($companyName));
+        $prefix = '';
+        
+        foreach ($words as $word) {
+            if (in_array($word, ['THE', 'AND', 'OF', 'FOR', 'TO', 'IN', 'ON', 'AT', 'BY'])) {
+                continue;
+            }
+            
+            $cleanWord = preg_replace('/[^A-Z0-9]/', '', $word);
+            
+            if (strlen($cleanWord) >= 2) {
+                $prefix .= substr($cleanWord, 0, 2);
+            } elseif (strlen($cleanWord) == 1) {
+                $prefix .= $cleanWord;
+            }
+        }
+        
+        if (empty($prefix)) {
+            $prefix = substr(preg_replace('/[^A-Z0-9]/', '', strtoupper($companyName)), 0, 2);
+        }
+        
+        return $prefix ?: 'EMP';
     }
 }
 ?>

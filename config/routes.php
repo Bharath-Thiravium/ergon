@@ -37,6 +37,14 @@ $router->get('/tasks/create', 'TasksController', 'create');
 $router->post('/tasks/create', 'TasksController', 'store');
 $router->get('/tasks/calendar', 'TasksController', 'calendar');
 
+// Planner Management
+$router->get('/planner/calendar', 'PlannerController', 'calendar');
+$router->get('/planner/create', 'PlannerController', 'create');
+$router->post('/planner/create', 'PlannerController', 'create');
+$router->post('/planner/update', 'PlannerController', 'update');
+$router->get('/planner/getDepartmentForm', 'PlannerController', 'getDepartmentForm');
+$router->get('/planner/getPlansForDate', 'PlannerController', 'getPlansForDate');
+
 // Attendance
 $router->get('/attendance', 'AttendanceController', 'index');
 $router->post('/attendance/clock', 'AttendanceController', 'clock');
@@ -45,6 +53,8 @@ $router->post('/attendance/clock', 'AttendanceController', 'clock');
 $router->get('/leaves', 'LeaveController', 'index');
 $router->get('/leaves/create', 'LeaveController', 'create');
 $router->post('/leaves/create', 'LeaveController', 'store');
+$router->get('/leaves/approve/{id}', 'LeaveController', 'approve');
+$router->get('/leaves/reject/{id}', 'LeaveController', 'reject');
 
 // Expense Management
 $router->get('/expenses', 'ExpenseController', 'index');
@@ -64,4 +74,5 @@ $router->post('/api/login', 'ApiController', 'login');
 $router->post('/api/attendance', 'ApiController', 'attendance');
 $router->get('/api/tasks', 'ApiController', 'tasks');
 $router->post('/api/tasks/update', 'ApiController', 'updateTask');
+$router->get('/api/generate-employee-id', 'ApiController', 'generateEmployeeId');
 ?>
