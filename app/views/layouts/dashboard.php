@@ -23,9 +23,8 @@ if (!isset($_SESSION['user_id'])) {
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
-    <?php require_once dirname(__DIR__, 3) . '/config/environment.php'; ?>
-    <link href="<?= Environment::getBaseUrl() ?>/public/assets/css/ergon.css" rel="stylesheet">
-    <link href="<?= Environment::getBaseUrl() ?>/public/assets/css/modals.css" rel="stylesheet">
+    <link href="/ergon/public/assets/css/ergon.css" rel="stylesheet">
+    <link href="/ergon/public/assets/css/modals.css" rel="stylesheet">
 </head>
 <body>
     <!-- Header -->
@@ -157,7 +156,7 @@ if (!isset($_SESSION['user_id'])) {
         </main>
     </div>
 
-    <script src="<?= Environment::getBaseUrl() ?>/public/assets/js/modal-system.js"></script>
+    <script src="/ergon/public/assets/js/modal-system.js"></script>
     
     <script>
     // Prevent back button after logout
@@ -172,7 +171,7 @@ if (!isset($_SESSION['user_id'])) {
     
     // Check session validity periodically
     setInterval(function() {
-        fetch('<?= Environment::getBaseUrl() ?>/api/check-session', {
+        fetch('/ergon/api/check-session', {
             method: 'GET',
             credentials: 'same-origin'
         })
@@ -186,11 +185,11 @@ if (!isset($_SESSION['user_id'])) {
                     });
                 }
                 // Force redirect to login
-                window.location.replace('<?= Environment::getBaseUrl() ?>/login.php');
+                window.location.replace('/ergon/login.php');
             }
         })
         .catch(() => {
-            window.location.replace('<?= Environment::getBaseUrl() ?>/login.php');
+            window.location.replace('/ergon/login.php');
         });
     }, 10000); // Check every 10 seconds
     
@@ -230,7 +229,7 @@ if (!isset($_SESSION['user_id'])) {
     <script>
         document.body.dataset.userDepartment = '<?= htmlspecialchars($userDept) ?>';
     </script>
-    <script src="<?= Environment::getBaseUrl() ?>/public/assets/js/activity-tracker.js"></script>
+    <script src="/ergon/public/assets/js/activity-tracker.js"></script>
     <?php endif; ?>
 </body>
 </html>

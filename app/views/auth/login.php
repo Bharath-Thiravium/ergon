@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - ERGON</title>
-    <?php require_once dirname(__DIR__, 3) . '/config/environment.php'; ?>
-    <link href="<?= Environment::getBaseUrl() ?>/public/assets/css/ergon.css" rel="stylesheet">
+    <link href="/ergon/public/assets/css/ergon.css" rel="stylesheet">
 </head>
 <body class="auth-page">
     <div class="auth-container">
