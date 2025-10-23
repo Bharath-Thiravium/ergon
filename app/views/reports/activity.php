@@ -49,21 +49,24 @@ ob_start();
                     </thead>
                     <tbody>
                         <?php foreach ($data['productivity'] as $user): ?>
+                        <?php if (is_array($user) && isset($user['name'])): ?>
                         <tr>
-                            <td><?= htmlspecialchars($user['name']) ?></td>
+                            <td><?= htmlspecialchars($user['name'] ?? 'Unknown') ?></td>
                             <td>
                                 <div class="progress-bar">
-                                    <div class="progress-fill" style="width: <?= $user['productivity_score'] ?>%"></div>
-                                    <span class="progress-text"><?= $user['productivity_score'] ?>%</span>
+                                    <div class="progress-fill" style="width: <?= $user['productivity_score'] ?? 0 ?>%"></div>
+                                    <span class="progress-text"><?= $user['productivity_score'] ?? 0 ?>%</span>
                                 </div>
                             </td>
-                            <td><?= $user['active_days'] ?> days</td>
+                            <td><?= $user['active_days'] ?? 0 ?> days</td>
                             <td>
-                                <span class="badge badge--<?= $user['productivity_score'] >= 70 ? 'success' : ($user['productivity_score'] >= 50 ? 'warning' : 'danger') ?>">
-                                    <?= $user['productivity_score'] >= 70 ? 'High' : ($user['productivity_score'] >= 50 ? 'Medium' : 'Low') ?>
+                                <?php $score = $user['productivity_score'] ?? 0; ?>
+                                <span class="badge badge--<?= $score >= 70 ? 'success' : ($score >= 50 ? 'warning' : 'danger') ?>">
+                                    <?= $score >= 70 ? 'High' : ($score >= 50 ? 'Medium' : 'Low') ?>
                                 </span>
                             </td>
                         </tr>
+                        <?php endif; ?>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -93,13 +96,15 @@ ob_start();
                     </thead>
                     <tbody>
                         <?php foreach ($data['activity'] as $activity): ?>
+                        <?php if (is_array($activity) && isset($activity['name'])): ?>
                         <tr>
-                            <td><?= htmlspecialchars($activity['name']) ?></td>
-                            <td><?= date('M d, Y', strtotime($activity['activity_date'])) ?></td>
-                            <td><?= $activity['active_pings'] ?></td>
-                            <td><?= $activity['break_sessions'] ?></td>
+                            <td><?= htmlspecialchars($activity['name'] ?? 'Unknown') ?></td>
+                            <td><?= $activity['activity_date'] ? date('M d, Y', strtotime($activity['activity_date'])) : 'N/A' ?></td>
+                            <td><?= $activity['active_pings'] ?? 0 ?></td>
+                            <td><?= $activity['break_sessions'] ?? 0 ?></td>
                             <td><?= $activity['last_activity'] ? date('H:i', strtotime($activity['last_activity'])) : 'N/A' ?></td>
                         </tr>
+                        <?php endif; ?>
                         <?php endforeach; ?>
                     </tbody>
                 </table>

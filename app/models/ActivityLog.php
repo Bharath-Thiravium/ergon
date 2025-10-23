@@ -56,5 +56,21 @@ class ActivityLog {
         $stmt->execute([$days]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    
+    public function getRecentActivity($limit = 50) {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT al.*, u.name as user_name
+                FROM activity_logs al
+                JOIN users u ON al.user_id = u.id
+                ORDER BY al.created_at DESC
+                LIMIT ?
+            ");
+            $stmt->execute([$limit]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
 }
 ?>

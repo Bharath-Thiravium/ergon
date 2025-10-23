@@ -58,20 +58,20 @@ class ReportsController {
             session_start();
         }
         
+        try {
+            $activity = $this->activityLogModel->getITActivityReport();
+            $productivity = $this->activityLogModel->getProductivitySummary();
+        } catch (Exception $e) {
+            $activity = [];
+            $productivity = [];
+        }
+        
         $data = [
-            'activity' => $this->activityLogModel->getRecentActivity(),
-            'productivity' => $this->getProductivityData()
+            'activity' => $activity,
+            'productivity' => $productivity
         ];
         
         include __DIR__ . '/../views/reports/activity.php';
-    }
-    
-    private function getProductivityData() {
-        return [
-            'daily_tasks' => 15,
-            'completed_today' => 12,
-            'efficiency_rate' => 80
-        ];
     }
     
     public function export() {
