@@ -1,0 +1,31 @@
+RewriteEngine On
+
+# Redirect root folder access to login
+DirectoryIndex index.php
+
+# Redirect all requests to public/index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ public/index.php [QSA,L]
+
+# Security headers
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options DENY
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+# Hide sensitive files
+<Files ~ "^\.">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files ~ "\.env$">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Prevent access to config and logs
+RedirectMatch 403 ^/config/
+RedirectMatch 403 ^/logs/
+RedirectMatch 403 ^/storage/

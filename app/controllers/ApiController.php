@@ -1,0 +1,232 @@
+<?php
+require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../models/Attendance.php';
+require_once __DIR__ . '/../models/Task.php';
+require_once __DIR__ . '/../helpers/Security.php';
+
+class ApiController {
+    private $userModel;
+    private $attendanceModel;
+    private $taskModel;
+    
+    public function __construct() {
+        $this->userModel = new User();
+        $this->attendanceModel = new Attendance();
+        $this->taskModel = new Task();
+    }
+    
+    /**
+     * API Login - Returns JWT token
+     */
+    public function apiLogin() {
+        header('Content-Type: application/json');
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $email = $input['email'] ?? '';
+        $password = $input['password'] ?? '';
+        
+        if (empty($email) || empty($password)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Email and password required']);
+            return;
+        }
+        
+        $user = $this->userModel->authenticate($email, $password);
+        
+        if ($user) {
+            $token = Security::generateJWT($user['id'], $user['role']);
+            
+            echo json_encode([
+                'success' => true,
+                'token' => $token,
+                'user' => [
+                    'id' => $user['id'],
+                    'name' => $user['name'],
+                    'email' => $user['email'],
+                    'role' => $user['role']
+                ]
+            ]);
+        } else {
+            http_response_code(401);
+            echo json_encode(['error' => 'Invalid credentials']);
+        }
+    }
+    
+    /**
+     * API Attendance - Clock in/out via mobile
+     */
+    public function apiAttendance() {
+        header('Content-Type: application/json');
+        
+        // Verify JWT token
+        $headers = getallheaders();
+        $authHeader = $headers['Authorization'] ?? '';
+        
+        if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Missing authorization token']);
+            return;
+        }
+        
+        $token = $matches[1];
+        $payload = Security::verifyJWT($token);
+        
+        if (!$payload) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Invalid token']);
+            return;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $action = $input['action'] ?? '';
+        $latitude = $input['latitude'] ?? 0;
+        $longitude = $input['longitude'] ?? 0;
+        
+        try {
+            if ($action === 'checkin') {
+                $result = $this->attendanceModel->checkIn(
+                    $payload->user_id,
+                    $latitude,
+                    $longitude,
+                    "Mobile Location: {$latitude}, {$longitude}"
+                );
+            } elseif ($action === 'checkout') {
+                $result = $this->attendanceModel->checkOut($payload->user_id);
+            } else {
+                http_response_code(400);
+                echo json_encode(['error' => 'Invalid action']);
+                return;
+            }
+            
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'Attendance recorded']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to record attendance']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Server error']);
+        }
+    }
+    
+    /**
+     * API Tasks - Get user tasks
+     */
+    public function apiTasks() {
+        header('Content-Type: application/json');
+        
+        // Verify JWT token
+        $headers = getallheaders();
+        $authHeader = $headers['Authorization'] ?? '';
+        
+        if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Missing authorization token']);
+            return;
+        }
+        
+        $token = $matches[1];
+        $payload = Security::verifyJWT($token);
+        
+        if (!$payload) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Invalid token']);
+            return;
+        }
+        
+        try {
+            $tasks = $this->taskModel->getUserTasks($payload->user_id);
+            echo json_encode(['success' => true, 'tasks' => $tasks]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Server error']);
+        }
+    }
+    
+    /**
+     * API Task Update - Update task progress
+     */
+    public function apiTaskUpdate() {
+        header('Content-Type: application/json');
+        
+        // Verify JWT token
+        $headers = getallheaders();
+        $authHeader = $headers['Authorization'] ?? '';
+        
+        if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Missing authorization token']);
+            return;
+        }
+        
+        $token = $matches[1];
+        $payload = Security::verifyJWT($token);
+        
+        if (!$payload) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Invalid token']);
+            return;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $taskId = $input['task_id'] ?? 0;
+        $progress = $input['progress'] ?? 0;
+        $comment = $input['comment'] ?? '';
+        
+        try {
+            $result = $this->taskModel->updateProgress($taskId, $payload->user_id, $progress, $comment);
+            
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'Task updated']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to update task']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Server error']);
+        }
+    }
+    
+    public function apiActivityLog() {
+        header('Content-Type: application/json');
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        try {
+            require_once __DIR__ . '/../../config/database.php';
+            $database = new Database();
+            $db = $database->getConnection();
+            
+            $stmt = $db->prepare("
+                INSERT INTO activity_logs (user_id, activity_type, description, ip_address, user_agent, is_active) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            
+            $stmt->execute([
+                $_SESSION['user_id'],
+                $input['activity_type'] ?? 'system_ping',
+                $input['description'] ?? '',
+                $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                $_SERVER['HTTP_USER_AGENT'] ?? '',
+                $input['is_active'] ?? true
+            ]);
+            
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to log activity']);
+        }
+        exit;
+    }
+}
+?>
