@@ -3,6 +3,9 @@ RewriteEngine On
 # Redirect root folder access to login
 DirectoryIndex index.php
 
+# Handle subdirectory if ERGON is in a subfolder
+RewriteBase /
+
 # Redirect all requests to public/index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

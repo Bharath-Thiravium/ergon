@@ -6,9 +6,9 @@
 
 class Database {
     private $host = 'localhost';
-    private $db_name = 'ergon_db';
-    private $username = 'root';
-    private $password = '';
+    private $db_name = 'u494785662_ergon';
+    private $username = 'u494785662_ergon';
+    private $password = '@Admin@2025@';
     private $conn;
 
     public function getConnection() {
