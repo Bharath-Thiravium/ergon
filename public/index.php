@@ -293,6 +293,10 @@ switch ($path) {
         include __DIR__ . '/../reset_passwords.php';
         break;
         
+    case '/check-environment':
+        include __DIR__ . '/../check_environment.php';
+        break;
+        
     case '/test-destroy-session':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             session_unset();

@@ -78,7 +78,7 @@ class AuthController {
                         'role' => $user['role']
                     ],
                     'token' => $jwt,
-                    'redirect' => '/ergon/dashboard'
+                    'redirect' => '/ergon/dashboard.php'
                 ]);
             } else {
                 // Log failed login

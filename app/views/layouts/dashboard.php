@@ -23,8 +23,9 @@ if (!isset($_SESSION['user_id'])) {
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
-    <link href="/ergon/public/assets/css/ergon.css" rel="stylesheet">
-    <link href="/ergon/public/assets/css/modals.css" rel="stylesheet">
+    <?php require_once dirname(__DIR__, 3) . '/config/environment.php'; ?>
+    <link href="<?= Environment::getBaseUrl() ?>/public/assets/css/ergon.css" rel="stylesheet">
+    <link href="<?= Environment::getBaseUrl() ?>/public/assets/css/modals.css" rel="stylesheet">
 </head>
 <body>
     <!-- Header -->
@@ -32,7 +33,7 @@ if (!isset($_SESSION['user_id'])) {
         <nav class="header__nav">
             <div class="header__user">
                 <span>Welcome, <?= $_SESSION['user_name'] ?? 'User' ?></span>
-                <a href="/ergon/auth/logout" class="btn btn--secondary btn--sm">Logout</a>
+                <a href="/ergon/auth/logout" class="btn btn--secondary btn--sm" onclick="return confirmLogout()">Logout</a>
             </div>
         </nav>
     </header>
@@ -156,7 +157,7 @@ if (!isset($_SESSION['user_id'])) {
         </main>
     </div>
 
-    <script src="/ergon/public/assets/js/modal-system.js"></script>
+    <script src="<?= Environment::getBaseUrl() ?>/public/assets/js/modal-system.js"></script>
     
     <script>
     // Prevent back button after logout
@@ -171,20 +172,44 @@ if (!isset($_SESSION['user_id'])) {
     
     // Check session validity periodically
     setInterval(function() {
-        fetch('/ergon/api/check-session', {
+        fetch('<?= Environment::getBaseUrl() ?>/api/check-session', {
             method: 'GET',
             credentials: 'same-origin'
         })
         .then(response => response.json())
         .then(data => {
             if (!data.valid) {
-                window.location.href = '/ergon/login';
+                // Clear any cached data
+                if ('caches' in window) {
+                    caches.keys().then(names => {
+                        names.forEach(name => caches.delete(name));
+                    });
+                }
+                // Force redirect to login
+                window.location.replace('<?= Environment::getBaseUrl() ?>/login.php');
             }
         })
         .catch(() => {
-            window.location.href = '/ergon/login';
+            window.location.replace('<?= Environment::getBaseUrl() ?>/login.php');
         });
-    }, 30000); // Check every 30 seconds
+    }, 10000); // Check every 10 seconds
+    
+    // Prevent access via browser navigation
+    window.addEventListener('beforeunload', function() {
+        // This helps prevent cached page access
+    });
+    
+    // Clear page cache on load
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    });
+    
+    // Logout confirmation
+    function confirmLogout() {
+        return confirm('Are you sure you want to logout? You will need to enter your credentials again.');
+    }
     </script>
     
     <?php 
@@ -205,7 +230,7 @@ if (!isset($_SESSION['user_id'])) {
     <script>
         document.body.dataset.userDepartment = '<?= htmlspecialchars($userDept) ?>';
     </script>
-    <script src="/ergon/public/assets/js/activity-tracker.js"></script>
+    <script src="<?= Environment::getBaseUrl() ?>/public/assets/js/activity-tracker.js"></script>
     <?php endif; ?>
 </body>
 </html>

@@ -1,15 +1,26 @@
 RewriteEngine On
 
-# Redirect root folder access to login
+# Set directory index
 DirectoryIndex index.php
 
-# Handle subdirectory if ERGON is in a subfolder
+# Development: Handle /ergon subfolder
+RewriteCond %{HTTP_HOST} ^(localhost|127\.0\.0\.1)
+RewriteBase /ergon/
+
+# Production: Handle root domain
+RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)
 RewriteBase /
 
-# Redirect all requests to public/index.php
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ public/index.php [QSA,L]
+# Handle direct file access
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^(.*)$ - [L]
+
+# Handle direct directory access
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^(.*)$ - [L]
+
+# Route everything else through index.php
+RewriteRule ^(.*)$ index.php [QSA,L]
 
 # Security headers
 Header always set X-Content-Type-Options nosniff
