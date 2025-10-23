@@ -4,47 +4,64 @@
  * ERGON - Employee Tracker & Task Manager
  */
 
-return [
-    // Web Routes
-    'web' => [
-        'GET' => [
-            '/' => ['AuthController', 'showLogin'],
-            '/login' => ['AuthController', 'showLogin'],
-            '/dashboard' => ['DashboardController', 'index'],
-            '/users' => ['UsersController', 'index'],
-            '/users/create' => ['UsersController', 'create'],
-            '/reports' => ['ReportsController', 'index'],
-            '/reports/activity' => ['ReportsController', 'activityReport'],
-            '/settings' => ['SettingsController', 'index'],
-            '/tasks' => ['TasksController', 'index'],
-            '/tasks/create' => ['TasksController', 'create'],
-            '/tasks/calendar' => ['TasksController', 'calendar'],
-            '/planner/calendar' => ['PlannerController', 'calendar'],
-            '/planner/create' => ['PlannerController', 'create'],
-            '/planner/getDepartmentForm' => ['PlannerController', 'getDepartmentForm'],
-            '/planner/getPlansForDate' => ['PlannerController', 'getPlansForDate'],
-        ],
-        'POST' => [
-            '/auth/login' => ['AuthController', 'login'],
-            '/auth/logout' => ['AuthController', 'logout'],
-            '/attendance/clock' => ['AttendanceController', 'clock'],
-            '/tasks/create' => ['TasksController', 'create'],
-            '/planner/create' => ['PlannerController', 'create'],
-            '/planner/update' => ['PlannerController', 'update'],
-            '/settings' => ['SettingsController', 'index'],
-        ]
-    ],
-    
-    // API Routes for Mobile App
-    'api' => [
-        'POST' => [
-            '/api/login' => ['ApiController', 'apiLogin'],
-            '/api/attendance' => ['ApiController', 'apiAttendance'],
-            '/api/tasks/update' => ['ApiController', 'apiTaskUpdate'],
-        ],
-        'GET' => [
-            '/api/tasks' => ['ApiController', 'apiTasks'],
-        ]
-    ]
-];
+// Authentication Routes
+$router->get('/', 'AuthController', 'index');
+$router->get('/login', 'AuthController', 'showLogin');
+$router->post('/login', 'AuthController', 'login');
+$router->get('/logout', 'AuthController', 'logout');
+$router->post('/logout', 'AuthController', 'logout');
+$router->get('/auth/logout', 'AuthController', 'logout');
+$router->post('/auth/logout', 'AuthController', 'logout');
+
+// Dashboard Routes
+$router->get('/dashboard', 'DashboardController', 'index');
+$router->get('/owner/dashboard', 'OwnerController', 'dashboard');
+$router->get('/admin/dashboard', 'AdminController', 'dashboard');
+$router->get('/user/dashboard', 'UserController', 'dashboard');
+
+// User Management
+$router->get('/users', 'UsersController', 'index');
+$router->get('/users/create', 'UsersController', 'create');
+$router->post('/users/create', 'UsersController', 'store');
+$router->get('/users/edit/{id}', 'UsersController', 'edit');
+$router->post('/users/edit/{id}', 'UsersController', 'update');
+
+// Department Management
+$router->get('/departments', 'DepartmentController', 'index');
+$router->get('/departments/create', 'DepartmentController', 'create');
+$router->post('/departments/create', 'DepartmentController', 'store');
+
+// Task Management
+$router->get('/tasks', 'TasksController', 'index');
+$router->get('/tasks/create', 'TasksController', 'create');
+$router->post('/tasks/create', 'TasksController', 'store');
+$router->get('/tasks/calendar', 'TasksController', 'calendar');
+
+// Attendance
+$router->get('/attendance', 'AttendanceController', 'index');
+$router->post('/attendance/clock', 'AttendanceController', 'clock');
+
+// Leave Management
+$router->get('/leaves', 'LeaveController', 'index');
+$router->get('/leaves/create', 'LeaveController', 'create');
+$router->post('/leaves/create', 'LeaveController', 'store');
+
+// Expense Management
+$router->get('/expenses', 'ExpenseController', 'index');
+$router->get('/expenses/create', 'ExpenseController', 'create');
+$router->post('/expenses/create', 'ExpenseController', 'store');
+
+// Reports
+$router->get('/reports', 'ReportsController', 'index');
+$router->get('/reports/activity', 'ReportsController', 'activity');
+
+// Settings
+$router->get('/settings', 'SettingsController', 'index');
+$router->post('/settings', 'SettingsController', 'update');
+
+// API Routes
+$router->post('/api/login', 'ApiController', 'login');
+$router->post('/api/attendance', 'ApiController', 'attendance');
+$router->get('/api/tasks', 'ApiController', 'tasks');
+$router->post('/api/tasks/update', 'ApiController', 'updateTask');
 ?>

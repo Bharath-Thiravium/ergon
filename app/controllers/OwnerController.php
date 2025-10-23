@@ -1,18 +1,30 @@
 <?php
+/**
+ * Owner Controller
+ * ERGON - Employee Tracker & Task Manager
+ */
+
+require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
 
-class OwnerController {
+class OwnerController extends Controller {
     private $db;
     
     public function __construct() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
         $database = new Database();
         $this->db = $database->getConnection();
     }
     
     public function dashboard() {
+        AuthMiddleware::requireAuth();
+        
+        // Check if user is owner
+        if ($_SESSION['role'] !== 'owner') {
+            header('Location: /ergon/dashboard');
+            exit;
+        }
+        
         $stats = $this->getKPIStats();
         $pending_approvals = $this->getPendingApprovals();
         $recent_activities = $this->getRecentActivities();
@@ -23,7 +35,7 @@ class OwnerController {
             'recent_activities' => $recent_activities
         ];
         
-        include __DIR__ . '/../views/owner/dashboard.php';
+        $this->view('owner/dashboard', $data);
     }
     
     public function approvals() {
@@ -48,7 +60,7 @@ class OwnerController {
         ];
         
         $data = ['approvals' => $pending];
-        include __DIR__ . '/../views/owner/approvals.php';
+        $this->view('owner/approvals', $data);
     }
     
     private function getKPIStats() {

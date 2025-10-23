@@ -1,16 +1,30 @@
 <?php
+/**
+ * Admin Controller
+ * ERGON - Employee Tracker & Task Manager
+ */
+
+require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
 
-class AdminController {
+class AdminController extends Controller {
     private $db;
     
     public function __construct() {
-        RoleMiddleware::requireRole(['admin', 'owner']);
         $database = new Database();
         $this->db = $database->getConnection();
     }
     
     public function dashboard() {
+        AuthMiddleware::requireAuth();
+        
+        // Check if user is admin or owner
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('Location: /ergon/dashboard');
+            exit;
+        }
+        
         $stats = $this->getAdminStats();
         $recent_tasks = $this->getRecentTasks();
         $pending_approvals = $this->getPendingApprovals();
@@ -21,7 +35,7 @@ class AdminController {
             'pending_approvals' => $pending_approvals
         ];
         
-        include __DIR__ . '/../views/admin/dashboard.php';
+        $this->view('admin/dashboard', $data);
     }
     
     private function getAdminStats() {

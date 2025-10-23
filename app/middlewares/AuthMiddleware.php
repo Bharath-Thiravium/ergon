@@ -71,15 +71,21 @@ class AuthMiddleware {
     }
     
     /**
-     * Require authentication
+     * Require authentication with optional role check
      */
-    public static function requireAuth() {
+    public static function requireAuth($roles = null) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
         
         if (!isset($_SESSION['user_id'])) {
             header('Location: /ergon/login');
+            exit;
+        }
+        
+        if ($roles !== null && !self::hasRole($roles)) {
+            http_response_code(403);
+            echo "<h1>403 - Access Denied</h1><p>You don't have permission to access this resource.</p><a href='/ergon/dashboard'>Go to Dashboard</a>";
             exit;
         }
     }

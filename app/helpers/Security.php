@@ -44,6 +44,10 @@ class Security {
         return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
     }
     
+    public static function getClientIP() {
+        return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    }
+    
     public static function logAudit($userId, $module, $action, $description) {
         try {
             require_once __DIR__ . '/../../config/database.php';
@@ -52,7 +56,7 @@ class Security {
             
             $query = "INSERT INTO audit_logs (user_id, module, action, description, ip_address) VALUES (?, ?, ?, ?, ?)";
             $stmt = $conn->prepare($query);
-            $stmt->execute([$userId, $module, $action, $description, $_SERVER['REMOTE_ADDR']]);
+            $stmt->execute([$userId, $module, $action, $description, self::getClientIP()]);
         } catch (Exception $e) {
             error_log("Audit log failed: " . $e->getMessage());
         }

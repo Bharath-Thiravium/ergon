@@ -185,11 +185,11 @@ if (!isset($_SESSION['user_id'])) {
                     });
                 }
                 // Force redirect to login
-                window.location.replace('/ergon/login.php');
+                window.location.replace('/ergon/login');
             }
         })
         .catch(() => {
-            window.location.replace('/ergon/login.php');
+            window.location.replace('/ergon/login');
         });
     }, 10000); // Check every 10 seconds
     

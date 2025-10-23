@@ -1,63 +1,42 @@
 <?php
-// Root index.php - handle requests directly
+/**
+ * ERGON - Employee Tracker & Task Manager
+ * Main Entry Point
+ */
+
+// Start session
 session_start();
 
-// Include configuration
+// Error handling
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+error_reporting(E_ALL);
+
+// Include autoloader and configuration
+require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/config/constants.php';
+require_once __DIR__ . '/config/database.php';
+
+// Include core classes
+require_once __DIR__ . '/app/core/Router.php';
+require_once __DIR__ . '/app/core/Controller.php';
 require_once __DIR__ . '/app/middlewares/AuthMiddleware.php';
 
-// Simple routing
-$request = $_SERVER['REQUEST_URI'];
-$path = parse_url($request, PHP_URL_PATH);
-
-// Remove base path if exists
-$basePath = '/ergon';
-if (strpos($path, $basePath) === 0) {
-    $path = substr($path, strlen($basePath));
+try {
+    // Initialize router
+    $router = new Router();
+    
+    // Load routes
+    require_once __DIR__ . '/config/routes.php';
+    
+    // Handle the request
+    $router->handleRequest();
+    
+} catch (Exception $e) {
+    error_log('ERGON Error: ' . $e->getMessage());
+    http_response_code(500);
+    echo "<!DOCTYPE html><html><head><title>System Error</title></head>";
+    echo "<body><h1>System Error</h1><p>Please try again later.</p>";
+    echo "<a href='/ergon/login'>Return to Login</a></body></html>";
 }
-
-// Handle login routes directly
-if (empty($path) || $path === '/' || $path === '/login') {
-    if (isset($_SESSION['user_id']) && ($path === '/' || $path === '/login')) {
-        // Redirect to appropriate dashboard
-        $role = $_SESSION['role'] ?? 'user';
-        switch ($role) {
-            case 'owner':
-                header('Location: /ergon/owner/dashboard');
-                break;
-            case 'admin':
-                header('Location: /ergon/admin/dashboard');
-                break;
-            default:
-                header('Location: /ergon/user/dashboard');
-                break;
-        }
-        exit;
-    } else {
-        // Show login form
-        require_once __DIR__ . '/app/controllers/AuthController.php';
-        $controller = new AuthController();
-        $controller->login();
-        exit;
-    }
-}
-
-// Handle auth routes
-if ($path === '/auth/login') {
-    require_once __DIR__ . '/app/controllers/AuthController.php';
-    $controller = new AuthController();
-    $controller->login();
-    exit;
-}
-
-if ($path === '/auth/logout') {
-    require_once __DIR__ . '/app/controllers/AuthController.php';
-    $controller = new AuthController();
-    $controller->logout();
-    exit;
-}
-
-// Handle all other routes through public/index.php routing
-$_SERVER['REQUEST_URI'] = $request;
-require_once __DIR__ . '/public/index.php';
 ?>

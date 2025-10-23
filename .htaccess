@@ -1,45 +1,26 @@
 RewriteEngine On
-
-# Set directory index
 DirectoryIndex index.php
 
-# Development: Handle /ergon subfolder
-RewriteCond %{HTTP_HOST} ^(localhost|127\.0\.0\.1)
-RewriteBase /ergon/
+# Allow access to public assets
+RewriteCond %{REQUEST_URI} ^/ergon/public/
+RewriteRule ^(.*)$ - [L]
 
-# Production: Handle root domain
-RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)
-RewriteBase /
-
-# Handle direct file access
+# Handle existing files
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^(.*)$ - [L]
 
-# Handle direct directory access
+# Handle existing directories
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^(.*)$ - [L]
 
 # Route everything else through index.php
 RewriteRule ^(.*)$ index.php [QSA,L]
 
-# Security headers
-Header always set X-Content-Type-Options nosniff
-Header always set X-Frame-Options DENY
-Header always set X-XSS-Protection "1; mode=block"
-Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
-
 # Hide sensitive files
 <Files ~ "^\.">
-    Order allow,deny
-    Deny from all
+    Require all denied
 </Files>
 
 <Files ~ "\.env$">
-    Order allow,deny
-    Deny from all
+    Require all denied
 </Files>
-
-# Prevent access to config and logs
-RedirectMatch 403 ^/config/
-RedirectMatch 403 ^/logs/
-RedirectMatch 403 ^/storage/

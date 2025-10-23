@@ -1,17 +1,25 @@
 <?php
+/**
+ * User Controller
+ * ERGON - Employee Tracker & Task Manager
+ */
+
+require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../models/Circular.php';
 
-class UserController {
+class UserController extends Controller {
     private $db;
     
     public function __construct() {
-        RoleMiddleware::requireRole(['user', 'admin', 'owner']);
         $database = new Database();
         $this->db = $database->getConnection();
     }
     
     public function dashboard() {
+        AuthMiddleware::requireAuth();
+        
         $user_id = $_SESSION['user_id'];
         $stats = $this->getUserStats($user_id);
         $tasks = $this->getUserTasks($user_id);
@@ -25,7 +33,7 @@ class UserController {
             'attendance_status' => $attendance_status
         ];
         
-        include __DIR__ . '/../views/user/dashboard.php';
+        $this->view('user/dashboard', $data);
     }
     
     private function getUserStats($user_id) {
@@ -52,6 +60,8 @@ class UserController {
     }
     
     public function requests() {
+        AuthMiddleware::requireAuth();
+        
         $user_id = $_SESSION['user_id'];
         $stats = $this->getUserStats($user_id);
         $leaves = $this->getUserLeaves($user_id);
@@ -65,7 +75,7 @@ class UserController {
             'advances' => $advances
         ];
         
-        include __DIR__ . '/../views/user/requests.php';
+        $this->view('user/requests', $data);
     }
     
     private function getUserLeaves($user_id) {

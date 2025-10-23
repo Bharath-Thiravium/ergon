@@ -4,30 +4,40 @@
  * ERGON - Employee Tracker & Task Manager
  */
 
+require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../helpers/Security.php';
 
-class AuthController {
+class AuthController extends Controller {
     private $userModel;
     
     public function __construct() {
         $this->userModel = new User();
     }
     
-    /**
-     * Handle login request
-     */
-    public function login() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+    public function index() {
+        if (isset($_SESSION['user_id'])) {
+            $this->redirect('/dashboard');
+        } else {
+            $this->redirect('/login');
+        }
+    }
+    
+    public function showLogin() {
+        if (isset($_SESSION['user_id'])) {
+            $this->redirect('/dashboard');
         }
         
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $_SESSION['csrf_token'] = Security::generateCSRFToken();
+        $this->view('auth/login');
+    }
+    
+    public function login() {
+        if ($this->isPost()) {
             // Validate CSRF token
             if (!Security::verifyCSRFToken($_POST['csrf_token'] ?? '')) {
-                $this->jsonResponse(['error' => 'Invalid CSRF token'], 400);
-                return;
+                    $this->json(['error' => 'Invalid CSRF token'], 400);
             }
             
             $email = Security::sanitizeInput($_POST['email'] ?? '');
@@ -38,8 +48,7 @@ class AuthController {
             
             // Validate input
             if (empty($email) || empty($password)) {
-                $this->jsonResponse(['error' => 'Email and password are required'], 400);
-                return;
+                $this->json(['error' => 'Email and password are required'], 400);
             }
             
             // Debug authentication
@@ -68,7 +77,7 @@ class AuthController {
                     $_SERVER['HTTP_USER_AGENT'] ?? ''
                 );
                 
-                $this->jsonResponse([
+                $this->json([
                     'success' => true,
                     'message' => SUCCESS_LOGIN,
                     'user' => [
@@ -78,7 +87,7 @@ class AuthController {
                         'role' => $user['role']
                     ],
                     'token' => $jwt,
-                    'redirect' => '/ergon/dashboard.php'
+                    'redirect' => '/ergon/dashboard'
                 ]);
             } else {
                 // Log failed login
@@ -89,11 +98,10 @@ class AuthController {
                     $_SERVER['HTTP_USER_AGENT'] ?? ''
                 );
                 
-                $this->jsonResponse(['error' => 'Invalid email or password'], 401);
+                $this->json(['error' => 'Invalid email or password'], 401);
             }
         } else {
-            // Show login form
-            $this->showLoginForm();
+            $this->showLogin();
         }
     }
     
@@ -119,11 +127,10 @@ class AuthController {
             );
         }
         
-        if ($this->isAjaxRequest()) {
-            $this->jsonResponse(['success' => true, 'message' => 'Logged out successfully']);
+        if ($this->isAjax()) {
+            $this->json(['success' => true, 'message' => 'Logged out successfully']);
         } else {
-            header('Location: /ergon/login');
-            exit;
+            $this->redirect('/login');
         }
     }
     
@@ -140,23 +147,15 @@ class AuthController {
                 if ($this->userModel->resetPassword($_SESSION['user_id'], $newPassword)) {
                     $_SESSION['password_reset_required'] = false;
                     $_SESSION['is_first_login'] = false;
-                    header('Location: /ergon/dashboard?password_reset=1');
-                    exit;
+                    $this->redirect('/dashboard');
                 }
             }
         }
         
-        include __DIR__ . '/../views/auth/reset-password.php';
+        $this->view('auth/reset-password');
     }
     
-    /**
-     * Show login form
-     */
-    private function showLoginForm() {
-        $_SESSION['csrf_token'] = Security::generateCSRFToken();
-        include __DIR__ . '/../views/auth/login.php';
-        exit;
-    }
+
     
     /**
      * Get redirect URL based on user role
@@ -164,52 +163,18 @@ class AuthController {
     private function getRedirectUrl($role) {
         switch ($role) {
             case ROLE_OWNER:
-                return '/ergon/dashboard/owner.php';
+                return '/ergon/owner/dashboard';
             case ROLE_ADMIN:
-                return '/ergon/dashboard/admin.php';
+                return '/ergon/admin/dashboard';
             case ROLE_USER:
-                return '/ergon/dashboard/user.php';
+                return '/ergon/user/dashboard';
             default:
-                return '/ergon/dashboard/';
+                return '/ergon/dashboard';
         }
     }
     
-    /**
-     * Check if request is AJAX
-     */
-    private function isAjaxRequest() {
-        return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
-               strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
-    }
-    
-    /**
-     * Send JSON response
-     */
-    private function jsonResponse($data, $statusCode = 200) {
-        http_response_code($statusCode);
-        header('Content-Type: application/json');
-        echo json_encode($data);
-        exit;
-    }
+
 }
 
-// Handle the request
-if (isset($_GET['action'])) {
-    $controller = new AuthController();
-    
-    switch ($_GET['action']) {
-        case 'login':
-            $controller->login();
-            break;
-        case 'logout':
-            $controller->logout();
-            break;
-        default:
-            http_response_code(404);
-            echo json_encode(['error' => 'Action not found']);
-    }
-} else {
-    $controller = new AuthController();
-    $controller->login();
-}
+
 ?>
