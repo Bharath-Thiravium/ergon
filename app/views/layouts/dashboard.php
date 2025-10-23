@@ -13,6 +13,11 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: /ergon/login');
     exit;
 }
+
+// Load user preferences
+require_once __DIR__ . '/../../models/UserPreference.php';
+$preferenceModel = new UserPreference();
+$userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -25,14 +30,78 @@ if (!isset($_SESSION['user_id'])) {
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
     <link href="/ergon/public/assets/css/ergon.css" rel="stylesheet">
     <link href="/ergon/public/assets/css/modals.css" rel="stylesheet">
+    <link href="/ergon/public/assets/css/header-components.css" rel="stylesheet">
+    <?php if ($userPrefs['theme'] === 'dark'): ?>
+    <link href="/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
+    <?php endif; ?>
 </head>
-<body>
+<body data-theme="<?= $userPrefs['theme'] ?>" data-layout="<?= $userPrefs['dashboard_layout'] ?>" data-lang="<?= $userPrefs['language'] ?>">
     <!-- Header -->
     <header class="header">
         <nav class="header__nav">
-            <div class="header__user">
-                <span>Welcome, <?= $_SESSION['user_name'] ?? 'User' ?></span>
-                <a href="/ergon/auth/logout" class="btn btn--secondary btn--sm" onclick="return confirmLogout()">Logout</a>
+            <div class="header__left">
+                <h1 class="header__title"><?= $title ?? 'Dashboard' ?></h1>
+            </div>
+            <div class="header__right">
+                <!-- Theme Toggle -->
+                <div class="theme-toggle">
+                    <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Theme">
+                        <span class="theme-icon" id="themeIcon"><?= $userPrefs['theme'] === 'dark' ? '☀️' : '🌙' ?></span>
+                    </button>
+                </div>
+                
+                <!-- Notification Center -->
+                <div class="notification-center">
+                    <button class="notification-btn" onclick="toggleNotifications()">
+                        <span class="notification-icon">🔔</span>
+                        <span class="notification-badge" id="notificationBadge">0</span>
+                    </button>
+                    <div class="notification-dropdown" id="notificationDropdown">
+                        <div class="notification-header">
+                            <h3>Notifications</h3>
+                            <a href="/ergon/notifications" class="view-all-link">View All</a>
+                        </div>
+                        <div class="notification-list" id="notificationList">
+                            <div class="notification-loading">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Profile Dropdown -->
+                <div class="profile-dropdown">
+                    <button class="profile-btn" onclick="toggleProfile()">
+                        <span class="profile-avatar"><?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?></span>
+                        <span class="profile-name"><?= $_SESSION['user_name'] ?? 'User' ?></span>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="profile-menu" id="profileMenu">
+                        <div class="profile-info">
+                            <div class="profile-avatar-large"><?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?></div>
+                            <div class="profile-details">
+                                <div class="profile-name"><?= $_SESSION['user_name'] ?? 'User' ?></div>
+                                <div class="profile-role"><?= ucfirst($_SESSION['role'] ?? 'User') ?></div>
+                            </div>
+                        </div>
+                        <div class="profile-menu-divider"></div>
+                        <a href="/ergon/profile" class="profile-menu-item">
+                            <span class="menu-icon">👤</span>
+                            My Profile
+                        </a>
+                        <a href="/ergon/profile/change-password" class="profile-menu-item">
+                            <span class="menu-icon">🔒</span>
+                            Change Password
+                        </a>
+                        <a href="/ergon/profile/preferences" class="profile-menu-item">
+                            <span class="menu-icon">⚙️</span>
+                            Preferences
+                        </a>
+                        <div class="profile-menu-divider"></div>
+                        <a href="/ergon/auth/logout" class="profile-menu-item profile-menu-item--danger" onclick="return confirmLogout()">
+                            <span class="menu-icon">🚪</span>
+                            Logout
+                        </a>
+                    </div>
+                </div>
             </div>
         </nav>
     </header>
@@ -157,6 +226,8 @@ if (!isset($_SESSION['user_id'])) {
     </div>
 
     <script src="/ergon/public/assets/js/modal-system.js"></script>
+    <script src="/ergon/public/assets/js/header-components.js"></script>
+    <script src="/ergon/public/assets/js/preferences-handler.js"></script>
     
     <script>
     // Prevent back button after logout
@@ -169,29 +240,21 @@ if (!isset($_SESSION['user_id'])) {
         }
     })();
     
-    // Check session validity periodically
+    // Session timeout warning (optional)
+    let sessionWarningShown = false;
     setInterval(function() {
-        fetch('/ergon/api/check-session', {
-            method: 'GET',
-            credentials: 'same-origin'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.valid) {
-                // Clear any cached data
-                if ('caches' in window) {
-                    caches.keys().then(names => {
-                        names.forEach(name => caches.delete(name));
-                    });
+        if (!sessionWarningShown && document.visibilityState === 'visible') {
+            // Only show warning after 25 minutes of inactivity
+            const lastActivity = localStorage.getItem('lastActivity');
+            if (lastActivity && (Date.now() - parseInt(lastActivity)) > 1500000) {
+                sessionWarningShown = true;
+                if (confirm('Your session will expire soon. Click OK to stay logged in.')) {
+                    localStorage.setItem('lastActivity', Date.now().toString());
+                    sessionWarningShown = false;
                 }
-                // Force redirect to login
-                window.location.replace('/ergon/login');
             }
-        })
-        .catch(() => {
-            window.location.replace('/ergon/login');
-        });
-    }, 10000); // Check every 10 seconds
+        }
+    }, 60000); // Check every minute
     
     // Prevent access via browser navigation
     window.addEventListener('beforeunload', function() {
@@ -209,6 +272,18 @@ if (!isset($_SESSION['user_id'])) {
     function confirmLogout() {
         return confirm('Are you sure you want to logout? You will need to enter your credentials again.');
     }
+    
+    // Track user activity
+    document.addEventListener('DOMContentLoaded', function() {
+        localStorage.setItem('lastActivity', Date.now().toString());
+        
+        // Update activity on user interactions
+        ['click', 'keypress', 'scroll', 'mousemove'].forEach(event => {
+            document.addEventListener(event, function() {
+                localStorage.setItem('lastActivity', Date.now().toString());
+            }, { passive: true });
+        });
+    });
     </script>
     
     <?php 

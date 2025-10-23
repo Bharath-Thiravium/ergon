@@ -66,6 +66,18 @@ class AuthController extends Controller {
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['last_activity'] = time();
                 
+                // Check if password reset is required
+                if ($user['password_reset_required'] || $user['is_first_login']) {
+                    $_SESSION['password_reset_required'] = true;
+                    
+                    $this->json([
+                        'success' => true,
+                        'message' => 'Password reset required',
+                        'redirect' => '/ergon/auth/reset-password'
+                    ]);
+                    return;
+                }
+                
                 // Generate JWT token
                 $jwt = Security::generateJWT($user['id'], $user['role']);
                 
@@ -139,20 +151,36 @@ class AuthController extends Controller {
             session_start();
         }
         
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $newPassword = $_POST['new_password'];
-            $confirmPassword = $_POST['confirm_password'];
-            
-            if ($newPassword === $confirmPassword && strlen($newPassword) >= 6) {
-                if ($this->userModel->resetPassword($_SESSION['user_id'], $newPassword)) {
-                    $_SESSION['password_reset_required'] = false;
-                    $_SESSION['is_first_login'] = false;
-                    $this->redirect('/dashboard');
-                }
-            }
+        if (!isset($_SESSION['user_id'])) {
+            $this->redirect('/login');
+            return;
         }
         
-        $this->view('auth/reset-password');
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $newPassword = $_POST['new_password'] ?? '';
+            $confirmPassword = $_POST['confirm_password'] ?? '';
+            
+            if (empty($newPassword) || empty($confirmPassword)) {
+                $error = 'Both password fields are required';
+            } elseif ($newPassword !== $confirmPassword) {
+                $error = 'Passwords do not match';
+            } elseif (strlen($newPassword) < 6) {
+                $error = 'Password must be at least 6 characters';
+            } else {
+                if ($this->userModel->resetPassword($_SESSION['user_id'], $newPassword)) {
+                    unset($_SESSION['password_reset_required']);
+                    $this->redirect('/dashboard');
+                    return;
+                } else {
+                    $error = 'Failed to update password';
+                }
+            }
+            
+            $data = ['error' => $error];
+            include __DIR__ . '/../views/auth/reset-password.php';
+        } else {
+            include __DIR__ . '/../views/auth/reset-password.php';
+        }
     }
     
 

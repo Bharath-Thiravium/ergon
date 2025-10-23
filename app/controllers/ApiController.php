@@ -276,5 +276,219 @@ class ApiController {
         
         return $prefix ?: 'EMP';
     }
+    
+    public function updatePreference() {
+        header('Content-Type: application/json');
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $key = $input['key'] ?? '';
+        $value = $input['value'] ?? '';
+        
+        if (empty($key)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid key']);
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../models/UserPreference.php';
+            $preferenceModel = new UserPreference();
+            $result = $preferenceModel->updatePreference($_SESSION['user_id'], $key, $value);
+            
+            echo json_encode(['success' => $result]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Server error']);
+        }
+        exit;
+    }
+    
+    public function registerDevice() {
+        header('Content-Type: application/json');
+        
+        $headers = getallheaders();
+        $authHeader = $headers['Authorization'] ?? '';
+        
+        if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Missing authorization token']);
+            return;
+        }
+        
+        $token = $matches[1];
+        $payload = Security::verifyJWT($token);
+        
+        if (!$payload) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Invalid token']);
+            return;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $fcmToken = $input['fcm_token'] ?? '';
+        $deviceType = $input['device_type'] ?? 'android';
+        $deviceInfo = $input['device_info'] ?? '';
+        
+        if (empty($fcmToken)) {
+            echo json_encode(['success' => false, 'error' => 'FCM token required']);
+            return;
+        }
+        
+        try {
+            require_once __DIR__ . '/../../config/database.php';
+            $database = new Database();
+            $conn = $database->getConnection();
+            
+            $stmt = $conn->prepare(
+                "INSERT INTO user_devices (user_id, fcm_token, device_type, device_info) 
+                 VALUES (?, ?, ?, ?) 
+                 ON DUPLICATE KEY UPDATE device_info = VALUES(device_info), last_active = CURRENT_TIMESTAMP"
+            );
+            $stmt->execute([$payload->user_id, $fcmToken, $deviceType, $deviceInfo]);
+            
+            echo json_encode(['success' => true, 'message' => 'Device registered']);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Registration failed']);
+        }
+    }
+    
+    public function syncOfflineData() {
+        header('Content-Type: application/json');
+        
+        $headers = getallheaders();
+        $authHeader = $headers['Authorization'] ?? '';
+        
+        if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Missing authorization token']);
+            return;
+        }
+        
+        $token = $matches[1];
+        $payload = Security::verifyJWT($token);
+        
+        if (!$payload) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Invalid token']);
+            return;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $queueData = $input['queue_data'] ?? [];
+        
+        $results = [];
+        
+        foreach ($queueData as $item) {
+            $result = $this->processSyncItem($payload->user_id, $item);
+            $results[] = $result;
+        }
+        
+        echo json_encode(['success' => true, 'results' => $results]);
+    }
+    
+    private function processSyncItem($userId, $item) {
+        $type = $item['type'] ?? '';
+        $data = $item['data'] ?? [];
+        $clientUuid = $item['client_uuid'] ?? '';
+        
+        try {
+            require_once __DIR__ . '/../../config/database.php';
+            $database = new Database();
+            $conn = $database->getConnection();
+            
+            // Check if already synced
+            $stmt = $conn->prepare("SELECT id FROM sync_queue WHERE client_uuid = ? AND synced = 1");
+            $stmt->execute([$clientUuid]);
+            if ($stmt->fetch()) {
+                return ['client_uuid' => $clientUuid, 'status' => 'already_synced'];
+            }
+            
+            switch ($type) {
+                case 'attendance':
+                    $result = $this->syncAttendance($userId, $data, $clientUuid);
+                    break;
+                case 'task_update':
+                    $result = $this->syncTaskUpdate($userId, $data, $clientUuid);
+                    break;
+                default:
+                    $result = ['status' => 'unknown_type'];
+            }
+            
+            // Mark as synced
+            $stmt = $conn->prepare(
+                "INSERT INTO sync_queue (user_id, action_type, data, client_uuid, synced, synced_at) 
+                 VALUES (?, ?, ?, ?, 1, NOW()) 
+                 ON DUPLICATE KEY UPDATE synced = 1, synced_at = NOW()"
+            );
+            $stmt->execute([$userId, $type, json_encode($data), $clientUuid]);
+            
+            return array_merge(['client_uuid' => $clientUuid], $result);
+            
+        } catch (Exception $e) {
+            return ['client_uuid' => $clientUuid, 'status' => 'error', 'message' => $e->getMessage()];
+        }
+    }
+    
+    private function syncAttendance($userId, $data, $clientUuid) {
+        $latitude = $data['latitude'] ?? 0;
+        $longitude = $data['longitude'] ?? 0;
+        $action = $data['action'] ?? '';
+        
+        // Validate geofence
+        $distance = $this->calculateDistance($latitude, $longitude);
+        $isValid = $distance <= 200; // 200m radius
+        
+        if ($action === 'checkin') {
+            $result = $this->attendanceModel->checkIn(
+                $userId, $latitude, $longitude, 
+                "Mobile: {$latitude}, {$longitude}", $clientUuid, $distance, $isValid
+            );
+        } elseif ($action === 'checkout') {
+            $result = $this->attendanceModel->checkOut($userId, $clientUuid);
+        } else {
+            return ['status' => 'invalid_action'];
+        }
+        
+        return ['status' => $result ? 'success' : 'failed'];
+    }
+    
+    private function syncTaskUpdate($userId, $data, $clientUuid) {
+        $taskId = $data['task_id'] ?? 0;
+        $progress = $data['progress'] ?? 0;
+        $comment = $data['comment'] ?? '';
+        
+        $result = $this->taskModel->updateProgress($taskId, $userId, $progress, $comment);
+        return ['status' => $result ? 'success' : 'failed'];
+    }
+    
+    private function calculateDistance($lat, $lng) {
+        // Get office location from settings
+        require_once __DIR__ . '/../../config/database.php';
+        $database = new Database();
+        $conn = $database->getConnection();
+        
+        $stmt = $conn->query("SELECT latitude, longitude FROM geofence_locations WHERE is_active = 1 LIMIT 1");
+        $office = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$office) return 999999; // No office location set
+        
+        return $this->haversineDistance($lat, $lng, $office['latitude'], $office['longitude']);
+    }
+    
+    private function haversineDistance($lat1, $lng1, $lat2, $lng2) {
+        $earthRadius = 6371000; // meters
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lng2 - $lng1);
+        $a = sin($dLat/2) * sin($dLat/2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon/2) * sin($dLon/2);
+        $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+        return $earthRadius * $c;
+    }
 }
 ?>

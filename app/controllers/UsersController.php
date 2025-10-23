@@ -112,6 +112,15 @@ class UsersController {
     public function resetUserPassword() {
         header('Content-Type: application/json');
         
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
         $input = json_decode(file_get_contents('php://input'), true);
         $userId = $input['user_id'] ?? 0;
         

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../models/Expense.php';
+require_once __DIR__ . '/../helpers/NotificationHelper.php';
 
 class ExpenseController {
     private $db;
@@ -61,6 +62,11 @@ class ExpenseController {
             ];
             
             if ($this->expense->create($data)) {
+                NotificationHelper::notifyAdmins(
+                    'New Expense Request',
+                    "Expense of ₹{$_POST['amount']} submitted by user #{$_SESSION['user_id']}",
+                    '/ergon/expenses'
+                );
                 header('Location: /ergon/user/requests?success=1');
                 exit;
             }
@@ -75,7 +81,16 @@ class ExpenseController {
         }
         
         if (isset($_SESSION['role']) && $_SESSION['role'] !== 'user') {
-            $this->expense->updateStatus($id, 'approved', 2);
+            $this->expense->updateStatus($id, 'approved', $_SESSION['user_id']);
+            $expense = $this->expense->getById($id);
+            if ($expense) {
+                NotificationHelper::notifyUser(
+                    $expense['user_id'],
+                    'Expense Approved',
+                    'Your expense request has been approved by admin.',
+                    '/ergon/user/requests'
+                );
+            }
         }
         header('Location: /ergon/expenses');
         exit;
@@ -87,9 +102,54 @@ class ExpenseController {
         }
         
         if (isset($_SESSION['role']) && $_SESSION['role'] !== 'user') {
-            $this->expense->updateStatus($id, 'rejected', 2);
+            $this->expense->updateStatus($id, 'rejected', $_SESSION['user_id']);
+            $expense = $this->expense->getById($id);
+            if ($expense) {
+                NotificationHelper::notifyUser(
+                    $expense['user_id'],
+                    'Expense Rejected',
+                    'Your expense request has been rejected by admin.',
+                    '/ergon/user/requests'
+                );
+            }
         }
         header('Location: /ergon/expenses');
         exit;
+    }
+    
+    public function apiCreate() {
+        header('Content-Type: application/json');
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized']);
+            return;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $userId = $_SESSION['user_id'];
+        
+        $data = [
+            'user_id' => $userId,
+            'category' => $input['category'] ?? '',
+            'amount' => $input['amount'] ?? 0,
+            'description' => $input['description'] ?? '',
+            'date' => $input['date'] ?? date('Y-m-d')
+        ];
+        
+        if ($this->expense->create($data)) {
+            NotificationHelper::notifyAdmins(
+                'New Expense Request',
+                "Expense of ₹{$data['amount']} submitted by user #{$userId}",
+                '/ergon/expenses'
+            );
+            echo json_encode(['success' => true, 'message' => 'Expense request submitted']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to submit expense request']);
+        }
     }
 }
