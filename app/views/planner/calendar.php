@@ -33,32 +33,29 @@ $showSetupMessage = empty($data['departments']);
 </div>
 <?php endif; ?>
 
-<div class="dashboard-grid">
-    <div class="kpi-card kpi-card--primary">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">📋</div>
-            <div class="kpi-card__trend kpi-card__trend--up">Today</div>
+<div class="planner-stats">
+    <div class="stat-item stat-item--primary">
+        <div class="stat-icon">📋</div>
+        <div class="stat-content">
+            <div class="stat-value" id="todayPlansCount">0</div>
+            <div class="stat-label">Today's Plans</div>
         </div>
-        <div class="kpi-card__value" id="todayPlansCount">0</div>
-        <div class="kpi-card__label">Today's Plans</div>
     </div>
     
-    <div class="kpi-card kpi-card--success">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">✅</div>
-            <div class="kpi-card__trend kpi-card__trend--up">Completed</div>
+    <div class="stat-item stat-item--success">
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+            <div class="stat-value" id="completedPlansCount">0</div>
+            <div class="stat-label">Completed</div>
         </div>
-        <div class="kpi-card__value" id="completedPlansCount">0</div>
-        <div class="kpi-card__label">Completed</div>
     </div>
     
-    <div class="kpi-card kpi-card--warning">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">⚠️</div>
-            <div class="kpi-card__trend kpi-card__trend--down">Pending</div>
+    <div class="stat-item stat-item--warning">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-content">
+            <div class="stat-value" id="pendingPlansCount">0</div>
+            <div class="stat-label">Pending</div>
         </div>
-        <div class="kpi-card__value" id="pendingPlansCount">0</div>
-        <div class="kpi-card__label">Pending</div>
     </div>
 </div>
 
@@ -308,12 +305,65 @@ document.addEventListener('DOMContentLoaded', function() {
     gap: 5px;
 }
 
+.planner-stats {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: white;
+    border-radius: 8px;
+    border-left: 4px solid #ddd;
+    flex: 1;
+    min-width: 200px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-item--primary { border-left-color: #007bff; }
+.stat-item--success { border-left-color: #28a745; }
+.stat-item--warning { border-left-color: #ffc107; }
+
+.stat-icon {
+    font-size: 24px;
+    opacity: 0.8;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #666;
+    margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+    .planner-stats {
+        flex-direction: column;
+    }
+    
+    .stat-item {
+        min-width: auto;
+    }
+}
+
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 1px;
     background: #e0e0e0;
     border: 1px solid #e0e0e0;
+    width: 100%;
+    max-width: none;
 }
 
 .calendar-day-header {
@@ -325,8 +375,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .calendar-day {
     background: white;
-    min-height: 120px;
-    padding: 8px;
+    min-height: 140px;
+    padding: 10px;
     position: relative;
     cursor: pointer;
 }
