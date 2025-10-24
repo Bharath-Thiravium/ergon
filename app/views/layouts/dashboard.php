@@ -61,6 +61,9 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <?php endif; ?>
 </head>
 <body data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>">
+    <button class="mobile-menu-toggle" onclick="toggleSidebar()">
+        <span>☰</span>
+    </button>
 
 
     <div class="layout">
@@ -210,6 +213,21 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/ergon/public/assets/js/mobile-menu.js"></script>
+    <script>
+    function toggleSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        sidebar.classList.toggle('sidebar--open');
+    }
+    
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', function(e) {
+        const sidebar = document.querySelector('.sidebar');
+        const toggle = document.querySelector('.mobile-menu-toggle');
+        
+        if (window.innerWidth <= 768 && !sidebar.contains(e.target) && !toggle.contains(e.target)) {
+            sidebar.classList.remove('sidebar--open');
+        }
+    });
+    </script>
 </body>
 </html>
