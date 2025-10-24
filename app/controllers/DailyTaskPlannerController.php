@@ -152,6 +152,30 @@ class DailyTaskPlannerController extends Controller {
         ]);
     }
     
+    // Project overview popup
+    public function projectOverview() {
+        $this->requireAuth(['admin', 'owner']);
+        
+        $department = $_GET['department'] ?? null;
+        $projectProgress = $this->dailyTaskPlanner->getProjectProgress();
+        
+        $this->render('daily_planner/project_overview', [
+            'data' => ['projectProgress' => $projectProgress],
+            'selectedDepartment' => $department
+        ]);
+    }
+    
+    // Delayed tasks overview
+    public function delayedTasksOverview() {
+        $this->requireAuth(['admin', 'owner']);
+        
+        $delayedTasks = $this->dailyTaskPlanner->getDelayedTasks();
+        
+        $this->render('daily_planner/delayed_tasks_overview', [
+            'data' => ['delayedTasks' => $delayedTasks]
+        ]);
+    }
+    
     // Project progress API
     public function projectProgressApi() {
         $this->requireAuth();

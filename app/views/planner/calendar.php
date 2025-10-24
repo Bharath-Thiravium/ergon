@@ -61,95 +61,24 @@ $showSetupMessage = empty($data['departments']) && file_exists(__DIR__ . '/../..
     </div>
 </div>
 
-<div class="card">
-    <div class="card__header">
-        <h2 class="card__title">Calendar View</h2>
-        <div class="calendar-controls">
-            <button class="btn btn--sm" onclick="previousMonth()">‹</button>
-            <span id="currentMonth"><?= date('F Y') ?></span>
-            <button class="btn btn--sm" onclick="nextMonth()">›</button>
-        </div>
-    </div>
-    <div class="card__body">
-        <div id="calendar" class="calendar-grid"></div>
-    </div>
-</div>
+<?php 
+$events = [];
+foreach ($data['plans'] as $plan) {
+    $events[$plan['plan_date']][] = [
+        'type' => 'task',
+        'title' => $plan['title'],
+        'priority' => $plan['priority']
+    ];
+}
+include __DIR__ . '/../shared/calendar.php';
+?>
 
 
 
 
 
 <script>
-let currentDate = new Date();
 let plans = <?= json_encode($data['plans']) ?>;
-
-function renderCalendar() {
-    const calendar = document.getElementById('calendar');
-    const monthYear = document.getElementById('currentMonth');
-    
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    monthYear.textContent = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const today = new Date();
-    
-    calendar.innerHTML = '';
-    
-    // Add day headers
-    const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    dayHeaders.forEach(day => {
-        const header = document.createElement('div');
-        header.className = 'calendar-day-header';
-        header.textContent = day;
-        header.className += ' calendar-day-header';
-        calendar.appendChild(header);
-    });
-    
-    // Add empty cells for days before month starts
-    for (let i = 0; i < firstDay; i++) {
-        const emptyDay = document.createElement('div');
-        emptyDay.className = 'calendar-day other-month';
-        calendar.appendChild(emptyDay);
-    }
-    
-    // Add days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dayElement = document.createElement('div');
-        dayElement.className = 'calendar-day';
-        
-        const currentDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        
-        if (today.getDate() === day && today.getMonth() === month && today.getFullYear() === year) {
-            dayElement.classList.add('today');
-        }
-        
-        dayElement.innerHTML = `<div class="day-number">${day}</div>`;
-        dayElement.onclick = () => showDayPlans(currentDateStr);
-        
-        // Add plans for this day
-        const dayPlans = plans.filter(plan => plan.plan_date === currentDateStr);
-        dayPlans.forEach(plan => {
-            const planElement = document.createElement('div');
-            planElement.className = `plan-item priority-${plan.priority}`;
-            if (plan.completion_status === 'completed') {
-                planElement.classList.add('completed');
-            }
-            planElement.textContent = plan.title;
-            planElement.onclick = (e) => {
-                e.stopPropagation();
-                openProgressModal(plan);
-            };
-            dayElement.appendChild(planElement);
-        });
-        
-        calendar.appendChild(dayElement);
-    }
-    
-    updateStats();
-}
 
 function updateStats() {
     const today = new Date().toISOString().split('T')[0];
@@ -162,29 +91,89 @@ function updateStats() {
     document.getElementById('pendingPlansCount').textContent = pendingPlans.length;
 }
 
-function previousMonth() {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    renderCalendar();
-}
-
-function nextMonth() {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderCalendar();
-}
+// Override calendar date selection to show plans
+document.addEventListener('dateSelected', function(e) {
+    showDayPlans(e.detail.date);
+});
 
 const depts = <?= json_encode($data['departments']) ?>;
 const priorityOpts = [{value:'low',text:'Low'},{value:'medium',text:'Medium'},{value:'high',text:'High'},{value:'urgent',text:'Urgent'}];
 
 function openPlanModal() {
-    showForm('📅 Add Plan', [
-        {name:'plan_date',label:'Date',type:'date',required:true,value:new Date().toISOString().split('T')[0]},
-        {name:'department_id',label:'Department',type:'select',required:true,options:depts.map(d=>({value:d.id,text:d.name}))},
-        {name:'title',label:'Title',type:'text',required:true,placeholder:'Enter plan title'},
-        {name:'description',label:'Description',type:'textarea',placeholder:'Description'},
-        {name:'priority',label:'Priority',type:'select',required:true,value:'medium',options:priorityOpts},
-        {name:'estimated_hours',label:'Estimated Hours',type:'number',placeholder:'0.0'},
-        {name:'reminder_time',label:'Reminder Time',type:'time'}
-    ], submitPlanForm);
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📅 Add Plan</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="planForm" class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Date *</label>
+                        <input type="date" class="form-control" name="plan_date" required value="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Department *</label>
+                        <select class="form-control" name="department_id" required>
+                            ${depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Title *</label>
+                    <input type="text" class="form-control" name="title" required placeholder="Enter plan title">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" name="description" rows="3" placeholder="Plan description"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Priority *</label>
+                        <select class="form-control" name="priority" required>
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Estimated Hours</label>
+                        <input type="number" class="form-control" name="estimated_hours" step="0.5" placeholder="0.0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Reminder Time</label>
+                    <input type="time" class="form-control" name="reminder_time">
+                </div>
+            </form>
+            <div class="modal-footer">
+                <button class="btn btn--secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn--primary" onclick="submitPlan()">✓ Create Plan</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function closeModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) modal.remove();
+}
+
+function submitPlan() {
+    const form = document.getElementById('planForm');
+    const formData = new FormData(form);
+    
+    fetch('/ergon/planner/create', {
+        method: 'POST',
+        body: formData
+    }).then(() => {
+        closeModal();
+        location.reload();
+    });
 }
 
 function openProgressModal(plan) {
@@ -280,12 +269,26 @@ function showDayPlans(date) {
 
 function showTodayPlans() {
     const today = new Date().toISOString().split('T')[0];
-    showDayPlans(today);
+    const todayPlans = plans.filter(p => p.plan_date === today);
+    
+    if (!todayPlans.length) {
+        alert('No plans for today. Click "Add Plan" to create one.');
+        return;
+    }
+    
+    let message = `Today's Plans (${todayPlans.length}):\n\n`;
+    todayPlans.forEach((p, i) => {
+        message += `${i + 1}. ${p.title} (${p.priority}) - ${p.completion_percentage}%\n`;
+        if (p.description) message += `   ${p.description}\n`;
+        message += '\n';
+    });
+    
+    alert(message);
 }
 
-// Initialize calendar
+// Initialize stats
 document.addEventListener('DOMContentLoaded', function() {
-    renderCalendar();
+    updateStats();
 });
 </script>
 
@@ -409,6 +412,125 @@ document.addEventListener('DOMContentLoaded', function() {
 .plan-detail-desc {
     font-size: 14px;
     margin-top: 4px;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    background: var(--bg-tertiary);
+}
+
+.modal-body {
+    padding: var(--space-5);
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.form-group {
+    margin-bottom: var(--space-4);
+}
+
+.form-label {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+}
+
+.form-control {
+    width: 100%;
+    padding: var(--space-3);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    transition: var(--transition);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(30,64,175,0.1);
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-content {
+        width: 95%;
+        max-width: none;
+    }
 }
 </style>
 

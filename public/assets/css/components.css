@@ -241,11 +241,17 @@
 /* Table Components */
 .table-responsive {
   overflow-x: auto;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
 }
 
 .table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
+  margin: 0;
 }
 
 .table th,
@@ -253,16 +259,40 @@
   padding: var(--space-3);
   text-align: left;
   border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
 }
 
 .table th {
   background: var(--bg-secondary);
   font-weight: 600;
   color: var(--text-primary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .table tr:hover {
   background: var(--bg-secondary);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+@media (max-width: 768px) {
+  .table-responsive {
+    width: 100%;
+  }
+  
+  .table th,
+  .table td {
+    padding: var(--space-2);
+    font-size: var(--font-size-sm);
+  }
+  
+  .table {
+    min-width: 500px;
+  }
 }
 
 /* Stat Items */

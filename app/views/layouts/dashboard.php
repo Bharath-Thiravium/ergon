@@ -198,15 +198,71 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                     <span class="sidebar__icon">👤</span>
                     My Profile
                 </a>
-                <a href="/ergon/auth/logout" class="sidebar__link" onclick="return confirm('Are you sure you want to logout?')">
-                    <span class="sidebar__icon">🚪</span>
-                    Logout
-                </a>
+                
+                <!-- User Controls -->
+                <div class="sidebar__controls">
+                    <button class="sidebar__control-btn" onclick="toggleTheme()" title="Toggle Theme">
+                        <span id="themeIcon"><?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? '☀️' : '🌙' ?></span>
+                    </button>
+                    <button class="sidebar__control-btn" onclick="toggleNotifications()" title="Notifications">
+                        <span>🔔</span>
+                        <span class="notification-badge" id="notificationBadge">0</span>
+                    </button>
+                    <div class="sidebar__profile-dropdown">
+                        <button class="sidebar__profile-btn" onclick="toggleProfile()">
+                            <span class="profile-avatar"><?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?></span>
+                            <div class="profile-info">
+                                <span class="profile-name"><?= $_SESSION['user_name'] ?? 'User' ?></span>
+                                <span class="profile-role"><?= ucfirst($_SESSION['role'] ?? 'User') ?></span>
+                            </div>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="profile-menu" id="profileMenu">
+                            <a href="/ergon/profile/change-password" class="profile-menu-item">
+                                <span class="menu-icon">🔒</span>
+                                Change Password
+                            </a>
+                            <a href="/ergon/profile/preferences" class="profile-menu-item">
+                                <span class="menu-icon">⚙️</span>
+                                Preferences
+                            </a>
+                            <div class="profile-menu-divider"></div>
+                            <a href="/ergon/auth/logout" class="profile-menu-item profile-menu-item--danger" onclick="return confirm('Are you sure you want to logout?')">
+                                <span class="menu-icon">🚪</span>
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Notification Dropdown -->
+                <div class="notification-dropdown" id="notificationDropdown">
+                    <div class="notification-header">
+                        <h3>Notifications</h3>
+                        <a href="/ergon/notifications" class="view-all-link">View All</a>
+                    </div>
+                    <div class="notification-list" id="notificationList">
+                        <div class="notification-loading">Loading...</div>
+                    </div>
+                </div>
             </nav>
         </aside>
 
         <!-- Main Content -->
         <main class="main-content">
+            <!-- Breadcrumb -->
+            <nav class="breadcrumb">
+                <div class="breadcrumb-item">
+                    <a href="/ergon/dashboard">🏠 Home</a>
+                </div>
+                <?php if (isset($active_page) && $active_page !== 'dashboard'): ?>
+                    <span class="breadcrumb-separator">›</span>
+                    <div class="breadcrumb-item">
+                        <span class="breadcrumb-current"><?= $title ?? ucfirst($active_page) ?></span>
+                    </div>
+                <?php endif; ?>
+            </nav>
+            
             <?= $content ?>
         </main>
     </div>
@@ -219,13 +275,56 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         sidebar.classList.toggle('sidebar--open');
     }
     
-    // Close sidebar when clicking outside on mobile
+    function toggleTheme() {
+        var currentTheme = document.body.getAttribute('data-theme') || 'light';
+        var newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        document.body.setAttribute('data-theme', newTheme);
+        var themeIcon = document.getElementById('themeIcon');
+        if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        
+        fetch('/ergon/api/update-preference', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({key: 'theme', value: newTheme})
+        }).catch(function(error) { console.log('Theme save failed:', error); });
+    }
+    
+    function toggleNotifications() {
+        var dropdown = document.getElementById('notificationDropdown');
+        if (dropdown) {
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+    }
+    
+    function toggleProfile() {
+        var menu = document.getElementById('profileMenu');
+        if (menu) {
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+    }
+    
+    // Close dropdowns when clicking outside
     document.addEventListener('click', function(e) {
         const sidebar = document.querySelector('.sidebar');
         const toggle = document.querySelector('.mobile-menu-toggle');
+        const profileBtn = document.querySelector('.sidebar__profile-btn');
+        const notificationBtn = document.querySelector('.sidebar__control-btn');
         
+        // Close sidebar on mobile
         if (window.innerWidth <= 768 && !sidebar.contains(e.target) && !toggle.contains(e.target)) {
             sidebar.classList.remove('sidebar--open');
+        }
+        
+        // Close profile menu
+        if (!profileBtn || !profileBtn.contains(e.target)) {
+            var menu = document.getElementById('profileMenu');
+            if (menu) menu.style.display = 'none';
+        }
+        
+        // Close notification dropdown
+        if (!notificationBtn || !notificationBtn.contains(e.target)) {
+            var dropdown = document.getElementById('notificationDropdown');
+            if (dropdown) dropdown.style.display = 'none';
         }
     });
     </script>

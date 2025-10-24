@@ -17,69 +17,124 @@ ob_start();
     </select>
 </div>
 
-<!-- Project Progress Overview -->
-<div class="dashboard-grid">
-    <div class="card" style="grid-column: span 2;">
-        <div class="card__header">
-            <h2 class="card__title">🎯 Project Progress Overview</h2>
-        </div>
-        <div class="card__body">
-            <?php foreach ($projectProgress as $project): ?>
-            <div class="stat-item">
-                <div>
-                    <div class="stat-label"><?= htmlspecialchars($project['name']) ?></div>
-                    <small class="form-help"><?= $project['completed_tasks'] ?>/<?= $project['total_tasks'] ?> tasks • <?= $project['department'] ?></small>
-                </div>
-                <div>
-                    <span class="badge <?= $project['completion_percentage'] >= 100 ? 'badge--success' : ($project['completion_percentage'] >= 50 ? 'badge--warning' : 'badge--error') ?>">
-                        <?= $project['completion_percentage'] ?>%
-                    </span>
-                    <div class="progress" style="width: 100px; margin-top: 4px;">
-                        <div class="progress__bar" style="width: <?= $project['completion_percentage'] ?>%"></div>
-                    </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-    
-    <!-- Quick Stats -->
+<!-- KPI Cards Row -->
+<div class="kpi-row">
     <div class="kpi-card kpi-card--primary">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">📊</div>
-            <div class="kpi-card__trend kpi-card__trend--up">Active</div>
+            <div class="kpi-card__icon">🎯</div>
+            <div class="kpi-card__trend kpi-card__trend--up">Projects</div>
         </div>
         <div class="kpi-card__value"><?= count($projectProgress) ?></div>
         <div class="kpi-card__label">Active Projects</div>
+        <div class="kpi-card__status kpi-card__status--active">Running</div>
+    </div>
+    
+    <div class="kpi-card kpi-card--success">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">✓</div>
+            <div class="kpi-card__trend kpi-card__trend--up">Done</div>
+        </div>
+        <div class="kpi-card__value"><?= array_sum(array_column($projectProgress, 'completed_tasks')) ?></div>
+        <div class="kpi-card__label">Completed Tasks</div>
+        <div class="kpi-card__status kpi-card__status--review">Finished</div>
     </div>
     
     <div class="kpi-card kpi-card--warning">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">⚠️</div>
-            <div class="kpi-card__trend kpi-card__trend--down">Delayed</div>
+            <div class="kpi-card__trend kpi-card__trend--down">Alert</div>
         </div>
         <div class="kpi-card__value"><?= count($delayedTasks) ?></div>
         <div class="kpi-card__label">Delayed Tasks</div>
+        <div class="kpi-card__status kpi-card__status--pending">Needs Action</div>
     </div>
     
-    <div class="kpi-card kpi-card--success">
+    <div class="kpi-card kpi-card--info">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">👥</div>
-            <div class="kpi-card__trend kpi-card__trend--up">Active</div>
+            <div class="kpi-card__trend kpi-card__trend--up">Team</div>
         </div>
         <div class="kpi-card__value"><?= count($teamActivity) ?></div>
         <div class="kpi-card__label">Active Users</div>
+        <div class="kpi-card__status kpi-card__status--active">Online</div>
+    </div>
+    
+</div>
+
+<!-- Overview Cards Row -->
+<div class="overview-row">
+    <div class="card">
+        <div class="card__header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="card__title" style="margin: 0; flex: 1;">🎯 Project Progress Overview</h2>
+            <button class="btn btn--sm btn--primary" onclick="openProjectOverview()" style="flex-shrink: 0; margin-left: var(--space-4);">
+                View Details
+            </button>
+        </div>
+        <div class="card__body">
+            <div class="project-summary">
+                <div class="summary-stat">
+                    <span class="summary-number"><?= count($projectProgress) ?></span>
+                    <span class="summary-label">Active Projects</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="summary-number"><?= array_sum(array_column($projectProgress, 'completed_tasks')) ?></span>
+                    <span class="summary-label">Completed Tasks</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="summary-number"><?= round(array_sum(array_column($projectProgress, 'completion_percentage')) / max(count($projectProgress), 1)) ?>%</span>
+                    <span class="summary-label">Avg Progress</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card__header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="card__title" style="margin: 0; flex: 1;">⚠️ Delayed Tasks Overview</h2>
+            <button class="btn btn--sm btn--primary" onclick="openDelayedTasksOverview()" style="flex-shrink: 0; margin-left: var(--space-4);">
+                View Details
+            </button>
+        </div>
+        <div class="card__body">
+            <div class="project-summary">
+                <div class="summary-stat">
+                    <span class="summary-number"><?= count($delayedTasks) ?></span>
+                    <span class="summary-label">Delayed Tasks</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="summary-number"><?= array_sum(array_map(function($task) { return $task['days_since_update'] ?? 0; }, $delayedTasks)) ?></span>
+                    <span class="summary-label">Total Days Overdue</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="summary-number"><?= !empty($delayedTasks) ? round(array_sum(array_column($delayedTasks, 'completion_percentage')) / count($delayedTasks)) : 0 ?>%</span>
+                    <span class="summary-label">Avg Progress</span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <!-- Team Activity Today -->
 <div class="card">
-    <div class="card__header">
+    <div class="card__header" style="display: flex; justify-content: space-between; align-items: center;">
         <h2 class="card__title">👥 Team Activity - <?= date('d M Y', strtotime($today)) ?></h2>
+        <div class="search-filter-container">
+            <input type="text" id="teamSearch" placeholder="Search employees..." class="form-control" style="width: 200px; margin-right: var(--space-2);">
+            <select id="departmentFilter" class="form-control" style="width: 150px;">
+                <option value="">All Departments</option>
+                <option value="IT">IT</option>
+                <option value="Civil">Civil</option>
+                <option value="Accounts">Accounts</option>
+                <option value="Sales">Sales</option>
+                <option value="Marketing">Marketing</option>
+                <option value="HR">HR</option>
+                <option value="Admin">Admin</option>
+            </select>
+        </div>
     </div>
     <div class="card__body">
-        <div class="table-responsive">
-            <table class="table">
+        <div class="table-container">
+            <table class="table" id="teamActivityTable">
                                             <thead>
                                                 <tr>
                                                     <th>Employee</th>
@@ -134,69 +189,173 @@ ob_start();
     </div>
 </div>
 
-<!-- Delayed Tasks Alert -->
-<?php if (!empty($delayedTasks)): ?>
-<div class="card">
-    <div class="card__header">
-        <h2 class="card__title">⚠️ Delayed Tasks Alert</h2>
-    </div>
-    <div class="card__body">
-        <div class="table-responsive">
-            <table class="table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Project</th>
-                                                    <th>Task</th>
-                                                    <th>Category</th>
-                                                    <th>Progress</th>
-                                                    <th>Days Since Update</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead>
-                    <tbody>
-                        <?php foreach ($delayedTasks as $task): ?>
-                        <tr>
-                            <td><?= htmlspecialchars($task['project_name']) ?></td>
-                            <td><?= htmlspecialchars($task['task_name']) ?></td>
-                            <td><span class="badge badge--info"><?= htmlspecialchars($task['category_name']) ?></span></td>
-                            <td>
-                                <div class="progress" style="width: 60px;">
-                                    <div class="progress__bar" style="width: <?= $task['completion_percentage'] ?>%"></div>
-                                </div>
-                                <small><?= $task['completion_percentage'] ?>%</small>
-                            </td>
-                            <td>
-                                <span class="badge badge--error">
-                                    <?= $task['days_since_update'] ?? 'Never' ?> days
-                                </span>
-                            </td>
-                            <td>
-                                <button class="btn btn--sm btn--primary" onclick="followUpTask(<?= $task['id'] ?>)">
-                                    Follow Up
-                                </button>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-<?php endif; ?>
+
 
 <script>
+const projectProgress = <?= json_encode($projectProgress) ?>;
+
+function openProjectOverview() {
+    window.location.href = '/ergon/daily-planner/project-overview';
+}
+
+function openDelayedTasksOverview() {
+    window.location.href = '/ergon/daily-planner/delayed-tasks-overview';
+}
+
+
+
 function followUpTask(taskId) {
-    // Simple follow-up action - could be enhanced with notifications
     if (confirm('Send follow-up reminder for this task?')) {
         alert('Follow-up reminder sent! (Feature to be implemented)');
     }
 }
+
+// Search and filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Team activity search
+    const teamSearch = document.getElementById('teamSearch');
+    const departmentFilter = document.getElementById('departmentFilter');
+    const teamTable = document.getElementById('teamActivityTable');
+    
+    if (teamSearch && teamTable) {
+        teamSearch.addEventListener('input', filterTeamActivity);
+        departmentFilter.addEventListener('change', filterTeamActivity);
+    }
+    
+    function filterTeamActivity() {
+        const searchTerm = teamSearch.value.toLowerCase();
+        const selectedDept = departmentFilter.value.toLowerCase();
+        const rows = teamTable.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const name = row.cells[0].textContent.toLowerCase();
+            const dept = row.cells[1].textContent.toLowerCase();
+            const matchesSearch = name.includes(searchTerm);
+            const matchesDept = !selectedDept || dept.includes(selectedDept);
+            
+            row.style.display = matchesSearch && matchesDept ? '' : 'none';
+        });
+    }
+    
+
+});
 
 // Auto-refresh every 5 minutes
 setTimeout(function() {
     location.reload();
 }, 300000);
 </script>
+
+<style>
+.project-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+    text-align: center;
+}
+
+.summary-stat {
+    padding: var(--space-3);
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+}
+
+.summary-number {
+    display: block;
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary);
+    margin-bottom: var(--space-1);
+}
+
+.summary-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+}
+
+.overview-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+    margin-bottom: var(--space-8);
+}
+
+.search-filter-container {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.table-container {
+    width: 100%;
+    max-width: calc(100vw - var(--sidebar-width) - 4rem);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.delayed-filters {
+    flex-wrap: wrap;
+}
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+    .kpi-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .overview-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-container {
+        width: 100%;
+    }
+    
+    .search-filter-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-2);
+    }
+    
+    .search-filter-container .form-control {
+        width: 100% !important;
+    }
+    
+    .delayed-filters {
+        flex-direction: column;
+    }
+    
+    .delayed-filters .form-control {
+        width: 100% !important;
+    }
+    
+    .card__header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-3);
+    }
+}
+</style>
+
+
 
 <?php
 $content = ob_get_clean();

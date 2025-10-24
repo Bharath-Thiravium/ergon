@@ -143,6 +143,8 @@ $router->get('/daily-planner', 'DailyTaskPlannerController', 'index');
 $router->post('/daily-planner/submit', 'DailyTaskPlannerController', 'submitTask');
 $router->get('/daily-planner/get-tasks', 'DailyTaskPlannerController', 'getProjectTasks');
 $router->get('/daily-planner/dashboard', 'DailyTaskPlannerController', 'dashboard');
+$router->get('/daily-planner/project-overview', 'DailyTaskPlannerController', 'projectOverview');
+$router->get('/daily-planner/delayed-tasks-overview', 'DailyTaskPlannerController', 'delayedTasksOverview');
 $router->get('/api/project-progress', 'DailyTaskPlannerController', 'projectProgressApi');
 
 // Export Routes
