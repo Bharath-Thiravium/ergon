@@ -301,26 +301,20 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     // Maintain sidebar scroll position
     const sidebarMenu = document.querySelector('.sidebar__menu');
     if (sidebarMenu) {
-        // Restore scroll position immediately
-        const savedScrollPos = sessionStorage.getItem('sidebarScrollPos');
-        if (savedScrollPos) {
-            sidebarMenu.scrollTop = parseInt(savedScrollPos);
-        }
+        // Restore scroll position after page load
+        setTimeout(() => {
+            const savedScrollPos = sessionStorage.getItem('sidebarScrollPos');
+            if (savedScrollPos) {
+                sidebarMenu.scrollTo({
+                    top: parseInt(savedScrollPos),
+                    behavior: 'auto'
+                });
+            }
+        }, 100);
         
-        // Save scroll position on scroll with throttling
-        let scrollTimeout;
+        // Save scroll position on scroll
         sidebarMenu.addEventListener('scroll', function() {
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => {
-                sessionStorage.setItem('sidebarScrollPos', this.scrollTop);
-            }, 50);
-        });
-        
-        // Save scroll position before navigation
-        document.querySelectorAll('.sidebar__link').forEach(link => {
-            link.addEventListener('click', function(e) {
-                sessionStorage.setItem('sidebarScrollPos', sidebarMenu.scrollTop);
-            });
+            sessionStorage.setItem('sidebarScrollPos', this.scrollTop);
         });
     }
     
