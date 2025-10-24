@@ -53,10 +53,9 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <meta http-equiv="Expires" content="0">
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
     <link rel="icon" type="image/x-icon" href="/ergon/public/favicon.ico">
-    <link href="./public/assets/css/ergon.css" rel="stylesheet">
-    <link href="./public/assets/css/modals.css" rel="stylesheet">
+    <link href="/ergon/public/assets/css/ergon.css" rel="stylesheet">
     <?php if ($userPrefs['theme'] === 'dark'): ?>
-    <link href="./public/assets/css/dark-theme.css" rel="stylesheet">
+    <link href="/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
     <?php endif; ?>
 </head>
 <body data-theme="<?= $userPrefs['theme'] ?>" data-layout="<?= $userPrefs['dashboard_layout'] ?>" data-lang="<?= $userPrefs['language'] ?>">
@@ -261,9 +260,38 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         </main>
     </div>
 
-    <script src="./public/assets/js/modal-system.js"></script>
-    <script src="./public/assets/js/header-components.js"></script>
-    <script src="./public/assets/js/preferences-handler.js"></script>
+    <script>
+    // Essential JavaScript functions
+    function toggleProfile() {
+        const menu = document.getElementById('profileMenu');
+        if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
+    
+    function toggleNotifications() {
+        const dropdown = document.getElementById('notificationDropdown');
+        if (dropdown) dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+    
+    function toggleTheme() {
+        const currentTheme = document.body.getAttribute('data-theme') || 'light';
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        document.body.setAttribute('data-theme', newTheme);
+        const themeIcon = document.getElementById('themeIcon');
+        if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+    }
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.profile-dropdown')) {
+            const menu = document.getElementById('profileMenu');
+            if (menu) menu.style.display = 'none';
+        }
+        if (!event.target.closest('.notification-center')) {
+            const dropdown = document.getElementById('notificationDropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        }
+    });
+    </script>
     
     <script>
     // Prevent back button after logout
@@ -327,7 +355,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     $userDept = $_SESSION['user_department'] ?? '';
     if (stripos($userDept, 'IT') !== false): 
     ?>
-    <script src="./public/assets/js/activity-tracker.js"></script>
+    <script src="/ergon/public/assets/js/activity-tracker.js"></script>
     <?php endif; ?>
 </body>
 </html>
