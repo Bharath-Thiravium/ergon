@@ -53,13 +53,10 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <meta http-equiv="Expires" content="0">
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
     <link rel="icon" type="image/x-icon" href="/ergon/public/favicon.ico">
-    <?php 
-    $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/ergon';
-    ?>
-    <link href="<?= $baseUrl ?>/public/assets/css/ergon.css" rel="stylesheet">
-    <link href="<?= $baseUrl ?>/public/assets/css/modals.css" rel="stylesheet">
+    <link href="./public/assets/css/ergon.css" rel="stylesheet">
+    <link href="./public/assets/css/modals.css" rel="stylesheet">
     <?php if ($userPrefs['theme'] === 'dark'): ?>
-    <link href="<?= $baseUrl ?>/public/assets/css/dark-theme.css" rel="stylesheet">
+    <link href="./public/assets/css/dark-theme.css" rel="stylesheet">
     <?php endif; ?>
 </head>
 <body data-theme="<?= $userPrefs['theme'] ?>" data-layout="<?= $userPrefs['dashboard_layout'] ?>" data-lang="<?= $userPrefs['language'] ?>">
@@ -264,9 +261,9 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         </main>
     </div>
 
-    <script src="<?= $baseUrl ?>/public/assets/js/modal-system.js"></script>
-    <script src="<?= $baseUrl ?>/public/assets/js/header-components.js"></script>
-    <script src="<?= $baseUrl ?>/public/assets/js/preferences-handler.js"></script>
+    <script src="./public/assets/js/modal-system.js"></script>
+    <script src="./public/assets/js/header-components.js"></script>
+    <script src="./public/assets/js/preferences-handler.js"></script>
     
     <script>
     // Prevent back button after logout
@@ -330,7 +327,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     $userDept = $_SESSION['user_department'] ?? '';
     if (stripos($userDept, 'IT') !== false): 
     ?>
-    <script src="<?= $baseUrl ?>/public/assets/js/activity-tracker.js"></script>
+    <script src="./public/assets/js/activity-tracker.js"></script>
     <?php endif; ?>
 </body>
 </html>
