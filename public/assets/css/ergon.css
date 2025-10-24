@@ -1004,6 +1004,21 @@ body {
   border-color: rgba(2, 132, 199, 0.2);
 }
 
+/* Hide Account section for owner role */
+body[data-role="owner"] .sidebar__divider:contains("Account"),
+body[data-role="owner"] .sidebar__link[href*="profile"] {
+  display: none !important;
+}
+
+/* Alternative selector for Account section */
+.sidebar__divider + .sidebar__link[href*="profile"] {
+  display: none !important;
+}
+
+.sidebar__divider:last-of-type {
+  display: none !important;
+}
+
 @media (max-width: 768px) {
   .mobile-menu-toggle {
     display: block;
