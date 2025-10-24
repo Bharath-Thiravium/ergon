@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ergon Sidebar Example</title>
+    <link rel="stylesheet" href="public/assets/css/sidebar-scroll.css">
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>ERGON</h2>
+            </div>
+            
+            <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/users">Users</a>
+                <a href="/tasks" class="is-active">Tasks</a>
+                <a href="/projects">Projects</a>
+                <a href="/reports">Reports</a>
+                <a href="/calendar">Calendar</a>
+                <a href="/settings">Settings</a>
+                <a href="/analytics">Analytics</a>
+                <a href="/notifications">Notifications</a>
+                <a href="/profile">Profile</a>
+                <a href="/help">Help</a>
+                <a href="/billing">Billing</a>
+                <a href="/integrations">Integrations</a>
+                <a href="/security">Security</a>
+                <a href="/logs">Logs</a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button onclick="document.querySelector('.sidebar').classList.toggle('is-open')">
+                    Toggle Mobile
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <h1>Page Content</h1>
+            </header>
+            
+            <div style="padding: 2rem;">
+                <p>Main content area. Sidebar width is controlled by --sidebar-width CSS variable.</p>
+                <button onclick="window.SidebarScroll.scrollActiveIntoView()">
+                    Scroll Active Into View
+                </button>
+            </div>
+        </main>
+    </div>
+    
+    <script src="public/assets/js/sidebar-scroll.js"></script>
+</body>
+</html>
