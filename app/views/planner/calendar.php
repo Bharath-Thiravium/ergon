@@ -33,28 +33,28 @@ $showSetupMessage = empty($data['departments']);
 </div>
 <?php endif; ?>
 
-<div class="planner-stats">
-    <div class="stat-item stat-item--primary">
-        <div class="stat-icon">📋</div>
-        <div class="stat-content">
-            <div class="stat-value" id="todayPlansCount">0</div>
-            <div class="stat-label">Today's Plans</div>
+<div class="planner-stats-container">
+    <div class="planner-stat-item planner-stat--primary">
+        <div class="planner-stat-icon">📋</div>
+        <div class="planner-stat-content">
+            <div class="planner-stat-value" id="todayPlansCount">0</div>
+            <div class="planner-stat-label">Today's Plans</div>
         </div>
     </div>
     
-    <div class="stat-item stat-item--success">
-        <div class="stat-icon">✅</div>
-        <div class="stat-content">
-            <div class="stat-value" id="completedPlansCount">0</div>
-            <div class="stat-label">Completed</div>
+    <div class="planner-stat-item planner-stat--success">
+        <div class="planner-stat-icon">✅</div>
+        <div class="planner-stat-content">
+            <div class="planner-stat-value" id="completedPlansCount">0</div>
+            <div class="planner-stat-label">Completed</div>
         </div>
     </div>
     
-    <div class="stat-item stat-item--warning">
-        <div class="stat-icon">⚠️</div>
-        <div class="stat-content">
-            <div class="stat-value" id="pendingPlansCount">0</div>
-            <div class="stat-label">Pending</div>
+    <div class="planner-stat-item planner-stat--warning">
+        <div class="planner-stat-icon">⚠️</div>
+        <div class="planner-stat-content">
+            <div class="planner-stat-value" id="pendingPlansCount">0</div>
+            <div class="planner-stat-label">Pending</div>
         </div>
     </div>
 </div>
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Daily Planner Styles */
+/* Daily Planner Styles - Override dashboard-grid */
 .department-badge {
     background: #007bff;
     color: white;
@@ -305,14 +305,15 @@ document.addEventListener('DOMContentLoaded', function() {
     gap: 5px;
 }
 
-.planner-stats {
+/* Planner Stats - Horizontal Layout */
+.planner-stats-container {
     display: flex;
     gap: 20px;
     margin-bottom: 20px;
     flex-wrap: wrap;
 }
 
-.stat-item {
+.planner-stat-item {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -325,33 +326,33 @@ document.addEventListener('DOMContentLoaded', function() {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.stat-item--primary { border-left-color: #007bff; }
-.stat-item--success { border-left-color: #28a745; }
-.stat-item--warning { border-left-color: #ffc107; }
+.planner-stat--primary { border-left-color: #007bff; }
+.planner-stat--success { border-left-color: #28a745; }
+.planner-stat--warning { border-left-color: #ffc107; }
 
-.stat-icon {
+.planner-stat-icon {
     font-size: 24px;
     opacity: 0.8;
 }
 
-.stat-value {
+.planner-stat-value {
     font-size: 28px;
     font-weight: bold;
     line-height: 1;
 }
 
-.stat-label {
+.planner-stat-label {
     font-size: 14px;
     color: #666;
     margin-top: 4px;
 }
 
 @media (max-width: 768px) {
-    .planner-stats {
+    .planner-stats-container {
         flex-direction: column;
     }
     
-    .stat-item {
+    .planner-stat-item {
         min-width: auto;
     }
 }
