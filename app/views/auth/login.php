@@ -38,20 +38,25 @@
         const formData = new FormData(e.target);
         
         try {
-            const response = await fetch(window.location.href, {
+            const response = await fetch('/ergon/login', {
                 method: 'POST',
                 body: formData
             });
             
-            const result = await response.json();
-            
-            if (result.success) {
-                window.location.href = result.redirect;
+            if (response.ok) {
+                const result = await response.json();
+                
+                if (result.success) {
+                    window.location.href = result.redirect || '/ergon/user/dashboard';
+                } else {
+                    document.getElementById('message').innerHTML = `<div class="error">${result.error || result.message}</div>`;
+                }
             } else {
-                document.getElementById('message').innerHTML = `<div class="error">${result.error || result.message}</div>`;
+                document.getElementById('message').innerHTML = '<div class="error">Login failed. Please check your credentials.</div>';
             }
         } catch (error) {
-            document.getElementById('message').innerHTML = '<div class="error">Login failed. Please try again.</div>';
+            console.error('Login error:', error);
+            document.getElementById('message').innerHTML = '<div class="error">Connection failed. Please try again.</div>';
         }
     });
     </script>

@@ -1,11 +1,9 @@
 -- ERGON Database Schema
 -- Employee Tracker & Task Manager
-
-CREATE DATABASE IF NOT EXISTS ergon_db;
-USE ergon_db;
+-- Run this in your existing database
 
 -- Users table
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INT PRIMARY KEY AUTO_INCREMENT,
     employee_id VARCHAR(20) UNIQUE,
     name VARCHAR(100) NOT NULL,
@@ -19,7 +17,7 @@ CREATE TABLE users (
 );
 
 -- Departments table
-CREATE TABLE departments (
+CREATE TABLE IF NOT EXISTS departments (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     description TEXT,
@@ -27,7 +25,7 @@ CREATE TABLE departments (
 );
 
 -- Tasks table
-CREATE TABLE tasks (
+CREATE TABLE IF NOT EXISTS tasks (
     id INT PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(200) NOT NULL,
     description TEXT,
@@ -43,7 +41,7 @@ CREATE TABLE tasks (
 );
 
 -- Attendance table
-CREATE TABLE attendance (
+CREATE TABLE IF NOT EXISTS attendance (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
     check_in TIMESTAMP,
@@ -57,7 +55,7 @@ CREATE TABLE attendance (
 );
 
 -- Leaves table
-CREATE TABLE leaves (
+CREATE TABLE IF NOT EXISTS leaves (
     id INT PRIMARY KEY AUTO_INCREMENT,
     employee_id INT NOT NULL,
     type VARCHAR(50) NOT NULL,
@@ -72,7 +70,7 @@ CREATE TABLE leaves (
 );
 
 -- Expenses table
-CREATE TABLE expenses (
+CREATE TABLE IF NOT EXISTS expenses (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
     category VARCHAR(50) NOT NULL,
@@ -87,7 +85,7 @@ CREATE TABLE expenses (
 );
 
 -- Settings table
-CREATE TABLE settings (
+CREATE TABLE IF NOT EXISTS settings (
     id INT PRIMARY KEY AUTO_INCREMENT,
     company_name VARCHAR(100) DEFAULT 'ERGON Company',
     attendance_radius INT DEFAULT 200,
@@ -96,9 +94,10 @@ CREATE TABLE settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Insert default admin user
-INSERT INTO users (employee_id, name, email, password, role) VALUES 
-('EMP001', 'System Admin', 'admin@ergon.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'owner');
+-- Insert default users
+INSERT IGNORE INTO users (employee_id, name, email, password, role) VALUES 
+('EMP001', 'System Admin', 'admin@ergon.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'owner'),
+('EMP002', 'Ilayaraja', 'ilayaraja@athenas.co.in', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user');
 
 -- Insert default settings
-INSERT INTO settings (company_name) VALUES ('ERGON Company');
+INSERT IGNORE INTO settings (company_name) VALUES ('ERGON Company');

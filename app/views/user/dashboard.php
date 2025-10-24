@@ -159,6 +159,7 @@ document.getElementById('clockBtn').onclick = function() {
         } else {
             showAlert(data.message || 'Operation failed', 'error');
         }
+        btn.disabled = false;
     })
     .catch(error => {
         console.error('Clock error:', error);

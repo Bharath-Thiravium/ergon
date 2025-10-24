@@ -11,7 +11,11 @@ ob_start();
         <?php if (isset($_SESSION['temp_password'])): ?>
         <a href="/ergon/users/download-credentials" class="btn btn--success">📥 Download Credentials</a>
         <?php endif; ?>
-        <a href="/ergon/users/create" class="btn btn--primary">Add New <?= ucfirst($data['manageable_role']) ?></a>
+        <?php if ($data['manageable_role'] === 'admin'): ?>
+            <a href="/ergon/admin/management" class="btn btn--primary">👥 Manage Admin Positions</a>
+        <?php else: ?>
+            <a href="/ergon/users/create" class="btn btn--primary">Add New <?= ucfirst($data['manageable_role']) ?></a>
+        <?php endif; ?>
     </div>
 </div>
 

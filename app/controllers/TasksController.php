@@ -77,5 +77,43 @@ class TasksController {
         $data = ['tasks' => $tasks];
         include __DIR__ . '/../views/tasks/calendar.php';
     }
+    
+    public function overdue() {
+        $tasks = $this->taskModel->getOverdueTasks();
+        $data = ['tasks' => $tasks];
+        include __DIR__ . '/../views/tasks/overdue.php';
+    }
+    
+    public function slaBreaches() {
+        $tasks = $this->taskModel->getSLABreaches();
+        $data = ['tasks' => $tasks];
+        include __DIR__ . '/../views/tasks/sla_breaches.php';
+    }
+    
+    public function getVelocity($userId) {
+        header('Content-Type: application/json');
+        $velocity = $this->taskModel->getTaskVelocity($userId);
+        echo json_encode(['velocity' => $velocity]);
+    }
+    
+    public function getProductivity($userId) {
+        header('Content-Type: application/json');
+        $productivity = $this->taskModel->getProductivityScore($userId);
+        echo json_encode($productivity);
+    }
+    
+    public function bulkCreate() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $tasks = json_decode($_POST['tasks'], true);
+            $result = $this->taskModel->createBulkTasks($tasks);
+            echo json_encode(['success' => $result]);
+        }
+    }
+    
+    public function getSubtasks($parentId) {
+        header('Content-Type: application/json');
+        $subtasks = $this->taskModel->getSubtasks($parentId);
+        echo json_encode(['subtasks' => $subtasks]);
+    }
 }
 ?>

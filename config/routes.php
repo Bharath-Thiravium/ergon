@@ -127,4 +127,9 @@ $router->get('/tasks/{id}/subtasks', 'TasksController', 'getSubtasks');
 
 // Export Routes
 $router->get('/reports/export', 'ReportsController', 'export');
+
+// Admin Management Routes
+$router->get('/admin/management', 'AdminManagementController', 'index');
+$router->post('/admin/assign', 'AdminManagementController', 'assignAdmin');
+$router->post('/admin/remove', 'AdminManagementController', 'removeAdmin');
 ?>

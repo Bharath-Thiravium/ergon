@@ -60,6 +60,10 @@ class UsersController {
     }
     
     public function edit($id) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = $this->userModel->updateEnhanced($id, $_POST);
             if ($result) {
@@ -69,6 +73,14 @@ class UsersController {
         }
         
         $user = $this->userModel->getById($id);
+        
+        // Debug: Check if user data is loaded
+        if (!$user) {
+            $data = ['user' => null, 'departments' => [], 'user_departments' => []];
+            include __DIR__ . '/../views/users/edit.php';
+            return;
+        }
+        
         require_once __DIR__ . '/../models/Department.php';
         $departmentModel = new Department();
         $departments = $departmentModel->getAll();
@@ -76,7 +88,12 @@ class UsersController {
         // Get user departments
         $userDepartments = $this->getUserDepartments($id);
         
-        $data = ['user' => $user, 'departments' => $departments, 'user_departments' => $userDepartments];
+        $data = [
+            'user' => $user, 
+            'departments' => $departments, 
+            'user_departments' => $userDepartments
+        ];
+        
         include __DIR__ . '/../views/users/edit.php';
     }
     

@@ -7,7 +7,8 @@ ob_start();
 <div class="page-header">
     <h1>Executive Dashboard</h1>
     <div class="header-actions">
-        <a href="/ergon/owner/approvals" class="btn btn--primary">Review Approvals</a>
+        <a href="/ergon/admin/management" class="btn btn--primary">👥 Manage Admins</a>
+        <a href="/ergon/owner/approvals" class="btn btn--secondary">Review Approvals</a>
         <a href="/ergon/reports" class="btn btn--secondary">View Reports</a>
         <a href="/ergon/settings" class="btn btn--secondary">System Settings</a>
     </div>

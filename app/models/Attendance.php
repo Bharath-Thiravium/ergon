@@ -80,7 +80,7 @@ class Attendance {
         $query = "SELECT a.*, u.name as user_name FROM attendance a 
                   JOIN users u ON a.user_id = u.id 
                   WHERE a.user_id = ? 
-                  ORDER BY a.created_at DESC";
+                  ORDER BY a.created_at DESC LIMIT 30";
         $stmt = $this->conn->prepare($query);
         $stmt->execute([$userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

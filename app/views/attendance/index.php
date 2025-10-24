@@ -16,22 +16,22 @@ ob_start();
         <div class="kpi-card__header">
             <div class="kpi-card__icon">✅</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($data['attendance'], fn($a) => $a['status'] === 'present' && date('Y-m-d', strtotime($a['check_in'])) === date('Y-m-d'))) ?></div>
-        <div class="kpi-card__label">Present Today</div>
+        <div class="kpi-card__value"><?= count($data['attendance']) ?></div>
+        <div class="kpi-card__label">Total Records</div>
     </div>
     
     <div class="kpi-card kpi-card--warning">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">🟡</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($data['attendance'], fn($a) => $a['check_out'] === null && date('Y-m-d', strtotime($a['check_in'])) === date('Y-m-d'))) ?></div>
-        <div class="kpi-card__label">Still Clocked In</div>
+        <div class="kpi-card__value"><?= count(array_filter($data['attendance'], fn($a) => $a['check_out'] === null)) ?></div>
+        <div class="kpi-card__label">Active Sessions</div>
     </div>
 </div>
 
 <div class="card">
     <div class="card__header">
-        <h2 class="card__title">Today's Attendance</h2>
+        <h2 class="card__title">Recent Attendance</h2>
     </div>
     <div class="card__body">
         <div class="table-responsive">
@@ -48,32 +48,33 @@ ob_start();
                 </thead>
                 <tbody>
                     <?php 
-                    $todayAttendance = array_filter($data['attendance'], fn($a) => date('Y-m-d', strtotime($a['check_in'])) === date('Y-m-d'));
-                    if (empty($todayAttendance)): 
+                    // Show recent attendance (last 7 days) instead of just today
+                    $recentAttendance = array_filter($data['attendance'], fn($a) => strtotime($a['check_in']) > strtotime('-7 days'));
+                    if (empty($recentAttendance)): 
                     ?>
                     <tr>
-                        <td colspan="6" class="text-center">No attendance records for today</td>
+                        <td colspan="6" class="text-center">No recent attendance records</td>
                     </tr>
                     <?php else: ?>
-                    <?php foreach ($todayAttendance as $record): ?>
+                    <?php foreach ($recentAttendance as $record): ?>
                     <tr>
                         <td><?= htmlspecialchars($record['user_name']) ?></td>
-                        <td><?= date('H:i', strtotime($record['check_in'])) ?></td>
-                        <td><?= $record['check_out'] ? date('H:i', strtotime($record['check_out'])) : '<span class="badge badge--warning">Still In</span>' ?></td>
+                        <td><?= date('M j, H:i', strtotime($record['check_in'])) ?></td>
+                        <td><?= $record['check_out'] ? date('M j, H:i', strtotime($record['check_out'])) : '<span class="badge badge--warning">Still In</span>' ?></td>
                         <td><?= htmlspecialchars($record['location_name']) ?></td>
                         <td>
-                            <span class="badge badge--<?= $record['status'] === 'present' ? 'success' : 'warning' ?>">
-                                <?= ucfirst($record['status']) ?>
+                            <span class="badge badge--<?= $record['check_out'] ? 'success' : 'warning' ?>">
+                                <?= $record['check_out'] ? 'Complete' : 'Active' ?>
                             </span>
                         </td>
                         <td>
                             <?php 
                             if ($record['check_out']) {
-                                $duration = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 3600;
-                                echo number_format($duration, 1) . 'h';
+                                $duration = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 60;
+                                echo number_format($duration, 0) . ' min';
                             } else {
-                                $duration = (time() - strtotime($record['check_in'])) / 3600;
-                                echo number_format($duration, 1) . 'h (ongoing)';
+                                $duration = (time() - strtotime($record['check_in'])) / 60;
+                                echo number_format($duration, 0) . ' min (ongoing)';
                             }
                             ?>
                         </td>
