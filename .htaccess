@@ -10,6 +10,10 @@ RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)/$ /$1 [L,R=301]
 
+# Allow direct access to public assets
+RewriteCond %{REQUEST_URI} ^/ergon/public/ [NC]
+RewriteRule . - [L]
+
 # Allow direct access to static files
 RewriteCond %{REQUEST_URI} \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ [NC]
 RewriteRule . - [L]
