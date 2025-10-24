@@ -297,7 +297,7 @@ body {
 
 /* Sidebar Scroll Position Memory */
 .sidebar__menu {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 /* Sidebar Controls */
