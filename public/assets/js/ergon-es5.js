@@ -99,8 +99,7 @@ window.ERGON = {
                         throw new Error('HTTP error! status: ' + response.status);
                     }
                     return response.json();
-                })
-                .catch(function(error) {
+                }, function(error) {
                     console.error('API Error:', error);
                     ERGON.utils.showToast('Network error occurred', 'error');
                     throw error;
@@ -127,12 +126,9 @@ window.ERGON = {
         serialize: function(form) {
             var formData = new FormData(form);
             var data = {};
-            var entries = formData.entries();
-            var entry = entries.next();
-            while (!entry.done) {
-                data[entry.value[0]] = entry.value[1];
-                entry = entries.next();
-            }
+            formData.forEach(function(value, key) {
+                data[key] = value;
+            });
             return data;
         },
         
@@ -203,7 +199,7 @@ window.ERGON.pages = {
                             ERGON.utils.showToast('Password reset failed: ' + data.error, 'error');
                         }
                     })
-                    .catch(function(error) {
+                    .then(null, function(error) {
                         ERGON.utils.showToast('Error: ' + error.message, 'error');
                     })
                     .then(function() {
