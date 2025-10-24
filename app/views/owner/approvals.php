@@ -4,11 +4,8 @@ $active_page = 'approvals';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>Approval Center</h1>
-    <div class="header-actions">
-        <a href="/reports" class="btn btn--secondary">View Reports</a>
-    </div>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <a href="/reports" class="btn btn--secondary">View Reports</a>
 </div>
 
 <div class="dashboard-grid">

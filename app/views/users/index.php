@@ -5,18 +5,15 @@ $active_page = 'users';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1><?= ucfirst($data['manageable_role']) ?> Management</h1>
-    <div class="header-actions">
-        <?php if (isset($_SESSION['temp_password'])): ?>
-        <a href="/ergon/users/download-credentials" class="btn btn--success">📥 Download Credentials</a>
-        <?php endif; ?>
-        <?php if ($data['manageable_role'] === 'admin'): ?>
-            <a href="/ergon/admin/management" class="btn btn--primary">👥 Manage Admin Positions</a>
-        <?php else: ?>
-            <a href="/ergon/users/create" class="btn btn--primary">Add New <?= ucfirst($data['manageable_role']) ?></a>
-        <?php endif; ?>
-    </div>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <?php if (isset($_SESSION['temp_password'])): ?>
+    <a href="/ergon/users/download-credentials" class="btn btn--success">📥 Download Credentials</a>
+    <?php endif; ?>
+    <?php if ($data['manageable_role'] === 'admin'): ?>
+        <a href="/ergon/admin/management" class="btn btn--primary">👥 Manage Admin Positions</a>
+    <?php else: ?>
+        <a href="/ergon/users/create" class="btn btn--primary">Add New <?= ucfirst($data['manageable_role']) ?></a>
+    <?php endif; ?>
 </div>
 
 <div class="dashboard-grid">

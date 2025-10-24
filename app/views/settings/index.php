@@ -5,9 +5,7 @@ $active_page = 'settings';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>System Settings</h1>
-</div>
+
 
 <?php if (isset($_GET['success'])): ?>
 <div class="alert alert--success">Settings updated successfully!</div>

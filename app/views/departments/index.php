@@ -4,8 +4,7 @@ $active_page = 'departments';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>Department Management</h1>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
     <a href="/ergon/departments/create" class="btn btn--primary">Create Department</a>
 </div>
 

@@ -4,11 +4,8 @@ $active_page = 'attendance';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>📍 Attendance Management</h1>
-    <div class="header-actions">
-        <button class="btn btn--primary" onclick="refreshData()">🔄 Refresh</button>
-    </div>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <button class="btn btn--primary" onclick="refreshData()">🔄 Refresh</button>
 </div>
 
 <div class="dashboard-grid">

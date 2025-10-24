@@ -4,11 +4,8 @@ $active_page = 'notifications';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>🔔 Notifications</h1>
-    <div class="header-actions">
-        <button class="btn btn--secondary" onclick="markAllAsRead()">Mark All Read</button>
-    </div>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <button class="btn btn--secondary" onclick="markAllAsRead()">Mark All Read</button>
 </div>
 
 <div class="notifications-container">

@@ -4,9 +4,7 @@ $active_page = 'activity';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>⏱️ IT Department Activity Reports</h1>
-</div>
+
 
 <div class="dashboard-grid">
     <div class="kpi-card kpi-card--success">

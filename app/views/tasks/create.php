@@ -4,8 +4,7 @@ $active_page = 'tasks';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>Create New Task</h1>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
     <a href="/ergon/tasks" class="btn btn--secondary">Back to Tasks</a>
 </div>
 

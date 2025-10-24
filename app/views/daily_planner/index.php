@@ -4,23 +4,39 @@ $active_page = 'daily-planner';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>📝 Daily Task Planner - <?= date('d M Y', strtotime($today)) ?></h1>
-    <div class="header-actions">
-        <span class="badge badge--info"><?= $userDepartment ?> Department</span>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <span class="badge badge--info"><?= $userDepartment ?> Department</span>
+</div>
+
+<!-- Stats Overview -->
+<div class="dashboard-grid">
+    <div class="kpi-card kpi-card--primary">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">📊</div>
+            <div class="kpi-card__trend kpi-card__trend--up">Today</div>
+        </div>
+        <div class="kpi-card__value"><?= count($todayTasks) ?></div>
+        <div class="kpi-card__label">Tasks Updated</div>
+        <div class="kpi-card__status kpi-card__status--active">Active</div>
+    </div>
+    
+    <div class="kpi-card kpi-card--success">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">⏱️</div>
+            <div class="kpi-card__trend kpi-card__trend--up">Hours</div>
+        </div>
+        <div class="kpi-card__value"><?= array_sum(array_column($todayTasks, 'hours_spent')) ?>h</div>
+        <div class="kpi-card__label">Hours Logged</div>
+        <div class="kpi-card__status kpi-card__status--info">Tracked</div>
     </div>
 </div>
 
+<!-- Task Entry Form -->
 <div class="card">
+    <div class="card__header">
+        <h2 class="card__title">Task Entry Form</h2>
+    </div>
     <div class="card__body">
-                    
-        <!-- Task Entry Form -->
-        <div class="dashboard-grid">
-            <div class="card">
-                <div class="card__header">
-                    <h2 class="card__title">Task Entry Form</h2>
-                </div>
-                <div class="card__body">
                     <form method="POST" action="/daily-planner/submit" enctype="multipart/form-data" id="taskForm">
                         <div class="form-row">
                             <div class="form-group">
@@ -95,28 +111,8 @@ ob_start();
                             <button type="submit" class="btn btn--primary">✅ Submit Task Update</button>
                         </div>
                     </form>
-                </div>
-            </div>
-            
-            <!-- Quick Stats -->
-            <div class="kpi-card kpi-card--primary">
-                <div class="kpi-card__header">
-                    <div class="kpi-card__icon">📊</div>
-                    <div class="kpi-card__trend kpi-card__trend--up">Today</div>
-                </div>
-                <div class="kpi-card__value"><?= count($todayTasks) ?></div>
-                <div class="kpi-card__label">Tasks Updated</div>
-            </div>
-            
-            <div class="kpi-card kpi-card--success">
-                <div class="kpi-card__header">
-                    <div class="kpi-card__icon">⏱️</div>
-                    <div class="kpi-card__trend kpi-card__trend--up">Hours</div>
-                </div>
-                <div class="kpi-card__value"><?= array_sum(array_column($todayTasks, 'hours_spent')) ?>h</div>
-                <div class="kpi-card__label">Hours Logged</div>
-            </div>
-        </div>
+    </div>
+</div>
         
         <!-- Today's Tasks -->
         <?php if (!empty($todayTasks)): ?>
@@ -161,7 +157,6 @@ ob_start();
             </div>
         </div>
         <?php endif; ?>
-    </div>
 
 <script>
 // Load tasks when project/category changes

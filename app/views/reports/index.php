@@ -5,8 +5,7 @@ $active_page = 'reports';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>Reports & Analytics</h1>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
     <a href="/ergon/reports/export" class="btn btn--primary">Export Report</a>
 </div>
 

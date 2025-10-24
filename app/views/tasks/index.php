@@ -4,14 +4,11 @@ $active_page = 'tasks';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>Task Management</h1>
-    <div class="header-actions">
-        <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-        <a href="/ergon/tasks/create" class="btn btn--primary">Create Task</a>
-        <?php endif; ?>
-        <a href="/ergon/tasks/calendar" class="btn btn--secondary">Calendar View</a>
-    </div>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+    <a href="/ergon/tasks/create" class="btn btn--primary">Create Task</a>
+    <?php endif; ?>
+    <a href="/ergon/tasks/calendar" class="btn btn--secondary">Calendar View</a>
 </div>
 
 <div class="dashboard-grid">

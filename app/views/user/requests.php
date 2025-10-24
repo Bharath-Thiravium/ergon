@@ -4,13 +4,10 @@ $active_page = 'requests';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>My Requests</h1>
-    <div class="header-actions">
-        <a href="/ergon/leaves/create" class="btn btn--primary">Apply Leave</a>
-        <a href="/ergon/expenses/create" class="btn btn--secondary">Submit Expense</a>
-        <a href="/ergon/advances/create" class="btn btn--accent">Request Advance</a>
-    </div>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <a href="/ergon/leaves/create" class="btn btn--primary">Apply Leave</a>
+    <a href="/ergon/expenses/create" class="btn btn--secondary">Submit Expense</a>
+    <a href="/ergon/advances/create" class="btn btn--accent">Request Advance</a>
 </div>
 
 <div class="dashboard-grid">

@@ -6,12 +6,9 @@ $documents = $data['documents'] ?? [];
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>View User Details</h1>
-    <div class="header-actions">
-        <a href="/ergon/users/edit/<?= $user['id'] ?>" class="btn btn--primary">Edit User</a>
-        <a href="/ergon/users" class="btn btn--secondary">Back to Users</a>
-    </div>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <a href="/ergon/users/edit/<?= $user['id'] ?>" class="btn btn--primary">Edit User</a>
+    <a href="/ergon/users" class="btn btn--secondary">Back to Users</a>
 </div>
 
 <div class="user-profile">

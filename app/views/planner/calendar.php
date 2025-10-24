@@ -3,19 +3,16 @@ $title = 'Daily Planner Calendar';
 $active_page = 'planner';
 ob_start();
 
-// Check if tables exist and show setup message if needed
-$showSetupMessage = empty($data['departments']);
+// Check if tables exist and setup file exists
+$showSetupMessage = empty($data['departments']) && file_exists(__DIR__ . '/../../../setup_daily_planner.php');
 ?>
 
-<div class="page-header">
-    <h1>📅 Daily Planner Calendar</h1>
-    <?php if (isset($_SESSION['user']['department'])): ?>
-    <div class="department-badge"><?= $_SESSION['user']['department'] ?> Department</div>
-    <?php endif; ?>
-    <div class="header-actions">
-        <button class="btn btn--primary" onclick="openPlanModal()">+ Add Plan</button>
-        <button class="btn btn--secondary" onclick="showTodayPlans()">Today's Plans</button>
-    </div>
+<?php if (isset($_SESSION['user']['department'])): ?>
+<div class="department-badge"><?= $_SESSION['user']['department'] ?> Department</div>
+<?php endif; ?>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <button class="btn btn--primary" onclick="openPlanModal()">+ Add Plan</button>
+    <button class="btn btn--secondary" onclick="showTodayPlans()">Today's Plans</button>
 </div>
 
 <?php if ($showSetupMessage): ?>
@@ -24,8 +21,7 @@ $showSetupMessage = empty($data['departments']);
     The daily planner tables need to be created.
     <?php if ($_SESSION['role'] === 'owner'): ?>
         <div class="setup-buttons">
-            <a href="/ergon/setup-planner" class="btn btn--sm btn--secondary">Basic Setup</a>
-            <a href="/ergon/setup-with-data" class="btn btn--sm btn--primary">🚀 Setup with Test Data</a>
+            <a href="/ergon/setup_daily_planner.php" class="btn btn--sm btn--primary">🚀 Run Setup Script</a>
         </div>
     <?php else: ?>
         <br><small>Please contact your administrator to run the setup.</small>
@@ -33,29 +29,35 @@ $showSetupMessage = empty($data['departments']);
 </div>
 <?php endif; ?>
 
-<div class="planner-stats-container">
-    <div class="planner-stat-item planner-stat--primary">
-        <div class="planner-stat-icon">📋</div>
-        <div class="planner-stat-content">
-            <div class="planner-stat-value" id="todayPlansCount">0</div>
-            <div class="planner-stat-label">Today's Plans</div>
+<div class="dashboard-grid">
+    <div class="kpi-card kpi-card--primary">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">📋</div>
+            <div class="kpi-card__trend kpi-card__trend--up">Today</div>
         </div>
+        <div class="kpi-card__value" id="todayPlansCount">0</div>
+        <div class="kpi-card__label">Today's Plans</div>
+        <div class="kpi-card__status kpi-card__status--active">Active</div>
     </div>
     
-    <div class="planner-stat-item planner-stat--success">
-        <div class="planner-stat-icon">✅</div>
-        <div class="planner-stat-content">
-            <div class="planner-stat-value" id="completedPlansCount">0</div>
-            <div class="planner-stat-label">Completed</div>
+    <div class="kpi-card kpi-card--success">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">✅</div>
+            <div class="kpi-card__trend kpi-card__trend--up">Done</div>
         </div>
+        <div class="kpi-card__value" id="completedPlansCount">0</div>
+        <div class="kpi-card__label">Completed</div>
+        <div class="kpi-card__status kpi-card__status--review">Finished</div>
     </div>
     
-    <div class="planner-stat-item planner-stat--warning">
-        <div class="planner-stat-icon">⚠️</div>
-        <div class="planner-stat-content">
-            <div class="planner-stat-value" id="pendingPlansCount">0</div>
-            <div class="planner-stat-label">Pending</div>
+    <div class="kpi-card kpi-card--warning">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">⚠️</div>
+            <div class="kpi-card__trend kpi-card__trend--neutral">Pending</div>
         </div>
+        <div class="kpi-card__value" id="pendingPlansCount">0</div>
+        <div class="kpi-card__label">Pending</div>
+        <div class="kpi-card__status kpi-card__status--pending">Waiting</div>
     </div>
 </div>
 
@@ -305,57 +307,7 @@ document.addEventListener('DOMContentLoaded', function() {
     gap: 5px;
 }
 
-/* Planner Stats - Horizontal Layout */
-.planner-stats-container {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
 
-.planner-stat-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px 20px;
-    background: white;
-    border-radius: 8px;
-    border-left: 4px solid #ddd;
-    flex: 1;
-    min-width: 200px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.planner-stat--primary { border-left-color: #007bff; }
-.planner-stat--success { border-left-color: #28a745; }
-.planner-stat--warning { border-left-color: #ffc107; }
-
-.planner-stat-icon {
-    font-size: 24px;
-    opacity: 0.8;
-}
-
-.planner-stat-value {
-    font-size: 28px;
-    font-weight: bold;
-    line-height: 1;
-}
-
-.planner-stat-label {
-    font-size: 14px;
-    color: #666;
-    margin-top: 4px;
-}
-
-@media (max-width: 768px) {
-    .planner-stats-container {
-        flex-direction: column;
-    }
-    
-    .planner-stat-item {
-        min-width: auto;
-    }
-}
 
 .calendar-grid {
     display: grid;

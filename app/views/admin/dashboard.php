@@ -14,13 +14,10 @@ if (isset($_GET['debug'])) {
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>Admin Dashboard</h1>
-    <div class="header-actions">
-        <a href="/ergon/tasks/create" class="btn btn--primary">Assign Task</a>
-        <a href="/ergon/leaves" class="btn btn--secondary">Review Leaves</a>
-        <a href="/ergon/expenses" class="btn btn--secondary">Review Expenses</a>
-    </div>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <a href="/ergon/tasks/create" class="btn btn--primary">Assign Task</a>
+    <a href="/ergon/leaves" class="btn btn--secondary">Review Leaves</a>
+    <a href="/ergon/expenses" class="btn btn--secondary">Review Expenses</a>
 </div>
 
 <div class="dashboard-grid">

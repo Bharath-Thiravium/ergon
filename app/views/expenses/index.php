@@ -4,12 +4,11 @@ $active_page = 'expenses';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>Expense Management</h1>
-    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'user'): ?>
+<?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'user'): ?>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
     <a href="/expenses/create" class="btn btn--primary">Submit Expense</a>
-    <?php endif; ?>
 </div>
+<?php endif; ?>
 
 <?php if (isset($_GET['success'])): ?>
 <div class="alert alert--success">Expense submitted successfully!</div>

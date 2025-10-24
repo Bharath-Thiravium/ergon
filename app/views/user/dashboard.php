@@ -4,15 +4,12 @@ $active_page = 'dashboard';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>My Dashboard</h1>
-    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'user'): ?>
-    <div class="header-actions">
-        <button id="clockBtn" class="btn btn--success">📍 Clock In</button>
-        <a href="/ergon/user/requests" class="btn btn--primary">View Requests</a>
-    </div>
-    <?php endif; ?>
+<?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'user'): ?>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <button id="clockBtn" class="btn btn--success">📍 Clock In</button>
+    <a href="/ergon/user/requests" class="btn btn--primary">View Requests</a>
 </div>
+<?php endif; ?>
 
 <div class="dashboard-grid">
     <div class="kpi-card <?= $data['attendance_status'] ? 'kpi-card--success' : 'kpi-card--warning' ?>">

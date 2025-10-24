@@ -4,12 +4,11 @@ $active_page = 'leaves';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>Leave Management</h1>
-    <?php if ($_SESSION['role'] === 'User'): ?>
+<?php if ($_SESSION['role'] === 'User'): ?>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
     <a href="/leaves/create" class="btn btn--primary">Apply for Leave</a>
-    <?php endif; ?>
 </div>
+<?php endif; ?>
 
 <?php if (isset($_GET['success'])): ?>
 <div class="alert alert--success">Leave request submitted successfully!</div>

@@ -4,8 +4,7 @@ $active_page = 'users';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>Create New Employee</h1>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
     <a href="/ergon/users" class="btn btn--secondary">Back to Users</a>
 </div>
 

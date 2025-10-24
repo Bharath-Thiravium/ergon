@@ -4,9 +4,7 @@ $active_page = 'profile';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>👤 My Profile</h1>
-</div>
+
 
 <?php if (isset($_GET['success'])): ?>
 <div class="alert alert--success">Profile updated successfully!</div>

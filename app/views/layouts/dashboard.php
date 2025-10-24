@@ -63,7 +63,13 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <header class="header">
         <nav class="header__nav">
             <div class="header__left">
-                <h1 class="header__title"><?= $title ?? 'Dashboard' ?></h1>
+                <nav class="breadcrumb">
+                    <a href="/ergon/dashboard" class="breadcrumb__item">🏠</a>
+                    <?php if (isset($active_page) && $active_page !== 'dashboard'): ?>
+                        <span class="breadcrumb__separator">›</span>
+                        <span class="breadcrumb__item breadcrumb__item--current"><?= $title ?? ucfirst($active_page) ?></span>
+                    <?php endif; ?>
+                </nav>
             </div>
             <div class="header__right">
                 <!-- Theme Toggle -->

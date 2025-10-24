@@ -6,8 +6,7 @@ ob_start();
 $user = $data['user'];
 ?>
 
-<div class="page-header">
-    <h1>Edit Employee</h1>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
     <a href="/ergon/users" class="btn btn--secondary">Back to Users</a>
 </div>
 

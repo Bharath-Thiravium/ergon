@@ -4,20 +4,17 @@ $active_page = 'daily-planner-dashboard';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>📊 Daily Task Manager Dashboard</h1>
-    <div class="header-actions">
-        <select class="form-control" onchange="window.location.href='?department='+this.value">
-            <option value="">All Departments</option>
-            <option value="IT" <?= $selectedDepartment === 'IT' ? 'selected' : '' ?>>IT</option>
-            <option value="Civil" <?= $selectedDepartment === 'Civil' ? 'selected' : '' ?>>Civil</option>
-            <option value="Accounts" <?= $selectedDepartment === 'Accounts' ? 'selected' : '' ?>>Accounts</option>
-            <option value="Sales" <?= $selectedDepartment === 'Sales' ? 'selected' : '' ?>>Sales</option>
-            <option value="Marketing" <?= $selectedDepartment === 'Marketing' ? 'selected' : '' ?>>Marketing</option>
-            <option value="HR" <?= $selectedDepartment === 'HR' ? 'selected' : '' ?>>HR</option>
-            <option value="Admin" <?= $selectedDepartment === 'Admin' ? 'selected' : '' ?>>Admin</option>
-        </select>
-    </div>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <select class="form-control" onchange="window.location.href='?department='+this.value">
+        <option value="">All Departments</option>
+        <option value="IT" <?= $selectedDepartment === 'IT' ? 'selected' : '' ?>>IT</option>
+        <option value="Civil" <?= $selectedDepartment === 'Civil' ? 'selected' : '' ?>>Civil</option>
+        <option value="Accounts" <?= $selectedDepartment === 'Accounts' ? 'selected' : '' ?>>Accounts</option>
+        <option value="Sales" <?= $selectedDepartment === 'Sales' ? 'selected' : '' ?>>Sales</option>
+        <option value="Marketing" <?= $selectedDepartment === 'Marketing' ? 'selected' : '' ?>>Marketing</option>
+        <option value="HR" <?= $selectedDepartment === 'HR' ? 'selected' : '' ?>>HR</option>
+        <option value="Admin" <?= $selectedDepartment === 'Admin' ? 'selected' : '' ?>>Admin</option>
+    </select>
 </div>
 
 <!-- Project Progress Overview -->
