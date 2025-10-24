@@ -4,12 +4,14 @@ $active_page = 'requests';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>Request Advance</h1>
-    <a href="/ergon/user/requests" class="btn btn--secondary">Back to My Requests</a>
+<div class="header-actions" style="margin-bottom: var(--space-6);">
+    <a href="/ergon/advances" class="btn btn--secondary">Back to Advances</a>
 </div>
 
 <div class="card">
+    <div class="card__header">
+        <h2 class="card__title">Request Advance</h2>
+    </div>
     <div class="card__body">
         <form method="POST" class="form">
             <div class="form-group">
@@ -40,7 +42,7 @@ ob_start();
             
             <div class="form-actions">
                 <button type="submit" class="btn btn--primary">Submit Advance Request</button>
-                <a href="/ergon/user/requests" class="btn btn--secondary">Cancel</a>
+                <a href="/ergon/advances" class="btn btn--secondary">Cancel</a>
             </div>
         </form>
     </div>

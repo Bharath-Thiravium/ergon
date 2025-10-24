@@ -52,13 +52,14 @@ $router->get('/tasks/calendar', 'TasksController', 'calendar');
 // Planner Management
 $router->get('/planner/calendar', 'PlannerController', 'calendar');
 $router->get('/planner/create', 'PlannerController', 'create');
-$router->post('/planner/create', 'PlannerController', 'create');
+$router->post('/planner/create', 'PlannerController', 'store');
 $router->post('/planner/update', 'PlannerController', 'update');
 $router->get('/planner/getDepartmentForm', 'PlannerController', 'getDepartmentForm');
 $router->get('/planner/getPlansForDate', 'PlannerController', 'getPlansForDate');
 
 // Attendance
 $router->get('/attendance', 'AttendanceController', 'index');
+$router->get('/attendance/clock', 'AttendanceController', 'clock');
 $router->post('/attendance/clock', 'AttendanceController', 'clock');
 
 // Leave Management
