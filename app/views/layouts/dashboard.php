@@ -86,10 +86,6 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                         <span class="sidebar__icon">👥</span>
                         User Admins
                     </a>
-                    <a href="/ergon/users" class="sidebar__link <?= $active_page === 'users' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">👤</span>
-                        User Management
-                    </a>
                     <div class="sidebar__divider">Company Overview</div>
                     <a href="/ergon/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">✅</span>
