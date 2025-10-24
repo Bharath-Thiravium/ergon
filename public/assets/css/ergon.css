@@ -296,8 +296,32 @@ body {
 }
 
 /* Sidebar Scroll Position Memory */
+.sidebar {
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  will-change: scroll-position;
+}
+
 .sidebar__menu {
   scroll-behavior: smooth;
+}
+
+.sidebar__link {
+  display: block;
+  width: 100%;
+  transform: none;
+  padding: 12px var(--space-5);
+  margin: 2px var(--space-3);
+  border-radius: 8px;
+}
+
+.sidebar__link--active,
+.sidebar__link.is-active {
+  transform: none;
+  padding: 12px var(--space-5);
+  border-left: 3px solid var(--primary);
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
 }
 
 /* Sidebar Controls */

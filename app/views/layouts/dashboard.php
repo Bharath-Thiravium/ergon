@@ -300,25 +300,26 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         }
     }
     
-    // Maintain sidebar scroll position
-    const sidebarMenu = document.querySelector('.sidebar__menu');
-    if (sidebarMenu) {
-        // Restore scroll position after page load
-        setTimeout(() => {
-            const savedScrollPos = sessionStorage.getItem('sidebarScrollPos');
-            if (savedScrollPos) {
-                sidebarMenu.scrollTo({
-                    top: parseInt(savedScrollPos),
-                    behavior: 'auto'
-                });
-            }
-        }, 100);
+    // Smooth scroll to active item only if not visible
+    const activeItem = document.querySelector('.sidebar__link--active, .sidebar__link.is-active');
+    if (activeItem) {
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarRect = sidebar.getBoundingClientRect();
+        const itemRect = activeItem.getBoundingClientRect();
         
-        // Save scroll position on scroll
-        sidebarMenu.addEventListener('scroll', function() {
-            sessionStorage.setItem('sidebarScrollPos', this.scrollTop);
-        });
+        // Only scroll if item is not visible
+        if (itemRect.top < sidebarRect.top || itemRect.bottom > sidebarRect.bottom) {
+            activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
+    
+    // Prevent forced focus jump
+    document.querySelectorAll('.sidebar__link').forEach(a => {
+        a.addEventListener('focus', e => {
+            e.preventDefault();
+            a.blur();
+        });
+    });
     
     // Close dropdowns when clicking outside
     document.addEventListener('click', function(e) {
@@ -328,8 +329,9 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         const notificationBtn = document.querySelector('.sidebar__control-btn');
         
         // Close sidebar on mobile
-        if (window.innerWidth <= 768 && sidebar && !sidebar.contains(e.target) && toggle && !toggle.contains(e.target)) {
-            sidebar.classList.remove('sidebar--open');
+        const sidebarEl = document.querySelector('.sidebar');
+        if (window.innerWidth <= 768 && sidebarEl && !sidebarEl.contains(e.target) && toggle && !toggle.contains(e.target)) {
+            sidebarEl.classList.remove('sidebar--open');
         }
         
         // Close profile menu
