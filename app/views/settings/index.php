@@ -11,7 +11,7 @@ ob_start();
 <div class="alert alert--success">Settings updated successfully!</div>
 <?php endif; ?>
 
-<form method="POST" class="settings-form">
+<form method="POST" action="/ergon/settings" class="settings-form">
     <div class="settings-grid">
         <div class="card">
             <div class="card__header">

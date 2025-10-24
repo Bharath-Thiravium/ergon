@@ -508,12 +508,45 @@ document.addEventListener('DOMContentLoaded', function() {
 .form-control {
     width: 100%;
     padding: var(--space-3);
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    color: var(--text-primary);
-    font-size: var(--font-size-base);
-    transition: var(--transition);
+    background: var(--bg-primary, #ffffff);
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: var(--border-radius, 4px);
+    color: var(--text-primary, #333333);
+    font-size: var(--font-size-base, 14px);
+    transition: var(--transition, all 0.2s ease);
+}
+
+/* Dark mode specific fixes */
+@media (prefers-color-scheme: dark) {
+    .form-control {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #e2e8f0;
+    }
+    
+    .form-control:focus {
+        border-color: #63b3ed;
+        box-shadow: 0 0 0 3px rgba(99,179,237,0.1);
+    }
+    
+    .form-label {
+        color: #e2e8f0;
+    }
+    
+    .modal-content {
+        background: #1a202c;
+        color: #e2e8f0;
+    }
+    
+    .modal-header {
+        background: #2d3748;
+        border-bottom-color: #4a5568;
+    }
+    
+    .modal-footer {
+        background: #2d3748;
+        border-top-color: #4a5568;
+    }
 }
 
 .form-control:focus {

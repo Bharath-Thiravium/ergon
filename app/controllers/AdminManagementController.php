@@ -27,9 +27,15 @@ class AdminManagementController {
     
     public function assignAdmin() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $userId = $_POST['user_id'];
+            $userId = $_POST['user_id'] ?? null;
             $department = $_POST['department'] ?? null;
             $permissions = $_POST['permissions'] ?? [];
+            
+            if (!$userId) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'User ID is required']);
+                exit;
+            }
             
             $result = $this->createAdminPosition($userId, $department, $permissions);
             
@@ -37,6 +43,10 @@ class AdminManagementController {
             echo json_encode(['success' => $result]);
             exit;
         }
+        
+        // If not POST, redirect to management page
+        header('Location: /ergon/admin/management');
+        exit;
     }
     
     public function removeAdmin() {

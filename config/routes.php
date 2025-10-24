@@ -86,6 +86,10 @@ $router->get('/reports/activity', 'ReportsController', 'activity');
 // Settings
 $router->get('/settings', 'SettingsController', 'index');
 $router->post('/settings', 'SettingsController', 'update');
+$router->post('/settings/save', 'SettingsController', 'update');
+
+// Owner Approvals
+$router->get('/owner/approvals', 'OwnerController', 'approvals');
 
 // Profile
 $router->get('/profile', 'ProfileController', 'index');

@@ -22,11 +22,10 @@ class PlannerController {
         
         try {
             $plans = $this->plannerModel->getCalendarData($userId, $startDate, $endDate);
-            // Only show user's department
-            $departments = $userDepartment ? [['id' => 1, 'name' => $userDepartment]] : [];
+            $departments = $this->departmentModel->getAll();
         } catch (Exception $e) {
             $plans = [];
-            $departments = [];
+            $departments = $this->getDefaultDepartments();
         }
         
         $data = [
@@ -58,9 +57,11 @@ class PlannerController {
             }
         }
         
-        $userDepartment = $_SESSION['user']['department'] ?? null;
-        // Only show user's department
-        $departments = $userDepartment ? [['id' => 1, 'name' => $userDepartment]] : [];
+        try {
+            $departments = $this->departmentModel->getAll();
+        } catch (Exception $e) {
+            $departments = $this->getDefaultDepartments();
+        }
         $data = ['departments' => $departments];
         include __DIR__ . '/../views/planner/create.php';
     }
@@ -103,6 +104,16 @@ class PlannerController {
         
         header('Content-Type: application/json');
         echo json_encode($plans);
+    }
+    
+    private function getDefaultDepartments() {
+        return [
+            ['id' => 1, 'name' => 'General'],
+            ['id' => 2, 'name' => 'IT'],
+            ['id' => 3, 'name' => 'HR'],
+            ['id' => 4, 'name' => 'Finance'],
+            ['id' => 5, 'name' => 'Operations']
+        ];
     }
 }
 ?>

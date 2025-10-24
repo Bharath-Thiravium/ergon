@@ -10,15 +10,21 @@ class SettingsController {
     }
     
     public function index() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->updateSettings($_POST);
-            header('Location: /ergon/settings?success=1');
-            exit;
-        }
-        
         $settings = $this->getSettings();
         $data = ['settings' => $settings];
         include __DIR__ . '/../views/settings/index.php';
+    }
+    
+    public function update() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $result = $this->updateSettings($_POST);
+            if ($result) {
+                header('Location: /ergon/settings?success=1');
+            } else {
+                header('Location: /ergon/settings?error=1');
+            }
+            exit;
+        }
     }
     
     private function getSettings() {

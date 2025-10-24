@@ -10,52 +10,72 @@ class DailyPlanner {
     }
     
     public function createPlan($data) {
-        $query = "INSERT INTO daily_planners (user_id, department_id, plan_date, title, description, priority, estimated_hours, reminder_time) 
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $this->conn->prepare($query);
-        return $stmt->execute([
-            $data['user_id'], $data['department_id'], $data['plan_date'],
-            $data['title'], $data['description'], $data['priority'],
-            $data['estimated_hours'], $data['reminder_time']
-        ]);
+        try {
+            $query = "INSERT INTO daily_planner (user_id, department_id, plan_date, title, description, priority, estimated_hours, reminder_time) 
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $this->conn->prepare($query);
+            return $stmt->execute([
+                $data['user_id'], $data['department_id'], $data['plan_date'],
+                $data['title'], $data['description'], $data['priority'],
+                $data['estimated_hours'], $data['reminder_time']
+            ]);
+        } catch (Exception $e) {
+            error_log("DailyPlanner create error: " . $e->getMessage());
+            return false;
+        }
     }
     
     public function getUserPlans($userId, $date = null) {
-        $query = "SELECT dp.*, d.name as department_name 
-                  FROM daily_planners dp 
-                  JOIN departments d ON dp.department_id = d.id 
-                  WHERE dp.user_id = ?";
-        $params = [$userId];
-        
-        if ($date) {
-            $query .= " AND dp.plan_date = ?";
-            $params[] = $date;
+        try {
+            $query = "SELECT dp.*, d.name as department_name 
+                      FROM daily_planner dp 
+                      LEFT JOIN departments d ON dp.department_id = d.id 
+                      WHERE dp.user_id = ?";
+            $params = [$userId];
+            
+            if ($date) {
+                $query .= " AND dp.plan_date = ?";
+                $params[] = $date;
+            }
+            
+            $query .= " ORDER BY dp.plan_date DESC, dp.priority DESC, dp.created_at ASC";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("DailyPlanner getUserPlans error: " . $e->getMessage());
+            return [];
         }
-        
-        $query .= " ORDER BY dp.plan_date DESC, dp.priority DESC, dp.created_at ASC";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     public function updateProgress($planId, $completionPercentage, $actualHours = null, $notes = null) {
         $status = $completionPercentage >= 100 ? 'completed' : 
                  ($completionPercentage > 0 ? 'in_progress' : 'not_started');
         
-        $query = "UPDATE daily_planners SET completion_percentage = ?, completion_status = ?, actual_hours = ?, notes = ? WHERE id = ?";
-        $stmt = $this->conn->prepare($query);
-        return $stmt->execute([$completionPercentage, $status, $actualHours, $notes, $planId]);
+        try {
+            $query = "UPDATE daily_planner SET completion_percentage = ?, completion_status = ?, actual_hours = ?, notes = ? WHERE id = ?";
+            $stmt = $this->conn->prepare($query);
+            return $stmt->execute([$completionPercentage, $status, $actualHours, $notes, $planId]);
+        } catch (Exception $e) {
+            error_log("DailyPlanner updateProgress error: " . $e->getMessage());
+            return false;
+        }
     }
     
     public function getCalendarData($userId, $startDate, $endDate) {
-        $query = "SELECT dp.*, d.name as department_name 
-                  FROM daily_planners dp 
-                  JOIN departments d ON dp.department_id = d.id 
-                  WHERE dp.user_id = ? AND dp.plan_date BETWEEN ? AND ?
-                  ORDER BY dp.plan_date, dp.priority DESC";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([$userId, $startDate, $endDate]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $query = "SELECT dp.*, d.name as department_name 
+                      FROM daily_planner dp 
+                      LEFT JOIN departments d ON dp.department_id = d.id 
+                      WHERE dp.user_id = ? AND dp.plan_date BETWEEN ? AND ?
+                      ORDER BY dp.plan_date, dp.priority DESC";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$userId, $startDate, $endDate]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("DailyPlanner getCalendarData error: " . $e->getMessage());
+            return [];
+        }
     }
     
     public function getDepartmentFormTemplate($departmentId) {
