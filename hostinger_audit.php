@@ -100,81 +100,8 @@ if (file_exists($layoutPath)) {
 
 // Generate fixed CSS
 function generateHostingerCompatibleCSS() {
-    return '
-/* Hostinger Compatible CSS Fixes */
-
-/* Fallback for viewport units */
-.main-content {
-    width: calc(100% - 260px);
-    min-height: calc(100vh - 73px);
-    min-height: 600px; /* fallback */
-}
-
-/* Fixed positioning fallbacks */
-.sidebar {
-    position: fixed;
-    position: absolute; /* fallback for older browsers */
-}
-
-.header {
-    position: sticky;
-    position: relative; /* fallback */
-}
-
-/* Flexbox fallbacks */
-.dashboard-grid {
-    display: grid;
-    display: block; /* fallback */
-}
-
-.dashboard-grid > * {
-    display: inline-block;
-    width: 23%;
-    margin: 1%;
-    vertical-align: top;
-}
-
-/* Transform fallbacks */
-.btn:hover {
-    transform: translateY(-2px);
-    margin-top: -2px; /* fallback */
-}
-
-/* Backdrop filter fallbacks */
-.kpi-card {
-    backdrop-filter: blur(16px);
-    background: rgba(255, 255, 255, 0.95); /* fallback */
-}
-
-/* CSS Grid fallbacks */
-@supports not (display: grid) {
-    .form-row {
-        display: block;
-    }
-    .form-row .form-group {
-        display: inline-block;
-        width: 48%;
-        margin-right: 2%;
-    }
-}
-
-/* Mobile compatibility */
-@media screen and (max-width: 768px) {
-    .sidebar {
-        transform: translateX(-100%);
-        left: -260px; /* fallback */
-    }
-    
-    .main-content {
-        width: 100%;
-        margin-left: 0;
-    }
-    
-    .header {
-        margin-left: 0;
-    }
-}
-';
+    // Disabled to prevent CSS corruption
+    return '';
 }
 
 // Apply fixes
