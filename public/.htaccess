@@ -1,0 +1,68 @@
+# ERGON Public Assets - MIME Type Configuration
+
+# Enable rewrite engine
+RewriteEngine On
+
+# Set proper MIME types for assets
+<IfModule mod_mime.c>
+    # CSS Files
+    AddType text/css .css
+    
+    # JavaScript Files
+    AddType application/javascript .js
+    AddType application/javascript .mjs
+    
+    # Font Files
+    AddType font/woff .woff
+    AddType font/woff2 .woff2
+    AddType application/font-woff .woff
+    AddType application/font-woff2 .woff2
+    
+    # Image Files
+    AddType image/svg+xml .svg
+    AddType image/webp .webp
+    
+    # Icon Files
+    AddType image/x-icon .ico
+    AddType image/vnd.microsoft.icon .ico
+</IfModule>
+
+# Set proper headers for assets
+<IfModule mod_headers.c>
+    # CSS Files
+    <FilesMatch "\.(css)$">
+        Header set Content-Type "text/css; charset=utf-8"
+        Header set Cache-Control "public, max-age=31536000"
+    </FilesMatch>
+    
+    # JavaScript Files
+    <FilesMatch "\.(js|mjs)$">
+        Header set Content-Type "application/javascript; charset=utf-8"
+        Header set Cache-Control "public, max-age=31536000"
+    </FilesMatch>
+    
+    # Icon Files
+    <FilesMatch "\.(ico)$">
+        Header set Content-Type "image/x-icon"
+        Header set Cache-Control "public, max-age=31536000"
+    </FilesMatch>
+</IfModule>
+
+# Prevent access to sensitive files
+<Files "*.php">
+    Order Deny,Allow
+    Deny from all
+</Files>
+
+# Allow access to asset files
+<FilesMatch "\.(css|js|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Compression for better performance
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE text/javascript
+</IfModule>

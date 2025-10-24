@@ -52,13 +52,14 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
-    <link rel="icon" type="image/x-icon" href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/favicon.ico">
-    <link href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/ergon.css" rel="stylesheet">
-    <?php if ($userPrefs['theme'] === 'dark'): ?>
-    <link id="dark-theme-css" href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="/ergon/public/favicon.ico">
+    <link href="/ergon/public/assets/css/ergon.css" rel="stylesheet">
+    <link href="/ergon/public/assets/css/components.css" rel="stylesheet">
+    <?php if (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark'): ?>
+    <link id="dark-theme-css" href="/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
     <?php endif; ?>
 </head>
-<body data-theme="<?= $userPrefs['theme'] ?>" data-layout="<?= $userPrefs['dashboard_layout'] ?>" data-lang="<?= $userPrefs['language'] ?>">
+<body data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>">
     <header class="app-header">
         <div class="app-header-content">
             <div class="app-header-left">
@@ -73,7 +74,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
             <div class="app-header-right">
                 <div class="app-header-actions">
                     <button class="app-header-btn" onclick="toggleTheme()" title="Toggle Theme">
-                        <span id="themeIcon"><?= $userPrefs['theme'] === 'dark' ? '☀️' : '🌙' ?></span>
+                        <span id="themeIcon"><?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? '☀️' : '🌙' ?></span>
                     </button>
                     <button class="app-header-btn" onclick="toggleNotifications()">
                         <span>🔔</span>
@@ -280,7 +281,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                 darkThemeLink = document.createElement('link');
                 darkThemeLink.id = 'dark-theme-css';
                 darkThemeLink.rel = 'stylesheet';
-                darkThemeLink.href = '<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/dark-theme.css';
+                darkThemeLink.href = '/ergon/public/assets/css/dark-theme.css';
                 document.head.appendChild(darkThemeLink);
             }
         } else {
@@ -289,7 +290,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
             }
         }
         
-        fetch('<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/api/update-preference', {
+        fetch('/ergon/api/update-preference', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({key: 'theme', value: newTheme})
@@ -312,7 +313,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     }
     </script>
     
-    <script src="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/js/polyfills.js"></script>
-    <script src="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/js/ergon-ie.js"></script>
+    <script src="/ergon/public/assets/js/theme-toggle.js"></script>
+    <script src="/ergon/public/assets/js/mobile-menu.js"></script>
 </body>
 </html>
