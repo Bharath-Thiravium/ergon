@@ -1,4 +1,8 @@
-<?php include __DIR__ . '/../layouts/header.php'; ?>
+<?php
+$title = 'Analytics Dashboard';
+$active_page = 'analytics';
+ob_start();
+?>
 
 <div class="container-fluid">
     <div class="row">
@@ -308,4 +312,7 @@ function updateLeaderboard(leaderboardData) {
 }
 </script>
 
-<?php include __DIR__ . '/../layouts/footer.php'; ?>
+<?php
+$content = ob_get_clean();
+include __DIR__ . '/../layouts/dashboard.php';
+?>

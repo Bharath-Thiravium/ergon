@@ -1,4 +1,8 @@
-<?php include __DIR__ . '/../layouts/header.php'; ?>
+<?php
+$title = 'Overdue Tasks';
+$active_page = 'tasks';
+ob_start();
+?>
 
 <div class="container-fluid">
     <div class="row">
@@ -85,4 +89,7 @@ function escalateTask(taskId) {
 }
 </script>
 
-<?php include __DIR__ . '/../layouts/footer.php'; ?>
+<?php
+$content = ob_get_clean();
+include __DIR__ . '/../layouts/dashboard.php';
+?>
