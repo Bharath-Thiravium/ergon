@@ -1236,6 +1236,28 @@ body {
 }
 
 /* Responsive */
+/* Hostinger Compatibility Fixes */
+@supports not (backdrop-filter: blur(16px)) {
+  .kpi-card {
+    background: rgba(255, 255, 255, 0.95);
+  }
+  .sidebar {
+    background: rgba(34, 60, 144, 0.98);
+  }
+}
+
+@supports not (display: grid) {
+  .dashboard-grid {
+    display: block;
+  }
+  .dashboard-grid > * {
+    display: inline-block;
+    width: 23%;
+    margin: 1%;
+    vertical-align: top;
+  }
+}
+
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
