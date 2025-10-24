@@ -749,12 +749,6 @@ body {
   border-color: var(--error);
 }
 
-.btn--danger {
-  background: var(--error);
-  color: var(--text-inverse);
-  border-color: var(--error);
-}
-
 .btn--danger:hover {
   background: #b91c1c;
   border-color: #b91c1c;
