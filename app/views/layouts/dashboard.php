@@ -53,6 +53,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <meta http-equiv="Expires" content="0">
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
     <link rel="icon" type="image/x-icon" href="/ergon/public/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/ergon/public/assets/css/ergon.css" rel="stylesheet">
     <link href="/ergon/public/assets/css/components.css" rel="stylesheet">
     <?php if (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark'): ?>
@@ -208,7 +209,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     </div>
 
 
-    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/ergon/public/assets/js/mobile-menu.js"></script>
 </body>
 </html>

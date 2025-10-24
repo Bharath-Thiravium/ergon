@@ -10,7 +10,7 @@ ob_start();
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h3 class="card-title">🔧 System Admin Management</h3>
-                    <button class="btn btn-primary" data-toggle="modal" data-target="#createSystemAdminModal">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSystemAdminModal">
                         <i class="fas fa-plus"></i> Create System Admin
                     </button>
                 </div>
@@ -101,7 +101,7 @@ ob_start();
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Create System Admin</h5>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="createSystemAdminForm">
                 <div class="modal-body">
@@ -148,7 +148,7 @@ ob_start();
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Create System Admin</button>
                 </div>
             </form>
@@ -186,7 +186,7 @@ ob_start();
                 <p class="text-muted">The admin must change this password on first login.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-dismiss="modal">Got it</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Got it</button>
             </div>
         </div>
     </div>
@@ -205,9 +205,18 @@ document.getElementById('createSystemAdminForm').addEventListener('submit', func
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            $('#createSystemAdminModal').modal('hide');
+            // Hide create modal
+            var createModal = document.querySelector('#createSystemAdminModal');
+            if (createModal && window.bootstrap) {
+                bootstrap.Modal.getInstance(createModal).hide();
+            }
+            
+            // Show password modal
             document.getElementById('tempPassword').value = data.temp_password;
-            $('#passwordModal').modal('show');
+            var passwordModal = document.querySelector('#passwordModal');
+            if (passwordModal && window.bootstrap) {
+                new bootstrap.Modal(passwordModal).show();
+            }
             
             // Reset form
             document.getElementById('createSystemAdminForm').reset();
@@ -257,8 +266,13 @@ function copyPassword() {
 }
 
 // Auto-reload after password modal is closed
-$('#passwordModal').on('hidden.bs.modal', function () {
-    location.reload();
+document.addEventListener('DOMContentLoaded', function() {
+    var passwordModal = document.getElementById('passwordModal');
+    if (passwordModal) {
+        passwordModal.addEventListener('hidden.bs.modal', function () {
+            location.reload();
+        });
+    }
 });
 </script>
 
