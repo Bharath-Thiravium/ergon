@@ -49,8 +49,25 @@ if (file_exists($cssPath)) {
     $issues[] = 'CSS file not found';
 }
 
-// Check JavaScript file
-if (file_exists($jsPath)) {
+// Check JavaScript file (check ES5 version first)
+$jsEs5Path = __DIR__ . '/public/assets/js/ergon-es5.js';
+$polyfillPath = __DIR__ . '/public/assets/js/polyfills.js';
+
+if (file_exists($jsEs5Path)) {
+    $jsContent = file_get_contents($jsEs5Path);
+    
+    // Check for ES6+ features in ES5 file
+    if (preg_match('/(const|let|=>|`|\.\.\.)/', $jsContent)) {
+        $issues[] = 'JavaScript uses ES6+ features that may not work on older browsers';
+        $fixes[] = 'Add babel transpilation or use ES5 syntax';
+    }
+    
+    // Check if polyfill exists
+    if (!file_exists($polyfillPath)) {
+        $issues[] = 'JavaScript uses fetch API that may need polyfill';
+        $fixes[] = 'Add fetch polyfill for older browsers';
+    }
+} else if (file_exists($jsPath)) {
     $jsContent = file_get_contents($jsPath);
     
     // Check for ES6+ features
@@ -72,8 +89,8 @@ if (file_exists($jsPath)) {
 if (file_exists($layoutPath)) {
     $layoutContent = file_get_contents($layoutPath);
     
-    // Check for hardcoded paths
-    if (preg_match('/href=[\'"]\/ergon\//', $layoutContent) || preg_match('/src=[\'"]\/ergon\//', $layoutContent)) {
+    // Check for hardcoded paths (skip if already using PHP variables)
+    if (preg_match('/href=[\'"]\/ergon\/(?!\<\?=)/', $layoutContent) || preg_match('/src=[\'"]\/ergon\/(?!\<\?=)/', $layoutContent)) {
         $issues[] = 'Layout contains hardcoded paths that may break on different hosting setups';
         $fixes[] = 'Use dynamic path generation';
     }
