@@ -1,6 +1,6 @@
 <?php 
 $title = 'System Admin Management';
-$active_page = 'admin';
+$active_page = 'system-admin';
 ob_start();
 ?>
 
