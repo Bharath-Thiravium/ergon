@@ -1,6 +1,6 @@
 /**
  * Mobile Menu Toggle for ERGON
- * Hostinger Production Ready
+ * Hostinger Production Ready - No Header Version
  */
 
 class MobileMenu {
@@ -15,14 +15,29 @@ class MobileMenu {
     }
 
     createMobileToggle() {
-        // Add mobile menu toggle button to header
-        const headerLeft = document.querySelector('.app-header-left');
-        if (headerLeft && window.innerWidth <= 768) {
-            const toggleBtn = document.createElement('button');
-            toggleBtn.className = 'mobile-menu-toggle';
-            toggleBtn.innerHTML = '☰';
-            toggleBtn.setAttribute('aria-label', 'Toggle Menu');
-            headerLeft.insertBefore(toggleBtn, headerLeft.firstChild);
+        // Add mobile menu toggle button to sidebar
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar && window.innerWidth <= 768) {
+            let toggleBtn = document.querySelector('.mobile-menu-toggle');
+            if (!toggleBtn) {
+                toggleBtn = document.createElement('button');
+                toggleBtn.className = 'mobile-menu-toggle';
+                toggleBtn.innerHTML = '☰';
+                toggleBtn.setAttribute('aria-label', 'Toggle Menu');
+                toggleBtn.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 20px;
+                    z-index: 1001;
+                    background: var(--primary);
+                    color: white;
+                    border: none;
+                    padding: 10px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                `;
+                document.body.appendChild(toggleBtn);
+            }
         }
     }
 
