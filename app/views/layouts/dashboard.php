@@ -55,7 +55,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <link rel="icon" type="image/x-icon" href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/favicon.ico">
     <link href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/ergon.css" rel="stylesheet">
     <?php if ($userPrefs['theme'] === 'dark'): ?>
-    <link href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
+    <link id="dark-theme-css" href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
     <?php endif; ?>
 </head>
 <body data-theme="<?= $userPrefs['theme'] ?>" data-layout="<?= $userPrefs['dashboard_layout'] ?>" data-lang="<?= $userPrefs['language'] ?>">
@@ -284,6 +284,29 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         document.body.setAttribute('data-theme', newTheme);
         const themeIcon = document.getElementById('themeIcon');
         if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        
+        // Handle dark theme CSS loading
+        let darkThemeLink = document.getElementById('dark-theme-css');
+        if (newTheme === 'dark') {
+            if (!darkThemeLink) {
+                darkThemeLink = document.createElement('link');
+                darkThemeLink.id = 'dark-theme-css';
+                darkThemeLink.rel = 'stylesheet';
+                darkThemeLink.href = '<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/dark-theme.css';
+                document.head.appendChild(darkThemeLink);
+            }
+        } else {
+            if (darkThemeLink) {
+                darkThemeLink.remove();
+            }
+        }
+        
+        // Save theme preference
+        fetch('/ergon/api/update-preference', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({key: 'theme', value: newTheme})
+        }).catch(error => console.log('Theme save failed:', error));
     }
     
     // Close dropdowns when clicking outside
