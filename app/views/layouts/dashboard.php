@@ -60,17 +60,16 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
 </head>
 <body data-theme="<?= $userPrefs['theme'] ?>" data-layout="<?= $userPrefs['dashboard_layout'] ?>" data-lang="<?= $userPrefs['language'] ?>">
     <header class="header">
-        <div class="header-container">
-            <div class="header__left">
-                <nav class="breadcrumb">
-                    <a href="/ergon/dashboard" class="breadcrumb__item">🏠</a>
-                    <?php if (isset($active_page) && $active_page !== 'dashboard'): ?>
-                        <span class="breadcrumb__separator">›</span>
-                        <span class="breadcrumb__item breadcrumb__item--current"><?= $title ?? ucfirst($active_page) ?></span>
-                    <?php endif; ?>
-                </nav>
-            </div>
-            <div class="header__right">
+        <div class="header__left">
+            <nav class="breadcrumb">
+                <a href="/ergon/dashboard" class="breadcrumb__item">🏠</a>
+                <?php if (isset($active_page) && $active_page !== 'dashboard'): ?>
+                    <span class="breadcrumb__separator">›</span>
+                    <span class="breadcrumb__item breadcrumb__item--current"><?= $title ?? ucfirst($active_page) ?></span>
+                <?php endif; ?>
+            </nav>
+        </div>
+        <div class="header__right">
             <div class="theme-toggle">
                 <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Theme">
                     <span class="theme-icon" id="themeIcon"><?= $userPrefs['theme'] === 'dark' ? '☀️' : '🌙' ?></span>
@@ -129,7 +128,6 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                     </div>
                 </div>
             </div>
-        </div>
     </header>
 
     <div class="layout">
