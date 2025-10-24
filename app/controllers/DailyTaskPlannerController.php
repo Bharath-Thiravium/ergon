@@ -1,42 +1,61 @@
 <?php
 require_once __DIR__ . '/../models/DailyTaskPlanner.php';
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 
 class DailyTaskPlannerController extends Controller {
     private $dailyTaskPlanner;
     
     public function __construct() {
-        parent::__construct();
         $this->dailyTaskPlanner = new DailyTaskPlanner();
+    }
+    
+    private function requireAuth($roles = null) {
+        AuthMiddleware::requireAuth($roles);
+    }
+    
+    private function render($view, $data = []) {
+        $this->view($view, $data);
     }
     
     // Daily planner form
     public function index() {
-        $this->requireAuth();
+        $this->requireAuth(); // No role restriction - all users can access
         
-        $user = $_SESSION['user'];
+        // Get user data from database if not in session
+        if (!isset($_SESSION['user']) && isset($_SESSION['user_id'])) {
+            require_once __DIR__ . '/../models/User.php';
+            $userModel = new User();
+            $userData = $userModel->getById($_SESSION['user_id']);
+            $_SESSION['user'] = $userData;
+        }
+        
+        $user = $_SESSION['user'] ?? [];
+        $userDepartment = $user['department'] ?? 'General';
+        $userId = $_SESSION['user_id'];
         $today = date('Y-m-d');
         
         // Get user's today tasks
-        $todayTasks = $this->dailyTaskPlanner->getUserDailyTasks($user['id'], $today);
+        $todayTasks = $this->dailyTaskPlanner->getUserDailyTasks($userId, $today);
         
-        // Get available projects for user's department
-        $projects = $this->dailyTaskPlanner->getProjectsByDepartment($user['department']);
+        // Get available projects for user's department ONLY
+        $projects = $this->dailyTaskPlanner->getProjectsByDepartment($userDepartment);
         
-        // Get task categories for user's department
-        $taskCategories = $this->dailyTaskPlanner->getTaskCategories($user['department']);
+        // Get task categories for user's department ONLY
+        $taskCategories = $this->dailyTaskPlanner->getTaskCategories($userDepartment);
         
         $this->render('daily_planner/index', [
             'todayTasks' => $todayTasks,
             'projects' => $projects,
             'taskCategories' => $taskCategories,
-            'today' => $today
+            'today' => $today,
+            'userDepartment' => $userDepartment
         ]);
     }
     
     // Get tasks for selected project (AJAX)
     public function getProjectTasks() {
-        $this->requireAuth();
+        $this->requireAuth(); // No role restriction - all users can access
         
         $projectId = $_GET['project_id'] ?? null;
         $categoryId = $_GET['category_id'] ?? null;
@@ -53,14 +72,22 @@ class DailyTaskPlannerController extends Controller {
     
     // Submit daily task
     public function submitTask() {
-        $this->requireAuth();
+        $this->requireAuth(); // No role restriction - all users can submit
         
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->redirect('/daily-planner');
             return;
         }
         
-        $user = $_SESSION['user'];
+        // Get user data from database if not in session
+        if (!isset($_SESSION['user']) && isset($_SESSION['user_id'])) {
+            require_once __DIR__ . '/../models/User.php';
+            $userModel = new User();
+            $userData = $userModel->getById($_SESSION['user_id']);
+            $_SESSION['user'] = $userData;
+        }
+        
+        $userId = $_SESSION['user_id'];
         $attachmentPath = null;
         
         // Handle file upload
@@ -79,7 +106,7 @@ class DailyTaskPlannerController extends Controller {
         }
         
         $data = [
-            'user_id' => $user['id'],
+            'user_id' => $userId,
             'project_id' => $_POST['project_id'],
             'task_id' => $_POST['task_id'],
             'entry_date' => $_POST['entry_date'] ?? date('Y-m-d'),

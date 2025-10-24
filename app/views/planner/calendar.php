@@ -9,6 +9,9 @@ $showSetupMessage = empty($data['departments']);
 
 <div class="page-header">
     <h1>📅 Daily Planner Calendar</h1>
+    <?php if (isset($_SESSION['user']['department'])): ?>
+    <div class="badge" style="background: #007bff; color: white; margin-bottom: 10px;"><?= $_SESSION['user']['department'] ?> Department</div>
+    <?php endif; ?>
     <div class="header-actions">
         <button class="btn btn--primary" onclick="openPlanModal()">+ Add Plan</button>
         <button class="btn btn--secondary" onclick="showTodayPlans()">Today's Plans</button>

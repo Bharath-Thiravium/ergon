@@ -15,15 +15,16 @@ class PlannerController {
     
     public function calendar() {
         $userId = $_SESSION['user_id'];
+        $userDepartment = $_SESSION['user']['department'] ?? null;
         $currentMonth = date('Y-m');
         $startDate = date('Y-m-01');
         $endDate = date('Y-m-t');
         
         try {
             $plans = $this->plannerModel->getCalendarData($userId, $startDate, $endDate);
-            $departments = $this->departmentModel->getAll();
+            // Only show user's department
+            $departments = $userDepartment ? [['id' => 1, 'name' => $userDepartment]] : [];
         } catch (Exception $e) {
-            // If tables don't exist, provide empty data
             $plans = [];
             $departments = [];
         }
@@ -57,7 +58,9 @@ class PlannerController {
             }
         }
         
-        $departments = $this->departmentModel->getAll();
+        $userDepartment = $_SESSION['user']['department'] ?? null;
+        // Only show user's department
+        $departments = $userDepartment ? [['id' => 1, 'name' => $userDepartment]] : [];
         $data = ['departments' => $departments];
         include __DIR__ . '/../views/planner/create.php';
     }

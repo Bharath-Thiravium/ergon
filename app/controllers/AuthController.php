@@ -64,6 +64,7 @@ class AuthController extends Controller {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['role'] = $user['role'];
                 $_SESSION['user_name'] = $user['name'];
+                $_SESSION['user'] = $user; // Store full user data
                 $_SESSION['last_activity'] = time();
                 
                 // Check if password reset is required

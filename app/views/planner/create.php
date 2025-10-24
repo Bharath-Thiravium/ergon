@@ -6,6 +6,9 @@ ob_start();
 
 <div class="page-header">
     <h1>Create Daily Plan</h1>
+    <?php if (isset($_SESSION['user']['department'])): ?>
+    <div class="badge" style="background: #007bff; color: white; margin-bottom: 10px;"><?= $_SESSION['user']['department'] ?> Department</div>
+    <?php endif; ?>
     <div class="header-actions">
         <a href="/ergon/planner/calendar" class="btn btn--secondary">Back to Calendar</a>
     </div>
@@ -21,12 +24,17 @@ ob_start();
             
             <div class="form-group">
                 <label>Department *</label>
-                <select name="department_id" required>
-                    <option value="">Select Department</option>
+                <?php if (!empty($data['departments'])): ?>
+                <select name="department_id" required readonly style="background: #f8f9fa;">
                     <?php foreach ($data['departments'] as $dept): ?>
-                    <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                    <option value="<?= $dept['id'] ?>" selected><?= htmlspecialchars($dept['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
+                <small class="text-muted">You can only create plans for your department</small>
+                <?php else: ?>
+                <input type="text" value="No department assigned" readonly style="background: #f8f9fa;">
+                <small class="text-danger">Please contact admin to assign you to a department</small>
+                <?php endif; ?>
             </div>
             
             <div class="form-group">

@@ -6,7 +6,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">📝 Daily Task Planner - <?= date('d M Y', strtotime($today)) ?></h4>
-                    <span class="badge bg-primary"><?= $_SESSION['user']['department'] ?> Department</span>
+                    <span class="badge bg-primary"><?= $userDepartment ?> Department</span>
                 </div>
                 <div class="card-body">
                     
@@ -19,9 +19,13 @@
                                         <label class="form-label">Select Project</label>
                                         <select class="form-select" name="project_id" id="projectSelect" required>
                                             <option value="">Choose Project...</option>
-                                            <?php foreach ($projects as $project): ?>
-                                                <option value="<?= $project['id'] ?>"><?= htmlspecialchars($project['name']) ?></option>
-                                            <?php endforeach; ?>
+                                            <?php if (empty($projects)): ?>
+                                                <option value="" disabled>No projects available for <?= $userDepartment ?> department</option>
+                                            <?php else: ?>
+                                                <?php foreach ($projects as $project): ?>
+                                                    <option value="<?= $project['id'] ?>"><?= htmlspecialchars($project['name']) ?></option>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </select>
                                     </div>
                                     
@@ -29,9 +33,13 @@
                                         <label class="form-label">Task Category</label>
                                         <select class="form-select" name="category_id" id="categorySelect">
                                             <option value="">Choose Category...</option>
-                                            <?php foreach ($taskCategories as $category): ?>
-                                                <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['category_name']) ?></option>
-                                            <?php endforeach; ?>
+                                            <?php if (empty($taskCategories)): ?>
+                                                <option value="" disabled>No categories available for <?= $userDepartment ?> department</option>
+                                            <?php else: ?>
+                                                <?php foreach ($taskCategories as $category): ?>
+                                                    <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['category_name']) ?></option>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </select>
                                     </div>
                                     
