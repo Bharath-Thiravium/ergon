@@ -64,13 +64,20 @@ class OwnerController extends Controller {
     }
     
     private function getKPIStats() {
+        $cacheKey = 'kpi_stats_' . date('Y-m-d-H');
+        $cached = Cache::get($cacheKey);
+        if ($cached) return $cached;
+        
         $sql = "SELECT 
                     (SELECT COUNT(*) FROM users WHERE status = 'active') as total_users,
                     (SELECT COUNT(*) FROM tasks WHERE status != 'completed') as active_tasks,
                     (SELECT COUNT(*) FROM leaves WHERE status = 'Pending') as pending_leaves,
                     (SELECT COUNT(*) FROM expenses WHERE status = 'pending') as pending_expenses";
         $stmt = $this->db->query($sql);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        Cache::set($cacheKey, $result);
+        return $result;
     }
     
     private function getPendingApprovals() {

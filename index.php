@@ -20,7 +20,15 @@ require_once __DIR__ . '/config/database.php';
 // Include core classes
 require_once __DIR__ . '/app/core/Router.php';
 require_once __DIR__ . '/app/core/Controller.php';
+require_once __DIR__ . '/app/core/Cache.php';
 require_once __DIR__ . '/app/middlewares/AuthMiddleware.php';
+
+// Enable output compression
+if (!ob_get_level()) ob_start('ob_gzhandler');
+
+// Set cache headers
+header('Cache-Control: public, max-age=300');
+header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 300) . ' GMT');
 
 try {
     // Initialize router

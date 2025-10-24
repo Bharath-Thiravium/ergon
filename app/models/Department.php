@@ -10,6 +10,10 @@ class Department {
     }
     
     public function getAll() {
+        $cacheKey = 'departments_all';
+        $cached = Cache::get($cacheKey);
+        if ($cached) return $cached;
+        
         $query = "SELECT d.*, u.name as head_name, 
                          COUNT(ud.user_id) as employee_count
                   FROM departments d 
@@ -19,7 +23,10 @@ class Department {
                   ORDER BY d.name";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        Cache::set($cacheKey, $result);
+        return $result;
     }
     
     public function getById($id) {

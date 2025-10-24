@@ -1,24 +1,6 @@
-# ERGON Hostinger Optimized .htaccess
-RewriteEngine On
+# ERGON Performance Optimization
 
-# Force HTTPS only in production (disabled for localhost)
-# RewriteCond %{HTTPS} off
-# RewriteCond %{HTTP_HOST} !^localhost
-# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-
-# Remove trailing slash
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)/$ /$1 [L,R=301]
-
-# Skip rewriting for existing files and directories (including CSS/JS)
-RewriteCond %{REQUEST_FILENAME} -f [OR]
-RewriteCond %{REQUEST_FILENAME} -d
-RewriteRule ^ - [L]
-
-# Route all other requests to index.php
-RewriteRule ^(.*)$ index.php [QSA,L]
-
-# Enable Gzip compression
+# Enable compression
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/plain
     AddOutputFilterByType DEFLATE text/html
@@ -31,19 +13,27 @@ RewriteRule ^(.*)$ index.php [QSA,L]
     AddOutputFilterByType DEFLATE application/x-javascript
 </IfModule>
 
-# Set cache headers
+# Browser caching
 <IfModule mod_expires.c>
-    ExpiresActive On
+    ExpiresActive on
     ExpiresByType text/css "access plus 1 month"
     ExpiresByType application/javascript "access plus 1 month"
     ExpiresByType image/png "access plus 1 month"
     ExpiresByType image/jpg "access plus 1 month"
     ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
 </IfModule>
 
-# Security headers
+# Cache control headers
 <IfModule mod_headers.c>
-    Header always set X-Content-Type-Options nosniff
-    Header always set X-Frame-Options DENY
-    Header always set X-XSS-Protection "1; mode=block"
+    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|svg)$">
+        Header set Cache-Control "max-age=2592000, public"
+    </FilesMatch>
 </IfModule>
+
+# URL Rewriting
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
