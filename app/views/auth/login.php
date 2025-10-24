@@ -38,7 +38,7 @@
         const formData = new FormData(e.target);
         
         try {
-            const response = await fetch('/ergon/login', {
+            const response = await fetch(window.location.origin + '/ergon/login', {
                 method: 'POST',
                 body: formData
             });
@@ -47,7 +47,7 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    window.location.href = result.redirect || '/ergon/user/dashboard';
+                    window.location.href = result.redirect || window.location.origin + '/ergon/dashboard';
                 } else {
                     document.getElementById('message').innerHTML = `<div class="error">${result.error || result.message}</div>`;
                 }
