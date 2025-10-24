@@ -50,13 +50,13 @@ if (file_exists($cssPath)) {
 }
 
 // Check JavaScript file (check ES5 version first)
-$jsEs5Path = __DIR__ . '/public/assets/js/ergon-es5.js';
+$jsIePath = __DIR__ . '/public/assets/js/ergon-ie.js';
 $polyfillPath = __DIR__ . '/public/assets/js/polyfills.js';
 
-if (file_exists($jsEs5Path)) {
-    $jsContent = file_get_contents($jsEs5Path);
+if (file_exists($jsIePath)) {
+    $jsContent = file_get_contents($jsIePath);
     
-    // Check for ES6+ features in ES5 file (should be clean)
+    // Check for ES6+ features in IE file (should be clean)
     if (preg_match('/(const|let|=>|`|\.\.\.)/', $jsContent)) {
         $issues[] = 'JavaScript uses ES6+ features that may not work on older browsers';
         $fixes[] = 'Add babel transpilation or use ES5 syntax';
