@@ -152,4 +152,9 @@ $router->get('/reports/export', 'ReportsController', 'export');
 $router->get('/admin/management', 'AdminManagementController', 'index');
 $router->post('/admin/assign', 'AdminManagementController', 'assignAdmin');
 $router->post('/admin/remove', 'AdminManagementController', 'removeAdmin');
+
+// System Admin Management Routes (Owner only)
+$router->get('/system-admin', 'SystemAdminController', 'index');
+$router->post('/system-admin/create', 'SystemAdminController', 'create');
+$router->post('/system-admin/deactivate', 'SystemAdminController', 'deactivate');
 ?>

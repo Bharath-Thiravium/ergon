@@ -17,8 +17,9 @@ ob_start();
                 <div class="card-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i>
-                        <strong>Admin Positions:</strong> Admins are assigned roles to manage specific departments and functions. 
-                        They can be promoted from regular users and demoted back when needed.
+                        <strong>User-Promoted Admins:</strong> These are existing users who have been promoted to admin roles. 
+                        They can manage specific departments and can be demoted back to regular users when needed.
+                        <br><small class="text-muted">Note: System admins are managed separately and are not shown here.</small>
                     </div>
                     
                     <div class="table-responsive">

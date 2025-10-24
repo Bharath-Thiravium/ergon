@@ -5,7 +5,8 @@ ob_start();
 ?>
 
 <div class="header-actions" style="margin-bottom: var(--space-6);">
-    <a href="/ergon/admin/management" class="btn btn--primary">👥 Manage Admins</a>
+    <a href="/ergon/system-admin" class="btn btn--primary">🔧 System Admins</a>
+    <a href="/ergon/admin/management" class="btn btn--secondary">👥 User Admins</a>
     <a href="/ergon/owner/approvals" class="btn btn--secondary">Review Approvals</a>
     <a href="/ergon/reports" class="btn btn--secondary">View Reports</a>
     <a href="/ergon/settings" class="btn btn--secondary">System Settings</a>

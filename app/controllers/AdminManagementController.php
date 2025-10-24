@@ -57,10 +57,11 @@ class AdminManagementController {
         
         $stmt = $conn->query("
             SELECT u.id, u.name, u.email, u.department, u.created_at,
-                   ap.permissions, ap.assigned_department, ap.created_at as admin_since
+                   ap.permissions, ap.assigned_department, ap.created_at as admin_since,
+                   u.is_system_admin
             FROM users u 
             LEFT JOIN admin_positions ap ON u.id = ap.user_id
-            WHERE u.role = 'admin' AND u.status = 'active'
+            WHERE u.role = 'admin' AND u.status = 'active' AND (u.is_system_admin = FALSE OR u.is_system_admin IS NULL)
             ORDER BY ap.created_at DESC
         ");
         
@@ -105,8 +106,8 @@ class AdminManagementController {
             
             // Create admin position record
             $stmt = $conn->prepare("
-                INSERT INTO admin_positions (user_id, assigned_department, permissions, assigned_by, created_at) 
-                VALUES (?, ?, ?, ?, NOW())
+                INSERT INTO admin_positions (user_id, assigned_department, permissions, is_system_admin, assigned_by, created_at) 
+                VALUES (?, ?, ?, FALSE, ?, NOW())
             ");
             $stmt->execute([
                 $userId, 
@@ -135,8 +136,8 @@ class AdminManagementController {
             $stmt = $conn->prepare("UPDATE users SET role = 'user' WHERE id = ?");
             $stmt->execute([$userId]);
             
-            // Remove admin position record
-            $stmt = $conn->prepare("DELETE FROM admin_positions WHERE user_id = ?");
+            // Remove admin position record (only for user-promoted admins)
+            $stmt = $conn->prepare("DELETE FROM admin_positions WHERE user_id = ? AND (is_system_admin = FALSE OR is_system_admin IS NULL)");
             $stmt->execute([$userId]);
             
             $conn->commit();
