@@ -53,7 +53,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <meta http-equiv="Expires" content="0">
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
     <link rel="icon" type="image/x-icon" href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/favicon.ico">
-    <link href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/ergon.css" rel="stylesheet">
+    <link href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/ergon-clean.css" rel="stylesheet">
     <?php if ($userPrefs['theme'] === 'dark'): ?>
     <link id="dark-theme-css" href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
     <?php endif; ?>
