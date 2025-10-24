@@ -59,74 +59,67 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <?php endif; ?>
 </head>
 <body data-theme="<?= $userPrefs['theme'] ?>" data-layout="<?= $userPrefs['dashboard_layout'] ?>" data-lang="<?= $userPrefs['language'] ?>">
-    <header class="header">
-        <div class="header-container">
-            <div class="header__left">
-                <nav class="breadcrumb">
-                    <a href="/ergon/dashboard" class="breadcrumb__item">🏠</a>
+    <header class="app-header">
+        <div class="app-header-content">
+            <div class="app-header-left">
+                <div class="app-breadcrumb">
+                    <a href="/ergon/dashboard">🏠</a>
                     <?php if (isset($active_page) && $active_page !== 'dashboard'): ?>
-                        <span class="breadcrumb__separator">›</span>
-                        <span class="breadcrumb__item breadcrumb__item--current"><?= $title ?? ucfirst($active_page) ?></span>
+                        <span class="app-breadcrumb-sep">›</span>
+                        <span class="app-breadcrumb-current"><?= $title ?? ucfirst($active_page) ?></span>
                     <?php endif; ?>
-                </nav>
+                </div>
             </div>
-            <div class="header__right">
-            <div class="theme-toggle">
-                <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Theme">
-                    <span class="theme-icon" id="themeIcon"><?= $userPrefs['theme'] === 'dark' ? '☀️' : '🌙' ?></span>
-                </button>
-            </div>
-                
-                <div class="notification-center">
-                    <button class="notification-btn" onclick="toggleNotifications()">
-                        <span class="notification-icon">🔔</span>
+            <div class="app-header-right">
+                <div class="app-header-actions">
+                    <button class="app-header-btn" onclick="toggleTheme()" title="Toggle Theme">
+                        <span id="themeIcon"><?= $userPrefs['theme'] === 'dark' ? '☀️' : '🌙' ?></span>
+                    </button>
+                    <button class="app-header-btn" onclick="toggleNotifications()">
+                        <span>🔔</span>
                         <span class="notification-badge" id="notificationBadge">0</span>
                     </button>
-                    <div class="notification-dropdown" id="notificationDropdown">
-                        <div class="notification-header">
-                            <h3>Notifications</h3>
-                            <a href="/ergon/notifications" class="view-all-link">View All</a>
-                        </div>
-                        <div class="notification-list" id="notificationList">
-                            <div class="notification-loading">Loading...</div>
-                        </div>
+                    <button class="app-profile-btn" onclick="toggleProfile()">
+                        <span class="app-profile-avatar"><?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?></span>
+                        <span class="app-profile-name"><?= $_SESSION['user_name'] ?? 'User' ?></span>
+                        <span class="app-dropdown-arrow">▼</span>
+                    </button>
+                </div>
+                <div class="notification-dropdown" id="notificationDropdown">
+                    <div class="notification-header">
+                        <h3>Notifications</h3>
+                        <a href="/ergon/notifications" class="view-all-link">View All</a>
+                    </div>
+                    <div class="notification-list" id="notificationList">
+                        <div class="notification-loading">Loading...</div>
                     </div>
                 </div>
-                
-                <!-- Profile Dropdown -->
-                <div class="profile-dropdown">
-                    <button class="profile-btn" onclick="toggleProfile()">
-                        <span class="profile-avatar"><?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?></span>
-                        <span class="profile-name"><?= $_SESSION['user_name'] ?? 'User' ?></span>
-                        <span class="dropdown-arrow">▼</span>
-                    </button>
-                    <div class="profile-menu" id="profileMenu">
-                        <div class="profile-info">
-                            <div class="profile-avatar-large"><?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?></div>
-                            <div class="profile-details">
-                                <div class="profile-name"><?= $_SESSION['user_name'] ?? 'User' ?></div>
-                                <div class="profile-role"><?= ucfirst($_SESSION['role'] ?? 'User') ?></div>
-                            </div>
+                <div class="profile-menu" id="profileMenu">
+                    <div class="profile-info">
+                        <div class="profile-avatar-large"><?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?></div>
+                        <div class="profile-details">
+                            <div class="profile-name"><?= $_SESSION['user_name'] ?? 'User' ?></div>
+                            <div class="profile-role"><?= ucfirst($_SESSION['role'] ?? 'User') ?></div>
                         </div>
-                        <div class="profile-menu-divider"></div>
-                        <a href="/ergon/profile" class="profile-menu-item">
-                            <span class="menu-icon">👤</span>
-                            My Profile
-                        </a>
-                        <a href="/ergon/profile/change-password" class="profile-menu-item">
-                            <span class="menu-icon">🔒</span>
-                            Change Password
-                        </a>
-                        <a href="/ergon/profile/preferences" class="profile-menu-item">
-                            <span class="menu-icon">⚙️</span>
-                            Preferences
-                        </a>
-                        <div class="profile-menu-divider"></div>
-                        <a href="/ergon/auth/logout" class="profile-menu-item profile-menu-item--danger" onclick="return confirmLogout()">
-                            <span class="menu-icon">🚪</span>
-                            Logout
-                        </a>
                     </div>
+                    <div class="profile-menu-divider"></div>
+                    <a href="/ergon/profile" class="profile-menu-item">
+                        <span class="menu-icon">👤</span>
+                        My Profile
+                    </a>
+                    <a href="/ergon/profile/change-password" class="profile-menu-item">
+                        <span class="menu-icon">🔒</span>
+                        Change Password
+                    </a>
+                    <a href="/ergon/profile/preferences" class="profile-menu-item">
+                        <span class="menu-icon">⚙️</span>
+                        Preferences
+                    </a>
+                    <div class="profile-menu-divider"></div>
+                    <a href="/ergon/auth/logout" class="profile-menu-item profile-menu-item--danger" onclick="return confirmLogout()">
+                        <span class="menu-icon">🚪</span>
+                        Logout
+                    </a>
                 </div>
             </div>
         </div>
@@ -264,7 +257,6 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     </div>
 
     <script>
-    // Essential JavaScript functions
     function toggleProfile() {
         var menu = document.getElementById('profileMenu');
         if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
@@ -282,7 +274,6 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         var themeIcon = document.getElementById('themeIcon');
         if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
         
-        // Handle dark theme CSS loading
         var darkThemeLink = document.getElementById('dark-theme-css');
         if (newTheme === 'dark') {
             if (!darkThemeLink) {
@@ -298,7 +289,6 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
             }
         }
         
-        // Save theme preference
         fetch('<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/api/update-preference', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -306,89 +296,23 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         }).then(null, function(error) { console.log('Theme save failed:', error); });
     }
     
-    // Close dropdowns when clicking outside
     document.addEventListener('click', function(event) {
-        if (!event.target.closest('.profile-dropdown')) {
+        if (!event.target.closest('.app-profile-btn')) {
             var menu = document.getElementById('profileMenu');
             if (menu) menu.style.display = 'none';
         }
-        if (!event.target.closest('.notification-center')) {
+        if (!event.target.closest('.app-header-btn')) {
             var dropdown = document.getElementById('notificationDropdown');
             if (dropdown) dropdown.style.display = 'none';
         }
     });
-    </script>
     
-    <script>
-    // Prevent back button after logout
-    (function() {
-        if (window.history && window.history.pushState) {
-            window.history.pushState('forward', null, window.location.href);
-            window.addEventListener('popstate', function() {
-                window.history.pushState('forward', null, window.location.href);
-            });
-        }
-    })();
-    
-    // Session timeout warning (optional)
-    var sessionWarningShown = false;
-    setInterval(function() {
-        if (!sessionWarningShown && document.visibilityState === 'visible') {
-            // Only show warning after 25 minutes of inactivity
-            var lastActivity = localStorage.getItem('lastActivity');
-            if (lastActivity && (Date.now() - parseInt(lastActivity)) > 1500000) {
-                sessionWarningShown = true;
-                if (confirm('Your session will expire soon. Click OK to stay logged in.')) {
-                    localStorage.setItem('lastActivity', Date.now().toString());
-                    sessionWarningShown = false;
-                }
-            }
-        }
-    }, 60000); // Check every minute
-    
-    // Prevent access via browser navigation
-    window.addEventListener('beforeunload', function() {
-        // This helps prevent cached page access
-    });
-    
-    // Clear page cache on load
-    window.addEventListener('pageshow', function(event) {
-        if (event.persisted) {
-            window.location.reload();
-        }
-    });
-    
-    // Logout confirmation
     function confirmLogout() {
         return confirm('Are you sure you want to logout? You will need to enter your credentials again.');
     }
-    
-    // Track user activity
-    document.addEventListener('DOMContentLoaded', function() {
-        localStorage.setItem('lastActivity', Date.now().toString());
-        
-        // Update activity on user interactions
-        var events = ['click', 'keypress', 'scroll', 'mousemove'];
-        for (var i = 0; i < events.length; i++) {
-            document.addEventListener(events[i], function() {
-                localStorage.setItem('lastActivity', Date.now().toString());
-            });
-        }
-    });
     </script>
     
-    <!-- Polyfills for older browsers -->
     <script src="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/js/polyfills.js"></script>
-    
-    <!-- Core JavaScript (IE Compatible) -->
     <script src="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/js/ergon-ie.js"></script>
-    
-    <?php 
-    // Activity tracking for IT department only (simplified)
-    $userDept = $_SESSION['user_department'] ?? '';
-    if (stripos($userDept, 'IT') !== false): 
-    ?>
-    <script src="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/js/activity-tracker.js"></script>
-    <?php endif; ?>
 </body>
 </html>

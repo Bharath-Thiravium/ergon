@@ -69,69 +69,131 @@ body {
   line-height: 1.6;
 }
 
-.header {
-  background: var(--bg-primary);
-  border-bottom: 1px solid var(--border-color);
+.app-header {
   position: fixed;
   top: 0;
   left: 260px;
   right: 0;
   height: 64px;
-  z-index: 1000;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
+  z-index: 1000;
+}
+
+.app-header-content {
+  height: 100%;
   padding: 0 var(--space-6);
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
-  align-items: center;
-  -webkit-box-pack: justify;
-  -ms-flex-pack: justify;
-  justify-content: space-between;
-  min-height: 64px;
-  max-height: 64px;
+  display: table;
+  width: 100%;
+  table-layout: fixed;
 }
 
-.header__left {
-  flex: 1;
-  min-width: 0;
+.app-header-left {
+  display: table-cell;
+  vertical-align: middle;
+  width: auto;
 }
 
-.header__right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  flex-shrink: 0;
-  margin-left: auto;
+.app-header-right {
+  display: table-cell;
+  vertical-align: middle;
+  width: 300px;
+  text-align: right;
 }
 
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.app-breadcrumb {
+  display: inline-block;
   font-size: var(--font-size-sm);
 }
 
-.breadcrumb__item {
+.app-breadcrumb a {
   color: var(--text-secondary);
   text-decoration: none;
   font-weight: 500;
   transition: var(--transition);
 }
 
-.breadcrumb__item:hover {
+.app-breadcrumb a:hover {
   color: var(--primary);
 }
 
-.breadcrumb__item--current {
+.app-breadcrumb-current {
   color: var(--text-primary);
   font-weight: 600;
 }
 
-.breadcrumb__separator {
+.app-breadcrumb-sep {
   color: var(--text-muted);
   font-size: var(--font-size-xs);
+  margin: 0 var(--space-2);
+}
+
+.app-header-actions {
+  display: inline-block;
+}
+
+.app-header-btn {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+  line-height: 40px;
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}
+
+.app-header-btn:hover {
+  background: var(--bg-secondary);
+}
+
+.app-profile-btn {
+  display: inline-block;
+  height: 40px;
+  background: none;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+  padding: 0 var(--space-3);
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}
+
+.app-profile-btn:hover {
+  background: var(--bg-secondary);
+}
+
+.app-profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--text-inverse);
+  display: inline-block;
+  text-align: center;
+  line-height: 32px;
+  font-weight: bold;
+  font-size: var(--font-size-sm);
+  vertical-align: middle;
+}
+
+.app-profile-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 var(--space-2);
+  vertical-align: middle;
+}
+
+.app-dropdown-arrow {
+  font-size: 12px;
+  color: var(--text-secondary);
+  vertical-align: middle;
 }
 
 .notification-center {
@@ -919,7 +981,7 @@ body {
     width: 260px;
   }
   
-  .header {
+  .app-header {
     left: 0;
   }
   
