@@ -1230,51 +1230,6 @@ body {
 }
 
 /* Responsive */
-/* Hostinger Compatibility Fixes */
-@supports not (backdrop-filter: blur(16px)) {
-  .kpi-card {
-    background: rgba(255, 255, 255, 0.95);
-  }
-  .sidebar {
-    background: rgba(34, 60, 144, 0.98);
-  }
-}
-
-/* Viewport unit fallbacks */
-.main-content {
-  min-height: calc(100vh - 64px);
-  min-height: 600px; /* fallback */
-}
-
-.sidebar {
-  height: 100vh;
-  height: 100%; /* fallback */
-}
-
-/* Additional viewport fallbacks */
-:root {
-  --vh: 1vh;
-}
-
-@media screen and (max-width: 768px) {
-  .main-content {
-    min-height: calc(var(--vh, 1vh) * 100 - 64px);
-    min-height: 500px; /* mobile fallback */
-  }
-}
-
-@supports not (display: grid) {
-  .dashboard-grid {
-    display: block;
-  }
-  .dashboard-grid > * {
-    display: inline-block;
-    width: 23%;
-    margin: 1%;
-    vertical-align: top;
-  }
-}
-
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
