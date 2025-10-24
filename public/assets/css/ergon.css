@@ -73,18 +73,21 @@ body {
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
   padding: 0 var(--space-6);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 260px;
+  right: 0;
   z-index: 1000;
   box-shadow: var(--shadow-sm);
-  margin-left: 260px;
+  height: 64px;
 }
 
 .header__nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 64px;
+  height: 100%;
+  width: 100%;
 }
 
 .header__left {
@@ -325,6 +328,7 @@ body {
 .main-content {
   flex: 1;
   margin-left: 260px;
+  margin-top: 64px;
   padding: var(--space-8);
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
@@ -768,7 +772,7 @@ body {
   }
   
   .header {
-    margin-left: 0;
+    left: 0;
   }
   
   .main-content {
