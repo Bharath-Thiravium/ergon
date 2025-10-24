@@ -52,10 +52,10 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
-    <link rel="icon" type="image/x-icon" href="/ergon/public/favicon.ico">
-    <link href="/ergon/public/assets/css/ergon.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/favicon.ico">
+    <link href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/ergon.css" rel="stylesheet">
     <?php if ($userPrefs['theme'] === 'dark'): ?>
-    <link href="/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
+    <link href="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
     <?php endif; ?>
 </head>
 <body data-theme="<?= $userPrefs['theme'] ?>" data-layout="<?= $userPrefs['dashboard_layout'] ?>" data-lang="<?= $userPrefs['language'] ?>">
@@ -361,7 +361,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     $userDept = $_SESSION['user_department'] ?? '';
     if (stripos($userDept, 'IT') !== false): 
     ?>
-    <script src="/ergon/public/assets/js/activity-tracker.js"></script>
+    <script src="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/js/activity-tracker.js"></script>
     <?php endif; ?>
 </body>
 </html>
