@@ -206,7 +206,9 @@ window.ERGON.pages = {
                     .catch(function(error) {
                         ERGON.utils.showToast('Error: ' + error.message, 'error');
                     })
-                    .finally(function() {
+                    .then(function() {
+                        ERGON.ui.hideLoading(btn);
+                    }, function() {
                         ERGON.ui.hideLoading(btn);
                     });
             });

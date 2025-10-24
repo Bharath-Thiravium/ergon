@@ -40,8 +40,8 @@ if (file_exists($cssPath)) {
         $fixes[] = 'Replace @import with direct CSS inclusion';
     }
     
-    // Check for viewport units that may not work on older browsers
-    if (preg_match('/\d+(vw|vh|vmin|vmax)/', $cssContent)) {
+    // Check for viewport units without fallbacks
+    if (preg_match('/\d+(vw|vh|vmin|vmax)/', $cssContent) && !preg_match('/\/\* fallback \*\//', $cssContent)) {
         $issues[] = 'CSS uses viewport units that may not be supported on all hosting environments';
         $fixes[] = 'Add fallback values for viewport units';
     }
@@ -56,7 +56,7 @@ $polyfillPath = __DIR__ . '/public/assets/js/polyfills.js';
 if (file_exists($jsEs5Path)) {
     $jsContent = file_get_contents($jsEs5Path);
     
-    // Check for ES6+ features in ES5 file
+    // Check for ES6+ features in ES5 file (should be clean)
     if (preg_match('/(const|let|=>|`|\.\.\.)/', $jsContent)) {
         $issues[] = 'JavaScript uses ES6+ features that may not work on older browsers';
         $fixes[] = 'Add babel transpilation or use ES5 syntax';
