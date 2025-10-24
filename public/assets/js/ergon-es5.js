@@ -126,9 +126,16 @@ window.ERGON = {
         serialize: function(form) {
             var formData = new FormData(form);
             var data = {};
-            formData.forEach(function(value, key) {
-                data[key] = value;
-            });
+            // IE-compatible FormData iteration
+            var keys = [];
+            var values = [];
+            for (var i = 0; i < formData.length; i++) {
+                keys.push(formData[i].name);
+                values.push(formData[i].value);
+            }
+            for (var j = 0; j < keys.length; j++) {
+                data[keys[j]] = values[j];
+            }
             return data;
         },
         

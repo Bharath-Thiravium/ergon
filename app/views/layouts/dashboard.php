@@ -269,24 +269,24 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <script>
     // Essential JavaScript functions
     function toggleProfile() {
-        const menu = document.getElementById('profileMenu');
+        var menu = document.getElementById('profileMenu');
         if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
     }
     
     function toggleNotifications() {
-        const dropdown = document.getElementById('notificationDropdown');
+        var dropdown = document.getElementById('notificationDropdown');
         if (dropdown) dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
     }
     
     function toggleTheme() {
-        const currentTheme = document.body.getAttribute('data-theme') || 'light';
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        var currentTheme = document.body.getAttribute('data-theme') || 'light';
+        var newTheme = currentTheme === 'light' ? 'dark' : 'light';
         document.body.setAttribute('data-theme', newTheme);
-        const themeIcon = document.getElementById('themeIcon');
+        var themeIcon = document.getElementById('themeIcon');
         if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
         
         // Handle dark theme CSS loading
-        let darkThemeLink = document.getElementById('dark-theme-css');
+        var darkThemeLink = document.getElementById('dark-theme-css');
         if (newTheme === 'dark') {
             if (!darkThemeLink) {
                 darkThemeLink = document.createElement('link');
@@ -302,21 +302,21 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         }
         
         // Save theme preference
-        fetch('/ergon/api/update-preference', {
+        fetch('<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/api/update-preference', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({key: 'theme', value: newTheme})
-        }).catch(error => console.log('Theme save failed:', error));
+        }).then(null, function(error) { console.log('Theme save failed:', error); });
     }
     
     // Close dropdowns when clicking outside
     document.addEventListener('click', function(event) {
         if (!event.target.closest('.profile-dropdown')) {
-            const menu = document.getElementById('profileMenu');
+            var menu = document.getElementById('profileMenu');
             if (menu) menu.style.display = 'none';
         }
         if (!event.target.closest('.notification-center')) {
-            const dropdown = document.getElementById('notificationDropdown');
+            var dropdown = document.getElementById('notificationDropdown');
             if (dropdown) dropdown.style.display = 'none';
         }
     });
@@ -334,11 +334,11 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     })();
     
     // Session timeout warning (optional)
-    let sessionWarningShown = false;
+    var sessionWarningShown = false;
     setInterval(function() {
         if (!sessionWarningShown && document.visibilityState === 'visible') {
             // Only show warning after 25 minutes of inactivity
-            const lastActivity = localStorage.getItem('lastActivity');
+            var lastActivity = localStorage.getItem('lastActivity');
             if (lastActivity && (Date.now() - parseInt(lastActivity)) > 1500000) {
                 sessionWarningShown = true;
                 if (confirm('Your session will expire soon. Click OK to stay logged in.')) {
@@ -371,11 +371,12 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         localStorage.setItem('lastActivity', Date.now().toString());
         
         // Update activity on user interactions
-        ['click', 'keypress', 'scroll', 'mousemove'].forEach(event => {
-            document.addEventListener(event, function() {
+        var events = ['click', 'keypress', 'scroll', 'mousemove'];
+        for (var i = 0; i < events.length; i++) {
+            document.addEventListener(events[i], function() {
                 localStorage.setItem('lastActivity', Date.now().toString());
-            }, { passive: true });
-        });
+            });
+        }
     });
     </script>
     
