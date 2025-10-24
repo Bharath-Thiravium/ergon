@@ -10,7 +10,7 @@ $showSetupMessage = empty($data['departments']);
 <div class="page-header">
     <h1>📅 Daily Planner Calendar</h1>
     <?php if (isset($_SESSION['user']['department'])): ?>
-    <div class="badge" style="background: #007bff; color: white; margin-bottom: 10px;"><?= $_SESSION['user']['department'] ?> Department</div>
+    <div class="department-badge"><?= $_SESSION['user']['department'] ?> Department</div>
     <?php endif; ?>
     <div class="header-actions">
         <button class="btn btn--primary" onclick="openPlanModal()">+ Add Plan</button>
@@ -23,8 +23,10 @@ $showSetupMessage = empty($data['departments']);
     <strong>⚠️ Setup Required</strong>
     The daily planner tables need to be created.
     <?php if ($_SESSION['role'] === 'owner'): ?>
-        <a href="/ergon/setup-planner" class="btn btn--sm btn--secondary" style="margin-left: 10px;">Basic Setup</a>
-        <a href="/ergon/setup-with-data" class="btn btn--sm btn--primary" style="margin-left: 5px;">🚀 Setup with Test Data</a>
+        <div class="setup-buttons">
+            <a href="/ergon/setup-planner" class="btn btn--sm btn--secondary">Basic Setup</a>
+            <a href="/ergon/setup-with-data" class="btn btn--sm btn--primary">🚀 Setup with Test Data</a>
+        </div>
     <?php else: ?>
         <br><small>Please contact your administrator to run the setup.</small>
     <?php endif; ?>
@@ -76,78 +78,7 @@ $showSetupMessage = empty($data['departments']);
 
 
 
-<style>
-.calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 1px;
-    background: #e0e0e0;
-    border: 1px solid #e0e0e0;
-}
 
-.calendar-day {
-    background: white;
-    min-height: 120px;
-    padding: 8px;
-    position: relative;
-    cursor: pointer;
-}
-
-.calendar-day:hover {
-    background: #f8f9fa;
-}
-
-.calendar-day.other-month {
-    background: #f5f5f5;
-    color: #999;
-}
-
-.calendar-day.today {
-    background: #e3f2fd;
-    border: 2px solid #2196f3;
-}
-
-.day-number {
-    font-weight: bold;
-    margin-bottom: 4px;
-}
-
-.plan-item {
-    font-size: 11px;
-    padding: 2px 4px;
-    margin: 1px 0;
-    border-radius: 3px;
-    cursor: pointer;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.plan-item.priority-urgent { background: #ffebee; color: #c62828; }
-.plan-item.priority-high { background: #fff3e0; color: #ef6c00; }
-.plan-item.priority-medium { background: #e8f5e8; color: #2e7d32; }
-.plan-item.priority-low { background: #f3e5f5; color: #7b1fa2; }
-
-.plan-item.completed { opacity: 0.6; text-decoration: line-through; }
-
-.calendar-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.badge {
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-}
-
-.badge-urgent { background: #dc3545; color: white; }
-.badge-high { background: #fd7e14; color: white; }
-.badge-medium { background: #28a745; color: white; }
-.badge-low { background: #6f42c1; color: white; }
-</style>
 
 <script>
 let currentDate = new Date();
@@ -174,7 +105,7 @@ function renderCalendar() {
         const header = document.createElement('div');
         header.className = 'calendar-day-header';
         header.textContent = day;
-        header.style.cssText = 'background: #f5f5f5; padding: 10px; text-align: center; font-weight: bold;';
+        header.className += ' calendar-day-header';
         calendar.appendChild(header);
     });
     
@@ -335,13 +266,13 @@ function showDayPlans(date) {
     }
     
     const html = dayPlans.map(p => 
-        `<div style="padding:12px;border:1px solid #e9ecef;border-radius:6px;margin-bottom:8px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        `<div class="plan-detail-item">
+            <div class="plan-detail-header">
                 <strong>${p.title}</strong>
                 <span class="badge badge-${p.priority}">${p.priority.toUpperCase()}</span>
             </div>
-            <div style="font-size:14px;color:#6c757d">Progress: ${p.completion_percentage}% • ${p.department_name}</div>
-            ${p.description ? `<div style="font-size:14px;margin-top:4px">${p.description}</div>` : ''}
+            <div class="plan-detail-meta">Progress: ${p.completion_percentage}% • ${p.department_name}</div>
+            ${p.description ? `<div class="plan-detail-desc">${p.description}</div>` : ''}
         </div>`
     ).join('');
     
@@ -358,6 +289,125 @@ document.addEventListener('DOMContentLoaded', function() {
     renderCalendar();
 });
 </script>
+
+<style>
+/* Daily Planner Styles */
+.department-badge {
+    background: #007bff;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+.setup-buttons {
+    margin-left: 10px;
+    display: inline-flex;
+    gap: 5px;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: #e0e0e0;
+    border: 1px solid #e0e0e0;
+}
+
+.calendar-day-header {
+    background: #f5f5f5;
+    padding: 10px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.calendar-day {
+    background: white;
+    min-height: 120px;
+    padding: 8px;
+    position: relative;
+    cursor: pointer;
+}
+
+.calendar-day:hover {
+    background: #f8f9fa;
+}
+
+.calendar-day.other-month {
+    background: #f5f5f5;
+    color: #999;
+}
+
+.calendar-day.today {
+    background: #e3f2fd;
+    border: 2px solid #2196f3;
+}
+
+.day-number {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.plan-item {
+    font-size: 11px;
+    padding: 2px 4px;
+    margin: 1px 0;
+    border-radius: 3px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.plan-item.priority-urgent { background: #ffebee; color: #c62828; }
+.plan-item.priority-high { background: #fff3e0; color: #ef6c00; }
+.plan-item.priority-medium { background: #e8f5e8; color: #2e7d32; }
+.plan-item.priority-low { background: #f3e5f5; color: #7b1fa2; }
+.plan-item.completed { opacity: 0.6; text-decoration: line-through; }
+
+.calendar-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.badge-urgent { background: #dc3545; color: white; }
+.badge-high { background: #fd7e14; color: white; }
+.badge-medium { background: #28a745; color: white; }
+.badge-low { background: #6f42c1; color: white; }
+
+.plan-detail-item {
+    padding: 12px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.plan-detail-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.plan-detail-meta {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.plan-detail-desc {
+    font-size: 14px;
+    margin-top: 4px;
+}
+</style>
 
 <?php
 $content = ob_get_clean();

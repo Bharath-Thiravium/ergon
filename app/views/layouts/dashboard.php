@@ -52,6 +52,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
+    <link rel="icon" type="image/x-icon" href="/ergon/public/favicon.ico">
     <link href="/ergon/public/assets/css/ergon.css" rel="stylesheet">
     <link href="/ergon/public/assets/css/modals.css" rel="stylesheet">
     <?php if ($userPrefs['theme'] === 'dark'): ?>

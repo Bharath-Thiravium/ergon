@@ -7,7 +7,7 @@ ob_start();
 <div class="page-header">
     <h1>Create Daily Plan</h1>
     <?php if (isset($_SESSION['user']['department'])): ?>
-    <div class="badge" style="background: #007bff; color: white; margin-bottom: 10px;"><?= $_SESSION['user']['department'] ?> Department</div>
+    <div class="department-badge"><?= $_SESSION['user']['department'] ?> Department</div>
     <?php endif; ?>
     <div class="header-actions">
         <a href="/ergon/planner/calendar" class="btn btn--secondary">Back to Calendar</a>
@@ -25,14 +25,14 @@ ob_start();
             <div class="form-group">
                 <label>Department *</label>
                 <?php if (!empty($data['departments'])): ?>
-                <select name="department_id" required readonly style="background: #f8f9fa;">
+                <select name="department_id" required readonly class="form-control--readonly">
                     <?php foreach ($data['departments'] as $dept): ?>
                     <option value="<?= $dept['id'] ?>" selected><?= htmlspecialchars($dept['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <small class="text-muted">You can only create plans for your department</small>
                 <?php else: ?>
-                <input type="text" value="No department assigned" readonly style="background: #f8f9fa;">
+                <input type="text" value="No department assigned" readonly class="form-control--readonly">
                 <small class="text-danger">Please contact admin to assign you to a department</small>
                 <?php endif; ?>
             </div>
@@ -77,7 +77,24 @@ ob_start();
     </div>
 </div>
 
+
+
 <style>
+/* Create Plan Styles */
+.department-badge {
+    background: #007bff;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+.form-control--readonly {
+    background: #f8f9fa;
+}
+
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
