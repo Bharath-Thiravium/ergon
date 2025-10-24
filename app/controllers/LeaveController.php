@@ -23,17 +23,35 @@ class LeaveController {
             exit;
         }
         
-        $user_id = $_SESSION['user_id'];
-        $role = $_SESSION['role'];
-        
-        if ($role === 'User') {
-            $leaves = $this->leave->getByUserId($user_id);
-        } else {
-            $leaves = $this->leave->getAll();
+        try {
+            $user_id = $_SESSION['user_id'];
+            $role = $_SESSION['role'];
+            
+            if ($role === 'user') {
+                $leaves = $this->leave->getByUserId($user_id);
+            } else {
+                $leaves = $this->leave->getAll();
+            }
+            
+            $stats = $this->leave->getStats($role === 'user' ? $user_id : null);
+            
+            $data = [
+                'leaves' => $leaves,
+                'stats' => $stats,
+                'user_role' => $role
+            ];
+            
+            include __DIR__ . '/../views/leaves/index.php';
+        } catch (Exception $e) {
+            error_log('Leave index error: ' . $e->getMessage());
+            $data = [
+                'leaves' => [],
+                'stats' => ['total' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0],
+                'user_role' => $_SESSION['role'],
+                'error' => 'Unable to load leave data. Please try again.'
+            ];
+            include __DIR__ . '/../views/leaves/index.php';
         }
-        
-        $data = ['leaves' => $leaves];
-        include __DIR__ . '/../views/leaves/index.php';
     }
     
     public function create() {

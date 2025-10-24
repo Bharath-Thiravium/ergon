@@ -193,12 +193,6 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                     </a>
                 <?php endif; ?>
                 
-                <div class="sidebar__divider">Account</div>
-                <a href="/ergon/profile" class="sidebar__link <?= $active_page === 'profile' ? 'sidebar__link--active' : '' ?>">
-                    <span class="sidebar__icon">👤</span>
-                    My Profile
-                </a>
-                
                 <!-- User Controls -->
                 <div class="sidebar__controls">
                     <button class="sidebar__control-btn" onclick="toggleTheme()" title="Toggle Theme">
@@ -235,18 +229,19 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                     </div>
                 </div>
                 
-                <!-- Notification Dropdown -->
-                <div class="notification-dropdown" id="notificationDropdown">
-                    <div class="notification-header">
-                        <h3>Notifications</h3>
-                        <a href="/ergon/notifications" class="view-all-link">View All</a>
-                    </div>
-                    <div class="notification-list" id="notificationList">
-                        <div class="notification-loading">Loading...</div>
-                    </div>
-                </div>
             </nav>
         </aside>
+        
+        <!-- Notification Dropdown -->
+        <div class="notification-dropdown" id="notificationDropdown">
+            <div class="notification-header">
+                <h3>Notifications</h3>
+                <a href="/ergon/notifications" class="view-all-link">View All</a>
+            </div>
+            <div class="notification-list" id="notificationList">
+                <div class="notification-loading">Loading...</div>
+            </div>
+        </div>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -303,6 +298,19 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         }
     }
     
+    // Maintain sidebar scroll position
+    const sidebarMenu = document.querySelector('.sidebar__menu');
+    if (sidebarMenu) {
+        const savedScrollPos = sessionStorage.getItem('sidebarScrollPos');
+        if (savedScrollPos) {
+            sidebarMenu.scrollTop = parseInt(savedScrollPos);
+        }
+        
+        sidebarMenu.addEventListener('scroll', function() {
+            sessionStorage.setItem('sidebarScrollPos', this.scrollTop);
+        });
+    }
+    
     // Close dropdowns when clicking outside
     document.addEventListener('click', function(e) {
         const sidebar = document.querySelector('.sidebar');
@@ -311,18 +319,18 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         const notificationBtn = document.querySelector('.sidebar__control-btn');
         
         // Close sidebar on mobile
-        if (window.innerWidth <= 768 && !sidebar.contains(e.target) && !toggle.contains(e.target)) {
+        if (window.innerWidth <= 768 && sidebar && !sidebar.contains(e.target) && toggle && !toggle.contains(e.target)) {
             sidebar.classList.remove('sidebar--open');
         }
         
         // Close profile menu
-        if (!profileBtn || !profileBtn.contains(e.target)) {
+        if (profileBtn && !profileBtn.contains(e.target)) {
             var menu = document.getElementById('profileMenu');
             if (menu) menu.style.display = 'none';
         }
         
         // Close notification dropdown
-        if (!notificationBtn || !notificationBtn.contains(e.target)) {
+        if (notificationBtn && !notificationBtn.contains(e.target)) {
             var dropdown = document.getElementById('notificationDropdown');
             if (dropdown) dropdown.style.display = 'none';
         }

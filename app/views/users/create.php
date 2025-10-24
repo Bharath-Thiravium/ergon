@@ -8,6 +8,12 @@ ob_start();
     <a href="/ergon/users" class="btn btn--secondary">Back to Users</a>
 </div>
 
+<?php if (isset($data['error'])): ?>
+<div class="alert alert--error" style="margin-bottom: var(--space-4);">
+    <?= htmlspecialchars($data['error']) ?>
+</div>
+<?php endif; ?>
+
 <form method="POST" enctype="multipart/form-data" class="user-form">
     <div class="form-sections">
         <!-- Personal Information -->
@@ -19,7 +25,7 @@ ob_start();
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Full Name *</label>
-                        <input type="text" name="name" class="form-control" required>
+                        <input type="text" name="name" class="form-control" required value="<?= htmlspecialchars($data['old_data']['name'] ?? '') ?>">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Employee ID *</label>
@@ -31,11 +37,12 @@ ob_start();
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Email *</label>
-                        <input type="email" name="email" class="form-control" required>
+                        <input type="email" name="email" class="form-control" required value="<?= htmlspecialchars($data['old_data']['email'] ?? '') ?>">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Phone *</label>
-                        <input type="tel" name="phone" class="form-control" required>
+                        <input type="tel" name="phone" class="form-control" required pattern="[0-9]{10}" maxlength="10" placeholder="10-digit mobile number" value="<?= htmlspecialchars($data['old_data']['phone'] ?? '') ?>">
+                        <small class="form-text">Enter 10-digit mobile number</small>
                     </div>
                 </div>
                 
@@ -86,8 +93,8 @@ ob_start();
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Salary (₹)</label>
-                        <input type="number" name="salary" class="form-control" step="0.01">
+                        <label class="form-label">Monthly Salary (₹)</label>
+                        <input type="number" name="salary" class="form-control" step="1" min="0" placeholder="Enter amount without decimals">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Role *</label>
@@ -193,7 +200,31 @@ function createWithCredentials() {
 }
 
 // Auto-generate on page load
-document.addEventListener('DOMContentLoaded', generateEmployeeId);
+document.addEventListener('DOMContentLoaded', function() {
+    generateEmployeeId();
+    
+    // Phone validation
+    const phoneInput = document.querySelector('input[name="phone"]');
+    phoneInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '').substring(0, 10);
+        if (this.value.length === 10) {
+            this.setCustomValidity('');
+        } else {
+            this.setCustomValidity('Please enter exactly 10 digits');
+        }
+    });
+    
+    // Email validation
+    const emailInput = document.querySelector('input[name="email"]');
+    emailInput.addEventListener('blur', function() {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(this.value)) {
+            this.setCustomValidity('Please enter a valid email address');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+});
 </script>
 
 <?php if (isset($_SESSION['new_user_credentials'])): ?>

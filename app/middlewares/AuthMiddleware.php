@@ -81,6 +81,11 @@ class AuthMiddleware {
             session_start();
         }
         
+        // Add no-cache headers for authenticated pages
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        
         if (!isset($_SESSION['user_id'])) {
             header('Location: /ergon/login');
             exit;
@@ -131,6 +136,11 @@ class AuthMiddleware {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
+        
+        // Add no-cache headers to prevent back button access
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
         
         // Clear all session variables
         $_SESSION = array();

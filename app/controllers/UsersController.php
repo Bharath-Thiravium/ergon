@@ -41,14 +41,22 @@ class UsersController extends Controller {
     }
     
     public function create() {
+        $error = null;
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $result = $this->userModel->createEnhanced($_POST);
-            if ($result && isset($result['temp_password'])) {
-                $_SESSION['new_user_credentials'] = [
-                    'employee_id' => $result['employee_id'],
-                    'email' => $_POST['email'],
-                    'temp_password' => $result['temp_password']
-                ];
+            try {
+                $result = $this->userModel->createEnhanced($_POST);
+                if ($result && isset($result['temp_password'])) {
+                    $_SESSION['new_user_credentials'] = [
+                        'employee_id' => $result['employee_id'],
+                        'email' => $_POST['email'],
+                        'temp_password' => $result['temp_password']
+                    ];
+                } else {
+                    $error = 'Failed to create user. Please try again.';
+                }
+            } catch (Exception $e) {
+                $error = $e->getMessage();
             }
         }
         
@@ -56,7 +64,11 @@ class UsersController extends Controller {
         $departmentModel = new Department();
         $departments = $departmentModel->getAll();
         
-        $data = ['departments' => $departments];
+        $data = [
+            'departments' => $departments,
+            'error' => $error,
+            'old_data' => $_POST ?? []
+        ];
         include __DIR__ . '/../views/users/create.php';
     }
     
@@ -149,6 +161,16 @@ class UsersController extends Controller {
             $database = new Database();
             $db = $database->getConnection();
             
+            // Get user email for credentials
+            $stmt = $db->prepare("SELECT email, name FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch();
+            
+            if (!$user) {
+                echo json_encode(['success' => false, 'error' => 'User not found']);
+                exit;
+            }
+            
             $stmt = $db->prepare("
                 UPDATE users 
                 SET password = ?, temp_password = ?, is_first_login = TRUE, password_reset_required = TRUE 
@@ -160,8 +182,9 @@ class UsersController extends Controller {
             if ($result) {
                 echo json_encode([
                     'success' => true, 
+                    'email' => $user['email'],
                     'temp_password' => $tempPassword,
-                    'message' => 'Password reset successfully'
+                    'message' => 'Password reset successfully. Login with EMAIL, not username.'
                 ]);
             } else {
                 echo json_encode(['success' => false, 'error' => 'Failed to reset password']);

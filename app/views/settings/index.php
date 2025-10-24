@@ -5,17 +5,15 @@ $active_page = 'settings';
 ob_start();
 ?>
 
-
-
 <?php if (isset($_GET['success'])): ?>
 <div class="alert alert--success">Settings updated successfully!</div>
 <?php endif; ?>
 
 <form method="POST" action="/ergon/settings" class="settings-form">
-    <div class="settings-grid">
+    <div class="dashboard-grid">
         <div class="card">
             <div class="card__header">
-                <h2 class="card__title">Company Information</h2>
+                <h2 class="card__title">🏢 Company Information</h2>
             </div>
             <div class="card__body">
                 <div class="form-group">
@@ -34,70 +32,76 @@ ob_start();
         
         <div class="card">
             <div class="card__header">
-                <h2 class="card__title">Attendance Settings</h2>
+                <h2 class="card__title">📍 Attendance Settings</h2>
             </div>
             <div class="card__body">
                 <div class="form-group">
                     <label class="form-label">Attendance Radius (meters)</label>
                     <input type="number" name="attendance_radius" class="form-control" 
                            value="<?= $data['settings']['attendance_radius'] ?? 200 ?>" min="10" max="1000">
-                    <small class="form-help">Employees must be within this radius to clock in</small>
+                    <small>Employees must be within this radius to clock in</small>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Base Location</label>
-                    <div class="location-picker">
-                        <div id="map" class="map-container"></div>
-                        <div class="location-controls">
+                    <div class="form-group">
+                        <div id="map" style="height: 300px; border-radius: var(--border-radius); border: 1px solid var(--border-color);"></div>
+                        <div class="header-actions" style="margin-top: var(--space-3); margin-bottom: var(--space-3);">
                             <button type="button" class="btn btn--secondary" onclick="getCurrentLocation()">Use Current Location</button>
                             <button type="button" class="btn btn--secondary" onclick="searchLocation()">Search Address</button>
                         </div>
-                        <input type="search" id="addressSearch" class="form-control address-search" placeholder="Search for an address...">
+                        <input type="search" id="addressSearch" class="form-control" placeholder="Search for an address...">
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label class="form-label">Latitude</label>
-                    <input type="number" name="base_location_lat" id="latitude" class="form-control" 
-                           value="<?= $data['settings']['base_location_lat'] ?? 0 ?>" step="0.000001" readonly>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Longitude</label>
-                    <input type="number" name="base_location_lng" id="longitude" class="form-control" 
-                           value="<?= $data['settings']['base_location_lng'] ?? 0 ?>" step="0.000001" readonly>
+                <div class="dashboard-grid">
+                    <div class="form-group">
+                        <label class="form-label">Latitude</label>
+                        <input type="number" name="base_location_lat" id="latitude" class="form-control" 
+                               value="<?= $data['settings']['base_location_lat'] ?? 0 ?>" step="0.000001" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Longitude</label>
+                        <input type="number" name="base_location_lng" id="longitude" class="form-control" 
+                               value="<?= $data['settings']['base_location_lng'] ?? 0 ?>" step="0.000001" readonly>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="settings-actions">
-        <button type="submit" class="btn btn--primary">Save Settings</button>
-        <button type="button" class="btn btn--secondary" onclick="resetForm()">Reset</button>
+    <div class="header-actions">
+        <button type="submit" class="btn btn--primary">
+            💾 Save Settings
+        </button>
+        <button type="button" class="btn btn--secondary" onclick="resetForm()">
+            🔄 Reset
+        </button>
     </div>
 </form>
 
 <div class="card">
     <div class="card__header">
-        <h2 class="card__title">System Information</h2>
+        <h2 class="card__title">📊 System Information</h2>
     </div>
     <div class="card__body">
-        <div class="system-info">
-            <div class="info-item">
-                <span class="info-label">Version</span>
-                <span class="info-value">ERGON v1.0.0</span>
+        <div class="dashboard-grid">
+            <div class="kpi-card">
+                <div class="kpi-card__value">v1.0.0</div>
+                <div class="kpi-card__label">Version</div>
             </div>
-            <div class="info-item">
-                <span class="info-label">PHP Version</span>
-                <span class="info-value"><?= PHP_VERSION ?></span>
+            <div class="kpi-card">
+                <div class="kpi-card__value"><?= PHP_VERSION ?></div>
+                <div class="kpi-card__label">PHP Version</div>
             </div>
-            <div class="info-item">
-                <span class="info-label">Database</span>
-                <span class="info-value">MySQL</span>
+            <div class="kpi-card">
+                <div class="kpi-card__value">MySQL</div>
+                <div class="kpi-card__label">Database</div>
             </div>
-            <div class="info-item">
-                <span class="info-label">Last Backup</span>
-                <span class="info-value">Never</span>
+            <div class="kpi-card">
+                <div class="kpi-card__value">Active</div>
+                <div class="kpi-card__label">Status</div>
             </div>
         </div>
     </div>

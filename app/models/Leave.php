@@ -10,36 +10,48 @@ class Leave {
     }
     
     public function create($data) {
-        $sql = "INSERT INTO leaves (employee_id, type, start_date, end_date, reason) VALUES (?, ?, ?, ?, ?)";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([
-            $data['user_id'],
-            $data['type'],
-            $data['start_date'],
-            $data['end_date'],
-            $data['reason']
-        ]);
+        try {
+            $sql = "INSERT INTO leaves (user_id, leave_type, start_date, end_date, days_requested, reason) VALUES (?, ?, ?, ?, DATEDIFF(?, ?), ?)";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([
+                $data['user_id'],
+                $data['type'],
+                $data['start_date'],
+                $data['end_date'],
+                $data['end_date'],
+                $data['start_date'],
+                $data['reason']
+            ]);
+        } catch (Exception $e) {
+            error_log('Leave create error: ' . $e->getMessage());
+            return false;
+        }
     }
     
     public function getAll() {
-        $sql = "SELECT l.*, u.name as employee_name, a.name as approved_by_name 
-                FROM leaves l 
-                JOIN users u ON l.employee_id = u.id 
-                LEFT JOIN users a ON l.approved_by = a.id 
-                ORDER BY l.created_at DESC";
-        $stmt = $this->db->query($sql);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $sql = "SELECT l.*, u.name as employee_name 
+                    FROM leaves l 
+                    JOIN users u ON l.user_id = u.id 
+                    ORDER BY l.created_at DESC";
+            $stmt = $this->db->query($sql);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Leave getAll error: ' . $e->getMessage());
+            return [];
+        }
     }
     
     public function getByUserId($user_id) {
-        $sql = "SELECT l.*, a.name as approved_by_name 
-                FROM leaves l 
-                LEFT JOIN users a ON l.approved_by = a.id 
-                WHERE l.employee_id = ? 
-                ORDER BY l.created_at DESC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$user_id]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $sql = "SELECT l.* FROM leaves l WHERE l.user_id = ? ORDER BY l.created_at DESC";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$user_id]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Leave getByUserId error: ' . $e->getMessage());
+            return [];
+        }
     }
     
     public function updateStatus($id, $status, $approved_by) {
@@ -49,14 +61,19 @@ class Leave {
     }
     
     public function getStats($user_id = null) {
-        $where = $user_id ? "WHERE employee_id = $user_id" : "";
-        $sql = "SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
-                    SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved,
-                    SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected
-                FROM leaves $where";
-        $stmt = $this->db->query($sql);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            $where = $user_id ? "WHERE user_id = $user_id" : "";
+            $sql = "SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
+                        SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved,
+                        SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected
+                    FROM leaves $where";
+            $stmt = $this->db->query($sql);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Leave getStats error: ' . $e->getMessage());
+            return ['total' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0];
+        }
     }
 }

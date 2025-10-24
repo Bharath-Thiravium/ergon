@@ -4,7 +4,7 @@ $active_page = 'attendance';
 ob_start();
 ?>
 
-<div class="header-actions" style="margin-bottom: var(--space-6);">
+<div class="header-actions">
     <button class="btn btn--primary" onclick="refreshData()">🔄 Refresh</button>
 </div>
 
@@ -21,7 +21,7 @@ ob_start();
         <div class="kpi-card__header">
             <div class="kpi-card__icon">🟡</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($data['attendance'], fn($a) => $a['check_out'] === null)) ?></div>
+        <div class="kpi-card__value"><?= count(array_filter($data['attendance'] ?? [], fn($a) => empty($a['check_out']))) ?></div>
         <div class="kpi-card__label">Active Sessions</div>
     </div>
 </div>
@@ -46,7 +46,7 @@ ob_start();
                 <tbody>
                     <?php 
                     // Show recent attendance (last 7 days) instead of just today
-                    $recentAttendance = array_filter($data['attendance'], fn($a) => strtotime($a['check_in']) > strtotime('-7 days'));
+                    $recentAttendance = array_filter($data['attendance'] ?? [], fn($a) => !empty($a['check_in']) && strtotime($a['check_in']) > strtotime('-7 days'));
                     if (empty($recentAttendance)): 
                     ?>
                     <tr>
@@ -55,23 +55,25 @@ ob_start();
                     <?php else: ?>
                     <?php foreach ($recentAttendance as $record): ?>
                     <tr>
-                        <td><?= htmlspecialchars($record['user_name']) ?></td>
-                        <td><?= date('M j, H:i', strtotime($record['check_in'])) ?></td>
-                        <td><?= $record['check_out'] ? date('M j, H:i', strtotime($record['check_out'])) : '<span class="badge badge--warning">Still In</span>' ?></td>
-                        <td><?= htmlspecialchars($record['location_name']) ?></td>
+                        <td><?= htmlspecialchars($record['user_name'] ?? 'Unknown') ?></td>
+                        <td><?= !empty($record['check_in']) ? date('M j, H:i', strtotime($record['check_in'])) : 'N/A' ?></td>
+                        <td><?= !empty($record['check_out']) ? date('M j, H:i', strtotime($record['check_out'])) : '<span class="kpi-card__status kpi-card__status--pending">Still In</span>' ?></td>
+                        <td><?= htmlspecialchars($record['location_name'] ?? 'Unknown') ?></td>
                         <td>
-                            <span class="badge badge--<?= $record['check_out'] ? 'success' : 'warning' ?>">
-                                <?= $record['check_out'] ? 'Complete' : 'Active' ?>
+                            <span class="kpi-card__status <?= !empty($record['check_out']) ? '' : 'kpi-card__status--pending' ?>">
+                                <?= !empty($record['check_out']) ? 'Complete' : 'Active' ?>
                             </span>
                         </td>
                         <td>
                             <?php 
-                            if ($record['check_out']) {
+                            if (!empty($record['check_out']) && !empty($record['check_in'])) {
                                 $duration = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 60;
                                 echo number_format($duration, 0) . ' min';
-                            } else {
+                            } elseif (!empty($record['check_in'])) {
                                 $duration = (time() - strtotime($record['check_in'])) / 60;
                                 echo number_format($duration, 0) . ' min (ongoing)';
+                            } else {
+                                echo 'N/A';
                             }
                             ?>
                         </td>

@@ -4,9 +4,13 @@ $active_page = 'leaves';
 ob_start();
 ?>
 
-<?php if ($_SESSION['role'] === 'User'): ?>
+<?php if (isset($data['error'])): ?>
+<div class="alert alert--error"><?= htmlspecialchars($data['error']) ?></div>
+<?php endif; ?>
+
+<?php if ($data['user_role'] === 'user'): ?>
 <div class="header-actions" style="margin-bottom: var(--space-6);">
-    <a href="/leaves/create" class="btn btn--primary">Apply for Leave</a>
+    <a href="/ergon/leaves/create" class="btn btn--primary">Apply for Leave</a>
 </div>
 <?php endif; ?>
 
@@ -18,9 +22,9 @@ ob_start();
     <div class="kpi-card kpi-card--warning">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">🏖️</div>
-            <div class="kpi-card__trend kpi-card__trend--neutral">— 0%</div>
+            <div class="kpi-card__trend kpi-card__trend--neutral">Total</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($data['leaves'], fn($l) => $l['status'] === 'Pending')) ?></div>
+        <div class="kpi-card__value"><?= $data['stats']['pending'] ?? 0 ?></div>
         <div class="kpi-card__label">Pending Requests</div>
         <div class="kpi-card__status kpi-card__status--pending">Awaiting</div>
     </div>
@@ -28,9 +32,9 @@ ob_start();
     <div class="kpi-card kpi-card--success">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">✅</div>
-            <div class="kpi-card__trend kpi-card__trend--up">↗ +5%</div>
+            <div class="kpi-card__trend kpi-card__trend--up">Approved</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($data['leaves'], fn($l) => $l['status'] === 'Approved')) ?></div>
+        <div class="kpi-card__value"><?= $data['stats']['approved'] ?? 0 ?></div>
         <div class="kpi-card__label">Approved Leaves</div>
         <div class="kpi-card__status kpi-card__status--active">Granted</div>
     </div>
@@ -38,9 +42,9 @@ ob_start();
     <div class="kpi-card kpi-card--error">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">❌</div>
-            <div class="kpi-card__trend kpi-card__trend--down">↘ -2%</div>
+            <div class="kpi-card__trend kpi-card__trend--down">Rejected</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($data['leaves'], fn($l) => $l['status'] === 'Rejected')) ?></div>
+        <div class="kpi-card__value"><?= $data['stats']['rejected'] ?? 0 ?></div>
         <div class="kpi-card__label">Rejected Requests</div>
         <div class="kpi-card__status kpi-card__status--urgent">Denied</div>
     </div>
@@ -52,7 +56,7 @@ ob_start();
             <table class="table">
                 <thead>
                     <tr>
-                        <?php if ($_SESSION['role'] !== 'User'): ?>
+                        <?php if ($data['user_role'] !== 'user'): ?>
                         <th>Employee</th>
                         <?php endif; ?>
                         <th>Type</th>
@@ -61,37 +65,45 @@ ob_start();
                         <th>Reason</th>
                         <th>Status</th>
                         <th>Applied On</th>
-                        <?php if ($_SESSION['role'] !== 'User'): ?>
+                        <?php if ($data['user_role'] !== 'user'): ?>
                         <th>Actions</th>
                         <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($data['leaves'] as $leave): ?>
+                    <?php if (empty($data['leaves'])): ?>
                     <tr>
-                        <?php if ($_SESSION['role'] !== 'User'): ?>
-                        <td><?= htmlspecialchars($leave['employee_name']) ?></td>
-                        <?php endif; ?>
-                        <td><?= htmlspecialchars($leave['type']) ?></td>
-                        <td><?= date('M d, Y', strtotime($leave['start_date'])) ?></td>
-                        <td><?= date('M d, Y', strtotime($leave['end_date'])) ?></td>
-                        <td><?= htmlspecialchars($leave['reason']) ?></td>
-                        <td>
-                            <span class="badge badge--<?= strtolower($leave['status']) ?>">
-                                <?= $leave['status'] ?>
-                            </span>
+                        <td colspan="<?= $data['user_role'] !== 'user' ? '8' : '6' ?>" class="text-center">
+                            No leave requests found.
                         </td>
-                        <td><?= date('M d, Y', strtotime($leave['created_at'])) ?></td>
-                        <?php if ($_SESSION['role'] !== 'User' && $leave['status'] === 'Pending'): ?>
-                        <td>
-                            <a href="/ergon/leaves/approve/<?= $leave['id'] ?>" class="btn btn--success btn--sm">Approve</a>
-                            <a href="/ergon/leaves/reject/<?= $leave['id'] ?>" class="btn btn--danger btn--sm">Reject</a>
-                        </td>
-                        <?php elseif ($_SESSION['role'] !== 'User'): ?>
-                        <td>-</td>
-                        <?php endif; ?>
                     </tr>
-                    <?php endforeach; ?>
+                    <?php else: ?>
+                        <?php foreach ($data['leaves'] as $leave): ?>
+                        <tr>
+                            <?php if ($data['user_role'] !== 'user'): ?>
+                            <td><?= htmlspecialchars($leave['employee_name'] ?? 'N/A') ?></td>
+                            <?php endif; ?>
+                            <td><?= htmlspecialchars($leave['leave_type'] ?? $leave['type'] ?? 'N/A') ?></td>
+                            <td><?= isset($leave['start_date']) ? date('M d, Y', strtotime($leave['start_date'])) : 'N/A' ?></td>
+                            <td><?= isset($leave['end_date']) ? date('M d, Y', strtotime($leave['end_date'])) : 'N/A' ?></td>
+                            <td><?= htmlspecialchars($leave['reason'] ?? 'N/A') ?></td>
+                            <td>
+                                <span class="badge badge--<?= strtolower($leave['status'] ?? 'pending') ?>">
+                                    <?= $leave['status'] ?? 'Pending' ?>
+                                </span>
+                            </td>
+                            <td><?= isset($leave['created_at']) ? date('M d, Y', strtotime($leave['created_at'])) : 'N/A' ?></td>
+                            <?php if ($data['user_role'] !== 'user' && ($leave['status'] ?? 'Pending') === 'Pending'): ?>
+                            <td>
+                                <a href="/ergon/leaves/approve/<?= $leave['id'] ?>" class="btn btn--success btn--sm">Approve</a>
+                                <a href="/ergon/leaves/reject/<?= $leave['id'] ?>" class="btn btn--danger btn--sm">Reject</a>
+                            </td>
+                            <?php elseif ($data['user_role'] !== 'user'): ?>
+                            <td>-</td>
+                            <?php endif; ?>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>

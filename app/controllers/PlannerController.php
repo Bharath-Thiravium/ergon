@@ -39,11 +39,18 @@ class PlannerController {
     
     public function create() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $title = trim($_POST['title'] ?? '');
+            if (empty($title)) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Plan title is required']);
+                exit;
+            }
+            
             $planData = [
                 'user_id' => $_SESSION['user_id'],
                 'department_id' => $_POST['department_id'],
                 'plan_date' => $_POST['plan_date'],
-                'title' => $_POST['title'],
+                'title' => $title,
                 'description' => $_POST['description'] ?? '',
                 'priority' => $_POST['priority'],
                 'estimated_hours' => $_POST['estimated_hours'] ?? 0,
@@ -52,8 +59,20 @@ class PlannerController {
             
             $result = $this->plannerModel->createPlan($planData);
             if ($result) {
-                header('Location: /ergon/planner/calendar?success=created');
-                exit;
+                if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'message' => 'Plan created successfully']);
+                    exit;
+                } else {
+                    header('Location: /ergon/planner/calendar?success=created');
+                    exit;
+                }
+            } else {
+                if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => 'Failed to create plan']);
+                    exit;
+                }
             }
         }
         

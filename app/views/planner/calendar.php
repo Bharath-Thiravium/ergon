@@ -165,6 +165,13 @@ function closeModal() {
 
 function submitPlan() {
     const form = document.getElementById('planForm');
+    const title = form.querySelector('input[name="title"]').value.trim();
+    
+    if (!title) {
+        alert('Please enter plan details');
+        return;
+    }
+    
     const formData = new FormData(form);
     
     fetch('/ergon/planner/create', {
@@ -173,6 +180,8 @@ function submitPlan() {
     }).then(() => {
         closeModal();
         location.reload();
+    }).catch(error => {
+        alert('Error creating plan: ' + error.message);
     });
 }
 

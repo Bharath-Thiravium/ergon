@@ -93,6 +93,25 @@ class User {
      */
     public function createEnhanced($data) {
         try {
+            // Server-side validation
+            $email = trim($data['email'] ?? '');
+            $phone = trim($data['phone'] ?? '');
+            
+            // Validate email format
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw new Exception('Invalid email format');
+            }
+            
+            // Validate phone number (10 digits)
+            if (!preg_match('/^[0-9]{10}$/', $phone)) {
+                throw new Exception('Phone number must be exactly 10 digits');
+            }
+            
+            // Check if email already exists
+            if ($this->emailExists($email)) {
+                throw new Exception('Email already exists');
+            }
+            
             // Generate employee ID and temporary password
             $employeeId = $this->generateEmployeeId();
             $tempPassword = $this->generateTempPassword();
@@ -106,10 +125,10 @@ class User {
             $result = $stmt->execute([
                 $employeeId,
                 $data['name'],
-                $data['email'],
+                $email,
                 $hashedPassword,
                 $data['role'] ?? 'user',
-                $data['phone'] ?? null,
+                $phone,
                 $data['department'] ?? null,
                 $tempPassword
             ]);

@@ -30,13 +30,16 @@ class DepartmentController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = $this->departmentModel->create($_POST);
             if ($result) {
-                header('Location: /ergon/departments?success=created');
+                // Ensure proper redirect without 404
+                header('Location: /ergon/departments');
                 exit;
+            } else {
+                $error = 'Failed to create department';
             }
         }
         
         $users = $this->userModel->getAll();
-        $data = ['users' => $users];
+        $data = ['users' => $users, 'error' => $error ?? null];
         include __DIR__ . '/../views/departments/create.php';
     }
     

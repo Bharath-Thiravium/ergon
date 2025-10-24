@@ -72,7 +72,7 @@ $router->get('/leaves/reject/{id}', 'LeaveController', 'reject');
 // Expense Management
 $router->get('/expenses', 'ExpenseController', 'index');
 $router->get('/expenses/create', 'ExpenseController', 'create');
-$router->post('/expenses/create', 'ExpenseController', 'store');
+$router->post('/expenses/create', 'ExpenseController', 'create');
 
 // Advance Management
 $router->get('/advances', 'AdvanceController', 'index');

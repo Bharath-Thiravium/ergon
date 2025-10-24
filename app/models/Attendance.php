@@ -66,24 +66,33 @@ class Attendance {
     }
     
     public function getAll() {
-        $query = "SELECT a.*, u.name as user_name, 
-                         CASE WHEN a.is_valid = 0 THEN 'Invalid Location' ELSE 'Valid' END as validation_status 
-                  FROM attendance a 
-                  JOIN users u ON a.user_id = u.id 
-                  ORDER BY a.created_at DESC";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $query = "SELECT a.*, u.name as user_name 
+                      FROM attendance a 
+                      JOIN users u ON a.user_id = u.id 
+                      ORDER BY a.created_at DESC";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Attendance getAll error: ' . $e->getMessage());
+            return [];
+        }
     }
     
     public function getUserAttendance($userId) {
-        $query = "SELECT a.*, u.name as user_name FROM attendance a 
-                  JOIN users u ON a.user_id = u.id 
-                  WHERE a.user_id = ? 
-                  ORDER BY a.created_at DESC LIMIT 30";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([$userId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $query = "SELECT a.*, u.name as user_name FROM attendance a 
+                      JOIN users u ON a.user_id = u.id 
+                      WHERE a.user_id = ? 
+                      ORDER BY a.created_at DESC LIMIT 30";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$userId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Attendance getUserAttendance error: ' . $e->getMessage());
+            return [];
+        }
     }
     
     public function getAttendanceReport($startDate, $endDate, $userId = null) {

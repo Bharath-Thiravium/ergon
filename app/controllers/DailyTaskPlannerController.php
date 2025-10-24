@@ -134,35 +134,71 @@ class DailyTaskPlannerController extends Controller {
         $today = date('Y-m-d');
         $department = $_GET['department'] ?? null;
         
-        // Get project progress
-        $projectProgress = $this->dailyTaskPlanner->getProjectProgress();
-        
-        // Get team daily activity
-        $teamActivity = $this->dailyTaskPlanner->getTeamDailyActivity($today, $department);
-        
-        // Get delayed tasks
-        $delayedTasks = $this->dailyTaskPlanner->getDelayedTasks();
-        
-        $this->render('daily_planner/dashboard', [
-            'projectProgress' => $projectProgress,
-            'teamActivity' => $teamActivity,
-            'delayedTasks' => $delayedTasks,
-            'selectedDepartment' => $department,
-            'today' => $today
-        ]);
+        try {
+            // Get project progress (filtered by department if specified)
+            $projectProgress = $this->dailyTaskPlanner->getProjectProgress($department);
+            
+            // Get team daily activity
+            $teamActivity = $this->dailyTaskPlanner->getTeamDailyActivity($today, $department);
+            
+            // Get delayed tasks
+            $delayedTasks = $this->dailyTaskPlanner->getDelayedTasks($department);
+            
+            // Get available departments for filter
+            require_once __DIR__ . '/../models/Department.php';
+            $departmentModel = new Department();
+            $departments = $departmentModel->getAll();
+            
+            $this->render('daily_planner/dashboard', [
+                'projectProgress' => $projectProgress,
+                'teamActivity' => $teamActivity,
+                'delayedTasks' => $delayedTasks,
+                'departments' => $departments,
+                'selectedDepartment' => $department,
+                'today' => $today
+            ]);
+        } catch (Exception $e) {
+            error_log('Dashboard error: ' . $e->getMessage());
+            $this->render('daily_planner/dashboard', [
+                'projectProgress' => [],
+                'teamActivity' => [],
+                'delayedTasks' => [],
+                'departments' => [],
+                'selectedDepartment' => $department,
+                'today' => $today,
+                'error' => 'Unable to load dashboard data. Please try again.'
+            ]);
+        }
     }
     
     // Project overview popup
     public function projectOverview() {
         $this->requireAuth(['admin', 'owner']);
         
+        $projectId = $_GET['project_id'] ?? null;
         $department = $_GET['department'] ?? null;
-        $projectProgress = $this->dailyTaskPlanner->getProjectProgress();
         
-        $this->render('daily_planner/project_overview', [
-            'data' => ['projectProgress' => $projectProgress],
-            'selectedDepartment' => $department
-        ]);
+        if ($projectId) {
+            // Get specific project details
+            $projectDetails = $this->dailyTaskPlanner->getProjectDetails($projectId);
+            $projectTasks = $this->dailyTaskPlanner->getProjectTasks($projectId);
+            $projectProgress = $this->dailyTaskPlanner->getProjectProgressById($projectId);
+            
+            $this->render('daily_planner/project_overview', [
+                'projectDetails' => $projectDetails,
+                'projectTasks' => $projectTasks,
+                'projectProgress' => $projectProgress,
+                'selectedDepartment' => $department
+            ]);
+        } else {
+            // Get all projects overview
+            $projectProgress = $this->dailyTaskPlanner->getProjectProgress($department);
+            
+            $this->render('daily_planner/project_overview', [
+                'data' => ['projectProgress' => $projectProgress],
+                'selectedDepartment' => $department
+            ]);
+        }
     }
     
     // Delayed tasks overview

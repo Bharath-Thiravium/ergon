@@ -23,17 +23,35 @@ class ExpenseController {
             exit;
         }
         
-        $user_id = $_SESSION['user_id'];
-        $role = $_SESSION['role'];
-        
-        if ($role === 'User') {
-            $expenses = $this->expense->getByUserId($user_id);
-        } else {
-            $expenses = $this->expense->getAll();
+        try {
+            $user_id = $_SESSION['user_id'];
+            $role = $_SESSION['role'];
+            
+            if ($role === 'user') {
+                $expenses = $this->expense->getByUserId($user_id);
+            } else {
+                $expenses = $this->expense->getAll();
+            }
+            
+            $stats = $this->expense->getStats($role === 'user' ? $user_id : null);
+            
+            $data = [
+                'expenses' => $expenses,
+                'stats' => $stats,
+                'user_role' => $role
+            ];
+            
+            include __DIR__ . '/../views/expenses/index.php';
+        } catch (Exception $e) {
+            error_log('Expense index error: ' . $e->getMessage());
+            $data = [
+                'expenses' => [],
+                'stats' => ['total' => 0, 'pending' => 0, 'approved_amount' => 0, 'rejected' => 0],
+                'user_role' => $_SESSION['role'],
+                'error' => 'Unable to load expense data. Please try again.'
+            ];
+            include __DIR__ . '/../views/expenses/index.php';
         }
-        
-        $data = ['expenses' => $expenses];
-        include __DIR__ . '/../views/expenses/index.php';
     }
     
     public function create() {
