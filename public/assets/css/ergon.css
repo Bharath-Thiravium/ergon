@@ -1246,6 +1246,29 @@ body {
   }
 }
 
+/* Viewport unit fallbacks */
+.main-content {
+  min-height: calc(100vh - 73px);
+  min-height: 600px; /* fallback */
+}
+
+.sidebar {
+  height: 100vh;
+  height: 100%; /* fallback */
+}
+
+/* Additional viewport fallbacks */
+:root {
+  --vh: 1vh;
+}
+
+@media screen and (max-width: 768px) {
+  .main-content {
+    min-height: calc(var(--vh, 1vh) * 100 - 73px);
+    min-height: 500px; /* mobile fallback */
+  }
+}
+
 @supports not (display: grid) {
   .dashboard-grid {
     display: block;

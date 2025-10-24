@@ -379,8 +379,11 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     });
     </script>
     
-    <!-- Core JavaScript -->
-    <script src="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/js/ergon-core.js"></script>
+    <!-- Polyfills for older browsers -->
+    <script src="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/js/polyfills.js"></script>
+    
+    <!-- Core JavaScript (ES5 Compatible) -->
+    <script src="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/js/ergon-es5.js"></script>
     
     <?php 
     // Activity tracking for IT department only (simplified)
