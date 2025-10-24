@@ -90,13 +90,11 @@ body {
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
   padding: 0 var(--space-6);
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 260px;
-  right: 0;
   z-index: 1000;
   box-shadow: var(--shadow-sm);
-  height: 64px;
+  margin-left: 260px;
 }
 
 .header__nav {
@@ -484,7 +482,6 @@ body {
 .main-content {
   flex: 1;
   margin-left: 260px;
-  margin-top: 64px;
   padding: var(--space-8);
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
@@ -1286,7 +1283,7 @@ body {
   }
   
   .header {
-    left: 0;
+    margin-left: 0;
   }
   
   .main-content {
