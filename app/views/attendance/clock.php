@@ -25,9 +25,10 @@ ob_start();
 </div>
 
 <script>
+// Initialize location tracking
 let userLocation = null;
 
-// Get user location
+// Get user location on page load
 if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(function(position) {
         userLocation = {
@@ -43,57 +44,18 @@ if (navigator.geolocation) {
     document.getElementById('location-info').textContent = 'Geolocation not supported';
 }
 
-// Clock in/out functionality
-document.getElementById('clock-in-btn').addEventListener('click', function() {
-    if (!userLocation) {
-        alert('Please allow location access to clock in');
-        return;
+// Use global functions from ERGON core
+document.addEventListener('DOMContentLoaded', function() {
+    const clockInBtn = document.getElementById('clock-in-btn');
+    const clockOutBtn = document.getElementById('clock-out-btn');
+    
+    if (clockInBtn) {
+        clockInBtn.addEventListener('click', ERGON.pages.attendance.clockIn);
     }
     
-    fetch('/ergon/attendance/clock', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            action: 'clock_in',
-            latitude: userLocation.latitude,
-            longitude: userLocation.longitude,
-            location_name: 'Office Location'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('status').textContent = 'Clocked In';
-            document.getElementById('clock-in-btn').style.display = 'none';
-            document.getElementById('clock-out-btn').style.display = 'inline-block';
-        } else {
-            alert('Clock in failed: ' + data.message);
-        }
-    });
-});
-
-document.getElementById('clock-out-btn').addEventListener('click', function() {
-    fetch('/ergon/attendance/clock', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            action: 'clock_out'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('status').textContent = 'Clocked Out';
-            document.getElementById('clock-in-btn').style.display = 'inline-block';
-            document.getElementById('clock-out-btn').style.display = 'none';
-        } else {
-            alert('Clock out failed: ' + data.message);
-        }
-    });
+    if (clockOutBtn) {
+        clockOutBtn.addEventListener('click', ERGON.pages.attendance.clockOut);
+    }
 });
 </script>
 

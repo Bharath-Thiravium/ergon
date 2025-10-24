@@ -166,7 +166,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                     </a>
                     <a href="/ergon/daily-planner/dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📝</span>
-                        Task Planner Dashboard
+                        Progress Dashboard
                     </a>
                     <a href="/ergon/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
@@ -216,7 +216,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                     </a>
                     <a href="/ergon/daily-planner/dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📝</span>
-                        Task Planner Dashboard
+                        Progress Dashboard
                     </a>
                     <a href="/ergon/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
@@ -246,7 +246,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                     </a>
                     <a href="/ergon/daily-planner" class="sidebar__link <?= $active_page === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📝</span>
-                        Daily Task Planner
+                        Daily Progress Report
                     </a>
                     <a href="/ergon/user/requests" class="sidebar__link <?= $active_page === 'requests' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📋</span>
@@ -378,6 +378,9 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         });
     });
     </script>
+    
+    <!-- Core JavaScript -->
+    <script src="<?= $_SERVER['REQUEST_SCHEME'] ?>://<?= $_SERVER['HTTP_HOST'] ?>/ergon/public/assets/js/ergon-core.js"></script>
     
     <?php 
     // Activity tracking for IT department only (simplified)

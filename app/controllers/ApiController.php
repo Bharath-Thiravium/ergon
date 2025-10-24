@@ -490,5 +490,98 @@ class ApiController {
         $c = 2 * atan2(sqrt($a), sqrt(1-$a));
         return $earthRadius * $c;
     }
+    
+    public function activityLog() {
+        header('Content-Type: application/json');
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $activityType = $input['activity_type'] ?? '';
+        $description = $input['description'] ?? '';
+        $isActive = $input['is_active'] ?? true;
+        
+        try {
+            require_once __DIR__ . '/../../config/database.php';
+            $database = new Database();
+            $conn = $database->getConnection();
+            
+            $stmt = $conn->prepare(
+                "INSERT INTO activity_logs (user_id, activity_type, description, is_active, created_at) 
+                 VALUES (?, ?, ?, ?, NOW())"
+            );
+            $stmt->execute([$_SESSION['user_id'], $activityType, $description, $isActive ? 1 : 0]);
+            
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Failed to log activity']);
+        }
+        
+        exit;
+    }
+    
+    public function sessionFromJWT() {
+        header('Content-Type: application/json');
+        
+        $headers = getallheaders();
+        $authHeader = $headers['Authorization'] ?? '';
+        
+        if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+            echo json_encode(['success' => false, 'error' => 'Missing authorization token']);
+            exit;
+        }
+        
+        $token = $matches[1];
+        $payload = Security::verifyJWT($token);
+        
+        if (!$payload) {
+            echo json_encode(['success' => false, 'error' => 'Invalid token']);
+            exit;
+        }
+        
+        // Start session and set user data
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        try {
+            $user = $this->userModel->getById($payload->user_id);
+            if ($user) {
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_name'] = $user['name'];
+                $_SESSION['user_email'] = $user['email'];
+                $_SESSION['role'] = $user['role'];
+                $_SESSION['user_department'] = $user['department'];
+                
+                echo json_encode(['success' => true, 'message' => 'Session established']);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'User not found']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Database error']);
+        }
+        
+        exit;
+    }
+    
+    public function test() {
+        header('Content-Type: application/json');
+        
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Test API endpoint working',
+            'data' => $input
+        ]);
+        exit;
+    }
 }
 ?>

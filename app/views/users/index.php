@@ -123,75 +123,8 @@ ob_start();
 </div>
 
 <script>
-function resetPassword(userId, userName) {
-    if (confirm(`Reset password for ${userName}? This will generate a new temporary password.`)) {
-        fetch('/ergon/users/reset-password', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ user_id: userId })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(`Password reset successful! New password: ${data.temp_password}`);
-                // Auto-download credentials
-                const element = document.createElement('a');
-                const content = `ERGON Password Reset\n===================\n\nUser: ${userName}\nNew Password: ${data.temp_password}\n\nInstructions:\n1. User must login and reset password on first login\n2. Generated on: ${new Date().toLocaleString()}`;
-                element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
-                element.setAttribute('download', `password_reset_${userName.replace(/\s+/g, '_')}.txt`);
-                element.style.display = 'none';
-                document.body.appendChild(element);
-                element.click();
-                document.body.removeChild(element);
-            } else {
-                alert('Password reset failed: ' + data.error);
-            }
-        })
-        .catch(error => {
-            alert('Error: ' + error.message);
-        });
-    }
-}
-
-function deleteUser(userId, userName) {
-    const action = prompt(`Choose action for ${userName}:\n\n1. Type 'inactive' to mark as inactive (resigned)\n2. Type 'delete' to permanently delete (mistaken entry)\n\nEnter your choice:`);
-    
-    if (action === 'inactive') {
-        if (confirm(`Mark ${userName} as inactive? This will disable their access but keep their data.`)) {
-            fetch('/ergon/users/inactive/' + userId, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('User marked as inactive!');
-                    location.reload();
-                } else {
-                    alert('Failed: ' + data.error);
-                }
-            });
-        }
-    } else if (action === 'delete') {
-        if (confirm(`PERMANENTLY DELETE ${userName}? This cannot be undone and will remove all their data.`)) {
-            fetch('/ergon/users/delete/' + userId, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('User permanently deleted!');
-                    location.reload();
-                } else {
-                    alert('Delete failed: ' + data.error);
-                }
-            });
-        }
-    }
-}
+// Functions are now handled by ERGON core JavaScript
+// resetPassword and deleteUser are globally available
 </script>
 
 <style>

@@ -1,5 +1,5 @@
 <?php
-$title = 'Daily Task Planner';
+$title = 'Daily Progress Report';
 $active_page = 'daily-planner';
 ob_start();
 ?>
@@ -34,51 +34,68 @@ ob_start();
 <!-- Task Entry Form -->
 <div class="card">
     <div class="card__header">
-        <h2 class="card__title">Task Entry Form</h2>
+        <h2 class="card__title">Progress Report Form</h2>
     </div>
     <div class="card__body">
                     <form method="POST" action="/daily-planner/submit" enctype="multipart/form-data" id="taskForm">
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Select Project</label>
-                                <select class="form-control" name="project_id" id="projectSelect" required>
-                                            <option value="">Choose Project...</option>
-                                            <?php if (empty($projects)): ?>
-                                                <option value="" disabled>No projects available for <?= $userDepartment ?> department</option>
-                                            <?php else: ?>
-                                                <?php foreach ($projects as $project): ?>
-                                                    <option value="<?= $project['id'] ?>"><?= htmlspecialchars($project['name']) ?></option>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
-                                        </select>
+                                <label class="form-label">Task Source</label>
+                                <select class="form-control" id="taskSource" onchange="toggleTaskSource()">
+                                    <option value="planned">From Daily Planner</option>
+                                    <option value="adhoc">Ad-hoc Task (Not Planned)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="plannedTaskSection">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Select Planned Activity</label>
+                                    <select class="form-control" name="plan_id" id="planSelect">
+                                        <option value="">Choose from Daily Planner...</option>
+                                        <?php if (!empty($todayPlans)): ?>
+                                            <?php foreach ($todayPlans as $plan): ?>
+                                                <option value="<?= $plan['id'] ?>"><?= htmlspecialchars($plan['title']) ?> (<?= $plan['priority'] ?>)</option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </select>
                                 </div>
-                                
+                            </div>
+                        </div>
+                        
+                        <div id="adhocTaskSection" style="display:none;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Task Title</label>
+                                    <input type="text" class="form-control" name="adhoc_title" placeholder="Enter task title">
+                                </div>
                                 <div class="form-group">
                                     <label class="form-label">Task Category</label>
-                                    <select class="form-control" name="category_id" id="categorySelect">
-                                            <option value="">Choose Category...</option>
-                                            <?php if (empty($taskCategories)): ?>
-                                                <option value="" disabled>No categories available for <?= $userDepartment ?> department</option>
-                                            <?php else: ?>
-                                                <?php foreach ($taskCategories as $category): ?>
-                                                    <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['category_name']) ?></option>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
-                                        </select>
+                                    <select class="form-control" name="adhoc_category">
+                                        <option value="Development">Development</option>
+                                        <option value="Meeting">Meeting</option>
+                                        <option value="Documentation">Documentation</option>
+                                        <option value="Support">Support</option>
+                                        <option value="Other">Other</option>
+                                    </select>
                                 </div>
+                            </div>
                         </div>
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Select Task</label>
-                                <select class="form-control" name="task_id" id="taskSelect" required>
-                                    <option value="">Choose Task...</option>
+                                <label class="form-label">Completion Status</label>
+                                <select class="form-control" name="completion_status" required>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="blocked">Blocked</option>
                                 </select>
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label">Progress %</label>
-                                <input type="number" class="form-control" name="progress_percentage" min="0" max="100" required>
+                                <input type="number" class="form-control" name="progress_percentage" min="0" max="100" value="0" required>
                             </div>
                         </div>
                         
@@ -108,7 +125,7 @@ ob_start();
                         </div>
                         
                         <div class="form-actions">
-                            <button type="submit" class="btn btn--primary">✅ Submit Task Update</button>
+                            <button type="submit" class="btn btn--primary">✅ Submit Progress Report</button>
                         </div>
                     </form>
     </div>
@@ -118,16 +135,16 @@ ob_start();
         <?php if (!empty($todayTasks)): ?>
         <div class="card">
             <div class="card__header">
-                <h2 class="card__title">📋 Today's Task Updates</h2>
+                <h2 class="card__title">📋 Today's Progress Reports</h2>
             </div>
             <div class="card__body">
                 <div class="table-responsive">
                     <table class="table">
                                     <thead>
                                         <tr>
-                                            <th>Project</th>
-                                            <th>Category</th>
-                                            <th>Task</th>
+                                            <th>Source</th>
+                                            <th>Task/Activity</th>
+                                            <th>Status</th>
                                             <th>Progress</th>
                                             <th>Hours</th>
                                             <th>Notes</th>
@@ -159,63 +176,11 @@ ob_start();
         <?php endif; ?>
 
 <script>
-// Load tasks when project/category changes
-document.getElementById('projectSelect').addEventListener('change', loadTasks);
-document.getElementById('categorySelect').addEventListener('change', loadTasks);
-
-function loadTasks() {
-    const projectId = document.getElementById('projectSelect').value;
-    const categoryId = document.getElementById('categorySelect').value;
-    const taskSelect = document.getElementById('taskSelect');
-    
-    if (!projectId) {
-        taskSelect.innerHTML = '<option value="">Choose Task...</option>';
-        return;
-    }
-    
-    let url = `/daily-planner/get-tasks?project_id=${projectId}`;
-    if (categoryId) url += `&category_id=${categoryId}`;
-    
-    fetch(url)
-        .then(response => response.json())
-        .then(tasks => {
-            taskSelect.innerHTML = '<option value="">Choose Task...</option>';
-            tasks.forEach(task => {
-                taskSelect.innerHTML += `<option value="${task.id}">${task.task_name} (${task.completion_percentage}% complete)</option>`;
-            });
-        })
-        .catch(error => console.error('Error loading tasks:', error));
-}
-
-// GPS Location
-document.getElementById('getLocationBtn').addEventListener('click', function() {
-    const btn = this;
-    const status = document.getElementById('locationStatus');
-    
-    btn.disabled = true;
-    btn.innerHTML = '📍 Getting Location...';
-    status.textContent = 'Fetching GPS coordinates...';
-    
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                document.getElementById('gpsLat').value = position.coords.latitude;
-                document.getElementById('gpsLng').value = position.coords.longitude;
-                btn.innerHTML = '✅ Location Captured';
-                btn.className = 'btn btn--success';
-                status.textContent = `Location: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
-            },
-            function(error) {
-                btn.disabled = false;
-                btn.innerHTML = '📍 Get GPS Location';
-                status.textContent = 'Location access denied or unavailable';
-                console.error('GPS Error:', error);
-            }
-        );
-    } else {
-        btn.disabled = false;
-        btn.innerHTML = '📍 Get GPS Location';
-        status.textContent = 'GPS not supported by browser';
+// Use global functions from ERGON core
+document.addEventListener('DOMContentLoaded', function() {
+    const getLocationBtn = document.getElementById('getLocationBtn');
+    if (getLocationBtn) {
+        getLocationBtn.addEventListener('click', ERGON.pages.planner.getLocation);
     }
 });
 </script>

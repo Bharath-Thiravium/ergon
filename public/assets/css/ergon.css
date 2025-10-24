@@ -749,9 +749,47 @@ body {
   border-color: var(--error);
 }
 
+.btn--danger {
+  background: var(--error);
+  color: var(--text-inverse);
+  border-color: var(--error);
+}
+
 .btn--danger:hover {
   background: #b91c1c;
   border-color: #b91c1c;
+}
+
+.btn--warning {
+  background: var(--warning);
+  color: var(--text-inverse);
+  border-color: var(--warning);
+}
+
+.btn--warning:hover {
+  background: #b45309;
+  border-color: #b45309;
+}
+
+.btn--info {
+  background: var(--info);
+  color: var(--text-inverse);
+  border-color: var(--info);
+}
+
+.btn--info:hover {
+  background: #0369a1;
+  border-color: #0369a1;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn:disabled:hover {
+  transform: none;
 }
 
 /* Table Styles */

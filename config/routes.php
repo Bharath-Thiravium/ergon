@@ -73,6 +73,11 @@ $router->get('/expenses', 'ExpenseController', 'index');
 $router->get('/expenses/create', 'ExpenseController', 'create');
 $router->post('/expenses/create', 'ExpenseController', 'store');
 
+// Advance Management
+$router->get('/advances', 'AdvanceController', 'index');
+$router->get('/advances/create', 'AdvanceController', 'create');
+$router->post('/advances/create', 'AdvanceController', 'store');
+
 // Reports
 $router->get('/reports', 'ReportsController', 'index');
 $router->get('/reports/activity', 'ReportsController', 'activity');
@@ -101,6 +106,9 @@ $router->get('/api/tasks', 'ApiController', 'tasks');
 $router->post('/api/tasks/update', 'ApiController', 'updateTask');
 $router->get('/api/generate-employee-id', 'ApiController', 'generateEmployeeId');
 $router->post('/api/update-preference', 'ApiController', 'updatePreference');
+$router->post('/api/activity-log', 'ApiController', 'activityLog');
+$router->post('/api/session_from_jwt', 'ApiController', 'sessionFromJWT');
+$router->post('/api/test', 'ApiController', 'test');
 
 // Mobile API Routes
 $router->post('/api/register_device', 'ApiController', 'registerDevice');
