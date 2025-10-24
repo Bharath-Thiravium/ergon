@@ -1,9 +1,10 @@
 # ERGON Hostinger Optimized .htaccess
 RewriteEngine On
 
-# Force HTTPS (if SSL is available)
-RewriteCond %{HTTPS} off
-RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# Force HTTPS only in production (disabled for localhost)
+# RewriteCond %{HTTPS} off
+# RewriteCond %{HTTP_HOST} !^localhost
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 # Remove trailing slash
 RewriteCond %{REQUEST_FILENAME} !-d
