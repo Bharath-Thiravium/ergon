@@ -10,6 +10,7 @@ class Environment {
     public static function detect() {
         if (self::$environment === null) {
             $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
+            $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
             
             // Development indicators
             $devHosts = ['localhost', '127.0.0.1', 'ergon.test', 'ergon.local'];
@@ -20,6 +21,11 @@ class Environment {
                     $isDev = true;
                     break;
                 }
+            }
+            
+            // Additional Hostinger detection
+            if (!$isDev && (strpos($docRoot, '/home/') === 0 || strpos($docRoot, '/public_html/') !== false)) {
+                $isDev = false; // Force production for Hostinger
             }
             
             self::$environment = $isDev ? 'development' : 'production';
@@ -43,8 +49,18 @@ class Environment {
         if (self::isDevelopment()) {
             return $protocol . '://' . $host . '/ergon';
         } else {
-            return $protocol . '://' . $host;
+            // Hostinger production URL
+            return $protocol . '://' . $host . '/ergon';
         }
+    }
+    
+    public static function isHostinger() {
+        $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+        $serverName = $_SERVER['SERVER_NAME'] ?? '';
+        
+        return strpos($docRoot, '/home/') === 0 || 
+               strpos($serverName, 'hostinger') !== false ||
+               strpos($docRoot, '/public_html/') !== false;
     }
 }
 ?>
