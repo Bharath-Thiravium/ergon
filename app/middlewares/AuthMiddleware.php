@@ -26,6 +26,9 @@ class AuthMiddleware {
                 return false;
             }
             
+            // Validate role integrity periodically
+            self::validateUserRole();
+            
             $_SESSION['last_activity'] = time();
             return true;
         }
@@ -161,6 +164,37 @@ class AuthMiddleware {
     private static function isAjaxRequest() {
         return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
                strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    }
+    
+    /**
+     * Validate user role against database
+     */
+    private static function validateUserRole() {
+        if (!isset($_SESSION['role_last_check']) || (time() - $_SESSION['role_last_check']) > 300) {
+            try {
+                require_once __DIR__ . '/../../config/database.php';
+                $db = new Database();
+                $conn = $db->getConnection();
+                
+                $stmt = $conn->prepare("SELECT role, status FROM users WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $user = $stmt->fetch();
+                
+                if (!$user || $user['status'] !== 'active') {
+                    self::logout();
+                    return false;
+                }
+                
+                if ($user['role'] !== $_SESSION['role']) {
+                    error_log("Role mismatch detected for user {$_SESSION['user_id']}: session={$_SESSION['role']}, db={$user['role']}");
+                    $_SESSION['role'] = $user['role'];
+                }
+                
+                $_SESSION['role_last_check'] = time();
+            } catch (Exception $e) {
+                error_log("Role validation error: " . $e->getMessage());
+            }
+        }
     }
     
     /**

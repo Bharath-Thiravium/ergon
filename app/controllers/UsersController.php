@@ -1,7 +1,8 @@
 <?php
+require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../models/User.php';
 
-class UsersController {
+class UsersController extends Controller {
     private $userModel;
     
     public function __construct() {
@@ -65,36 +66,26 @@ class UsersController {
         }
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $result = $this->userModel->updateEnhanced($id, $_POST);
-            if ($result) {
-                header('Location: /ergon/users?success=updated');
-                exit;
-            }
+            $this->handleFileUploads($id);
+            $this->updateUserData($id, $_POST);
+            header('Location: /ergon/users?success=updated');
+            exit;
         }
         
         $user = $this->userModel->getById($id);
         
-        // Debug: Check if user data is loaded
         if (!$user) {
-            $data = ['user' => null, 'departments' => [], 'user_departments' => []];
-            include __DIR__ . '/../views/users/edit.php';
-            return;
+            $user = [
+                'id' => $id, 'name' => '', 'email' => '', 'phone' => '',
+                'role' => 'user', 'status' => 'active', 'employee_id' => '',
+                'department' => '', 'designation' => '', 'joining_date' => '',
+                'salary' => '', 'date_of_birth' => '', 'gender' => '',
+                'address' => '', 'emergency_contact' => ''
+            ];
         }
         
-        require_once __DIR__ . '/../models/Department.php';
-        $departmentModel = new Department();
-        $departments = $departmentModel->getAll();
-        
-        // Get user departments
-        $userDepartments = $this->getUserDepartments($id);
-        
-        $data = [
-            'user' => $user, 
-            'departments' => $departments, 
-            'user_departments' => $userDepartments
-        ];
-        
-        include __DIR__ . '/../views/users/edit.php';
+        $data = ['user' => $user];
+        $this->view('users/edit', $data);
     }
     
     public function downloadCredentials() {
@@ -203,19 +194,187 @@ class UsersController {
         exit;
     }
     
-    private function getUserDepartments($userId) {
+    private function updateUserData($id, $data) {
+        require_once __DIR__ . '/../../config/database.php';
+        $database = new Database();
+        $conn = $database->getConnection();
+        
+        $departments = isset($data['departments']) ? implode(',', $data['departments']) : '';
+        
+        $sql = "UPDATE users SET 
+                name = ?, email = ?, phone = ?, role = ?, status = ?,
+                department = ?, designation = ?, joining_date = ?, salary = ?,
+                date_of_birth = ?, gender = ?, address = ?, emergency_contact = ?
+                WHERE id = ?";
+        
+        $stmt = $conn->prepare($sql);
+        return $stmt->execute([
+            $data['name'] ?? '',
+            $data['email'] ?? '',
+            $data['phone'] ?? '',
+            $data['role'] ?? 'user',
+            $data['status'] ?? 'active',
+            $departments,
+            $data['designation'] ?? '',
+            $data['joining_date'] ?? null,
+            $data['salary'] ?? null,
+            $data['date_of_birth'] ?? null,
+            $data['gender'] ?? null,
+            $data['address'] ?? '',
+            $data['emergency_contact'] ?? '',
+            $id
+        ]);
+    }
+    
+    public function viewUser($id) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        $user = $this->userModel->getById($id);
+        if (!$user) {
+            header('Location: /ergon/users?error=user_not_found');
+            exit;
+        }
+        
+        $documents = $this->getUserDocuments($id);
+        
+        $data = ['user' => $user, 'documents' => $documents];
+        $this->view('users/view', $data);
+    }
+    
+    public function downloadDocument($userId, $filename) {
+        $filePath = __DIR__ . '/../../storage/user_documents/' . $userId . '/' . $filename;
+        
+        if (file_exists($filePath)) {
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="' . basename($filename) . '"');
+            header('Content-Length: ' . filesize($filePath));
+            readfile($filePath);
+            exit;
+        } else {
+            header('Location: /ergon/users/view/' . $userId . '?error=file_not_found');
+            exit;
+        }
+    }
+    
+    private function getUserDocuments($userId) {
+        $uploadDir = __DIR__ . '/../../storage/user_documents/' . $userId . '/';
+        $documents = [];
+        
+        if (is_dir($uploadDir)) {
+            $files = scandir($uploadDir);
+            foreach ($files as $file) {
+                if ($file !== '.' && $file !== '..') {
+                    $filePath = $uploadDir . $file;
+                    $documents[] = [
+                        'filename' => $file,
+                        'name' => $this->getDocumentDisplayName($file),
+                        'size' => $this->formatFileSize(filesize($filePath))
+                    ];
+                }
+            }
+        }
+        
+        return $documents;
+    }
+    
+    private function getDocumentDisplayName($filename) {
+        $parts = explode('_', $filename, 3);
+        if (count($parts) >= 2) {
+            $type = str_replace('_', ' ', ucfirst($parts[0]));
+            return $type;
+        }
+        return $filename;
+    }
+    
+    private function formatFileSize($bytes) {
+        if ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 2) . ' MB';
+        } elseif ($bytes >= 1024) {
+            return number_format($bytes / 1024, 2) . ' KB';
+        } else {
+            return $bytes . ' bytes';
+        }
+    }
+    
+    public function inactive($id) {
+        header('Content-Type: application/json');
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
         try {
             require_once __DIR__ . '/../../config/database.php';
             $database = new Database();
             $conn = $database->getConnection();
             
-            $stmt = $conn->prepare("SELECT department_id FROM user_departments WHERE user_id = ?");
-            $stmt->execute([$userId]);
-            $result = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $stmt = $conn->prepare("UPDATE users SET status = 'inactive' WHERE id = ?");
+            $result = $stmt->execute([$id]);
             
-            return $result ?: [];
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'User marked as inactive']);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Failed to update user status']);
+            }
         } catch (Exception $e) {
-            return [];
+            echo json_encode(['success' => false, 'error' => 'Database error']);
+        }
+        
+        exit;
+    }
+    
+    public function delete($id) {
+        header('Content-Type: application/json');
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../../config/database.php';
+            $database = new Database();
+            $conn = $database->getConnection();
+            
+            $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'User permanently deleted']);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Failed to delete user']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Database error']);
+        }
+        
+        exit;
+    }
+    
+    private function handleFileUploads($userId) {
+        $uploadDir = __DIR__ . '/../../storage/user_documents/' . $userId . '/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        $fileFields = ['profile_photo', 'pan_card', 'aadhar_card', 'resume', 'passport', 'driving_license'];
+        
+        foreach ($fileFields as $field) {
+            if (isset($_FILES[$field]) && $_FILES[$field]['error'] === UPLOAD_ERR_OK) {
+                $fileName = $field . '_' . time() . '_' . $_FILES[$field]['name'];
+                move_uploaded_file($_FILES[$field]['tmp_name'], $uploadDir . $fileName);
+            }
         }
     }
 }

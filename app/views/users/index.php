@@ -89,7 +89,20 @@ ob_start();
                                 <?= ucfirst($user['role']) ?>
                             </span>
                         </td>
-                        <td><?= htmlspecialchars($user['department'] ?? 'N/A') ?></td>
+                        <td>
+                            <?php 
+                            $departments = explode(',', $user['department'] ?? '');
+                            $departments = array_filter($departments);
+                            if (count($departments) > 0) {
+                                echo htmlspecialchars($departments[0]);
+                                if (count($departments) > 1) {
+                                    echo ' <span class="badge badge--info">+' . (count($departments) - 1) . '</span>';
+                                }
+                            } else {
+                                echo 'N/A';
+                            }
+                            ?>
+                        </td>
                         <td>
                             <span class="badge badge--<?= $user['status'] === 'active' ? 'success' : 'error' ?>">
                                 <?= ucfirst($user['status']) ?>
@@ -97,8 +110,12 @@ ob_start();
                         </td>
                         <td><?= date('M d, Y', strtotime($user['created_at'])) ?></td>
                         <td>
-                            <a href="/ergon/users/edit/<?= $user['id'] ?>" class="btn btn--secondary btn--sm">Edit</a>
-                            <button onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--warning btn--sm">Reset Password</button>
+                            <div class="action-buttons">
+                                <a href="/ergon/users/view/<?= $user['id'] ?>" class="btn btn--info btn--sm" title="View User">👁️</a>
+                                <a href="/ergon/users/edit/<?= $user['id'] ?>" class="btn btn--secondary btn--sm" title="Edit User">✏️</a>
+                                <button onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--warning btn--sm" title="Reset Password">🔑</button>
+                                <button onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--danger btn--sm" title="Delete User">🗑️</button>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -140,7 +157,68 @@ function resetPassword(userId, userName) {
         });
     }
 }
+
+function deleteUser(userId, userName) {
+    const action = prompt(`Choose action for ${userName}:\n\n1. Type 'inactive' to mark as inactive (resigned)\n2. Type 'delete' to permanently delete (mistaken entry)\n\nEnter your choice:`);
+    
+    if (action === 'inactive') {
+        if (confirm(`Mark ${userName} as inactive? This will disable their access but keep their data.`)) {
+            fetch('/ergon/users/inactive/' + userId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User marked as inactive!');
+                    location.reload();
+                } else {
+                    alert('Failed: ' + data.error);
+                }
+            });
+        }
+    } else if (action === 'delete') {
+        if (confirm(`PERMANENTLY DELETE ${userName}? This cannot be undone and will remove all their data.`)) {
+            fetch('/ergon/users/delete/' + userId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User permanently deleted!');
+                    location.reload();
+                } else {
+                    alert('Delete failed: ' + data.error);
+                }
+            });
+        }
+    }
+}
 </script>
+
+<style>
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.action-buttons .btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.action-buttons .btn:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s;
+}
+</style>
 
 <?php
 $content = ob_get_clean();

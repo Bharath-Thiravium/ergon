@@ -25,8 +25,12 @@ $router->get('/user/dashboard', 'UserController', 'dashboard');
 $router->get('/users', 'UsersController', 'index');
 $router->get('/users/create', 'UsersController', 'create');
 $router->post('/users/create', 'UsersController', 'create');
+$router->get('/users/view/{id}', 'UsersController', 'viewUser');
 $router->get('/users/edit/{id}', 'UsersController', 'edit');
 $router->post('/users/edit/{id}', 'UsersController', 'edit');
+$router->get('/users/download-document/{userId}/{filename}', 'UsersController', 'downloadDocument');
+$router->post('/users/inactive/{id}', 'UsersController', 'inactive');
+$router->post('/users/delete/{id}', 'UsersController', 'delete');
 $router->post('/users/reset-password', 'UsersController', 'resetUserPassword');
 
 // User Request Routes (for mobile/web)
@@ -124,6 +128,13 @@ $router->get('/tasks/velocity/{userId}', 'TasksController', 'getVelocity');
 $router->get('/tasks/productivity/{userId}', 'TasksController', 'getProductivity');
 $router->post('/tasks/bulk-create', 'TasksController', 'bulkCreate');
 $router->get('/tasks/{id}/subtasks', 'TasksController', 'getSubtasks');
+
+// Daily Task Planner Routes
+$router->get('/daily-planner', 'DailyTaskPlannerController', 'index');
+$router->post('/daily-planner/submit', 'DailyTaskPlannerController', 'submitTask');
+$router->get('/daily-planner/get-tasks', 'DailyTaskPlannerController', 'getProjectTasks');
+$router->get('/daily-planner/dashboard', 'DailyTaskPlannerController', 'dashboard');
+$router->get('/api/project-progress', 'DailyTaskPlannerController', 'projectProgressApi');
 
 // Export Routes
 $router->get('/reports/export', 'ReportsController', 'export');

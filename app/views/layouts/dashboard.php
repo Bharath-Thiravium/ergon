@@ -14,6 +14,30 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// Validate session integrity
+if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
+    // Prevent role tampering by validating against database occasionally
+    if (!isset($_SESSION['role_validated']) || (time() - $_SESSION['role_validated']) > 300) {
+        require_once __DIR__ . '/../../../config/database.php';
+        $db = new Database();
+        $conn = $db->getConnection();
+        $stmt = $conn->prepare("SELECT role FROM users WHERE id = ? AND status = 'active'");
+        $stmt->execute([$_SESSION['user_id']]);
+        $dbRole = $stmt->fetchColumn();
+        
+        if ($dbRole && $dbRole !== $_SESSION['role']) {
+            // Role changed in database, update session
+            $_SESSION['role'] = $dbRole;
+        } elseif (!$dbRole) {
+            // User no longer exists or inactive
+            session_destroy();
+            header('Location: /ergon/login');
+            exit;
+        }
+        $_SESSION['role_validated'] = time();
+    }
+}
+
 // Load user preferences
 require_once __DIR__ . '/../../models/UserPreference.php';
 $preferenceModel = new UserPreference();
@@ -135,6 +159,10 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                         <span class="sidebar__icon">📅</span>
                         Daily Planner
                     </a>
+                    <a href="/ergon/daily-planner/dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">📝</span>
+                        Task Planner Dashboard
+                    </a>
                     <a href="/ergon/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
                         Leave Overview
@@ -181,6 +209,10 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                         <span class="sidebar__icon">📅</span>
                         Daily Planner
                     </a>
+                    <a href="/ergon/daily-planner/dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">📝</span>
+                        Task Planner Dashboard
+                    </a>
                     <a href="/ergon/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
                         Leave Requests
@@ -206,6 +238,10 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                     <a href="/ergon/planner/calendar" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
                         My Daily Planner
+                    </a>
+                    <a href="/ergon/daily-planner" class="sidebar__link <?= $active_page === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">📝</span>
+                        Daily Task Planner
                     </a>
                     <a href="/ergon/user/requests" class="sidebar__link <?= $active_page === 'requests' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📋</span>
@@ -287,23 +323,10 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     </script>
     
     <?php 
-    // Get user department for activity tracking
+    // Activity tracking for IT department only (simplified)
     $userDept = $_SESSION['user_department'] ?? '';
-    if (empty($userDept) && isset($_SESSION['user_id'])) {
-        require_once dirname(__DIR__, 3) . '/config/database.php';
-        $db = new Database();
-        $conn = $db->getConnection();
-        $stmt = $conn->prepare("SELECT department FROM users WHERE id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $user = $stmt->fetch();
-        $userDept = $user['department'] ?? '';
-    }
-    
-    if (stripos($userDept, 'IT') !== false || stripos($userDept, 'Information') !== false || stripos($userDept, 'Technology') !== false): 
+    if (stripos($userDept, 'IT') !== false): 
     ?>
-    <script>
-        document.body.dataset.userDepartment = '<?= htmlspecialchars($userDept) ?>';
-    </script>
     <script src="/ergon/public/assets/js/activity-tracker.js"></script>
     <?php endif; ?>
 </body>

@@ -196,25 +196,21 @@ class User {
             $fields = [];
             $params = [];
             
-            if (isset($data['name'])) {
-                $fields[] = "name = ?";
-                $params[] = $data['name'];
+            $allowedFields = [
+                'name', 'email', 'phone', 'department', 'status', 'role',
+                'employee_id', 'designation', 'joining_date', 'salary',
+                'date_of_birth', 'gender', 'address', 'emergency_contact'
+            ];
+            
+            foreach ($allowedFields as $field) {
+                if (isset($data[$field])) {
+                    $fields[] = "$field = ?";
+                    $params[] = $data[$field];
+                }
             }
-            if (isset($data['email'])) {
-                $fields[] = "email = ?";
-                $params[] = $data['email'];
-            }
-            if (isset($data['phone'])) {
-                $fields[] = "phone = ?";
-                $params[] = $data['phone'];
-            }
-            if (isset($data['department'])) {
-                $fields[] = "department = ?";
-                $params[] = $data['department'];
-            }
-            if (isset($data['status'])) {
-                $fields[] = "status = ?";
-                $params[] = $data['status'];
+            
+            if (empty($fields)) {
+                return false;
             }
             
             $params[] = $id;
@@ -241,7 +237,15 @@ class User {
                 SELECT * FROM {$this->table} WHERE id = ?
             ");
             $stmt->execute([$id]);
-            return $stmt->fetch();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Debug logging
+            error_log("getById($id) result: " . ($result ? 'FOUND' : 'NOT FOUND'));
+            if ($result) {
+                error_log("User data: " . json_encode($result));
+            }
+            
+            return $result;
         } catch (Exception $e) {
             error_log("Get user error: " . $e->getMessage());
             return false;

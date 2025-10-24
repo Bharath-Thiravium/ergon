@@ -1,6 +1,16 @@
 <?php
 $title = 'Admin Dashboard';
 $active_page = 'dashboard';
+
+// Debug: Check what data we have
+if (isset($_GET['debug'])) {
+    echo '<pre>Debug Data:';
+    echo '\nStats: ' . print_r($data['stats'] ?? 'NOT SET', true);
+    echo '\nRecent Tasks: ' . print_r($data['recent_tasks'] ?? 'NOT SET', true);
+    echo '\nPending Approvals: ' . print_r($data['pending_approvals'] ?? 'NOT SET', true);
+    echo '</pre>';
+}
+
 ob_start();
 ?>
 
@@ -19,7 +29,7 @@ ob_start();
             <div class="kpi-card__icon">👥</div>
             <div class="kpi-card__trend kpi-card__trend--up">↗ +8%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['total_users'] ?></div>
+        <div class="kpi-card__value"><?= $data['stats']['total_users'] ?? 0 ?></div>
         <div class="kpi-card__label">Team Members</div>
         <div class="kpi-card__status kpi-card__status--active">Active</div>
     </div>
@@ -29,7 +39,7 @@ ob_start();
             <div class="kpi-card__icon">📋</div>
             <div class="kpi-card__trend kpi-card__trend--up">↗ +15%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['active_tasks'] ?></div>
+        <div class="kpi-card__value"><?= $data['stats']['active_tasks'] ?? 0 ?></div>
         <div class="kpi-card__label">Active Tasks</div>
         <div class="kpi-card__status kpi-card__status--active">Assigned</div>
     </div>
@@ -39,7 +49,7 @@ ob_start();
             <div class="kpi-card__icon">🏖️</div>
             <div class="kpi-card__trend kpi-card__trend--neutral">— 0%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['pending_leaves'] ?></div>
+        <div class="kpi-card__value"><?= $data['stats']['pending_leaves'] ?? 0 ?></div>
         <div class="kpi-card__label">Leave Requests</div>
         <div class="kpi-card__status kpi-card__status--pending">Pending</div>
     </div>
@@ -49,7 +59,7 @@ ob_start();
             <div class="kpi-card__icon">⚠️</div>
             <div class="kpi-card__trend kpi-card__trend--up">↗ +25%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['overdue_tasks'] ?></div>
+        <div class="kpi-card__value"><?= $data['stats']['overdue_tasks'] ?? 0 ?></div>
         <div class="kpi-card__label">Overdue Tasks</div>
         <div class="kpi-card__status kpi-card__status--urgent">Urgent</div>
     </div>
@@ -59,7 +69,7 @@ ob_start();
             <div class="kpi-card__icon">💰</div>
             <div class="kpi-card__trend kpi-card__trend--down">↘ -12%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['pending_expenses'] ?></div>
+        <div class="kpi-card__value"><?= $data['stats']['pending_expenses'] ?? 0 ?></div>
         <div class="kpi-card__label">Expense Claims</div>
         <div class="kpi-card__status kpi-card__status--review">Review</div>
     </div>

@@ -3,13 +3,6 @@ $title = 'Edit Employee';
 $active_page = 'users';
 ob_start();
 
-// Check if user data exists
-if (!$data['user']) {
-    $content = '<div class="alert alert--danger">User not found.</div>';
-    include __DIR__ . '/../layouts/dashboard.php';
-    exit;
-}
-
 $user = $data['user'];
 ?>
 
@@ -32,11 +25,8 @@ $user = $data['user'];
                         <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($user['name'] ?? '') ?>" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Employee ID *</label>
-                        <input type="text" name="employee_id" class="form-control" id="employeeId" value="<?= htmlspecialchars($user['employee_id'] ?? '') ?>" required>
-                        <?php if (empty($user['employee_id'])): ?>
-                        <button type="button" class="btn btn--sm btn--secondary" onclick="generateEmployeeId()">Generate ID</button>
-                        <?php endif; ?>
+                        <label class="form-label">Employee ID</label>
+                        <input type="text" name="employee_id" class="form-control" value="<?= htmlspecialchars($user['employee_id'] ?? '') ?>" readonly>
                     </div>
                 </div>
                 
@@ -125,13 +115,66 @@ $user = $data['user'];
                 <div class="form-group">
                     <label class="form-label">Departments *</label>
                     <div class="checkbox-group">
-                        <?php foreach ($data['departments'] ?? [] as $dept): ?>
+                        <?php 
+                        $departments = [
+                            ['id' => 1, 'name' => 'Administration'],
+                            ['id' => 2, 'name' => 'IT'],
+                            ['id' => 3, 'name' => 'HR'],
+                            ['id' => 4, 'name' => 'Finance'],
+                            ['id' => 5, 'name' => 'Operations'],
+                            ['id' => 6, 'name' => 'Sales'],
+                            ['id' => 7, 'name' => 'Marketing']
+                        ];
+                        $userDepts = explode(',', $user['department'] ?? '');
+                        foreach ($departments as $dept): 
+                        ?>
                         <label class="checkbox-item">
-                            <input type="checkbox" name="departments[]" value="<?= $dept['id'] ?>" 
-                                   <?= in_array($dept['id'], $data['user_departments'] ?? []) ? 'checked' : '' ?>>
+                            <input type="checkbox" name="departments[]" value="<?= $dept['name'] ?>" 
+                                   <?= in_array($dept['name'], $userDepts) ? 'checked' : '' ?>>
                             <span class="checkbox-label"><?= htmlspecialchars($dept['name']) ?></span>
                         </label>
                         <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Uploads -->
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">Document Uploads</h2>
+            </div>
+            <div class="card__body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Profile Photo</label>
+                        <input type="file" name="profile_photo" class="form-control" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">PAN Card</label>
+                        <input type="file" name="pan_card" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Aadhar Card</label>
+                        <input type="file" name="aadhar_card" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Resume</label>
+                        <input type="file" name="resume" class="form-control" accept=".pdf,.doc,.docx">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Passport</label>
+                        <input type="file" name="passport" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Driving License</label>
+                        <input type="file" name="driving_license" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
                     </div>
                 </div>
             </div>
@@ -146,16 +189,6 @@ $user = $data['user'];
 </form>
 
 <script>
-function generateEmployeeId() {
-    fetch('/ergon/api/generate-employee-id')
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('employeeId').value = data.employee_id;
-            }
-        });
-}
-
 function resetPassword() {
     if (confirm('Reset password for this employee?')) {
         const userId = <?= json_encode($user['id'] ?? 0) ?>;
@@ -168,33 +201,11 @@ function resetPassword() {
         .then(data => {
             if (data.success) {
                 alert('Password reset! New password: ' + data.temp_password);
-                // Download credentials
-                downloadCredentials(userId, data.temp_password);
             } else {
                 alert('Error: ' + data.error);
             }
         });
     }
-}
-
-function downloadCredentials(userId, password) {
-    const user = <?= json_encode($user) ?>;
-    const content = `Employee Login Credentials\n` +
-                   `================================\n\n` +
-                   `Employee ID: ${user.employee_id || 'N/A'}\n` +
-                   `Name: ${user.name}\n` +
-                   `Email: ${user.email}\n` +
-                   `New Password: ${password}\n\n` +
-                   `Login URL: ${window.location.origin}/ergon/login\n` +
-                   `Generated: ${new Date().toLocaleString()}`;
-    
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `credentials_${user.employee_id || user.id}.txt`;
-    a.click();
-    window.URL.revokeObjectURL(url);
 }
 </script>
 
