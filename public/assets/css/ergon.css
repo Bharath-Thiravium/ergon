@@ -476,7 +476,7 @@ body {
 /* Layout */
 .layout {
   display: flex;
-  min-height: calc(100vh - 73px);
+  min-height: 100vh;
 }
 
 .main-content {
@@ -1242,7 +1242,7 @@ body {
 
 /* Viewport unit fallbacks */
 .main-content {
-  min-height: calc(100vh - 73px);
+  min-height: calc(100vh - 64px);
   min-height: 600px; /* fallback */
 }
 
@@ -1258,7 +1258,7 @@ body {
 
 @media screen and (max-width: 768px) {
   .main-content {
-    min-height: calc(var(--vh, 1vh) * 100 - 73px);
+    min-height: calc(var(--vh, 1vh) * 100 - 64px);
     min-height: 500px; /* mobile fallback */
   }
 }
