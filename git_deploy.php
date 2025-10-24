@@ -33,7 +33,7 @@ if (empty($status)) {
 
 // Get last commit
 echo "<h2>📝 Last Commit</h2>";
-$lastCommit = shell_exec('git log -1 --oneline 2>/dev/null');
+$lastCommit = shell_exec('git log -1 --oneline 2>/dev/null') ?: 'No commits found';
 echo "<div class='cmd'>" . htmlspecialchars($lastCommit) . "</div>";
 
 // Check remote status
