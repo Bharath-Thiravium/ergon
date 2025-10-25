@@ -674,3 +674,7 @@ Stack trace:
 [25-Oct-2025 11:49:40 UTC] Password verification successful for: info@athenas.co.in
 [25-Oct-2025 11:49:40 UTC] PHP Warning:  filemtime(): stat failed for C:\laragon\www\Ergon\app\views\layouts/../../public/assets/css/ergon-combined.min.css in C:\laragon\www\Ergon\app\views\layouts\dashboard.php on line 48
 [25-Oct-2025 11:49:40 UTC] PHP Warning:  filemtime(): stat failed for C:\laragon\www\Ergon\app\views\layouts/../../public/assets/js/sidebar-scroll.min.js in C:\laragon\www\Ergon\app\views\layouts\dashboard.php on line 258
+[25-Oct-2025 11:50:33 UTC] User found: info@athenas.co.in, verifying password...
+[25-Oct-2025 11:50:33 UTC] Password verification successful for: info@athenas.co.in
+[25-Oct-2025 11:50:34 UTC] PHP Warning:  filemtime(): stat failed for C:\laragon\www\Ergon\app\views\layouts/../../public/assets/css/ergon-combined.min.css in C:\laragon\www\Ergon\app\views\layouts\dashboard.php on line 48
+[25-Oct-2025 11:50:34 UTC] PHP Warning:  filemtime(): stat failed for C:\laragon\www\Ergon\app\views\layouts/../../public/assets/js/sidebar-scroll.min.js in C:\laragon\www\Ergon\app\views\layouts\dashboard.php on line 258
