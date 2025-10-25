@@ -27,6 +27,7 @@ require_once __DIR__ . '/config/database.php';
 // Include core classes
 require_once __DIR__ . '/app/core/Router.php';
 require_once __DIR__ . '/app/core/Controller.php';
+require_once __DIR__ . '/app/helpers/Security.php';
 
 // Set cache headers
 if (preg_match('/\/(dashboard|owner|admin|user)\//', $_SERVER['REQUEST_URI'] ?? '')) {

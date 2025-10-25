@@ -268,6 +268,38 @@ class User {
     }
     
     /**
+     * Check if email exists
+     */
+    public function emailExists($email) {
+        try {
+            $stmt = $this->conn->prepare("SELECT id FROM {$this->table} WHERE email = ?");
+            $stmt->execute([$email]);
+            return $stmt->rowCount() > 0;
+        } catch (Exception $e) {
+            error_log("Email check error: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Update last login time
+     */
+    private function updateLastLogin($userId) {
+        try {
+            $stmt = $this->conn->prepare("UPDATE {$this->table} SET last_login = NOW() WHERE id = ?");
+            return $stmt->execute([$userId]);
+        } catch (Exception $e) {
+            error_log("Last login update error: " . $e->getMessage());
+            return false;
+        }
+    }
+}
+?>Message());
+            return false;
+        }
+    }
+    
+    /**
      * Get user by ID
      */
     public function getById($id) {

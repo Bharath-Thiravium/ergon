@@ -45,7 +45,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/ergon/public/assets/css/ergon-combined.min.css?v=<?= filemtime(__DIR__ . '/../../public/assets/css/ergon-combined.min.css') ?>" rel="stylesheet">
+    <link href="/ergon/public/assets/css/ergon-combined.min.css?v=<?= time() ?>" rel="stylesheet">
     <?php if (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark'): ?>
     <link id="dark-theme-css" href="/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
     <?php endif; ?>
@@ -255,7 +255,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/ergon/public/assets/js/auth-guard.min.js?v=<?= time() ?>" defer></script>
-    <script src="/ergon/public/assets/js/sidebar-scroll.min.js?v=<?= filemtime(__DIR__ . '/../../public/assets/js/sidebar-scroll.min.js') ?>" defer></script>
+    <script src="/ergon/public/assets/js/sidebar-scroll.min.js?v=<?= time() ?>" defer></script>
     <script>
     function toggleSidebar() {
         const sidebar = document.querySelector('.sidebar');

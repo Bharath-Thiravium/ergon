@@ -2,23 +2,19 @@
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../../config/constants.php';
-require_once __DIR__ . '/../helpers/SessionManager.php';
-require_once __DIR__ . '/../helpers/Security.php';
-require_once __DIR__ . '/../helpers/RateLimiter.php';
-require_once __DIR__ . '/../helpers/AuditLogger.php';
 
 class AuthController extends Controller {
     private $userModel;
-    private $rateLimiter;
     
     public function __construct() {
         $this->userModel = new User();
-        $this->rateLimiter = new RateLimiter();
     }
     
     public function index() {
-        SessionManager::start();
-        if (SessionManager::isValid()) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (isset($_SESSION['user_id'])) {
             $this->redirect('/dashboard');
         } else {
             $this->redirect('/login');
@@ -26,16 +22,16 @@ class AuthController extends Controller {
     }
     
     public function showLogin() {
-        SessionManager::start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         
         // Redirect if already logged in
-        if (SessionManager::isValid()) {
+        if (isset($_SESSION['user_id'])) {
             $this->redirect('/dashboard');
             return;
         }
         
-        // Generate CSRF token
-        Security::generateCSRFToken();
         $this->view('auth/login');
     }
     
@@ -55,22 +51,16 @@ class AuthController extends Controller {
             return;
         }
         
-        // Check rate limiting
-        if ($this->rateLimiter->isBlocked($clientIP)) {
-            $this->json(['error' => 'Too many failed attempts. Please try again later.'], 429);
-            return;
-        }
-        
         try {
             // Authenticate user
             $user = $this->userModel->authenticate($email, $password);
             
             if ($user) {
-                // Record successful attempt
-                $this->rateLimiter->recordAttempt($clientIP, true);
-                
-                // Start new session
-                SessionManager::regenerate();
+                // Start session
+                if (session_status() === PHP_SESSION_NONE) {
+                    session_start();
+                }
+                session_regenerate_id(true);
                 
                 // Set session data
                 $_SESSION['user_id'] = $user['id'];
@@ -80,8 +70,11 @@ class AuthController extends Controller {
                 $_SESSION['login_time'] = time();
                 $_SESSION['last_activity'] = time();
                 
-                // Log successful login
-                AuditLogger::logLogin($user['id'], true);
+                error_log('Login successful - Session data set: ' . json_encode([
+                    'user_id' => $user['id'],
+                    'role' => $user['role'],
+                    'login_time' => $_SESSION['login_time']
+                ]));
                 
                 $redirectUrl = $this->getRedirectUrl($user['role']);
                 
@@ -97,12 +90,6 @@ class AuthController extends Controller {
                     'redirect' => $redirectUrl
                 ]);
             } else {
-                // Record failed attempt
-                $this->rateLimiter->recordAttempt($clientIP, false);
-                
-                // Log failed login
-                AuditLogger::logLogin(null, false);
-                
                 $this->json(['error' => 'Invalid email or password'], 401);
             }
         } catch (Exception $e) {
@@ -130,32 +117,33 @@ class AuthController extends Controller {
     }
     
     public function resetPassword() {
-        AuthMiddleware::requireAuth();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            $this->redirect('/login');
+            return;
+        }
         
         if ($this->isPost()) {
             $error = '';
+            $newPassword = trim($_POST['new_password'] ?? '');
+            $confirmPassword = trim($_POST['confirm_password'] ?? '');
             
-            // CSRF validation
-            if (!Security::validateCSRFToken($_POST['csrf_token'] ?? '')) {
-                $error = 'CSRF validation failed';
+            if (empty($newPassword) || empty($confirmPassword)) {
+                $error = 'Both password fields are required';
+            } elseif ($newPassword !== $confirmPassword) {
+                $error = 'Passwords do not match';
+            } elseif (strlen($newPassword) < 6) {
+                $error = 'Password must be at least 6 characters';
             } else {
-                $newPassword = trim($_POST['new_password'] ?? '');
-                $confirmPassword = trim($_POST['confirm_password'] ?? '');
-                
-                if (empty($newPassword) || empty($confirmPassword)) {
-                    $error = 'Both password fields are required';
-                } elseif ($newPassword !== $confirmPassword) {
-                    $error = 'Passwords do not match';
-                } elseif (strlen($newPassword) < 6) {
-                    $error = 'Password must be at least 6 characters';
+                if ($this->userModel->resetPassword($_SESSION['user_id'], $newPassword)) {
+                    unset($_SESSION['password_reset_required']);
+                    $this->redirect('/dashboard');
+                    return;
                 } else {
-                    if ($this->userModel->resetPassword($_SESSION['user_id'], $newPassword)) {
-                        unset($_SESSION['password_reset_required']);
-                        $this->redirect('/dashboard');
-                        return;
-                    } else {
-                        $error = 'Failed to update password';
-                    }
+                    $error = 'Failed to update password';
                 }
             }
             

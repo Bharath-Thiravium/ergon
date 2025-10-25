@@ -1,7 +1,9 @@
 <?php
 class Security {
     public static function generateCSRFToken() {
-        SessionManager::start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
@@ -9,12 +11,14 @@ class Security {
     }
     
     public static function validateCSRFToken($token) {
-        SessionManager::start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
     }
     
     public static function sanitizeString($input, $maxLength = 255) {
-        $clean = filter_var($input, FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES);
+        $clean = filter_var($input, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         return substr(trim($clean), 0, $maxLength);
     }
     
