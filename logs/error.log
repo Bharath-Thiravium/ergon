@@ -678,3 +678,4 @@ Stack trace:
 [25-Oct-2025 11:50:33 UTC] Password verification successful for: info@athenas.co.in
 [25-Oct-2025 11:50:34 UTC] PHP Warning:  filemtime(): stat failed for C:\laragon\www\Ergon\app\views\layouts/../../public/assets/css/ergon-combined.min.css in C:\laragon\www\Ergon\app\views\layouts\dashboard.php on line 48
 [25-Oct-2025 11:50:34 UTC] PHP Warning:  filemtime(): stat failed for C:\laragon\www\Ergon\app\views\layouts/../../public/assets/js/sidebar-scroll.min.js in C:\laragon\www\Ergon\app\views\layouts\dashboard.php on line 258
+[25-Oct-2025 12:30:15 UTC] PHP Warning:  Cannot modify header information - headers already sent by (output started at C:\laragon\www\Ergon\app\models\User.php:456) in C:\laragon\www\Ergon\app\core\Controller.php on line 32
