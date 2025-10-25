@@ -44,6 +44,7 @@
                 $_SESSION['user_name'] = $result['name'];
                 $_SESSION['role'] = $result['role'];
                 echo '<div class="status success">✅ Login successful! <a href="emergency.php">Refresh</a></div>';
+                echo '<script>setTimeout(function(){window.location.href="emergency.php";}, 2000);</script>';
             } else {
                 echo '<div class="status error">❌ Login failed</div>';
             }
