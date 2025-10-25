@@ -1,18 +1,18 @@
 <?php
 require_once __DIR__ . '/../models/Attendance.php';
 require_once __DIR__ . '/../helpers/Security.php';
-require_once __DIR__ . '/../helpers/SessionManager.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
+require_once __DIR__ . '/../core/Controller.php';
 
-class AttendanceController {
+class AttendanceController extends Controller {
     private $attendanceModel;
     
     public function __construct() {
-        SessionManager::start();
         $this->attendanceModel = new Attendance();
     }
     
     public function index() {
-        SessionManager::requireLogin();
+        AuthMiddleware::requireAuth();
         
         $role = $_SESSION['role'] ?? 'user';
         
@@ -26,11 +26,11 @@ class AttendanceController {
             ];
         }
         
-        include __DIR__ . '/../views/attendance/index.php';
+        $this->view('attendance/index', $data);
     }
     
     public function clock() {
-        SessionManager::requireLogin();
+        AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Ensure clean JSON output
@@ -78,7 +78,7 @@ class AttendanceController {
             }
             exit;
         }
-        include __DIR__ . '/../views/attendance/clock.php';
+        $this->view('attendance/clock');
     }
 }
 ?>

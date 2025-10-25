@@ -3,21 +3,21 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../models/Leave.php';
 require_once __DIR__ . '/../helpers/NotificationHelper.php';
 require_once __DIR__ . '/../helpers/Security.php';
-require_once __DIR__ . '/../helpers/SessionManager.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
+require_once __DIR__ . '/../core/Controller.php';
 
-class LeaveController {
+class LeaveController extends Controller {
     private $db;
     private $leave;
     
     public function __construct() {
-        SessionManager::start();
         $database = new Database();
         $this->db = $database->getConnection();
         $this->leave = new Leave();
     }
     
     public function index() {
-        SessionManager::requireLogin();
+        AuthMiddleware::requireAuth();
         
         try {
             $user_id = $_SESSION['user_id'];
@@ -37,7 +37,7 @@ class LeaveController {
                 'user_role' => $role
             ];
             
-            include __DIR__ . '/../views/leaves/index.php';
+            $this->view('leaves/index', $data);
         } catch (Exception $e) {
             error_log('Leave index error: ' . $e->getMessage());
             $data = [
@@ -46,12 +46,12 @@ class LeaveController {
                 'user_role' => $_SESSION['role'],
                 'error' => 'Unable to load leave data. Please try again.'
             ];
-            include __DIR__ . '/../views/leaves/index.php';
+            $this->view('leaves/index', $data);
         }
     }
     
     public function create() {
-        SessionManager::requireLogin();
+        AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Validate CSRF token
@@ -80,12 +80,12 @@ class LeaveController {
             }
         }
         
-        include __DIR__ . '/../views/leaves/create.php';
+        $this->view('leaves/create');
     }
     
     public function approve($id) {
-        SessionManager::requireLogin();
-        SessionManager::requireRole('admin');
+        AuthMiddleware::requireAuth();
+        AuthMiddleware::requireRole(['admin', 'owner']);
         
         // Validate CSRF token
         if (!Security::validateCSRFToken($_GET['csrf_token'] ?? '')) {
@@ -110,8 +110,8 @@ class LeaveController {
     }
     
     public function reject($id) {
-        SessionManager::requireLogin();
-        SessionManager::requireRole('admin');
+        AuthMiddleware::requireAuth();
+        AuthMiddleware::requireRole(['admin', 'owner']);
         
         // Validate CSRF token
         if (!Security::validateCSRFToken($_GET['csrf_token'] ?? '')) {
@@ -137,7 +137,7 @@ class LeaveController {
     
     public function apiCreate() {
         header('Content-Type: application/json');
-        SessionManager::requireLogin();
+        AuthMiddleware::requireAuth();
         
         $input = json_decode(file_get_contents('php://input'), true);
         

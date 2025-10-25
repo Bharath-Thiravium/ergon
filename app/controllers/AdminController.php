@@ -140,3 +140,4 @@ class AdminController extends Controller {
         return $approvals;
     }
 }
+?>

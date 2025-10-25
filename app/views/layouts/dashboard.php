@@ -45,7 +45,8 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/ergon/public/assets/css/ergon-combined.min.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/ergon/public/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
     <?php if (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark'): ?>
     <link id="dark-theme-css" href="/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
     <?php endif; ?>
@@ -211,7 +212,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 Preferences
                             </a>
                             <div class="profile-menu-divider"></div>
-                            <a href="/ergon/logout.php" class="profile-menu-item profile-menu-item--danger">
+                            <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
                                 <span class="menu-icon">🚪</span>
                                 Logout
                             </a>
@@ -255,11 +256,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/ergon/public/assets/js/auth-guard.min.js?v=<?= time() ?>" defer></script>
-    <script src="/ergon/public/assets/js/sidebar-scroll.min.js?v=<?= time() ?>" defer></script>
     <script>
+    // Sidebar functionality
     function toggleSidebar() {
         const sidebar = document.querySelector('.sidebar');
-        sidebar.classList.toggle('sidebar--open');
+        if (sidebar) {
+            sidebar.classList.toggle('sidebar--open');
+        }
     }
     
     function toggleTheme() {
@@ -294,24 +297,33 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         window.location.href = '/ergon/logout.php';
     }
     
-    // Smooth scroll to active item only if not visible
-    const activeItem = document.querySelector('.sidebar__link--active, .sidebar__link.is-active');
-    if (activeItem) {
-        const sidebar = document.querySelector('.sidebar');
-        const sidebarRect = sidebar.getBoundingClientRect();
-        const itemRect = activeItem.getBoundingClientRect();
-        
-        // Only scroll if item is not visible
-        if (itemRect.top < sidebarRect.top || itemRect.bottom > sidebarRect.bottom) {
-            activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Initialize sidebar functionality when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Smooth scroll to active item only if not visible
+        const activeItem = document.querySelector('.sidebar__link--active, .sidebar__link.is-active');
+        if (activeItem) {
+            const sidebarMenu = document.querySelector('.sidebar__menu');
+            if (sidebarMenu) {
+                const menuRect = sidebarMenu.getBoundingClientRect();
+                const itemRect = activeItem.getBoundingClientRect();
+                
+                // Only scroll if item is not visible
+                if (itemRect.top < menuRect.top || itemRect.bottom > menuRect.bottom) {
+                    activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
         }
-    }
-    
-    // Prevent forced focus jump
-    document.querySelectorAll('.sidebar__link').forEach(a => {
-        a.addEventListener('focus', e => {
-            e.preventDefault();
-            a.blur();
+        
+        // Add click handlers to sidebar links
+        document.querySelectorAll('.sidebar__link').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                // Remove active class from all links
+                document.querySelectorAll('.sidebar__link').forEach(function(l) {
+                    l.classList.remove('sidebar__link--active');
+                });
+                // Add active class to clicked link
+                this.classList.add('sidebar__link--active');
+            });
         });
     });
     
@@ -320,12 +332,11 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         const sidebar = document.querySelector('.sidebar');
         const toggle = document.querySelector('.mobile-menu-toggle');
         const profileBtn = document.querySelector('.sidebar__profile-btn');
-        const notificationBtn = document.querySelector('.sidebar__control-btn');
+        const notificationBtns = document.querySelectorAll('.sidebar__control-btn');
         
         // Close sidebar on mobile
-        const sidebarEl = document.querySelector('.sidebar');
-        if (window.innerWidth <= 768 && sidebarEl && !sidebarEl.contains(e.target) && toggle && !toggle.contains(e.target)) {
-            sidebarEl.classList.remove('sidebar--open');
+        if (window.innerWidth <= 768 && sidebar && !sidebar.contains(e.target) && toggle && !toggle.contains(e.target)) {
+            sidebar.classList.remove('sidebar--open');
         }
         
         // Close profile menu
@@ -335,9 +346,21 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
         
         // Close notification dropdown
-        if (notificationBtn && !notificationBtn.contains(e.target)) {
+        var isNotificationBtn = false;
+        notificationBtns.forEach(function(btn) {
+            if (btn.contains(e.target)) isNotificationBtn = true;
+        });
+        if (!isNotificationBtn) {
             var dropdown = document.getElementById('notificationDropdown');
             if (dropdown) dropdown.style.display = 'none';
+        }
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        const sidebar = document.querySelector('.sidebar');
+        if (window.innerWidth > 768 && sidebar) {
+            sidebar.classList.remove('sidebar--open');
         }
     });
     

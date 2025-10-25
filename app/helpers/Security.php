@@ -37,5 +37,24 @@ class Security {
     public static function verifyPassword($password, $hash) {
         return password_verify($password, $hash);
     }
+    
+    public static function validateInt($value, $min = null, $max = null) {
+        $int = filter_var($value, FILTER_VALIDATE_INT);
+        if ($int === false) return false;
+        if ($min !== null && $int < $min) return false;
+        if ($max !== null && $int > $max) return false;
+        return $int;
+    }
+    
+    public static function validateGPSCoordinate($lat, $lng) {
+        $lat = filter_var($lat, FILTER_VALIDATE_FLOAT);
+        $lng = filter_var($lng, FILTER_VALIDATE_FLOAT);
+        
+        if ($lat === false || $lng === false) return false;
+        if ($lat < -90 || $lat > 90) return false;
+        if ($lng < -180 || $lng > 180) return false;
+        
+        return ['lat' => $lat, 'lng' => $lng];
+    }
 }
 ?>

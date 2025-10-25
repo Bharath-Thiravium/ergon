@@ -2,20 +2,20 @@
 require_once __DIR__ . '/../models/Task.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../helpers/Security.php';
-require_once __DIR__ . '/../helpers/SessionManager.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
+require_once __DIR__ . '/../core/Controller.php';
 
-class TasksController {
+class TasksController extends Controller {
     private $taskModel;
     private $userModel;
     
     public function __construct() {
-        SessionManager::start();
         $this->taskModel = new Task();
         $this->userModel = new User();
     }
     
     public function index() {
-        SessionManager::requireLogin();
+        AuthMiddleware::requireAuth();
         
         $tasks = $this->taskModel->getAllTasks();
         $users = $this->userModel->getAll();
@@ -27,11 +27,11 @@ class TasksController {
             'stats' => $stats
         ];
         
-        include __DIR__ . '/../views/tasks/index.php';
+        $this->view('tasks/index', $data);
     }
     
     public function create() {
-        SessionManager::requireLogin();
+        AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Validate CSRF token
@@ -59,11 +59,11 @@ class TasksController {
         
         $users = $this->userModel->getAll();
         $data = ['users' => $users];
-        include __DIR__ . '/../views/tasks/create.php';
+        $this->view('tasks/create', $data);
     }
     
     public function update($taskId) {
-        SessionManager::requireLogin();
+        AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Validate CSRF token
@@ -90,25 +90,25 @@ class TasksController {
             'updates' => $updates
         ];
         
-        include __DIR__ . '/../views/tasks/update.php';
+        $this->view('tasks/update', $data);
     }
     
     public function calendar() {
         $tasks = $this->taskModel->getTasksForCalendar();
         $data = ['tasks' => $tasks];
-        include __DIR__ . '/../views/tasks/calendar.php';
+        $this->view('tasks/calendar', $data);
     }
     
     public function overdue() {
         $tasks = $this->taskModel->getOverdueTasks();
         $data = ['tasks' => $tasks];
-        include __DIR__ . '/../views/tasks/overdue.php';
+        $this->view('tasks/overdue', $data);
     }
     
     public function slaBreaches() {
         $tasks = $this->taskModel->getSLABreaches();
         $data = ['tasks' => $tasks];
-        include __DIR__ . '/../views/tasks/sla_breaches.php';
+        $this->view('tasks/sla_breaches', $data);
     }
     
     public function getVelocity($userId) {
@@ -124,7 +124,7 @@ class TasksController {
     }
     
     public function bulkCreate() {
-        SessionManager::requireLogin();
+        AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Validate CSRF token

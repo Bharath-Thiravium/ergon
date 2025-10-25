@@ -679,3 +679,35 @@ Stack trace:
 [25-Oct-2025 11:50:34 UTC] PHP Warning:  filemtime(): stat failed for C:\laragon\www\Ergon\app\views\layouts/../../public/assets/css/ergon-combined.min.css in C:\laragon\www\Ergon\app\views\layouts\dashboard.php on line 48
 [25-Oct-2025 11:50:34 UTC] PHP Warning:  filemtime(): stat failed for C:\laragon\www\Ergon\app\views\layouts/../../public/assets/js/sidebar-scroll.min.js in C:\laragon\www\Ergon\app\views\layouts\dashboard.php on line 258
 [25-Oct-2025 12:30:15 UTC] PHP Warning:  Cannot modify header information - headers already sent by (output started at C:\laragon\www\Ergon\app\models\User.php:456) in C:\laragon\www\Ergon\app\core\Controller.php on line 32
+[25-Oct-2025 12:42:21 UTC] PHP Fatal error:  Uncaught Error: Call to undefined method SessionManager::requireLogin() in C:\laragon\www\Ergon\app\controllers\TasksController.php:18
+Stack trace:
+#0 C:\laragon\www\Ergon\app\core\Router.php(89): TasksController->index()
+#1 C:\laragon\www\Ergon\app\core\Router.php(37): Router->executeRoute(Array)
+#2 C:\laragon\www\Ergon\index.php(47): Router->handleRequest()
+#3 {main}
+  thrown in C:\laragon\www\Ergon\app\controllers\TasksController.php on line 18
+[25-Oct-2025 12:42:25 UTC] PHP Fatal error:  Uncaught Error: Call to undefined method SessionManager::requireLogin() in C:\laragon\www\Ergon\app\controllers\LeaveController.php:20
+Stack trace:
+#0 C:\laragon\www\Ergon\app\core\Router.php(89): LeaveController->index()
+#1 C:\laragon\www\Ergon\app\core\Router.php(37): Router->executeRoute(Array)
+#2 C:\laragon\www\Ergon\index.php(47): Router->handleRequest()
+#3 {main}
+  thrown in C:\laragon\www\Ergon\app\controllers\LeaveController.php on line 20
+[25-Oct-2025 12:42:28 UTC] PHP Fatal error:  Uncaught Error: Call to undefined method SessionManager::requireLogin() in C:\laragon\www\Ergon\app\controllers\TasksController.php:18
+Stack trace:
+#0 C:\laragon\www\Ergon\app\core\Router.php(89): TasksController->index()
+#1 C:\laragon\www\Ergon\app\core\Router.php(37): Router->executeRoute(Array)
+#2 C:\laragon\www\Ergon\index.php(47): Router->handleRequest()
+#3 {main}
+  thrown in C:\laragon\www\Ergon\app\controllers\TasksController.php on line 18
+[25-Oct-2025 13:04:42 UTC] PHP Fatal error:  Uncaught Error: Call to undefined method SessionManager::requireLogin() in C:\laragon\www\Ergon\app\controllers\TasksController.php:18
+Stack trace:
+#0 C:\laragon\www\Ergon\app\core\Router.php(89): TasksController->index()
+#1 C:\laragon\www\Ergon\app\core\Router.php(37): Router->executeRoute(Array)
+#2 C:\laragon\www\Ergon\index.php(47): Router->handleRequest()
+#3 {main}
+  thrown in C:\laragon\www\Ergon\app\controllers\TasksController.php on line 18
+[25-Oct-2025 13:05:11 UTC] Login successful - Session data set: {"user_id":1,"role":"owner","login_time":1761397511}
+[25-Oct-2025 13:40:21 UTC] Login successful - Session data set: {"user_id":1,"role":"owner","login_time":1761399621}
+[25-Oct-2025 13:41:48 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\Ergon\index.php on line 11) in C:\laragon\www\Ergon\app\controllers\AuthController.php on line 102
+[25-Oct-2025 13:41:58 UTC] Login successful - Session data set: {"user_id":1,"role":"owner","login_time":1761399718}
