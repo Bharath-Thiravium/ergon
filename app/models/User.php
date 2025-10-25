@@ -268,16 +268,140 @@ class User {
     }
     
     /**
+     * Get user by ID
+     */
+    public function getById($id) {
+        try {
+            $stmt = $this->conn->prepare("SELECT * FROM {$this->table} WHERE id = ?");
+            $stmt->execute([$id]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $result;
+        } catch (Exception $e) {
+            error_log("Get user error: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Get all users with pagination
+     */
+    public function getAll($page = 1, $limit = 20, $role = null) {
+        try {
+            $offset = ($page - 1) * $limit;
+            $whereClause = $role ? "WHERE role = ?" : "";
+            $params = $role ? [$role, $limit, $offset] : [$limit, $offset];
+            
+            $stmt = $this->conn->prepare("
+                SELECT id, name, email, role, phone, department, status, created_at 
+                FROM {$this->table} {$whereClause} 
+                ORDER BY created_at DESC LIMIT ? OFFSET ?
+            ");
+            $stmt->execute($params);
+            return $stmt->fetchAll();
+        } catch (Exception $e) {
+            error_log("Get users error: " . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Update user
+     */
+    public function update($id, $data) {
+        try {
+            $fields = [];
+            $params = [];
+            
+            foreach ($data as $key => $value) {
+                if ($key !== 'id' && $key !== 'password') {
+                    $fields[] = "{$key} = ?";
+                    $params[] = $value;
+                }
+            }
+            
+            if (isset($data['password'])) {
+                $fields[] = "password = ?";
+                $params[] = password_hash($data['password'], PASSWORD_BCRYPT);
+            }
+            
+            $params[] = $id;
+            
+            $stmt = $this->conn->prepare("
+                UPDATE {$this->table} 
+                SET " . implode(', ', $fields) . " 
+                WHERE id = ?
+            ");
+            return $stmt->execute($params);
+        } catch (Exception $e) {
+            error_log("User update error: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Delete user (soft delete)
+     */
+    public function delete($id) {
+        try {
+            $stmt = $this->conn->prepare("UPDATE {$this->table} SET status = 'inactive' WHERE id = ?");
+            return $stmt->execute([$id]);
+        } catch (Exception $e) {
+            error_log("User delete error: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
      * Check if email exists
      */
-    public function emailExists($email) {
+    public function emailExists($email, $excludeId = null) {
         try {
-            $stmt = $this->conn->prepare("SELECT id FROM {$this->table} WHERE email = ?");
-            $stmt->execute([$email]);
-            return $stmt->rowCount() > 0;
+            $whereClause = $excludeId ? "WHERE email = ? AND id != ?" : "WHERE email = ?";
+            $params = $excludeId ? [$email, $excludeId] : [$email];
+            
+            $stmt = $this->conn->prepare("SELECT COUNT(*) as count FROM {$this->table} {$whereClause}");
+            $stmt->execute($params);
+            $result = $stmt->fetch();
+            return $result['count'] > 0;
         } catch (Exception $e) {
             error_log("Email check error: " . $e->getMessage());
             return false;
+        }
+    }
+    
+    /**
+     * Get total users count
+     */
+    public function getTotalUsers() {
+        try {
+            $stmt = $this->conn->prepare("SELECT COUNT(*) as count FROM {$this->table}");
+            $stmt->execute();
+            $result = $stmt->fetch();
+            return $result['count'];
+        } catch (Exception $e) {
+            error_log("Get total users error: " . $e->getMessage());
+            return 0;
+        }
+    }
+    
+    /**
+     * Get user statistics
+     */
+    public function getStats() {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT 
+                    COUNT(*) as total_users,
+                    SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_users,
+                    SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as admin_count,
+                    SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END) as user_count
+                FROM {$this->table}
+            ");
+            $stmt->execute();
+            return $stmt->fetch();
+        } catch (Exception $e) {
+            error_log("User stats error: " . $e->getMessage());
+            return [];
         }
     }
     
@@ -286,11 +410,14 @@ class User {
      */
     private function updateLastLogin($userId) {
         try {
-            $stmt = $this->conn->prepare("UPDATE {$this->table} SET last_login = NOW() WHERE id = ?");
-            return $stmt->execute([$userId]);
+            $stmt = $this->conn->prepare("
+                UPDATE {$this->table} 
+                SET last_login = NOW(), last_ip = ? 
+                WHERE id = ?
+            ");
+            $stmt->execute([$_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', $userId]);
         } catch (Exception $e) {
-            error_log("Last login update error: " . $e->getMessage());
-            return false;
+            error_log("Update last login error: " . $e->getMessage());
         }
     }
 }
