@@ -1,4 +1,7 @@
 <?php
+// Authentication guard
+require_once __DIR__ . '/../../guards/auth_guard.php';
+
 $title = 'My Dashboard';
 $active_page = 'dashboard';
 ob_start();

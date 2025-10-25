@@ -15,7 +15,7 @@
             </div>
             
             <form id="loginForm" class="auth-form">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
+                <input type="hidden" name="csrf_token" value="<?= Security::escape($_SESSION['csrf_token'] ?? '') ?>">
                 
                 <div class="form-group">
                     <input type="email" name="email" class="form-control" placeholder="Email Address" required>
@@ -40,23 +40,23 @@
         try {
             const response = await fetch(window.location.origin + '/ergon/login', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                credentials: 'same-origin'
             });
             
-            if (response.ok) {
-                const result = await response.json();
-                
-                if (result.success) {
-                    window.location.href = result.redirect || window.location.origin + '/ergon/dashboard';
-                } else {
-                    document.getElementById('message').innerHTML = `<div class="error">${result.error || result.message}</div>`;
-                }
+            const result = await response.json();
+            
+            if (result.success) {
+                document.getElementById('message').innerHTML = '<div style="color: green;">Login successful! Redirecting...</div>';
+                setTimeout(() => {
+                    window.location.href = result.redirect || '/ergon/dashboard';
+                }, 500);
             } else {
-                document.getElementById('message').innerHTML = '<div class="error">Login failed. Please check your credentials.</div>';
+                document.getElementById('message').innerHTML = `<div style="color: red;">${result.error || result.message}</div>`;
             }
         } catch (error) {
             console.error('Login error:', error);
-            document.getElementById('message').innerHTML = '<div class="error">Connection failed. Please try again.</div>';
+            document.getElementById('message').innerHTML = '<div style="color: red;">Connection failed. Please try again.</div>';
         }
     });
     </script>

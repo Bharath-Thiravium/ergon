@@ -4,6 +4,9 @@
  * ERGON - Employee Tracker & Task Manager
  */
 
+// Favicon route
+$router->get('/favicon.ico', 'StaticController', 'favicon');
+
 // Authentication Routes
 $router->get('/', 'AuthController', 'index');
 $router->get('/login', 'AuthController', 'showLogin');

@@ -1,6 +1,15 @@
 <?php
+// Authentication guard
+require_once __DIR__ . '/../../guards/auth_guard.php';
+
 $title = 'Admin Dashboard';
 $active_page = 'dashboard';
+
+// Role check
+if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+    header('Location: /ergon/login');
+    exit;
+}
 
 // Debug: Check what data we have
 if (isset($_GET['debug'])) {

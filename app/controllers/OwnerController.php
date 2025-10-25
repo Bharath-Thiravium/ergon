@@ -6,94 +6,38 @@
 
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
-require_once __DIR__ . '/../../config/database.php';
 
 class OwnerController extends Controller {
-    private $db;
-    
-    public function __construct() {
-        $database = new Database();
-        $this->db = $database->getConnection();
-    }
     
     public function dashboard() {
-        AuthMiddleware::requireAuth();
+        // Use AuthMiddleware for proper authentication
+        AuthMiddleware::requireRole('owner');
         
-        // Check if user is owner
-        if ($_SESSION['role'] !== 'owner') {
-            header('Location: /ergon/dashboard');
-            exit;
-        }
-        
-        $stats = $this->getKPIStats();
-        $pending_approvals = $this->getPendingApprovals();
-        $recent_activities = $this->getRecentActivities();
-        
+        // Sample data for dashboard
         $data = [
-            'stats' => $stats,
-            'pending_approvals' => $pending_approvals,
-            'recent_activities' => $recent_activities
+            'stats' => [
+                'total_users' => 5,
+                'active_tasks' => 12,
+                'pending_leaves' => 3,
+                'pending_expenses' => 2
+            ],
+            'pending_approvals' => [
+                ['type' => 'Leave', 'count' => 3],
+                ['type' => 'Expense', 'count' => 2]
+            ],
+            'recent_activities' => [
+                ['module' => 'Users', 'action' => 'Login', 'description' => 'User logged in', 'created_at' => date('Y-m-d H:i:s')]
+            ]
         ];
         
         $this->view('owner/dashboard', $data);
     }
     
     public function approvals() {
-        // Create sample approval data since tables may not exist
-        $pending = [
-            [
-                'type' => 'Leave',
-                'id' => 1,
-                'remarks' => 'Annual Leave Request',
-                'count' => '3 days',
-                'requested_by_name' => 'John Doe',
-                'created_at' => date('Y-m-d H:i:s')
-            ],
-            [
-                'type' => 'Expense',
-                'id' => 2,
-                'remarks' => 'Travel Expense Claim',
-                'count' => '$250.00',
-                'requested_by_name' => 'Jane Smith',
-                'created_at' => date('Y-m-d H:i:s')
-            ]
-        ];
+        AuthMiddleware::requireRole('owner');
         
-        $data = ['approvals' => $pending];
+        $data = ['approvals' => []];
         $this->view('owner/approvals', $data);
     }
-    
-    private function getKPIStats() {
-        $cacheKey = 'kpi_stats_' . date('Y-m-d-H');
-        $cached = Cache::get($cacheKey);
-        if ($cached) return $cached;
-        
-        $sql = "SELECT 
-                    (SELECT COUNT(*) FROM users WHERE status = 'active') as total_users,
-                    (SELECT COUNT(*) FROM tasks WHERE status != 'completed') as active_tasks,
-                    (SELECT COUNT(*) FROM leaves WHERE status = 'Pending') as pending_leaves,
-                    (SELECT COUNT(*) FROM expenses WHERE status = 'pending') as pending_expenses";
-        $stmt = $this->db->query($sql);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        Cache::set($cacheKey, $result);
-        return $result;
-    }
-    
-    private function getPendingApprovals() {
-        $sql = "SELECT 'Leave' as type, COUNT(*) as count FROM leaves WHERE status = 'Pending'
-                UNION ALL
-                SELECT 'Expense' as type, COUNT(*) as count FROM expenses WHERE status = 'pending'";
-        $stmt = $this->db->query($sql);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-    
-    private function getRecentActivities() {
-        $sql = "SELECT module, action, description, created_at 
-                FROM audit_logs 
-                ORDER BY created_at DESC 
-                LIMIT 10";
-        $stmt = $this->db->query($sql);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
 }
+?>

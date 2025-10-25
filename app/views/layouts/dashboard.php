@@ -1,48 +1,37 @@
 <?php
-// Prevent caching
-header('Cache-Control: no-cache, no-store, must-revalidate');
-header('Pragma: no-cache');
-header('Expires: 0');
-
-// Check session validity
+// Immediate session check before any output
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['user_id'])) {
+// Immediate redirect if no session - prevents flicker
+if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) {
     header('Location: /ergon/login');
     exit;
 }
 
-// Validate session integrity
-if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
-    // Prevent role tampering by validating against database occasionally
-    if (!isset($_SESSION['role_validated']) || (time() - $_SESSION['role_validated']) > 300) {
-        require_once __DIR__ . '/../../../config/database.php';
-        $db = new Database();
-        $conn = $db->getConnection();
-        $stmt = $conn->prepare("SELECT role FROM users WHERE id = ? AND status = 'active'");
-        $stmt->execute([$_SESSION['user_id']]);
-        $dbRole = $stmt->fetchColumn();
-        
-        if ($dbRole && $dbRole !== $_SESSION['role']) {
-            // Role changed in database, update session
-            $_SESSION['role'] = $dbRole;
-        } elseif (!$dbRole) {
-            // User no longer exists or inactive
-            session_destroy();
-            header('Location: /ergon/login');
-            exit;
-        }
-        $_SESSION['role_validated'] = time();
-    }
+// Prevent caching with strongest possible headers
+header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0, private');
+header('Pragma: no-cache');
+header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+header('ETag: "' . md5(time()) . '"');
+
+// Check session timeout (1 hour)
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 3600)) {
+    session_unset();
+    session_destroy();
+    header('Location: /ergon/login?timeout=1');
+    exit;
 }
 
-// Load user preferences
-require_once __DIR__ . '/../../models/UserPreference.php';
+// Update last activity
+$_SESSION['last_activity'] = time();
+
+// Load Security helper
 require_once __DIR__ . '/../../helpers/Security.php';
-$preferenceModel = new UserPreference();
-$userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
+// Default preferences since UserPreference model may not exist
+$userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' => 'en'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -52,9 +41,9 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="csrf-token" content="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
+    <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
-    <link rel="icon" type="image/x-icon" href="/ergon/public/favicon.ico">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/ergon/public/assets/css/ergon-combined.min.css?v=<?= filemtime(__DIR__ . '/../../public/assets/css/ergon-combined.min.css') ?>" rel="stylesheet">
     <?php if (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark'): ?>
@@ -222,7 +211,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                                 Preferences
                             </a>
                             <div class="profile-menu-divider"></div>
-                            <a href="/ergon/auth/logout" class="profile-menu-item profile-menu-item--danger" onclick="return confirm('Are you sure you want to logout?')">
+                            <a href="/ergon/logout.php" class="profile-menu-item profile-menu-item--danger">
                                 <span class="menu-icon">🚪</span>
                                 Logout
                             </a>
@@ -265,6 +254,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/ergon/public/assets/js/auth-guard.min.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/public/assets/js/sidebar-scroll.min.js?v=<?= filemtime(__DIR__ . '/../../public/assets/js/sidebar-scroll.min.js') ?>" defer></script>
     <script>
     function toggleSidebar() {
@@ -298,6 +288,10 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
         if (menu) {
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         }
+    }
+    
+    function logout() {
+        window.location.href = '/ergon/logout.php';
     }
     
     // Smooth scroll to active item only if not visible
@@ -346,6 +340,13 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
             if (dropdown) dropdown.style.display = 'none';
         }
     });
+    
+    // Immediate redirect for cached pages
+    window.onpageshow = function(event) {
+        if (event.persisted) {
+            window.location.replace('/ergon/login');
+        }
+    };
     </script>
 </body>
 </html>

@@ -1,6 +1,23 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Disable caching for protected content
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Validate session
+if (empty($_SESSION['user_id']) || empty($_SESSION['role']) || $_SESSION['role'] !== 'owner') {
+    header("Location: /ergon/login");
+    exit;
+}
+
 $title = 'Executive Dashboard';
 $active_page = 'dashboard';
+
+// Start output buffering to capture content
 ob_start();
 ?>
 

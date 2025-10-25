@@ -5,7 +5,6 @@
  */
 
 require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../helpers/Security.php';
 
 class User {
     private $conn;
@@ -21,20 +20,41 @@ class User {
      */
     public function authenticate($email, $password) {
         try {
+            // Validate email format
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                error_log("Invalid email format: " . preg_replace('/[\r\n]/', '', $email));
+                return false;
+            }
+            
             $stmt = $this->conn->prepare("
                 SELECT id, name, email, password, role, status, is_first_login, password_reset_required 
                 FROM {$this->table} 
-                WHERE email = ? AND status = 'active'
+                WHERE email = ?
             ");
             $stmt->execute([$email]);
-            $user = $stmt->fetch();
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($user && Security::verifyPassword($password, $user['password'])) {
-                // Update last login
-                $this->updateLastLogin($user['id']);
-                
-                unset($user['password']);
-                return $user;
+            if ($user) {
+                if ($user['status'] === 'active') {
+                    error_log("User found: " . $user['email'] . ", verifying password...");
+                    
+                    if (password_verify($password, $user['password'])) {
+                        error_log("Password verification successful for: " . $user['email']);
+                        
+                        // Update last login
+                        $this->updateLastLogin($user['id']);
+                        
+                        // Remove password from returned data
+                        unset($user['password']);
+                        return $user;
+                    } else {
+                        error_log("Password verification failed for: " . $user['email']);
+                    }
+                } else {
+                    error_log("User exists but status is: " . $user['status']);
+                }
+            } else {
+                error_log("User does not exist in database");
             }
             
             return false;
@@ -49,7 +69,7 @@ class User {
      */
     public function resetPassword($userId, $newPassword) {
         try {
-            $hashedPassword = Security::hashPassword($newPassword);
+            $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
             $stmt = $this->conn->prepare("
                 UPDATE {$this->table} 
                 SET password = ?, is_first_login = FALSE, password_reset_required = FALSE, temp_password = NULL 
@@ -72,7 +92,7 @@ class User {
                 VALUES (?, ?, ?, ?, ?, ?)
             ");
             
-            $hashedPassword = Security::hashPassword($data['password']);
+            $hashedPassword = password_hash($data['password'], PASSWORD_BCRYPT);
             
             return $stmt->execute([
                 $data['name'],
@@ -115,7 +135,7 @@ class User {
             // Generate employee ID and temporary password
             $employeeId = $this->generateEmployeeId();
             $tempPassword = $this->generateTempPassword();
-            $hashedPassword = Security::hashPassword($tempPassword);
+            $hashedPassword = password_hash($tempPassword, PASSWORD_BCRYPT);
             
             $stmt = $this->conn->prepare("
                 INSERT INTO {$this->table} (employee_id, name, email, password, role, phone, department, temp_password, is_first_login, password_reset_required) 
@@ -314,7 +334,7 @@ class User {
             
             if (isset($data['password'])) {
                 $fields[] = "password = ?";
-                $params[] = Security::hashPassword($data['password']);
+                $params[] = password_hash($data['password'], PASSWORD_BCRYPT);
             }
             
             $params[] = $id;

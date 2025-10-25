@@ -1,66 +1,58 @@
 <?php
-/**
- * Rate Limiter for Brute Force Protection
- */
-
 class RateLimiter {
-    private $db;
-    
-    public function __construct() {
-        $database = new Database();
-        $this->db = $database->getConnection();
-        $this->createTable();
-    }
-    
-    private function createTable() {
-        $sql = "CREATE TABLE IF NOT EXISTS login_attempts (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            ip_address VARCHAR(45) NOT NULL,
-            attempts INT DEFAULT 1,
-            last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            blocked_until TIMESTAMP NULL,
-            INDEX idx_ip (ip_address),
-            INDEX idx_blocked (blocked_until)
-        )";
-        $this->db->exec($sql);
-    }
+    private $maxAttempts = 5;
+    private $timeWindow = 900; // 15 minutes
     
     public function isBlocked($ip) {
-        $stmt = $this->db->prepare("SELECT blocked_until FROM login_attempts WHERE ip_address = ? AND blocked_until > NOW()");
-        $stmt->execute([$ip]);
-        return $stmt->fetchColumn() !== false;
+        $attempts = $this->getAttempts($ip);
+        return count($attempts) >= $this->maxAttempts;
     }
     
     public function recordAttempt($ip, $success = false) {
         if ($success) {
-            // Clear attempts on successful login
-            $stmt = $this->db->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
-            $stmt->execute([$ip]);
-            return;
-        }
-        
-        // Record failed attempt
-        $stmt = $this->db->prepare("SELECT attempts FROM login_attempts WHERE ip_address = ?");
-        $stmt->execute([$ip]);
-        $current = $stmt->fetchColumn();
-        
-        if ($current) {
-            $newAttempts = $current + 1;
-            $blockedUntil = $newAttempts >= 5 ? date('Y-m-d H:i:s', strtotime('+10 minutes')) : null;
-            
-            $stmt = $this->db->prepare("UPDATE login_attempts SET attempts = ?, blocked_until = ? WHERE ip_address = ?");
-            $stmt->execute([$newAttempts, $blockedUntil, $ip]);
+            $this->clearAttempts($ip);
         } else {
-            $stmt = $this->db->prepare("INSERT INTO login_attempts (ip_address, attempts) VALUES (?, 1)");
-            $stmt->execute([$ip]);
+            $this->addAttempt($ip);
         }
     }
     
-    public function getRemainingAttempts($ip) {
-        $stmt = $this->db->prepare("SELECT attempts FROM login_attempts WHERE ip_address = ?");
-        $stmt->execute([$ip]);
-        $attempts = $stmt->fetchColumn() ?: 0;
-        return max(0, 5 - $attempts);
+    private function getAttempts($ip) {
+        $file = $this->getAttemptsFile($ip);
+        if (!file_exists($file)) {
+            return [];
+        }
+        
+        $attempts = json_decode(file_get_contents($file), true) ?: [];
+        $cutoff = time() - $this->timeWindow;
+        
+        return array_filter($attempts, function($timestamp) use ($cutoff) {
+            return $timestamp > $cutoff;
+        });
+    }
+    
+    private function addAttempt($ip) {
+        $attempts = $this->getAttempts($ip);
+        $attempts[] = time();
+        
+        $file = $this->getAttemptsFile($ip);
+        $dir = dirname($file);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        
+        file_put_contents($file, json_encode($attempts));
+    }
+    
+    private function clearAttempts($ip) {
+        $file = $this->getAttemptsFile($ip);
+        if (file_exists($file)) {
+            unlink($file);
+        }
+    }
+    
+    private function getAttemptsFile($ip) {
+        $hash = md5($ip);
+        return __DIR__ . '/../../storage/rate_limits/' . $hash . '.json';
     }
 }
 ?>

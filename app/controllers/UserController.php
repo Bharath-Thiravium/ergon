@@ -21,7 +21,13 @@ class UserController extends Controller {
     }
     
     public function dashboard() {
-        SessionManager::requireLogin();
+        AuthMiddleware::requireAuth();
+        
+        // Ensure user has appropriate role
+        if (!in_array($_SESSION['role'], ['user', 'admin', 'owner'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
         
         $user_id = $_SESSION['user_id'];
         $stats = $this->getUserStats($user_id);
@@ -63,7 +69,7 @@ class UserController extends Controller {
     }
     
     public function requests() {
-        SessionManager::requireLogin();
+        AuthMiddleware::requireAuth();
         
         $user_id = $_SESSION['user_id'];
         $stats = $this->getUserStats($user_id);

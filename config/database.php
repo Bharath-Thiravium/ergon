@@ -14,18 +14,23 @@ class Database {
     private $conn;
     
     public function __construct() {
-        if (Environment::isDevelopment()) {
-            // Development settings (Laragon/XAMPP)
-            $this->host = 'localhost';
-            $this->db_name = 'ergon_db';
-            $this->username = 'root';
-            $this->password = '';
-        } else {
-            // Production settings (Hostinger)
-            $this->host = 'localhost';
-            $this->db_name = 'u494785662_ergon';
-            $this->username = 'u494785662_ergon';
-// [SECURITY FIX] Removed hardcoded password: $this->password = '@Admin@2025@';
+        try {
+            if (Environment::isDevelopment()) {
+                // Development settings (Laragon/XAMPP)
+                $this->host = 'localhost';
+                $this->db_name = 'ergon_db';
+                $this->username = 'root';
+                $this->password = '';
+            } else {
+                // Production settings (Hostinger)
+                $this->host = 'localhost';
+                $this->db_name = 'u494785662_ergon';
+                $this->username = 'u494785662_ergon';
+                $this->password = '@Admin@2025@'; // Restore for production
+            }
+        } catch (Exception $e) {
+            error_log('Database configuration error: ' . $e->getMessage());
+            throw new Exception('Database configuration failed');
         }
     }
 
@@ -61,7 +66,7 @@ class Database {
     }
     
     public function getEnvironment() {
-        return $this->isLocalhost() ? 'development' : 'production';
+        return Environment::isDevelopment() ? 'development' : 'production';
     }
     
     public function getConfig() {
@@ -71,6 +76,12 @@ class Database {
             'database' => $this->db_name,
             'username' => $this->username
         ];
+    }
+    
+    private function isLocalhost() {
+        $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
+        return in_array($host, ['localhost', '127.0.0.1', 'ergon.test', 'ergon.local']) || 
+               strpos($host, 'localhost') !== false;
     }
 }
 ?>

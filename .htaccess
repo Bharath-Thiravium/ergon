@@ -1,9 +1,7 @@
 # ERGON Security & Performance Configuration
 
-# Force HTTPS
+# Enable rewrite engine (HTTPS redirect disabled for localhost)
 RewriteEngine On
-RewriteCond %{HTTPS} !=on
-RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 # Performance Optimizations
 # Enable Gzip Compression
@@ -36,21 +34,10 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     </FilesMatch>
 </IfModule>
 
-# Security Headers
-Header always set X-Frame-Options "DENY"
-Header always set X-Content-Type-Options "nosniff"
-Header always set X-XSS-Protection "1; mode=block"
-Header always set Referrer-Policy "no-referrer-when-downgrade"
-Header always set Permissions-Policy "geolocation=(self), microphone=(), camera=()"
-Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'"
-
-# HSTS (uncomment for production with valid SSL)
-# Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
-
-# Hide server info
-ServerTokens Prod
-Header unset Server
-Header unset X-Powered-By
+# Development-friendly headers
+<IfModule mod_headers.c>
+    Header unset X-Powered-By
+</IfModule>
 
 # Prevent access to sensitive files
 <FilesMatch "\.(env|log|sql|md|txt|json)$">

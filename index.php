@@ -4,16 +4,10 @@
  * Main Entry Point
  */
 
-// Load security headers first
-require_once __DIR__ . '/app/helpers/SecurityHeaders.php';
-SecurityHeaders::setSecureHeaders();
-SecurityHeaders::setSecureCookieParams();
-
-// Initialize performance optimizations
-require_once __DIR__ . '/app/helpers/PerformanceBooster.php';
-PerformanceBooster::init();
-
-// Start session
+// Configure and start session
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_strict_mode', 1);
+ini_set('session.gc_maxlifetime', 3600);
 session_start();
 
 // Error handling
@@ -26,23 +20,20 @@ error_reporting(E_ALL);
 header_remove('X-Powered-By');
 header_remove('Server');
 
-// Include autoloader and configuration
-require_once __DIR__ . '/vendor/autoload.php';
+// Include configuration
 require_once __DIR__ . '/config/constants.php';
 require_once __DIR__ . '/config/database.php';
 
 // Include core classes
 require_once __DIR__ . '/app/core/Router.php';
 require_once __DIR__ . '/app/core/Controller.php';
-require_once __DIR__ . '/app/core/Cache.php';
-require_once __DIR__ . '/app/middlewares/AuthMiddleware.php';
-
-// Enable output compression
-if (!ob_get_level()) ob_start('ob_gzhandler');
 
 // Set cache headers
-header('Cache-Control: public, max-age=300');
-header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 300) . ' GMT');
+if (preg_match('/\/(dashboard|owner|admin|user)\//', $_SERVER['REQUEST_URI'] ?? '')) {
+    header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+}
 
 try {
     // Initialize router
