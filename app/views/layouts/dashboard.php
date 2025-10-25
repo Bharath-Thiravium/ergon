@@ -40,6 +40,7 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
 
 // Load user preferences
 require_once __DIR__ . '/../../models/UserPreference.php';
+require_once __DIR__ . '/../../helpers/Security.php';
 $preferenceModel = new UserPreference();
 $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
 ?>
@@ -51,12 +52,11 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <meta name="csrf-token" content="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
     <link rel="icon" type="image/x-icon" href="/ergon/public/favicon.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/ergon/public/assets/css/ergon.css?v=20241220003" rel="stylesheet">
-    <link href="/ergon/public/assets/css/components.css?v=20241220002" rel="stylesheet">
-    <link href="/ergon/public/assets/css/sidebar-scroll.css" rel="stylesheet">
+    <link href="/ergon/public/assets/css/ergon-combined.min.css?v=<?= filemtime(__DIR__ . '/../../public/assets/css/ergon-combined.min.css') ?>" rel="stylesheet">
     <?php if (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark'): ?>
     <link id="dark-theme-css" href="/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
     <?php endif; ?>
@@ -75,7 +75,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                     <span>🧭</span>
                     ERGON
                 </a>
-                <h3><?= ucfirst($_SESSION['role'] ?? 'User') ?> Panel</h3>
+                <h3><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?> Panel</h3>
             </div>
             <nav class="sidebar__menu">
                 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
@@ -205,10 +205,10 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                     </button>
                     <div class="sidebar__profile-dropdown">
                         <button class="sidebar__profile-btn" onclick="toggleProfile()">
-                            <span class="profile-avatar"><?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?></span>
+                            <span class="profile-avatar"><?= htmlspecialchars(strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
                             <div class="profile-info">
-                                <span class="profile-name"><?= $_SESSION['user_name'] ?? 'User' ?></span>
-                                <span class="profile-role"><?= ucfirst($_SESSION['role'] ?? 'User') ?></span>
+                                <span class="profile-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="profile-role"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?></span>
                             </div>
                             <span class="dropdown-arrow">▼</span>
                         </button>
@@ -254,7 +254,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
                 <?php if (isset($active_page) && $active_page !== 'dashboard'): ?>
                     <span class="breadcrumb-separator">›</span>
                     <div class="breadcrumb-item">
-                        <span class="breadcrumb-current"><?= $title ?? ucfirst($active_page) ?></span>
+                        <span class="breadcrumb-current"><?= htmlspecialchars($title ?? ucfirst($active_page), ENT_QUOTES, 'UTF-8') ?></span>
                     </div>
                 <?php endif; ?>
             </nav>
@@ -265,7 +265,7 @@ $userPrefs = $preferenceModel->getUserPreferences($_SESSION['user_id']);
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/ergon/public/assets/js/sidebar-scroll.js"></script>
+    <script src="/ergon/public/assets/js/sidebar-scroll.min.js?v=<?= filemtime(__DIR__ . '/../../public/assets/js/sidebar-scroll.min.js') ?>" defer></script>
     <script>
     function toggleSidebar() {
         const sidebar = document.querySelector('.sidebar');

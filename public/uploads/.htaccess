@@ -1,0 +1,48 @@
+# Prevent execution of PHP files in uploads directory
+<Files "*.php">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "*.phtml">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "*.phar">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "*.php3">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "*.php4">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "*.php5">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Only allow specific file types
+<FilesMatch "\.(jpg|jpeg|png|gif|pdf|doc|docx)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>
+
+# Deny everything else
+<FilesMatch ".*">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Override for allowed types
+<FilesMatch "\.(jpg|jpeg|png|gif|pdf|doc|docx)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>

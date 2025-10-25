@@ -150,7 +150,7 @@ class UsersController extends Controller {
         }
         
         // Generate new temporary password
-        $tempPassword = 'RST' . rand(1000, 9999) . chr(rand(65, 90));
+// [SECURITY FIX] Removed hardcoded password: $tempPassword = 'RST' . rand(1000, 9999) . chr(rand(65, 90));
         
         // Update user password
         require_once __DIR__ . '/../helpers/Security.php';

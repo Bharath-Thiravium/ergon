@@ -1,8 +1,11 @@
 <?php
+require_once __DIR__ . '/../../helpers/Security.php';
 $title = 'Clock In/Out';
 $active_page = 'attendance';
 ob_start();
 ?>
+
+<meta name="csrf-token" content="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
 
 <div class="page-header">
     <h1>📍 Clock In/Out</h1>

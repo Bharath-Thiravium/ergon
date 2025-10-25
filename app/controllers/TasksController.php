@@ -1,17 +1,22 @@
 <?php
 require_once __DIR__ . '/../models/Task.php';
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../helpers/Security.php';
+require_once __DIR__ . '/../helpers/SessionManager.php';
 
 class TasksController {
     private $taskModel;
     private $userModel;
     
     public function __construct() {
+        SessionManager::start();
         $this->taskModel = new Task();
         $this->userModel = new User();
     }
     
     public function index() {
+        SessionManager::requireLogin();
+        
         $tasks = $this->taskModel->getAllTasks();
         $users = $this->userModel->getAll();
         $stats = $this->taskModel->getTaskStats();
@@ -26,14 +31,22 @@ class TasksController {
     }
     
     public function create() {
+        SessionManager::requireLogin();
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Validate CSRF token
+            if (!Security::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                http_response_code(403);
+                die('CSRF validation failed');
+            }
+            
             $taskData = [
-                'title' => $_POST['title'],
-                'description' => $_POST['description'],
+                'title' => Security::sanitizeString($_POST['title']),
+                'description' => Security::sanitizeString($_POST['description'], 1000),
                 'assigned_by' => $_SESSION['user_id'],
-                'assigned_to' => $_POST['assigned_to'],
-                'task_type' => $_POST['task_type'],
-                'priority' => $_POST['priority'],
+                'assigned_to' => Security::validateInt($_POST['assigned_to']),
+                'task_type' => Security::sanitizeString($_POST['task_type']),
+                'priority' => Security::sanitizeString($_POST['priority']),
                 'deadline' => $_POST['deadline']
             ];
             
@@ -50,9 +63,17 @@ class TasksController {
     }
     
     public function update($taskId) {
+        SessionManager::requireLogin();
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $progress = $_POST['progress'];
-            $comment = $_POST['comment'] ?? null;
+            // Validate CSRF token
+            if (!Security::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                http_response_code(403);
+                die('CSRF validation failed');
+            }
+            
+            $progress = Security::validateInt($_POST['progress'], 0, 100);
+            $comment = Security::sanitizeString($_POST['comment'] ?? '', 500);
             
             $result = $this->taskModel->updateProgress($taskId, $_SESSION['user_id'], $progress, $comment);
             if ($result) {
@@ -103,7 +124,16 @@ class TasksController {
     }
     
     public function bulkCreate() {
+        SessionManager::requireLogin();
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Validate CSRF token
+            if (!Security::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                http_response_code(403);
+                echo json_encode(['error' => 'CSRF validation failed']);
+                return;
+            }
+            
             $tasks = json_decode($_POST['tasks'], true);
             $result = $this->taskModel->createBulkTasks($tasks);
             echo json_encode(['success' => $result]);

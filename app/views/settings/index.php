@@ -10,6 +10,7 @@ ob_start();
 <?php endif; ?>
 
 <form method="POST" action="/ergon/settings" class="settings-form">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
     <div class="dashboard-grid">
         <div class="card">
             <div class="card__header">

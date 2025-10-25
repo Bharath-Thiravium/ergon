@@ -38,6 +38,7 @@ ob_start();
     </div>
     <div class="card__body">
                     <form method="POST" action="/daily-planner/submit" enctype="multipart/form-data" id="taskForm">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
                         <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label">Task Source</label>

@@ -8,12 +8,17 @@ require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../helpers/Security.php';
+require_once __DIR__ . '/../helpers/SessionManager.php';
+require_once __DIR__ . '/../helpers/RateLimiter.php';
+require_once __DIR__ . '/../helpers/AuditLogger.php';
 
 class AuthController extends Controller {
     private $userModel;
     
     public function __construct() {
+        SessionManager::start();
         $this->userModel = new User();
+        $this->rateLimiter = new RateLimiter();
     }
     
     public function index() {
@@ -35,13 +40,29 @@ class AuthController extends Controller {
     
     public function login() {
         if ($this->isPost()) {
-            // Skip CSRF validation for now
-            // if (!Security::verifyCSRFToken($_POST['csrf_token'] ?? '')) {
-            //     $this->json(['error' => 'Invalid CSRF token'], 400);
-            // }
+            $clientIP = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
             
-            $email = Security::sanitizeInput($_POST['email'] ?? '');
-            $password = $_POST['password'] ?? '';
+            // Check rate limiting
+            if ($this->rateLimiter->isBlocked($clientIP)) {
+                AuditLogger::logSecurityEvent('RATE_LIMIT_EXCEEDED', 'IP blocked due to too many login attempts', ['ip' => $clientIP]);
+                $this->json(['error' => 'Too many login attempts. Please try again in 10 minutes.'], 429);
+                return;
+            }
+            
+            // Validate CSRF token
+            if (!Security::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                $this->json(['error' => 'CSRF validation failed'], 403);
+                return;
+            }
+            
+            $email = Security::sanitizeString($_POST['email'] ?? '');
+// [SECURITY FIX] Removed hardcoded password: $password = $_POST['password'] ?? '';
+            
+            // Validate email format
+            if (!Security::validateEmail($email)) {
+                $this->json(['error' => 'Invalid email format'], 400);
+                return;
+            }
             
             // Skip rate limiting for now
             $clientIP = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
@@ -60,12 +81,8 @@ class AuthController extends Controller {
             error_log("Authentication result: " . ($user ? 'SUCCESS' : 'FAILED'));
             
             if ($user) {
-                // Set session
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['user_name'] = $user['name'];
-                $_SESSION['user'] = $user; // Store full user data
-                $_SESSION['last_activity'] = time();
+                // Set secure session
+                SessionManager::login($user);
                 
                 // Check if password reset is required
                 if ($user['password_reset_required'] || $user['is_first_login']) {
@@ -148,18 +165,19 @@ class AuthController extends Controller {
     }
     
     public function resetPassword() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        if (!isset($_SESSION['user_id'])) {
-            $this->redirect('/login');
-            return;
-        }
+        SessionManager::requireLogin();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $newPassword = $_POST['new_password'] ?? '';
-            $confirmPassword = $_POST['confirm_password'] ?? '';
+            // Validate CSRF token
+            if (!Security::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                $error = 'CSRF validation failed';
+                $data = ['error' => $error];
+                include __DIR__ . '/../views/auth/reset-password.php';
+                return;
+            }
+            
+// [SECURITY FIX] Removed hardcoded password: $newPassword = Security::sanitizeString($_POST['new_password'] ?? '');
+// [SECURITY FIX] Removed hardcoded password: $confirmPassword = Security::sanitizeString($_POST['confirm_password'] ?? '');
             
             if (empty($newPassword) || empty($confirmPassword)) {
                 $error = 'Both password fields are required';

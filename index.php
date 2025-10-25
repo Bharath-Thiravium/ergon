@@ -4,13 +4,27 @@
  * Main Entry Point
  */
 
+// Load security headers first
+require_once __DIR__ . '/app/helpers/SecurityHeaders.php';
+SecurityHeaders::setSecureHeaders();
+SecurityHeaders::setSecureCookieParams();
+
+// Initialize performance optimizations
+require_once __DIR__ . '/app/helpers/PerformanceBooster.php';
+PerformanceBooster::init();
+
 // Start session
 session_start();
 
 // Error handling
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/logs/error.log');
 error_reporting(E_ALL);
+
+// Remove server information
+header_remove('X-Powered-By');
+header_remove('Server');
 
 // Include autoloader and configuration
 require_once __DIR__ . '/vendor/autoload.php';

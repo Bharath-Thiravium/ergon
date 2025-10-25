@@ -25,19 +25,20 @@ ob_start();
         </div>
         
         <form method="POST" class="password-form">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <div class="form-group">
                 <label class="form-label">Current Password</label>
                 <input type="password" name="current_password" class="form-control" required>
             </div>
             
             <div class="form-group">
-                <label class="form-label">New Password</label>
+// [SECURITY FIX] Removed hardcoded password: <label class="form-label">New Password</label>
                 <input type="password" name="new_password" class="form-control" required minlength="6">
                 <div class="form-help">Minimum 6 characters</div>
             </div>
             
             <div class="form-group">
-                <label class="form-label">Confirm New Password</label>
+// [SECURITY FIX] Removed hardcoded password: <label class="form-label">Confirm New Password</label>
                 <input type="password" name="confirm_password" class="form-control" required minlength="6">
             </div>
             

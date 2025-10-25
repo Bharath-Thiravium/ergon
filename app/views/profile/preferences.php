@@ -19,6 +19,7 @@ ob_start();
 
 <div class="preferences-container">
     <form method="POST" class="preferences-form">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
         <div class="preferences-grid">
             <!-- Appearance Settings -->
             <div class="preference-section">

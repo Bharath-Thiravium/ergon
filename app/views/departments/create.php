@@ -15,6 +15,7 @@ ob_start();
     </div>
     <div class="card__body">
         <form method="POST" class="auth-form">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <div class="form-group">
                 <label class="form-label">Department Name *</label>
                 <input type="text" name="name" class="form-control" required>

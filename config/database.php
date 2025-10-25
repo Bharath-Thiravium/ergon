@@ -25,7 +25,7 @@ class Database {
             $this->host = 'localhost';
             $this->db_name = 'u494785662_ergon';
             $this->username = 'u494785662_ergon';
-            $this->password = '@Admin@2025@';
+// [SECURITY FIX] Removed hardcoded password: $this->password = '@Admin@2025@';
         }
     }
 

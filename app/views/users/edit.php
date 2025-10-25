@@ -11,6 +11,7 @@ $user = $data['user'];
 </div>
 
 <form method="POST" enctype="multipart/form-data" class="user-form">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
     <div class="form-sections">
         <!-- Personal Information -->
         <div class="card">

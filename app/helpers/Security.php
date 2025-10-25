@@ -1,65 +1,105 @@
 <?php
-require_once __DIR__ . '/../../vendor/autoload.php';
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
+/**
+ * Security Helper Class
+ * Provides CSRF protection, input validation, and security utilities
+ */
 
 class Security {
-    private static $jwtSecret = 'ergon_jwt_secret_key_2024';
     
-    public static function hashPassword($password) {
-        return password_hash($password, PASSWORD_BCRYPT);
+    /**
+     * Generate CSRF token
+     */
+    public static function generateCSRFToken() {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+        
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        
+        return $_SESSION['csrf_token'];
     }
     
+    /**
+     * Validate CSRF token
+     */
+    public static function validateCSRFToken($token) {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+        
+        return isset($_SESSION['csrf_token']) && 
+               hash_equals($_SESSION['csrf_token'], $token);
+    }
+    
+    /**
+     * Sanitize string input
+     */
+    public static function sanitizeString($input, $maxLength = 255) {
+        $clean = filter_var($input, FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES);
+        return substr(trim($clean), 0, $maxLength);
+    }
+    
+    /**
+     * Validate email
+     */
+    public static function validateEmail($email) {
+        return filter_var($email, FILTER_VALIDATE_EMAIL);
+    }
+    
+    /**
+     * Validate integer
+     */
+    public static function validateInt($input, $min = null, $max = null) {
+        $options = ['options' => []];
+        if ($min !== null) $options['options']['min_range'] = $min;
+        if ($max !== null) $options['options']['max_range'] = $max;
+        
+        return filter_var($input, FILTER_VALIDATE_INT, $options);
+    }
+    
+    /**
+     * Safe output with HTML escaping
+     */
+    public static function escape($data) {
+        return htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
+    }
+    
+    /**
+     * Validate GPS coordinates
+     */
+    public static function validateGPSCoordinate($lat, $lng) {
+        $lat = filter_var($lat, FILTER_VALIDATE_FLOAT);
+        $lng = filter_var($lng, FILTER_VALIDATE_FLOAT);
+        
+        if ($lat === false || $lng === false) return false;
+        if ($lat < -90 || $lat > 90) return false;
+        if ($lng < -180 || $lng > 180) return false;
+        
+        return ['lat' => $lat, 'lng' => $lng];
+    }
+    
+    /**
+     * Generate secure random password
+     */
+    public static function generateSecurePassword($length = 12) {
+        $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+        return substr(str_shuffle(str_repeat($chars, ceil($length / strlen($chars)))), 0, $length);
+    }
+    
+    /**
+     * Hash password securely
+     */
+    public static function hashPassword($password) {
+        return password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+    }
+    
+    /**
+     * Verify password
+     */
     public static function verifyPassword($password, $hash) {
         return password_verify($password, $hash);
-    }
-    
-    public static function generateJWT($userId, $role) {
-        $payload = [
-            'user_id' => $userId,
-            'role' => $role,
-            'iat' => time(),
-            'exp' => time() + (24 * 60 * 60) // 24 hours
-        ];
-        return JWT::encode($payload, self::$jwtSecret, 'HS256');
-    }
-    
-    public static function verifyJWT($token) {
-        try {
-            return JWT::decode($token, new Key(self::$jwtSecret, 'HS256'));
-        } catch (Exception $e) {
-            return false;
-        }
-    }
-    
-    public static function generateCSRFToken() {
-        return bin2hex(random_bytes(32));
-    }
-    
-    public static function verifyCSRFToken($token) {
-        return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
-    }
-    
-    public static function sanitizeInput($input) {
-        return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
-    }
-    
-    public static function getClientIP() {
-        return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-    }
-    
-    public static function logAudit($userId, $module, $action, $description) {
-        try {
-            require_once __DIR__ . '/../../config/database.php';
-            $database = new Database();
-            $conn = $database->getConnection();
-            
-            $query = "INSERT INTO audit_logs (user_id, module, action, description, ip_address) VALUES (?, ?, ?, ?, ?)";
-            $stmt = $conn->prepare($query);
-            $stmt->execute([$userId, $module, $action, $description, self::getClientIP()]);
-        } catch (Exception $e) {
-            error_log("Audit log failed: " . $e->getMessage());
-        }
     }
 }
 ?>

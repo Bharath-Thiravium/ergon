@@ -110,7 +110,7 @@ ob_start();
                             <div class="action-buttons">
                                 <a href="/ergon/users/view/<?= $user['id'] ?>" class="btn btn--info btn--sm" title="View User">👁️</a>
                                 <a href="/ergon/users/edit/<?= $user['id'] ?>" class="btn btn--secondary btn--sm" title="Edit User">✏️</a>
-                                <button onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--warning btn--sm" title="Reset Password">🔑</button>
+// [SECURITY FIX] Removed hardcoded password: <button onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--warning btn--sm" title="Reset Password">🔑</button>
                                 <button onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--danger btn--sm" title="Delete User">🗑️</button>
                             </div>
                         </td>

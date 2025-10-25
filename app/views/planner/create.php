@@ -17,6 +17,7 @@ ob_start();
 <div class="create-plan-container">
     <div class="create-plan-form">
         <form method="POST" action="/ergon/planner/create">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <div class="form-section">
                 <h3>Basic Information</h3>
                 <div class="form-grid">

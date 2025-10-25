@@ -33,6 +33,7 @@
         <?php endif; ?>
         
         <form method="POST">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <div class="form-group">
                 <label class="form-label">New Password</label>
                 <input type="password" name="new_password" class="form-control" required>

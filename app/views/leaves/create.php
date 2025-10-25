@@ -12,6 +12,7 @@ ob_start();
 <div class="card">
     <div class="card__body">
         <form method="POST" class="form">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <div class="form-group">
                 <label class="form-label">Leave Type</label>
                 <select name="type" class="form-control" required>

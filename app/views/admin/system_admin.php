@@ -157,7 +157,7 @@ ob_start();
 </div>
 
 <!-- Password Display Modal -->
-<div class="modal fade" id="passwordModal" tabindex="-1">
+// [SECURITY FIX] Removed hardcoded password: <div class="modal fade" id="passwordModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">

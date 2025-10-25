@@ -15,6 +15,7 @@ ob_start();
 <?php endif; ?>
 
 <form method="POST" enctype="multipart/form-data" class="user-form">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
     <div class="form-sections">
         <!-- Personal Information -->
         <div class="card">
@@ -241,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="credential-item">
                 <strong>Email:</strong> <?= htmlspecialchars($_SESSION['new_user_credentials']['email']) ?>
             </div>
-            <div class="credential-item">
+// [SECURITY FIX] Removed hardcoded password: <div class="credential-item">
                 <strong>Temporary Password:</strong> <code><?= htmlspecialchars($_SESSION['new_user_credentials']['temp_password']) ?></code>
             </div>
             <div class="credential-actions" style="margin-top: 15px;">

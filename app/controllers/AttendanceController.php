@@ -1,22 +1,18 @@
 <?php
 require_once __DIR__ . '/../models/Attendance.php';
+require_once __DIR__ . '/../helpers/Security.php';
+require_once __DIR__ . '/../helpers/SessionManager.php';
 
 class AttendanceController {
     private $attendanceModel;
     
     public function __construct() {
+        SessionManager::start();
         $this->attendanceModel = new Attendance();
     }
     
     public function index() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        if (!isset($_SESSION['user_id'])) {
-            header('Location: /ergon/login');
-            exit;
-        }
+        SessionManager::requireLogin();
         
         $role = $_SESSION['role'] ?? 'user';
         
@@ -34,6 +30,8 @@ class AttendanceController {
     }
     
     public function clock() {
+        SessionManager::requireLogin();
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Ensure clean JSON output
             ob_clean();
@@ -41,20 +39,32 @@ class AttendanceController {
             
             try {
                 $input = json_decode(file_get_contents('php://input'), true);
-                $action = $input['action'] ?? '';
-                $userId = $_SESSION['user_id'] ?? null;
                 
-                if (!$userId) {
-                    echo json_encode(['success' => false, 'message' => 'Not logged in']);
+                // Validate CSRF token for JSON requests
+                if (!Security::validateCSRFToken($input['csrf_token'] ?? '')) {
+                    echo json_encode(['success' => false, 'message' => 'CSRF validation failed']);
                     exit;
                 }
                 
+                $action = Security::sanitizeString($input['action'] ?? '');
+                $userId = $_SESSION['user_id'];
+                
                 if ($action === 'clock_in') {
+                    $coords = Security::validateGPSCoordinate(
+                        $input['latitude'] ?? 0,
+                        $input['longitude'] ?? 0
+                    );
+                    
+                    if (!$coords) {
+                        echo json_encode(['success' => false, 'message' => 'Invalid GPS coordinates']);
+                        exit;
+                    }
+                    
                     $result = $this->attendanceModel->checkIn(
                         $userId,
-                        $input['latitude'] ?? 0,
-                        $input['longitude'] ?? 0,
-                        $input['location_name'] ?? 'Office'
+                        $coords['lat'],
+                        $coords['lng'],
+                        Security::sanitizeString($input['location_name'] ?? 'Office')
                     );
                     echo json_encode(['success' => $result, 'message' => $result ? 'Clocked in successfully' : 'Already clocked in']);
                 } elseif ($action === 'clock_out') {

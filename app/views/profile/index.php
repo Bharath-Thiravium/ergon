@@ -19,6 +19,7 @@ ob_start();
         </div>
         
         <form method="POST" class="profile-form">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <div class="form-section">
                 <h3>Personal Information</h3>
                 <div class="form-row">

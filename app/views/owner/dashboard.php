@@ -18,7 +18,7 @@ ob_start();
             <div class="kpi-card__icon">👥</div>
             <div class="kpi-card__trend">↗ +5%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['total_users'] ?></div>
+        <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['total_users'], ENT_QUOTES, 'UTF-8') ?></div>
         <div class="kpi-card__label">Active Users</div>
         <div class="kpi-card__status">Online</div>
     </div>
@@ -28,7 +28,7 @@ ob_start();
             <div class="kpi-card__icon">📋</div>
             <div class="kpi-card__trend">↗ +18%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['active_tasks'] ?></div>
+        <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['active_tasks'], ENT_QUOTES, 'UTF-8') ?></div>
         <div class="kpi-card__label">Active Tasks</div>
         <div class="kpi-card__status">In Progress</div>
     </div>
@@ -38,7 +38,7 @@ ob_start();
             <div class="kpi-card__icon">🏖️</div>
             <div class="kpi-card__trend kpi-card__trend--down">— 0%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['pending_leaves'] ?></div>
+        <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['pending_leaves'], ENT_QUOTES, 'UTF-8') ?></div>
         <div class="kpi-card__label">Pending Leaves</div>
         <div class="kpi-card__status kpi-card__status--pending">Needs Review</div>
     </div>
@@ -48,7 +48,7 @@ ob_start();
             <div class="kpi-card__icon">💰</div>
             <div class="kpi-card__trend kpi-card__trend--down">↘ -3%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['pending_expenses'] ?></div>
+        <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['pending_expenses'], ENT_QUOTES, 'UTF-8') ?></div>
         <div class="kpi-card__label">Pending Expenses</div>
         <div class="kpi-card__status">Under Review</div>
     </div>
@@ -62,8 +62,8 @@ ob_start();
         <div class="card__body">
             <?php foreach ($data['pending_approvals'] as $approval): ?>
             <div class="form-group">
-                <div class="form-label"><?= $approval['type'] ?> Requests</div>
-                <div class="kpi-card__value"><?= $approval['count'] ?></div>
+                <div class="form-label"><?= htmlspecialchars($approval['type'], ENT_QUOTES, 'UTF-8') ?> Requests</div>
+                <div class="kpi-card__value"><?= htmlspecialchars($approval['count'], ENT_QUOTES, 'UTF-8') ?></div>
             </div>
             <?php endforeach; ?>
         </div>
@@ -82,8 +82,8 @@ ob_start();
             <?php else: ?>
             <?php foreach ($data['recent_activities'] as $activity): ?>
             <div class="form-group">
-                <div class="form-label">📋 <?= htmlspecialchars($activity['action']) ?></div>
-                <p><?= htmlspecialchars($activity['description']) ?></p>
+                <div class="form-label">📋 <?= htmlspecialchars($activity['action'], ENT_QUOTES, 'UTF-8') ?></div>
+                <p><?= htmlspecialchars($activity['description'], ENT_QUOTES, 'UTF-8') ?></p>
                 <small><?= date('M d, H:i', strtotime($activity['created_at'])) ?></small>
             </div>
             <?php endforeach; ?>

@@ -15,7 +15,7 @@
             </div>
             
             <form id="loginForm" class="auth-form">
-                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
                 
                 <div class="form-group">
                     <input type="email" name="email" class="form-control" placeholder="Email Address" required>

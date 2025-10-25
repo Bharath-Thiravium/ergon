@@ -8,17 +8,20 @@ require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../models/Circular.php';
+require_once __DIR__ . '/../helpers/Security.php';
+require_once __DIR__ . '/../helpers/SessionManager.php';
 
 class UserController extends Controller {
     private $db;
     
     public function __construct() {
+        SessionManager::start();
         $database = new Database();
         $this->db = $database->getConnection();
     }
     
     public function dashboard() {
-        AuthMiddleware::requireAuth();
+        SessionManager::requireLogin();
         
         $user_id = $_SESSION['user_id'];
         $stats = $this->getUserStats($user_id);
@@ -60,7 +63,7 @@ class UserController extends Controller {
     }
     
     public function requests() {
-        AuthMiddleware::requireAuth();
+        SessionManager::requireLogin();
         
         $user_id = $_SESSION['user_id'];
         $stats = $this->getUserStats($user_id);

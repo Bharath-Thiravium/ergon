@@ -12,6 +12,8 @@ ob_start();
 <div class="card">
     <div class="card__body">
         <form method="POST" enctype="multipart/form-data" class="form">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Category</label>

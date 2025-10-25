@@ -2,26 +2,22 @@
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../models/Leave.php';
 require_once __DIR__ . '/../helpers/NotificationHelper.php';
+require_once __DIR__ . '/../helpers/Security.php';
+require_once __DIR__ . '/../helpers/SessionManager.php';
 
 class LeaveController {
     private $db;
     private $leave;
     
     public function __construct() {
+        SessionManager::start();
         $database = new Database();
         $this->db = $database->getConnection();
         $this->leave = new Leave();
     }
     
     public function index() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        if (!isset($_SESSION['role'])) {
-            header('Location: /ergon/login');
-            exit;
-        }
+        SessionManager::requireLogin();
         
         try {
             $user_id = $_SESSION['user_id'];
@@ -55,14 +51,22 @@ class LeaveController {
     }
     
     public function create() {
+        SessionManager::requireLogin();
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Validate CSRF token
+            if (!Security::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                http_response_code(403);
+                die('CSRF validation failed');
+            }
+            
             $userId = $_SESSION['user_id'];
             $data = [
                 'user_id' => $userId,
-                'type' => $_POST['type'],
+                'type' => Security::sanitizeString($_POST['type']),
                 'start_date' => $_POST['start_date'],
                 'end_date' => $_POST['end_date'],
-                'reason' => $_POST['reason']
+                'reason' => Security::sanitizeString($_POST['reason'], 500)
             ];
             
             if ($this->leave->create($data)) {
@@ -80,11 +84,16 @@ class LeaveController {
     }
     
     public function approve($id) {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        SessionManager::requireLogin();
+        SessionManager::requireRole('admin');
+        
+        // Validate CSRF token
+        if (!Security::validateCSRFToken($_GET['csrf_token'] ?? '')) {
+            http_response_code(403);
+            die('CSRF validation failed');
         }
         
-        if (isset($_SESSION['role']) && $_SESSION['role'] !== 'user') {
+        if ($_SESSION['role'] !== 'user') {
             $this->leave->updateStatus($id, 'Approved', $_SESSION['user_id']);
             $leave = $this->leave->getById($id);
             if ($leave) {
@@ -101,11 +110,16 @@ class LeaveController {
     }
     
     public function reject($id) {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        SessionManager::requireLogin();
+        SessionManager::requireRole('admin');
+        
+        // Validate CSRF token
+        if (!Security::validateCSRFToken($_GET['csrf_token'] ?? '')) {
+            http_response_code(403);
+            die('CSRF validation failed');
         }
         
-        if (isset($_SESSION['role']) && $_SESSION['role'] !== 'user') {
+        if ($_SESSION['role'] !== 'user') {
             $this->leave->updateStatus($id, 'Rejected', $_SESSION['user_id']);
             $leave = $this->leave->getById($id);
             if ($leave) {
@@ -123,26 +137,25 @@ class LeaveController {
     
     public function apiCreate() {
         header('Content-Type: application/json');
+        SessionManager::requireLogin();
         
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        $input = json_decode(file_get_contents('php://input'), true);
         
-        if (!isset($_SESSION['user_id'])) {
-            http_response_code(401);
-            echo json_encode(['error' => 'Unauthorized']);
+        // Validate CSRF token
+        if (!Security::validateCSRFToken($input['csrf_token'] ?? '')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'CSRF validation failed']);
             return;
         }
         
-        $input = json_decode(file_get_contents('php://input'), true);
         $userId = $_SESSION['user_id'];
         
         $data = [
             'user_id' => $userId,
-            'type' => $input['type'] ?? '',
+            'type' => Security::sanitizeString($input['type'] ?? ''),
             'start_date' => $input['start_date'] ?? '',
             'end_date' => $input['end_date'] ?? '',
-            'reason' => $input['reason'] ?? ''
+            'reason' => Security::sanitizeString($input['reason'] ?? '', 500)
         ];
         
         if ($this->leave->create($data)) {

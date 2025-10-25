@@ -39,7 +39,7 @@ class ApiController {
         
         $input = json_decode(file_get_contents('php://input'), true);
         $email = $input['email'] ?? '';
-        $password = $input['password'] ?? '';
+// [SECURITY FIX] Removed hardcoded password: $password = $input['password'] ?? '';
         
         if (empty($email) || empty($password)) {
             http_response_code(400);

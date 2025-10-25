@@ -411,7 +411,8 @@ window.ERGON.pages = {
                         action: 'clock_in',
                         latitude: position.coords.latitude,
                         longitude: position.coords.longitude,
-                        location_name: 'Office Location'
+                        location_name: 'Office Location',
+                        csrf_token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                     };
                     
                     ERGON.api.post('/attendance/clock', data)
@@ -438,7 +439,10 @@ window.ERGON.pages = {
             const btn = event.target;
             ERGON.ui.showLoading(btn, 'Clocking out...');
             
-            ERGON.api.post('/attendance/clock', { action: 'clock_out' })
+            ERGON.api.post('/attendance/clock', { 
+                action: 'clock_out',
+                csrf_token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            })
                 .then(response => {
                     if (response.success) {
                         ERGON.utils.showToast('Clocked out successfully!', 'success');

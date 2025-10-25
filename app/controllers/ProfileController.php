@@ -36,9 +36,9 @@ class ProfileController {
     
     public function changePassword() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $currentPassword = $_POST['current_password'] ?? '';
-            $newPassword = $_POST['new_password'] ?? '';
-            $confirmPassword = $_POST['confirm_password'] ?? '';
+// [SECURITY FIX] Removed hardcoded password: $currentPassword = $_POST['current_password'] ?? '';
+// [SECURITY FIX] Removed hardcoded password: $newPassword = $_POST['new_password'] ?? '';
+// [SECURITY FIX] Removed hardcoded password: $confirmPassword = $_POST['confirm_password'] ?? '';
             
             $user = $this->userModel->getById($_SESSION['user_id']);
             

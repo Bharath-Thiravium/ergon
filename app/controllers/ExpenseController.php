@@ -2,26 +2,22 @@
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../models/Expense.php';
 require_once __DIR__ . '/../helpers/NotificationHelper.php';
+require_once __DIR__ . '/../helpers/Security.php';
+require_once __DIR__ . '/../helpers/SessionManager.php';
 
 class ExpenseController {
     private $db;
     private $expense;
     
     public function __construct() {
+        SessionManager::start();
         $database = new Database();
         $this->db = $database->getConnection();
         $this->expense = new Expense();
     }
     
     public function index() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        if (!isset($_SESSION['role'])) {
-            header('Location: /ergon/login');
-            exit;
-        }
+        SessionManager::requireLogin();
         
         try {
             $user_id = $_SESSION['user_id'];
@@ -55,7 +51,15 @@ class ExpenseController {
     }
     
     public function create() {
+        SessionManager::requireLogin();
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Validate CSRF token
+            if (!Security::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                http_response_code(403);
+                die('CSRF validation failed');
+            }
+            
             $attachment = null;
             
             if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === 0) {
@@ -72,9 +76,9 @@ class ExpenseController {
             
             $data = [
                 'user_id' => $_SESSION['user_id'],
-                'category' => $_POST['category'],
-                'amount' => $_POST['amount'],
-                'description' => $_POST['description'],
+                'category' => Security::sanitizeString($_POST['category']),
+                'amount' => Security::validateInt($_POST['amount'], 1),
+                'description' => Security::sanitizeString($_POST['description'], 500),
                 'date' => $_POST['date'],
                 'attachment' => $attachment
             ];
@@ -94,11 +98,16 @@ class ExpenseController {
     }
     
     public function approve($id) {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        SessionManager::requireLogin();
+        SessionManager::requireRole('admin');
+        
+        // Validate CSRF token for GET requests with token parameter
+        if (!Security::validateCSRFToken($_GET['csrf_token'] ?? '')) {
+            http_response_code(403);
+            die('CSRF validation failed');
         }
         
-        if (isset($_SESSION['role']) && $_SESSION['role'] !== 'user') {
+        if ($_SESSION['role'] !== 'user') {
             $this->expense->updateStatus($id, 'approved', $_SESSION['user_id']);
             $expense = $this->expense->getById($id);
             if ($expense) {
@@ -115,11 +124,16 @@ class ExpenseController {
     }
     
     public function reject($id) {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        SessionManager::requireLogin();
+        SessionManager::requireRole('admin');
+        
+        // Validate CSRF token for GET requests with token parameter
+        if (!Security::validateCSRFToken($_GET['csrf_token'] ?? '')) {
+            http_response_code(403);
+            die('CSRF validation failed');
         }
         
-        if (isset($_SESSION['role']) && $_SESSION['role'] !== 'user') {
+        if ($_SESSION['role'] !== 'user') {
             $this->expense->updateStatus($id, 'rejected', $_SESSION['user_id']);
             $expense = $this->expense->getById($id);
             if ($expense) {
@@ -137,25 +151,24 @@ class ExpenseController {
     
     public function apiCreate() {
         header('Content-Type: application/json');
+        SessionManager::requireLogin();
         
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        $input = json_decode(file_get_contents('php://input'), true);
         
-        if (!isset($_SESSION['user_id'])) {
-            http_response_code(401);
-            echo json_encode(['error' => 'Unauthorized']);
+        // Validate CSRF token
+        if (!Security::validateCSRFToken($input['csrf_token'] ?? '')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'CSRF validation failed']);
             return;
         }
         
-        $input = json_decode(file_get_contents('php://input'), true);
         $userId = $_SESSION['user_id'];
         
         $data = [
             'user_id' => $userId,
-            'category' => $input['category'] ?? '',
-            'amount' => $input['amount'] ?? 0,
-            'description' => $input['description'] ?? '',
+            'category' => Security::sanitizeString($input['category'] ?? ''),
+            'amount' => Security::validateInt($input['amount'] ?? 0, 1),
+            'description' => Security::sanitizeString($input['description'] ?? '', 500),
             'date' => $input['date'] ?? date('Y-m-d')
         ];
         
