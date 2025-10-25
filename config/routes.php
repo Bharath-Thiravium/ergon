@@ -7,6 +7,10 @@
 // Favicon route
 $router->get('/favicon.ico', 'StaticController', 'favicon');
 
+// Test routes
+$router->get('/test', 'TestController', 'index');
+$router->get('/status', 'TestController', 'status');
+
 // Authentication Routes
 $router->get('/', 'AuthController', 'index');
 $router->get('/login', 'AuthController', 'showLogin');
