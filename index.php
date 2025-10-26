@@ -37,6 +37,9 @@ if (preg_match('/\/(dashboard|owner|admin|user)\//', $_SERVER['REQUEST_URI'] ?? 
 }
 
 try {
+    // Debug output
+    error_log('ERGON: Index.php executed - URI: ' . ($_SERVER['REQUEST_URI'] ?? 'unknown'));
+    
     // Initialize router
     $router = new Router();
     
@@ -51,6 +54,6 @@ try {
     http_response_code(500);
     echo "<!DOCTYPE html><html><head><title>System Error</title></head>";
     echo "<body><h1>System Error</h1><p>Please try again later.</p>";
-    echo "<a href='/ergon/public/login'>Return to Login</a></body></html>";
+    echo "<a href='/Ergon/public/login'>Return to Login</a></body></html>";
 }
 ?>

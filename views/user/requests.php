@@ -5,9 +5,9 @@ ob_start();
 ?>
 
 <div class="header-actions">
-    <a href="/ergon/public/leaves/create" class="btn btn--primary">Apply Leave</a>
-    <a href="/ergon/public/expenses/create" class="btn btn--secondary">Submit Expense</a>
-    <a href="/ergon/public/advances/create" class="btn btn--accent">Request Advance</a>
+    <a href="/Ergon/leaves/create" class="btn btn--primary">Apply Leave</a>
+    <a href="/Ergon/expenses/create" class="btn btn--secondary">Submit Expense</a>
+    <a href="/Ergon/advances/create" class="btn btn--accent">Request Advance</a>
 </div>
 
 <div class="dashboard-grid">

@@ -40,7 +40,7 @@ class SystemAdminController extends Controller {
                 $stmt = $db->prepare("INSERT INTO users (name, email, role, status, created_at) VALUES (?, ?, 'admin', 'active', NOW())");
                 $stmt->execute([$_POST['name'], $_POST['email']]);
                 
-                $this->redirect('/ergon/public/system-admin');
+                $this->redirect('/Ergon/system-admin');
             } catch (Exception $e) {
                 $this->handleError($e, 'Failed to create admin');
             }
@@ -56,7 +56,7 @@ class SystemAdminController extends Controller {
                 $stmt = $db->prepare("UPDATE users SET status = 'inactive' WHERE id = ? AND role = 'admin'");
                 $stmt->execute([$_POST['admin_id']]);
                 
-                $this->redirect('/ergon/public/system-admin');
+                $this->redirect('/Ergon/system-admin');
             } catch (Exception $e) {
                 $this->handleError($e, 'Failed to deactivate admin');
             }

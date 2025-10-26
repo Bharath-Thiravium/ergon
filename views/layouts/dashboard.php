@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) {
-    header('Location: /ergon/public/login');
+    header('Location: /Ergon/login');
     exit;
 }
 
@@ -17,7 +17,7 @@ header('ETag: "' . md5(time()) . '"');
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 3600)) {
     session_unset();
     session_destroy();
-    header('Location: /ergon/public/login?timeout=1');
+    header('Location: /Ergon/login?timeout=1');
     exit;
 }
 
@@ -38,7 +38,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="/ergon/public/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/Ergon/public/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
     <style>
     .main-content {
         margin-left: 260px !important;
@@ -49,7 +49,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     }
     </style>
     <?php if (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark'): ?>
-    <link id="dark-theme-css" href="/ergon/public/assets/css/dark-theme.css" rel="stylesheet">
+    <link id="dark-theme-css" href="/Ergon/public/assets/css/dark-theme.css" rel="stylesheet">
     <?php endif; ?>
 </head>
 <body data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>">
@@ -60,7 +60,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <div class="layout">
         <aside class="sidebar">
             <div class="sidebar__header">
-                <a href="/ergon/public/dashboard" class="sidebar__brand">
+                <a href="/Ergon/dashboard" class="sidebar__brand">
                     <span>🧭</span>
                     ERGON
                 </a>
@@ -68,115 +68,115 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             </div>
             <nav class="sidebar__menu">
                 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
-                    <a href="/ergon/public/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📊</span>
                         Executive Dashboard
                     </a>
-                    <a href="/ergon/public/system-admin" class="sidebar__link <?= $active_page === 'system-admin' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/system-admin" class="sidebar__link <?= $active_page === 'system-admin' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🔧</span>
                         System Admins
                     </a>
-                    <a href="/ergon/public/admin/management" class="sidebar__link <?= $active_page === 'admin' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/admin/management" class="sidebar__link <?= $active_page === 'admin' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">👥</span>
                         User Admins
                     </a>
                     <div class="sidebar__divider">Company Overview</div>
-                    <a href="/ergon/public/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">✅</span>
                         Task Overview
                     </a>
-                    <a href="/ergon/public/planner/calendar" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/planner/calendar" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
                         Daily Planner
                     </a>
-                    <a href="/ergon/public/daily-planner/dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/daily-planner/dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📝</span>
                         Progress Dashboard
                     </a>
-                    <a href="/ergon/public/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
                         Leave Overview
                     </a>
-                    <a href="/ergon/public/expenses" class="sidebar__link <?= $active_page === 'expenses' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/expenses" class="sidebar__link <?= $active_page === 'expenses' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">💰</span>
                         Expense Overview
                     </a>
-                    <a href="/ergon/public/attendance" class="sidebar__link <?= $active_page === 'attendance' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/attendance" class="sidebar__link <?= $active_page === 'attendance' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📍</span>
                         Attendance Overview
                     </a>
                     <div class="sidebar__divider">System</div>
-                    <a href="/ergon/public/reports" class="sidebar__link <?= $active_page === 'reports' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/reports" class="sidebar__link <?= $active_page === 'reports' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📈</span>
                         Analytics
                     </a>
-                    <a href="/ergon/public/reports/activity" class="sidebar__link <?= $active_page === 'activity' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/reports/activity" class="sidebar__link <?= $active_page === 'activity' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">⏱️</span>
                         Activity Reports
                     </a>
-                    <a href="/ergon/public/settings" class="sidebar__link <?= $active_page === 'settings' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/settings" class="sidebar__link <?= $active_page === 'settings' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">⚙️</span>
                         System Settings
                     </a>
                 <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                    <a href="/ergon/public/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📊</span>
                         Admin Dashboard
                     </a>
-                    <a href="/ergon/public/departments" class="sidebar__link <?= $active_page === 'departments' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/departments" class="sidebar__link <?= $active_page === 'departments' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🏢</span>
                         Department Management
                     </a>
-                    <a href="/ergon/public/users" class="sidebar__link <?= $active_page === 'users' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/users" class="sidebar__link <?= $active_page === 'users' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">👥</span>
                         User Management
                     </a>
-                    <a href="/ergon/public/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">✅</span>
                         Task Management
                     </a>
-                    <a href="/ergon/public/planner/calendar" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/planner/calendar" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
                         Daily Planner
                     </a>
-                    <a href="/ergon/public/daily-planner/dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/daily-planner/dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📝</span>
                         Progress Dashboard
                     </a>
-                    <a href="/ergon/public/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
                         Leave Requests
                     </a>
-                    <a href="/ergon/public/expenses" class="sidebar__link <?= $active_page === 'expenses' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/expenses" class="sidebar__link <?= $active_page === 'expenses' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">💰</span>
                         Expense Claims
                     </a>
-                    <a href="/ergon/public/reports/activity" class="sidebar__link <?= $active_page === 'activity' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/reports/activity" class="sidebar__link <?= $active_page === 'activity' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">⏱️</span>
                         Activity Reports
                     </a>
                 <?php else: ?>
-                    <a href="/ergon/public/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🏠</span>
                         My Dashboard
                     </a>
-                    <a href="/ergon/public/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">✅</span>
                         My Tasks
                     </a>
-                    <a href="/ergon/public/planner/calendar" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/planner/calendar" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
                         My Daily Planner
                     </a>
-                    <a href="/ergon/public/daily-planner" class="sidebar__link <?= $active_page === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/daily-planner" class="sidebar__link <?= $active_page === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📝</span>
                         Daily Progress Report
                     </a>
-                    <a href="/ergon/public/user/requests" class="sidebar__link <?= $active_page === 'requests' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/user/requests" class="sidebar__link <?= $active_page === 'requests' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📋</span>
                         My Requests
                     </a>
-                    <a href="/ergon/public/attendance" class="sidebar__link <?= $active_page === 'attendance' ? 'sidebar__link--active' : '' ?>">
+                    <a href="/Ergon/attendance" class="sidebar__link <?= $active_page === 'attendance' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📍</span>
                         My Attendance
                     </a>
@@ -200,16 +200,16 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             <span class="dropdown-arrow">▼</span>
                         </button>
                         <div class="profile-menu" id="profileMenu">
-                            <a href="/ergon/public/profile/change-password" class="profile-menu-item">
+                            <a href="/Ergon/profile/change-password" class="profile-menu-item">
                                 <span class="menu-icon">🔒</span>
                                 Change Password
                             </a>
-                            <a href="/ergon/public/profile/preferences" class="profile-menu-item">
+                            <a href="/Ergon/profile/preferences" class="profile-menu-item">
                                 <span class="menu-icon">⚙️</span>
                                 Preferences
                             </a>
                             <div class="profile-menu-divider"></div>
-                            <a href="/ergon/public/logout" class="profile-menu-item profile-menu-item--danger">
+                            <a href="/Ergon/logout" class="profile-menu-item profile-menu-item--danger">
                                 <span class="menu-icon">🚪</span>
                                 Logout
                             </a>
@@ -222,7 +222,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         <div class="notification-dropdown" id="notificationDropdown">
             <div class="notification-header">
                 <h3>Notifications</h3>
-                <a href="/ergon/public/notifications" class="view-all-link">View All</a>
+                <a href="/Ergon/notifications" class="view-all-link">View All</a>
             </div>
             <div class="notification-list" id="notificationList">
                 <div class="notification-loading">Loading...</div>
@@ -237,7 +237,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     </div>
 
 
-    <script src="/ergon/public/assets/js/auth-guard.min.js?v=<?= time() ?>" defer></script>
+    <script src="/Ergon/public/assets/js/auth-guard.min.js?v=<?= time() ?>" defer></script>
     <script>
     function toggleSidebar() {
         const sidebar = document.querySelector('.sidebar');
@@ -253,7 +253,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         var themeIcon = document.getElementById('themeIcon');
         if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
         
-        fetch('/ergon/api/update-preference', {
+        fetch('/Ergon/api/update-preference', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({key: 'theme', value: newTheme})
@@ -332,7 +332,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
     window.onpageshow = function(event) {
         if (event.persisted) {
-            window.location.replace('/ergon/public/login');
+            window.location.replace('/Ergon/login');
         }
     };
     </script>

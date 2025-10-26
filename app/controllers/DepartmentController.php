@@ -37,7 +37,7 @@ class DepartmentController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 // Mock creation - would normally save to database
-                $this->redirect('/ergon/public/departments');
+                $this->redirect('/Ergon/departments');
             } catch (Exception $e) {
                 $this->handleError($e, 'Failed to create department');
             }

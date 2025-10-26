@@ -29,7 +29,7 @@
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary">Create User</button>
-                        <a href="/ergon/public/users" class="btn btn-secondary">Cancel</a>
+                        <a href="/Ergon/users" class="btn btn-secondary">Cancel</a>
                     </form>
                 </div>
             </div>
@@ -42,7 +42,7 @@ document.getElementById('createUserForm').addEventListener('submit', function(e)
     e.preventDefault();
     const formData = new FormData(this);
     
-    fetch('/ergon/public/users/create', {
+    fetch('/Ergon/users/create', {
         method: 'POST',
         body: formData
     })
@@ -50,7 +50,7 @@ document.getElementById('createUserForm').addEventListener('submit', function(e)
     .then(data => {
         if (data.success) {
             ERGON.showAlert('User created successfully!', 'success');
-            setTimeout(() => window.location.href = '/ergon/public/users', 1000);
+            setTimeout(() => window.location.href = '/Ergon/users', 1000);
         } else {
             ERGON.showAlert(data.error, 'danger');
         }

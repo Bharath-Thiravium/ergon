@@ -85,7 +85,7 @@ class ExpenseController extends Controller {
             ];
             
             if ($this->expense->create($data)) {
-                header('Location: /ergon/public/expenses?success=1');
+                header('Location: /Ergon/expenses?success=1');
                 exit;
             } else {
                 $data = ['error' => 'Failed to create expense request', 'active_page' => 'expenses'];
@@ -109,16 +109,16 @@ class ExpenseController extends Controller {
         
         $id = Security::validateInt($id);
         if (!$id) {
-            header('Location: /ergon/public/expenses?error=invalid_id');
+            header('Location: /Ergon/expenses?error=invalid_id');
             exit;
         }
         
         try {
             $this->expense->updateStatus($id, 'approved', $_SESSION['user_id']);
-            header('Location: /ergon/public/expenses?success=approved');
+            header('Location: /Ergon/expenses?success=approved');
         } catch (Exception $e) {
             error_log('Expense approval error: ' . $e->getMessage());
-            header('Location: /ergon/public/expenses?error=approval_failed');
+            header('Location: /Ergon/expenses?error=approval_failed');
         }
         exit;
     }
@@ -134,16 +134,16 @@ class ExpenseController extends Controller {
         
         $id = Security::validateInt($id);
         if (!$id) {
-            header('Location: /ergon/public/expenses?error=invalid_id');
+            header('Location: /Ergon/expenses?error=invalid_id');
             exit;
         }
         
         try {
             $this->expense->updateStatus($id, 'rejected', $_SESSION['user_id']);
-            header('Location: /ergon/public/expenses?success=rejected');
+            header('Location: /Ergon/expenses?success=rejected');
         } catch (Exception $e) {
             error_log('Expense rejection error: ' . $e->getMessage());
-            header('Location: /ergon/public/expenses?error=rejection_failed');
+            header('Location: /Ergon/expenses?error=rejection_failed');
         }
         exit;
     }

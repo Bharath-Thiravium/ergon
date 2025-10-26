@@ -77,18 +77,18 @@ session_start();
             <h2>Owner Sidebar Menu Items</h2>
             <?php
             $ownerMenu = [
-                'Executive Dashboard' => '/ergon/public/dashboard',
-                'System Admins' => '/ergon/public/system-admin',
-                'User Admins' => '/ergon/public/admin/management',
-                'Task Overview' => '/ergon/public/tasks',
-                'Daily Planner' => '/ergon/public/planner/calendar',
-                'Progress Dashboard' => '/ergon/public/daily-planner/dashboard',
-                'Leave Overview' => '/ergon/public/leaves',
-                'Expense Overview' => '/ergon/public/expenses',
-                'Attendance Overview' => '/ergon/public/attendance',
-                'Analytics' => '/ergon/public/reports',
-                'Activity Reports' => '/ergon/public/reports/activity',
-                'System Settings' => '/ergon/public/settings'
+                'Executive Dashboard' => '/Ergon/public/dashboard',
+                'System Admins' => '/Ergon/public/system-admin',
+                'User Admins' => '/Ergon/public/admin/management',
+                'Task Overview' => '/Ergon/public/tasks',
+                'Daily Planner' => '/Ergon/public/planner/calendar',
+                'Progress Dashboard' => '/Ergon/public/daily-planner/dashboard',
+                'Leave Overview' => '/Ergon/public/leaves',
+                'Expense Overview' => '/Ergon/public/expenses',
+                'Attendance Overview' => '/Ergon/public/attendance',
+                'Analytics' => '/Ergon/public/reports',
+                'Activity Reports' => '/Ergon/public/reports/activity',
+                'System Settings' => '/Ergon/public/settings'
             ];
             
             foreach ($ownerMenu as $item => $url) {
@@ -104,15 +104,15 @@ session_start();
             <h2>Admin Sidebar Menu Items</h2>
             <?php
             $adminMenu = [
-                'Admin Dashboard' => '/ergon/public/dashboard',
-                'Department Management' => '/ergon/public/departments',
-                'User Management' => '/ergon/public/users',
-                'Task Management' => '/ergon/public/tasks',
-                'Daily Planner' => '/ergon/public/planner/calendar',
-                'Progress Dashboard' => '/ergon/public/daily-planner/dashboard',
-                'Leave Requests' => '/ergon/public/leaves',
-                'Expense Claims' => '/ergon/public/expenses',
-                'Activity Reports' => '/ergon/public/reports/activity'
+                'Admin Dashboard' => '/Ergon/public/dashboard',
+                'Department Management' => '/Ergon/public/departments',
+                'User Management' => '/Ergon/public/users',
+                'Task Management' => '/Ergon/public/tasks',
+                'Daily Planner' => '/Ergon/public/planner/calendar',
+                'Progress Dashboard' => '/Ergon/public/daily-planner/dashboard',
+                'Leave Requests' => '/Ergon/public/leaves',
+                'Expense Claims' => '/Ergon/public/expenses',
+                'Activity Reports' => '/Ergon/public/reports/activity'
             ];
             
             foreach ($adminMenu as $item => $url) {
@@ -129,12 +129,12 @@ session_start();
         <h2>User Sidebar Menu Items</h2>
         <?php
         $userMenu = [
-            'My Dashboard' => '/ergon/public/dashboard',
-            'My Tasks' => '/ergon/public/tasks',
-            'My Daily Planner' => '/ergon/public/planner/calendar',
-            'Daily Progress Report' => '/ergon/public/daily-planner',
-            'My Requests' => '/ergon/public/user/requests',
-            'My Attendance' => '/ergon/public/attendance'
+            'My Dashboard' => '/Ergon/public/dashboard',
+            'My Tasks' => '/Ergon/public/tasks',
+            'My Daily Planner' => '/Ergon/public/planner/calendar',
+            'Daily Progress Report' => '/Ergon/public/daily-planner',
+            'My Requests' => '/Ergon/public/user/requests',
+            'My Attendance' => '/Ergon/public/attendance'
         ];
         
         foreach ($userMenu as $item => $url) {
@@ -243,8 +243,8 @@ session_start();
         <p>The ERGON sidebar has been completely recreated with all functionality from the original project.</p>
         
         <div style="margin-top: 20px;">
-            <a href="/ergon/public/login" style="background: #1e40af; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">🔐 Test Login</a>
-            <a href="/ergon/system_test.php" style="background: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-left: 10px;">🧪 System Test</a>
+            <a href="/Ergon/public/login" style="background: #1e40af; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">🔐 Test Login</a>
+            <a href="/Ergon/system_test.php" style="background: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-left: 10px;">🧪 System Test</a>
         </div>
     </div>
 </body>

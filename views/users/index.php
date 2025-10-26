@@ -10,7 +10,7 @@ ob_start();
         <p>Manage system users, roles, and permissions</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon/public/users/create" class="btn btn--primary">
+        <a href="/Ergon/users/create" class="btn btn--primary">
             <span>➕</span> Add User
         </a>
     </div>
@@ -88,7 +88,7 @@ ob_start();
                             <td><?= isset($user['last_login']) ? date('M d, Y', strtotime($user['last_login'])) : 'Never' ?></td>
                             <td>
                                 <div class="btn-group">
-                                    <a href="/ergon/public/users/edit/<?= $user['id'] ?>" class="btn btn--sm btn--secondary">Edit</a>
+                                    <a href="/Ergon/users/edit/<?= $user['id'] ?>" class="btn btn--sm btn--secondary">Edit</a>
                                     <button class="btn btn--sm btn--danger">Delete</button>
                                 </div>
                             </td>

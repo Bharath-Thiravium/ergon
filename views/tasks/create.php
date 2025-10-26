@@ -36,7 +36,7 @@
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary">Create Task</button>
-                        <a href="/ergon/public/tasks" class="btn btn-secondary">Cancel</a>
+                        <a href="/Ergon/tasks" class="btn btn-secondary">Cancel</a>
                     </form>
                 </div>
             </div>
@@ -49,7 +49,7 @@ document.getElementById('createTaskForm').addEventListener('submit', function(e)
     e.preventDefault();
     const formData = new FormData(this);
     
-    fetch('/ergon/public/tasks/create', {
+    fetch('/Ergon/tasks/create', {
         method: 'POST',
         body: formData
     })
@@ -57,7 +57,7 @@ document.getElementById('createTaskForm').addEventListener('submit', function(e)
     .then(data => {
         if (data.success) {
             ERGON.showAlert('Task created successfully!', 'success');
-            setTimeout(() => window.location.href = '/ergon/public/tasks', 1000);
+            setTimeout(() => window.location.href = '/Ergon/tasks', 1000);
         } else {
             ERGON.showAlert(data.error, 'danger');
         }

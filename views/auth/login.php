@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - ERGON</title>
-    <link rel="stylesheet" href="/ergon/public/assets/css/ergon.css">
+    <link rel="stylesheet" href="/Ergon/public/assets/css/ergon.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -54,7 +54,7 @@
         const formData = new FormData(this);
         const messageDiv = document.getElementById('message');
         
-        fetch('/ergon/public/login', {
+        fetch('/Ergon/login', {
             method: 'POST',
             body: formData
         })

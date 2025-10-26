@@ -10,7 +10,7 @@ ob_start();
         <p>Track and manage employee expense claims</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon/public/expenses/create" class="btn btn--primary">
+        <a href="/Ergon/expenses/create" class="btn btn--primary">
             <span>💰</span> Submit Expense
         </a>
     </div>

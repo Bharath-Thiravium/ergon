@@ -54,20 +54,20 @@
         <h2>Route Testing</h2>
         <?php
         $routes = [
-            'System Admin' => '/ergon/public/system-admin',
-            'Admin Management' => '/ergon/public/admin/management',
-            'Departments' => '/ergon/public/departments',
-            'Daily Planner' => '/ergon/public/planner/calendar',
-            'Progress Dashboard' => '/ergon/public/daily-planner/dashboard',
-            'Users' => '/ergon/public/users',
-            'Tasks' => '/ergon/public/tasks',
-            'Attendance' => '/ergon/public/attendance',
-            'Leaves' => '/ergon/public/leaves',
-            'Expenses' => '/ergon/public/expenses',
-            'Reports' => '/ergon/public/reports',
-            'Settings' => '/ergon/public/settings',
-            'Profile' => '/ergon/public/profile',
-            'Notifications' => '/ergon/public/notifications'
+            'System Admin' => '/Ergon/public/system-admin',
+            'Admin Management' => '/Ergon/public/admin/management',
+            'Departments' => '/Ergon/public/departments',
+            'Daily Planner' => '/Ergon/public/planner/calendar',
+            'Progress Dashboard' => '/Ergon/public/daily-planner/dashboard',
+            'Users' => '/Ergon/public/users',
+            'Tasks' => '/Ergon/public/tasks',
+            'Attendance' => '/Ergon/public/attendance',
+            'Leaves' => '/Ergon/public/leaves',
+            'Expenses' => '/Ergon/public/expenses',
+            'Reports' => '/Ergon/public/reports',
+            'Settings' => '/Ergon/public/settings',
+            'Profile' => '/Ergon/public/profile',
+            'Notifications' => '/Ergon/public/notifications'
         ];
         
         foreach ($routes as $name => $url) {
@@ -122,8 +122,8 @@
         <p>All routes should now work without 500 errors. The system uses mock data where database tables don't exist yet.</p>
         
         <div style="margin-top: 20px;">
-            <a href="/ergon/public/login" style="background: #1e40af; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">🔐 Test Login</a>
-            <a href="/ergon/public/daily-planner/dashboard" style="background: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-left: 10px;">🧪 Test Progress Dashboard</a>
+            <a href="/Ergon/public/login" style="background: #1e40af; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">🔐 Test Login</a>
+            <a href="/Ergon/public/daily-planner/dashboard" style="background: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-left: 10px;">🧪 Test Progress Dashboard</a>
         </div>
     </div>
 </body>

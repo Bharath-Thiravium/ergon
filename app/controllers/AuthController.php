@@ -98,7 +98,7 @@ class AuthController extends Controller {
         header('Pragma: no-cache');
         header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
         
-        header('Location: /ergon/public/login');
+        header('Location: /Ergon/login');
         exit;
     }
     
@@ -137,13 +137,13 @@ class AuthController extends Controller {
     private function getRedirectUrl($role) {
         switch ($role) {
             case ROLE_OWNER:
-                return '/ergon/public/owner/dashboard';
+                return '/Ergon/owner/dashboard';
             case ROLE_ADMIN:
-                return '/ergon/public/admin/dashboard';
+                return '/Ergon/admin/dashboard';
             case ROLE_USER:
-                return '/ergon/public/user/dashboard';
+                return '/Ergon/user/dashboard';
             default:
-                return '/ergon/public/dashboard';
+                return '/Ergon/dashboard';
         }
     }
 }

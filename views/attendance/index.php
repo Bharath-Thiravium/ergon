@@ -10,7 +10,7 @@ ob_start();
         <p>Track employee attendance and working hours</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon/public/attendance/clock" class="btn btn--primary">
+        <a href="/Ergon/attendance/clock" class="btn btn--primary">
             <span>🕰️</span> Clock In/Out
         </a>
     </div>

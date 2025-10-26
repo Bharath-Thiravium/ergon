@@ -70,7 +70,7 @@ function clockAction(type) {
         formData.append('longitude', currentPosition.coords.longitude);
     }
     
-    fetch('/ergon/public/attendance/clock', {
+    fetch('/Ergon/attendance/clock', {
         method: 'POST',
         body: formData
     })
@@ -78,7 +78,7 @@ function clockAction(type) {
     .then(data => {
         if (data.success) {
             ERGON.showAlert(`Clocked ${type} successfully!`, 'success');
-            setTimeout(() => window.location.href = '/ergon/public/attendance', 1000);
+            setTimeout(() => window.location.href = '/Ergon/attendance', 1000);
         } else {
             ERGON.showAlert(data.error, 'danger');
         }

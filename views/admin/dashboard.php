@@ -3,7 +3,7 @@ $title = 'Admin Dashboard';
 $active_page = 'dashboard';
 
 if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
-    header('Location: /ergon/public/login');
+    header('Location: /Ergon/login');
     exit;
 }
 
@@ -11,9 +11,9 @@ ob_start();
 ?>
 
 <div class="header-actions">
-    <a href="/ergon/public/tasks/create" class="btn btn--primary">Assign Task</a>
-    <a href="/ergon/public/leaves" class="btn btn--secondary">Review Leaves</a>
-    <a href="/ergon/public/expenses" class="btn btn--secondary">Review Expenses</a>
+    <a href="/Ergon/tasks/create" class="btn btn--primary">Assign Task</a>
+    <a href="/Ergon/leaves" class="btn btn--secondary">Review Leaves</a>
+    <a href="/Ergon/expenses" class="btn btn--secondary">Review Expenses</a>
 </div>
 
 <div class="dashboard-grid">

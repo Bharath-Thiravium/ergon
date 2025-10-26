@@ -96,8 +96,8 @@ foreach ($views as $view) {
 }
 
 echo "<h3>6. Access URLs</h3>";
-echo "<a href='/ergon/public/' style='margin: 5px; padding: 8px 15px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;'>🏠 Main Application</a>";
-echo "<a href='/ergon/public/login' style='margin: 5px; padding: 8px 15px; background: #28a745; color: white; text-decoration: none; border-radius: 4px;'>🔐 Login Page</a>";
+echo "<a href='/Ergon/public/' style='margin: 5px; padding: 8px 15px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;'>🏠 Main Application</a>";
+echo "<a href='/Ergon/public/login' style='margin: 5px; padding: 8px 15px; background: #28a745; color: white; text-decoration: none; border-radius: 4px;'>🔐 Login Page</a>";
 
 echo "<hr>";
 echo "<div style='background: #d4edda; padding: 15px; border-left: 4px solid #28a745; margin: 20px 0;'>";

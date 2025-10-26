@@ -6,7 +6,7 @@ ob_start();
 
 <div class="page-header">
     <h1>Edit Department</h1>
-    <a href="/ergon/public/departments" class="btn btn--secondary">Back to Departments</a>
+    <a href="/Ergon/departments" class="btn btn--secondary">Back to Departments</a>
 </div>
 
 <div class="card">
@@ -49,7 +49,7 @@ ob_start();
             
             <div class="form-actions">
                 <button type="submit" class="btn btn--primary">Update Department</button>
-                <a href="/ergon/public/departments" class="btn btn--secondary">Cancel</a>
+                <a href="/Ergon/departments" class="btn btn--secondary">Cancel</a>
             </div>
         </form>
     </div>

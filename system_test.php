@@ -148,9 +148,9 @@ session_start();
 
     <div class="test-section">
         <h2>Access URLs</h2>
-        <p><a href="/ergon/" target="_blank">🏠 Main Application</a></p>
-        <p><a href="/ergon/public/login" target="_blank">🔐 Login Page</a></p>
-        <p><a href="/ergon/public/dashboard" target="_blank">📊 Dashboard</a></p>
+        <p><a href="/Ergon/" target="_blank">🏠 Main Application</a></p>
+        <p><a href="/Ergon/public/login" target="_blank">🔐 Login Page</a></p>
+        <p><a href="/Ergon/public/dashboard" target="_blank">📊 Dashboard</a></p>
     </div>
 
     <div class="test-section">

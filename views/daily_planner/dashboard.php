@@ -185,11 +185,11 @@ ob_start();
 const projectProgress = <?= json_encode($projectProgress) ?>;
 
 function openProjectOverview() {
-    window.location.href = '/ergon/public/daily-planner/project-overview';
+    window.location.href = '/Ergon/daily-planner/project-overview';
 }
 
 function openDelayedTasksOverview() {
-    window.location.href = '/ergon/public/daily-planner/delayed-tasks-overview';
+    window.location.href = '/Ergon/daily-planner/delayed-tasks-overview';
 }
 
 function followUpTask(taskId) {

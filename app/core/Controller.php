@@ -20,8 +20,8 @@ class Controller {
     }
     
     protected function redirect($url) {
-        if (!str_starts_with($url, 'http') && !str_starts_with($url, '/ergon/')) {
-            $url = '/ergon/public' . $url;
+        if (!str_starts_with($url, 'http') && !str_starts_with($url, '/Ergon/')) {
+            $url = '/Ergon/public' . $url;
         }
         header("Location: {$url}");
         exit;

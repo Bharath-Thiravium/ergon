@@ -30,7 +30,7 @@ class PlannerController extends Controller {
                 $stmt = $db->prepare("INSERT INTO daily_planner (user_id, plan_date, title, description, created_at) VALUES (?, ?, ?, ?, NOW())");
                 $stmt->execute([$_SESSION['user_id'], $_POST['plan_date'], $_POST['title'], $_POST['description']]);
                 
-                $this->redirect('/ergon/public/planner/calendar');
+                $this->redirect('/Ergon/planner/calendar');
             } catch (Exception $e) {
                 $this->handleError($e, 'Failed to create plan');
             }

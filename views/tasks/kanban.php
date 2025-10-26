@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadTasks() {
-    fetch('/ergon/public/api/tasks/kanban')
+    fetch('/Ergon/api/tasks/kanban')
         .then(response => response.json())
         .then(data => {
             tasks = data.tasks || [];
@@ -235,7 +235,7 @@ function initializeDragAndDrop() {
 }
 
 function updateTaskStatus(taskId, newStatus) {
-    fetch(`/ergon/public/api/tasks/update-status`, {
+    fetch(`/Ergon/api/tasks/update-status`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

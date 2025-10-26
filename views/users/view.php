@@ -7,8 +7,8 @@ ob_start();
 ?>
 
 <div class="header-actions">
-    <a href="/ergon/public/users/edit/<?= $user['id'] ?>" class="btn btn--primary">Edit User</a>
-    <a href="/ergon/public/users" class="btn btn--secondary">Back to Users</a>
+    <a href="/Ergon/users/edit/<?= $user['id'] ?>" class="btn btn--primary">Edit User</a>
+    <a href="/Ergon/users" class="btn btn--secondary">Back to Users</a>
 </div>
 
 <div class="user-profile">
@@ -121,7 +121,7 @@ ob_start();
                                 <div class="document-size"><?= $doc['size'] ?></div>
                             </div>
                             <div class="document-actions">
-                                <a href="/ergon/public/users/download-document/<?= $user['id'] ?>/<?= urlencode($doc['filename']) ?>" 
+                                <a href="/Ergon/users/download-document/<?= $user['id'] ?>/<?= urlencode($doc['filename']) ?>" 
                                    class="btn btn--sm btn--primary">Download</a>
                             </div>
                         </div>

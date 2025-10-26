@@ -14,8 +14,13 @@ class Router {
         $method = $_SERVER['REQUEST_METHOD'];
         $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         
-        $basePath = '/ergon/public';
-        if (strpos($path, $basePath) === 0) {
+        $basePath = '/Ergon';
+        $publicBasePath = '/Ergon/public';
+        
+        // Handle both /Ergon/ and /Ergon/public/ URLs
+        if (strpos($path, $publicBasePath) === 0) {
+            $path = substr($path, strlen($publicBasePath));
+        } elseif (strpos($path, $basePath) === 0) {
             $path = substr($path, strlen($basePath));
         }
         
@@ -95,7 +100,7 @@ class Router {
             echo "<!DOCTYPE html><html><head><title>404 - Page Not Found</title></head>";
             echo "<body><h1>404 - Page Not Found</h1>";
             echo "<p>The requested page could not be found.</p>";
-            echo "<a href='/ergon/public/login'>Return to Login</a></body></html>";
+            echo "<a href='/Ergon/login'>Return to Login</a></body></html>";
         }
     }
     

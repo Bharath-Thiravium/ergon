@@ -108,7 +108,7 @@ ob_start();
             <h3>Create System Admin</h3>
             <button class="modal-close" onclick="closeModal('createAdminModal')">&times;</button>
         </div>
-        <form method="POST" action="/ergon/public/system-admin/create">
+        <form method="POST" action="/Ergon/system-admin/create">
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Full Name</label>
@@ -149,7 +149,7 @@ function deactivateAdmin(adminId) {
     if (confirm('Are you sure you want to deactivate this admin?')) {
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = '/ergon/public/system-admin/deactivate';
+        form.action = '/Ergon/system-admin/deactivate';
         
         const input = document.createElement('input');
         input.type = 'hidden';
@@ -163,7 +163,7 @@ function deactivateAdmin(adminId) {
 }
 
 function exportAdmins() {
-    window.location.href = '/ergon/public/system-admin/export';
+    window.location.href = '/Ergon/system-admin/export';
 }
 </script>
 
