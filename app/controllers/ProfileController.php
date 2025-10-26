@@ -45,9 +45,9 @@ class ProfileController extends Controller {
             if ($this->updateUserProfile($userId, $updateData)) {
                 $_SESSION['user_name'] = $updateData['name'];
                 $_SESSION['user_email'] = $updateData['email'];
-                header('Location: /Ergon/profile?success=1');
+                header('Location: /ergon/profile?success=1');
             } else {
-                header('Location: /Ergon/profile?error=1');
+                header('Location: /ergon/profile?error=1');
             }
             exit;
         }
@@ -83,7 +83,7 @@ class ProfileController extends Controller {
             
             if ($this->verifyCurrentPassword($_SESSION['user_id'], $currentPassword)) {
                 if ($this->updatePassword($_SESSION['user_id'], $newPassword)) {
-                    header('Location: /Ergon/profile?password_changed=1');
+                    header('Location: /ergon/profile?password_changed=1');
                 } else {
                     $data = ['error' => 'Failed to update password', 'active_page' => 'profile'];
                     $this->view('profile/change-password', $data);
@@ -110,9 +110,9 @@ class ProfileController extends Controller {
             ];
             
             if ($this->updateUserPreferences($_SESSION['user_id'], $preferences)) {
-                header('Location: /Ergon/profile/preferences?success=1');
+                header('Location: /ergon/profile/preferences?success=1');
             } else {
-                header('Location: /Ergon/profile/preferences?error=1');
+                header('Location: /ergon/profile/preferences?error=1');
             }
             exit;
         }

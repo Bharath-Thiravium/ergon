@@ -7,7 +7,7 @@ ob_start();
 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'user'): ?>
 <div class="header-actions">
     <button id="clockBtn" class="btn btn--success">📍 Clock In</button>
-    <a href="/Ergon/user/requests" class="btn btn--primary">View Requests</a>
+    <a href="/ergon/user/requests" class="btn btn--primary">View Requests</a>
 </div>
 <?php endif; ?>
 
@@ -131,7 +131,7 @@ document.getElementById('clockBtn').onclick = function() {
         location_name: 'Office'
     };
     
-    fetch('/Ergon/api_attendance.php', {
+    fetch('/ergon/api_attendance.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData)

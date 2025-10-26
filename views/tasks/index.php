@@ -10,7 +10,7 @@ ob_start();
         <p>Manage and track all project tasks and assignments</p>
     </div>
     <div class="page-actions">
-        <a href="/Ergon/tasks/create" class="btn btn--primary">
+        <a href="/ergon/tasks/create" class="btn btn--primary">
             <span>➕</span> Create Task
         </a>
     </div>

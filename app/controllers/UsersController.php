@@ -52,7 +52,7 @@ class UsersController extends Controller {
                         'email' => $_POST['email'],
                         'temp_password' => $result['temp_password']
                     ];
-                    header('Location: /Ergon/users?success=created');
+                    header('Location: /ergon/users?success=created');
                     exit;
                 } else {
                     $error = 'Failed to create user. Please try again.';
@@ -84,7 +84,7 @@ class UsersController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $this->handleFileUploads($id);
             $this->updateUserData($id, $_POST);
-            header('Location: /Ergon/users?success=updated');
+            header('Location: /ergon/users?success=updated');
             exit;
         }
         
@@ -173,7 +173,7 @@ class UsersController extends Controller {
         
         $user = $this->userModel->getById($id);
         if (!$user) {
-            header('Location: /Ergon/users?error=user_not_found');
+            header('Location: /ergon/users?error=user_not_found');
             exit;
         }
         

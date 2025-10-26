@@ -31,7 +31,7 @@
                             <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary">Submit Request</button>
-                        <a href="/Ergon/leaves" class="btn btn-secondary">Cancel</a>
+                        <a href="/ergon/leaves" class="btn btn-secondary">Cancel</a>
                     </form>
                 </div>
             </div>
@@ -44,7 +44,7 @@ document.getElementById('leaveForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const formData = new FormData(this);
     
-    fetch('/Ergon/leaves/create', {
+    fetch('/ergon/leaves/create', {
         method: 'POST',
         body: formData
     })
@@ -52,7 +52,7 @@ document.getElementById('leaveForm').addEventListener('submit', function(e) {
     .then(data => {
         if (data.success) {
             ERGON.showAlert('Leave request submitted successfully!', 'success');
-            setTimeout(() => window.location.href = '/Ergon/leaves', 1000);
+            setTimeout(() => window.location.href = '/ergon/leaves', 1000);
         } else {
             ERGON.showAlert(data.error, 'danger');
         }

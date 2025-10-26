@@ -73,7 +73,7 @@ document.getElementById('settingsForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const formData = new FormData(this);
     
-    fetch('/Ergon/settings', {
+    fetch('/ergon/settings', {
         method: 'POST',
         body: formData
     })

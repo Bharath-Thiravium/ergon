@@ -5,7 +5,7 @@ ob_start();
 ?>
 
 <div class="header-actions">
-    <a href="/Ergon/reports" class="btn btn--secondary">View Reports</a>
+    <a href="/ergon/reports" class="btn btn--secondary">View Reports</a>
 </div>
 
 <div class="dashboard-grid">
@@ -65,7 +65,7 @@ ob_start();
                         <td><?= $approval['count'] ?></td>
                         <td><?= date('M d, Y', strtotime($approval['created_at'] ?? 'now')) ?></td>
                         <td>
-                            <a href="/Ergon/<?= strtolower($approval['type']) ?>s" class="btn btn--primary btn--sm">Review</a>
+                            <a href="/ergon/<?= strtolower($approval['type']) ?>s" class="btn btn--primary btn--sm">Review</a>
                         </td>
                     </tr>
                     <?php endforeach; ?>

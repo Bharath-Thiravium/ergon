@@ -49,7 +49,7 @@ class TasksController extends Controller {
             
             $result = $this->taskModel->create($taskData);
             if ($result) {
-                header('Location: /Ergon/tasks?success=created');
+                header('Location: /ergon/tasks?success=created');
                 exit;
             }
         }
@@ -75,7 +75,7 @@ class TasksController extends Controller {
             
             $result = $this->taskModel->create($taskData);
             if ($result) {
-                header('Location: /Ergon/tasks?success=created');
+                header('Location: /ergon/tasks?success=created');
                 exit;
             }
         }
@@ -97,7 +97,7 @@ class TasksController extends Controller {
             
             $result = $this->taskModel->updateProgress($taskId, $_SESSION['user_id'], $progress, $comment);
             if ($result) {
-                header('Location: /Ergon/tasks?success=updated');
+                header('Location: /ergon/tasks?success=updated');
                 exit;
             }
         }

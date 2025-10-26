@@ -81,7 +81,7 @@ class LeaveController extends Controller {
             ];
             
             if ($this->leave->create($data)) {
-                header('Location: /Ergon/leaves?success=1');
+                header('Location: /ergon/leaves?success=1');
                 exit;
             } else {
                 $data = ['error' => 'Failed to create leave request', 'active_page' => 'leaves'];
@@ -109,16 +109,16 @@ class LeaveController extends Controller {
         
         $id = Security::validateInt($id);
         if (!$id) {
-            header('Location: /Ergon/leaves?error=invalid_id');
+            header('Location: /ergon/leaves?error=invalid_id');
             exit;
         }
         
         try {
             $this->leave->updateStatus($id, 'approved', $_SESSION['user_id']);
-            header('Location: /Ergon/leaves?success=approved');
+            header('Location: /ergon/leaves?success=approved');
         } catch (Exception $e) {
             error_log('Leave approval error: ' . $e->getMessage());
-            header('Location: /Ergon/leaves?error=approval_failed');
+            header('Location: /ergon/leaves?error=approval_failed');
         }
         exit;
     }
@@ -134,16 +134,16 @@ class LeaveController extends Controller {
         
         $id = Security::validateInt($id);
         if (!$id) {
-            header('Location: /Ergon/leaves?error=invalid_id');
+            header('Location: /ergon/leaves?error=invalid_id');
             exit;
         }
         
         try {
             $this->leave->updateStatus($id, 'rejected', $_SESSION['user_id']);
-            header('Location: /Ergon/leaves?success=rejected');
+            header('Location: /ergon/leaves?success=rejected');
         } catch (Exception $e) {
             error_log('Leave rejection error: ' . $e->getMessage());
-            header('Location: /Ergon/leaves?error=rejection_failed');
+            header('Location: /ergon/leaves?error=rejection_failed');
         }
         exit;
     }

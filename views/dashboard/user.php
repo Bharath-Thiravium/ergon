@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard - ERGON</title>
-    <link rel="stylesheet" href="/Ergon/assets/css/ergon.css">
+    <link rel="stylesheet" href="/ergon/assets/css/ergon.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -20,41 +20,41 @@
             </div>
             
             <nav class="sidebar__menu">
-                <a href="/Ergon/user/dashboard" class="sidebar__link sidebar__link--active">
+                <a href="/ergon/user/dashboard" class="sidebar__link sidebar__link--active">
                     <i class="sidebar__icon fas fa-tachometer-alt"></i>
                     Dashboard
                 </a>
                 
                 <div class="sidebar__divider">Attendance</div>
-                <a href="/Ergon/attendance/clock" class="sidebar__link">
+                <a href="/ergon/attendance/clock" class="sidebar__link">
                     <i class="sidebar__icon fas fa-clock"></i>
                     Clock In/Out
                 </a>
-                <a href="/Ergon/attendance" class="sidebar__link">
+                <a href="/ergon/attendance" class="sidebar__link">
                     <i class="sidebar__icon fas fa-calendar-check"></i>
                     My Attendance
                 </a>
                 
                 <div class="sidebar__divider">Tasks</div>
-                <a href="/Ergon/tasks" class="sidebar__link">
+                <a href="/ergon/tasks" class="sidebar__link">
                     <i class="sidebar__icon fas fa-tasks"></i>
                     My Tasks
                 </a>
-                <a href="/Ergon/tasks/calendar" class="sidebar__link">
+                <a href="/ergon/tasks/calendar" class="sidebar__link">
                     <i class="sidebar__icon fas fa-calendar"></i>
                     Task Calendar
                 </a>
                 
                 <div class="sidebar__divider">Requests</div>
-                <a href="/Ergon/leaves/create" class="sidebar__link">
+                <a href="/ergon/leaves/create" class="sidebar__link">
                     <i class="sidebar__icon fas fa-calendar-alt"></i>
                     Leave Request
                 </a>
-                <a href="/Ergon/expenses/create" class="sidebar__link">
+                <a href="/ergon/expenses/create" class="sidebar__link">
                     <i class="sidebar__icon fas fa-receipt"></i>
                     Expense Claim
                 </a>
-                <a href="/Ergon/advances/create" class="sidebar__link">
+                <a href="/ergon/advances/create" class="sidebar__link">
                     <i class="sidebar__icon fas fa-money-bill"></i>
                     Advance Request
                 </a>
@@ -80,16 +80,16 @@
                     </button>
                     
                     <div class="profile-menu">
-                        <a href="/Ergon/profile" class="profile-menu-item">
+                        <a href="/ergon/profile" class="profile-menu-item">
                             <i class="menu-icon fas fa-user"></i>
                             Profile
                         </a>
-                        <a href="/Ergon/profile/preferences" class="profile-menu-item">
+                        <a href="/ergon/profile/preferences" class="profile-menu-item">
                             <i class="menu-icon fas fa-cog"></i>
                             Preferences
                         </a>
                         <div class="profile-menu-divider"></div>
-                        <a href="/Ergon/logout" class="profile-menu-item profile-menu-item--danger">
+                        <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
                             <i class="menu-icon fas fa-sign-out-alt"></i>
                             Logout
                         </a>
@@ -190,11 +190,11 @@
                                 <i class="fas fa-stop"></i>
                                 Clock Out
                             </button>
-                            <a href="/Ergon/leaves/create" class="btn btn--secondary">
+                            <a href="/ergon/leaves/create" class="btn btn--secondary">
                                 <i class="fas fa-calendar-alt"></i>
                                 Request Leave
                             </a>
-                            <a href="/Ergon/expenses/create" class="btn btn--secondary">
+                            <a href="/ergon/expenses/create" class="btn btn--secondary">
                                 <i class="fas fa-receipt"></i>
                                 Submit Expense
                             </a>
@@ -313,7 +313,7 @@
         function clockIn() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(function(position) {
-                    fetch('/Ergon/attendance/clock', {
+                    fetch('/ergon/attendance/clock', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
@@ -336,7 +336,7 @@
         function clockOut() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(function(position) {
-                    fetch('/Ergon/attendance/clock', {
+                    fetch('/ergon/attendance/clock', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',

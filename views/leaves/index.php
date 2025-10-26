@@ -10,7 +10,7 @@ ob_start();
         <p>Manage employee leave requests and approvals</p>
     </div>
     <div class="page-actions">
-        <a href="/Ergon/leaves/create" class="btn btn--primary">
+        <a href="/ergon/leaves/create" class="btn btn--primary">
             <span>➕</span> Request Leave
         </a>
     </div>

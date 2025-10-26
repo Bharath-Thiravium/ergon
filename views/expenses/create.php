@@ -33,7 +33,7 @@
                             <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary">Submit Claim</button>
-                        <a href="/Ergon/expenses" class="btn btn-secondary">Cancel</a>
+                        <a href="/ergon/expenses" class="btn btn-secondary">Cancel</a>
                     </form>
                 </div>
             </div>
@@ -46,7 +46,7 @@ document.getElementById('expenseForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const formData = new FormData(this);
     
-    fetch('/Ergon/expenses/create', {
+    fetch('/ergon/expenses/create', {
         method: 'POST',
         body: formData
     })
@@ -54,7 +54,7 @@ document.getElementById('expenseForm').addEventListener('submit', function(e) {
     .then(data => {
         if (data.success) {
             ERGON.showAlert('Expense claim submitted successfully!', 'success');
-            setTimeout(() => window.location.href = '/Ergon/expenses', 1000);
+            setTimeout(() => window.location.href = '/ergon/expenses', 1000);
         } else {
             ERGON.showAlert(data.error, 'danger');
         }

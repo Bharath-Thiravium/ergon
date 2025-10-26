@@ -75,7 +75,7 @@ ob_start();
 <script>
 function escalateTask(taskId) {
     if (confirm('Escalate this overdue task to management?')) {
-        fetch(`/Ergon/api/tasks/escalate/${taskId}`, {
+        fetch(`/ergon/api/tasks/escalate/${taskId}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'}
         }).then(response => response.json())

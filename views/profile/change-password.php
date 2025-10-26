@@ -6,7 +6,7 @@ ob_start();
 
 <div class="page-header">
     <h1>🔒 Change Password</h1>
-    <a href="/Ergon/profile" class="btn btn--secondary">Back to Profile</a>
+    <a href="/ergon/profile" class="btn btn--secondary">Back to Profile</a>
 </div>
 
 <?php if (isset($_GET['success'])): ?>
@@ -44,7 +44,7 @@ ob_start();
             
             <div class="form-actions">
                 <button type="submit" class="btn btn--primary">Change Password</button>
-                <a href="/Ergon/profile" class="btn btn--secondary">Cancel</a>
+                <a href="/ergon/profile" class="btn btn--secondary">Cancel</a>
             </div>
         </form>
         

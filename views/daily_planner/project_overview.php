@@ -12,7 +12,7 @@ ob_start();
     <div class="page-actions">
         <button id="gridViewBtn" class="btn btn--primary">Grid View</button>
         <button id="listViewBtn" class="btn btn--secondary">List View</button>
-        <a href="/Ergon/owner/dashboard" class="btn btn--secondary">Back</a>
+        <a href="/ergon/owner/dashboard" class="btn btn--secondary">Back</a>
     </div>
 </div>
 

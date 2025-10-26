@@ -109,7 +109,7 @@ function assignAdmin(userId) {
     if (confirm('Are you sure you want to assign admin role to this user?')) {
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = '/Ergon/admin/assign';
+        form.action = '/ergon/admin/assign';
         
         const input = document.createElement('input');
         input.type = 'hidden';
@@ -126,7 +126,7 @@ function removeAdmin(adminId) {
     if (confirm('Are you sure you want to remove admin role from this user?')) {
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = '/Ergon/admin/remove';
+        form.action = '/ergon/admin/remove';
         
         const input = document.createElement('input');
         input.type = 'hidden';
@@ -140,11 +140,11 @@ function removeAdmin(adminId) {
 }
 
 function editUser(userId) {
-    window.location.href = '/Ergon/users/edit/' + userId;
+    window.location.href = '/ergon/users/edit/' + userId;
 }
 
 function exportUserList() {
-    window.location.href = '/Ergon/admin/export';
+    window.location.href = '/ergon/admin/export';
 }
 </script>
 

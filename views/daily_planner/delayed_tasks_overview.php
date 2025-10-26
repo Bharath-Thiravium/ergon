@@ -10,7 +10,7 @@ ob_start();
         <p>Monitor and manage overdue tasks across all projects</p>
     </div>
     <div class="page-actions">
-        <a href="/Ergon/owner/dashboard" class="btn btn--secondary">← Back to Dashboard</a>
+        <a href="/ergon/owner/dashboard" class="btn btn--secondary">← Back to Dashboard</a>
     </div>
 </div>
 

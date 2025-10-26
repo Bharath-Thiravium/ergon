@@ -10,7 +10,7 @@ ob_start();
         <p>Manage employee salary advance requests and approvals</p>
     </div>
     <div class="page-actions">
-        <a href="/Ergon/advances/create" class="btn btn--primary">
+        <a href="/ergon/advances/create" class="btn btn--primary">
             <span>➕</span> Request Advance
         </a>
     </div>

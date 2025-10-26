@@ -7,7 +7,9 @@
 // Application Settings
 define('APP_NAME', 'ERGON');
 define('APP_VERSION', '1.0.0');
-define('APP_URL', 'http://localhost/ergon');
+// Environment-aware APP_URL
+$isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
+define('APP_URL', $isProduction ? 'https://athenas.co.in/ergon' : 'http://localhost/Ergon');
 
 // Security Settings
 define('JWT_SECRET', 'your-secret-key-change-in-production');

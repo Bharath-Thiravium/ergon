@@ -13,7 +13,7 @@ class UserController extends Controller {
         AuthMiddleware::requireAuth();
         
         if (!in_array($_SESSION['role'], ['user', 'admin', 'owner'])) {
-            header('Location: /Ergon/login');
+            header('Location: /ergon/login');
             exit;
         }
         

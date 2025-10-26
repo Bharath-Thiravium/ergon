@@ -7,18 +7,18 @@ ob_start();
 <div class="page-header">
     <h1>📅 Enhanced Calendar & Daily Planner</h1>
     <div class="header-actions">
-        <a href="/Ergon/planner/calendar" class="btn btn--primary">📋 Daily Planner Calendar</a>
+        <a href="/ergon/planner/calendar" class="btn btn--primary">📋 Daily Planner Calendar</a>
         <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-        <a href="/Ergon/tasks/create" class="btn btn--secondary">Create Task</a>
+        <a href="/ergon/tasks/create" class="btn btn--secondary">Create Task</a>
         <?php endif; ?>
-        <a href="/Ergon/tasks" class="btn btn--secondary">Task List</a>
+        <a href="/ergon/tasks" class="btn btn--secondary">Task List</a>
     </div>
 </div>
 
 <div class="alert alert--info">
     <strong>🚀 New Feature Available!</strong> 
     We've upgraded the calendar with daily planner functionality and department-specific forms. 
-    <a href="/Ergon/planner/calendar" class="btn btn--sm btn--primary" style="margin-left: 10px;">Try New Calendar</a>
+    <a href="/ergon/planner/calendar" class="btn btn--sm btn--primary" style="margin-left: 10px;">Try New Calendar</a>
 </div>
 
 <div class="dashboard-grid">

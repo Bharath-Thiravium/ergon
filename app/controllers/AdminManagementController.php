@@ -28,7 +28,7 @@ class AdminManagementController extends Controller {
                 $stmt = $db->prepare("UPDATE users SET role = 'admin' WHERE id = ? AND role = 'user'");
                 $stmt->execute([$_POST['user_id']]);
                 
-                $this->redirect('/Ergon/admin/management');
+                $this->redirect('/ergon/admin/management');
             } catch (Exception $e) {
                 $this->handleError($e, 'Failed to assign admin role');
             }
@@ -44,7 +44,7 @@ class AdminManagementController extends Controller {
                 $stmt = $db->prepare("UPDATE users SET role = 'user' WHERE id = ? AND role = 'admin'");
                 $stmt->execute([$_POST['admin_id']]);
                 
-                $this->redirect('/Ergon/admin/management');
+                $this->redirect('/ergon/admin/management');
             } catch (Exception $e) {
                 $this->handleError($e, 'Failed to remove admin role');
             }
