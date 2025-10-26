@@ -36,13 +36,13 @@ class AuthMiddleware {
         self::requireAuth();
         
         if ($_SESSION['role'] !== $requiredRole) {
-            header('Location: /Ergon/public/dashboard');
+            header('Location: /ergon/dashboard');
             exit;
         }
     }
     
     private static function redirectToLogin($query = '') {
-        $url = '/Ergon/public/login';
+        $url = '/ergon/login';
         if ($query) {
             $url .= '?' . $query;
         }

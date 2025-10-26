@@ -1,12 +1,12 @@
 <?php
-// Redirect /Ergon/public/* to /Ergon/*
+// Redirect /ergon/public/* to /ergon/*
 $requestUri = $_SERVER["REQUEST_URI"];
-$newUri = str_replace("/Ergon/public/", "/Ergon/", $requestUri);
+$newUri = str_replace("/ergon/public/", "/ergon/", $requestUri);
 if ($newUri !== $requestUri) {
     header("Location: $newUri", true, 301);
     exit;
 }
 // If direct access to /public/, redirect to root
-header("Location: /Ergon/", true, 301);
+header("Location: /ergon/", true, 301);
 exit;
 ?>

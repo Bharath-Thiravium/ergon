@@ -43,8 +43,8 @@ class PerformanceBooster {
     }
     
     public static function preloadCriticalResources() {
-        echo '<link rel="preload" href="/Ergon/public/assets/css/ergon.min.css" as="style">';
-        echo '<link rel="preload" href="/Ergon/public/assets/js/ergon-core.min.js" as="script">';
+        echo '<link rel="preload" href="/ergon/assets/css/ergon.min.css" as="style">';
+        echo '<link rel="preload" href="/ergon/assets/js/ergon-core.min.js" as="script">';
         echo '<link rel="dns-prefetch" href="//cdn.jsdelivr.net">';
         echo '<link rel="dns-prefetch" href="//cdnjs.cloudflare.com">';
     }
