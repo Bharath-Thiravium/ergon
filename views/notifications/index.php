@@ -86,7 +86,7 @@ ob_start();
 
 <script>
 function markAsRead(id) {
-    fetch('/ergon_clean/public/api/notifications/mark-read', {
+    fetch('/ergon/public/api/notifications/mark-read', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -106,7 +106,7 @@ function markAsRead(id) {
 }
 
 function markAllAsRead() {
-    fetch('/ergon_clean/public/api/notifications/mark-all-read', {
+    fetch('/ergon/public/api/notifications/mark-all-read', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

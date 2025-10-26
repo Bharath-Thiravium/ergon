@@ -5,7 +5,7 @@ ob_start();
 ?>
 
 <div class="header-actions">
-    <a href="/ergon_clean/public/departments/create" class="btn btn--primary">
+    <a href="/ergon/public/departments/create" class="btn btn--primary">
         <span>➕</span> Create Department
     </a>
 </div>
@@ -74,7 +74,7 @@ ob_start();
                         </td>
                         <td><?= date('M d, Y', strtotime($dept['created_at'])) ?></td>
                         <td>
-                            <a href="/ergon_clean/public/departments/edit/<?= $dept['id'] ?>" class="btn btn--sm btn--secondary">Edit</a>
+                            <a href="/ergon/public/departments/edit/<?= $dept['id'] ?>" class="btn btn--sm btn--secondary">Edit</a>
                         </td>
                     </tr>
                     <?php endforeach; ?>

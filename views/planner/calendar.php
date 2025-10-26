@@ -162,7 +162,7 @@ ob_start();
             <h3><span>📅</span> Create New Plan</h3>
             <button class="modal-close" onclick="closeModal('createPlanModal')">&times;</button>
         </div>
-        <form method="POST" action="/ergon_clean/public/planner/create">
+        <form method="POST" action="/ergon/public/planner/create">
             <div class="modal-body">
                 <div class="form-row">
                     <div class="form-group">

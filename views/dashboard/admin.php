@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - ERGON</title>
-    <link rel="stylesheet" href="/ergon_clean/public/assets/css/ergon.css">
+    <link rel="stylesheet" href="/ergon/public/assets/css/ergon.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -20,45 +20,45 @@
             </div>
             
             <nav class="sidebar__menu">
-                <a href="/ergon_clean/public/admin/dashboard" class="sidebar__link sidebar__link--active">
+                <a href="/ergon/public/admin/dashboard" class="sidebar__link sidebar__link--active">
                     <i class="sidebar__icon fas fa-tachometer-alt"></i>
                     Dashboard
                 </a>
                 
                 <div class="sidebar__divider">Management</div>
-                <a href="/ergon_clean/public/tasks" class="sidebar__link">
+                <a href="/ergon/public/tasks" class="sidebar__link">
                     <i class="sidebar__icon fas fa-tasks"></i>
                     Task Management
                 </a>
-                <a href="/ergon_clean/public/attendance" class="sidebar__link">
+                <a href="/ergon/public/attendance" class="sidebar__link">
                     <i class="sidebar__icon fas fa-clock"></i>
                     Attendance
                 </a>
-                <a href="/ergon_clean/public/users" class="sidebar__link">
+                <a href="/ergon/public/users" class="sidebar__link">
                     <i class="sidebar__icon fas fa-users"></i>
                     Team Members
                 </a>
                 
                 <div class="sidebar__divider">Approvals</div>
-                <a href="/ergon_clean/public/leaves" class="sidebar__link">
+                <a href="/ergon/public/leaves" class="sidebar__link">
                     <i class="sidebar__icon fas fa-calendar-alt"></i>
                     Leave Requests
                 </a>
-                <a href="/ergon_clean/public/expenses" class="sidebar__link">
+                <a href="/ergon/public/expenses" class="sidebar__link">
                     <i class="sidebar__icon fas fa-receipt"></i>
                     Expense Claims
                 </a>
-                <a href="/ergon_clean/public/advances" class="sidebar__link">
+                <a href="/ergon/public/advances" class="sidebar__link">
                     <i class="sidebar__icon fas fa-money-bill"></i>
                     Advance Requests
                 </a>
                 
                 <div class="sidebar__divider">Reports</div>
-                <a href="/ergon_clean/public/reports" class="sidebar__link">
+                <a href="/ergon/public/reports" class="sidebar__link">
                     <i class="sidebar__icon fas fa-chart-bar"></i>
                     Reports
                 </a>
-                <a href="/ergon_clean/public/analytics" class="sidebar__link">
+                <a href="/ergon/public/analytics" class="sidebar__link">
                     <i class="sidebar__icon fas fa-chart-line"></i>
                     Analytics
                 </a>
@@ -84,16 +84,16 @@
                     </button>
                     
                     <div class="profile-menu">
-                        <a href="/ergon_clean/public/profile" class="profile-menu-item">
+                        <a href="/ergon/public/profile" class="profile-menu-item">
                             <i class="menu-icon fas fa-user"></i>
                             Profile
                         </a>
-                        <a href="/ergon_clean/public/settings" class="profile-menu-item">
+                        <a href="/ergon/public/settings" class="profile-menu-item">
                             <i class="menu-icon fas fa-cog"></i>
                             Settings
                         </a>
                         <div class="profile-menu-divider"></div>
-                        <a href="/ergon_clean/public/logout" class="profile-menu-item profile-menu-item--danger">
+                        <a href="/ergon/public/logout" class="profile-menu-item profile-menu-item--danger">
                             <i class="menu-icon fas fa-sign-out-alt"></i>
                             Logout
                         </a>

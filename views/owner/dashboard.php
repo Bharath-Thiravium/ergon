@@ -5,11 +5,11 @@ ob_start();
 ?>
 
 <div class="header-actions">
-    <a href="/ergon_clean/public/system-admin" class="btn btn--primary">🔧 System Admins</a>
-    <a href="/ergon_clean/public/admin/management" class="btn btn--secondary">👥 User Admins</a>
-    <a href="/ergon_clean/public/owner/approvals" class="btn btn--secondary">Review Approvals</a>
-    <a href="/ergon_clean/public/reports" class="btn btn--secondary">View Reports</a>
-    <a href="/ergon_clean/public/settings" class="btn btn--secondary">System Settings</a>
+    <a href="/ergon/public/system-admin" class="btn btn--primary">🔧 System Admins</a>
+    <a href="/ergon/public/admin/management" class="btn btn--secondary">👥 User Admins</a>
+    <a href="/ergon/public/owner/approvals" class="btn btn--secondary">Review Approvals</a>
+    <a href="/ergon/public/reports" class="btn btn--secondary">View Reports</a>
+    <a href="/ergon/public/settings" class="btn btn--secondary">System Settings</a>
 </div>
 
 <div class="dashboard-grid">
@@ -147,11 +147,11 @@ ob_start();
 
 <script>
 function viewProjectDetails() {
-    window.location.href = '/ergon_clean/public/daily-planner/project-overview';
+    window.location.href = '/ergon/public/daily-planner/project-overview';
 }
 
 function viewDelayedTasks() {
-    window.location.href = '/ergon_clean/public/daily-planner/delayed-tasks-overview';
+    window.location.href = '/ergon/public/daily-planner/delayed-tasks-overview';
 }
 </script>
 

@@ -47,9 +47,9 @@ class Environment {
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         
         if (self::isDevelopment()) {
-            return $protocol . '://' . $host . '/ergon_clean';
+            return $protocol . '://' . $host . '/ergon';
         } else {
-            return $protocol . '://' . $host . '/ergon_clean';
+            return $protocol . '://' . $host . '/ergon';
         }
     }
     

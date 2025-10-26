@@ -7,7 +7,7 @@
 // Application Settings
 define('APP_NAME', 'ERGON');
 define('APP_VERSION', '1.0.0');
-define('APP_URL', 'http://localhost/ergon_clean');
+define('APP_URL', 'http://localhost/ergon');
 
 // Security Settings
 define('JWT_SECRET', 'your-secret-key-change-in-production');

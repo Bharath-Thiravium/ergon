@@ -35,7 +35,7 @@ ob_start();
         <h2 class="card__title">Progress Report Form</h2>
     </div>
     <div class="card__body">
-        <form method="POST" action="/ergon_clean/public/daily-planner/submit" enctype="multipart/form-data" id="taskForm">
+        <form method="POST" action="/ergon/public/daily-planner/submit" enctype="multipart/form-data" id="taskForm">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <div class="form-row">
                 <div class="form-group">

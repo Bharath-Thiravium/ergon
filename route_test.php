@@ -29,18 +29,18 @@
         <h2>Critical Routes Test</h2>
         <?php
         $routes = [
-            'System Admin' => '/ergon_clean/public/system-admin',
-            'Admin Management' => '/ergon_clean/public/admin/management',
-            'Daily Planner' => '/ergon_clean/public/planner/calendar',
-            'Progress Dashboard' => '/ergon_clean/public/daily-planner/dashboard',
-            'Departments' => '/ergon_clean/public/departments',
-            'Users' => '/ergon_clean/public/users',
-            'Tasks' => '/ergon_clean/public/tasks',
-            'Attendance' => '/ergon_clean/public/attendance',
-            'Leaves' => '/ergon_clean/public/leaves',
-            'Expenses' => '/ergon_clean/public/expenses',
-            'Reports' => '/ergon_clean/public/reports',
-            'Settings' => '/ergon_clean/public/settings'
+            'System Admin' => '/ergon/public/system-admin',
+            'Admin Management' => '/ergon/public/admin/management',
+            'Daily Planner' => '/ergon/public/planner/calendar',
+            'Progress Dashboard' => '/ergon/public/daily-planner/dashboard',
+            'Departments' => '/ergon/public/departments',
+            'Users' => '/ergon/public/users',
+            'Tasks' => '/ergon/public/tasks',
+            'Attendance' => '/ergon/public/attendance',
+            'Leaves' => '/ergon/public/leaves',
+            'Expenses' => '/ergon/public/expenses',
+            'Reports' => '/ergon/public/reports',
+            'Settings' => '/ergon/public/settings'
         ];
         
         foreach ($routes as $name => $url) {
@@ -122,8 +122,8 @@
         <p>All sidebar menu items should now work without 404 errors.</p>
         
         <div style="margin-top: 20px;">
-            <a href="/ergon_clean/public/login" style="background: #1e40af; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">🔐 Test Login</a>
-            <a href="/ergon_clean/sidebar_test.php" style="background: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-left: 10px;">🧪 Sidebar Test</a>
+            <a href="/ergon/public/login" style="background: #1e40af; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">🔐 Test Login</a>
+            <a href="/ergon/sidebar_test.php" style="background: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-left: 10px;">🧪 Sidebar Test</a>
         </div>
     </div>
 </body>

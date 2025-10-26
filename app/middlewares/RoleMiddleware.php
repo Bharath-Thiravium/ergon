@@ -8,7 +8,7 @@ class RoleMiddleware {
         
         if (!isset($_SESSION['user_id'])) {
             http_response_code(401);
-            header('Location: /ergon_clean/public/login');
+            header('Location: /ergon/public/login');
             exit;
         }
         
@@ -28,7 +28,7 @@ class RoleMiddleware {
         
         if (!isset($_SESSION['user_id'])) {
             http_response_code(401);
-            header('Location: /ergon_clean/public/login');
+            header('Location: /ergon/public/login');
             exit;
         }
         

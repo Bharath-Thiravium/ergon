@@ -4,8 +4,8 @@
     <div class="container-fluid">
         <a class="navbar-brand" href="#"><i class="fas fa-user-cog me-2"></i>Profile</a>
         <div class="navbar-nav ms-auto">
-            <a class="nav-link" href="/ergon_clean/public/dashboard">Dashboard</a>
-            <a class="nav-link" href="/ergon_clean/public/logout">Logout</a>
+            <a class="nav-link" href="/ergon/public/dashboard">Dashboard</a>
+            <a class="nav-link" href="/ergon/public/logout">Logout</a>
         </div>
     </div>
 </nav>
@@ -73,7 +73,7 @@ document.getElementById('profileForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const formData = new FormData(this);
     
-    fetch('/ergon_clean/public/profile', {
+    fetch('/ergon/public/profile', {
         method: 'POST',
         body: formData
     })
@@ -96,7 +96,7 @@ document.getElementById('passwordForm').addEventListener('submit', function(e) {
         return;
     }
     
-    fetch('/ergon_clean/public/auth/reset-password', {
+    fetch('/ergon/public/auth/reset-password', {
         method: 'POST',
         body: formData
     })

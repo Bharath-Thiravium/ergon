@@ -51,13 +51,13 @@ class SettingsController extends Controller {
                 ];
                 
                 if ($this->updateSettings($settings)) {
-                    header('Location: /ergon_clean/public/settings?success=1');
+                    header('Location: /ergon/public/settings?success=1');
                 } else {
-                    header('Location: /ergon_clean/public/settings?error=1');
+                    header('Location: /ergon/public/settings?error=1');
                 }
             } catch (Exception $e) {
                 error_log('Settings update error: ' . $e->getMessage());
-                header('Location: /ergon_clean/public/settings?error=1');
+                header('Location: /ergon/public/settings?error=1');
             }
             exit;
         }

@@ -10,13 +10,13 @@ ob_start();
     <div class="department-badge"><?= $_SESSION['user']['department'] ?> Department</div>
     <?php endif; ?>
     <div class="header-actions">
-        <a href="/ergon_clean/public/planner/calendar" class="btn btn--secondary">Back to Calendar</a>
+        <a href="/ergon/public/planner/calendar" class="btn btn--secondary">Back to Calendar</a>
     </div>
 </div>
 
 <div class="create-plan-container">
     <div class="create-plan-form">
-        <form method="POST" action="/ergon_clean/public/planner/create">
+        <form method="POST" action="/ergon/public/planner/create">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <div class="form-section">
                 <h3>Basic Information</h3>

@@ -6,7 +6,7 @@ ob_start();
 
 <div class="page-header">
     <h1>⚙️ My Preferences</h1>
-    <a href="/ergon_clean/public/profile" class="btn btn--secondary">Back to Profile</a>
+    <a href="/ergon/public/profile" class="btn btn--secondary">Back to Profile</a>
 </div>
 
 <?php if (isset($_GET['success'])): ?>
@@ -91,14 +91,14 @@ ob_start();
                         <li>Password last changed: Recently</li>
                         <li>Two-factor authentication: Not enabled</li>
                     </ul>
-                    <a href="/ergon_clean/public/profile/change-password" class="btn btn--sm btn--secondary">Change Password</a>
+                    <a href="/ergon/public/profile/change-password" class="btn btn--sm btn--secondary">Change Password</a>
                 </div>
             </div>
         </div>
         
         <div class="form-actions">
             <button type="submit" class="btn btn--primary">Save Preferences</button>
-            <a href="/ergon_clean/public/profile" class="btn btn--secondary">Cancel</a>
+            <a href="/ergon/public/profile" class="btn btn--secondary">Cancel</a>
         </div>
     </form>
 </div>

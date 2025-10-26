@@ -51,6 +51,6 @@ try {
     http_response_code(500);
     echo "<!DOCTYPE html><html><head><title>System Error</title></head>";
     echo "<body><h1>System Error</h1><p>Please try again later.</p>";
-    echo "<a href='/ergon_clean/public/login'>Return to Login</a></body></html>";
+    echo "<a href='/ergon/public/login'>Return to Login</a></body></html>";
 }
 ?>
