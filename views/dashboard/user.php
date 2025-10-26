@@ -1,105 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Dashboard - ERGON</title>
-    <link rel="stylesheet" href="/ergon/assets/css/ergon.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
-    <div class="layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar__header">
-                <a href="#" class="sidebar__brand">
-                    <i class="fas fa-user"></i>
-                    ERGON
-                </a>
-                <h3>User Portal</h3>
-            </div>
-            
-            <nav class="sidebar__menu">
-                <a href="/ergon/user/dashboard" class="sidebar__link sidebar__link--active">
-                    <i class="sidebar__icon fas fa-tachometer-alt"></i>
-                    Dashboard
-                </a>
-                
-                <div class="sidebar__divider">Attendance</div>
-                <a href="/ergon/attendance/clock" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-clock"></i>
-                    Clock In/Out
-                </a>
-                <a href="/ergon/attendance" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-calendar-check"></i>
-                    My Attendance
-                </a>
-                
-                <div class="sidebar__divider">Tasks</div>
-                <a href="/ergon/tasks" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-tasks"></i>
-                    My Tasks
-                </a>
-                <a href="/ergon/tasks/calendar" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-calendar"></i>
-                    Task Calendar
-                </a>
-                
-                <div class="sidebar__divider">Requests</div>
-                <a href="/ergon/leaves/create" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-calendar-alt"></i>
-                    Leave Request
-                </a>
-                <a href="/ergon/expenses/create" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-receipt"></i>
-                    Expense Claim
-                </a>
-                <a href="/ergon/advances/create" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-money-bill"></i>
-                    Advance Request
-                </a>
-            </nav>
-            
-            <div class="sidebar__controls">
-                <button class="sidebar__control-btn" title="Notifications">
-                    <i class="fas fa-bell"></i>
-                    <span class="notification-badge">2</span>
-                </button>
-                <button class="sidebar__control-btn" title="Settings">
-                    <i class="fas fa-cog"></i>
-                </button>
-                
-                <div class="sidebar__profile-dropdown">
-                    <button class="sidebar__profile-btn">
-                        <div class="profile-avatar"><?= strtoupper(substr($user_name, 0, 1)) ?></div>
-                        <div class="profile-info">
-                            <span class="profile-name"><?= htmlspecialchars($user_name) ?></span>
-                            <span class="profile-role"><?= htmlspecialchars($role) ?></span>
-                        </div>
-                        <i class="dropdown-arrow fas fa-chevron-up"></i>
-                    </button>
-                    
-                    <div class="profile-menu">
-                        <a href="/ergon/profile" class="profile-menu-item">
-                            <i class="menu-icon fas fa-user"></i>
-                            Profile
-                        </a>
-                        <a href="/ergon/profile/preferences" class="profile-menu-item">
-                            <i class="menu-icon fas fa-cog"></i>
-                            Preferences
-                        </a>
-                        <div class="profile-menu-divider"></div>
-                        <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
-                            <i class="menu-icon fas fa-sign-out-alt"></i>
-                            Logout
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </aside>
-        
-        <!-- Main Content -->
-        <main class="main-content">
+<?php
+$title = 'User Dashboard';
+$active_page = 'dashboard';
+
+ob_start();
+?>
 
             
             <!-- Header Actions -->
@@ -243,118 +147,70 @@
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
-    
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle">
-        <i class="fas fa-bars"></i>
-    </button>
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        // Performance Chart
-        const ctx = document.getElementById('userChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-                datasets: [{
-                    label: 'Tasks Completed',
-                    data: [2, 4, 3, 5, 2],
-                    borderColor: '#1e40af',
-                    backgroundColor: 'rgba(30, 64, 175, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0,0,0,0.1)'
-                        }
-                    },
-                    x: {
-                        grid: {
-                            color: 'rgba(0,0,0,0.1)'
-                        }
-                    }
-                }
-            }
-        });
-        
-        // Mobile menu toggle
-        document.querySelector('.mobile-menu-toggle').addEventListener('click', function() {
-            document.querySelector('.sidebar').classList.toggle('sidebar--open');
-        });
-        
-        // Profile dropdown toggle
-        document.querySelector('.sidebar__profile-btn').addEventListener('click', function() {
-            const menu = document.querySelector('.profile-menu');
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        });
-        
-        // Close profile menu when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.sidebar__profile-dropdown')) {
-                document.querySelector('.profile-menu').style.display = 'none';
-            }
-        });
-        
-        function clockIn() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    fetch('/ergon/attendance/clock', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `type=in&latitude=${position.coords.latitude}&longitude=${position.coords.longitude}`
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            alert('Clocked in successfully!');
-                            location.reload();
-                        } else {
-                            alert(data.error);
-                        }
-                    });
-                });
-            }
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Performance Chart
+const ctx = document.getElementById('userChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        datasets: [{
+            label: 'Tasks Completed',
+            data: [2, 4, 3, 5, 2],
+            borderColor: '#1e40af',
+            backgroundColor: 'rgba(30, 64, 175, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.1)' } },
+            x: { grid: { color: 'rgba(0,0,0,0.1)' } }
         }
-        
-        function clockOut() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    fetch('/ergon/attendance/clock', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `type=out&latitude=${position.coords.latitude}&longitude=${position.coords.longitude}`
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            alert('Clocked out successfully!');
-                            location.reload();
-                        } else {
-                            alert(data.error);
-                        }
-                    });
-                });
-            }
-        }
-    </script>
-</body>
-</html>
+    }
+});
+
+function clockIn() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            fetch('/ergon/attendance/clock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `type=in&latitude=${position.coords.latitude}&longitude=${position.coords.longitude}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.success ? 'Clocked in successfully!' : data.error);
+                if (data.success) location.reload();
+            });
+        });
+    }
+}
+
+function clockOut() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            fetch('/ergon/attendance/clock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `type=out&latitude=${position.coords.latitude}&longitude=${position.coords.longitude}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.success ? 'Clocked out successfully!' : data.error);
+                if (data.success) location.reload();
+            });
+        });
+    }
+}
+</script>
+
+<?php
+$content = ob_get_clean();
+include __DIR__ . '/../layouts/dashboard.php';
+?>

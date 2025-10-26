@@ -1,26 +1,43 @@
 <?php
+require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../models/User.php';
 
 class AdminManagementController extends Controller {
     
     public function index() {
-        $this->requireAuth(['owner']);
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         
-        $title = 'User Admin Management';
-        $active_page = 'admin';
+        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
+            header('Location: /ergon/login');
+            exit;
+        }
         
-        $data = [
-            'users' => [
-                ['id' => 1, 'name' => 'John Doe', 'email' => 'john@ergon.com', 'role' => 'admin', 'status' => 'active'],
-                ['id' => 2, 'name' => 'Jane Smith', 'email' => 'jane@ergon.com', 'role' => 'user', 'status' => 'active'],
-                ['id' => 3, 'name' => 'Mike Johnson', 'email' => 'mike@ergon.com', 'role' => 'user', 'status' => 'active']
-            ]
-        ];
-        
-        include __DIR__ . '/../../views/admin/management.php';
+        try {
+            $userModel = new User();
+            $users = $userModel->getAll();
+            
+            $data = ['users' => $users];
+            
+            include __DIR__ . '/../../views/admin/management.php';
+        } catch (Exception $e) {
+            error_log('AdminManagement Error: ' . $e->getMessage());
+            $data = ['users' => []];
+            include __DIR__ . '/../../views/admin/management.php';
+        }
     }
     
     public function assignAdmin() {
-        $this->requireAuth(['owner']);
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
+            header('Location: /ergon/login');
+            exit;
+        }
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
@@ -28,15 +45,25 @@ class AdminManagementController extends Controller {
                 $stmt = $db->prepare("UPDATE users SET role = 'admin' WHERE id = ? AND role = 'user'");
                 $stmt->execute([$_POST['user_id']]);
                 
-                $this->redirect('/ergon/admin/management');
+                header('Location: /ergon/admin/management?success=admin_assigned');
+                exit;
             } catch (Exception $e) {
-                $this->handleError($e, 'Failed to assign admin role');
+                error_log('Assign Admin Error: ' . $e->getMessage());
+                header('Location: /ergon/admin/management?error=assign_failed');
+                exit;
             }
         }
     }
     
     public function removeAdmin() {
-        $this->requireAuth(['owner']);
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
+            header('Location: /ergon/login');
+            exit;
+        }
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
@@ -44,9 +71,12 @@ class AdminManagementController extends Controller {
                 $stmt = $db->prepare("UPDATE users SET role = 'user' WHERE id = ? AND role = 'admin'");
                 $stmt->execute([$_POST['admin_id']]);
                 
-                $this->redirect('/ergon/admin/management');
+                header('Location: /ergon/admin/management?success=admin_removed');
+                exit;
             } catch (Exception $e) {
-                $this->handleError($e, 'Failed to remove admin role');
+                error_log('Remove Admin Error: ' . $e->getMessage());
+                header('Location: /ergon/admin/management?error=remove_failed');
+                exit;
             }
         }
     }

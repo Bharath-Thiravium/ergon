@@ -3,6 +3,7 @@ require_once __DIR__ . '/../models/Attendance.php';
 require_once __DIR__ . '/../helpers/Security.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../config/database.php';
 
 class AttendanceController extends Controller {
     private $attendanceModel;

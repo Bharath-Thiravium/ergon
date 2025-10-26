@@ -75,6 +75,7 @@ ob_start();
                         <td><?= date('M d, Y', strtotime($dept['created_at'])) ?></td>
                         <td>
                             <a href="/ergon/departments/edit/<?= $dept['id'] ?>" class="btn btn--sm btn--secondary">Edit</a>
+                            <a href="/ergon/departments/delete/<?= $dept['id'] ?>" class="btn btn--sm btn--danger" onclick="return confirm('Are you sure you want to delete this department?')">Delete</a>
                         </td>
                     </tr>
                     <?php endforeach; ?>

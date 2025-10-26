@@ -1,109 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - ERGON</title>
-    <link rel="stylesheet" href="/ergon/assets/css/ergon.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
-    <div class="layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar__header">
-                <a href="#" class="sidebar__brand">
-                    <i class="fas fa-user-shield"></i>
-                    ERGON
-                </a>
-                <h3>Admin Portal</h3>
-            </div>
-            
-            <nav class="sidebar__menu">
-                <a href="/ergon/admin/dashboard" class="sidebar__link sidebar__link--active">
-                    <i class="sidebar__icon fas fa-tachometer-alt"></i>
-                    Dashboard
-                </a>
-                
-                <div class="sidebar__divider">Management</div>
-                <a href="/ergon/tasks" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-tasks"></i>
-                    Task Management
-                </a>
-                <a href="/ergon/attendance" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-clock"></i>
-                    Attendance
-                </a>
-                <a href="/ergon/users" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-users"></i>
-                    Team Members
-                </a>
-                
-                <div class="sidebar__divider">Approvals</div>
-                <a href="/ergon/leaves" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-calendar-alt"></i>
-                    Leave Requests
-                </a>
-                <a href="/ergon/expenses" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-receipt"></i>
-                    Expense Claims
-                </a>
-                <a href="/ergon/advances" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-money-bill"></i>
-                    Advance Requests
-                </a>
-                
-                <div class="sidebar__divider">Reports</div>
-                <a href="/ergon/reports" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-chart-bar"></i>
-                    Reports
-                </a>
-                <a href="/ergon/analytics" class="sidebar__link">
-                    <i class="sidebar__icon fas fa-chart-line"></i>
-                    Analytics
-                </a>
-            </nav>
-            
-            <div class="sidebar__controls">
-                <button class="sidebar__control-btn" title="Notifications">
-                    <i class="fas fa-bell"></i>
-                    <span class="notification-badge">5</span>
-                </button>
-                <button class="sidebar__control-btn" title="Settings">
-                    <i class="fas fa-cog"></i>
-                </button>
-                
-                <div class="sidebar__profile-dropdown">
-                    <button class="sidebar__profile-btn">
-                        <div class="profile-avatar"><?= strtoupper(substr($user_name, 0, 1)) ?></div>
-                        <div class="profile-info">
-                            <span class="profile-name"><?= htmlspecialchars($user_name) ?></span>
-                            <span class="profile-role"><?= htmlspecialchars($role) ?></span>
-                        </div>
-                        <i class="dropdown-arrow fas fa-chevron-up"></i>
-                    </button>
-                    
-                    <div class="profile-menu">
-                        <a href="/ergon/profile" class="profile-menu-item">
-                            <i class="menu-icon fas fa-user"></i>
-                            Profile
-                        </a>
-                        <a href="/ergon/settings" class="profile-menu-item">
-                            <i class="menu-icon fas fa-cog"></i>
-                            Settings
-                        </a>
-                        <div class="profile-menu-divider"></div>
-                        <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
-                            <i class="menu-icon fas fa-sign-out-alt"></i>
-                            Logout
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </aside>
-        
-        <!-- Main Content -->
-        <main class="main-content">
+<?php
+$title = 'Admin Dashboard';
+$active_page = 'dashboard';
+
+ob_start();
+?>
 
             
             <!-- Header Actions -->
@@ -256,69 +156,33 @@
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
-    
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle">
-        <i class="fas fa-bars"></i>
-    </button>
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        // Team Performance Chart
-        const ctx = document.getElementById('teamChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Tasks', 'Attendance', 'Leaves', 'Expenses'],
-                datasets: [{
-                    label: 'Pending Items',
-                    data: [5, 2, 3, 1],
-                    backgroundColor: ['#1e40af', '#059669', '#d97706', '#dc2626']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0,0,0,0.1)'
-                        }
-                    },
-                    x: {
-                        grid: {
-                            color: 'rgba(0,0,0,0.1)'
-                        }
-                    }
-                }
-            }
-        });
-        
-        // Mobile menu toggle
-        document.querySelector('.mobile-menu-toggle').addEventListener('click', function() {
-            document.querySelector('.sidebar').classList.toggle('sidebar--open');
-        });
-        
-        // Profile dropdown toggle
-        document.querySelector('.sidebar__profile-btn').addEventListener('click', function() {
-            const menu = document.querySelector('.profile-menu');
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        });
-        
-        // Close profile menu when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.sidebar__profile-dropdown')) {
-                document.querySelector('.profile-menu').style.display = 'none';
-            }
-        });
-    </script>
-</body>
-</html>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Team Performance Chart
+const ctx = document.getElementById('teamChart').getContext('2d');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['Tasks', 'Attendance', 'Leaves', 'Expenses'],
+        datasets: [{
+            label: 'Pending Items',
+            data: [5, 2, 3, 1],
+            backgroundColor: ['#1e40af', '#059669', '#d97706', '#dc2626']
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.1)' } },
+            x: { grid: { color: 'rgba(0,0,0,0.1)' } }
+        }
+    }
+});
+</script>
+
+<?php
+$content = ob_get_clean();
+include __DIR__ . '/../layouts/dashboard.php';
+?>

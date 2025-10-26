@@ -111,19 +111,29 @@ $router->get('/notifications', 'NotificationController', 'index');
 $router->get('/api/notifications/unread-count', 'NotificationController', 'getUnreadCount');
 $router->post('/api/notifications/mark-read', 'NotificationController', 'markAsRead');
 
-// Planner Management
-$router->get('/planner/calendar', 'PlannerController', 'calendar');
+// Daily Workflow Management (New Integrated System)
+$router->get('/daily-workflow/morning-planner', 'DailyWorkflowController', 'morningPlanner');
+$router->get('/daily-workflow/evening-update', 'DailyWorkflowController', 'eveningUpdate');
+$router->post('/daily-workflow/add-task', 'DailyWorkflowController', 'addTask');
+$router->post('/daily-workflow/update-task', 'DailyWorkflowController', 'updateTask');
+$router->post('/daily-workflow/delete-task', 'DailyWorkflowController', 'deleteTask');
+$router->post('/daily-workflow/delete-user-workflow', 'DailyWorkflowController', 'deleteUserWorkflow');
+$router->get('/daily-workflow/progress-dashboard', 'DailyWorkflowController', 'progressDashboard');
+$router->get('/daily-workflow/task-categories', 'DailyWorkflowController', 'getTaskCategories');
+
+// Legacy Planner Management (Redirected to new system)
+$router->get('/planner/calendar', 'DailyWorkflowController', 'morningPlanner');
 $router->get('/planner/create', 'PlannerController', 'create');
 $router->post('/planner/create', 'PlannerController', 'store');
 $router->post('/planner/update', 'PlannerController', 'update');
 $router->get('/planner/getDepartmentForm', 'PlannerController', 'getDepartmentForm');
 $router->get('/planner/getPlansForDate', 'PlannerController', 'getPlansForDate');
 
-// Daily Task Planner Routes
-$router->get('/daily-planner', 'DailyTaskPlannerController', 'index');
+// Legacy Daily Task Planner Routes (Redirected to new system)
+$router->get('/daily-planner', 'DailyWorkflowController', 'eveningUpdate');
 $router->post('/daily-planner/submit', 'DailyTaskPlannerController', 'submitTask');
 $router->get('/daily-planner/get-tasks', 'DailyTaskPlannerController', 'getProjectTasks');
-$router->get('/daily-planner/dashboard', 'DailyTaskPlannerController', 'dashboard');
+$router->get('/daily-planner/dashboard', 'DailyWorkflowController', 'progressDashboard');
 $router->get('/daily-planner/project-overview', 'DailyTaskPlannerController', 'projectOverview');
 $router->get('/daily-planner/delayed-tasks-overview', 'DailyTaskPlannerController', 'delayedTasksOverview');
 $router->get('/api/project-progress', 'DailyTaskPlannerController', 'projectProgressApi');
@@ -167,4 +177,10 @@ $router->post('/admin/remove', 'AdminManagementController', 'removeAdmin');
 $router->get('/system-admin', 'SystemAdminController', 'index');
 $router->post('/system-admin/create', 'SystemAdminController', 'create');
 $router->post('/system-admin/deactivate', 'SystemAdminController', 'deactivate');
+
+// Project Management Routes (Admin/Owner)
+$router->get('/project-management', 'ProjectManagementController', 'index');
+$router->post('/project-management/create', 'ProjectManagementController', 'create');
+$router->post('/project-management/update', 'ProjectManagementController', 'update');
+$router->post('/project-management/delete', 'ProjectManagementController', 'delete');
 ?>

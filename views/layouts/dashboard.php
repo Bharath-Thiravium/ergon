@@ -123,17 +123,21 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                         <span class="sidebar__icon">👥</span>
                         User Admins
                     </a>
+                    <a href="/ergon/project-management" class="sidebar__link <?= $active_page === 'project-management' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">📁</span>
+                        Project Management
+                    </a>
                     <div class="sidebar__divider">Company Overview</div>
                     <a href="/ergon/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">✅</span>
                         Task Overview
                     </a>
-                    <a href="/ergon/planner/calendar" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📅</span>
-                        Daily Planner
+                    <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">🌅</span>
+                        Morning Planner
                     </a>
-                    <a href="/ergon/daily-planner/dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📝</span>
+                    <a href="/ergon/daily-workflow/progress-dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">📊</span>
                         Progress Dashboard
                     </a>
                     <a href="/ergon/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
@@ -178,12 +182,12 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                         <span class="sidebar__icon">✅</span>
                         Task Management
                     </a>
-                    <a href="/ergon/planner/calendar" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📅</span>
-                        Daily Planner
+                    <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">🌅</span>
+                        Morning Planner
                     </a>
-                    <a href="/ergon/daily-planner/dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📝</span>
+                    <a href="/ergon/daily-workflow/progress-dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">📊</span>
                         Progress Dashboard
                     </a>
                     <a href="/ergon/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
@@ -207,13 +211,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                         <span class="sidebar__icon">✅</span>
                         My Tasks
                     </a>
-                    <a href="/ergon/planner/calendar" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📅</span>
-                        My Daily Planner
+                    <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">🌅</span>
+                        Morning Planner
                     </a>
-                    <a href="/ergon/daily-planner" class="sidebar__link <?= $active_page === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📝</span>
-                        Daily Progress Report
+                    <a href="/ergon/daily-workflow/evening-update" class="sidebar__link <?= $active_page === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">🌆</span>
+                        Evening Update
                     </a>
                     <a href="/ergon/user/requests" class="sidebar__link <?= $active_page === 'requests' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📋</span>
@@ -238,7 +242,11 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         </div>
 
         <main class="main-content">
-
+            <?php if (isset($_SESSION['user_id']) && $_SESSION['role'] === 'user'): ?>
+            <div class="gamification-header" style="margin-bottom: 1rem;">
+                <?php include __DIR__ . '/../shared/gamification_widget.php'; ?>
+            </div>
+            <?php endif; ?>
             
             <?= $content ?>
         </main>
@@ -275,10 +283,9 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
     }
     
-    function toggleProfile() {
+    window.toggleProfile = function() {
         var menu = document.getElementById('profileMenu');
         var toggle = document.querySelector('.sidebar__profile-toggle');
-        var arrow = document.getElementById('profileArrow');
         
         if (menu && toggle) {
             if (menu.classList.contains('show')) {

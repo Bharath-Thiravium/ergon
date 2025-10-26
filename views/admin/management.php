@@ -105,6 +105,10 @@ ob_start();
 </div>
 
 <script>
+function showAssignAdminModal() {
+    alert('Please use the individual "Make Admin" buttons on each user card to promote users to admin role.');
+}
+
 function assignAdmin(userId) {
     if (confirm('Are you sure you want to assign admin role to this user?')) {
         const form = document.createElement('form');
