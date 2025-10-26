@@ -35,7 +35,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
-    <title><?= $title ?? 'Dashboard' ?> - ERGON</title>
+    <title><?= $title ?? 'Dashboard' ?> - ergon</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
     <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
@@ -60,11 +60,52 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <div class="layout">
         <aside class="sidebar">
             <div class="sidebar__header">
-                <a href="/ergon/dashboard" class="sidebar__brand">
-                    <span>🧭</span>
-                    ERGON
-                </a>
-                <h3><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?> Panel</h3>
+                <div class="sidebar__brand-section">
+                    <a href="/ergon/dashboard" class="sidebar__brand">
+                        <span>🧭</span>
+                        Ergon
+                    </a>
+                    <h3><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?> Panel</h3>
+                </div>
+            </div>
+            
+            <div class="sidebar__controls-section">
+                <div class="sidebar__header-controls">
+                    <button class="sidebar__control-btn" onclick="toggleTheme()" title="Toggle Theme">
+                        <span id="themeIcon"><?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? '☀️' : '🌙' ?></span>
+                    </button>
+                    <button class="sidebar__control-btn" onclick="toggleNotifications()" title="Notifications">
+                        <span>🔔</span>
+                        <span class="notification-badge" id="notificationBadge">0</span>
+                    </button>
+                </div>
+                
+                <div class="sidebar__profile-section">
+                    <button class="sidebar__profile-toggle" onclick="toggleProfile()">
+                        <span class="profile-avatar"><?= htmlspecialchars(strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
+                        <div class="profile-info">
+                            <span class="profile-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></span>
+                            <span class="profile-role"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </div>
+                        <span class="dropdown-arrow" id="profileArrow">▼</span>
+                    </button>
+                    
+                    <div class="profile-menu" id="profileMenu">
+                        <a href="/ergon/profile/change-password" class="profile-menu-item">
+                            <span class="menu-icon">🔒</span>
+                            Change Password
+                        </a>
+                        <a href="/ergon/profile/preferences" class="profile-menu-item">
+                            <span class="menu-icon">⚙️</span>
+                            Preferences
+                        </a>
+                        <div class="profile-menu-divider"></div>
+                        <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
+                            <span class="menu-icon">🚪</span>
+                            Logout
+                        </a>
+                    </div>
+                </div>
             </div>
             <nav class="sidebar__menu">
                 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
@@ -181,41 +222,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                         My Attendance
                     </a>
                 <?php endif; ?>
-                
-                <div class="sidebar__controls">
-                    <button class="sidebar__control-btn" onclick="toggleTheme()" title="Toggle Theme">
-                        <span id="themeIcon"><?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? '☀️' : '🌙' ?></span>
-                    </button>
-                    <button class="sidebar__control-btn" onclick="toggleNotifications()" title="Notifications">
-                        <span>🔔</span>
-                        <span class="notification-badge" id="notificationBadge">0</span>
-                    </button>
-                    <div class="sidebar__profile-dropdown">
-                        <button class="sidebar__profile-btn" onclick="toggleProfile()">
-                            <span class="profile-avatar"><?= htmlspecialchars(strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
-                            <div class="profile-info">
-                                <span class="profile-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></span>
-                                <span class="profile-role"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?></span>
-                            </div>
-                            <span class="dropdown-arrow">▼</span>
-                        </button>
-                        <div class="profile-menu" id="profileMenu">
-                            <a href="/ergon/profile/change-password" class="profile-menu-item">
-                                <span class="menu-icon">🔒</span>
-                                Change Password
-                            </a>
-                            <a href="/ergon/profile/preferences" class="profile-menu-item">
-                                <span class="menu-icon">⚙️</span>
-                                Preferences
-                            </a>
-                            <div class="profile-menu-divider"></div>
-                            <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
-                                <span class="menu-icon">🚪</span>
-                                Logout
-                            </a>
-                        </div>
-                    </div>
-                </div>
             </nav>
         </aside>
         
@@ -269,29 +275,38 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
     function toggleProfile() {
         var menu = document.getElementById('profileMenu');
-        if (menu) {
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        var toggle = document.querySelector('.sidebar__profile-toggle');
+        var arrow = document.getElementById('profileArrow');
+        
+        if (menu && toggle) {
+            if (menu.classList.contains('show')) {
+                menu.classList.remove('show');
+                toggle.classList.remove('active');
+            } else {
+                menu.classList.add('show');
+                toggle.classList.add('active');
+            }
         }
     }
     
     document.addEventListener('DOMContentLoaded', function() {
-        // Store and restore sidebar scroll position
         const sidebarMenu = document.querySelector('.sidebar__menu');
         if (sidebarMenu) {
+            // Restore scroll position immediately without animation
             const savedScrollTop = sessionStorage.getItem('sidebarScrollTop');
             if (savedScrollTop) {
+                sidebarMenu.style.scrollBehavior = 'auto';
                 sidebarMenu.scrollTop = parseInt(savedScrollTop);
+                setTimeout(() => {
+                    sidebarMenu.style.scrollBehavior = '';
+                }, 0);
             }
-        }
-        
-        document.querySelectorAll('.sidebar__link').forEach(function(link) {
-            link.addEventListener('click', function(e) {
-                // Save current scroll position before navigation
-                if (sidebarMenu) {
-                    sessionStorage.setItem('sidebarScrollTop', sidebarMenu.scrollTop);
-                }
+            
+            // Save scroll position on scroll
+            sidebarMenu.addEventListener('scroll', function() {
+                sessionStorage.setItem('sidebarScrollTop', this.scrollTop);
             });
-        });
+        }
     });
     
     document.addEventListener('click', function(e) {
@@ -304,9 +319,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             sidebar.classList.remove('sidebar--open');
         }
         
-        if (profileBtn && !profileBtn.contains(e.target)) {
+        var profileToggle = document.querySelector('.sidebar__profile-toggle');
+        if (profileToggle && !profileToggle.contains(e.target)) {
             var menu = document.getElementById('profileMenu');
-            if (menu) menu.style.display = 'none';
+            if (menu) {
+                menu.classList.remove('show');
+                profileToggle.classList.remove('active');
+            }
         }
         
         var isNotificationBtn = false;

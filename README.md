@@ -1,4 +1,4 @@
-# 🧭 **ERGON - Employee Tracker & Task Manager**
+# 🧭 **ergon - Employee Tracker & Task Manager**
 
 ### *Enterprise-Grade PHP Solution for MSMEs*
 
@@ -122,7 +122,7 @@
 
 ### ✅ **Summary**
 
-> **Ergon** is designed as a **modular, secure, and analytics-driven** employee tracker tailored for MSMEs.
+> **ergon** is designed as a **modular, secure, and analytics-driven** employee tracker tailored for MSMEs.
 > It offers **GPS attendance**, **task tracking**, **leave/expense automation**, and **real-time dashboards** — all built on a **robust PHP MVC foundation** optimized for shared hosting and scalable growth.
 
 ## 🚀 **Installation**

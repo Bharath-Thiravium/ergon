@@ -1,7 +1,7 @@
 <?php
 /**
  * Database Configuration
- * ERGON - Employee Tracker & Task Manager
+ * ergon - Employee Tracker & Task Manager
  */
 
 require_once __DIR__ . '/environment.php';

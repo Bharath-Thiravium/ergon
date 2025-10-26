@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - ERGON</title>
+    <title>Login - ergon</title>
     <link rel="stylesheet" href="/ergon/assets/css/ergon.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -12,7 +12,7 @@
         <div class="auth-container">
             <div class="auth-card">
                 <div class="auth-header">
-                    <h1><i class="fas fa-users-cog"></i> ERGON</h1>
+                    <h1><i class="fas fa-users-cog"></i> ergon</h1>
                     <p>Employee Tracker & Task Manager</p>
                 </div>
                 
@@ -28,12 +28,23 @@
                         <label for="password" class="form-label">
                             <i class="fas fa-lock"></i> Password
                         </label>
-                        <input type="password" class="form-control" id="password" name="password" required>
+                        <div style="position: relative;">
+                            <input type="password" class="form-control" id="password" name="password" required style="padding-right: 45px;">
+                            <button type="button" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b;">
+                                <i class="fas fa-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
                     </div>
                     
-                    <button type="submit" class="btn btn--primary" style="width: 100%;">
+                    <button type="submit" class="btn btn--primary" style="width: 100%; margin-bottom: 1rem;">
                         <i class="fas fa-sign-in-alt"></i> Sign In
                     </button>
+                    
+                    <div style="text-align: center;">
+                        <a href="/ergon/auth/reset-password" class="btn btn--secondary" style="width: 100%;">
+                            <i class="fas fa-key"></i> Reset Password
+                        </a>
+                    </div>
                 </form>
                 
                 <div id="message"></div>
@@ -42,6 +53,20 @@
     </div>
 
     <script>
+    // Password visibility toggle
+    document.getElementById('togglePassword').addEventListener('click', function() {
+        const passwordField = document.getElementById('password');
+        const eyeIcon = document.getElementById('eyeIcon');
+        
+        if (passwordField.type === 'password') {
+            passwordField.type = 'text';
+            eyeIcon.className = 'fas fa-eye-slash';
+        } else {
+            passwordField.type = 'password';
+            eyeIcon.className = 'fas fa-eye';
+        }
+    });
+    
     document.getElementById('loginForm').addEventListener('submit', function(e) {
         e.preventDefault();
         

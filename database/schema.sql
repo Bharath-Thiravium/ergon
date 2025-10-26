@@ -1,4 +1,4 @@
--- ERGON Database Schema
+-- ergon Database Schema
 -- Employee Tracker & Task Manager
 
 CREATE DATABASE IF NOT EXISTS ergon_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

@@ -1,7 +1,7 @@
 <?php
 /**
  * Route Configuration
- * ERGON - Employee Tracker & Task Manager
+ * ergon - Employee Tracker & Task Manager
  */
 
 // Favicon route

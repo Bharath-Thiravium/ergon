@@ -83,3 +83,390 @@
 [26-Oct-2025 19:13:05 UTC] ERGON: Index.php executed - URI: /Ergon/owner/dashboard
 [26-Oct-2025 19:13:10 UTC] ERGON: Index.php executed - URI: /ergon/system-admin
 [26-Oct-2025 19:13:14 UTC] ERGON: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:18:19 UTC] ERGON: Index.php executed - URI: /Ergon/system-admin
+[26-Oct-2025 19:18:19 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 35
+[26-Oct-2025 19:18:20 UTC] ERGON: Index.php executed - URI: /Ergon/owner/dashboard
+[26-Oct-2025 19:18:21 UTC] ERGON: Index.php executed - URI: /Ergon/login
+[26-Oct-2025 19:18:21 UTC] ERGON: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 19:18:24 UTC] ERGON: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 19:19:09 UTC] ERGON: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:19:10 UTC] ERGON: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:18 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:20 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:21 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:21 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:21 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:21 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:21 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:22 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:22 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:22 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:22 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:22 UTC] ergon: Index.php executed - URI: /ergon/
+[26-Oct-2025 19:22:32 UTC] ergon: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:22:38 UTC] ergon: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:23:19 UTC] ergon: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:23:19 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 19:23:19 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:23:25 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 19:23:25 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 19:23:25 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 19:23:28 UTC] ergon: Index.php executed - URI: /ergon/logout
+[26-Oct-2025 19:23:28 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\AuthController.php on line 91
+[26-Oct-2025 19:23:28 UTC] ergon: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:23:32 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 19:23:32 UTC] ergon: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:23:35 UTC] ergon: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:23:35 UTC] Login successful - Session data set: {"user_id":1,"role":"owner","login_time":1761506615}
+[26-Oct-2025 19:23:36 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:27:07 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:27:10 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:27:11 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:27:14 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[26-Oct-2025 19:27:14 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 35
+[26-Oct-2025 19:27:15 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 19:27:15 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:27:19 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 19:27:19 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 19:27:19 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 19:27:24 UTC] ergon: Index.php executed - URI: /ergon/logout
+[26-Oct-2025 19:27:24 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\AuthController.php on line 91
+[26-Oct-2025 19:27:24 UTC] ergon: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:27:32 UTC] ergon: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:27:32 UTC] Login successful - Session data set: {"user_id":1,"role":"owner","login_time":1761506852}
+[26-Oct-2025 19:27:33 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:28:28 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:28:34 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[26-Oct-2025 19:28:34 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 35
+[26-Oct-2025 19:28:38 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 19:28:38 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 19:28:38 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 19:28:43 UTC] ergon: Index.php executed - URI: /ergon/attendance
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:28:43 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:28:43 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:28:43 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:28:43 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:28:43 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:28:43 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 19:28:43 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 19:28:45 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 19:28:45 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 19:28:45 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 19:29:50 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 19:29:50 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 19:29:50 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 19:30:06 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 19:30:06 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 19:30:06 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 19:30:11 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 19:30:11 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 19:30:11 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 19:30:17 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 19:30:20 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:31:52 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:32:43 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:32:46 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:32:46 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:32:46 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:32:47 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:32:53 UTC] ergon: Index.php executed - URI: /ergon/logout
+[26-Oct-2025 19:32:53 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\AuthController.php on line 91
+[26-Oct-2025 19:32:53 UTC] ergon: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:32:58 UTC] ergon: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:32:58 UTC] Login successful - Session data set: {"user_id":1,"role":"owner","login_time":1761507178}
+[26-Oct-2025 19:32:59 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:33:06 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 19:33:06 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 19:33:06 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 19:33:08 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 19:33:09 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:33:11 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 19:33:11 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 19:33:11 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 19:33:12 UTC] ergon: Index.php executed - URI: /ergon/attendance
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:33:12 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:33:12 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:33:12 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:33:12 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:33:12 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:33:12 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 19:33:12 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 19:33:14 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:33:16 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 19:33:16 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:26 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:28 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:41 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:45 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:46 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:46 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:46 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:46 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:34:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:37:45 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:38:11 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:38:12 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:38:12 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:38:12 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:38:12 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:38:12 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:39:24 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:39:29 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:39:37 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:39:46 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:40:02 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:40:52 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:41:13 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 19:41:13 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:46:23 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:46:35 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:46:36 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:46:36 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:46:37 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:46:37 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:21 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:21 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:21 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:21 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:22 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:22 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:22 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:22 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:22 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:22 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:23 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:23 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:23 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:23 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:23 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:23 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:23 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:23 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 19:48:26 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 19:48:26 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:50:43 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:52:52 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:53:02 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:53:23 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:53:24 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:53:24 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:53:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:53:48 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:53:48 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:55:36 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:55:43 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:58:09 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:58:32 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 19:58:48 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:01:46 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[26-Oct-2025 20:01:46 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 35
+[26-Oct-2025 20:01:49 UTC] ergon: Index.php executed - URI: /ergon/admin/management
+[26-Oct-2025 20:01:49 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 35
+[26-Oct-2025 20:01:50 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 20:01:50 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:03:33 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:03:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:03:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:03:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:04:22 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:04:22 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:04:23 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:04:23 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:06:04 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:06:05 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:06:06 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:06:07 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:07:58 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:07:59 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:07:59 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:07:59 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:07:59 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:07:59 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:55 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:56 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:56 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:57 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:57 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:57 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:57 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:57 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:57 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:57 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:58 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:58 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:58 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:58 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:58 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:09:58 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:12:37 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:12:38 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:12:38 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:12:38 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:12:39 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:12:39 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:12:45 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[26-Oct-2025 20:12:45 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 35
+[26-Oct-2025 20:12:47 UTC] ergon: Index.php executed - URI: /ergon/admin/management
+[26-Oct-2025 20:12:47 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 35
+[26-Oct-2025 20:12:49 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 20:12:49 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:12:50 UTC] ergon: Index.php executed - URI: /ergon/planner/calendar
+[26-Oct-2025 20:12:50 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 35
+[26-Oct-2025 20:12:52 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 20:12:52 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 20:12:52 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 20:12:54 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:12:56 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 20:12:57 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 20:12:57 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 20:12:57 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 20:13:01 UTC] ergon: Index.php executed - URI: /ergon/attendance
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:13:01 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:13:01 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:13:01 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:13:01 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:13:01 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:13:01 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 20:13:01 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 20:14:18 UTC] ergon: Index.php executed - URI: /ergon/attendance
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:18 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:18 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:18 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:18 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:18 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:18 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 20:14:18 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 20:14:20 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 20:14:20 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 20:14:20 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 20:14:21 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:22 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 20:14:23 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:24 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 20:14:24 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 20:14:24 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 20:14:26 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:27 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 20:14:28 UTC] ergon: Index.php executed - URI: /ergon/expenses
+[26-Oct-2025 20:14:28 UTC] PHP Warning:  Undefined array key "expense_date" in C:\laragon\www\ergon\views\expenses\index.php on line 78
+[26-Oct-2025 20:14:28 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\expenses\index.php on line 78
+[26-Oct-2025 20:14:28 UTC] PHP Warning:  Undefined array key "expense_date" in C:\laragon\www\ergon\views\expenses\index.php on line 78
+[26-Oct-2025 20:14:28 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\expenses\index.php on line 78
+[26-Oct-2025 20:14:28 UTC] PHP Warning:  Undefined array key "expense_date" in C:\laragon\www\ergon\views\expenses\index.php on line 78
+[26-Oct-2025 20:14:28 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\expenses\index.php on line 78
+[26-Oct-2025 20:14:30 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 20:14:30 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[26-Oct-2025 20:14:32 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 20:14:32 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 20:14:32 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 20:14:33 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:34 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 20:14:35 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 20:14:35 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 20:14:35 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 20:14:36 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:38 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:40 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:41 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:41 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:41 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:41 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:41 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:41 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:41 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:42 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:42 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:42 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:42 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:42 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:44 UTC] ergon: Index.php executed - URI: /ergon/reports
+[26-Oct-2025 20:14:44 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[26-Oct-2025 20:14:44 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[26-Oct-2025 20:14:45 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[26-Oct-2025 20:14:46 UTC] ergon: Index.php executed - URI: /ergon/settings
+[26-Oct-2025 20:14:47 UTC] ergon: Index.php executed - URI: /ergon/attendance
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 45
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:47 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:47 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:47 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:47 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:47 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 74
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_in" in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:47 UTC] PHP Deprecated:  strtotime(): Passing null to parameter #1 ($datetime) of type string is deprecated in C:\laragon\www\ergon\views\attendance\index.php on line 75
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 76
+[26-Oct-2025 20:14:47 UTC] PHP Warning:  Undefined array key "check_out" in C:\laragon\www\ergon\views\attendance\index.php on line 77
+[26-Oct-2025 20:14:49 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 20:14:49 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard

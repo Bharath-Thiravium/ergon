@@ -1,6 +1,6 @@
 <?php
 /**
- * ERGON - Employee Tracker & Task Manager
+ * ergon - Employee Tracker & Task Manager
  * Main Entry Point
  */
 
@@ -38,7 +38,7 @@ if (preg_match('/\/(dashboard|owner|admin|user)\//', $_SERVER['REQUEST_URI'] ?? 
 
 try {
     // Debug output
-    error_log('ERGON: Index.php executed - URI: ' . ($_SERVER['REQUEST_URI'] ?? 'unknown'));
+    error_log('ergon: Index.php executed - URI: ' . ($_SERVER['REQUEST_URI'] ?? 'unknown'));
     
     // Initialize router
     $router = new Router();
@@ -50,10 +50,10 @@ try {
     $router->handleRequest();
     
 } catch (Exception $e) {
-    error_log('ERGON Error: ' . $e->getMessage());
+    error_log('ergon Error: ' . $e->getMessage());
     http_response_code(500);
     echo "<!DOCTYPE html><html><head><title>System Error</title></head>";
     echo "<body><h1>System Error</h1><p>Please try again later.</p>";
-    echo "<a href='/Ergon/public/login'>Return to Login</a></body></html>";
+    echo "<a href='/ergon/login'>Return to Login</a></body></html>";
 }
 ?>

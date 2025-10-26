@@ -16,7 +16,7 @@ class Router {
         
         // Determine base path based on environment
         $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
-        $basePath = $isProduction ? '/ergon' : '/Ergon';
+        $basePath = '/ergon';
         $publicBasePath = $basePath . '/public';
         
         // Handle both base and public URLs
@@ -103,7 +103,7 @@ class Router {
             echo "<body><h1>404 - Page Not Found</h1>";
             echo "<p>The requested page could not be found.</p>";
             $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
-            $basePath = $isProduction ? '/ergon' : '/Ergon';
+            $basePath = '/ergon';
             echo "<a href='{$basePath}/login'>Return to Login</a></body></html>";
         }
     }

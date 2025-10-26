@@ -1,13 +1,13 @@
 {
     "name": "ergon/employee-tracker",
-    "description": "ERGON - Employee Tracker & Task Manager",
+    "description": "ergon - Employee Tracker & Task Manager",
     "version": "2.0.0",
     "type": "project",
     "keywords": ["employee", "tracker", "task", "management", "attendance", "php"],
     "license": "MIT",
     "authors": [
         {
-            "name": "ERGON Team",
+            "name": "ergon Team",
             "email": "admin@ergon.com"
         }
     ],
