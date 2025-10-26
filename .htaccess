@@ -1,0 +1,11 @@
+RewriteEngine On
+
+# Redirect root to login
+RewriteCond %{REQUEST_URI} ^/ergon_clean/?$
+RewriteRule ^(.*)$ /ergon_clean/public/login [L,R=301]
+
+# Security
+<Files ~ "^\.">
+    Order allow,deny
+    Deny from all
+</Files>

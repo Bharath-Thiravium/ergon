@@ -1,0 +1,29 @@
+{
+    "name": "ergon/employee-tracker",
+    "description": "ERGON - Employee Tracker & Task Manager",
+    "version": "2.0.0",
+    "type": "project",
+    "keywords": ["employee", "tracker", "task", "management", "attendance", "php"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "ERGON Team",
+            "email": "admin@ergon.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
