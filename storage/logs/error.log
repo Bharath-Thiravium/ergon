@@ -73,3 +73,13 @@
 [26-Oct-2025 19:02:48 UTC] ERGON: Index.php executed - URI: /Ergon/owner/dashboard
 [26-Oct-2025 19:02:49 UTC] ERGON: Index.php executed - URI: /Ergon/admin/management
 [26-Oct-2025 19:02:49 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\Ergon\index.php on line 11) in C:\laragon\www\Ergon\app\core\Controller.php on line 35
+[26-Oct-2025 19:12:43 UTC] ERGON: Index.php executed - URI: /Ergon/admin/management
+[26-Oct-2025 19:12:44 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\Ergon\index.php on line 11) in C:\laragon\www\Ergon\app\core\Controller.php on line 35
+[26-Oct-2025 19:12:47 UTC] ERGON: Index.php executed - URI: /ergon/leaves
+[26-Oct-2025 19:12:52 UTC] ERGON: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:12:54 UTC] ERGON: Index.php executed - URI: /Ergon/login
+[26-Oct-2025 19:12:54 UTC] ERGON: Index.php executed - URI: /ergon/dashboard
+[26-Oct-2025 19:13:02 UTC] ERGON: Index.php executed - URI: /ergon/login
+[26-Oct-2025 19:13:05 UTC] ERGON: Index.php executed - URI: /Ergon/owner/dashboard
+[26-Oct-2025 19:13:10 UTC] ERGON: Index.php executed - URI: /ergon/system-admin
+[26-Oct-2025 19:13:14 UTC] ERGON: Index.php executed - URI: /ergon/login

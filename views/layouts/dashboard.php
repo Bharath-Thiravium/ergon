@@ -275,25 +275,21 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     }
     
     document.addEventListener('DOMContentLoaded', function() {
-        const activeItem = document.querySelector('.sidebar__link--active, .sidebar__link.is-active');
-        if (activeItem) {
-            const sidebarMenu = document.querySelector('.sidebar__menu');
-            if (sidebarMenu) {
-                const menuRect = sidebarMenu.getBoundingClientRect();
-                const itemRect = activeItem.getBoundingClientRect();
-                
-                if (itemRect.top < menuRect.top || itemRect.bottom > menuRect.bottom) {
-                    activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }
+        // Store and restore sidebar scroll position
+        const sidebarMenu = document.querySelector('.sidebar__menu');
+        if (sidebarMenu) {
+            const savedScrollTop = sessionStorage.getItem('sidebarScrollTop');
+            if (savedScrollTop) {
+                sidebarMenu.scrollTop = parseInt(savedScrollTop);
             }
         }
         
         document.querySelectorAll('.sidebar__link').forEach(function(link) {
             link.addEventListener('click', function(e) {
-                document.querySelectorAll('.sidebar__link').forEach(function(l) {
-                    l.classList.remove('sidebar__link--active');
-                });
-                this.classList.add('sidebar__link--active');
+                // Save current scroll position before navigation
+                if (sidebarMenu) {
+                    sessionStorage.setItem('sidebarScrollTop', sidebarMenu.scrollTop);
+                }
             });
         });
     });
