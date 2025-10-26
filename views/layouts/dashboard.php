@@ -17,7 +17,9 @@ header('ETag: "' . md5(time()) . '"');
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 3600)) {
     session_unset();
     session_destroy();
-    header('Location: /ergon/login?timeout=1');
+    $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
+    $loginUrl = $isProduction ? '/ergon/login?timeout=1' : '/ergon/login?timeout=1';
+    header('Location: ' . $loginUrl);
     exit;
 }
 
@@ -289,25 +291,8 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
     }
     
-    document.addEventListener('DOMContentLoaded', function() {
-        const sidebarMenu = document.querySelector('.sidebar__menu');
-        if (sidebarMenu) {
-            // Restore scroll position immediately without animation
-            const savedScrollTop = sessionStorage.getItem('sidebarScrollTop');
-            if (savedScrollTop) {
-                sidebarMenu.style.scrollBehavior = 'auto';
-                sidebarMenu.scrollTop = parseInt(savedScrollTop);
-                setTimeout(() => {
-                    sidebarMenu.style.scrollBehavior = '';
-                }, 0);
-            }
-            
-            // Save scroll position on scroll
-            sidebarMenu.addEventListener('scroll', function() {
-                sessionStorage.setItem('sidebarScrollTop', this.scrollTop);
-            });
-        }
-    });
+    // Prevent sidebar flickering by disabling scroll restoration
+    // and ensuring proper CSS containment
     
     document.addEventListener('click', function(e) {
         const sidebar = document.querySelector('.sidebar');

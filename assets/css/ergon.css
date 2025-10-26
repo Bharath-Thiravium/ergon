@@ -254,6 +254,8 @@ body {
   height: calc(100vh - 140px);
   margin-bottom: 0;
   scroll-behavior: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .sidebar__menu::-webkit-scrollbar {
