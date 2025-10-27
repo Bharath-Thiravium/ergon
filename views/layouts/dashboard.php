@@ -49,9 +49,11 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
     <style>
+    /* Complete override of ergon.css main-content */
     .main-content {
         margin-left: 260px !important;
         padding: 24px !important;
+        padding-top: 24px !important;
         background: #f8fafc !important;
         min-height: 100vh !important;
         width: calc(100vw - 260px) !important;
@@ -60,9 +62,9 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         overflow-x: auto !important;
     }
     
-    /* Override any conflicting styles from ergon.css */
     .layout .main-content {
         margin-left: 260px !important;
+        padding: 24px !important;
         padding-top: 24px !important;
         width: calc(100vw - 260px) !important;
     }
@@ -269,6 +271,15 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     html {
         scroll-behavior: auto !important;
     }
+    
+    /* Prevent any scroll anchoring */
+    * {
+        scroll-behavior: auto !important;
+    }
+    
+    body {
+        scroll-behavior: auto !important;
+    }
     </style>
     <?php if (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark'): ?>
     <link id="dark-theme-css" href="/ergon/assets/css/dark-theme.css" rel="stylesheet">
@@ -334,12 +345,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
                     <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📊</span>
-                        Executive Dashboard
+                        Dashboard
                     </a>
                     <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🏆</span>
-                        Team Competition
+                        Competition
                     </a>
+                    <div class="sidebar__divider">Management</div>
                     <a href="/ergon/system-admin" class="sidebar__link <?= ($active_page ?? '') === 'system-admin' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🔧</span>
                         System Admins
@@ -350,98 +362,94 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                     </a>
                     <a href="/ergon/project-management" class="sidebar__link <?= ($active_page ?? '') === 'project-management' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📁</span>
-                        Project Management
+                        Projects
                     </a>
-                    <div class="sidebar__divider">Company Overview</div>
+                    <div class="sidebar__divider">Operations</div>
                     <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">✅</span>
-                        Task Overview
+                        Tasks
                     </a>
                     <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= ($active_page ?? '') === 'planner' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🌅</span>
-                        Morning Planner
+                        Planner
                     </a>
                     <a href="/ergon/followups" class="sidebar__link <?= ($active_page ?? '') === 'followups' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📞</span>
                         Follow-ups
                     </a>
-                    <a href="/ergon/daily-workflow/progress-dashboard" class="sidebar__link <?= ($active_page ?? '') === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Progress Dashboard
-                    </a>
+                    <div class="sidebar__divider">HR & Finance</div>
                     <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
-                        Leave Overview
+                        Leaves
                     </a>
                     <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">💰</span>
-                        Expense Overview
+                        Expenses
                     </a>
                     <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">💳</span>
-                        Advance Overview
+                        Advances
                     </a>
                     <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📍</span>
-                        Attendance Overview
+                        Attendance
                     </a>
-                    <div class="sidebar__divider">System</div>
+                    <div class="sidebar__divider">Reports</div>
                     <a href="/ergon/reports" class="sidebar__link <?= ($active_page ?? '') === 'reports' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📈</span>
                         Analytics
                     </a>
                     <a href="/ergon/reports/activity" class="sidebar__link <?= ($active_page ?? '') === 'activity' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">⏱️</span>
-                        Activity Reports
+                        Activity
                     </a>
                     <a href="/ergon/settings" class="sidebar__link <?= ($active_page ?? '') === 'settings' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">⚙️</span>
-                        System Settings
+                        Settings
                     </a>
                 <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
                     <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📊</span>
-                        Admin Dashboard
+                        Dashboard
                     </a>
                     <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🏆</span>
-                        Team Competition
+                        Competition
                     </a>
+                    <div class="sidebar__divider">Management</div>
                     <a href="/ergon/departments" class="sidebar__link <?= ($active_page ?? '') === 'departments' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🏢</span>
-                        Department Management
+                        Departments
                     </a>
                     <a href="/ergon/users" class="sidebar__link <?= ($active_page ?? '') === 'users' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">👥</span>
-                        User Management
+                        Users
                     </a>
                     <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">✅</span>
-                        Task Management
+                        Tasks
                     </a>
+                    <div class="sidebar__divider">Workflow</div>
                     <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= ($active_page ?? '') === 'planner' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🌅</span>
-                        Morning Planner
+                        Planner
                     </a>
                     <a href="/ergon/followups" class="sidebar__link <?= ($active_page ?? '') === 'followups' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📞</span>
                         Follow-ups
                     </a>
-                    <a href="/ergon/daily-workflow/progress-dashboard" class="sidebar__link <?= ($active_page ?? '') === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Progress Dashboard
-                    </a>
+                    <div class="sidebar__divider">HR Requests</div>
                     <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
-                        Leave Requests
+                        Leaves
                     </a>
                     <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">💰</span>
-                        Expense Claims
+                        Expenses
                     </a>
                     <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">💳</span>
-                        Advance Requests
+                        Advances
                     </a>
                     <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📍</span>
@@ -449,24 +457,25 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                     </a>
                     <a href="/ergon/reports/activity" class="sidebar__link <?= ($active_page ?? '') === 'activity' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">⏱️</span>
-                        Activity Reports
+                        Reports
                     </a>
                 <?php else: ?>
                     <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🏠</span>
-                        My Dashboard
+                        Dashboard
                     </a>
                     <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🏆</span>
-                        Team Competition
+                        Competition
                     </a>
+                    <div class="sidebar__divider">Work</div>
                     <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">✅</span>
-                        My Tasks
+                        Tasks
                     </a>
                     <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= ($active_page ?? '') === 'planner' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🌅</span>
-                        Morning Planner
+                        Planner
                     </a>
                     <a href="/ergon/followups" class="sidebar__link <?= ($active_page ?? '') === 'followups' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📞</span>
@@ -474,27 +483,28 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                     </a>
                     <a href="/ergon/daily-workflow/evening-update" class="sidebar__link <?= ($active_page ?? '') === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🌆</span>
-                        Evening Update
+                        Evening
                     </a>
+                    <div class="sidebar__divider">Personal</div>
                     <a href="/ergon/user/requests" class="sidebar__link <?= ($active_page ?? '') === 'requests' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📋</span>
-                        My Requests
+                        Requests
                     </a>
                     <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📅</span>
-                        My Leaves
+                        Leaves
                     </a>
                     <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">💰</span>
-                        My Expenses
+                        Expenses
                     </a>
                     <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">💳</span>
-                        My Advances
+                        Advances
                     </a>
                     <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📍</span>
-                        My Attendance
+                        Attendance
                     </a>
                 <?php endif; ?>
             </nav>
@@ -592,10 +602,34 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
     };
     
-    // Disable scroll restoration
+    // Disable scroll restoration and preserve scroll position
     if ('scrollRestoration' in history) {
         history.scrollRestoration = 'manual';
     }
+    
+    // Store current scroll position before navigation
+    let savedScrollPosition = 0;
+    
+    // Save scroll position on sidebar link click
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.sidebar__link')) {
+            savedScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+            localStorage.setItem('ergonScrollPos', savedScrollPosition);
+        }
+    });
+    
+    // Restore scroll position on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedPos = localStorage.getItem('ergonScrollPos');
+        if (savedPos) {
+            setTimeout(function() {
+                window.scrollTo(0, parseInt(savedPos));
+                localStorage.removeItem('ergonScrollPos');
+            }, 50);
+        }
+    });
+    
+
     </script>
     <script src="/ergon/assets/js/auth-guard.min.js?v=<?= time() ?>" defer></script>
 </body>

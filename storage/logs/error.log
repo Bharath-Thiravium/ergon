@@ -623,3 +623,124 @@
 [27-Oct-2025 11:50:37 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
 [27-Oct-2025 11:50:40 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
 [27-Oct-2025 11:50:40 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:51:37 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:51:37 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:51:39 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:51:39 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:51:39 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:51:39 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:51:42 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:51:42 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:52:42 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:52:43 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:52:45 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:52:45 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:52:45 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:52:45 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:54:13 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:54:13 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:54:13 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:54:13 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:54:18 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:54:18 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:55:07 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:55:07 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:55:09 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:55:09 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:55:09 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:55:09 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:59:54 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/morning-planner
+[27-Oct-2025 11:59:54 UTC] ergon: Index.php executed - URI: /ergon/login?timeout=1
+[27-Oct-2025 12:00:00 UTC] ergon: Index.php executed - URI: /ergon/login
+[27-Oct-2025 12:00:00 UTC] Login successful - Session data set: {"user_id":1,"role":"owner","login_time":1761566400}
+[27-Oct-2025 12:00:01 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 12:00:19 UTC] ergon: Index.php executed - URI: /ergon/daily-planner/delayed-tasks-overview
+[27-Oct-2025 12:00:19 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:00:26 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 12:00:26 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:00:39 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 12:00:39 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 12:00:39 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:09:36 UTC] ergon: Index.php executed - URI: /ergon/logout
+[27-Oct-2025 12:09:36 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\AuthController.php on line 91
+[27-Oct-2025 12:09:36 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:09:36 UTC] ergon: Index.php executed - URI: /ergon/login
+[27-Oct-2025 12:09:43 UTC] ergon: Index.php executed - URI: /ergon/login
+[27-Oct-2025 12:10:01 UTC] ergon: Index.php executed - URI: /ergon/login
+[27-Oct-2025 12:10:01 UTC] Login successful - Session data set: {"user_id":16,"role":"user","login_time":1761567001}
+[27-Oct-2025 12:10:02 UTC] ergon: Index.php executed - URI: /ergon/user/dashboard
+[27-Oct-2025 12:10:02 UTC] getTodayAttendanceStatus error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'clock_out' in 'field list'
+[27-Oct-2025 12:10:06 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 12:10:06 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 12:10:06 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:10:09 UTC] ergon: Index.php executed - URI: /ergon/tasks
+[27-Oct-2025 12:10:09 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:10:11 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 12:10:11 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 12:10:11 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:16:57 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 12:16:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:16:57 UTC] ergon: Index.php executed - URI: /ergon/user/dashboard
+[27-Oct-2025 12:16:57 UTC] getTodayAttendanceStatus error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'clock_out' in 'field list'
+[27-Oct-2025 12:18:49 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 12:18:49 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 12:18:49 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:18:50 UTC] ergon: Index.php executed - URI: /ergon/tasks
+[27-Oct-2025 12:18:51 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:18:52 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/morning-planner
+[27-Oct-2025 12:18:52 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:18:53 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 12:18:53 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:18:55 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/evening-update
+[27-Oct-2025 12:18:55 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:18:55 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/morning-planner
+[27-Oct-2025 12:18:57 UTC] ergon: Index.php executed - URI: /ergon/user/requests
+[27-Oct-2025 12:18:57 UTC] PHP Warning:  Undefined array key "pending_advances" in C:\laragon\www\ergon\views\user\requests.php on line 36
+[27-Oct-2025 12:18:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:19:05 UTC] ergon: Index.php executed - URI: /ergon/leaves
+[27-Oct-2025 12:19:05 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:19:07 UTC] ergon: Index.php executed - URI: /ergon/expenses
+[27-Oct-2025 12:19:07 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:19:09 UTC] ergon: Index.php executed - URI: /ergon/user/requests
+[27-Oct-2025 12:19:09 UTC] PHP Warning:  Undefined array key "pending_advances" in C:\laragon\www\ergon\views\user\requests.php on line 36
+[27-Oct-2025 12:19:09 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:19:12 UTC] ergon: Index.php executed - URI: /ergon/advances
+[27-Oct-2025 12:19:12 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 12:19:12 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:19:52 UTC] ergon: Index.php executed - URI: /ergon/attendance
+[27-Oct-2025 12:19:52 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:50:15 UTC] ergon: Index.php executed - URI: /ergon/attendance
+[27-Oct-2025 12:50:15 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:50:20 UTC] ergon: Index.php executed - URI: /ergon/tasks
+[27-Oct-2025 12:50:20 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:50:23 UTC] ergon: Index.php executed - URI: /ergon/user/requests
+[27-Oct-2025 12:50:23 UTC] PHP Warning:  Undefined array key "pending_advances" in C:\laragon\www\ergon\views\user\requests.php on line 36
+[27-Oct-2025 12:50:23 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:50:25 UTC] ergon: Index.php executed - URI: /ergon/expenses
+[27-Oct-2025 12:50:25 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:50:27 UTC] ergon: Index.php executed - URI: /ergon/attendance
+[27-Oct-2025 12:50:27 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:50:30 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/evening-update
+[27-Oct-2025 12:50:30 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:50:30 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/morning-planner
+[27-Oct-2025 12:50:34 UTC] ergon: Index.php executed - URI: /ergon/tasks
+[27-Oct-2025 12:50:34 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:50:36 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 12:50:36 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 12:50:36 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:50:37 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 12:50:37 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:50:37 UTC] ergon: Index.php executed - URI: /ergon/user/dashboard
+[27-Oct-2025 12:50:37 UTC] getTodayAttendanceStatus error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'clock_out' in 'field list'
+[27-Oct-2025 12:50:39 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 12:50:39 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 12:50:39 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:53:28 UTC] ergon: Index.php executed - URI: /ergon/advances
+[27-Oct-2025 12:53:28 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 12:53:28 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:53:31 UTC] ergon: Index.php executed - URI: /ergon/expenses
+[27-Oct-2025 12:53:31 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:53:56 UTC] ergon: Index.php executed - URI: /ergon/logout
+[27-Oct-2025 12:53:56 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\AuthController.php on line 91
+[27-Oct-2025 12:53:56 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 12:53:56 UTC] ergon: Index.php executed - URI: /ergon/login
