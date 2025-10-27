@@ -42,9 +42,9 @@ class Task {
     }
     
     public function getByUserId($userId) {
-        $query = "SELECT t.*, u.name as created_by_name 
+        $query = "SELECT t.*, u.name as assigned_by_name 
                   FROM tasks t 
-                  LEFT JOIN users u ON t.created_by = u.id 
+                  LEFT JOIN users u ON t.assigned_by = u.id 
                   WHERE t.assigned_to = ? 
                   ORDER BY t.created_at DESC";
         $stmt = $this->conn->prepare($query);

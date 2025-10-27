@@ -83,5 +83,88 @@ class ApiController extends Controller {
             $this->json(['error' => 'Failed to update task'], 400);
         }
     }
+    
+    public function activityLog() {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            
+            $action = $input['action'] ?? $_POST['action'] ?? '';
+            $details = $input['details'] ?? $_POST['details'] ?? '';
+            $userId = $_SESSION['user_id'] ?? null;
+            
+            if (!$userId) {
+                $this->json(['error' => 'User not authenticated'], 401);
+                return;
+            }
+            
+            require_once __DIR__ . '/../models/ActivityLog.php';
+            $activityLog = new ActivityLog();
+            
+            $result = $activityLog->log($userId, $action, $details);
+            
+            if ($result) {
+                $this->json(['success' => true, 'message' => 'Activity logged']);
+            } else {
+                $this->json(['error' => 'Failed to log activity'], 500);
+            }
+        } catch (Exception $e) {
+            error_log('Activity log error: ' . $e->getMessage());
+            $this->json(['error' => 'Internal server error'], 500);
+        }
+    }
+    
+    public function generateEmployeeId() {
+        try {
+            $stmt = $this->userModel->conn->prepare("SELECT COUNT(*) + 1 as next_num FROM users WHERE employee_id IS NOT NULL");
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $nextNum = str_pad($result['next_num'], 3, '0', STR_PAD_LEFT);
+            
+            $this->json(['employee_id' => 'EMP' . $nextNum]);
+        } catch (Exception $e) {
+            $this->json(['employee_id' => 'EMP' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT)]);
+        }
+    }
+    
+    public function updatePreference() {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $key = $input['key'] ?? '';
+            $value = $input['value'] ?? '';
+            $userId = $_SESSION['user_id'] ?? null;
+            
+            if (!$userId) {
+                $this->json(['error' => 'User not authenticated'], 401);
+                return;
+            }
+            
+            require_once __DIR__ . '/../models/UserPreference.php';
+            $preference = new UserPreference();
+            
+            if ($preference->set($userId, $key, $value)) {
+                $this->json(['success' => true]);
+            } else {
+                $this->json(['error' => 'Failed to update preference'], 500);
+            }
+        } catch (Exception $e) {
+            $this->json(['error' => 'Internal server error'], 500);
+        }
+    }
+    
+    public function sessionFromJWT() {
+        $this->json(['error' => 'JWT session not implemented'], 501);
+    }
+    
+    public function test() {
+        $this->json(['status' => 'API working', 'timestamp' => date('Y-m-d H:i:s')]);
+    }
+    
+    public function registerDevice() {
+        $this->json(['error' => 'Device registration not implemented'], 501);
+    }
+    
+    public function syncOfflineData() {
+        $this->json(['error' => 'Offline sync not implemented'], 501);
+    }
 }
 ?>

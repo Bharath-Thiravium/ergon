@@ -147,9 +147,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         color: #f1f5f9;
     }
     
-    .nav-dropdown:hover .nav-dropdown-menu {
-        display: block !important;
-        animation: slideDown 0.3s ease;
+    .nav-dropdown:hover .nav-dropdown-btn {
+        background: #475569;
+        border-color: #64748b;
+        color: #f1f5f9;
     }
     
     .nav-dropdown:hover .nav-dropdown-btn .dropdown-arrow {
@@ -181,7 +182,20 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
     .nav-dropdown-menu.show {
         display: block !important;
-        animation: slideDown 0.3s ease;
+        opacity: 1;
+        transform: translateY(0);
+        animation: dropdownFadeIn 0.2s ease-out;
+    }
+    
+    @keyframes dropdownFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
     
     .nav-dropdown-item {
@@ -770,7 +784,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown">
+                    <div class="nav-dropdown" onmouseenter="showDropdown('team')" onmouseleave="hideDropdown('team')">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('team')">
                             <span class="nav-icon">👥</span>
                             Team
@@ -787,7 +801,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown">
+                    <div class="nav-dropdown" onmouseenter="showDropdown('tasks')" onmouseleave="hideDropdown('tasks')">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('tasks')">
                             <span class="nav-icon">✅</span>
                             Tasks
@@ -808,7 +822,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown">
+                    <div class="nav-dropdown" onmouseenter="showDropdown('approvals')" onmouseleave="hideDropdown('approvals')">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('approvals')">
                             <span class="nav-icon">📅</span>
                             Approvals
@@ -849,19 +863,23 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">🏠</span>
                                 Dashboard
                             </a>
+                            <a href="/ergon/gamification/individual" class="nav-dropdown-item <?= ($active_page ?? '') === 'individual-gamification' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🎖️</span>
+                                My Performance
+                            </a>
                             <a href="/ergon/gamification/team-competition" class="nav-dropdown-item <?= ($active_page ?? '') === 'team-competition' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">🏆</span>
-                                Competition
+                                Team Competition
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown">
+                    <div class="nav-dropdown" onmouseenter="showDropdown('work')" onmouseleave="hideDropdown('work')">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('work')">
                             <span class="nav-icon">✅</span>
                             Work
                             <span class="dropdown-arrow">▼</span>
                         </button>
-                        <div class="nav-dropdown-menu" id="work">
+                        <div class="nav-dropdown-menu" id="work" onmouseenter="showDropdown('work')" onmouseleave="hideDropdown('work')">
                             <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">✅</span>
                                 Tasks
@@ -880,13 +898,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown">
+                    <div class="nav-dropdown" onmouseenter="showDropdown('personal')" onmouseleave="hideDropdown('personal')">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('personal')">
                             <span class="nav-icon">📋</span>
                             Personal
                             <span class="dropdown-arrow">▼</span>
                         </button>
-                        <div class="nav-dropdown-menu" id="personal">
+                        <div class="nav-dropdown-menu" id="personal" onmouseenter="showDropdown('personal')" onmouseleave="hideDropdown('personal')">
                             <a href="/ergon/user/requests" class="nav-dropdown-item <?= ($active_page ?? '') === 'requests' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📋</span>
                                 Requests
@@ -960,7 +978,12 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     }
     
     function showDropdown(id) {
+        clearTimeout(hideTimeout);
+        currentDropdown = id;
+        
         var dropdown = document.getElementById(id);
+        if (!dropdown) return;
+        
         var btn = dropdown.previousElementSibling;
         var btnRect = btn.getBoundingClientRect();
         
@@ -968,23 +991,35 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         dropdown.style.top = (btnRect.bottom + 8) + 'px';
         dropdown.style.left = btnRect.left + 'px';
         
-        // Close all other dropdowns
+        // Close all other dropdowns with fade out
         document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
-            if (menu.id !== id) {
+            if (menu.id !== id && menu.classList.contains('show')) {
                 menu.classList.remove('show');
+                menu.previousElementSibling.classList.remove('active');
             }
         });
         
-        dropdown.classList.add('show');
-        btn.classList.add('active');
+        // Show current dropdown with fade in
+        setTimeout(function() {
+            dropdown.classList.add('show');
+            btn.classList.add('active');
+        }, 50);
     }
     
+    var hideTimeout;
+    var currentDropdown = null;
+    
     function hideDropdown(id) {
-        var dropdown = document.getElementById(id);
-        var btn = dropdown.previousElementSibling;
-        
-        dropdown.classList.remove('show');
-        btn.classList.remove('active');
+        hideTimeout = setTimeout(function() {
+            var dropdown = document.getElementById(id);
+            if (dropdown && currentDropdown === id) {
+                var btn = dropdown.previousElementSibling;
+                
+                dropdown.classList.remove('show');
+                btn.classList.remove('active');
+                currentDropdown = null;
+            }
+        }, 150);
     }
     
     function toggleDropdown(id) {

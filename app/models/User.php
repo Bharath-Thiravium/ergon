@@ -211,6 +211,22 @@ class User {
         }
     }
     
+    public function getAllUsers() {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT id, name, email, role, department, status 
+                FROM {$this->table} 
+                WHERE status = 'active' 
+                ORDER BY name
+            ");
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('getAllUsers error: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
     public function update($id, $data) {
         try {
             $fields = [];

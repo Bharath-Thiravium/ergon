@@ -49,7 +49,7 @@ class Gamification {
     
     public function getUserRank($userId) {
         $stmt = $this->db->prepare("
-            SELECT COUNT(*) + 1 as rank 
+            SELECT COUNT(*) + 1 as user_rank 
             FROM (
                 SELECT user_id, SUM(points) as total 
                 FROM {$this->table} 
@@ -63,7 +63,7 @@ class Gamification {
         ");
         $stmt->execute([$userId]);
         $result = $stmt->fetch();
-        return $result['rank'] ?? 1;
+        return $result['user_rank'] ?? 1;
     }
     
     public function checkBadges($userId) {

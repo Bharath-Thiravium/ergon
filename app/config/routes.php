@@ -200,4 +200,5 @@ $router->post('/followups/create-from-task', 'FollowupController', 'createFromTa
 
 // Gamification Routes
 $router->get('/gamification/team-competition', 'GamificationController', 'teamCompetition');
+$router->get('/gamification/individual', 'GamificationController', 'individual');
 ?>
