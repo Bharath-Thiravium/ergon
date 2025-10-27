@@ -157,3 +157,469 @@
 [27-Oct-2025 09:28:14 UTC] ergon: Index.php executed - URI: /ergon/api/projects-by-department?department_id=3
 [27-Oct-2025 09:28:19 UTC] ergon: Index.php executed - URI: /ergon/api/task-categories-by-department?department_name=Liaison
 [27-Oct-2025 09:28:19 UTC] ergon: Index.php executed - URI: /ergon/api/projects-by-department?department_id=6
+[27-Oct-2025 11:18:26 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:18:26 UTC] ergon: Index.php executed - URI: /ergon/login?timeout=1
+[27-Oct-2025 11:18:33 UTC] ergon: Index.php executed - URI: /ergon/login
+[27-Oct-2025 11:18:33 UTC] Login successful - Session data set: {"user_id":1,"role":"owner","login_time":1761563913}
+[27-Oct-2025 11:18:34 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:18:34 UTC] Controller Error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'morning_submitted_at' in 'where clause'
+[27-Oct-2025 11:18:49 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[27-Oct-2025 11:18:49 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:18:49 UTC] Controller Error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'morning_submitted_at' in 'where clause'
+[27-Oct-2025 11:23:00 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[27-Oct-2025 11:23:00 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:23:05 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:23:05 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:23:05 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:23:08 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:23:08 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:23:13 UTC] ergon: Index.php executed - URI: /ergon/login
+[27-Oct-2025 11:23:13 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:23:13 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:23:13 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:23:14 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:23:14 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:23:25 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:24:01 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:24:01 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:24:01 UTC] View not found: C:\laragon\www\ergon\app\core/../../views/gamification/team_competition.php
+[27-Oct-2025 11:24:01 UTC] Controller Error: View gamification/team_competition not found
+[27-Oct-2025 11:24:04 UTC] ergon: Index.php executed - URI: /ergon/login
+[27-Oct-2025 11:24:04 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:24:04 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:24:05 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:24:18 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:24:18 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:24:18 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:24:18 UTC] View not found: C:\laragon\www\ergon\app\core/../../views/gamification/team_competition.php
+[27-Oct-2025 11:24:18 UTC] Controller Error: View gamification/team_competition not found
+[27-Oct-2025 11:24:53 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:24:53 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:24:57 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:24:57 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:24:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:24:57 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:24:57 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:24:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:24:57 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:24:57 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:24:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:24:57 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:24:57 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:24:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:24:58 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:24:58 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:24:58 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:25:01 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:25:01 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:25:04 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:25:04 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[27-Oct-2025 11:25:04 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:25:04 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:25:05 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:25:05 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:25:12 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:25:12 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:25:12 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:26:35 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:26:35 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:26:35 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:26:37 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:26:37 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:26:37 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:26:38 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:26:38 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:26:38 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:26:54 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:26:54 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:26:54 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:27:04 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:27:04 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:27:04 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:27:04 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:27:04 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:27:04 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:27:05 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:27:05 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:27:05 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:28:38 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:28:38 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:28:38 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:28:39 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:28:39 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:28:39 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:28:39 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:28:39 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:28:39 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:28:39 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:28:39 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:28:39 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:28:40 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:28:40 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:28:40 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:29:47 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:29:47 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:29:47 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:29:48 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:29:48 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:29:48 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:29:48 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:29:48 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:29:48 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:29:48 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:29:48 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:29:48 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:33:29 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:33:29 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:33:29 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:33:36 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:33:36 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:33:36 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:33:37 UTC] ergon: Index.php executed - URI: /ergon/admin/management
+[27-Oct-2025 11:33:37 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:33:38 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[27-Oct-2025 11:33:38 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:33:38 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:34:46 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[27-Oct-2025 11:34:46 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:34:46 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:34:57 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:34:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:34:57 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:34:58 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:34:58 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:34:58 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:35:36 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:35:36 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:35:36 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:35:38 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:35:38 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[27-Oct-2025 11:35:38 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:35:39 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:35:39 UTC] ergon: Index.php executed - URI: /ergon/admin/management
+[27-Oct-2025 11:35:41 UTC] ergon: Index.php executed - URI: /ergon/project-management
+[27-Oct-2025 11:35:41 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:35:41 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:35:42 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:35:42 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:35:42 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:35:44 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:35:44 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:35:44 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:35:52 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:35:52 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:35:52 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:35:53 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:35:53 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:35:53 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:36:38 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:36:38 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:36:38 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:36:48 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:36:48 UTC] ergon: Index.php executed - URI: /ergon/project-management
+[27-Oct-2025 11:36:48 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:36:52 UTC] ergon: Index.php executed - URI: /ergon/admin/management
+[27-Oct-2025 11:36:52 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:36:57 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:36:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:37:19 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/progress-dashboard
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:37:19 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:37:19 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:38:46 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/progress-dashboard
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:38:46 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:38:46 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:38:55 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:38:55 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:38:55 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:38:57 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:38:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:38:57 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:39:00 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:39:00 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:39:00 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:39:06 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:39:06 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:39:06 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:39:06 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:41:50 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:41:50 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:41:50 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:41:50 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:41:59 UTC] ergon: Index.php executed - URI: /ergon/project-management
+[27-Oct-2025 11:41:59 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:41:59 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:42:47 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:42:47 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:42:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:42:52 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:42:52 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:42:52 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:42:53 UTC] ergon: Index.php executed - URI: /ergon/admin/management
+[27-Oct-2025 11:42:53 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:42:55 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[27-Oct-2025 11:42:55 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:42:55 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:42:56 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:42:56 UTC] ergon: Index.php executed - URI: /ergon/admin/management
+[27-Oct-2025 11:42:59 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:43:00 UTC] ergon: Index.php executed - URI: /ergon/project-management
+[27-Oct-2025 11:43:00 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:43:14 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:43:14 UTC] ergon: Index.php executed - URI: /ergon/project-management
+[27-Oct-2025 11:43:14 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:43:19 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:43:19 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:43:19 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:43:20 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:43:20 UTC] ergon: Index.php executed - URI: /ergon/project-management
+[27-Oct-2025 11:43:20 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:43:32 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:43:32 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:43:33 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:43:33 UTC] ergon: Index.php executed - URI: /ergon/leaves
+[27-Oct-2025 11:43:34 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/progress-dashboard
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:43:34 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:43:34 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:43:37 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:43:37 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:43:40 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:43:40 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/progress-dashboard
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:43:40 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:43:41 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:43:41 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:43:44 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:43:44 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:44:01 UTC] ergon: Index.php executed - URI: /ergon/settings
+[27-Oct-2025 11:44:01 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:03 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/progress-dashboard
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:44:03 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:44:03 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:21 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:21 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:44:32 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:44:32 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:44:32 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:44:32 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:35 UTC] ergon: Index.php executed - URI: /ergon/attendance
+[27-Oct-2025 11:44:35 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:37 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:37 UTC] ergon: Index.php executed - URI: /ergon/advances
+[27-Oct-2025 11:44:37 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:44:39 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:39 UTC] ergon: Index.php executed - URI: /ergon/expenses
+[27-Oct-2025 11:44:42 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:42 UTC] ergon: Index.php executed - URI: /ergon/leaves
+[27-Oct-2025 11:44:43 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:43 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/progress-dashboard
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:44:43 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:44:44 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:44:44 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:47 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/morning-planner
+[27-Oct-2025 11:44:47 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\laragon\www\ergon\views\daily_workflow\daily_planner.php on line 145
+[27-Oct-2025 11:44:47 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\laragon\www\ergon\views\daily_workflow\daily_planner.php on line 145
+[27-Oct-2025 11:44:47 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\laragon\www\ergon\views\daily_workflow\daily_planner.php on line 145
+[27-Oct-2025 11:44:47 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:48 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:48 UTC] ergon: Index.php executed - URI: /ergon/tasks
+[27-Oct-2025 11:44:49 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:50 UTC] ergon: Index.php executed - URI: /ergon/project-management
+[27-Oct-2025 11:44:50 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:44:50 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:50 UTC] ergon: Index.php executed - URI: /ergon/admin/management
+[27-Oct-2025 11:44:51 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:51 UTC] ergon: Index.php executed - URI: /ergon/admin/management
+[27-Oct-2025 11:44:52 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[27-Oct-2025 11:44:52 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:44:52 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:53 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:53 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[27-Oct-2025 11:44:53 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\core\Controller.php on line 36
+[27-Oct-2025 11:44:54 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:44:54 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[27-Oct-2025 11:44:54 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:45:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[27-Oct-2025 11:45:47 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:45:54 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:45:54 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:45:57 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:45:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:45:58 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:45:58 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:45:58 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:45:58 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:46:12 UTC] ergon: Index.php executed - URI: /ergon/settings
+[27-Oct-2025 11:46:12 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:46:14 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:46:15 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:46:16 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:46:17 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:46:17 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:46:17 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:46:22 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:46:22 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:47:26 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:47:26 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:47:30 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:47:30 UTC] ergon: Index.php executed - URI: /ergon/settings
+[27-Oct-2025 11:47:31 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:47:31 UTC] ergon: Index.php executed - URI: /ergon/daily-workflow/progress-dashboard
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 19
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 28
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 84
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "evening_updated" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 93
+[27-Oct-2025 11:47:31 UTC] PHP Warning:  Undefined array key "morning_submitted" in C:\laragon\www\ergon\views\daily_workflow\progress_dashboard.php on line 128
+[27-Oct-2025 11:47:33 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:47:33 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:47:33 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:47:33 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:47:36 UTC] ergon: Index.php executed - URI: /ergon/settings
+[27-Oct-2025 11:47:36 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:47:38 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:47:38 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:48:44 UTC] ergon: Index.php executed - URI: /ergon/reports/activity
+[27-Oct-2025 11:48:44 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:48:49 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:48:49 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:48:49 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:48:49 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:48:53 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:48:53 UTC] ergon: Index.php executed - URI: /ergon/followups
+[27-Oct-2025 11:48:58 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:48:59 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:48:59 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:48:59 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:50:37 UTC] ergon: Index.php executed - URI: /ergon/reports
+[27-Oct-2025 11:50:37 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[27-Oct-2025 11:50:37 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[27-Oct-2025 11:50:37 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:50:40 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[27-Oct-2025 11:50:40 UTC] ergon: Index.php executed - URI: /ergon/reports/activity

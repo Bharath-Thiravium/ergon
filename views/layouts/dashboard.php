@@ -55,6 +55,25 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         background: #f8fafc !important;
         min-height: 100vh !important;
         width: calc(100vw - 260px) !important;
+        box-sizing: border-box !important;
+        position: relative !important;
+        overflow-x: auto !important;
+    }
+    
+    /* Override any conflicting styles from ergon.css */
+    .layout .main-content {
+        margin-left: 260px !important;
+        padding-top: 24px !important;
+        width: calc(100vw - 260px) !important;
+    }
+    
+    @media (max-width: 768px) {
+        .main-content,
+        .layout .main-content {
+            margin-left: 0 !important;
+            width: 100vw !important;
+            padding: 20px !important;
+        }
     }
     .sidebar__profile-toggle {
         width: 100%;
@@ -186,6 +205,70 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         transition: all 0.2s ease;
         border-left: 3px solid transparent;
     }
+    
+    /* Modern Slim Button Styles */
+    .btn {
+        padding: 8px 16px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        border-radius: 6px !important;
+        border: 1px solid #e5e7eb !important;
+        background: #ffffff !important;
+        color: #374151 !important;
+        text-decoration: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    }
+    
+    .btn:hover {
+        background: #f9fafb !important;
+        border-color: #d1d5db !important;
+        color: #111827 !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .btn--primary {
+        background: #111827 !important;
+        color: #ffffff !important;
+        border-color: #111827 !important;
+    }
+    
+    .btn--primary:hover {
+        background: #1f2937 !important;
+        border-color: #1f2937 !important;
+        color: #ffffff !important;
+    }
+    
+    .btn--secondary {
+        background: #f3f4f6 !important;
+        color: #6b7280 !important;
+        border-color: #e5e7eb !important;
+    }
+    
+    .btn--secondary:hover {
+        background: #e5e7eb !important;
+        color: #374151 !important;
+    }
+    
+    .btn--success {
+        background: #f0fdf4 !important;
+        color: #166534 !important;
+        border-color: #bbf7d0 !important;
+    }
+    
+    .btn--success:hover {
+        background: #dcfce7 !important;
+        color: #14532d !important;
+    }
+    
+    /* Prevent scroll restoration */
+    html {
+        scroll-behavior: auto !important;
+    }
     </style>
     <?php if (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark'): ?>
     <link id="dark-theme-css" href="/ergon/assets/css/dark-theme.css" rel="stylesheet">
@@ -246,11 +329,16 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                     </div>
                 </div>
             </div>
+            
             <nav class="sidebar__menu">
                 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
                     <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">📊</span>
                         Executive Dashboard
+                    </a>
+                    <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">🏆</span>
+                        Team Competition
                     </a>
                     <a href="/ergon/system-admin" class="sidebar__link <?= ($active_page ?? '') === 'system-admin' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🔧</span>
@@ -315,6 +403,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                         <span class="sidebar__icon">📊</span>
                         Admin Dashboard
                     </a>
+                    <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">🏆</span>
+                        Team Competition
+                    </a>
                     <a href="/ergon/departments" class="sidebar__link <?= ($active_page ?? '') === 'departments' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">🏢</span>
                         Department Management
@@ -364,6 +456,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                         <span class="sidebar__icon">🏠</span>
                         My Dashboard
                     </a>
+                    <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
+                        <span class="sidebar__icon">🏆</span>
+                        Team Competition
+                    </a>
                     <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
                         <span class="sidebar__icon">✅</span>
                         My Tasks
@@ -404,355 +500,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             </nav>
         </aside>
         
-        <main class="main-content">
-            <?= $content ?>
-        </main>
-    </div>
-
-    <script>
-    function toggleSidebar() {
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar) {
-            sidebar.classList.toggle('sidebar--open');
-        }
-    }
-    
-    function toggleTheme() {
-        var currentTheme = document.body.getAttribute('data-theme') || 'light';
-        var newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        document.body.setAttribute('data-theme', newTheme);
-        var themeIcon = document.getElementById('themeIcon');
-        if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-    }
-    
-    function toggleNotifications() {
-        var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown) {
-            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-        }
-    }
-    </script>
-</body>
-</html>   Logout
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <nav class="sidebar__menu">
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Executive Dashboard
-                    </a>
-                    <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">✅</span>
-                        Task Overview
-                    </a>
-                    <a href="/ergon/users" class="sidebar__link <?= ($active_page ?? '') === 'users' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">👥</span>
-                        User Management
-                    </a>
-                    <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📅</span>
-                        Leave Overview
-                    </a>
-                    <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">💰</span>
-                        Expense Overview
-                    </a>
-                    <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📍</span>
-                        Attendance Overview
-                    </a>
-                    <a href="/ergon/reports" class="sidebar__link <?= ($active_page ?? '') === 'reports' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📈</span>
-                        Analytics
-                    </a>
-                    <a href="/ergon/settings" class="sidebar__link <?= ($active_page ?? '') === 'settings' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">⚙️</span>
-                        System Settings
-                    </a>
-                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Admin Dashboard
-                    </a>
-                    <a href="/ergon/users" class="sidebar__link <?= ($active_page ?? '') === 'users' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">👥</span>
-                        User Management
-                    </a>
-                    <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">✅</span>
-                        Task Management
-                    </a>
-                    <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📅</span>
-                        Leave Requests
-                    </a>
-                    <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">💰</span>
-                        Expense Claims
-                    </a>
-                    <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📍</span>
-                        Attendance
-                    </a>
-                <?php else: ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🏠</span>
-                        My Dashboard
-                    </a>
-                    <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">✅</span>
-                        My Tasks
-                    </a>
-                    <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📅</span>
-                        My Leaves
-                    </a>
-                    <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">💰</span>
-                        My Expenses
-                    </a>
-                    <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📍</span>
-                        My Attendance
-                    </a>
-                <?php endif; ?>
-            </nav>
-        </aside>
-        
-        <main class="main-content">
-            <?= $content ?>
-        </main>
-    </div>
-
-    <script>
-    function toggleSidebar() {
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar) {
-            sidebar.classList.toggle('sidebar--open');
-        }
-    }
-    
-    function toggleTheme() {
-        var currentTheme = document.body.getAttribute('data-theme') || 'light';
-        var newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        document.body.setAttribute('data-theme', newTheme);
-        var themeIcon = document.getElementById('themeIcon');
-        if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-    }
-    
-    function toggleNotifications() {
-        var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown) {
-            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-        }
-    }
-    </script>
-</body>
-</html>   Logout
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <nav class="sidebar__menu">
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Executive Dashboard
-                    </a>
-                    <a href="/ergon/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">✅</span>
-                        Task Overview
-                    </a>
-                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Admin Dashboard
-                    </a>
-                    <a href="/ergon/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">✅</span>
-                        Task Management
-                    </a>
-                <?php else: ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🏠</span>
-                        My Dashboard
-                    </a>
-                    <a href="/ergon/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">✅</span>
-                        My Tasks
-                    </a>
-                <?php endif; ?>
-            </nav>
-        </aside>
-        
-        <main class="main-content">
-            <?= $content ?>
-        </main>
-    </div>
-
-    <script>
-    function toggleSidebar() {
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar) {
-            sidebar.classList.toggle('sidebar--open');
-        }
-    }
-    
-    function toggleTheme() {
-        var currentTheme = document.body.getAttribute('data-theme') || 'light';
-        var newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        document.body.setAttribute('data-theme', newTheme);
-        var themeIcon = document.getElementById('themeIcon');
-        if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-    }
-    
-    function toggleNotifications() {
-        var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown) {
-            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-        }
-    }
-    </script>
-</body>
-</html>>
-            </div>
-            <nav class="sidebar__menu">
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Executive Dashboard
-                    </a>
-                    <a href="/ergon/system-admin" class="sidebar__link <?= $active_page === 'system-admin' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🔧</span>
-                        System Admins
-                    </a>
-                    <a href="/ergon/admin/management" class="sidebar__link <?= $active_page === 'admin' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">👥</span>
-                        User Admins
-                    </a>
-                    <a href="/ergon/project-management" class="sidebar__link <?= $active_page === 'project-management' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📁</span>
-                        Project Management
-                    </a>
-                    <div class="sidebar__divider">Company Overview</div>
-                    <a href="/ergon/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">✅</span>
-                        Task Overview
-                    </a>
-                    <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🌅</span>
-                        Morning Planner
-                    </a>
-                    <a href="/ergon/followups" class="sidebar__link <?= $active_page === 'followups' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📞</span>
-                        Follow-ups
-                    </a>
-                    <a href="/ergon/daily-workflow/progress-dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Progress Dashboard
-                    </a>
-                    <a href="/ergon/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📅</span>
-                        Leave Overview
-                    </a>
-                    <a href="/ergon/expenses" class="sidebar__link <?= $active_page === 'expenses' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">💰</span>
-                        Expense Overview
-                    </a>
-                    <a href="/ergon/attendance" class="sidebar__link <?= $active_page === 'attendance' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📍</span>
-                        Attendance Overview
-                    </a>
-                    <div class="sidebar__divider">System</div>
-                    <a href="/ergon/reports" class="sidebar__link <?= $active_page === 'reports' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📈</span>
-                        Analytics
-                    </a>
-                    <a href="/ergon/reports/activity" class="sidebar__link <?= $active_page === 'activity' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">⏱️</span>
-                        Activity Reports
-                    </a>
-                    <a href="/ergon/settings" class="sidebar__link <?= $active_page === 'settings' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">⚙️</span>
-                        System Settings
-                    </a>
-                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Admin Dashboard
-                    </a>
-                    <a href="/ergon/departments" class="sidebar__link <?= $active_page === 'departments' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🏢</span>
-                        Department Management
-                    </a>
-                    <a href="/ergon/users" class="sidebar__link <?= $active_page === 'users' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">👥</span>
-                        User Management
-                    </a>
-                    <a href="/ergon/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">✅</span>
-                        Task Management
-                    </a>
-                    <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🌅</span>
-                        Morning Planner
-                    </a>
-                    <a href="/ergon/followups" class="sidebar__link <?= $active_page === 'followups' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📞</span>
-                        Follow-ups
-                    </a>
-                    <a href="/ergon/daily-workflow/progress-dashboard" class="sidebar__link <?= $active_page === 'daily-planner-dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Progress Dashboard
-                    </a>
-                    <a href="/ergon/leaves" class="sidebar__link <?= $active_page === 'leaves' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📅</span>
-                        Leave Requests
-                    </a>
-                    <a href="/ergon/expenses" class="sidebar__link <?= $active_page === 'expenses' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">💰</span>
-                        Expense Claims
-                    </a>
-                    <a href="/ergon/reports/activity" class="sidebar__link <?= $active_page === 'activity' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">⏱️</span>
-                        Activity Reports
-                    </a>
-                <?php else: ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= $active_page === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🏠</span>
-                        My Dashboard
-                    </a>
-                    <a href="/ergon/tasks" class="sidebar__link <?= $active_page === 'tasks' ? 'sidebar__link--active' : '' ?>" onclick="console.log('Tasks link clicked')">
-                        <span class="sidebar__icon">✅</span>
-                        My Tasks
-                    </a>
-                    <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= $active_page === 'planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🌅</span>
-                        Morning Planner
-                    </a>
-                    <a href="/ergon/followups" class="sidebar__link <?= $active_page === 'followups' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📞</span>
-                        Follow-ups
-                    </a>
-                    <a href="/ergon/daily-workflow/evening-update" class="sidebar__link <?= $active_page === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🌆</span>
-                        Evening Update
-                    </a>
-                    <a href="/ergon/user/requests" class="sidebar__link <?= $active_page === 'requests' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📋</span>
-                        My Requests
-                    </a>
-                    <a href="/ergon/attendance" class="sidebar__link <?= $active_page === 'attendance' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📍</span>
-                        My Attendance
-                    </a>
-                <?php endif; ?>
-            </nav>
-        </aside>
-        
         <div class="notification-dropdown" id="notificationDropdown">
             <div class="notification-header">
                 <h3>Notifications</h3>
@@ -764,27 +511,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         </div>
 
         <main class="main-content">
-            <?php if (isset($_SESSION['user_id']) && $_SESSION['role'] === 'user'): ?>
-            <div class="gamification-header" style="margin-bottom: 1rem;">
-                <?php include __DIR__ . '/../shared/gamification_widget.php'; ?>
-            </div>
-            <?php endif; ?>
-            
-            <?php if (isset($_SESSION['user_id'])): ?>
-            <?php include __DIR__ . '/../shared/team_competition_dashboard.php'; ?>
-            
-            <?php include __DIR__ . '/../shared/motivational_challenges.php'; ?>
-            
-            <div style="display: grid; grid-template-columns: 1fr 300px; gap: 20px; margin: 20px 0;">
-                <div>
-                    <?php include __DIR__ . '/../shared/task_progress_comparison.php'; ?>
-                </div>
-                <div>
-                    <?php include __DIR__ . '/../shared/live_activity_feed.php'; ?>
+            <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports'])): ?>
+            <div class="page-header">
+                <div class="page-title">
+                    <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
                 </div>
             </div>
             <?php endif; ?>
-            
             <?= $content ?>
         </main>
     </div>
@@ -820,18 +553,14 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
     window.toggleProfile = function() {
         var menu = document.getElementById('profileMenu');
-        console.log('Toggle profile clicked', menu);
         menu.classList.toggle('show');
-        console.log('Menu classes:', menu.className);
     }
     
     document.addEventListener('click', function(e) {
         const sidebar = document.querySelector('.sidebar');
         const toggle = document.querySelector('.mobile-menu-toggle');
         
-        // Don't interfere with sidebar links
         if (e.target.closest('.sidebar__link')) {
-            console.log('Sidebar link clicked, allowing navigation');
             return;
         }
         
@@ -862,6 +591,11 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             window.location.replace('/ergon/login');
         }
     };
+    
+    // Disable scroll restoration
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
     </script>
     <script src="/ergon/assets/js/auth-guard.min.js?v=<?= time() ?>" defer></script>
 </body>

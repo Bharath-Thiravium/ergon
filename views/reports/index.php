@@ -56,7 +56,7 @@ ob_start();
             </h2>
         </div>
         <div class="card__body">
-            <canvas id="attendanceChart" height="200"></canvas>
+            <div id="attendanceChart"></div>
         </div>
     </div>
     
@@ -67,7 +67,7 @@ ob_start();
             </h2>
         </div>
         <div class="card__body">
-            <canvas id="taskChart" height="200"></canvas>
+            <div id="taskChart"></div>
         </div>
     </div>
 </div>
@@ -80,7 +80,7 @@ ob_start();
             </h2>
         </div>
         <div class="card__body">
-            <canvas id="leaveChart" height="200"></canvas>
+            <div id="leaveChart"></div>
         </div>
     </div>
     
@@ -91,105 +91,171 @@ ob_start();
             </h2>
         </div>
         <div class="card__body">
-            <canvas id="expenseChart" height="200"></canvas>
+            <div id="expenseChart"></div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@latest"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Attendance Chart
-    const attendanceCtx = document.getElementById('attendanceChart').getContext('2d');
-    new Chart(attendanceCtx, {
-        type: 'line',
-        data: {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            datasets: [{
-                label: 'Present',
-                data: [8, 7, 9, 8, 6, 3, 2],
-                borderColor: '#1e40af',
-                backgroundColor: 'rgba(30, 64, 175, 0.1)',
-                tension: 0.4
-            }]
+    // Attendance Chart - Advanced Area Chart
+    const attendanceOptions = {
+        series: [{
+            name: 'Present',
+            data: [8, 7, 9, 8, 6, 3, 2]
+        }],
+        chart: {
+            type: 'area',
+            height: 200,
+            toolbar: { show: false },
+            sparkline: { enabled: false }
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true
-                }
+        colors: ['#1e40af'],
+        fill: {
+            type: 'gradient',
+            gradient: {
+                shadeIntensity: 1,
+                opacityFrom: 0.4,
+                opacityTo: 0.1
             }
+        },
+        stroke: {
+            curve: 'smooth',
+            width: 2
+        },
+        xaxis: {
+            categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            labels: { style: { fontSize: '12px' } }
+        },
+        yaxis: {
+            labels: { style: { fontSize: '12px' } }
+        },
+        grid: {
+            borderColor: '#f1f5f9',
+            strokeDashArray: 3
+        },
+        tooltip: {
+            theme: 'light'
         }
-    });
+    };
+    new ApexCharts(document.querySelector('#attendanceChart'), attendanceOptions).render();
 
-    // Task Chart
-    const taskCtx = document.getElementById('taskChart').getContext('2d');
-    new Chart(taskCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Completed', 'In Progress', 'Pending'],
-            datasets: [{
-                data: [65, 25, 10],
-                backgroundColor: ['#059669', '#d97706', '#dc2626']
-            }]
+    // Task Chart - Modern Donut
+    const taskOptions = {
+        series: [65, 25, 10],
+        chart: {
+            type: 'donut',
+            height: 200
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
+        labels: ['Completed', 'In Progress', 'Pending'],
+        colors: ['#059669', '#d97706', '#dc2626'],
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '70%',
+                    labels: {
+                        show: true,
+                        total: {
+                            show: true,
+                            fontSize: '16px',
+                            fontWeight: 600
+                        }
+                    }
                 }
             }
-        }
-    });
+        },
+        legend: {
+            position: 'bottom',
+            fontSize: '12px'
+        },
+        responsive: [{
+            breakpoint: 480,
+            options: {
+                chart: { height: 180 },
+                legend: { position: 'bottom' }
+            }
+        }]
+    };
+    new ApexCharts(document.querySelector('#taskChart'), taskOptions).render();
 
-    // Leave Chart
-    const leaveCtx = document.getElementById('leaveChart').getContext('2d');
-    new Chart(leaveCtx, {
-        type: 'bar',
-        data: {
-            labels: ['Casual', 'Sick', 'Annual', 'Emergency'],
-            datasets: [{
-                label: 'Leave Requests',
-                data: [12, 8, 15, 3],
-                backgroundColor: '#1e40af'
-            }]
+    // Leave Chart - Gradient Bar
+    const leaveOptions = {
+        series: [{
+            name: 'Leave Requests',
+            data: [12, 8, 15, 3]
+        }],
+        chart: {
+            type: 'bar',
+            height: 200,
+            toolbar: { show: false }
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
+        colors: ['#1e40af'],
+        fill: {
+            type: 'gradient',
+            gradient: {
+                shade: 'light',
+                type: 'vertical',
+                shadeIntensity: 0.25,
+                gradientToColors: ['#3b82f6'],
+                inverseColors: false,
+                opacityFrom: 1,
+                opacityTo: 0.85
             }
+        },
+        plotOptions: {
+            bar: {
+                borderRadius: 4,
+                columnWidth: '60%'
+            }
+        },
+        xaxis: {
+            categories: ['Casual', 'Sick', 'Annual', 'Emergency'],
+            labels: { style: { fontSize: '12px' } }
+        },
+        yaxis: {
+            labels: { style: { fontSize: '12px' } }
+        },
+        grid: {
+            borderColor: '#f1f5f9',
+            strokeDashArray: 3
         }
-    });
+    };
+    new ApexCharts(document.querySelector('#leaveChart'), leaveOptions).render();
 
-    // Expense Chart
-    const expenseCtx = document.getElementById('expenseChart').getContext('2d');
-    new Chart(expenseCtx, {
-        type: 'pie',
-        data: {
-            labels: ['Travel', 'Food', 'Office Supplies', 'Other'],
-            datasets: [{
-                data: [40, 25, 20, 15],
-                backgroundColor: ['#1e40af', '#059669', '#d97706', '#dc2626']
-            }]
+    // Expense Chart - Radial Bar
+    const expenseOptions = {
+        series: [40, 25, 20, 15],
+        chart: {
+            type: 'radialBar',
+            height: 200
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
+        plotOptions: {
+            radialBar: {
+                dataLabels: {
+                    name: {
+                        fontSize: '12px'
+                    },
+                    value: {
+                        fontSize: '14px',
+                        formatter: function (val) {
+                            return val + '%'
+                        }
+                    },
+                    total: {
+                        show: true,
+                        label: 'Total',
+                        formatter: function () {
+                            return '100%'
+                        }
+                    }
                 }
             }
-        }
-    });
+        },
+        labels: ['Travel', 'Food', 'Supplies', 'Other'],
+        colors: ['#1e40af', '#059669', '#d97706', '#dc2626']
+    };
+    new ApexCharts(document.querySelector('#expenseChart'), expenseOptions).render();
 });
 </script>
 
