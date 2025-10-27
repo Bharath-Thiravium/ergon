@@ -6,8 +6,9 @@ class Controller {
         $viewFile = __DIR__ . "/../../views/{$view}.php";
         
         if (file_exists($viewFile)) {
-            require_once $viewFile;
+            include $viewFile;
         } else {
+            error_log("View not found: {$viewFile}");
             throw new Exception("View {$view} not found");
         }
     }

@@ -42,46 +42,57 @@ try {
 .gamification-widget {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 0.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 8px;
-    color: white;
-    font-size: 0.875rem;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-radius: var(--border-radius);
+    color: var(--text-inverse);
+    font-size: var(--font-size-sm);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(255,255,255,0.1);
 }
 
 .points-display {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: var(--space-2);
 }
 
 .points-value {
-    font-weight: bold;
-    font-size: 1.1em;
+    font-weight: 600;
+    font-size: var(--font-size-lg);
+    color: var(--text-inverse);
 }
 
 .rank-badge {
     background: rgba(255,255,255,0.2);
-    padding: 0.125rem 0.375rem;
+    padding: var(--space-1) var(--space-3);
     border-radius: 12px;
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    backdrop-filter: blur(10px);
 }
 
 .badges-display {
     display: flex;
-    gap: 0.25rem;
+    gap: var(--space-2);
 }
 
 .badge-icon {
     font-size: 1.2em;
     cursor: help;
+    transition: var(--transition);
+}
+
+.badge-icon:hover {
+    transform: scale(1.1);
 }
 
 .badge-more {
     background: rgba(255,255,255,0.2);
-    padding: 0.125rem 0.25rem;
-    border-radius: 8px;
-    font-size: 0.75rem;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
 }
 </style>

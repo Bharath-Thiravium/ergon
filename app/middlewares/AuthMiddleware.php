@@ -24,19 +24,23 @@ class AuthMiddleware {
         // Update last activity
         $_SESSION['last_activity'] = time();
         
-        // Set strongest no-cache headers to prevent back button access
-        header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0, private');
-        header('Pragma: no-cache');
-        header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
-        header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
-        header('ETag: "' . md5(time()) . '"');
+        // Set strongest no-cache headers to prevent back button access (only if headers not sent)
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0, private');
+            header('Pragma: no-cache');
+            header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+            header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+            header('ETag: "' . md5(time()) . '"');
+        }
     }
     
     public static function requireRole($requiredRole) {
         self::requireAuth();
         
         if ($_SESSION['role'] !== $requiredRole) {
-            header('Location: /ergon/dashboard');
+            if (!headers_sent()) {
+                header('Location: /ergon/dashboard');
+            }
             exit;
         }
     }
@@ -46,7 +50,9 @@ class AuthMiddleware {
         if ($query) {
             $url .= '?' . $query;
         }
-        header('Location: ' . $url);
+        if (!headers_sent()) {
+            header('Location: ' . $url);
+        }
         exit;
     }
 }

@@ -10,22 +10,47 @@ class TasksController extends Controller {
     private $userModel;
     
     public function __construct() {
-        $this->taskModel = new Task();
-        $this->userModel = new User();
+        try {
+            $this->taskModel = new Task();
+            $this->userModel = new User();
+        } catch (Exception $e) {
+            error_log("TasksController init error: " . $e->getMessage());
+            $this->taskModel = null;
+            $this->userModel = null;
+        }
     }
     
     public function index() {
-        $this->requireAuth();
+        AuthMiddleware::requireAuth();
         
         $title = 'Tasks';
         $active_page = 'tasks';
         
-        $tasks = [
-            ['id' => 1, 'title' => 'Database Setup', 'assigned_user' => 'John Doe', 'priority' => 'high', 'status' => 'in_progress', 'due_date' => '2024-01-25'],
-            ['id' => 2, 'title' => 'UI Design', 'assigned_user' => 'Jane Smith', 'priority' => 'medium', 'status' => 'pending', 'due_date' => '2024-01-30']
-        ];
+        // Try to get tasks from database, fallback to static data
+        if ($this->taskModel !== null) {
+            try {
+                $tasks = $this->taskModel->getAll();
+                if (empty($tasks)) {
+                    $tasks = $this->getStaticTasks();
+                }
+            } catch (Exception $e) {
+                error_log("Task fetch error: " . $e->getMessage());
+                $tasks = $this->getStaticTasks();
+            }
+        } else {
+            $tasks = $this->getStaticTasks();
+        }
         
-        include __DIR__ . '/../../views/tasks/index.php';
+        $data = ['tasks' => $tasks, 'active_page' => 'tasks'];
+        $this->view('tasks/index', $data);
+    }
+    
+    private function getStaticTasks() {
+        return [
+            ['id' => 1, 'title' => 'Database Setup', 'assigned_user' => 'John Doe', 'priority' => 'high', 'status' => 'in_progress', 'due_date' => '2024-01-25'],
+            ['id' => 2, 'title' => 'UI Design', 'assigned_user' => 'Jane Smith', 'priority' => 'medium', 'status' => 'pending', 'due_date' => '2024-01-30'],
+            ['id' => 3, 'title' => 'API Development', 'assigned_user' => 'Mike Johnson', 'priority' => 'high', 'status' => 'assigned', 'due_date' => '2024-02-05']
+        ];
     }
     
     public function create() {

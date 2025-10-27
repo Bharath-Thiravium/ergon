@@ -78,6 +78,8 @@
                                 <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                                     <?php if ($task['project_name']): ?>
                                         <span class="badge badge--secondary">📁 <?= htmlspecialchars($task['project_name']) ?></span>
+                                    <?php else: ?>
+                                        <span class="badge badge--secondary">📋 General Task</span>
                                     <?php endif; ?>
                                     <?php if ($task['task_category']): ?>
                                         <span class="badge badge--info">🏷️ <?= htmlspecialchars($task['task_category']) ?></span>
@@ -89,12 +91,24 @@
                                     <?php if ($task['actual_hours'] > 0): ?>
                                         <span class="badge badge--success">Actual: <?= $task['actual_hours'] ?>h</span>
                                     <?php endif; ?>
+                                    <?php if ($task['is_followup']): ?>
+                                        <span class="badge badge--info">📞 Follow-up</span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             <div class="task-actions" style="display: flex; gap: 0.25rem;">
                                 <button class="btn btn--sm btn--secondary" onclick="editTask(<?= $task['id'] ?>)" title="Edit Task">
                                     ✏️
                                 </button>
+                                <?php if (!$task['is_followup']): ?>
+                                    <button class="btn btn--sm btn--info" onclick="createFollowup(<?= $task['id'] ?>)" title="Create Follow-up">
+                                        📞
+                                    </button>
+                                <?php else: ?>
+                                    <button class="btn btn--sm btn--success" onclick="viewFollowup(<?= $task['followup_id'] ?>)" title="View Follow-up">
+                                        👁️📞
+                                    </button>
+                                <?php endif; ?>
                                 <button class="btn btn--sm btn--danger" onclick="deleteTask(<?= $task['id'] ?>)" title="Delete Task">
                                     🗑️
                                 </button>
@@ -189,18 +203,18 @@
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Project</label>
+                        <label class="form-label">Project (Optional)</label>
                         <select id="taskProject" name="project_name" class="form-control">
-                            <option value="">Select Project</option>
+                            <option value="">No Project (General Task)</option>
                         </select>
-                        <small class="form-help">Projects available for selected department</small>
+                        <small class="form-help">Optional: Select project for filtering and tracking</small>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Task Category</label>
-                        <select id="taskCategory" name="task_category" class="form-control">
+                        <label class="form-label">Task Category *</label>
+                        <select id="taskCategory" name="task_category" class="form-control" required>
                             <option value="">Select Category</option>
                         </select>
-                        <small class="form-help">Categories for selected department</small>
+                        <small class="form-help">Required: Choose task type/category</small>
                     </div>
                 </div>
                 
@@ -439,28 +453,12 @@ function filterProjectsAndCategories() {
     const departmentName = deptSelect.options[deptSelect.selectedIndex]?.dataset.name;
     
     // Clear existing options
-    projectSelect.innerHTML = '<option value="">Select Project</option>';
+    projectSelect.innerHTML = '<option value="">No Project (General Task)</option>';
     categorySelect.innerHTML = '<option value="">Select Category</option>';
     
     if (!departmentId) return;
     
-    // Fetch projects for department
-    fetch(`/ergon/api/projects-by-department?department_id=${departmentId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                data.projects.forEach(project => {
-                    const option = document.createElement('option');
-                    option.value = project.name;
-                    option.textContent = project.name;
-                    option.title = project.description || '';
-                    projectSelect.appendChild(option);
-                });
-            }
-        })
-        .catch(error => console.error('Error fetching projects:', error));
-    
-    // Fetch task categories for department
+    // Always fetch task categories first (they are independent of projects)
     if (departmentName) {
         fetch(`/ergon/api/task-categories-by-department?department_name=${encodeURIComponent(departmentName)}`)
             .then(response => response.json())
@@ -477,6 +475,22 @@ function filterProjectsAndCategories() {
             })
             .catch(error => console.error('Error fetching categories:', error));
     }
+    
+    // Fetch projects for department (optional for filtering/marking)
+    fetch(`/ergon/api/projects-by-department?department_id=${departmentId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                data.projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.name;
+                    option.textContent = project.name;
+                    option.title = project.description || '';
+                    projectSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('Error fetching projects:', error));
 }
 
 // Auto-save progress updates every 30 seconds

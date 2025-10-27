@@ -88,15 +88,21 @@ class Router {
             
         } catch (Exception $e) {
             error_log("Controller Error: " . $e->getMessage());
-            http_response_code(500);
+            if (!headers_sent()) {
+                http_response_code(500);
+            }
             echo "Internal Server Error";
         }
     }
     
     private function notFound() {
-        http_response_code(404);
+        if (!headers_sent()) {
+            http_response_code(404);
+        }
         if ($this->isApiRequest()) {
-            header('Content-Type: application/json');
+            if (!headers_sent()) {
+                header('Content-Type: application/json');
+            }
             echo json_encode(['error' => 'Endpoint not found']);
         } else {
             echo "<!DOCTYPE html><html><head><title>404 - Page Not Found</title></head>";

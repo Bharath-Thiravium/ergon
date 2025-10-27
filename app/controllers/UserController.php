@@ -32,7 +32,7 @@ class UserController extends Controller {
             'active_page' => 'dashboard'
         ];
         
-        $this->view('dashboard/user', $data);
+        $this->view('user/dashboard', $data);
     }
     
     public function requests() {
