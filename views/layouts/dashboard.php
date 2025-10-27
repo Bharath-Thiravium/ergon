@@ -49,98 +49,423 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
     <style>
-    /* Complete override of ergon.css main-content */
-    .main-content {
-        margin-left: 260px !important;
-        padding: 24px !important;
-        padding-top: 24px !important;
-        background: #f8fafc !important;
-        min-height: 100vh !important;
-        width: calc(100vw - 260px) !important;
-        box-sizing: border-box !important;
-        position: relative !important;
-        overflow-x: auto !important;
-    }
-    
-    .layout .main-content {
-        margin-left: 260px !important;
-        padding: 24px !important;
-        padding-top: 24px !important;
-        width: calc(100vw - 260px) !important;
-    }
-    
-    @media (max-width: 768px) {
-        .main-content,
-        .layout .main-content {
-            margin-left: 0 !important;
-            width: 100vw !important;
-            padding: 20px !important;
-        }
-    }
-    .sidebar__profile-toggle {
+    /* Header styles - two-row layout */
+    .main-header {
+        background: #1e293b;
+        border-bottom: 1px solid #334155;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        position: sticky;
+        top: 0;
+        z-index: 9999;
         width: 100%;
+    }
+    
+    .header__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 24px;
+        border-bottom: 1px solid #334155;
+    }
+    
+    .header__nav-container {
+        padding: 8px 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        width: 100%;
+    }
+    
+    .header__nav-container::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .header__brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #f1f5f9;
+        font-weight: 600;
+        font-size: 18px;
+    }
+    
+    .brand-icon {
+        font-size: 24px;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
+    
+    .brand-text {
+        font-size: 20px;
+        font-weight: 700;
+        color: #f8fafc;
+    }
+    
+    .role-badge {
+        background: #475569;
+        color: #cbd5e1;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border: 1px solid #64748b;
+    }
+    
+    .header__nav {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .nav-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .nav-dropdown-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background: #334155;
+        border: 1px solid #475569;
+        border-radius: 6px;
+        color: #cbd5e1;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    
+    .nav-dropdown-btn:hover {
+        background: #475569;
+        border-color: #64748b;
+        color: #f1f5f9;
+    }
+    
+    .nav-dropdown:hover .nav-dropdown-menu {
+        display: block !important;
+        animation: slideDown 0.3s ease;
+    }
+    
+    .nav-dropdown:hover .nav-dropdown-btn .dropdown-arrow {
+        transform: rotate(180deg);
+    }
+    
+    .nav-dropdown-btn .dropdown-arrow {
+        font-size: 10px;
+        transition: transform 0.3s ease;
+    }
+    
+    .nav-dropdown-btn.active .dropdown-arrow {
+        transform: rotate(180deg);
+    }
+    
+    .nav-dropdown-menu {
+        display: none;
+        position: fixed;
+        background: #1e293b;
+        border: 1px solid #475569;
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+        margin-top: 8px;
+        overflow: hidden;
+        min-width: 200px;
+        z-index: 99999;
+        backdrop-filter: blur(20px);
+    }
+    
+    .nav-dropdown-menu.show {
+        display: block !important;
+        animation: slideDown 0.3s ease;
+    }
+    
+    .nav-dropdown-item {
         display: flex;
         align-items: center;
         gap: 12px;
         padding: 12px 16px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 12px;
-        color: white;
+        color: #cbd5e1;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
+    }
+    
+    .nav-dropdown-item:hover {
+        background: #334155;
+        color: #f1f5f9;
+        border-left-color: #64748b;
+        transform: translateX(4px);
+    }
+    
+    .nav-dropdown-item--active {
+        background: #475569;
+        color: #f1f5f9;
+        border-left-color: #94a3b8;
+        font-weight: 600;
+    }
+    
+    .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        color: #94a3b8;
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        min-width: fit-content;
+        border: 1px solid transparent;
+        flex-shrink: 0;
+    }
+    
+    .nav-link:hover {
+        background: #334155;
+        color: #e2e8f0;
+        border-color: #475569;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .nav-link--active {
+        background: #475569;
+        color: #f1f5f9;
+        border-color: #64748b;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        font-weight: 600;
+    }
+    
+    .nav-icon {
+        font-size: 14px;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+        flex-shrink: 0;
+    }
+    
+    .header__controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        position: relative;
+    }
+    
+    .control-btn, .profile-btn {
+        background: #334155;
+        border: 1px solid #475569;
+        border-radius: 8px;
+        color: #cbd5e1;
         cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        transition: all 0.2s ease;
+        position: relative;
     }
-    .sidebar__profile-toggle:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+    
+    .control-btn {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
+    
+    .profile-btn {
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    
+    .control-btn:hover, .profile-btn:hover {
+        background: #475569;
+        border-color: #64748b;
+        color: #f1f5f9;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
     .profile-avatar {
-        width: 40px;
-        height: 40px;
-        background: rgba(255, 255, 255, 0.2);
-        border: 2px solid rgba(255, 255, 255, 0.3);
+        width: 26px;
+        height: 26px;
+        background: #64748b;
+        border: 1px solid #94a3b8;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: bold;
-        font-size: 16px;
-        backdrop-filter: blur(10px);
+        font-size: 12px;
+        color: #f1f5f9;
     }
-    .profile-info {
-        flex: 1;
-        text-align: left;
-    }
+    
     .profile-name {
-        display: block;
-        font-weight: 600;
-        font-size: 14px;
-        margin-bottom: 2px;
+        font-weight: 500;
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #e2e8f0;
     }
-    .profile-role {
-        display: block;
-        font-size: 12px;
-        opacity: 0.8;
-        text-transform: capitalize;
-    }
+    
     .dropdown-arrow {
+        font-size: 10px;
         transition: transform 0.3s ease;
-        font-size: 12px;
+        color: #94a3b8;
     }
-    .sidebar__profile-toggle:hover .dropdown-arrow {
+    
+    .profile-btn:hover .dropdown-arrow {
         transform: rotate(180deg);
+        color: #cbd5e1;
     }
+    
+    .notification-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background: #dc2626;
+        color: white;
+        font-size: 10px;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 10px;
+        min-width: 16px;
+        text-align: center;
+        border: 1px solid #1e293b;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Main content - override external CSS */
+    .main-content {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding: 24px !important;
+        background: #f8fafc !important;
+        min-height: calc(100vh - 110px) !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+        position: relative;
+        z-index: 1;
+    }
+    
+    @media (max-width: 1200px) {
+        .nav-group {
+            padding: 0 8px;
+        }
+        
+        .nav-group-label {
+            font-size: 9px;
+            padding: 4px 6px;
+            margin-right: 4px;
+        }
+        
+        .nav-link {
+            padding: 6px 8px;
+            font-size: 11px;
+            gap: 4px;
+        }
+        
+        .nav-icon {
+            font-size: 13px;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .header__top {
+            padding: 10px 16px;
+        }
+        
+        .header__nav-container {
+            padding: 6px 0;
+            overflow-x: auto;
+        }
+        
+        .header__brand {
+            font-size: 16px;
+        }
+        
+        .header__nav {
+            min-width: 800px;
+            justify-content: flex-start;
+            gap: 8px;
+        }
+        
+        .nav-group {
+            padding: 0 6px;
+            flex: none;
+            min-width: fit-content;
+        }
+        
+        .nav-group-label {
+            font-size: 8px;
+            padding: 3px 5px;
+            margin-right: 3px;
+        }
+        
+        .nav-link {
+            padding: 5px 6px;
+            font-size: 10px;
+            gap: 3px;
+        }
+        
+        .nav-icon {
+            font-size: 12px;
+        }
+        
+        .profile-name {
+            display: none;
+        }
+        
+        .main-content {
+            padding: 16px !important;
+            min-height: calc(100vh - 90px) !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .header__nav {
+            min-width: 600px;
+        }
+        
+        .nav-group {
+            padding: 0 4px;
+        }
+        
+        .nav-group-label {
+            display: none;
+        }
+        
+        .nav-link {
+            padding: 4px 5px;
+            font-size: 9px;
+        }
+        
+        .nav-icon {
+            font-size: 11px;
+        }
+    }
+
     .profile-menu {
         display: none;
-        background: #ffffff;
-        border: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: #1e293b;
+        border: 1px solid #475569;
         border-radius: 12px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        margin-top: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+        margin-top: 8px;
         overflow: hidden;
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        min-width: 200px;
+        z-index: 10001;
     }
     .profile-menu.show {
         display: block !important;
@@ -159,8 +484,8 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     .profile-menu-item {
         display: flex;
         align-items: center;
-        padding: 14px 18px;
-        color: #ced2d9ff;
+        padding: 12px 16px;
+        color: #cbd5e1;
         text-decoration: none;
         font-size: 14px;
         font-weight: 500;
@@ -168,22 +493,22 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         border-left: 3px solid transparent;
     }
     .profile-menu-item:hover {
-        background: linear-gradient(90deg, #f8fafc 0%, #e2e8f0 100%);
-        color: #1e293b;
-        border-left-color: #667eea;
+        background: #334155;
+        color: #f1f5f9;
+        border-left-color: #64748b;
         transform: translateX(4px);
     }
     .profile-menu-item--danger {
-        color: #dc2626;
+        color: #f87171;
     }
     .profile-menu-item--danger:hover {
-        background: linear-gradient(90deg, #fef2f2 0%, #fee2e2 100%);
-        color: #dc2626;
+        background: #450a0a;
+        color: #fca5a5;
         border-left-color: #dc2626;
     }
     .profile-menu-divider {
         height: 1px;
-        background: linear-gradient(90deg, transparent 0%, #e5e7eb 50%, transparent 100%);
+        background: #475569;
         margin: 8px 0;
     }
     .menu-icon {
@@ -192,10 +517,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         width: 20px;
         text-align: center;
     }
-    .sidebar__profile-section {
-        position: relative;
-        margin-bottom: 0;
-    }
+
     .profile-menu-item {
         display: flex;
         align-items: center;
@@ -286,241 +608,323 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <?php endif; ?>
 </head>
 <body data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>">
-    <button class="mobile-menu-toggle" onclick="toggleSidebar()">
-        <span>☰</span>
-    </button>
-
-    <div class="layout">
-        <aside class="sidebar">
-            <div class="sidebar__header">
-                <div class="sidebar__brand-section">
-                    <a href="/ergon/dashboard" class="sidebar__brand">
-                        <span>🧭</span>
-                        Ergon
-                    </a>
-                    <h3><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?> Panel</h3>
-                </div>
+    <header class="main-header">
+        <div class="header__top">
+            <div class="header__brand">
+                <span class="brand-icon">🧭</span>
+                <span class="brand-text">Ergon</span>
+                <span class="role-badge"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             
-            <div class="sidebar__controls-section">
-                <div class="sidebar__header-controls">
-                    <button class="sidebar__control-btn" onclick="toggleTheme()" title="Toggle Theme">
-                        <span id="themeIcon"><?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? '☀️' : '🌙' ?></span>
-                    </button>
-                    <button class="sidebar__control-btn" onclick="toggleNotifications()" title="Notifications">
-                        <span>🔔</span>
-                        <span class="notification-badge" id="notificationBadge">0</span>
-                    </button>
-                </div>
+            <div class="header__controls">
+                <button class="control-btn" onclick="toggleTheme()" title="Toggle Theme">
+                    <span id="themeIcon"><?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? '☀️' : '🌙' ?></span>
+                </button>
+                <button class="control-btn" onclick="toggleNotifications()" title="Notifications">
+                    <span>🔔</span>
+                    <span class="notification-badge" id="notificationBadge">0</span>
+                </button>
+                <button class="profile-btn" onclick="document.getElementById('profileMenu').classList.toggle('show')">
+                    <span class="profile-avatar"><?= htmlspecialchars(strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="profile-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="dropdown-arrow">▼</span>
+                </button>
                 
-                <div class="sidebar__profile-section">
-                    <button class="sidebar__profile-toggle" onclick="document.getElementById('profileMenu').classList.toggle('show')">
-                        <span class="profile-avatar"><?= htmlspecialchars(strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
-                        <div class="profile-info">
-                            <span class="profile-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></span>
-                            <span class="profile-role"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?></span>
-                        </div>
-                        <span class="dropdown-arrow">▼</span>
-                    </button>
-                    
-                    <div class="profile-menu" id="profileMenu">
-                        <a href="/ergon/profile/change-password" class="profile-menu-item">
-                            <span class="menu-icon">🔒</span>
-                            Change Password
-                        </a>
-                        <a href="/ergon/profile/preferences" class="profile-menu-item">
-                            <span class="menu-icon">⚙️</span>
-                            Preferences
-                        </a>
-                        <div class="profile-menu-divider"></div>
-                        <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
-                            <span class="menu-icon">🚪</span>
-                            Logout
-                        </a>
-                    </div>
+                <div class="profile-menu" id="profileMenu">
+                    <a href="/ergon/profile/change-password" class="profile-menu-item">
+                        <span class="menu-icon">🔒</span>
+                        Change Password
+                    </a>
+                    <a href="/ergon/profile/preferences" class="profile-menu-item">
+                        <span class="menu-icon">⚙️</span>
+                        Preferences
+                    </a>
+                    <div class="profile-menu-divider"></div>
+                    <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
+                        <span class="menu-icon">🚪</span>
+                        Logout
+                    </a>
                 </div>
-            </div>
-            
-            <nav class="sidebar__menu">
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Dashboard
-                    </a>
-                    <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🏆</span>
-                        Competition
-                    </a>
-                    <div class="sidebar__divider">Management</div>
-                    <a href="/ergon/system-admin" class="sidebar__link <?= ($active_page ?? '') === 'system-admin' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🔧</span>
-                        System Admins
-                    </a>
-                    <a href="/ergon/admin/management" class="sidebar__link <?= ($active_page ?? '') === 'admin' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">👥</span>
-                        User Admins
-                    </a>
-                    <a href="/ergon/project-management" class="sidebar__link <?= ($active_page ?? '') === 'project-management' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📁</span>
-                        Projects
-                    </a>
-                    <div class="sidebar__divider">Operations</div>
-                    <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">✅</span>
-                        Tasks
-                    </a>
-                    <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= ($active_page ?? '') === 'planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🌅</span>
-                        Planner
-                    </a>
-                    <a href="/ergon/followups" class="sidebar__link <?= ($active_page ?? '') === 'followups' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📞</span>
-                        Follow-ups
-                    </a>
-                    <div class="sidebar__divider">HR & Finance</div>
-                    <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📅</span>
-                        Leaves
-                    </a>
-                    <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">💰</span>
-                        Expenses
-                    </a>
-                    <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">💳</span>
-                        Advances
-                    </a>
-                    <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📍</span>
-                        Attendance
-                    </a>
-                    <div class="sidebar__divider">Reports</div>
-                    <a href="/ergon/reports" class="sidebar__link <?= ($active_page ?? '') === 'reports' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📈</span>
-                        Analytics
-                    </a>
-                    <a href="/ergon/reports/activity" class="sidebar__link <?= ($active_page ?? '') === 'activity' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">⏱️</span>
-                        Activity
-                    </a>
-                    <a href="/ergon/settings" class="sidebar__link <?= ($active_page ?? '') === 'settings' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">⚙️</span>
-                        Settings
-                    </a>
-                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📊</span>
-                        Dashboard
-                    </a>
-                    <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🏆</span>
-                        Competition
-                    </a>
-                    <div class="sidebar__divider">Management</div>
-                    <a href="/ergon/departments" class="sidebar__link <?= ($active_page ?? '') === 'departments' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🏢</span>
-                        Departments
-                    </a>
-                    <a href="/ergon/users" class="sidebar__link <?= ($active_page ?? '') === 'users' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">👥</span>
-                        Users
-                    </a>
-                    <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">✅</span>
-                        Tasks
-                    </a>
-                    <div class="sidebar__divider">Workflow</div>
-                    <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= ($active_page ?? '') === 'planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🌅</span>
-                        Planner
-                    </a>
-                    <a href="/ergon/followups" class="sidebar__link <?= ($active_page ?? '') === 'followups' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📞</span>
-                        Follow-ups
-                    </a>
-                    <div class="sidebar__divider">HR Requests</div>
-                    <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📅</span>
-                        Leaves
-                    </a>
-                    <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">💰</span>
-                        Expenses
-                    </a>
-                    <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">💳</span>
-                        Advances
-                    </a>
-                    <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📍</span>
-                        Attendance
-                    </a>
-                    <a href="/ergon/reports/activity" class="sidebar__link <?= ($active_page ?? '') === 'activity' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">⏱️</span>
-                        Reports
-                    </a>
-                <?php else: ?>
-                    <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🏠</span>
-                        Dashboard
-                    </a>
-                    <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🏆</span>
-                        Competition
-                    </a>
-                    <div class="sidebar__divider">Work</div>
-                    <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">✅</span>
-                        Tasks
-                    </a>
-                    <a href="/ergon/daily-workflow/morning-planner" class="sidebar__link <?= ($active_page ?? '') === 'planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🌅</span>
-                        Planner
-                    </a>
-                    <a href="/ergon/followups" class="sidebar__link <?= ($active_page ?? '') === 'followups' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📞</span>
-                        Follow-ups
-                    </a>
-                    <a href="/ergon/daily-workflow/evening-update" class="sidebar__link <?= ($active_page ?? '') === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">🌆</span>
-                        Evening
-                    </a>
-                    <div class="sidebar__divider">Personal</div>
-                    <a href="/ergon/user/requests" class="sidebar__link <?= ($active_page ?? '') === 'requests' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📋</span>
-                        Requests
-                    </a>
-                    <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📅</span>
-                        Leaves
-                    </a>
-                    <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">💰</span>
-                        Expenses
-                    </a>
-                    <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">💳</span>
-                        Advances
-                    </a>
-                    <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
-                        <span class="sidebar__icon">📍</span>
-                        Attendance
-                    </a>
-                <?php endif; ?>
-            </nav>
-        </aside>
-        
-        <div class="notification-dropdown" id="notificationDropdown">
-            <div class="notification-header">
-                <h3>Notifications</h3>
-                <a href="/ergon/notifications" class="view-all-link">View All</a>
-            </div>
-            <div class="notification-list" id="notificationList">
-                <div class="notification-loading">Loading...</div>
             </div>
         </div>
+        
+        <div class="header__nav-container">
+            <nav class="header__nav">
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
+                            <span class="nav-icon">📊</span>
+                            Overview
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="overview">
+                            <a href="/ergon/dashboard" class="nav-dropdown-item <?= ($active_page ?? '') === 'dashboard' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📊</span>
+                                Dashboard
+                            </a>
+                            <a href="/ergon/gamification/team-competition" class="nav-dropdown-item <?= ($active_page ?? '') === 'team-competition' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🏆</span>
+                                Competition
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown" onmouseenter="showDropdown('management')" onmouseleave="hideDropdown('management')">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('management')">
+                            <span class="nav-icon">🔧</span>
+                            Management
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="management">
+                            <a href="/ergon/system-admin" class="nav-dropdown-item <?= ($active_page ?? '') === 'system-admin' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🔧</span>
+                                System
+                            </a>
+                            <a href="/ergon/admin/management" class="nav-dropdown-item <?= ($active_page ?? '') === 'admin' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">👥</span>
+                                Users
+                            </a>
+                            <a href="/ergon/departments" class="nav-dropdown-item <?= ($active_page ?? '') === 'departments' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🏢</span>
+                                Departments
+                            </a>
+                            <a href="/ergon/project-management" class="nav-dropdown-item <?= ($active_page ?? '') === 'project-management' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📁</span>
+                                Projects
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown" onmouseenter="showDropdown('operations')" onmouseleave="hideDropdown('operations')">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('operations')">
+                            <span class="nav-icon">✅</span>
+                            Operations
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="operations">
+                            <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">✅</span>
+                                Tasks
+                            </a>
+                            <a href="/ergon/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📞</span>
+                                Follow-ups
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown" onmouseenter="showDropdown('hrfinance')" onmouseleave="hideDropdown('hrfinance')">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('hrfinance')">
+                            <span class="nav-icon">💰</span>
+                            HR & Finance
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="hrfinance">
+                            <a href="/ergon/leaves" class="nav-dropdown-item <?= ($active_page ?? '') === 'leaves' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📅</span>
+                                Leaves
+                            </a>
+                            <a href="/ergon/expenses" class="nav-dropdown-item <?= ($active_page ?? '') === 'expenses' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">💰</span>
+                                Expenses
+                            </a>
+                            <a href="/ergon/advances" class="nav-dropdown-item <?= ($active_page ?? '') === 'advances' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">💳</span>
+                                Advances
+                            </a>
+                            <a href="/ergon/attendance" class="nav-dropdown-item <?= ($active_page ?? '') === 'attendance' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📍</span>
+                                Attendance
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown" onmouseenter="showDropdown('analytics')" onmouseleave="hideDropdown('analytics')">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('analytics')">
+                            <span class="nav-icon">📈</span>
+                            Analytics
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="analytics">
+                            <a href="/ergon/reports" class="nav-dropdown-item <?= ($active_page ?? '') === 'reports' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📈</span>
+                                Reports
+                            </a>
+                            <a href="/ergon/settings" class="nav-dropdown-item <?= ($active_page ?? '') === 'settings' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">⚙️</span>
+                                Settings
+                            </a>
+                        </div>
+                    </div>
+                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
+                            <span class="nav-icon">📊</span>
+                            Overview
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="overview">
+                            <a href="/ergon/dashboard" class="nav-dropdown-item <?= ($active_page ?? '') === 'dashboard' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📊</span>
+                                Dashboard
+                            </a>
+                            <a href="/ergon/gamification/team-competition" class="nav-dropdown-item <?= ($active_page ?? '') === 'team-competition' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🏆</span>
+                                Competition
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('team')">
+                            <span class="nav-icon">👥</span>
+                            Team
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="team">
+                            <a href="/ergon/users" class="nav-dropdown-item <?= ($active_page ?? '') === 'users' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">👥</span>
+                                Members
+                            </a>
+                            <a href="/ergon/departments" class="nav-dropdown-item <?= ($active_page ?? '') === 'departments' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🏢</span>
+                                Departments
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('tasks')">
+                            <span class="nav-icon">✅</span>
+                            Tasks
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="tasks">
+                            <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">✅</span>
+                                Allocation
+                            </a>
+                            <a href="/ergon/daily-workflow/morning-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'planner' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🌅</span>
+                                Planner
+                            </a>
+                            <a href="/ergon/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📞</span>
+                                Follow-ups
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('approvals')">
+                            <span class="nav-icon">📅</span>
+                            Approvals
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="approvals">
+                            <a href="/ergon/leaves" class="nav-dropdown-item <?= ($active_page ?? '') === 'leaves' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📅</span>
+                                Leaves
+                            </a>
+                            <a href="/ergon/expenses" class="nav-dropdown-item <?= ($active_page ?? '') === 'expenses' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">💰</span>
+                                Expenses
+                            </a>
+                            <a href="/ergon/advances" class="nav-dropdown-item <?= ($active_page ?? '') === 'advances' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">💳</span>
+                                Advances
+                            </a>
+                            <a href="/ergon/attendance" class="nav-dropdown-item <?= ($active_page ?? '') === 'attendance' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📍</span>
+                                Attendance
+                            </a>
+                            <a href="/ergon/reports/activity" class="nav-dropdown-item <?= ($active_page ?? '') === 'activity' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">⏱️</span>
+                                Reports
+                            </a>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
+                            <span class="nav-icon">🏠</span>
+                            Overview
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="overview">
+                            <a href="/ergon/dashboard" class="nav-dropdown-item <?= ($active_page ?? '') === 'dashboard' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🏠</span>
+                                Dashboard
+                            </a>
+                            <a href="/ergon/gamification/team-competition" class="nav-dropdown-item <?= ($active_page ?? '') === 'team-competition' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🏆</span>
+                                Competition
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('work')">
+                            <span class="nav-icon">✅</span>
+                            Work
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="work">
+                            <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">✅</span>
+                                Tasks
+                            </a>
+                            <a href="/ergon/daily-workflow/morning-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'planner' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🌅</span>
+                                Planner
+                            </a>
+                            <a href="/ergon/daily-workflow/evening-update" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🌆</span>
+                                Evening
+                            </a>
+                            <a href="/ergon/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📞</span>
+                                Follow-ups
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('personal')">
+                            <span class="nav-icon">📋</span>
+                            Personal
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="personal">
+                            <a href="/ergon/user/requests" class="nav-dropdown-item <?= ($active_page ?? '') === 'requests' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📋</span>
+                                Requests
+                            </a>
+                            <a href="/ergon/leaves" class="nav-dropdown-item <?= ($active_page ?? '') === 'leaves' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📅</span>
+                                Leaves
+                            </a>
+                            <a href="/ergon/expenses" class="nav-dropdown-item <?= ($active_page ?? '') === 'expenses' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">💰</span>
+                                Expenses
+                            </a>
+                            <a href="/ergon/advances" class="nav-dropdown-item <?= ($active_page ?? '') === 'advances' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">💳</span>
+                                Advances
+                            </a>
+                            <a href="/ergon/attendance" class="nav-dropdown-item <?= ($active_page ?? '') === 'attendance' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📍</span>
+                                Attendance
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </nav>
+        </div>
+    </header>
+    
+    <div class="notification-dropdown" id="notificationDropdown">
+        <div class="notification-header">
+            <h3>Notifications</h3>
+            <a href="/ergon/notifications" class="view-all-link">View All</a>
+        </div>
+        <div class="notification-list" id="notificationList">
+            <div class="notification-loading">Loading...</div>
+        </div>
+    </div>
 
-        <main class="main-content">
+    <main class="main-content">
             <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports'])): ?>
             <div class="page-header">
                 <div class="page-title">
@@ -529,16 +933,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             </div>
             <?php endif; ?>
             <?= $content ?>
-        </main>
-    </div>
+    </main>
 
     <script>
-    function toggleSidebar() {
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar) {
-            sidebar.classList.toggle('sidebar--open');
-        }
-    }
+
     
     function toggleTheme() {
         var currentTheme = document.body.getAttribute('data-theme') || 'light';
@@ -561,40 +959,82 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
     }
     
+    function showDropdown(id) {
+        var dropdown = document.getElementById(id);
+        var btn = dropdown.previousElementSibling;
+        var btnRect = btn.getBoundingClientRect();
+        
+        // Position dropdown
+        dropdown.style.top = (btnRect.bottom + 8) + 'px';
+        dropdown.style.left = btnRect.left + 'px';
+        
+        // Close all other dropdowns
+        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
+            if (menu.id !== id) {
+                menu.classList.remove('show');
+            }
+        });
+        
+        dropdown.classList.add('show');
+        btn.classList.add('active');
+    }
+    
+    function hideDropdown(id) {
+        var dropdown = document.getElementById(id);
+        var btn = dropdown.previousElementSibling;
+        
+        dropdown.classList.remove('show');
+        btn.classList.remove('active');
+    }
+    
+    function toggleDropdown(id) {
+        var dropdown = document.getElementById(id);
+        var btn = dropdown.previousElementSibling;
+        
+        if (dropdown.classList.contains('show')) {
+            hideDropdown(id);
+        } else {
+            showDropdown(id);
+        }
+    }
+    
     window.toggleProfile = function() {
         var menu = document.getElementById('profileMenu');
+        
+        // Close all nav dropdowns
+        document.querySelectorAll('.nav-dropdown-menu').forEach(function(dropdown) {
+            dropdown.classList.remove('show');
+        });
+        document.querySelectorAll('.nav-dropdown-btn').forEach(function(btn) {
+            btn.classList.remove('active');
+        });
+        
         menu.classList.toggle('show');
     }
     
     document.addEventListener('click', function(e) {
-        const sidebar = document.querySelector('.sidebar');
-        const toggle = document.querySelector('.mobile-menu-toggle');
-        
-        if (e.target.closest('.sidebar__link')) {
-            return;
-        }
-        
-        if (window.innerWidth <= 768 && sidebar && !sidebar.contains(e.target) && toggle && !toggle.contains(e.target)) {
-            sidebar.classList.remove('sidebar--open');
-        }
-        
-        if (!e.target.closest('.sidebar__profile-section')) {
+        if (!e.target.closest('.header__controls')) {
             var menu = document.getElementById('profileMenu');
             if (menu) menu.classList.remove('show');
         }
         
         var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown && !e.target.closest('.sidebar__control-btn')) {
+        if (dropdown && !e.target.closest('.control-btn')) {
             dropdown.style.display = 'none';
+        }
+        
+        // Close nav dropdowns when clicking outside
+        if (!e.target.closest('.nav-dropdown')) {
+            document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
+                menu.classList.remove('show');
+            });
+            document.querySelectorAll('.nav-dropdown-btn').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
         }
     });
     
-    window.addEventListener('resize', function() {
-        const sidebar = document.querySelector('.sidebar');
-        if (window.innerWidth > 768 && sidebar) {
-            sidebar.classList.remove('sidebar--open');
-        }
-    });
+
     
     window.onpageshow = function(event) {
         if (event.persisted) {
@@ -610,9 +1050,9 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     // Store current scroll position before navigation
     let savedScrollPosition = 0;
     
-    // Save scroll position on sidebar link click
+    // Save scroll position on nav link click
     document.addEventListener('click', function(e) {
-        if (e.target.closest('.sidebar__link')) {
+        if (e.target.closest('.nav-link')) {
             savedScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
             localStorage.setItem('ergonScrollPos', savedScrollPosition);
         }
