@@ -13,6 +13,11 @@ ob_start();
         <a href="/ergon/users/create" class="btn btn--primary">
             <span>➕</span> Add User
         </a>
+        <?php if (isset($_SESSION['new_credentials']) || isset($_SESSION['reset_credentials'])): ?>
+        <a href="/ergon/users/download-credentials" class="btn btn--success">
+            <span>📥</span> Download Credentials
+        </a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -88,7 +93,12 @@ ob_start();
                             <td><?= isset($user['last_login']) ? date('M d, Y', strtotime($user['last_login'])) : 'Never' ?></td>
                             <td>
                                 <div class="btn-group">
+                                    <a href="/ergon/users/view/<?= $user['id'] ?>" class="btn btn--sm btn--primary">View</a>
                                     <a href="/ergon/users/edit/<?= $user['id'] ?>" class="btn btn--sm btn--secondary">Edit</a>
+                                    <form method="POST" action="/ergon/users/reset-password" style="display:inline;">
+                                        <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
+                                        <button type="submit" class="btn btn--sm btn--warning">Reset Password</button>
+                                    </form>
                                     <button class="btn btn--sm btn--danger">Delete</button>
                                 </div>
                             </td>

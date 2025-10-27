@@ -37,7 +37,8 @@ $router->get('/users/edit/{id}', 'UsersController', 'edit');
 $router->post('/users/edit/{id}', 'UsersController', 'edit');
 $router->post('/users/inactive/{id}', 'UsersController', 'inactive');
 $router->post('/users/delete/{id}', 'UsersController', 'delete');
-$router->post('/users/reset-password', 'UsersController', 'resetUserPassword');
+$router->post('/users/reset-password', 'UsersController', 'resetPassword');
+$router->get('/users/download-credentials', 'UsersController', 'downloadCredentials');
 
 // User Request Routes
 $router->get('/user/requests', 'UserController', 'requests');
@@ -120,6 +121,8 @@ $router->post('/daily-workflow/delete-task', 'DailyWorkflowController', 'deleteT
 $router->post('/daily-workflow/delete-user-workflow', 'DailyWorkflowController', 'deleteUserWorkflow');
 $router->get('/daily-workflow/progress-dashboard', 'DailyWorkflowController', 'progressDashboard');
 $router->get('/daily-workflow/task-categories', 'DailyWorkflowController', 'getTaskCategories');
+$router->get('/api/projects-by-department', 'DailyWorkflowController', 'getProjectsByDepartment');
+$router->get('/api/task-categories-by-department', 'DailyWorkflowController', 'getTaskCategoriesByDepartment');
 
 // Legacy Planner Management (Redirected to new system)
 $router->get('/planner/calendar', 'DailyWorkflowController', 'morningPlanner');

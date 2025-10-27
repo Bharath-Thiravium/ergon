@@ -60,6 +60,20 @@ ob_start();
                 <h3>Settings</h3>
                 <div class="form-grid">
                     <div class="form-group">
+                        <label>Category *</label>
+                        <select name="task_category" required>
+                            <option value="">Select Category</option>
+                            <?php if (!empty($data['categories'])): ?>
+                                <?php foreach ($data['categories'] as $category): ?>
+                                <option value="<?= htmlspecialchars($category['category_name']) ?>">
+                                    <?= htmlspecialchars($category['category_name']) ?>
+                                </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
                         <label>Priority *</label>
                         <select name="priority" required>
                             <option value="low">Low</option>

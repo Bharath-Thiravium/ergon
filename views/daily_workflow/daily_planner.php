@@ -1,7 +1,7 @@
 <div class="page-header">
     <div class="page-title">
         <h1><span>📋</span> Daily Planner</h1>
-        <p>Plan, track, and update your daily tasks - <?= $data['userDept']['dept_name'] ?? 'General' ?> Department</p>
+        <p>Plan, track, and update your daily tasks - <?= htmlspecialchars($data['userDept']['dept_name'] ?? $data['userDept']['department'] ?? 'General') ?> Department</p>
     </div>
     <div class="page-actions">
         <button class="btn btn--primary" onclick="showAddTaskModal()">
@@ -167,22 +167,40 @@
                 
                 <div class="form-row">
                     <div class="form-group">
+                        <label class="form-label">Department</label>
+                        <select id="taskDepartment" name="department" class="form-control" onchange="filterProjectsAndCategories()">
+                            <?php if (count($data['userDepartments']) > 1): ?>
+                                <option value="">Select Department</option>
+                                <?php foreach ($data['userDepartments'] as $dept): ?>
+                                    <option value="<?= $dept['id'] ?>" data-name="<?= htmlspecialchars($dept['name']) ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <?php $defaultDept = $data['userDepartments'][0] ?? null; ?>
+                                <?php if ($defaultDept): ?>
+                                    <option value="<?= $defaultDept['id'] ?>" data-name="<?= htmlspecialchars($defaultDept['name']) ?>" selected><?= htmlspecialchars($defaultDept['name']) ?></option>
+                                <?php else: ?>
+                                    <option value="">No Department Assigned</option>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </select>
+                        <small class="form-help"><?= count($data['userDepartments']) > 1 ? 'Select from your assigned departments' : 'Your assigned department' ?></small>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
                         <label class="form-label">Project</label>
                         <select id="taskProject" name="project_name" class="form-control">
                             <option value="">Select Project</option>
-                            <?php foreach ($data['projects'] as $project): ?>
-                                <option value="<?= htmlspecialchars($project['name']) ?>"><?= htmlspecialchars($project['name']) ?></option>
-                            <?php endforeach; ?>
                         </select>
+                        <small class="form-help">Projects available for selected department</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Task Category</label>
                         <select id="taskCategory" name="task_category" class="form-control">
                             <option value="">Select Category</option>
-                            <?php foreach ($data['taskCategories'] as $category): ?>
-                                <option value="<?= htmlspecialchars($category['category_name']) ?>"><?= htmlspecialchars($category['category_name']) ?></option>
-                            <?php endforeach; ?>
                         </select>
+                        <small class="form-help">Categories for selected department</small>
                     </div>
                 </div>
                 
@@ -247,6 +265,13 @@ function showAddTaskModal() {
     document.getElementById('taskForm').reset();
     document.getElementById('taskId').value = '';
     document.getElementById('taskDate').value = document.getElementById('planDate').value;
+    
+    // Auto-load projects and categories if only one department
+    const deptSelect = document.getElementById('taskDepartment');
+    if (deptSelect.options.length === 1 && deptSelect.value) {
+        filterProjectsAndCategories();
+    }
+    
     document.getElementById('taskModal').style.display = 'block';
 }
 
@@ -404,6 +429,55 @@ document.getElementById('taskForm').addEventListener('submit', function(e) {
         alert('Failed to save task');
     });
 });
+
+function filterProjectsAndCategories() {
+    const deptSelect = document.getElementById('taskDepartment');
+    const projectSelect = document.getElementById('taskProject');
+    const categorySelect = document.getElementById('taskCategory');
+    
+    const departmentId = deptSelect.value;
+    const departmentName = deptSelect.options[deptSelect.selectedIndex]?.dataset.name;
+    
+    // Clear existing options
+    projectSelect.innerHTML = '<option value="">Select Project</option>';
+    categorySelect.innerHTML = '<option value="">Select Category</option>';
+    
+    if (!departmentId) return;
+    
+    // Fetch projects for department
+    fetch(`/ergon/api/projects-by-department?department_id=${departmentId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                data.projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.name;
+                    option.textContent = project.name;
+                    option.title = project.description || '';
+                    projectSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('Error fetching projects:', error));
+    
+    // Fetch task categories for department
+    if (departmentName) {
+        fetch(`/ergon/api/task-categories-by-department?department_name=${encodeURIComponent(departmentName)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    data.categories.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.category_name;
+                        option.textContent = category.category_name;
+                        option.title = category.description || '';
+                        categorySelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('Error fetching categories:', error));
+    }
+}
 
 // Auto-save progress updates every 30 seconds
 setInterval(function() {

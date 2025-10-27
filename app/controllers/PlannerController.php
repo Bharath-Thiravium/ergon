@@ -36,6 +36,29 @@ class PlannerController extends Controller {
             }
         }
         
+        // Load categories and departments
+        $db = Database::connect();
+        
+        // Get user's departments
+        $stmt = $db->prepare("SELECT d.* FROM departments d JOIN users u ON FIND_IN_SET(d.name, u.department) WHERE u.id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $departments = $stmt->fetchAll();
+        
+        // Get categories for user's departments
+        $categories = [];
+        if (!empty($departments)) {
+            $deptNames = array_column($departments, 'name');
+            $placeholders = str_repeat('?,', count($deptNames) - 1) . '?';
+            $stmt = $db->prepare("SELECT * FROM task_categories WHERE department_name IN ($placeholders) AND is_active = 1 ORDER BY category_name");
+            $stmt->execute($deptNames);
+            $categories = $stmt->fetchAll();
+        }
+        
+        $data = [
+            'departments' => $departments,
+            'categories' => $categories
+        ];
+        
         ob_start();
         include __DIR__ . '/../../views/planner/create.php';
         $content = ob_get_clean();

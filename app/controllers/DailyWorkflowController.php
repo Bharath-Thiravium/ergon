@@ -22,36 +22,71 @@ class DailyWorkflowController extends Controller {
             $db = Database::connect();
             $today = date('Y-m-d');
             
-            // Get user's department
-            $stmt = $db->prepare("SELECT u.department, d.id as dept_id, d.name as dept_name FROM users u LEFT JOIN departments d ON u.department = d.name WHERE u.id = ?");
+            // Get user's departments (multiple departments support)
+            $stmt = $db->prepare("SELECT department FROM users WHERE id = ?");
             $stmt->execute([$_SESSION['user_id']]);
-            $userDept = $stmt->fetch();
+            $userDeptString = $stmt->fetchColumn();
             
-            // Get task categories for user's department
-            $deptName = $userDept['dept_name'] ?? $userDept['department'] ?? 'IT';
-            $stmt = $db->prepare("SELECT * FROM task_categories WHERE department_name = ? AND is_active = 1 ORDER BY category_name");
-            $stmt->execute([$deptName]);
-            $taskCategories = $stmt->fetchAll();
+            // Parse multiple departments (comma-separated)
+            $userDepts = array_map('trim', explode(',', $userDeptString));
+            $deptIds = [];
+            $deptNames = [];
             
-            // If no categories found, get IT categories as default
-            if (empty($taskCategories)) {
-                $stmt = $db->prepare("SELECT * FROM task_categories WHERE department_name = 'IT' AND is_active = 1 ORDER BY category_name");
-                $stmt->execute();
+            foreach ($userDepts as $deptName) {
+                if (!empty($deptName)) {
+                    $stmt = $db->prepare("SELECT id, name FROM departments WHERE name = ?");
+                    $stmt->execute([$deptName]);
+                    $dept = $stmt->fetch();
+                    if ($dept) {
+                        $deptIds[] = $dept['id'];
+                        $deptNames[] = $dept['name'];
+                    }
+                }
+            }
+            
+            // Get task categories for ALL user's departments
+            $taskCategories = [];
+            if (!empty($deptNames)) {
+                $placeholders = str_repeat('?,', count($deptNames) - 1) . '?';
+                $stmt = $db->prepare("SELECT * FROM task_categories WHERE department_name IN ($placeholders) AND is_active = 1 ORDER BY category_name");
+                $stmt->execute($deptNames);
                 $taskCategories = $stmt->fetchAll();
             }
             
-            // Get active projects
-            $stmt = $db->prepare("SELECT * FROM projects WHERE status = 'active' ORDER BY name");
-            $stmt->execute();
-            $projects = $stmt->fetchAll();
+            // Get projects for ALL user's departments and general projects
+            $projects = [];
+            if (!empty($deptIds)) {
+                $placeholders = str_repeat('?,', count($deptIds) - 1) . '?';
+                $stmt = $db->prepare("SELECT * FROM projects WHERE status = 'active' AND (department_id IN ($placeholders) OR department_id IS NULL) ORDER BY name");
+                $stmt->execute($deptIds);
+                $projects = $stmt->fetchAll();
+            } else {
+                $stmt = $db->prepare("SELECT * FROM projects WHERE status = 'active' AND department_id IS NULL ORDER BY name");
+                $stmt->execute();
+                $projects = $stmt->fetchAll();
+            }
             
             // Get today's plans
             $stmt = $db->prepare("SELECT dp.*, p.name as project_display_name FROM daily_plans dp LEFT JOIN projects p ON dp.project_name = p.name WHERE dp.user_id = ? AND dp.plan_date = ? ORDER BY dp.status ASC, dp.priority DESC, dp.created_at ASC");
             $stmt->execute([$_SESSION['user_id'], $today]);
             $todayPlans = $stmt->fetchAll();
             
+            // Get user's department objects for the form
+            $userDepartments = [];
+            foreach ($userDepts as $deptName) {
+                if (!empty($deptName)) {
+                    $stmt = $db->prepare("SELECT id, name FROM departments WHERE name = ?");
+                    $stmt->execute([$deptName]);
+                    $dept = $stmt->fetch();
+                    if ($dept) {
+                        $userDepartments[] = $dept;
+                    }
+                }
+            }
+            
             $data = [
-                'userDept' => $userDept,
+                'userDepts' => $deptNames,
+                'userDepartments' => $userDepartments,
                 'taskCategories' => $taskCategories,
                 'projects' => $projects,
                 'todayPlans' => $todayPlans
@@ -557,6 +592,77 @@ class DailyWorkflowController extends Controller {
             ]);
         } catch (Exception $e) {
             error_log('Update workflow stats error: ' . $e->getMessage());
+        }
+    }
+    
+    private function getAllDepartments() {
+        try {
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT id, name FROM departments WHERE status = 'active' ORDER BY name");
+            $stmt->execute();
+            return $stmt->fetchAll();
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+    
+    public function getProjectsByDepartment() {
+        header('Content-Type: application/json');
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            return;
+        }
+        
+        $departmentId = $_GET['department_id'] ?? null;
+        
+        try {
+            $db = Database::connect();
+            
+            if ($departmentId) {
+                $stmt = $db->prepare("SELECT * FROM projects WHERE status = 'active' AND (department_id = ? OR department_id IS NULL) ORDER BY name");
+                $stmt->execute([$departmentId]);
+            } else {
+                $stmt = $db->prepare("SELECT * FROM projects WHERE status = 'active' ORDER BY name");
+                $stmt->execute();
+            }
+            
+            $projects = $stmt->fetchAll();
+            echo json_encode(['success' => true, 'projects' => $projects]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function getTaskCategoriesByDepartment() {
+        header('Content-Type: application/json');
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            return;
+        }
+        
+        $departmentName = $_GET['department_name'] ?? '';
+        
+        try {
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT * FROM task_categories WHERE department_name = ? AND is_active = 1 ORDER BY category_name");
+            $stmt->execute([$departmentName]);
+            $categories = $stmt->fetchAll();
+            
+            echo json_encode(['success' => true, 'categories' => $categories]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
 }
