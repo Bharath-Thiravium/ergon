@@ -1,46 +1,52 @@
-<?php include __DIR__ . '/../layouts/header.php'; ?>
+<?php
+$content = ob_start();
+?>
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h4>Create Task</h4>
-                </div>
-                <div class="card-body">
-                    <form id="createTaskForm">
-                        <div class="mb-3">
-                            <label for="title" class="form-label">Title</label>
-                            <input type="text" class="form-control" id="title" name="title" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="assigned_to" class="form-label">Assign To</label>
-                            <select class="form-control" id="assigned_to" name="assigned_to">
-                                <option value="">Select User</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="due_date" class="form-label">Due Date</label>
-                            <input type="date" class="form-control" id="due_date" name="due_date">
-                        </div>
-                        <div class="mb-3">
-                            <label for="priority" class="form-label">Priority</label>
-                            <select class="form-control" id="priority" name="priority">
-                                <option value="low">Low</option>
-                                <option value="medium" selected>Medium</option>
-                                <option value="high">High</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Create Task</button>
-                        <a href="/ergon/tasks" class="btn btn-secondary">Cancel</a>
-                    </form>
-                </div>
+<div class="page-header">
+    <div class="page-title">
+        <h1>Create Task</h1>
+        <p>Add a new task to the system</p>
+    </div>
+    <div class="page-actions">
+        <a href="/ergon/tasks" class="btn btn--secondary">← Back to Tasks</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__header">
+        <h2 class="card__title">Task Details</h2>
+    </div>
+    <div class="card__body">
+        <form id="createTaskForm">
+            <div class="form-group">
+                <label for="title" class="form-label">Title</label>
+                <input type="text" class="form-control" id="title" name="title" required>
             </div>
-        </div>
+            <div class="form-group">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="assigned_to" class="form-label">Assign To</label>
+                <select class="form-control" id="assigned_to" name="assigned_to">
+                    <option value="">Select User</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="due_date" class="form-label">Due Date</label>
+                <input type="date" class="form-control" id="due_date" name="due_date">
+            </div>
+            <div class="form-group">
+                <label for="priority" class="form-label">Priority</label>
+                <select class="form-control" id="priority" name="priority">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn--primary">Create Task</button>
+            <a href="/ergon/tasks" class="btn btn--secondary">Cancel</a>
+        </form>
     </div>
 </div>
 
@@ -56,13 +62,21 @@ document.getElementById('createTaskForm').addEventListener('submit', function(e)
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            ERGON.showAlert('Task created successfully!', 'success');
-            setTimeout(() => window.location.href = '/ergon/tasks', 1000);
+            alert('Task created successfully!');
+            window.location.href = '/ergon/tasks';
         } else {
-            ERGON.showAlert(data.error, 'danger');
+            alert(data.error || 'Failed to create task');
         }
+    })
+    .catch(error => {
+        alert('Error creating task');
     });
 });
 </script>
 
-<?php include __DIR__ . '/../layouts/footer.php'; ?>
+<?php
+$content = ob_get_clean();
+$title = 'Create Task';
+$active_page = 'tasks';
+include __DIR__ . '/../layouts/dashboard.php';
+?>

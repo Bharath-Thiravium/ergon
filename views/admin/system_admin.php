@@ -20,6 +20,18 @@ ob_start();
     </div>
 </div>
 
+<?php if (isset($_GET['error'])): ?>
+<div class="alert alert--error">
+    <?= htmlspecialchars($_GET['error']) ?>
+</div>
+<?php endif; ?>
+
+<?php if (isset($_GET['success'])): ?>
+<div class="alert alert--success">
+    <?= htmlspecialchars($_GET['success']) ?>
+</div>
+<?php endif; ?>
+
 <div class="dashboard-grid">
     <div class="kpi-card">
         <div class="kpi-card__header">
@@ -108,7 +120,7 @@ ob_start();
             <h3>Create System Admin</h3>
             <button class="modal-close" onclick="closeModal('createAdminModal')">&times;</button>
         </div>
-        <form method="POST" action="/ergon/system-admin/create">
+        <form method="POST" action="/ergon/system-admin/create" id="createAdminForm">
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Full Name</label>
@@ -131,6 +143,37 @@ ob_start();
     </div>
 </div>
 
+<!-- Edit Admin Modal -->
+<div class="modal" id="editAdminModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit System Admin</h3>
+            <button class="modal-close" onclick="closeModal('editAdminModal')">&times;</button>
+        </div>
+        <form method="POST" action="/ergon/system-admin/edit" id="editAdminForm">
+            <input type="hidden" name="admin_id" id="editAdminId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" name="name" id="editAdminName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" name="email" id="editAdminEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">New Password (leave blank to keep current)</label>
+                    <input type="password" name="password" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" onclick="closeModal('editAdminModal')">Cancel</button>
+                <button type="submit" class="btn btn--primary">Update Admin</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function showCreateAdminModal() {
     document.getElementById('createAdminModal').style.display = 'block';
@@ -141,8 +184,27 @@ function closeModal(modalId) {
 }
 
 function editAdmin(adminId) {
-    // Implementation for editing admin
-    console.log('Edit admin:', adminId);
+    // Find admin data from the page
+    const adminCards = document.querySelectorAll('.admin-card');
+    let adminData = null;
+    
+    adminCards.forEach(card => {
+        const editBtn = card.querySelector('button[onclick*="editAdmin(' + adminId + ')"]');
+        if (editBtn) {
+            adminData = {
+                id: adminId,
+                name: card.querySelector('.admin-card__name').textContent,
+                email: card.querySelector('.admin-card__email').textContent
+            };
+        }
+    });
+    
+    if (adminData) {
+        document.getElementById('editAdminId').value = adminData.id;
+        document.getElementById('editAdminName').value = adminData.name;
+        document.getElementById('editAdminEmail').value = adminData.email;
+        document.getElementById('editAdminModal').style.display = 'block';
+    }
 }
 
 function deactivateAdmin(adminId) {
@@ -165,6 +227,30 @@ function deactivateAdmin(adminId) {
 function exportAdmins() {
     window.location.href = '/ergon/system-admin/export';
 }
+
+// Ensure form submission works
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('createAdminForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Let the form submit normally
+            console.log('Form submitting...');
+        });
+    }
+});
+
+// Close modal when clicking outside
+window.addEventListener('click', function(event) {
+    const createModal = document.getElementById('createAdminModal');
+    const editModal = document.getElementById('editAdminModal');
+    
+    if (event.target === createModal) {
+        closeModal('createAdminModal');
+    }
+    if (event.target === editModal) {
+        closeModal('editAdminModal');
+    }
+});
 </script>
 
 <?php
