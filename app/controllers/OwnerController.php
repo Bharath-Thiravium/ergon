@@ -14,23 +14,52 @@ class OwnerController extends Controller {
         try {
             $db = Database::connect();
             
-            // Get pending leaves
-            $stmt = $db->prepare("SELECT l.*, u.name as user_name FROM leaves l JOIN users u ON l.user_id = u.id WHERE l.status = 'pending' ORDER BY l.created_at DESC");
-            $stmt->execute();
-            $leaves = $stmt->fetchAll();
+            // Get pending leaves with fallback
+            try {
+                $stmt = $db->prepare("SELECT l.*, u.name as user_name FROM leaves l JOIN users u ON l.user_id = u.id WHERE l.status = 'pending' ORDER BY l.created_at DESC");
+                $stmt->execute();
+                $leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('Leaves query error: ' . $e->getMessage());
+                $leaves = [];
+            }
             
-            // Get pending expenses
-            $stmt = $db->prepare("SELECT e.*, u.name as user_name FROM expenses e JOIN users u ON e.user_id = u.id WHERE e.status = 'pending' ORDER BY e.created_at DESC");
-            $stmt->execute();
-            $expenses = $stmt->fetchAll();
+            // Get pending expenses with fallback
+            try {
+                $stmt = $db->prepare("SELECT e.*, u.name as user_name FROM expenses e JOIN users u ON e.user_id = u.id WHERE e.status = 'pending' ORDER BY e.created_at DESC");
+                $stmt->execute();
+                $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('Expenses query error: ' . $e->getMessage());
+                $expenses = [];
+            }
+            
+            // Get pending advances with fallback
+            try {
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id WHERE a.status = 'pending' ORDER BY a.created_at DESC");
+                $stmt->execute();
+                $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('Advances query error: ' . $e->getMessage());
+                $advances = [];
+            }
             
             $data = [
                 'leaves' => $leaves,
                 'expenses' => $expenses,
+                'advances' => $advances,
                 'active_page' => 'approvals'
             ];
+            
         } catch (Exception $e) {
-            $data = ['leaves' => [], 'expenses' => [], 'active_page' => 'approvals'];
+            error_log('Owner approvals error: ' . $e->getMessage());
+            $data = [
+                'leaves' => [],
+                'expenses' => [],
+                'advances' => [],
+                'active_page' => 'approvals',
+                'error' => 'Unable to load approval data'
+            ];
         }
         
         $this->view('owner/approvals', $data);

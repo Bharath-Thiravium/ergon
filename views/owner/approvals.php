@@ -1,87 +1,260 @@
 <?php
-$title = 'Approval Center';
+$title = 'Pending Approvals';
 $active_page = 'approvals';
 ob_start();
 ?>
 
-<div class="header-actions">
-    <a href="/ergon/reports" class="btn btn--secondary">View Reports</a>
+<div class="page-header">
+    <div class="page-title">
+        <h1><span>🔍</span> Pending Approvals</h1>
+        <p>Review and manage pending requests across all modules</p>
+    </div>
+    <div class="page-actions">
+        <button class="btn btn--secondary" onclick="refreshData()">
+            <span>🔄</span> Refresh
+        </button>
+        <button class="btn btn--primary" onclick="exportApprovals()">
+            <span>📊</span> Export Report
+        </button>
+    </div>
 </div>
 
 <div class="dashboard-grid">
-    <div class="kpi-card kpi-card--warning">
+    <div class="kpi-card">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">🏖️</div>
-            <div class="kpi-card__trend kpi-card__trend--neutral">— 0%</div>
+            <div class="kpi-card__icon">📅</div>
+            <div class="kpi-card__trend">↗ New</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($data['approvals'], fn($a) => $a['type'] === 'Leave')) ?></div>
+        <div class="kpi-card__value"><?= count($leaves ?? []) ?></div>
         <div class="kpi-card__label">Leave Requests</div>
-        <div class="kpi-card__status kpi-card__status--pending">Pending</div>
+        <div class="kpi-card__status">Pending</div>
     </div>
     
-    <div class="kpi-card kpi-card--info">
+    <div class="kpi-card">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">💰</div>
-            <div class="kpi-card__trend kpi-card__trend--up">↗ +5%</div>
+            <div class="kpi-card__trend">↗ New</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($data['approvals'], fn($a) => $a['type'] === 'Expense')) ?></div>
+        <div class="kpi-card__value"><?= count($expenses ?? []) ?></div>
         <div class="kpi-card__label">Expense Claims</div>
-        <div class="kpi-card__status kpi-card__status--review">Review</div>
+        <div class="kpi-card__status">Pending</div>
+    </div>
+    
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">💳</div>
+            <div class="kpi-card__trend">↗ New</div>
+        </div>
+        <div class="kpi-card__value"><?= count($advances ?? []) ?></div>
+        <div class="kpi-card__label">Advance Requests</div>
+        <div class="kpi-card__status">Pending</div>
     </div>
 </div>
 
+<?php if (isset($error)): ?>
+    <div class="alert alert-warning"><?= htmlspecialchars($error) ?></div>
+<?php endif; ?>
+
+<!-- Leave Requests -->
 <div class="card">
     <div class="card__header">
-        <h2 class="card__title">Pending Approvals</h2>
+        <h2 class="card__title">
+            <span>📅</span> Leave Requests
+        </h2>
     </div>
     <div class="card__body">
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Type</th>
-                        <th>Employee</th>
-                        <th>Details</th>
-                        <th>Amount/Duration</th>
-                        <th>Submitted</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($data['approvals'])): ?>
-                    <tr>
-                        <td colspan="6" style="text-align: center;">No pending approvals</td>
-                    </tr>
-                    <?php else: ?>
-                    <?php foreach ($data['approvals'] as $approval): ?>
-                    <tr>
-                        <td>
-                            <span class="badge badge--<?= $approval['type'] === 'Leave' ? 'warning' : 'info' ?>">
-                                <?= $approval['type'] ?>
-                            </span>
-                        </td>
-                        <td><?= htmlspecialchars($approval['requested_by_name']) ?></td>
-                        <td><?= htmlspecialchars($approval['remarks'] ?? 'N/A') ?></td>
-                        <td><?= $approval['count'] ?></td>
-                        <td><?= date('M d, Y', strtotime($approval['created_at'] ?? 'now')) ?></td>
-                        <td>
-                            <div class="btn-group">
-                                <a href="/ergon/<?= strtolower($approval['type']) ?>s/view/<?= $approval['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
-                                    <span>👁️</span> View
-                                </a>
-                                <button onclick="deleteRecord('<?= strtolower($approval['type']) ?>s', <?= $approval['id'] ?>, '<?= $approval['type'] ?> Request')" class="btn btn--sm btn--danger" title="Delete Request">
-                                    <span>🗑️</span> Delete
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+        <?php if (!empty($leaves)): ?>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Type</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Reason</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($leaves as $leave): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($leave['user_name'] ?? 'Unknown') ?></td>
+                                <td><span class="badge badge--info"><?= htmlspecialchars($leave['type'] ?? '') ?></span></td>
+                                <td><?= htmlspecialchars($leave['start_date'] ?? '') ?></td>
+                                <td><?= htmlspecialchars($leave['end_date'] ?? '') ?></td>
+                                <td><?= htmlspecialchars($leave['reason'] ?? '') ?></td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn--sm btn--primary" onclick="viewItem('leave', <?= $leave['id'] ?>)">
+                                            <span>👁️</span> View
+                                        </button>
+                                        <button class="btn btn--sm btn--success" onclick="approveItem('leave', <?= $leave['id'] ?>)">
+                                            <span>✅</span> Approve
+                                        </button>
+                                        <button class="btn btn--sm btn--danger" onclick="rejectItem('leave', <?= $leave['id'] ?>)">
+                                            <span>❌</span> Reject
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="empty-state">
+                <div class="empty-icon">📅</div>
+                <h3>No Pending Leave Requests</h3>
+                <p>All leave requests have been processed.</p>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
+
+<!-- Expense Claims -->
+<div class="card">
+    <div class="card__header">
+        <h2 class="card__title">
+            <span>💰</span> Expense Claims
+        </h2>
+    </div>
+    <div class="card__body">
+        <?php if (!empty($expenses)): ?>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Amount</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($expenses as $expense): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($expense['user_name'] ?? 'Unknown') ?></td>
+                                <td><strong>₹<?= number_format($expense['amount'] ?? 0, 2) ?></strong></td>
+                                <td><span class="badge badge--warning"><?= htmlspecialchars($expense['category'] ?? '') ?></span></td>
+                                <td><?= htmlspecialchars($expense['description'] ?? '') ?></td>
+                                <td><?= htmlspecialchars($expense['expense_date'] ?? $expense['created_at'] ?? '') ?></td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn--sm btn--primary" onclick="viewItem('expense', <?= $expense['id'] ?>)">
+                                            <span>👁️</span> View
+                                        </button>
+                                        <button class="btn btn--sm btn--success" onclick="approveItem('expense', <?= $expense['id'] ?>)">
+                                            <span>✅</span> Approve
+                                        </button>
+                                        <button class="btn btn--sm btn--danger" onclick="rejectItem('expense', <?= $expense['id'] ?>)">
+                                            <span>❌</span> Reject
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="empty-state">
+                <div class="empty-icon">💰</div>
+                <h3>No Pending Expense Claims</h3>
+                <p>All expense claims have been processed.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- Advance Requests -->
+<div class="card">
+    <div class="card__header">
+        <h2 class="card__title">
+            <span>💳</span> Advance Requests
+        </h2>
+    </div>
+    <div class="card__body">
+        <?php if (!empty($advances)): ?>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Amount</th>
+                            <th>Reason</th>
+                            <th>Request Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($advances as $advance): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($advance['user_name'] ?? 'Unknown') ?></td>
+                                <td><strong>₹<?= number_format($advance['amount'] ?? 0, 2) ?></strong></td>
+                                <td><?= htmlspecialchars($advance['reason'] ?? '') ?></td>
+                                <td><?= htmlspecialchars($advance['requested_date'] ?? $advance['created_at'] ?? '') ?></td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn--sm btn--primary" onclick="viewItem('advance', <?= $advance['id'] ?>)">
+                                            <span>👁️</span> View
+                                        </button>
+                                        <button class="btn btn--sm btn--success" onclick="approveItem('advance', <?= $advance['id'] ?>)">
+                                            <span>✅</span> Approve
+                                        </button>
+                                        <button class="btn btn--sm btn--danger" onclick="rejectItem('advance', <?= $advance['id'] ?>)">
+                                            <span>❌</span> Reject
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="empty-state">
+                <div class="empty-icon">💳</div>
+                <h3>No Pending Advance Requests</h3>
+                <p>All advance requests have been processed.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<script>
+function approveItem(type, id) {
+    if (confirm('Approve this ' + type + '?')) {
+        fetch(`/ergon/${type}s/approve/${id}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        }).then(() => location.reload());
+    }
+}
+
+function rejectItem(type, id) {
+    if (confirm('Reject this ' + type + '?')) {
+        fetch(`/ergon/${type}s/reject/${id}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        }).then(() => location.reload());
+    }
+}
+
+function viewItem(type, id) {
+    window.location.href = `/ergon/owner/approvals/view/${type}/${id}`;
+}
+
+function refreshData() {
+    location.reload();
+}
+
+function exportApprovals() {
+    window.open('/ergon/reports/approvals-export', '_blank');
+}
+</script>
 
 <?php
 $content = ob_get_clean();

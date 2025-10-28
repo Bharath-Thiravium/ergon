@@ -1772,3 +1772,212 @@ Stack trace:
 [28-Oct-2025 06:02:02 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\UsersController.php on line 31
 [28-Oct-2025 06:02:02 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
 [28-Oct-2025 06:02:02 UTC] Activity log error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:21:26 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[28-Oct-2025 08:21:26 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:21:26 UTC] ergon: Index.php executed - URI: /ergon/login?timeout=1
+[28-Oct-2025 08:21:26 UTC] Activity log error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:21:32 UTC] ergon: Index.php executed - URI: /ergon/login
+[28-Oct-2025 08:21:33 UTC] Login successful - Session data set: {"user_id":1,"role":"owner","login_time":1761639693}
+[28-Oct-2025 08:21:34 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[28-Oct-2025 08:21:37 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:21:37 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:21:38 UTC] PHP Warning:  Undefined array key "approvals" in C:\laragon\www\ergon\views\owner\approvals.php on line 17
+[28-Oct-2025 08:21:38 UTC] PHP Fatal error:  Uncaught TypeError: array_filter(): Argument #1 ($array) must be of type array, null given in C:\laragon\www\ergon\views\owner\approvals.php:17
+Stack trace:
+#0 C:\laragon\www\ergon\views\owner\approvals.php(17): array_filter(NULL, Object(Closure))
+#1 C:\laragon\www\ergon\app\core\Controller.php(9): include('C:\\laragon\\www\\...')
+#2 C:\laragon\www\ergon\app\controllers\OwnerController.php(36): Controller->view('owner/approvals', Array)
+#3 C:\laragon\www\ergon\app\core\Router.php(87): OwnerController->approvals()
+#4 C:\laragon\www\ergon\app\core\Router.php(36): Router->executeRoute(Array)
+#5 C:\laragon\www\ergon\index.php(50): Router->handleRequest()
+#6 {main}
+  thrown in C:\laragon\www\ergon\views\owner\approvals.php on line 17
+[28-Oct-2025 08:21:38 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:21:38 UTC] Activity log error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:22:00 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:22:00 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:22:00 UTC] PHP Warning:  Undefined array key "approvals" in C:\laragon\www\ergon\views\owner\approvals.php on line 17
+[28-Oct-2025 08:22:00 UTC] PHP Fatal error:  Uncaught TypeError: array_filter(): Argument #1 ($array) must be of type array, null given in C:\laragon\www\ergon\views\owner\approvals.php:17
+Stack trace:
+#0 C:\laragon\www\ergon\views\owner\approvals.php(17): array_filter(NULL, Object(Closure))
+#1 C:\laragon\www\ergon\app\core\Controller.php(9): include('C:\\laragon\\www\\...')
+#2 C:\laragon\www\ergon\app\controllers\OwnerController.php(36): Controller->view('owner/approvals', Array)
+#3 C:\laragon\www\ergon\app\core\Router.php(87): OwnerController->approvals()
+#4 C:\laragon\www\ergon\app\core\Router.php(36): Router->executeRoute(Array)
+#5 C:\laragon\www\ergon\index.php(50): Router->handleRequest()
+#6 {main}
+  thrown in C:\laragon\www\ergon\views\owner\approvals.php on line 17
+[28-Oct-2025 08:23:18 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:23:18 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:26:11 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:26:11 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:26:11 UTC] PHP Parse error:  syntax error, unexpected token ":", expecting ";" in C:\laragon\www\ergon\views\owner\approvals.php on line 140
+[28-Oct-2025 08:26:18 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:26:18 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:26:18 UTC] PHP Parse error:  syntax error, unexpected token ":", expecting ";" in C:\laragon\www\ergon\views\owner\approvals.php on line 140
+[28-Oct-2025 08:26:43 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:26:43 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:30:40 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:30:40 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:30:40 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:30:40 UTC] Activity log error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:32:15 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:32:15 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:32:15 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:32:15 UTC] Activity log error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:32:28 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:32:28 UTC] Activity log error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:32:28 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:32:28 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:24 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:33:24 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:33:24 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:24 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:27 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:33:27 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:33:27 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:27 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:27 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:27 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:27 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:27 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:29 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:33:29 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:33:29 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:29 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:29 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:29 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:29 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:29 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:29 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:29 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:30 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:33:30 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:33:30 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:30 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:33 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:33:33 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:33:33 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:33 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:34 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:33:34 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:33:34 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:34 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:34 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:34 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:34 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:34 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:34 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:34 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:34 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:34 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:35 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:35 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:35 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:35 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:35 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:35 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:33:35 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:33:35 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:35:11 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:35:11 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:35:12 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:35:12 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:35:29 UTC] ergon: Index.php executed - URI: /ergon/dashboard
+[28-Oct-2025 08:35:29 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[28-Oct-2025 08:35:29 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:35:30 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:35:31 UTC] ergon: Index.php executed - URI: /ergon/owner/approvals
+[28-Oct-2025 08:35:31 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\OwnerController.php on line 8
+[28-Oct-2025 08:35:31 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:35:31 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:35:39 UTC] ergon: Index.php executed - URI: /ergon/leaves
+[28-Oct-2025 08:35:39 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:35:39 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:35:53 UTC] ergon: Index.php executed - URI: /ergon/expenses
+[28-Oct-2025 08:35:53 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:35:53 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:36:41 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:36:41 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:36:41 UTC] ergon: Index.php executed - URI: /ergon/followups
+[28-Oct-2025 08:45:11 UTC] ergon: Index.php executed - URI: /ergon/followups
+[28-Oct-2025 08:45:11 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:45:11 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 08:45:30 UTC] ergon: Index.php executed - URI: /ergon/followups
+[28-Oct-2025 08:47:33 UTC] ergon: Index.php executed - URI: /ergon/followups
+[28-Oct-2025 08:48:37 UTC] ergon: Index.php executed - URI: /ergon/followups
+[28-Oct-2025 08:48:38 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20created%20successfully
+[28-Oct-2025 08:48:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 08:48:57 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:00:29 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:00:29 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:00:29 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20created%20successfully
+[28-Oct-2025 09:03:16 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1
+[28-Oct-2025 09:05:18 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20created%20successfully
+[28-Oct-2025 09:05:18 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:05:18 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:05:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:05:57 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:05:57 UTC] ergon: Index.php executed - URI: /ergon/followups/reschedule
+[28-Oct-2025 09:05:57 UTC] Followup reschedule error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'next_reminder' in 'field list'
+[28-Oct-2025 09:05:57 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:06:01 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1
+[28-Oct-2025 09:07:40 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:07:40 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:07:40 UTC] ergon: Index.php executed - URI: /ergon/followups/view/1
+[28-Oct-2025 09:07:40 UTC] PHP Warning:  Undefined array key "department_name" in C:\laragon\www\ergon\views\followups\view.php on line 55
+[28-Oct-2025 09:10:12 UTC] ergon: Index.php executed - URI: /ergon/followups/view/1
+[28-Oct-2025 09:10:18 UTC] ergon: Index.php executed - URI: /ergon/followups/view/1
+[28-Oct-2025 09:10:41 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:11:51 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1
+[28-Oct-2025 09:12:01 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1
+[28-Oct-2025 09:13:24 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:13:24 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:13:24 UTC] ergon: Index.php executed - URI: /ergon/followups/reschedule
+[28-Oct-2025 09:13:24 UTC] Followup reschedule error: SQLSTATE[01000]: Warning: 1265 Data truncated for column 'status' at row 1
+[28-Oct-2025 09:13:24 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:13:30 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1
+[28-Oct-2025 09:21:47 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:21:47 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:21:47 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:22:17 UTC] ergon: Index.php executed - URI: /ergon/followups/reschedule
+[28-Oct-2025 09:22:17 UTC] Followup reschedule error: SQLSTATE[01000]: Warning: 1265 Data truncated for column 'status' at row 1
+[28-Oct-2025 09:22:17 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:22:17 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:22:17 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:22:25 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1
+[28-Oct-2025 09:22:47 UTC] ergon: Index.php executed - URI: /ergon/followups/reschedule
+[28-Oct-2025 09:22:47 UTC] Followup reschedule error: SQLSTATE[01000]: Warning: 1265 Data truncated for column 'status' at row 1
+[28-Oct-2025 09:22:47 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:22:47 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:22:47 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:24:27 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:24:27 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:24:27 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:24:30 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1
+[28-Oct-2025 09:24:45 UTC] ergon: Index.php executed - URI: /ergon/followups/reschedule
+[28-Oct-2025 09:24:45 UTC] Reschedule attempt - ID: 1, New Date: 2025-10-29, User: 1
+[28-Oct-2025 09:24:45 UTC] Followup reschedule error: SQLSTATE[01000]: Warning: 1265 Data truncated for column 'status' at row 1
+[28-Oct-2025 09:24:45 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:24:45 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:24:45 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:24:51 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1
+[28-Oct-2025 09:26:47 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:26:47 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:26:47 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:26:49 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:26:49 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:26:49 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:26:49 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:26:49 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:26:49 UTC] ergon: Index.php executed - URI: /ergon/followups?error=Failed%20to%20reschedule%20follow-up
+[28-Oct-2025 09:26:52 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1
+[28-Oct-2025 09:27:35 UTC] ergon: Index.php executed - URI: /ergon/followups/reschedule
+[28-Oct-2025 09:27:35 UTC] Reschedule attempt - ID: 1, New Date: 2025-10-29, User: 1
+[28-Oct-2025 09:27:35 UTC] Update result: SUCCESS, Rows affected: 1
+[28-Oct-2025 09:27:35 UTC] Failed to log followup history: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:27:35 UTC] History logging failed: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:27:35 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:27:35 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:27:35 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:27:43 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1

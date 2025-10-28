@@ -216,6 +216,7 @@ $router->post('/project-management/delete', 'ProjectManagementController', 'dele
 
 // Follow-up Routes
 $router->get('/followups', 'FollowupController', 'index');
+$router->post('/followups', 'FollowupController', 'handlePost');
 $router->post('/followups/create', 'FollowupController', 'create');
 $router->get('/followups/view/{id}', 'FollowupController', 'viewFollowup');
 $router->post('/followups/update', 'FollowupController', 'update');
@@ -224,6 +225,7 @@ $router->post('/followups/complete', 'FollowupController', 'complete');
 $router->post('/followups/update-item', 'FollowupController', 'updateItem');
 $router->post('/followups/delete', 'FollowupController', 'delete');
 $router->post('/followups/create-from-task', 'FollowupController', 'createFromTask');
+$router->get('/followups/history/{id}', 'FollowupController', 'getHistory');
 
 // Gamification Routes
 $router->get('/gamification/team-competition', 'GamificationController', 'teamCompetition');
