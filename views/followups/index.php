@@ -95,16 +95,16 @@ ob_start();
                     <option value="">All Status</option>
                     <option value="pending">Pending</option>
                     <option value="completed">Completed</option>
-                    <option value="rescheduled">Rescheduled</option>
+                    <option value="postponed">Postponed</option>
                 </select>
             </div>
             <div class="filter-item">
-                <label>Date Range</label>
-                <input type="date" id="dateFrom" class="form-input" placeholder="From">
+                <label>Date From</label>
+                <input type="date" id="dateFrom" class="form-input">
             </div>
             <div class="filter-item">
-                <label>&nbsp;</label>
-                <input type="date" id="dateTo" class="form-input" placeholder="To">
+                <label>Date To</label>
+                <input type="date" id="dateTo" class="form-input">
             </div>
         </div>
         <div class="filter-actions">
@@ -247,46 +247,45 @@ ob_start();
     </div>
 </div>
 
-<!-- Add/Edit Form Modal -->
+<!-- Add Form Modal -->
 <div id="followupModal" class="modal" style="display:none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="modalTitle">Add New Follow-up</h3>
+            <h3>Add New Follow-up</h3>
             <button class="modal-close" onclick="closeModal()">&times;</button>
         </div>
-        <form id="followupForm" method="POST">
+        <form method="POST">
             <input type="hidden" name="action" value="create">
-            <input type="hidden" name="followup_id" id="followupId">
             <div class="modal-body">
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Title *</label>
-                        <input type="text" name="title" id="title" class="form-input" required>
+                        <input type="text" name="title" class="form-input" required>
                     </div>
                     <div class="form-group">
                         <label>Company</label>
-                        <input type="text" name="company_name" id="company_name" class="form-input">
+                        <input type="text" name="company_name" class="form-input">
                     </div>
                     <div class="form-group">
                         <label>Contact Person</label>
-                        <input type="text" name="contact_person" id="contact_person" class="form-input">
+                        <input type="text" name="contact_person" class="form-input">
                     </div>
                     <div class="form-group">
                         <label>Phone</label>
-                        <input type="tel" name="contact_phone" id="contact_phone" class="form-input">
+                        <input type="tel" name="contact_phone" class="form-input">
                     </div>
                     <div class="form-group">
                         <label>Project</label>
-                        <input type="text" name="project_name" id="project_name" class="form-input">
+                        <input type="text" name="project_name" class="form-input">
                     </div>
                     <div class="form-group">
                         <label>Follow-up Date *</label>
-                        <input type="date" name="follow_up_date" id="follow_up_date" class="form-input" required>
+                        <input type="date" name="follow_up_date" class="form-input" required>
                     </div>
                 </div>
                 <div class="form-group">
                     <label>Description</label>
-                    <textarea name="description" id="description" class="form-input" rows="3"></textarea>
+                    <textarea name="description" class="form-input" rows="3"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
@@ -314,9 +313,9 @@ ob_start();
                 <div class="form-group">
                     <label>Time</label>
                     <div class="time-input">
-                        <input type="number" name="hour" min="1" max="12" placeholder="Hour" class="form-input" style="width:30%; display:inline-block;">
-                        <input type="number" name="minute" min="0" max="59" placeholder="Min" class="form-input" style="width:30%; display:inline-block; margin:0 5px;">
-                        <select name="ampm" class="form-input" style="width:30%; display:inline-block;">
+                        <input type="number" name="hour" min="1" max="12" placeholder="Hour" class="form-input">
+                        <input type="number" name="minute" min="0" max="59" placeholder="Min" class="form-input">
+                        <select name="ampm" class="form-input">
                             <option value="AM">AM</option>
                             <option value="PM">PM</option>
                         </select>
@@ -377,27 +376,38 @@ function toggleView() {
     if (currentView === 'list') {
         listView.style.display = 'none';
         gridView.style.display = 'grid';
-        toggleBtn.textContent = '📋';
         toggleBtn.nextSibling.textContent = ' List View';
         currentView = 'grid';
     } else {
         listView.style.display = 'block';
         gridView.style.display = 'none';
-        toggleBtn.textContent = '📋';
         toggleBtn.nextSibling.textContent = ' Grid View';
         currentView = 'list';
     }
 }
 
 function showAddForm() {
-    document.getElementById('modalTitle').textContent = 'Add New Follow-up';
-    document.getElementById('followupForm').reset();
-    document.querySelector('input[name="action"]').value = 'create';
     document.getElementById('followupModal').style.display = 'flex';
 }
 
 function closeModal() {
     document.getElementById('followupModal').style.display = 'none';
+}
+
+function viewFollowup(id) {
+    fetch(`/ergon/followups/view/${id}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('viewContent').innerHTML = html;
+            document.getElementById('viewModal').style.display = 'flex';
+        })
+        .catch(() => {
+            alert('Error loading followup details');
+        });
+}
+
+function closeViewModal() {
+    document.getElementById('viewModal').style.display = 'none';
 }
 
 function completeFollowup(id) {
@@ -413,26 +423,17 @@ function completeFollowup(id) {
     }
 }
 
-function viewFollowup(id) {
-    fetch(`/ergon/followups/view/${id}`)
-        .then(response => response.text())
-        .then(html => {
-            document.getElementById('viewContent').innerHTML = html;
-            document.getElementById('viewModal').style.display = 'flex';
-        })
-        .catch(() => {
-            alert('Error loading followup details');
-        });
-}
-
 function rescheduleFollowup(id) {
     document.getElementById('rescheduleModal').style.display = 'flex';
     document.getElementById('rescheduleFollowupId').value = id;
 }
 
+function closeRescheduleModal() {
+    document.getElementById('rescheduleModal').style.display = 'none';
+}
+
 function showHistory(id) {
     document.getElementById('historyModal').style.display = 'flex';
-    // Load history via AJAX
     fetch(`/ergon/followups/history/${id}`)
         .then(response => response.json())
         .then(data => {
@@ -441,14 +442,6 @@ function showHistory(id) {
         .catch(() => {
             document.getElementById('historyContent').innerHTML = 'Error loading history';
         });
-}
-
-function closeRescheduleModal() {
-    document.getElementById('rescheduleModal').style.display = 'none';
-}
-
-function closeViewModal() {
-    document.getElementById('viewModal').style.display = 'none';
 }
 
 function closeHistoryModal() {
@@ -527,11 +520,27 @@ document.addEventListener('DOMContentLoaded', function() {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.filter-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-item label {
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
 }
 
 .filter-actions {
-    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
 }
 
 .followups-grid {
@@ -583,27 +592,55 @@ document.addEventListener('DOMContentLoaded', function() {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     background: rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    padding: 1rem;
+    box-sizing: border-box;
 }
 
 .modal-content {
     background: white;
     border-radius: 8px;
-    width: 90%;
-    max-width: 600px;
-    max-height: 90vh;
+    width: 100%;
+    max-width: min(600px, 90vw);
+    max-height: min(90vh, calc(100vh - 2rem));
     overflow-y: auto;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transform: scale(1);
+    transform-origin: center;
 }
 
 .modal-content--large {
-    max-width: 800px;
+    max-width: min(800px, 95vw);
+}
+
+@media (max-width: 768px) {
+    .modal {
+        padding: 0.5rem;
+    }
+    
+    .modal-content {
+        max-width: 100%;
+        max-height: calc(100vh - 1rem);
+    }
+}
+
+/* Fix for different zoom levels */
+@media screen and (min-resolution: 120dpi) {
+    .modal-content {
+        transform: scale(0.9);
+    }
+}
+
+@media screen and (min-resolution: 144dpi) {
+    .modal-content {
+        transform: scale(0.8);
+    }
 }
 
 .modal-header {
@@ -647,6 +684,22 @@ document.addEventListener('DOMContentLoaded', function() {
     font-weight: 500;
 }
 
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    box-sizing: border-box;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
 .time-input {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -657,45 +710,8 @@ document.addEventListener('DOMContentLoaded', function() {
 .time-input input,
 .time-input select {
     margin: 0;
-}
-
-.timeline {
-    position: relative;
-    padding-left: 2rem;
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.timeline-marker {
-    position: absolute;
-    left: -2rem;
-    top: 0.5rem;
-    width: 12px;
-    height: 12px;
-    background: #3b82f6;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 0 0 2px #e5e7eb;
-}
-
-.timeline-content h4 {
-    margin: 0 0 0.5rem 0;
-    color: #1f2937;
-}
-
-.timeline-content p {
-    margin: 0.5rem 0;
-    color: #6b7280;
-}
-
-.timeline-content small {
-    color: #9ca3af;
-    font-size: 0.875rem;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .followup-details {
@@ -742,46 +758,43 @@ document.addEventListener('DOMContentLoaded', function() {
     line-height: 1.5;
 }
 
-.filter-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline-item {
+    position: relative;
     margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
 }
 
-.filter-item {
-    display: flex;
-    flex-direction: column;
+.timeline-marker {
+    position: absolute;
+    left: -2rem;
+    top: 0.5rem;
+    width: 12px;
+    height: 12px;
+    background: #3b82f6;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #e5e7eb;
 }
 
-.filter-item label {
-    font-weight: 500;
-    color: #374151;
-    margin-bottom: 0.5rem;
+.timeline-content h4 {
+    margin: 0 0 0.5rem 0;
+    color: #1f2937;
+}
+
+.timeline-content p {
+    margin: 0.5rem 0;
+    color: #6b7280;
+}
+
+.timeline-content small {
+    color: #9ca3af;
     font-size: 0.875rem;
-}
-
-.filter-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    padding-top: 1rem;
-    border-top: 1px solid #e5e7eb;
-}
-
-.form-input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 </style>
 
