@@ -54,15 +54,18 @@ class UsersController extends Controller {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
                 
+                // Ensure all required columns exist
+                $this->ensureUserColumns($db);
+                
                 $updateData = [
                     'name' => trim($_POST['name'] ?? ''),
                     'email' => trim($_POST['email'] ?? ''),
                     'phone' => trim($_POST['phone'] ?? ''),
-                    'date_of_birth' => $_POST['date_of_birth'] ?? null,
+                    'date_of_birth' => !empty($_POST['date_of_birth']) ? $_POST['date_of_birth'] : null,
                     'gender' => $_POST['gender'] ?? null,
                     'address' => trim($_POST['address'] ?? ''),
                     'emergency_contact' => trim($_POST['emergency_contact'] ?? ''),
-                    'joining_date' => $_POST['joining_date'] ?? null,
+                    'joining_date' => !empty($_POST['joining_date']) ? $_POST['joining_date'] : null,
                     'designation' => trim($_POST['designation'] ?? ''),
                     'salary' => !empty($_POST['salary']) ? floatval($_POST['salary']) : null,
                     'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
@@ -86,16 +89,15 @@ class UsersController extends Controller {
                 ]);
                 
                 if ($result) {
-                    // Handle document uploads
                     $this->handleDocumentUploads($id);
-                    
                     header('Location: /ergon/users/view/' . $id . '?success=User updated successfully');
                 } else {
                     header('Location: /ergon/users/view/' . $id . '?error=Failed to update user');
                 }
                 exit;
             } catch (Exception $e) {
-                header('Location: /ergon/users/view/' . $id . '?error=Update failed: ' . urlencode($e->getMessage()));
+                error_log('User edit error: ' . $e->getMessage());
+                header('Location: /ergon/users/view/' . $id . '?error=Update failed');
                 exit;
             }
         }
@@ -429,6 +431,29 @@ class UsersController extends Controller {
             echo json_encode(['success' => false, 'message' => 'File not found']);
         }
         exit;
+    }
+    
+    private function ensureUserColumns($db) {
+        $stmt = $db->query("DESCRIBE users");
+        $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        $requiredColumns = [
+            'phone' => 'VARCHAR(20)',
+            'date_of_birth' => 'DATE',
+            'gender' => 'ENUM(\'male\', \'female\', \'other\')',
+            'address' => 'TEXT',
+            'emergency_contact' => 'VARCHAR(255)',
+            'joining_date' => 'DATE',
+            'designation' => 'VARCHAR(255)',
+            'salary' => 'DECIMAL(10,2)',
+            'department_id' => 'INT'
+        ];
+        
+        foreach ($requiredColumns as $column => $type) {
+            if (!in_array($column, $columns)) {
+                $db->exec("ALTER TABLE users ADD COLUMN $column $type");
+            }
+        }
     }
 }
 ?>
