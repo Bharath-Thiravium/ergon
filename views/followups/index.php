@@ -183,10 +183,10 @@ ob_start();
                                         <br><span class="badge badge--danger">Overdue</span>
                                     <?php endif; ?>
                                     <?php 
-                                    if ($followup['next_reminder'] && !$followup['reminder_sent']) {
-                                        $reminderDateTime = $followup['next_reminder'] . ' ' . ($followup['reminder_time'] ?? '09:00:00');
+                                    if ($followup['reminder_time'] && !$followup['reminder_sent']) {
+                                        $reminderDateTime = $followup['follow_up_date'] . ' ' . $followup['reminder_time'];
                                         if (strtotime($reminderDateTime) <= time()) {
-                                            echo '<br><span class="badge badge--warning">🔔 Reminder</span>';
+                                            echo '<br><span class="badge badge--warning">🔔 Time</span>';
                                         }
                                     }
                                     ?>
@@ -265,14 +265,11 @@ ob_start();
                                 <div><strong>Project:</strong> <?= htmlspecialchars($followup['project_name'] ?? '-') ?></div>
                                 <div><strong>Contact:</strong> <?= htmlspecialchars($followup['contact_person'] ?? '-') ?></div>
                                 <div><strong>Due:</strong> <?= date('M d, Y', strtotime($followup['follow_up_date'])) ?></div>
-                                <?php if ($followup['next_reminder']): ?>
-                                    <div><strong>Reminder:</strong> <?= date('M d, Y', strtotime($followup['next_reminder'])) ?>
-                                        <?php if ($followup['reminder_time']): ?>
-                                            at <?= date('g:i A', strtotime($followup['reminder_time'])) ?>
-                                        <?php endif; ?>
+                                <?php if ($followup['reminder_time']): ?>
+                                    <div><strong>Time:</strong> <?= date('g:i A', strtotime($followup['reminder_time'])) ?>
                                         <?php 
                                         if (!$followup['reminder_sent']) {
-                                            $reminderDateTime = $followup['next_reminder'] . ' ' . ($followup['reminder_time'] ?? '09:00:00');
+                                            $reminderDateTime = $followup['follow_up_date'] . ' ' . $followup['reminder_time'];
                                             if (strtotime($reminderDateTime) <= time()) {
                                                 echo ' <span class="badge badge--warning">🔔</span>';
                                             }
@@ -347,12 +344,8 @@ ob_start();
                         <input type="date" name="follow_up_date" class="form-input" required>
                     </div>
                     <div class="form-group">
-                        <label>Reminder Date</label>
-                        <input type="date" name="next_reminder" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Reminder Time</label>
-                        <input type="time" name="reminder_time" class="form-input">
+                        <label>Follow-up Time</label>
+                        <input type="time" name="reminder_time" class="form-input" value="09:00">
                     </div>
                 </div>
                 <div class="form-group">
@@ -553,8 +546,10 @@ function generateConsolidatedGridView() {
     const cards = document.querySelectorAll('.normal-card');
     const contactGroups = {};
     
-    // Group by contact person
+    // Group by contact person (only visible cards)
     cards.forEach(card => {
+        if (card.style.display === 'none') return; // Skip filtered out cards
+        
         const contact = card.dataset.contact || 'No Contact';
         if (!contactGroups[contact]) {
             contactGroups[contact] = [];
@@ -729,6 +724,11 @@ function applyFilters() {
         
         row.style.display = show ? '' : 'none';
     });
+    
+    // Refresh consolidated view if active
+    if (isConsolidated && currentView === 'grid') {
+        generateConsolidatedGridView();
+    }
 }
 
 function clearFilters() {
@@ -760,7 +760,7 @@ function showReminderPopup(reminders) {
         html += `<div class="reminder-item">`;
         html += `<strong>${reminder.title}</strong><br>`;
         html += `<small>${reminder.company_name || ''} - ${reminder.contact_person || ''}</small><br>`;
-        html += `<small>Reminder: ${new Date(reminder.next_reminder).toLocaleDateString()} ${time}</small>`;
+        html += `<small>Follow-up: ${new Date(reminder.follow_up_date).toLocaleDateString()} ${time}</small>`;
         html += `</div>`;
     });
     html += '<button onclick="closeReminderPopup()" class="btn btn--primary">Got it!</button></div>';

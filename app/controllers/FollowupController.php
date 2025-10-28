@@ -87,8 +87,8 @@ class FollowupController extends Controller {
                 $_POST['follow_up_date'] ?? date('Y-m-d'),
                 $_POST['follow_up_date'] ?? date('Y-m-d'),
                 trim($_POST['description'] ?? ''),
-                !empty($_POST['next_reminder']) ? $_POST['next_reminder'] : null,
-                !empty($_POST['reminder_time']) ? $_POST['reminder_time'] : null
+                $_POST['follow_up_date'] ?? date('Y-m-d'),
+                !empty($_POST['reminder_time']) ? $_POST['reminder_time'] : '09:00:00'
             ]);
             
             if ($result) {
