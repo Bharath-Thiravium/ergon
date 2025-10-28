@@ -2087,3 +2087,122 @@ Stack trace:
 [28-Oct-2025 09:47:39 UTC] Total history records: 0
 [28-Oct-2025 09:47:39 UTC] History records for followup 2: 0
 [28-Oct-2025 09:47:39 UTC] Retrieved history count: 0
+[28-Oct-2025 09:56:04 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:56:04 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:56:04 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:56:04 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:56:09 UTC] ergon: Index.php executed - URI: /ergon/followups/history/2
+[28-Oct-2025 09:56:09 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 262
+[28-Oct-2025 09:56:09 UTC] History table exists: YES
+[28-Oct-2025 09:56:09 UTC] Total history records: 0
+[28-Oct-2025 09:56:09 UTC] History records for followup 2: 0
+[28-Oct-2025 09:56:09 UTC] Retrieved history count: 0
+[28-Oct-2025 09:56:35 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:56:35 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:56:35 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:56:35 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:56:35 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:56:35 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:56:35 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:56:35 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:56:36 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:56:36 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:56:36 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:56:36 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:56:36 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:56:36 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:56:36 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:56:36 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:56:36 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:56:36 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:56:36 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:56:36 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:56:39 UTC] ergon: Index.php executed - URI: /ergon/followups/history/2
+[28-Oct-2025 09:56:39 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 262
+[28-Oct-2025 09:56:39 UTC] History table exists: YES
+[28-Oct-2025 09:56:39 UTC] Total history records: 0
+[28-Oct-2025 09:56:39 UTC] History records for followup 2: 0
+[28-Oct-2025 09:56:39 UTC] Retrieved history count: 0
+[28-Oct-2025 09:57:57 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:57:57 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:57:57 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:57:57 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:57:59 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:57:59 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:57:59 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:58:00 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:58:02 UTC] ergon: Index.php executed - URI: /ergon/followups/history/2
+[28-Oct-2025 09:58:02 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 262
+[28-Oct-2025 09:58:02 UTC] History table exists: YES
+[28-Oct-2025 09:58:02 UTC] Total history records: 2
+[28-Oct-2025 09:58:02 UTC] History records for followup 2: 2
+[28-Oct-2025 09:58:02 UTC] Retrieved history count: 2
+[28-Oct-2025 09:58:24 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 09:58:24 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 52
+[28-Oct-2025 09:58:24 UTC] Logging history: ID=2, Action=completed, User=1
+[28-Oct-2025 09:58:24 UTC] History logged successfully: ID=4
+[28-Oct-2025 09:58:24 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:58:25 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:58:25 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20completed%20successfully
+[28-Oct-2025 09:58:25 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 09:58:29 UTC] ergon: Index.php executed - URI: /ergon/followups/history/2
+[28-Oct-2025 09:58:29 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 262
+[28-Oct-2025 09:58:29 UTC] History table exists: YES
+[28-Oct-2025 09:58:29 UTC] Total history records: 3
+[28-Oct-2025 09:58:29 UTC] History records for followup 2: 3
+[28-Oct-2025 09:58:29 UTC] Retrieved history count: 3
+[28-Oct-2025 09:58:41 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1
+[28-Oct-2025 09:58:41 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 262
+[28-Oct-2025 09:58:41 UTC] History table exists: YES
+[28-Oct-2025 09:58:41 UTC] Total history records: 3
+[28-Oct-2025 09:58:41 UTC] History records for followup 1: 0
+[28-Oct-2025 09:58:41 UTC] Retrieved history count: 0
+[28-Oct-2025 09:59:32 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20completed%20successfully
+[28-Oct-2025 09:59:32 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 52
+[28-Oct-2025 09:59:32 UTC] Logging history: ID=3, Action=created, User=1
+[28-Oct-2025 09:59:32 UTC] History logged successfully: ID=5
+[28-Oct-2025 09:59:32 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 09:59:32 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 09:59:32 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20created%20successfully
+[28-Oct-2025 09:59:32 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 10:00:13 UTC] ergon: Index.php executed - URI: /ergon/followups/reschedule
+[28-Oct-2025 10:00:13 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 130
+[28-Oct-2025 10:00:13 UTC] Attempting to insert history: followup_id=3, user_id=1
+[28-Oct-2025 10:00:13 UTC] History inserted successfully with ID: 6
+[28-Oct-2025 10:00:13 UTC] History record verification: EXISTS
+[28-Oct-2025 10:00:13 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 10:00:13 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 10:00:13 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 10:00:13 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 10:00:18 UTC] ergon: Index.php executed - URI: /ergon/followups/history/3
+[28-Oct-2025 10:00:18 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 262
+[28-Oct-2025 10:00:18 UTC] History table exists: YES
+[28-Oct-2025 10:00:18 UTC] Total history records: 5
+[28-Oct-2025 10:00:18 UTC] History records for followup 3: 2
+[28-Oct-2025 10:00:18 UTC] Retrieved history count: 2
+[28-Oct-2025 10:01:51 UTC] ergon: Index.php executed - URI: /ergon/followups/history/2
+[28-Oct-2025 10:01:51 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 262
+[28-Oct-2025 10:01:51 UTC] History table exists: YES
+[28-Oct-2025 10:01:51 UTC] Total history records: 5
+[28-Oct-2025 10:01:51 UTC] History records for followup 2: 3
+[28-Oct-2025 10:01:51 UTC] Retrieved history count: 3
+[28-Oct-2025 10:02:07 UTC] ergon: Index.php executed - URI: /ergon/followups/history/3
+[28-Oct-2025 10:02:07 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 262
+[28-Oct-2025 10:02:07 UTC] History table exists: YES
+[28-Oct-2025 10:02:07 UTC] Total history records: 5
+[28-Oct-2025 10:02:07 UTC] History records for followup 3: 2
+[28-Oct-2025 10:02:07 UTC] Retrieved history count: 2
+[28-Oct-2025 10:54:58 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 10:54:58 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 10:54:58 UTC] ergon: Index.php executed - URI: /ergon/followups?success=Follow-up%20rescheduled%20successfully
+[28-Oct-2025 10:54:58 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 10:55:09 UTC] ergon: Index.php executed - URI: /ergon/followups/view/1
+[28-Oct-2025 10:55:09 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 218
+[28-Oct-2025 10:55:14 UTC] ergon: Index.php executed - URI: /ergon/followups/history/1
+[28-Oct-2025 10:55:14 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 262
+[28-Oct-2025 10:55:14 UTC] History table exists: YES
+[28-Oct-2025 10:55:14 UTC] Total history records: 5
+[28-Oct-2025 10:55:14 UTC] History records for followup 1: 0
+[28-Oct-2025 10:55:14 UTC] Retrieved history count: 0
+[28-Oct-2025 11:04:26 UTC] ergon: Index.php executed - URI: /ergon/followups
+[28-Oct-2025 11:04:26 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
