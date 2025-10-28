@@ -184,7 +184,17 @@ ob_start();
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <span class="badge badge--<?= $followup['status'] === 'completed' ? 'success' : (in_array($followup['status'], ['postponed', 'rescheduled']) ? 'warning' : 'info') ?>">
+                                    <?php 
+                                    $badgeClass = 'info';
+                                    switch($followup['status']) {
+                                        case 'completed': $badgeClass = 'success'; break;
+                                        case 'pending': $badgeClass = 'pending'; break;
+                                        case 'in_progress': $badgeClass = 'info'; break;
+                                        case 'postponed': case 'rescheduled': $badgeClass = 'warning'; break;
+                                        case 'cancelled': $badgeClass = 'cancelled'; break;
+                                    }
+                                    ?>
+                                    <span class="badge badge--<?= $badgeClass ?>">
                                         <?= ucfirst($followup['status']) ?>
                                     </span>
                                 </td>
@@ -224,7 +234,17 @@ ob_start();
                          data-date="<?= $followup['follow_up_date'] ?>">
                         <div class="followup-card__header">
                             <h4><?= htmlspecialchars($followup['title']) ?></h4>
-                            <span class="badge badge--<?= $followup['status'] === 'completed' ? 'success' : (in_array($followup['status'], ['postponed', 'rescheduled']) ? 'warning' : 'info') ?>">
+                            <?php 
+                            $badgeClass = 'info';
+                            switch($followup['status']) {
+                                case 'completed': $badgeClass = 'success'; break;
+                                case 'pending': $badgeClass = 'pending'; break;
+                                case 'in_progress': $badgeClass = 'info'; break;
+                                case 'postponed': case 'rescheduled': $badgeClass = 'warning'; break;
+                                case 'cancelled': $badgeClass = 'cancelled'; break;
+                            }
+                            ?>
+                            <span class="badge badge--<?= $badgeClass ?>">
                                 <?= ucfirst($followup['status']) ?>
                             </span>
                         </div>
@@ -434,8 +454,14 @@ function generateConsolidatedView() {
         html += `<td class="followups-list">`;
         
         followups.forEach(followup => {
-            const statusClass = followup.status === 'completed' ? 'success' : 
-                               (followup.status === 'postponed' || followup.status === 'rescheduled') ? 'warning' : 'info';
+            let statusClass = 'info';
+            switch(followup.status) {
+                case 'completed': statusClass = 'success'; break;
+                case 'pending': statusClass = 'pending'; break;
+                case 'in_progress': statusClass = 'info'; break;
+                case 'postponed': case 'rescheduled': statusClass = 'warning'; break;
+                case 'cancelled': statusClass = 'cancelled'; break;
+            }
             
             html += `<div class="followup-item">`;
             html += `<div class="followup-header">`;

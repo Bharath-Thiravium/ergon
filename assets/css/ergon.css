@@ -1126,6 +1126,22 @@ body {
   color: #dc2626;
 }
 
+.badge--info {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badge--pending {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.badge--cancelled {
+  background: #fee2e2;
+  color: #dc2626;
+  text-decoration: line-through;
+}
+
 /* Button group */
 .btn-group {
   display: flex;
