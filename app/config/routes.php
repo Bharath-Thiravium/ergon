@@ -50,7 +50,7 @@ $router->get('/user/tasks', 'UserController', 'tasks');
 $router->get('/departments', 'DepartmentController', 'index');
 $router->get('/departments/create', 'DepartmentController', 'create');
 $router->post('/departments/create', 'DepartmentController', 'store');
-$router->get('/departments/view/{id}', 'DepartmentController', 'view');
+$router->get('/departments/view/{id}', 'DepartmentController', 'viewDepartment');
 $router->get('/departments/edit/{id}', 'DepartmentController', 'edit');
 $router->post('/departments/edit/{id}', 'DepartmentController', 'update');
 $router->post('/departments/delete/{id}', 'DepartmentController', 'delete');

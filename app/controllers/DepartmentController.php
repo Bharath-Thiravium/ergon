@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../models/Department.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../helpers/Security.php';
+require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../config/database.php';
 
 class DepartmentController extends Controller {
     private $departmentModel;
@@ -135,26 +137,46 @@ class DepartmentController extends Controller {
     public function delete($id) {
         session_start();
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
-            $this->redirect('/ergon/auth/login');
-            return;
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
+            exit;
         }
         
         try {
             if ($this->departmentModel->delete($id)) {
-                $_SESSION['success'] = 'Department deleted successfully';
+                echo json_encode(['success' => true]);
             } else {
-                $_SESSION['error'] = 'Failed to delete department';
+                echo json_encode(['success' => false, 'message' => 'Failed to delete department']);
             }
         } catch (Exception $e) {
             error_log('Department delete error: ' . $e->getMessage());
-            $_SESSION['error'] = 'Failed to delete department';
+            echo json_encode(['success' => false, 'message' => 'Failed to delete department']);
         }
-        
-        $this->redirect('/ergon/departments');
+        exit;
     }
     
     public function store() {
         $this->create();
+    }
+    
+    public function viewDepartment($id) {
+        session_start();
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
+            $this->redirect('/ergon/auth/login');
+            return;
+        }
+        
+        $department = $this->departmentModel->findById($id);
+        if (!$department) {
+            $_SESSION['error'] = 'Department not found';
+            $this->redirect('/ergon/departments');
+            return;
+        }
+        
+        $data = ['department' => $department];
+        $title = 'Department Details';
+        $active_page = 'departments';
+        
+        include __DIR__ . '/../../views/departments/view.php';
     }
     
     public function editPost() {

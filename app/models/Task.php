@@ -125,5 +125,15 @@ class Task {
         $stmt = $this->conn->prepare("UPDATE tasks SET status = ? WHERE id = ?");
         return $stmt->execute([$status, $id]);
     }
+    
+    public function delete($id) {
+        try {
+            $stmt = $this->conn->prepare("DELETE FROM tasks WHERE id = ?");
+            return $stmt->execute([$id]);
+        } catch (Exception $e) {
+            error_log('Task delete error: ' . $e->getMessage());
+            return false;
+        }
+    }
 }
 ?>

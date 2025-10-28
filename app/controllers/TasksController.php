@@ -202,5 +202,46 @@ class TasksController extends Controller {
         $subtasks = $this->taskModel->getSubtasks($parentId);
         echo json_encode(['subtasks' => $subtasks]);
     }
+    
+    public function view($id) {
+        AuthMiddleware::requireAuth();
+        
+        try {
+            $task = $this->taskModel->getTaskById($id);
+            if (!$task) {
+                header('Location: /ergon/tasks?error=not_found');
+                exit;
+            }
+            
+            $data = [
+                'task' => $task,
+                'active_page' => 'tasks'
+            ];
+            
+            $this->view('tasks/view', $data);
+        } catch (Exception $e) {
+            error_log('Task view error: ' . $e->getMessage());
+            header('Location: /ergon/tasks?error=view_failed');
+            exit;
+        }
+    }
+    
+    public function delete($id) {
+        AuthMiddleware::requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
+            exit;
+        }
+        
+        try {
+            $result = $this->taskModel->delete($id);
+            echo json_encode(['success' => $result]);
+        } catch (Exception $e) {
+            error_log('Task delete error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Delete failed']);
+        }
+        exit;
+    }
 }
 ?>
