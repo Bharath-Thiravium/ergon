@@ -51,6 +51,88 @@ ob_start();
 <div class="card">
     <div class="card__header">
         <h2 class="card__title">
+            <span>📋</span> Expense Legends
+        </h2>
+    </div>
+    <div class="card__body">
+        <div class="legends-grid">
+            <div class="legend-section">
+                <h4>Status Colors</h4>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="badge badge--warning">Pending</span>
+                        <span>Awaiting review</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="badge badge--success">Approved</span>
+                        <span>Ready for payment</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="badge badge--danger">Rejected</span>
+                        <span>Needs revision</span>
+                    </div>
+                </div>
+            </div>
+            <div class="legend-section">
+                <h4>Common Categories</h4>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="category-tag">🚗 Travel</span>
+                        <span>Transportation costs</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="category-tag">🍽️ Meals</span>
+                        <span>Food & dining expenses</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="category-tag">🏨 Accommodation</span>
+                        <span>Hotel & lodging</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="category-tag">📱 Communication</span>
+                        <span>Phone & internet</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.legends-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+.legend-section h4 {
+    margin-bottom: 1rem;
+    color: #333;
+    font-weight: 600;
+}
+.legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+}
+.category-tag {
+    background: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    min-width: 120px;
+    text-align: center;
+}
+</style>
+
+<div class="card">
+    <div class="card__header">
+        <h2 class="card__title">
             <span>💰</span> Expense Claims
         </h2>
     </div>

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../helpers/Security.php';
+require_once __DIR__ . '/../config/database.php';
 
 class SettingsController extends Controller {
     private $db;
@@ -26,7 +27,7 @@ class SettingsController extends Controller {
             'active_page' => 'settings'
         ];
         
-        $this->view('settings/index', $data);
+        include __DIR__ . '/../../views/settings/index.php';
     }
     
     public function update() {

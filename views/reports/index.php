@@ -92,6 +92,30 @@ ob_start();
         </div>
         <div class="card__body">
             <div id="expenseChart"></div>
+            <div class="expense-legends">
+                <div class="legend-grid">
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #1e40af;"></span>
+                        <span class="legend-label">Travel (40%)</span>
+                        <span class="legend-desc">Transportation & fuel</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #059669;"></span>
+                        <span class="legend-label">Food (25%)</span>
+                        <span class="legend-desc">Meals & dining</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #d97706;"></span>
+                        <span class="legend-label">Supplies (20%)</span>
+                        <span class="legend-desc">Office materials</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #dc2626;"></span>
+                        <span class="legend-label">Other (15%)</span>
+                        <span class="legend-desc">Miscellaneous</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -258,6 +282,40 @@ document.addEventListener('DOMContentLoaded', function() {
     new ApexCharts(document.querySelector('#expenseChart'), expenseOptions).render();
 });
 </script>
+
+<style>
+.expense-legends {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f1f5f9;
+}
+.legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.legend-label {
+    font-weight: 600;
+    color: #374151;
+    min-width: 80px;
+}
+.legend-desc {
+    color: #6b7280;
+    font-size: 0.8rem;
+}
+</style>
 
 <?php
 $content = ob_get_clean();

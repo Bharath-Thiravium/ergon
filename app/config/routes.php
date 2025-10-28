@@ -40,6 +40,7 @@ $router->post('/users/delete/{id}', 'UsersController', 'delete');
 $router->post('/users/reset-password', 'UsersController', 'resetPassword');
 $router->get('/users/download-credentials', 'UsersController', 'downloadCredentials');
 $router->get('/users/export', 'UsersController', 'export');
+$router->get('/admin/export', 'UsersController', 'export');
 
 // User Request Routes
 $router->get('/user/requests', 'UserController', 'requests');
@@ -61,7 +62,7 @@ $router->post('/departments/delete', 'DepartmentController', 'deletePost');
 $router->get('/tasks', 'TasksController', 'index');
 $router->get('/tasks/create', 'TasksController', 'create');
 $router->post('/tasks/create', 'TasksController', 'store');
-$router->get('/tasks/view/{id}', 'TasksController', 'view');
+$router->get('/tasks/view/{id}', 'TasksController', 'viewTask');
 $router->post('/tasks/delete/{id}', 'TasksController', 'delete');
 $router->get('/tasks/calendar', 'TasksController', 'calendar');
 $router->get('/tasks/overdue', 'TasksController', 'overdue');
@@ -116,6 +117,8 @@ $router->post('/settings/save', 'SettingsController', 'update');
 
 // Owner Approvals
 $router->get('/owner/approvals', 'OwnerController', 'approvals');
+$router->get('/owner/approvals/view/{type}/{id}', 'OwnerController', 'viewApproval');
+$router->post('/owner/approvals/delete/{type}/{id}', 'OwnerController', 'deleteApproval');
 
 // Profile
 $router->get('/profile', 'ProfileController', 'index');
@@ -129,6 +132,7 @@ $router->post('/profile/preferences', 'ProfileController', 'preferences');
 $router->get('/notifications', 'NotificationController', 'index');
 $router->get('/api/notifications/unread-count', 'NotificationController', 'getUnreadCount');
 $router->post('/api/notifications/mark-read', 'NotificationController', 'markAsRead');
+$router->post('/api/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
 $router->post('/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
 $router->post('/notifications/mark-as-read', 'NotificationController', 'markAsRead');
 
@@ -190,6 +194,7 @@ $router->get('/attendance/anomalies/{userId}', 'AttendanceController', 'getAnoma
 
 // User Document Downloads
 $router->get('/users/download-document/{userId}/{filename}', 'UsersController', 'downloadDocument');
+$router->post('/users/delete-document/{userId}/{filename}', 'UsersController', 'deleteDocument');
 
 // Admin Management Routes
 $router->get('/admin/management', 'AdminManagementController', 'index');
@@ -212,7 +217,7 @@ $router->post('/project-management/delete', 'ProjectManagementController', 'dele
 // Follow-up Routes
 $router->get('/followups', 'FollowupController', 'index');
 $router->post('/followups/create', 'FollowupController', 'create');
-$router->get('/followups/view/{id}', 'FollowupController', 'view');
+$router->get('/followups/view/{id}', 'FollowupController', 'viewFollowup');
 $router->post('/followups/update', 'FollowupController', 'update');
 $router->post('/followups/reschedule', 'FollowupController', 'reschedule');
 $router->post('/followups/complete', 'FollowupController', 'complete');

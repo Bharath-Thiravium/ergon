@@ -15,6 +15,7 @@ class TasksController extends Controller {
             $this->userModel = new User();
         } catch (Exception $e) {
             error_log("TasksController init error: " . $e->getMessage());
+            // Initialize with null but create fallback methods
             $this->taskModel = null;
             $this->userModel = null;
         }
@@ -118,19 +119,42 @@ class TasksController extends Controller {
         AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $taskData = [
-                'title' => Security::sanitizeString($_POST['title']),
-                'description' => Security::sanitizeString($_POST['description'], 1000),
-                'assigned_by' => $_SESSION['user_id'],
-                'assigned_to' => Security::validateInt($_POST['assigned_to']),
-                'task_type' => Security::sanitizeString($_POST['task_type'] ?? 'task'),
-                'priority' => Security::sanitizeString($_POST['priority']),
-                'deadline' => $_POST['deadline']
-            ];
-            
-            $result = $this->taskModel->create($taskData);
-            if ($result) {
-                header('Location: /ergon/tasks?success=created');
+            try {
+                $taskData = [
+                    'title' => Security::sanitizeString($_POST['title']),
+                    'description' => Security::sanitizeString($_POST['description'], 1000),
+                    'assigned_by' => $_SESSION['user_id'],
+                    'assigned_to' => Security::validateInt($_POST['assigned_to']),
+                    'task_type' => Security::sanitizeString($_POST['task_type'] ?? 'task'),
+                    'priority' => Security::sanitizeString($_POST['priority']),
+                    'deadline' => $_POST['deadline']
+                ];
+                
+                if ($this->taskModel !== null) {
+                    $result = $this->taskModel->create($taskData);
+                } else {
+                    // Fallback direct database insert
+                    require_once __DIR__ . '/../config/database.php';
+                    $db = Database::connect();
+                    $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
+                    $result = $stmt->execute([
+                        $taskData['title'],
+                        $taskData['description'],
+                        $taskData['assigned_by'],
+                        $taskData['assigned_to'],
+                        $taskData['task_type'],
+                        $taskData['priority'],
+                        $taskData['deadline']
+                    ]);
+                }
+                
+                if ($result) {
+                    header('Location: /ergon/tasks?success=created');
+                    exit;
+                }
+            } catch (Exception $e) {
+                error_log('Task creation error: ' . $e->getMessage());
+                header('Location: /ergon/tasks/create?error=creation_failed');
                 exit;
             }
         }
@@ -203,11 +227,21 @@ class TasksController extends Controller {
         echo json_encode(['subtasks' => $subtasks]);
     }
     
-    public function view($id) {
+    public function viewTask($id) {
         AuthMiddleware::requireAuth();
         
         try {
-            $task = $this->taskModel->getTaskById($id);
+            if ($this->taskModel !== null) {
+                $task = $this->taskModel->getTaskById($id);
+            } else {
+                // Fallback direct database query
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.id = ?");
+                $stmt->execute([$id]);
+                $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            
             if (!$task) {
                 header('Location: /ergon/tasks?error=not_found');
                 exit;
@@ -235,7 +269,15 @@ class TasksController extends Controller {
         }
         
         try {
-            $result = $this->taskModel->delete($id);
+            if ($this->taskModel !== null) {
+                $result = $this->taskModel->delete($id);
+            } else {
+                // Fallback direct database delete
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                $stmt = $db->prepare("DELETE FROM tasks WHERE id = ?");
+                $result = $stmt->execute([$id]);
+            }
             echo json_encode(['success' => $result]);
         } catch (Exception $e) {
             error_log('Task delete error: ' . $e->getMessage());

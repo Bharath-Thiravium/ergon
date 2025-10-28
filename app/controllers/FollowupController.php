@@ -28,10 +28,7 @@ class FollowupController extends Controller {
             $data = ['followups' => []];
         }
         
-        ob_start();
-        include __DIR__ . '/../../views/followups/index.php';
-        $content = ob_get_clean();
-        include __DIR__ . '/../../views/layouts/dashboard.php';
+        $this->view('followups/index', $data);
     }
     
     public function create() {
@@ -73,7 +70,7 @@ class FollowupController extends Controller {
         exit;
     }
     
-    public function view($id) {
+    public function viewFollowup($id) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -98,10 +95,7 @@ class FollowupController extends Controller {
             $active_page = 'followups';
             $title = 'Follow-up Details';
             
-            ob_start();
-            include __DIR__ . '/../../views/followups/view.php';
-            $content = ob_get_clean();
-            include __DIR__ . '/../../views/layouts/dashboard.php';
+            $this->view('followups/view', $data);
             
         } catch (Exception $e) {
             header('Location: /ergon/followups?error=Failed to load follow-up');

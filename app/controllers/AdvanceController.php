@@ -50,6 +50,15 @@ class AdvanceController extends Controller {
                 ]);
                 
                 if ($result) {
+                    // Try to log activity, but don't fail if it doesn't work
+                    try {
+                        require_once __DIR__ . '/../models/ActivityLog.php';
+                        $activityLog = new ActivityLog();
+                        $activityLog->log($_SESSION['user_id'], 'advance_request', "Requested advance of $amount");
+                    } catch (Exception $logError) {
+                        error_log('Activity log error: ' . $logError->getMessage());
+                    }
+                    
                     header('Location: /ergon/advances?success=Advance request submitted successfully');
                 } else {
                     header('Location: /ergon/advances/create?error=Failed to submit advance request');
@@ -122,6 +131,58 @@ class AdvanceController extends Controller {
             }
         } catch (Exception $e) {
             header('Location: /ergon/advances?error=Rejection failed');
+        }
+        exit;
+    }
+    
+    public function view($id) {
+        $this->requireAuth();
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id WHERE a.id = ?");
+            $stmt->execute([$id]);
+            $advance = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$advance) {
+                header('Location: /ergon/advances?error=Advance not found');
+                exit;
+            }
+            
+            $data = [
+                'advance' => $advance,
+                'active_page' => 'advances'
+            ];
+            
+            $this->view('advances/view', $data);
+        } catch (Exception $e) {
+            error_log('Advance view error: ' . $e->getMessage());
+            header('Location: /ergon/advances?error=Failed to load advance');
+            exit;
+        }
+    }
+    
+    public function delete($id) {
+        $this->requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("DELETE FROM advances WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
+            echo json_encode(['success' => $result]);
+        } catch (Exception $e) {
+            error_log('Advance delete error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Delete failed']);
         }
         exit;
     }

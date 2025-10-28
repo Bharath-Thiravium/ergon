@@ -86,6 +86,9 @@ class UsersController extends Controller {
                 ]);
                 
                 if ($result) {
+                    // Handle document uploads
+                    $this->handleDocumentUploads($id);
+                    
                     header('Location: /ergon/users/view/' . $id . '?success=User updated successfully');
                 } else {
                     header('Location: /ergon/users/view/' . $id . '?error=Failed to update user');
@@ -148,6 +151,11 @@ class UsersController extends Controller {
                 ]);
                 
                 if ($result) {
+                    $userId = $db->lastInsertId();
+                    
+                    // Handle document uploads
+                    $this->handleDocumentUploads($userId);
+                    
                     $_SESSION['new_credentials'] = [
                         'email' => $_POST['email'],
                         'password' => $tempPassword,
@@ -239,29 +247,22 @@ class UsersController extends Controller {
         session_start();
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
-            header('Location: /ergon/login');
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
             exit;
         }
         
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            try {
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
-                
-                $stmt = $db->prepare("UPDATE users SET status = 'deleted', updated_at = NOW() WHERE id = ?");
-                $result = $stmt->execute([$id]);
-                
-                if ($result) {
-                    header('Location: /ergon/users?success=User deleted successfully');
-                } else {
-                    header('Location: /ergon/users?error=Failed to delete user');
-                }
-                exit;
-            } catch (Exception $e) {
-                header('Location: /ergon/users?error=Delete failed');
-                exit;
-            }
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("UPDATE users SET status = 'deleted', updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
+            echo json_encode(['success' => $result]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Delete failed']);
         }
+        exit;
     }
     
     public function inactive($id) {
@@ -334,6 +335,100 @@ class UsersController extends Controller {
             header('Location: /ergon/users?error=Export failed');
             exit;
         }
+    }
+    
+    private function handleDocumentUploads($userId) {
+        $uploadDir = __DIR__ . '/../../public/uploads/users/' . $userId;
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        $maxSize = 5 * 1024 * 1024; // 5MB
+        $docTypes = ['passport_photo', 'aadhar', 'pan', 'resume', 'education_docs', 'experience_certs'];
+        
+        foreach ($docTypes as $docType) {
+            if (!isset($_FILES[$docType])) continue;
+            
+            $files = $_FILES[$docType];
+            
+            // Handle single file upload
+            if (!is_array($files['name'])) {
+                $this->uploadSingleFile($files, $docType, $uploadDir, $maxSize);
+            } else {
+                // Handle multiple file upload
+                for ($i = 0; $i < count($files['name']); $i++) {
+                    if (empty($files['name'][$i])) continue;
+                    
+                    $singleFile = [
+                        'name' => $files['name'][$i],
+                        'tmp_name' => $files['tmp_name'][$i],
+                        'size' => $files['size'][$i],
+                        'error' => $files['error'][$i]
+                    ];
+                    
+                    $this->uploadSingleFile($singleFile, $docType, $uploadDir, $maxSize, $i + 1);
+                }
+            }
+        }
+    }
+    
+    private function uploadSingleFile($file, $docType, $uploadDir, $maxSize, $index = null) {
+        if (empty($file['name']) || $file['error'] !== UPLOAD_ERR_OK) return;
+        
+        $allowedTypes = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
+        $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        
+        if (!in_array($fileExt, $allowedTypes) || $file['size'] > $maxSize) return;
+        
+        $suffix = $index ? "_{$index}" : '';
+        $safeName = $docType . $suffix . '.' . $fileExt;
+        $targetPath = $uploadDir . '/' . $safeName;
+        
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            error_log("Document uploaded: {$safeName} for user");
+        }
+    }
+    
+    public function downloadDocument($userId, $filename) {
+        session_start();
+        
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
+            http_response_code(403);
+            exit;
+        }
+        
+        $filePath = __DIR__ . '/../../public/uploads/users/' . $userId . '/' . $filename;
+        
+        if (!file_exists($filePath)) {
+            http_response_code(404);
+            exit;
+        }
+        
+        $mimeType = mime_content_type($filePath);
+        header('Content-Type: ' . $mimeType);
+        header('Content-Disposition: attachment; filename="' . basename($filename) . '"');
+        header('Content-Length: ' . filesize($filePath));
+        readfile($filePath);
+        exit;
+    }
+    
+    public function deleteDocument($userId, $filename) {
+        session_start();
+        
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
+            exit;
+        }
+        
+        $filePath = __DIR__ . '/../../public/uploads/users/' . $userId . '/' . $filename;
+        
+        if (file_exists($filePath)) {
+            $success = unlink($filePath);
+            echo json_encode(['success' => $success]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'File not found']);
+        }
+        exit;
     }
 }
 ?>

@@ -105,8 +105,11 @@ class ProfileController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $preferences = [
                 'theme' => Security::sanitizeString($_POST['theme'] ?? 'light'),
+                'dashboard_layout' => Security::sanitizeString($_POST['dashboard_layout'] ?? 'default'),
                 'language' => Security::sanitizeString($_POST['language'] ?? 'en'),
-                'notifications' => isset($_POST['notifications']) ? 1 : 0
+                'timezone' => Security::sanitizeString($_POST['timezone'] ?? 'UTC'),
+                'notifications_email' => isset($_POST['notifications_email']) ? 1 : 0,
+                'notifications_browser' => isset($_POST['notifications_browser']) ? 1 : 0
             ];
             
             if ($this->updateUserPreferences($_SESSION['user_id'], $preferences)) {
@@ -191,30 +194,39 @@ class ProfileController extends Controller {
             
             return $result ?: [
                 'theme' => 'light',
+                'dashboard_layout' => 'default',
                 'language' => 'en',
-                'notifications' => 1
+                'timezone' => 'UTC',
+                'notifications_email' => 1,
+                'notifications_browser' => 1
             ];
         } catch (Exception $e) {
             error_log('getUserPreferences error: ' . $e->getMessage());
-            return ['theme' => 'light', 'language' => 'en', 'notifications' => 1];
+            return ['theme' => 'light', 'dashboard_layout' => 'default', 'language' => 'en', 'timezone' => 'UTC', 'notifications_email' => 1, 'notifications_browser' => 1];
         }
     }
     
     private function updateUserPreferences($userId, $preferences) {
         try {
-            $sql = "INSERT INTO user_preferences (user_id, theme, language, notifications) 
-                    VALUES (?, ?, ?, ?)
+            $sql = "INSERT INTO user_preferences (user_id, theme, dashboard_layout, language, timezone, notifications_email, notifications_browser) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
                     theme = VALUES(theme),
+                    dashboard_layout = VALUES(dashboard_layout),
                     language = VALUES(language),
-                    notifications = VALUES(notifications)";
+                    timezone = VALUES(timezone),
+                    notifications_email = VALUES(notifications_email),
+                    notifications_browser = VALUES(notifications_browser)";
             
             $stmt = $this->db->prepare($sql);
             return $stmt->execute([
                 $userId,
                 $preferences['theme'],
+                $preferences['dashboard_layout'],
                 $preferences['language'],
-                $preferences['notifications']
+                $preferences['timezone'],
+                $preferences['notifications_email'],
+                $preferences['notifications_browser']
             ]);
         } catch (Exception $e) {
             error_log('updateUserPreferences error: ' . $e->getMessage());

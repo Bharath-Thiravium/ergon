@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 
 class AdminManagementController extends Controller {
     

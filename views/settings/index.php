@@ -12,25 +12,25 @@ ob_start();
             </h2>
         </div>
         <div class="card__body">
-            <form id="settingsForm">
+            <form id="settingsForm" method="POST" action="/ergon/settings">
                 <div class="form-group">
                     <label class="form-label">Company Name</label>
-                    <input type="text" class="form-control" name="company_name" value="ERGON Company">
+                    <input type="text" class="form-control" name="company_name" value="<?= htmlspecialchars($data['settings']['company_name'] ?? 'ERGON Company') ?>">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Timezone</label>
                     <select class="form-control" name="timezone">
-                        <option value="Asia/Kolkata">Asia/Kolkata</option>
-                        <option value="UTC">UTC</option>
+                        <option value="Asia/Kolkata" <?= ($data['settings']['timezone'] ?? '') === 'Asia/Kolkata' ? 'selected' : '' ?>>Asia/Kolkata</option>
+                        <option value="UTC" <?= ($data['settings']['timezone'] ?? '') === 'UTC' ? 'selected' : '' ?>>UTC</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Working Hours per Day</label>
-                    <input type="number" class="form-control" name="working_hours" value="8">
+                    <input type="number" class="form-control" name="working_hours_start" value="<?= htmlspecialchars($data['settings']['working_hours_start'] ?? '09:00') ?>">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Attendance Radius (meters)</label>
-                    <input type="number" class="form-control" name="attendance_radius" value="200">
+                    <input type="number" class="form-control" name="attendance_radius" value="<?= htmlspecialchars($data['settings']['attendance_radius'] ?? '200') ?>">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Office Location</label>
@@ -39,11 +39,11 @@ ob_start();
                         <div class="location-input-grid">
                             <div class="form-group">
                                 <label class="form-label">Latitude</label>
-                                <input type="number" class="form-control" name="office_latitude" id="office_latitude" step="0.000001" placeholder="28.6139">
+                                <input type="number" class="form-control" name="office_latitude" id="office_latitude" step="0.000001" placeholder="28.6139" value="<?= htmlspecialchars($data['settings']['office_latitude'] ?? '') ?>">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Longitude</label>
-                                <input type="number" class="form-control" name="office_longitude" id="office_longitude" step="0.000001" placeholder="77.2090">
+                                <input type="number" class="form-control" name="office_longitude" id="office_longitude" step="0.000001" placeholder="77.2090" value="<?= htmlspecialchars($data['settings']['office_longitude'] ?? '') ?>">
                             </div>
                         </div>
                         <button type="button" class="btn btn--secondary" onclick="getCurrentLocation()">
@@ -52,7 +52,7 @@ ob_start();
                         <a href="/ergon/settings/location" class="btn btn--primary">
                             <span>🗺️</span> Advanced Map Picker
                         </a>
-                        <input type="hidden" name="office_address" id="office_address">
+                        <input type="hidden" name="office_address" id="office_address" value="<?= htmlspecialchars($data['settings']['office_address'] ?? '') ?>">
                     </div>
                 </div>
                 <button type="submit" class="btn btn--primary">Save Settings</button>
@@ -154,32 +154,7 @@ function searchLocation(query) {
         });
 }
 
-document.getElementById('settingsForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    
-    fetch('/ergon/settings', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (response.redirected) {
-            window.location.href = response.url;
-        } else {
-            return response.json();
-        }
-    })
-    .then(data => {
-        if (data && data.success) {
-            alert('Settings saved successfully!');
-        } else if (data && data.error) {
-            alert(data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-});
+// Form will submit normally to POST /ergon/settings
 </script>
 
 <style>
