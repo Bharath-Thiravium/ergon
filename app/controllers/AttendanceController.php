@@ -36,40 +36,66 @@ class AttendanceController extends Controller {
         AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            ob_clean();
-            header('Content-Type: application/json');
-            
             try {
                 $type = $_POST['type'] ?? '';
-                $latitude = $_POST['latitude'] ?? 0;
-                $longitude = $_POST['longitude'] ?? 0;
+                $latitude = floatval($_POST['latitude'] ?? 0);
+                $longitude = floatval($_POST['longitude'] ?? 0);
                 $userId = $_SESSION['user_id'];
                 
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
                 if ($type === 'in') {
-                    $coords = Security::validateGPSCoordinate($latitude, $longitude);
+                    // Check if already clocked in today
+                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(clock_in) = CURDATE() AND clock_out IS NULL");
+                    $stmt->execute([$userId]);
                     
-                    if (!$coords) {
-                        echo json_encode(['success' => false, 'error' => 'Invalid GPS coordinates']);
+                    if ($stmt->fetch()) {
+                        header('Location: /ergon/attendance/clock?error=Already clocked in today');
                         exit;
                     }
                     
-                    $result = $this->attendanceModel->checkIn(
-                        $userId,
-                        $coords['lat'],
-                        $coords['lng'],
-                        'Office'
-                    );
-                    echo json_encode(['success' => $result, 'message' => $result ? 'Clocked in successfully' : 'Already clocked in']);
+                    // Clock in
+                    $stmt = $db->prepare("INSERT INTO attendance (user_id, clock_in, latitude, longitude, location, created_at) VALUES (?, NOW(), ?, ?, 'Office', NOW())");
+                    $result = $stmt->execute([$userId, $latitude, $longitude]);
+                    
+                    if ($result) {
+                        header('Location: /ergon/attendance/clock?success=Clocked in successfully');
+                    } else {
+                        header('Location: /ergon/attendance/clock?error=Failed to clock in');
+                    }
+                    
                 } elseif ($type === 'out') {
-                    $result = $this->attendanceModel->checkOut($userId);
-                    echo json_encode(['success' => $result, 'message' => $result ? 'Clocked out successfully' : 'Not clocked in']);
+                    // Find today's clock in record
+                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(clock_in) = CURDATE() AND clock_out IS NULL");
+                    $stmt->execute([$userId]);
+                    $attendance = $stmt->fetch();
+                    
+                    if (!$attendance) {
+                        header('Location: /ergon/attendance/clock?error=No clock in record found for today');
+                        exit;
+                    }
+                    
+                    // Clock out
+                    $stmt = $db->prepare("UPDATE attendance SET clock_out = NOW(), updated_at = NOW() WHERE id = ?");
+                    $result = $stmt->execute([$attendance['id']]);
+                    
+                    if ($result) {
+                        header('Location: /ergon/attendance/clock?success=Clocked out successfully');
+                    } else {
+                        header('Location: /ergon/attendance/clock?error=Failed to clock out');
+                    }
+                    
                 } else {
-                    echo json_encode(['success' => false, 'error' => 'Invalid action']);
+                    header('Location: /ergon/attendance/clock?error=Invalid action');
                 }
+                exit;
+                
             } catch (Exception $e) {
-                echo json_encode(['success' => false, 'error' => 'Server error']);
+                error_log('Attendance clock error: ' . $e->getMessage());
+                header('Location: /ergon/attendance/clock?error=Server error occurred');
+                exit;
             }
-            exit;
         }
         
         $todayAttendance = $this->attendanceModel->getTodayAttendance($_SESSION['user_id']);

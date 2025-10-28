@@ -51,4 +51,17 @@ class NotificationController extends Controller {
             }
         }
     }
+    
+    public function markAllAsRead() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                // Mock mark all as read
+                echo json_encode(['success' => true, 'message' => 'All notifications marked as read']);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
+        }
+    }
 }

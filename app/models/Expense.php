@@ -114,5 +114,16 @@ class Expense {
             return ['total' => 0, 'pending' => 0, 'approved_amount' => 0, 'rejected' => 0];
         }
     }
+    
+    public function delete($id) {
+        try {
+            $sql = "DELETE FROM expenses WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([$id]);
+        } catch (Exception $e) {
+            error_log('Expense delete error: ' . $e->getMessage());
+            return false;
+        }
+    }
 }
 ?>

@@ -93,13 +93,12 @@ ob_start();
                             <td><?= isset($user['last_login']) ? date('M d, Y', strtotime($user['last_login'])) : 'Never' ?></td>
                             <td>
                                 <div class="btn-group">
-                                    <a href="/ergon/users/view/<?= $user['id'] ?>" class="btn btn--sm btn--primary">View</a>
-                                    <a href="/ergon/users/edit/<?= $user['id'] ?>" class="btn btn--sm btn--secondary">Edit</a>
-                                    <form method="POST" action="/ergon/users/reset-password" style="display:inline;">
-                                        <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
-                                        <button type="submit" class="btn btn--sm btn--warning">Reset Password</button>
-                                    </form>
-                                    <button class="btn btn--sm btn--danger">Delete</button>
+                                    <a href="/ergon/users/view/<?= $user['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
+                                        <span>👁️</span> View
+                                    </a>
+                                    <button onclick="deleteRecord('users', <?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--sm btn--danger" title="Delete User">
+                                        <span>🗑️</span> Delete
+                                    </button>
                                 </div>
                             </td>
                         </tr>

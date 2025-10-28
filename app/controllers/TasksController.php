@@ -79,8 +79,38 @@ class TasksController extends Controller {
             }
         }
         
-        $users = $this->userModel->getAll();
-        $data = ['users' => $users, 'active_page' => 'tasks'];
+        // Get users with fallback
+        try {
+            if ($this->userModel !== null) {
+                $users = $this->userModel->getAll();
+            } else {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE status = 'active' ORDER BY name");
+                $stmt->execute();
+                $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        } catch (Exception $e) {
+            error_log("Error fetching users: " . $e->getMessage());
+            $users = [];
+        }
+        
+        // Get departments for task assignment
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT id, name FROM departments WHERE status = 'active' ORDER BY name");
+            $stmt->execute();
+            $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $departments = [];
+        }
+        
+        $data = [
+            'users' => $users,
+            'departments' => $departments,
+            'active_page' => 'tasks'
+        ];
         $this->view('tasks/create', $data);
     }
     

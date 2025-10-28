@@ -6,9 +6,19 @@ $documents = $data['documents'] ?? [];
 ob_start();
 ?>
 
-<div class="header-actions">
-    <a href="/ergon/users/edit/<?= $user['id'] ?>" class="btn btn--primary">Edit User</a>
-    <a href="/ergon/users" class="btn btn--secondary">Back to Users</a>
+<div class="page-header">
+    <div class="page-title">
+        <h1><span>👥</span> User Details</h1>
+        <p>View user information and employment details</p>
+    </div>
+    <div class="page-actions">
+        <a href="/ergon/users/edit/<?= $user['id'] ?>" class="btn btn--primary">
+            <span>✏️</span> Edit User
+        </a>
+        <a href="/ergon/users" class="btn btn--secondary">
+            <span>←</span> Back to Users
+        </a>
+    </div>
 </div>
 
 <div class="user-profile">
@@ -132,63 +142,7 @@ ob_start();
     </div>
 </div>
 
-<style>
-.profile-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-}
 
-.profile-item {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.profile-item label {
-    font-weight: bold;
-    color: #666;
-    font-size: 14px;
-}
-
-.profile-item span {
-    font-size: 16px;
-}
-
-.documents-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 15px;
-}
-
-.document-item {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #f9f9f9;
-}
-
-.document-icon {
-    font-size: 24px;
-}
-
-.document-info {
-    flex: 1;
-}
-
-.document-name {
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-.document-size {
-    color: #666;
-    font-size: 14px;
-}
-</style>
 
 <?php
 $content = ob_get_clean();

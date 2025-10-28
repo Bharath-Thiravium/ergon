@@ -88,8 +88,12 @@ ob_start();
                             <td><?= date('M d, Y', strtotime($advance['created_at'] ?? 'now')) ?></td>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn btn--sm btn--primary">Approve</button>
-                                    <button class="btn btn--sm btn--secondary">Reject</button>
+                                    <a href="/ergon/advances/view/<?= $advance['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
+                                        <span>👁️</span> View
+                                    </a>
+                                    <button onclick="deleteRecord('advances', <?= $advance['id'] ?>, 'Advance Request')" class="btn btn--sm btn--danger" title="Delete Request">
+                                        <span>🗑️</span> Delete
+                                    </button>
                                 </div>
                             </td>
                         </tr>

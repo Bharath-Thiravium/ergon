@@ -65,7 +65,14 @@ ob_start();
                         <td><?= $approval['count'] ?></td>
                         <td><?= date('M d, Y', strtotime($approval['created_at'] ?? 'now')) ?></td>
                         <td>
-                            <a href="/ergon/<?= strtolower($approval['type']) ?>s" class="btn btn--primary btn--sm">Review</a>
+                            <div class="btn-group">
+                                <a href="/ergon/<?= strtolower($approval['type']) ?>s/view/<?= $approval['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
+                                    <span>👁️</span> View
+                                </a>
+                                <button onclick="deleteRecord('<?= strtolower($approval['type']) ?>s', <?= $approval['id'] ?>, '<?= $approval['type'] ?> Request')" class="btn btn--sm btn--danger" title="Delete Request">
+                                    <span>🗑️</span> Delete
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>

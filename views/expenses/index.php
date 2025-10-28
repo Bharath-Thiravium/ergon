@@ -79,8 +79,12 @@ ob_start();
                         <td><span class="badge badge--warning"><?= ucfirst($expense['status'] ?? 'pending') ?></span></td>
                         <td>
                             <div class="btn-group">
-                                <button class="btn btn--sm btn--primary">Approve</button>
-                                <button class="btn btn--sm btn--secondary">Reject</button>
+                                <a href="/ergon/expenses/view/<?= $expense['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
+                                    <span>👁️</span> View
+                                </a>
+                                <button onclick="deleteRecord('expenses', <?= $expense['id'] ?>, 'Expense Claim')" class="btn btn--sm btn--danger" title="Delete Claim">
+                                    <span>🗑️</span> Delete
+                                </button>
                             </div>
                         </td>
                     </tr>

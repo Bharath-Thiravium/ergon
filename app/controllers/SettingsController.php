@@ -47,7 +47,11 @@ class SettingsController extends Controller {
                     'company_address' => Security::sanitizeString($_POST['company_address'] ?? '', 500),
                     'working_hours_start' => $_POST['working_hours_start'] ?? '09:00',
                     'working_hours_end' => $_POST['working_hours_end'] ?? '18:00',
-                    'timezone' => Security::sanitizeString($_POST['timezone'] ?? 'UTC')
+                    'timezone' => Security::sanitizeString($_POST['timezone'] ?? 'UTC'),
+                    'office_latitude' => floatval($_POST['office_latitude'] ?? 0),
+                    'office_longitude' => floatval($_POST['office_longitude'] ?? 0),
+                    'office_address' => Security::sanitizeString($_POST['office_address'] ?? '', 500),
+                    'attendance_radius' => intval($_POST['attendance_radius'] ?? 200)
                 ];
                 
                 if ($this->updateSettings($settings)) {
@@ -63,6 +67,18 @@ class SettingsController extends Controller {
         }
         
         $this->index();
+    }
+    
+    public function locationPicker() {
+        AuthMiddleware::requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            http_response_code(403);
+            echo "Access denied";
+            exit;
+        }
+        
+        include __DIR__ . '/../../views/settings/location_picker.php';
     }
     
     private function getSettings() {
@@ -92,8 +108,8 @@ class SettingsController extends Controller {
     
     private function updateSettings($settings) {
         try {
-            $sql = "INSERT INTO settings (company_name, company_email, company_phone, company_address, working_hours_start, working_hours_end, timezone, updated_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            $sql = "INSERT INTO settings (company_name, company_email, company_phone, company_address, working_hours_start, working_hours_end, timezone, office_latitude, office_longitude, office_address, attendance_radius, updated_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                     ON DUPLICATE KEY UPDATE 
                     company_name = VALUES(company_name),
                     company_email = VALUES(company_email),
@@ -102,6 +118,10 @@ class SettingsController extends Controller {
                     working_hours_start = VALUES(working_hours_start),
                     working_hours_end = VALUES(working_hours_end),
                     timezone = VALUES(timezone),
+                    office_latitude = VALUES(office_latitude),
+                    office_longitude = VALUES(office_longitude),
+                    office_address = VALUES(office_address),
+                    attendance_radius = VALUES(attendance_radius),
                     updated_at = NOW()";
             
             $stmt = $this->db->prepare($sql);
@@ -112,7 +132,11 @@ class SettingsController extends Controller {
                 $settings['company_address'],
                 $settings['working_hours_start'],
                 $settings['working_hours_end'],
-                $settings['timezone']
+                $settings['timezone'],
+                $settings['office_latitude'],
+                $settings['office_longitude'],
+                $settings['office_address'],
+                $settings['attendance_radius']
             ]);
         } catch (Exception $e) {
             error_log('updateSettings error: ' . $e->getMessage());

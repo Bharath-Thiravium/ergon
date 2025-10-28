@@ -102,6 +102,38 @@ class SystemAdminController extends Controller {
         }
     }
     
+    public function export() {
+        $this->requireAuth();
+        
+        try {
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT name, email, status, created_at FROM users WHERE role = 'admin' ORDER BY created_at DESC");
+            $stmt->execute();
+            $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment; filename="system_admins_' . date('Y-m-d') . '.csv"');
+            
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['Name', 'Email', 'Status', 'Created Date']);
+            
+            foreach ($admins as $admin) {
+                fputcsv($output, [
+                    $admin['name'],
+                    $admin['email'],
+                    $admin['status'],
+                    date('Y-m-d H:i:s', strtotime($admin['created_at']))
+                ]);
+            }
+            
+            fclose($output);
+            exit;
+        } catch (Exception $e) {
+            header('Location: /ergon/system-admin?error=Export failed');
+            exit;
+        }
+    }
+    
     public function deactivate() {
         $this->requireAuth();
         

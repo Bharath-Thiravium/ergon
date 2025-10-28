@@ -74,8 +74,14 @@ ob_start();
                         </td>
                         <td><?= date('M d, Y', strtotime($dept['created_at'])) ?></td>
                         <td>
-                            <a href="/ergon/departments/edit/<?= $dept['id'] ?>" class="btn btn--sm btn--secondary">Edit</a>
-                            <a href="/ergon/departments/delete/<?= $dept['id'] ?>" class="btn btn--sm btn--danger" onclick="return confirm('Are you sure you want to delete this department?')">Delete</a>
+                            <div class="btn-group">
+                                <a href="/ergon/departments/view/<?= $dept['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
+                                    <span>👁️</span> View
+                                </a>
+                                <button onclick="deleteRecord('departments', <?= $dept['id'] ?>, '<?= htmlspecialchars($dept['name']) ?>')" class="btn btn--sm btn--danger" title="Delete Department">
+                                    <span>🗑️</span> Delete
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>

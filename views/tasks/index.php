@@ -76,7 +76,14 @@ ob_start();
                         <td><span class="badge badge--success"><?= ucfirst($task['status']) ?></span></td>
                         <td><?= $task['due_date'] ? date('M d, Y', strtotime($task['due_date'])) : 'No due date' ?></td>
                         <td>
-                            <button class="btn btn--sm btn--secondary">Edit</button>
+                            <div class="btn-group">
+                                <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
+                                    <span>👁️</span> View
+                                </a>
+                                <button onclick="deleteRecord('tasks', <?= $task['id'] ?>, '<?= htmlspecialchars($task['title']) ?>')" class="btn btn--sm btn--danger" title="Delete Task">
+                                    <span>🗑️</span> Delete
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>

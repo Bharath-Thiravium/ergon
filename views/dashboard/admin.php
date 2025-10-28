@@ -72,7 +72,13 @@ ob_start();
                         </h3>
                     </div>
                     <div class="card__body">
-                        <canvas id="teamChart" style="height: 300px;"></canvas>
+                        <div style="height: 300px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border-radius: 8px; color: #6b7280;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                                <div>Team Performance Chart</div>
+                                <div style="font-size: 12px; margin-top: 8px;">Chart will be displayed here</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -136,8 +142,14 @@ ob_start();
                                     <td>Dec 15-17, 2024</td>
                                     <td><span class="alert alert--warning" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">High</span></td>
                                     <td>
-                                        <button class="btn btn--primary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Approve</button>
-                                        <button class="btn btn--secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Reject</button>
+                                        <div class="btn-group">
+                                            <a href="/ergon/leaves/view/1" class="btn btn--sm btn--primary" title="View Details">
+                                                <span>👁️</span> View
+                                            </a>
+                                            <button onclick="deleteRecord('leaves', 1, 'Leave Request')" class="btn btn--sm btn--danger" title="Delete Request">
+                                                <span>🗑️</span> Delete
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr>
@@ -147,8 +159,14 @@ ob_start();
                                     <td>Dec 10, 2024</td>
                                     <td><span class="alert alert--success" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Medium</span></td>
                                     <td>
-                                        <button class="btn btn--primary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Approve</button>
-                                        <button class="btn btn--secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Reject</button>
+                                        <div class="btn-group">
+                                            <a href="/ergon/expenses/view/1" class="btn btn--sm btn--primary" title="View Details">
+                                                <span>👁️</span> View
+                                            </a>
+                                            <button onclick="deleteRecord('expenses', 1, 'Expense Claim')" class="btn btn--sm btn--danger" title="Delete Claim">
+                                                <span>🗑️</span> Delete
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -156,31 +174,7 @@ ob_start();
                     </div>
                 </div>
             </div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-// Team Performance Chart
-const ctx = document.getElementById('teamChart').getContext('2d');
-new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: ['Tasks', 'Attendance', 'Leaves', 'Expenses'],
-        datasets: [{
-            label: 'Pending Items',
-            data: [5, 2, 3, 1],
-            backgroundColor: ['#1e40af', '#059669', '#d97706', '#dc2626']
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.1)' } },
-            x: { grid: { color: 'rgba(0,0,0,0.1)' } }
-        }
-    }
-});
-</script>
+
 
 <?php
 $content = ob_get_clean();

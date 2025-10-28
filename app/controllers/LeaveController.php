@@ -98,13 +98,71 @@ class LeaveController extends Controller {
         $this->create();
     }
     
-    public function approve($id) {
+    public function viewLeave($id) {
+        AuthMiddleware::requireAuth();
+        
+        $id = Security::validateInt($id);
+        if (!$id) {
+            header('Location: /ergon/leaves?error=invalid_id');
+            exit;
+        }
+        
+        try {
+            $leave = $this->leave->getById($id);
+            if (!$leave) {
+                header('Location: /ergon/leaves?error=not_found');
+                exit;
+            }
+            
+            $data = [
+                'leave' => $leave,
+                'active_page' => 'leaves'
+            ];
+            
+            $this->view('leaves/view', $data);
+        } catch (Exception $e) {
+            error_log('Leave view error: ' . $e->getMessage());
+            header('Location: /ergon/leaves?error=view_failed');
+            exit;
+        }
+    }
+    
+    public function delete($id) {
+        AuthMiddleware::requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
+            exit;
+        }
+        
+        $id = Security::validateInt($id);
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid ID']);
+            exit;
+        }
+        
+        try {
+            $result = $this->leave->delete($id);
+            echo json_encode(['success' => $result]);
+        } catch (Exception $e) {
+            error_log('Leave delete error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Delete failed']);
+        }
+        exit;
+    }
+    
+    public function approve($id = null) {
         AuthMiddleware::requireAuth();
         
         if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
             http_response_code(403);
             echo "Access denied";
             exit;
+        }
+        
+        // Handle POST request
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['leave_id'] ?? $id;
         }
         
         $id = Security::validateInt($id);
@@ -114,8 +172,17 @@ class LeaveController extends Controller {
         }
         
         try {
-            $this->leave->updateStatus($id, 'approved', $_SESSION['user_id']);
-            header('Location: /ergon/leaves?success=approved');
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("UPDATE leaves SET status = 'approved', approved_by = ?, approved_at = NOW(), updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$_SESSION['user_id'], $id]);
+            
+            if ($result) {
+                header('Location: /ergon/leaves?success=Leave approved successfully');
+            } else {
+                header('Location: /ergon/leaves?error=Failed to approve leave');
+            }
         } catch (Exception $e) {
             error_log('Leave approval error: ' . $e->getMessage());
             header('Location: /ergon/leaves?error=approval_failed');
@@ -123,13 +190,18 @@ class LeaveController extends Controller {
         exit;
     }
     
-    public function reject($id) {
+    public function reject($id = null) {
         AuthMiddleware::requireAuth();
         
         if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
             http_response_code(403);
             echo "Access denied";
             exit;
+        }
+        
+        // Handle POST request
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['leave_id'] ?? $id;
         }
         
         $id = Security::validateInt($id);
@@ -139,13 +211,53 @@ class LeaveController extends Controller {
         }
         
         try {
-            $this->leave->updateStatus($id, 'rejected', $_SESSION['user_id']);
-            header('Location: /ergon/leaves?success=rejected');
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("UPDATE leaves SET status = 'rejected', approved_by = ?, approved_at = NOW(), updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$_SESSION['user_id'], $id]);
+            
+            if ($result) {
+                header('Location: /ergon/leaves?success=Leave rejected successfully');
+            } else {
+                header('Location: /ergon/leaves?error=Failed to reject leave');
+            }
         } catch (Exception $e) {
             error_log('Leave rejection error: ' . $e->getMessage());
             header('Location: /ergon/leaves?error=rejection_failed');
         }
         exit;
+    }
+    
+    public function apiCreate() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            return;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
+                $stmt = $db->prepare("INSERT INTO leaves (user_id, type, start_date, end_date, reason, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', NOW())");
+                $result = $stmt->execute([
+                    $_SESSION['user_id'],
+                    $_POST['type'] ?? 'sick',
+                    $_POST['start_date'] ?? date('Y-m-d'),
+                    $_POST['end_date'] ?? date('Y-m-d'),
+                    $_POST['reason'] ?? ''
+                ]);
+                
+                echo json_encode(['success' => $result, 'leave_id' => $db->lastInsertId()]);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
+        }
     }
 }
 ?>

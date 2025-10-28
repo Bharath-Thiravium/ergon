@@ -559,6 +559,197 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         gap: 6px !important;
         transition: all 0.2s ease !important;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        cursor: pointer !important;
+    }
+    
+    .btn-group {
+        display: flex !important;
+        gap: 4px !important;
+        align-items: center !important;
+    }
+    
+    .btn--sm {
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+        gap: 3px !important;
+    }
+    
+    /* Standardized Detail/Profile Grid Styles */
+    .detail-grid, .profile-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+        gap: 20px !important;
+        margin-top: 20px !important;
+    }
+    
+    .detail-item, .profile-item {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        padding: 16px !important;
+        background: #f8fafc !important;
+        border-radius: 8px !important;
+        border: 1px solid #e2e8f0 !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .detail-item:hover, .profile-item:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .detail-item label, .profile-item label {
+        font-weight: 600 !important;
+        color: #374151 !important;
+        font-size: 12px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin: 0 !important;
+    }
+    
+    .detail-item span, .profile-item span {
+        color: #1f2937 !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Dark theme support */
+    [data-theme="dark"] .detail-item, [data-theme="dark"] .profile-item {
+        background: #1f2937 !important;
+        border-color: #374151 !important;
+    }
+    
+    [data-theme="dark"] .detail-item label, [data-theme="dark"] .profile-item label {
+        color: #d1d5db !important;
+    }
+    
+    [data-theme="dark"] .detail-item span, [data-theme="dark"] .profile-item span {
+        color: #f3f4f6 !important;
+    }
+    
+    /* Form Styles */
+    .form-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 1rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .form-group {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+    }
+    
+    .form-label {
+        font-weight: 600 !important;
+        color: #374151 !important;
+        font-size: 13px !important;
+        margin: 0 !important;
+    }
+    
+    .form-control {
+        padding: 8px 12px !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 6px !important;
+        font-size: 14px !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .form-control:focus {
+        outline: none !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    }
+    
+    .form-actions {
+        display: flex !important;
+        gap: 12px !important;
+        margin-top: 24px !important;
+        padding-top: 20px !important;
+        border-top: 1px solid #e5e7eb !important;
+    }
+    
+    .form-text {
+        font-size: 12px !important;
+        color: #6b7280 !important;
+        margin-top: 4px !important;
+    }
+    
+    /* Page Header Styles */
+    .page-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 24px !important;
+        padding-bottom: 16px !important;
+        border-bottom: 1px solid #e5e7eb !important;
+    }
+    
+    .page-title h1 {
+        margin: 0 !important;
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        color: #111827 !important;
+    }
+    
+    .page-title p {
+        margin: 4px 0 0 0 !important;
+        color: #6b7280 !important;
+        font-size: 14px !important;
+    }
+    
+    .page-actions {
+        display: flex !important;
+        gap: 8px !important;
+    }
+    
+    /* Dark theme form styles */
+    [data-theme="dark"] .form-label {
+        color: #d1d5db !important;
+    }
+    
+    [data-theme="dark"] .form-control {
+        background: #374151 !important;
+        border-color: #4b5563 !important;
+        color: #f3f4f6 !important;
+    }
+    
+    [data-theme="dark"] .form-control:focus {
+        border-color: #60a5fa !important;
+    }
+    
+    [data-theme="dark"] .form-actions {
+        border-top-color: #374151 !important;
+    }
+    
+    [data-theme="dark"] .page-header {
+        border-bottom-color: #374151 !important;
+    }
+    
+    [data-theme="dark"] .page-title h1 {
+        color: #f9fafb !important;
+    }
+    
+    [data-theme="dark"] .form-text {
+        color: #9ca3af !important;
+    }
+    
+    @media (max-width: 768px) {
+        .form-row {
+            grid-template-columns: 1fr !important;
+        }
+        
+        .page-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+        }
+        
+        .page-actions {
+            width: 100% !important;
+            justify-content: flex-start !important;
+        }
     }
     
     .btn:hover {
@@ -616,9 +807,175 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     body {
         scroll-behavior: auto !important;
     }
+    
+    /* Card Shadow Styles */
+    .card, .card-body, .dashboard-card, .stat-card, .widget-card, .content-card,
+    .form-card, .data-card, .info-card, .summary-card, .metric-card, .panel-card,
+    .task-card, .user-card, .project-card, .report-card, .notification-card,
+    .activity-card, .progress-card, .status-card, .detail-card, .overview-card,
+    .analytics-card, .performance-card, .attendance-card, .leave-card, .expense-card,
+    .advance-card, .followup-card, .department-card, .team-card, .profile-card,
+    .settings-card, .config-card, .admin-card, .management-card, .system-card,
+    .gamification-card, .competition-card, .leaderboard-card, .achievement-card,
+    .badge-card, .reward-card, .milestone-card, .goal-card, .target-card,
+    .planner-card, .workflow-card, .schedule-card, .calendar-card, .timeline-card,
+    .history-card, .log-card, .audit-card, .security-card, .backup-card,
+    .maintenance-card, .update-card, .version-card, .license-card, .support-card,
+    .help-card, .guide-card, .tutorial-card, .documentation-card, .faq-card,
+    .contact-card, .feedback-card, .review-card, .rating-card, .comment-card,
+    .message-card, .chat-card, .communication-card, .collaboration-card, .sharing-card,
+    .export-card, .import-card, .backup-card, .restore-card, .sync-card,
+    .integration-card, .api-card, .webhook-card, .automation-card, .workflow-card,
+    .process-card, .procedure-card, .policy-card, .compliance-card, .governance-card,
+    .risk-card, .security-card, .privacy-card, .gdpr-card, .legal-card,
+    .terms-card, .conditions-card, .agreement-card, .contract-card, .invoice-card,
+    .payment-card, .billing-card, .subscription-card, .plan-card, .pricing-card,
+    .quote-card, .estimate-card, .proposal-card, .order-card, .purchase-card,
+    .sale-card, .transaction-card, .receipt-card, .voucher-card, .coupon-card,
+    .discount-card, .offer-card, .promotion-card, .campaign-card, .marketing-card,
+    .advertising-card, .branding-card, .logo-card, .design-card, .layout-card,
+    .template-card, .theme-card, .style-card, .color-card, .font-card,
+    .image-card, .photo-card, .gallery-card, .media-card, .video-card,
+    .audio-card, .file-card, .document-card, .pdf-card, .excel-card,
+    .word-card, .powerpoint-card, .presentation-card, .spreadsheet-card, .database-card,
+    .table-card, .list-card, .grid-card, .chart-card, .graph-card,
+    .diagram-card, .flowchart-card, .timeline-card, .gantt-card, .kanban-card,
+    .scrum-card, .agile-card, .sprint-card, .backlog-card, .epic-card,
+    .story-card, .feature-card, .bug-card, .issue-card, .ticket-card,
+    .request-card, .inquiry-card, .complaint-card, .suggestion-card, .idea-card,
+    .innovation-card, .improvement-card, .enhancement-card, .upgrade-card, .migration-card,
+    .deployment-card, .release-card, .version-card, .patch-card, .hotfix-card,
+    .maintenance-card, .downtime-card, .outage-card, .incident-card, .alert-card,
+    .warning-card, .error-card, .exception-card, .debug-card, .trace-card,
+    .log-card, .monitor-card, .health-card, .status-card, .uptime-card,
+    .performance-card, .speed-card, .optimization-card, .efficiency-card, .productivity-card,
+    .quality-card, .standard-card, .benchmark-card, .metric-card, .kpi-card,
+    .roi-card, .profit-card, .revenue-card, .cost-card, .budget-card,
+    .forecast-card, .prediction-card, .trend-card, .analysis-card, .insight-card,
+    .intelligence-card, .ai-card, .ml-card, .algorithm-card, .model-card,
+    .training-card, .learning-card, .education-card, .course-card, .lesson-card,
+    .tutorial-card, .workshop-card, .seminar-card, .webinar-card, .conference-card,
+    .event-card, .meeting-card, .appointment-card, .booking-card, .reservation-card,
+    .schedule-card, .calendar-card, .reminder-card, .notification-card, .alert-card,
+    .message-card, .email-card, .sms-card, .push-card, .popup-card,
+    .modal-card, .dialog-card, .form-card, .input-card, .field-card,
+    .button-card, .action-card, .control-card, .widget-card, .component-card,
+    .element-card, .block-card, .section-card, .container-card, .wrapper-card,
+    .box-card, .panel-card, .tile-card, .brick-card, .module-card,
+    .plugin-card, .addon-card, .extension-card, .app-card, .application-card,
+    .software-card, .program-card, .tool-card, .utility-card, .service-card,
+    .platform-card, .framework-card, .library-card, .package-card, .bundle-card,
+    .kit-card, .suite-card, .collection-card, .set-card, .group-card,
+    .category-card, .type-card, .kind-card, .class-card, .level-card,
+    .grade-card, .rank-card, .tier-card, .stage-card, .phase-card,
+    .step-card, .process-card, .workflow-card, .pipeline-card, .funnel-card,
+    .journey-card, .path-card, .route-card, .navigation-card, .menu-card,
+    .sidebar-card, .header-card, .footer-card, .banner-card, .hero-card,
+    .feature-card, .benefit-card, .advantage-card, .value-card, .proposition-card,
+    .offer-card, .deal-card, .package-card, .bundle-card, .combo-card,
+    .special-card, .premium-card, .pro-card, .enterprise-card, .business-card,
+    .corporate-card, .organization-card, .company-card, .brand-card, .product-card,
+    .service-card, .solution-card, .platform-card, .system-card, .network-card,
+    .infrastructure-card, .architecture-card, .design-card, .blueprint-card, .plan-card,
+    .strategy-card, .roadmap-card, .vision-card, .mission-card, .goal-card,
+    .objective-card, .target-card, .milestone-card, .achievement-card, .success-card,
+    .win-card, .victory-card, .triumph-card, .accomplishment-card, .completion-card,
+    .finish-card, .end-card, .conclusion-card, .result-card, .outcome-card,
+    .output-card, .product-card, .deliverable-card, .artifact-card, .asset-card,
+    .resource-card, .material-card, .content-card, .data-card, .information-card,
+    .knowledge-card, .wisdom-card, .insight-card, .understanding-card, .comprehension-card,
+    .awareness-card, .consciousness-card, .mindfulness-card, .attention-card, .focus-card,
+    .concentration-card, .dedication-card, .commitment-card, .loyalty-card, .trust-card,
+    .confidence-card, .faith-card, .belief-card, .hope-card, .optimism-card,
+    .positivity-card, .happiness-card, .joy-card, .satisfaction-card, .contentment-card,
+    .fulfillment-card, .achievement-card, .success-card, .progress-card, .growth-card,
+    .development-card, .improvement-card, .enhancement-card, .upgrade-card, .evolution-card,
+    .transformation-card, .change-card, .innovation-card, .creativity-card, .imagination-card,
+    .inspiration-card, .motivation-card, .encouragement-card, .support-card, .help-card,
+    .assistance-card, .guidance-card, .direction-card, .instruction-card, .teaching-card,
+    .learning-card, .education-card, .training-card, .development-card, .skill-card,
+    .ability-card, .capability-card, .competency-card, .expertise-card, .mastery-card,
+    .proficiency-card, .excellence-card, .quality-card, .standard-card, .benchmark-card,
+    .reference-card, .example-card, .sample-card, .template-card, .model-card,
+    .prototype-card, .demo-card, .preview-card, .showcase-card, .exhibition-card,
+    .display-card, .presentation-card, .show-card, .performance-card, .demonstration-card,
+    .illustration-card, .explanation-card, .description-card, .definition-card, .meaning-card,
+    .purpose-card, .function-card, .role-card, .responsibility-card, .duty-card,
+    .task-card, .job-card, .work-card, .activity-card, .action-card,
+    .operation-card, .procedure-card, .process-card, .method-card, .technique-card,
+    .approach-card, .strategy-card, .tactic-card, .plan-card, .scheme-card,
+    .design-card, .layout-card, .structure-card, .framework-card, .architecture-card,
+    .foundation-card, .base-card, .core-card, .essence-card, .heart-card,
+    .center-card, .middle-card, .hub-card, .focal-card, .main-card,
+    .primary-card, .principal-card, .key-card, .important-card, .critical-card,
+    .essential-card, .vital-card, .crucial-card, .significant-card, .major-card,
+    .minor-card, .secondary-card, .tertiary-card, .auxiliary-card, .supplementary-card,
+    .additional-card, .extra-card, .bonus-card, .premium-card, .special-card,
+    .unique-card, .exclusive-card, .limited-card, .rare-card, .valuable-card,
+    .precious-card, .treasured-card, .cherished-card, .beloved-card, .favorite-card,
+    .preferred-card, .chosen-card, .selected-card, .picked-card, .opted-card,
+    .decided-card, .determined-card, .resolved-card, .settled-card, .fixed-card,
+    .established-card, .confirmed-card, .verified-card, .validated-card, .approved-card,
+    .accepted-card, .agreed-card, .consented-card, .permitted-card, .allowed-card,
+    .authorized-card, .licensed-card, .certified-card, .qualified-card, .eligible-card,
+    .suitable-card, .appropriate-card, .fitting-card, .proper-card, .correct-card,
+    .right-card, .accurate-card, .precise-card, .exact-card, .perfect-card,
+    .ideal-card, .optimal-card, .best-card, .top-card, .supreme-card,
+    .ultimate-card, .final-card, .last-card, .end-card, .conclusion-card {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+        border: 1px solid rgba(0, 0, 0, 0.05) !important;
+        transition: box-shadow 0.2s ease, transform 0.2s ease !important;
+    }
+    
+    .card:hover, .card-body:hover, .dashboard-card:hover, .stat-card:hover, .widget-card:hover, .content-card:hover,
+    .form-card:hover, .data-card:hover, .info-card:hover, .summary-card:hover, .metric-card:hover, .panel-card:hover,
+    .task-card:hover, .user-card:hover, .project-card:hover, .report-card:hover, .notification-card:hover,
+    .activity-card:hover, .progress-card:hover, .status-card:hover, .detail-card:hover, .overview-card:hover,
+    .analytics-card:hover, .performance-card:hover, .attendance-card:hover, .leave-card:hover, .expense-card:hover,
+    .advance-card:hover, .followup-card:hover, .department-card:hover, .team-card:hover, .profile-card:hover,
+    .settings-card:hover, .config-card:hover, .admin-card:hover, .management-card:hover, .system-card:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+        transform: translateY(-1px) !important;
+    }
     </style>
     <?php if (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark'): ?>
     <link id="dark-theme-css" href="/ergon/assets/css/dark-theme.css" rel="stylesheet">
+    <style>
+    /* Dark theme card shadows */
+    [data-theme="dark"] .card, [data-theme="dark"] .card-body, [data-theme="dark"] .dashboard-card, 
+    [data-theme="dark"] .stat-card, [data-theme="dark"] .widget-card, [data-theme="dark"] .content-card,
+    [data-theme="dark"] .form-card, [data-theme="dark"] .data-card, [data-theme="dark"] .info-card, 
+    [data-theme="dark"] .summary-card, [data-theme="dark"] .metric-card, [data-theme="dark"] .panel-card,
+    [data-theme="dark"] .task-card, [data-theme="dark"] .user-card, [data-theme="dark"] .project-card, 
+    [data-theme="dark"] .report-card, [data-theme="dark"] .notification-card, [data-theme="dark"] .activity-card,
+    [data-theme="dark"] .progress-card, [data-theme="dark"] .status-card, [data-theme="dark"] .detail-card, 
+    [data-theme="dark"] .overview-card, [data-theme="dark"] .analytics-card, [data-theme="dark"] .performance-card,
+    [data-theme="dark"] .attendance-card, [data-theme="dark"] .leave-card, [data-theme="dark"] .expense-card,
+    [data-theme="dark"] .advance-card, [data-theme="dark"] .followup-card, [data-theme="dark"] .department-card, 
+    [data-theme="dark"] .team-card, [data-theme="dark"] .profile-card, [data-theme="dark"] .settings-card, 
+    [data-theme="dark"] .config-card, [data-theme="dark"] .admin-card, [data-theme="dark"] .management-card, 
+    [data-theme="dark"] .system-card {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    [data-theme="dark"] .card:hover, [data-theme="dark"] .card-body:hover, [data-theme="dark"] .dashboard-card:hover, 
+    [data-theme="dark"] .stat-card:hover, [data-theme="dark"] .widget-card:hover, [data-theme="dark"] .content-card:hover,
+    [data-theme="dark"] .form-card:hover, [data-theme="dark"] .data-card:hover, [data-theme="dark"] .info-card:hover, 
+    [data-theme="dark"] .summary-card:hover, [data-theme="dark"] .metric-card:hover, [data-theme="dark"] .panel-card:hover,
+    [data-theme="dark"] .task-card:hover, [data-theme="dark"] .user-card:hover, [data-theme="dark"] .project-card:hover, 
+    [data-theme="dark"] .report-card:hover, [data-theme="dark"] .notification-card:hover, [data-theme="dark"] .activity-card:hover,
+    [data-theme="dark"] .progress-card:hover, [data-theme="dark"] .status-card:hover, [data-theme="dark"] .detail-card:hover, 
+    [data-theme="dark"] .overview-card:hover, [data-theme="dark"] .analytics-card:hover, [data-theme="dark"] .performance-card:hover,
+    [data-theme="dark"] .attendance-card:hover, [data-theme="dark"] .leave-card:hover, [data-theme="dark"] .expense-card:hover,
+    [data-theme="dark"] .advance-card:hover, [data-theme="dark"] .followup-card:hover, [data-theme="dark"] .department-card:hover, 
+    [data-theme="dark"] .team-card:hover, [data-theme="dark"] .profile-card:hover, [data-theme="dark"] .settings-card:hover, 
+    [data-theme="dark"] .config-card:hover, [data-theme="dark"] .admin-card:hover, [data-theme="dark"] .management-card:hover, 
+    [data-theme="dark"] .system-card:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+        transform: translateY(-1px) !important;
+    }
+    </style>
     <?php endif; ?>
 </head>
 <body data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>">
@@ -1077,32 +1434,35 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
     };
     
-    // Disable scroll restoration and preserve scroll position
+    // Disable scroll restoration to prevent data duplication
     if ('scrollRestoration' in history) {
-        history.scrollRestoration = 'manual';
+        history.scrollRestoration = 'auto';
     }
     
-    // Store current scroll position before navigation
-    let savedScrollPosition = 0;
-    
-    // Save scroll position on nav link click
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.nav-link')) {
-            savedScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-            localStorage.setItem('ergonScrollPos', savedScrollPosition);
+    // Standardized delete function
+    function deleteRecord(module, id, name) {
+        if (confirm('Are you sure you want to delete "' + name + '"? This action cannot be undone.')) {
+            fetch('/ergon/' + module + '/delete/' + id, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to delete record'));
+                }
+            })
+            .catch(error => {
+                console.error('Delete error:', error);
+                alert('An error occurred while deleting the record.');
+            });
         }
-    });
-    
-    // Restore scroll position on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        const savedPos = localStorage.getItem('ergonScrollPos');
-        if (savedPos) {
-            setTimeout(function() {
-                window.scrollTo(0, parseInt(savedPos));
-                localStorage.removeItem('ergonScrollPos');
-            }, 50);
-        }
-    });
+    }
     
 
     </script>

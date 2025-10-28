@@ -23,19 +23,107 @@ class AdvanceController extends Controller {
     public function store() {
         $this->requireAuth();
         
-        $data = [
-            'user_id' => $_SESSION['user_id'],
-            'amount' => $_POST['amount'] ?? 0,
-            'reason' => $_POST['reason'] ?? '',
-            'requested_date' => date('Y-m-d'),
-            'status' => 'pending'
-        ];
-        
-        if ($this->advanceModel->create($data)) {
-            $this->json(['success' => true, 'message' => 'Advance request submitted']);
-        } else {
-            $this->json(['error' => 'Failed to submit advance request'], 400);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                $amount = floatval($_POST['amount'] ?? 0);
+                $reason = trim($_POST['reason'] ?? '');
+                
+                if ($amount <= 0) {
+                    header('Location: /ergon/advances/create?error=Invalid amount');
+                    exit;
+                }
+                
+                if (empty($reason)) {
+                    header('Location: /ergon/advances/create?error=Reason is required');
+                    exit;
+                }
+                
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
+                $stmt = $db->prepare("INSERT INTO advances (user_id, amount, reason, requested_date, status, created_at) VALUES (?, ?, ?, ?, 'pending', NOW())");
+                $result = $stmt->execute([
+                    $_SESSION['user_id'],
+                    $amount,
+                    $reason,
+                    date('Y-m-d')
+                ]);
+                
+                if ($result) {
+                    header('Location: /ergon/advances?success=Advance request submitted successfully');
+                } else {
+                    header('Location: /ergon/advances/create?error=Failed to submit advance request');
+                }
+                exit;
+            } catch (Exception $e) {
+                error_log('Advance creation error: ' . $e->getMessage());
+                header('Location: /ergon/advances/create?error=Failed to submit advance request');
+                exit;
+            }
         }
+        
+        header('Location: /ergon/advances/create');
+        exit;
+    }
+    
+    public function approve($id = null) {
+        $this->requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['advance_id'] ?? $id;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("UPDATE advances SET status = 'approved', approved_by = ?, approved_at = NOW(), updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$_SESSION['user_id'], $id]);
+            
+            if ($result) {
+                header('Location: /ergon/advances?success=Advance approved successfully');
+            } else {
+                header('Location: /ergon/advances?error=Failed to approve advance');
+            }
+        } catch (Exception $e) {
+            header('Location: /ergon/advances?error=Approval failed');
+        }
+        exit;
+    }
+    
+    public function reject($id = null) {
+        $this->requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['advance_id'] ?? $id;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("UPDATE advances SET status = 'rejected', approved_by = ?, approved_at = NOW(), updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$_SESSION['user_id'], $id]);
+            
+            if ($result) {
+                header('Location: /ergon/advances?success=Advance rejected successfully');
+            } else {
+                header('Location: /ergon/advances?error=Failed to reject advance');
+            }
+        } catch (Exception $e) {
+            header('Location: /ergon/advances?error=Rejection failed');
+        }
+        exit;
     }
 }
 ?>

@@ -150,5 +150,16 @@ class Leave {
             return false;
         }
     }
+    
+    public function delete($id) {
+        try {
+            $sql = "DELETE FROM leaves WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([$id]);
+        } catch (Exception $e) {
+            error_log('Leave delete error: ' . $e->getMessage());
+            return false;
+        }
+    }
 }
 ?>

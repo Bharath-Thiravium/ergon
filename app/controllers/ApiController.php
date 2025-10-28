@@ -115,14 +115,37 @@ class ApiController extends Controller {
     
     public function generateEmployeeId() {
         try {
-            $stmt = $this->userModel->conn->prepare("SELECT COUNT(*) + 1 as next_num FROM users WHERE employee_id IS NOT NULL");
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Get the highest existing employee ID number
+            $stmt = $db->prepare("SELECT employee_id FROM users WHERE employee_id LIKE 'EMP%' ORDER BY employee_id DESC LIMIT 1");
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            $nextNum = str_pad($result['next_num'], 3, '0', STR_PAD_LEFT);
             
-            $this->json(['employee_id' => 'EMP' . $nextNum]);
+            if ($result && $result['employee_id']) {
+                // Extract number from existing ID (e.g., EMP001 -> 001)
+                $lastNum = intval(substr($result['employee_id'], 3));
+                $nextNum = $lastNum + 1;
+            } else {
+                $nextNum = 1;
+            }
+            
+            $employeeId = 'EMP' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+            
+            // Check if this ID already exists (safety check)
+            $checkStmt = $db->prepare("SELECT COUNT(*) FROM users WHERE employee_id = ?");
+            $checkStmt->execute([$employeeId]);
+            
+            if ($checkStmt->fetchColumn() > 0) {
+                // If exists, generate a random one
+                $employeeId = 'EMP' . str_pad(rand(100, 999), 3, '0', STR_PAD_LEFT);
+            }
+            
+            $this->json(['employee_id' => $employeeId]);
         } catch (Exception $e) {
-            $this->json(['employee_id' => 'EMP' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT)]);
+            error_log('Generate Employee ID error: ' . $e->getMessage());
+            $this->json(['employee_id' => 'EMP' . str_pad(rand(100, 999), 3, '0', STR_PAD_LEFT)]);
         }
     }
     

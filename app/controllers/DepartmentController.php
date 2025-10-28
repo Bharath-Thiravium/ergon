@@ -156,4 +156,56 @@ class DepartmentController extends Controller {
     public function store() {
         $this->create();
     }
+    
+    public function editPost() {
+        session_start();
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['department_id'] ?? '';
+            $name = trim($_POST['name'] ?? '');
+            $description = trim($_POST['description'] ?? '');
+            $head_id = !empty($_POST['head_id']) ? (int)$_POST['head_id'] : null;
+            $status = $_POST['status'] ?? 'active';
+            
+            try {
+                $db = Database::connect();
+                $stmt = $db->prepare("UPDATE departments SET name = ?, description = ?, head_id = ?, status = ? WHERE id = ?");
+                $stmt->execute([$name, $description, $head_id, $status, $id]);
+                
+                header('Location: /ergon/departments?success=Department updated successfully');
+                exit;
+            } catch (Exception $e) {
+                header('Location: /ergon/departments?error=Failed to update department');
+                exit;
+            }
+        }
+    }
+    
+    public function deletePost() {
+        session_start();
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['department_id'] ?? '';
+            
+            try {
+                $db = Database::connect();
+                $stmt = $db->prepare("DELETE FROM departments WHERE id = ?");
+                $stmt->execute([$id]);
+                
+                header('Location: /ergon/departments?success=Department deleted successfully');
+                exit;
+            } catch (Exception $e) {
+                header('Location: /ergon/departments?error=Failed to delete department');
+                exit;
+            }
+        }
+    }
 }

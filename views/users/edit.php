@@ -136,6 +136,21 @@ ob_start();
     </div>
 </div>
 
+<script>
+function generateEmployeeId() {
+    fetch('/ergon/api/generate-employee-id')
+    .then(response => response.json())
+    .then(data => {
+        if (data.employee_id) {
+            document.querySelector('input[name="employee_id"]').value = data.employee_id;
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
+
+
+
 <?php
 $content = ob_get_clean();
 include __DIR__ . '/../layouts/dashboard.php';
