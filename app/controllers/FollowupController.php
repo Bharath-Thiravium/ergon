@@ -76,7 +76,7 @@ class FollowupController extends Controller {
             $db = Database::connect();
             $this->ensureTables($db);
             
-            $stmt = $db->prepare("INSERT INTO followups (user_id, title, company_name, contact_person, contact_phone, project_name, follow_up_date, original_date, description, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+            $stmt = $db->prepare("INSERT INTO followups (user_id, title, company_name, contact_person, contact_phone, project_name, follow_up_date, original_date, description, next_reminder, reminder_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
             $result = $stmt->execute([
                 $_SESSION['user_id'],
                 trim($_POST['title'] ?? ''),
@@ -86,7 +86,9 @@ class FollowupController extends Controller {
                 trim($_POST['project_name'] ?? ''),
                 $_POST['follow_up_date'] ?? date('Y-m-d'),
                 $_POST['follow_up_date'] ?? date('Y-m-d'),
-                trim($_POST['description'] ?? '')
+                trim($_POST['description'] ?? ''),
+                !empty($_POST['next_reminder']) ? $_POST['next_reminder'] : null,
+                !empty($_POST['reminder_time']) ? $_POST['reminder_time'] : null
             ]);
             
             if ($result) {

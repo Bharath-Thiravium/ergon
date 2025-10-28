@@ -2240,3 +2240,41 @@ Stack trace:
 [28-Oct-2025 11:16:31 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
 [28-Oct-2025 11:16:31 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
 [28-Oct-2025 11:16:31 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 11:19:20 UTC] ergon: Index.php executed - URI: /ergon/followups/history/5
+[28-Oct-2025 11:19:20 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 262
+[28-Oct-2025 11:19:20 UTC] History table exists: YES
+[28-Oct-2025 11:19:20 UTC] Total history records: 32
+[28-Oct-2025 11:19:20 UTC] History records for followup 5: 2
+[28-Oct-2025 11:19:20 UTC] Retrieved history count: 2
+[28-Oct-2025 11:21:39 UTC] ergon: Index.php executed - URI: /ergon/followups
+[28-Oct-2025 11:21:39 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[28-Oct-2025 11:21:39 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[28-Oct-2025 11:21:40 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[28-Oct-2025 11:22:09 UTC] ergon: Index.php executed - URI: /ergon/followups/view/18
+[28-Oct-2025 11:22:09 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 218
+[28-Oct-2025 11:22:18 UTC] ergon: Index.php executed - URI: /ergon/followups/history/18
+[28-Oct-2025 11:22:18 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 262
+[28-Oct-2025 11:22:18 UTC] History table exists: YES
+[28-Oct-2025 11:22:18 UTC] Total history records: 32
+[28-Oct-2025 11:22:18 UTC] History records for followup 18: 2
+[28-Oct-2025 11:22:18 UTC] Retrieved history count: 2
+[28-Oct-2025 11:24:00 UTC] ergon: Index.php executed - URI: /ergon/followups/view/18
+[28-Oct-2025 11:24:00 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 219
+[28-Oct-2025 11:24:15 UTC] ergon: Index.php executed - URI: /ergon/followups/history/5
+[28-Oct-2025 11:24:15 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 263
+[28-Oct-2025 11:24:15 UTC] History table exists: YES
+[28-Oct-2025 11:24:15 UTC] Total history records: 32
+[28-Oct-2025 11:24:15 UTC] History records for followup 5: 2
+[28-Oct-2025 11:24:15 UTC] Retrieved history count: 2
+[28-Oct-2025 11:24:18 UTC] ergon: Index.php executed - URI: /ergon/followups/history/9
+[28-Oct-2025 11:24:18 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 263
+[28-Oct-2025 11:24:18 UTC] History table exists: YES
+[28-Oct-2025 11:24:18 UTC] Total history records: 32
+[28-Oct-2025 11:24:18 UTC] History records for followup 9: 0
+[28-Oct-2025 11:24:18 UTC] Retrieved history count: 0
+[28-Oct-2025 11:24:23 UTC] ergon: Index.php executed - URI: /ergon/followups/history/6
+[28-Oct-2025 11:24:23 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 263
+[28-Oct-2025 11:24:23 UTC] History table exists: YES
+[28-Oct-2025 11:24:23 UTC] Total history records: 32
+[28-Oct-2025 11:24:23 UTC] History records for followup 6: 2
+[28-Oct-2025 11:24:23 UTC] Retrieved history count: 2
