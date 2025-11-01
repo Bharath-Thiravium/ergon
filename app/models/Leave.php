@@ -53,7 +53,10 @@ class Leave {
     
     public function getByUserId($user_id) {
         try {
-            $sql = "SELECT * FROM leaves WHERE user_id = ? ORDER BY created_at DESC";
+            $sql = "SELECT l.*, u.name as user_name 
+                    FROM leaves l 
+                    JOIN users u ON l.user_id = u.id 
+                    WHERE l.user_id = ? ORDER BY l.created_at DESC";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$user_id]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);

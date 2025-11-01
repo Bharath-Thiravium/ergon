@@ -1,6 +1,6 @@
 <?php
 $title = 'Request Advance';
-$active_page = 'requests';
+$active_page = 'advances';
 ob_start();
 ?>
 
@@ -14,7 +14,6 @@ ob_start();
     </div>
     <div class="card__body">
         <form method="POST" class="form">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <div class="form-group">
                 <label class="form-label">Advance Type</label>
                 <select name="type" class="form-control" required>

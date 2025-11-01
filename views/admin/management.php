@@ -11,10 +11,13 @@ ob_start();
         <p>Manage user roles and administrative permissions</p>
     </div>
     <div class="page-actions">
-        <button class="btn btn--primary" onclick="showAssignAdminModal()">
+        <a href="/ergon/users/create" class="btn btn--primary">
+            <span>➕</span> Add User
+        </a>
+        <button class="btn btn--secondary" onclick="showAssignAdminModal()">
             <span>⬆️</span> Promote User
         </button>
-        <button class="btn btn--secondary" onclick="exportUserList()">
+        <button class="btn btn--accent" onclick="exportUserList()">
             <span>📊</span> Export
         </button>
     </div>

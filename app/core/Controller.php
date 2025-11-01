@@ -2,14 +2,19 @@
 class Controller {
     
     protected function view($view, $data = []) {
-        extract($data);
-        $viewFile = __DIR__ . "/../../views/{$view}.php";
-        
-        if (file_exists($viewFile)) {
-            include $viewFile;
-        } else {
-            error_log("View not found: {$viewFile}");
-            throw new Exception("View {$view} not found");
+        try {
+            extract($data);
+            $viewFile = __DIR__ . "/../../views/{$view}.php";
+            
+            if (file_exists($viewFile)) {
+                include $viewFile;
+            } else {
+                error_log("View not found: {$viewFile}");
+                echo "<h1>View Error</h1><p>View file not found: {$view}</p>";
+            }
+        } catch (Exception $e) {
+            error_log("View error: " . $e->getMessage());
+            echo "<h1>View Error</h1><p>" . $e->getMessage() . "</p>";
         }
     }
     
@@ -21,7 +26,7 @@ class Controller {
     }
     
     protected function redirect($url) {
-        if (!str_starts_with($url, 'http') && !str_starts_with($url, '/ergon/')) {
+        if (strpos($url, 'http') !== 0 && strpos($url, '/ergon/') !== 0) {
             $url = '/ergon' . $url;
         }
         header("Location: {$url}");
@@ -33,7 +38,9 @@ class Controller {
     }
     
     protected function requireAuth() {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('/login');
         }

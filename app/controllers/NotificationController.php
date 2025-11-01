@@ -1,68 +1,61 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 
 class NotificationController extends Controller {
     
     public function index() {
-        $this->requireAuth();
+        AuthMiddleware::requireAuth();
         
         $title = 'Notifications';
         $active_page = 'notifications';
         
-        try {
-            $notifications = [
-                ['id' => 1, 'title' => 'New Task Assigned', 'message' => 'You have been assigned a new task', 'type' => 'info', 'read' => false, 'created_at' => date('Y-m-d H:i:s')],
-                ['id' => 2, 'title' => 'Leave Approved', 'message' => 'Your leave request has been approved', 'type' => 'success', 'read' => false, 'created_at' => date('Y-m-d H:i:s', strtotime('-1 hour'))],
-                ['id' => 3, 'title' => 'System Maintenance', 'message' => 'System will be under maintenance tonight', 'type' => 'warning', 'read' => true, 'created_at' => date('Y-m-d H:i:s', strtotime('-2 hours'))]
-            ];
-            
-            $data = ['notifications' => $notifications];
-            
-            ob_start();
-            include __DIR__ . '/../../views/notifications/index.php';
-            $content = ob_get_clean();
-            include __DIR__ . '/../../views/layouts/dashboard.php';
-            
-        } catch (Exception $e) {
-            $this->handleError($e, 'Failed to load notifications');
-        }
+        // Check if all notifications should be marked as read
+        $allRead = isset($_SESSION['notifications_all_read']) && $_SESSION['notifications_all_read'];
+        
+        // Simple mock data
+        $notifications = [
+            ['id' => 1, 'title' => 'New Task Assigned', 'message' => 'You have been assigned a new task', 'type' => 'info', 'is_read' => $allRead || (isset($_SESSION['notification_1_read']) && $_SESSION['notification_1_read']), 'created_at' => date('Y-m-d H:i:s')],
+            ['id' => 2, 'title' => 'Leave Approved', 'message' => 'Your leave request has been approved', 'type' => 'success', 'is_read' => $allRead || (isset($_SESSION['notification_2_read']) && $_SESSION['notification_2_read']), 'created_at' => date('Y-m-d H:i:s', strtotime('-1 hour'))],
+            ['id' => 3, 'title' => 'System Maintenance', 'message' => 'System will be under maintenance tonight', 'type' => 'warning', 'is_read' => true, 'created_at' => date('Y-m-d H:i:s', strtotime('-2 hours'))]
+        ];
+        
+        ob_start();
+        include __DIR__ . '/../../views/notifications/index.php';
+        $content = ob_get_clean();
+        include __DIR__ . '/../../views/layouts/dashboard.php';
     }
     
     public function getUnreadCount() {
-        $this->requireAuth();
+        AuthMiddleware::requireAuth();
         
-        try {
-            // Mock unread count
-            $count = 2;
-            echo json_encode(['count' => $count]);
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
+        header('Content-Type: application/json');
+        echo json_encode(['count' => 2]);
+        exit;
     }
     
     public function markAsRead() {
-        $this->requireAuth();
+        AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            try {
-                // Mock mark as read
-                echo json_encode(['success' => true]);
-            } catch (Exception $e) {
-                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            $id = $_POST['id'] ?? 0;
+            if ($id) {
+                $_SESSION['notification_' . $id . '_read'] = true;
             }
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Notification marked as read']);
+            exit;
         }
     }
     
     public function markAllAsRead() {
-        $this->requireAuth();
+        AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            try {
-                // Mock mark all as read
-                echo json_encode(['success' => true, 'message' => 'All notifications marked as read']);
-            } catch (Exception $e) {
-                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-            }
+            $_SESSION['notifications_all_read'] = true;
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'All notifications marked as read']);
+            exit;
         }
     }
 }

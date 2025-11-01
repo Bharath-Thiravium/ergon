@@ -64,7 +64,7 @@ ob_start();
         <?php else: ?>
             <div class="notification-list">
                 <?php foreach ($notifications as $notification): ?>
-                <div class="notification-item <?= ($notification['is_read'] ?? false) ? 'notification-item--read' : 'notification-item--unread' ?>">
+                <div class="notification-item <?= ($notification['is_read'] ?? false) ? 'notification-item--read' : 'notification-item--unread' ?>" data-notification-id="<?= $notification['id'] ?? 0 ?>">
                     <div class="notification-header">
                         <h4 class="notification-title"><?= htmlspecialchars($notification['title'] ?? 'Notification') ?></h4>
                         <span class="notification-time"><?= date('M d, H:i', strtotime($notification['created_at'] ?? 'now')) ?></span>
@@ -86,7 +86,7 @@ ob_start();
 
 <script>
 function markAsRead(id) {
-    fetch('/ergon/api/notifications/mark-read', {
+    fetch('/ergon/notifications/markAsRead', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -97,16 +97,18 @@ function markAsRead(id) {
     .then(data => {
         if (data.success) {
             location.reload();
+        } else {
+            alert(data.error || 'Failed to mark as read');
         }
     })
     .catch(error => {
-        console.log('Marked as read:', id);
-        location.reload();
+        console.error('Error:', error);
+        alert('Network error occurred');
     });
 }
 
 function markAllAsRead() {
-    fetch('/ergon/api/notifications/mark-all-read', {
+    fetch('/ergon/notifications/markAllAsRead', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -116,11 +118,13 @@ function markAllAsRead() {
     .then(data => {
         if (data.success) {
             location.reload();
+        } else {
+            alert(data.error || 'Failed to mark all as read');
         }
     })
     .catch(error => {
-        console.log('Marked all as read');
-        location.reload();
+        console.error('Error:', error);
+        alert('Network error occurred');
     });
 }
 </script>
