@@ -53,7 +53,7 @@ $router->get('/departments/create', 'DepartmentController', 'create');
 $router->post('/departments/create', 'DepartmentController', 'store');
 $router->get('/departments/view/{id}', 'DepartmentController', 'viewDepartment');
 $router->get('/departments/edit/{id}', 'DepartmentController', 'edit');
-$router->post('/departments/edit/{id}', 'DepartmentController', 'update');
+$router->post('/departments/edit/{id}', 'DepartmentController', 'edit');
 $router->post('/departments/delete/{id}', 'DepartmentController', 'delete');
 $router->post('/departments/edit', 'DepartmentController', 'editPost');
 $router->post('/departments/delete', 'DepartmentController', 'deletePost');
@@ -62,6 +62,8 @@ $router->post('/departments/delete', 'DepartmentController', 'deletePost');
 $router->get('/tasks', 'TasksController', 'index');
 $router->get('/tasks/create', 'TasksController', 'create');
 $router->post('/tasks/create', 'TasksController', 'store');
+$router->get('/tasks/edit/{id}', 'TasksController', 'edit');
+$router->post('/tasks/edit/{id}', 'TasksController', 'edit');
 $router->get('/tasks/view/{id}', 'TasksController', 'viewTask');
 $router->post('/tasks/delete/{id}', 'TasksController', 'delete');
 $router->get('/tasks/calendar', 'TasksController', 'calendar');
@@ -92,22 +94,30 @@ $router->get('/expenses/create', 'ExpenseController', 'create');
 $router->post('/expenses/create', 'ExpenseController', 'create');
 $router->get('/expenses/view/{id}', 'ExpenseController', 'viewExpense');
 $router->post('/expenses/delete/{id}', 'ExpenseController', 'delete');
+$router->get('/expenses/approve/{id}', 'ExpenseController', 'approve');
 $router->post('/expenses/approve/{id}', 'ExpenseController', 'approve');
+$router->get('/expenses/reject/{id}', 'ExpenseController', 'reject');
 $router->post('/expenses/reject/{id}', 'ExpenseController', 'reject');
 
 // Advance Management
 $router->get('/advances', 'AdvanceController', 'index');
 $router->get('/advances/create', 'AdvanceController', 'create');
 $router->post('/advances/create', 'AdvanceController', 'store');
-$router->get('/advances/view/{id}', 'AdvanceController', 'view');
+$router->get('/advances/edit/{id}', 'AdvanceController', 'edit');
+$router->post('/advances/edit/{id}', 'AdvanceController', 'edit');
+$router->post('/advances/store', 'AdvanceController', 'store');
+$router->get('/advances/view/{id}', 'AdvanceController', 'viewAdvance');
 $router->post('/advances/delete/{id}', 'AdvanceController', 'delete');
+$router->get('/advances/approve/{id}', 'AdvanceController', 'approve');
 $router->post('/advances/approve/{id}', 'AdvanceController', 'approve');
+$router->get('/advances/reject/{id}', 'AdvanceController', 'reject');
 $router->post('/advances/reject/{id}', 'AdvanceController', 'reject');
 
 // Reports
 $router->get('/reports', 'ReportsController', 'index');
 $router->get('/reports/activity', 'ReportsController', 'activity');
 $router->get('/reports/export', 'ReportsController', 'export');
+$router->get('/reports/approvals-export', 'ReportsController', 'approvalsExport');
 
 // Settings
 $router->get('/settings', 'SettingsController', 'index');
@@ -119,6 +129,8 @@ $router->post('/settings/save', 'SettingsController', 'update');
 $router->get('/owner/approvals', 'OwnerController', 'approvals');
 $router->get('/owner/approvals/view/{type}/{id}', 'OwnerController', 'viewApproval');
 $router->post('/owner/approvals/delete/{type}/{id}', 'OwnerController', 'deleteApproval');
+$router->post('/owner/approve-request', 'OwnerController', 'approveRequest');
+$router->post('/owner/reject-request', 'OwnerController', 'rejectRequest');
 
 // Profile
 $router->get('/profile', 'ProfileController', 'index');
@@ -133,12 +145,16 @@ $router->get('/notifications', 'NotificationController', 'index');
 $router->get('/api/notifications/unread-count', 'NotificationController', 'getUnreadCount');
 $router->post('/api/notifications/mark-read', 'NotificationController', 'markAsRead');
 $router->post('/api/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
+$router->post('/notifications/markAsRead', 'NotificationController', 'markAsRead');
+$router->post('/notifications/markAllAsRead', 'NotificationController', 'markAllAsRead');
 $router->post('/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
 $router->post('/notifications/mark-as-read', 'NotificationController', 'markAsRead');
 
 // Daily Workflow Management (New Integrated System)
 $router->get('/daily-workflow/morning-planner', 'DailyWorkflowController', 'morningPlanner');
+$router->post('/daily-workflow/submit-morning-plans', 'DailyWorkflowController', 'submitMorningPlans');
 $router->get('/daily-workflow/evening-update', 'DailyWorkflowController', 'eveningUpdate');
+$router->post('/daily-workflow/submit-evening-updates', 'DailyWorkflowController', 'submitEveningUpdates');
 $router->post('/daily-workflow/add-task', 'DailyWorkflowController', 'addTask');
 $router->post('/daily-workflow/update-task', 'DailyWorkflowController', 'updateTask');
 $router->post('/daily-workflow/delete-task', 'DailyWorkflowController', 'deleteTask');
@@ -216,8 +232,9 @@ $router->post('/project-management/delete', 'ProjectManagementController', 'dele
 
 // Follow-up Routes
 $router->get('/followups', 'FollowupController', 'index');
+$router->get('/followups/create', 'FollowupController', 'create');
 $router->post('/followups', 'FollowupController', 'handlePost');
-$router->post('/followups/create', 'FollowupController', 'create');
+$router->post('/followups/create', 'FollowupController', 'store');
 $router->get('/followups/view/{id}', 'FollowupController', 'viewFollowup');
 $router->post('/followups/update', 'FollowupController', 'update');
 $router->post('/followups/reschedule', 'FollowupController', 'reschedule');

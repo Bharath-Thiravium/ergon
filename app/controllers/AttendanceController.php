@@ -1,49 +1,50 @@
 <?php
-require_once __DIR__ . '/../models/Attendance.php';
-require_once __DIR__ . '/../helpers/Security.php';
-require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../core/Controller.php';
-require_once __DIR__ . '/../config/database.php';
 
 class AttendanceController extends Controller {
-    private $attendanceModel;
-    
-    public function __construct() {
-        $this->attendanceModel = new Attendance();
-    }
     
     public function index() {
-        AuthMiddleware::requireAuth();
+        $this->requireAuth();
         
-        $role = $_SESSION['role'] ?? 'user';
-        
-        if ($role === 'user') {
-            $data = [
-                'attendance' => $this->attendanceModel->getUserAttendance($_SESSION['user_id']),
-                'active_page' => 'attendance'
-            ];
-        } else {
-            $data = [
-                'attendance' => $this->attendanceModel->getAll(),
-                'active_page' => 'attendance'
-            ];
+        $attendance = [];
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $this->ensureAttendanceTable($db);
+            
+            $role = $_SESSION['role'] ?? 'user';
+            if ($role === 'user') {
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM attendance a LEFT JOIN users u ON a.user_id = u.id WHERE a.user_id = ? ORDER BY a.created_at DESC LIMIT 30");
+                $stmt->execute([$_SESSION['user_id']]);
+            } else {
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM attendance a LEFT JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC");
+                $stmt->execute();
+            }
+            $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Attendance index error: ' . $e->getMessage());
         }
         
-        $this->view('attendance/index', $data);
+        $this->view('attendance/index', ['attendance' => $attendance, 'active_page' => 'attendance']);
     }
     
     public function clock() {
-        AuthMiddleware::requireAuth();
+        $this->requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
+                $this->ensureAttendanceTable($db);
+                
                 $type = $_POST['type'] ?? '';
                 $latitude = floatval($_POST['latitude'] ?? 0);
                 $longitude = floatval($_POST['longitude'] ?? 0);
                 $userId = $_SESSION['user_id'];
                 
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
+                header('Content-Type: application/json');
                 
                 if ($type === 'in') {
                     // Check if already clocked in today
@@ -51,18 +52,18 @@ class AttendanceController extends Controller {
                     $stmt->execute([$userId]);
                     
                     if ($stmt->fetch()) {
-                        header('Location: /ergon/attendance/clock?error=Already clocked in today');
+                        echo json_encode(['success' => false, 'error' => 'Already clocked in today']);
                         exit;
                     }
                     
                     // Clock in
-                    $stmt = $db->prepare("INSERT INTO attendance (user_id, clock_in, latitude, longitude, location, created_at) VALUES (?, NOW(), ?, ?, 'Office', NOW())");
+                    $stmt = $db->prepare("INSERT INTO attendance (user_id, clock_in, latitude, longitude, location, status, created_at) VALUES (?, NOW(), ?, ?, 'Office', 'present', NOW())");
                     $result = $stmt->execute([$userId, $latitude, $longitude]);
                     
                     if ($result) {
-                        header('Location: /ergon/attendance/clock?success=Clocked in successfully');
+                        echo json_encode(['success' => true, 'message' => 'Clocked in successfully']);
                     } else {
-                        header('Location: /ergon/attendance/clock?error=Failed to clock in');
+                        echo json_encode(['success' => false, 'error' => 'Failed to clock in']);
                     }
                     
                 } elseif ($type === 'out') {
@@ -72,7 +73,7 @@ class AttendanceController extends Controller {
                     $attendance = $stmt->fetch();
                     
                     if (!$attendance) {
-                        header('Location: /ergon/attendance/clock?error=No clock in record found for today');
+                        echo json_encode(['success' => false, 'error' => 'No clock in record found for today']);
                         exit;
                     }
                     
@@ -81,61 +82,44 @@ class AttendanceController extends Controller {
                     $result = $stmt->execute([$attendance['id']]);
                     
                     if ($result) {
-                        header('Location: /ergon/attendance/clock?success=Clocked out successfully');
+                        echo json_encode(['success' => true, 'message' => 'Clocked out successfully']);
                     } else {
-                        header('Location: /ergon/attendance/clock?error=Failed to clock out');
+                        echo json_encode(['success' => false, 'error' => 'Failed to clock out']);
                     }
                     
                 } else {
-                    header('Location: /ergon/attendance/clock?error=Invalid action');
+                    echo json_encode(['success' => false, 'error' => 'Invalid action']);
                 }
                 exit;
                 
             } catch (Exception $e) {
                 error_log('Attendance clock error: ' . $e->getMessage());
-                header('Location: /ergon/attendance/clock?error=Server error occurred');
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Server error occurred']);
                 exit;
             }
         }
         
-        $todayAttendance = $this->attendanceModel->getTodayAttendance($_SESSION['user_id']);
-        $data = [
-            'today_attendance' => $todayAttendance,
-            'active_page' => 'attendance'
-        ];
-        
-        $this->view('attendance/clock', $data);
-    }
-    
-    public function conflicts() {
-        AuthMiddleware::requireAuth();
-        
-        $conflicts = $this->attendanceModel->getConflicts();
-        $data = [
-            'conflicts' => $conflicts,
-            'active_page' => 'attendance'
-        ];
-        
-        $this->view('attendance/conflicts', $data);
-    }
-    
-    public function resolveConflict($id) {
-        AuthMiddleware::requireAuth();
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            header('Content-Type: application/json');
+        // GET request - show clock page
+        $todayAttendance = null;
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureAttendanceTable($db);
             
-            try {
-                $db = Database::connect();
-                $stmt = $db->prepare("UPDATE attendance_conflicts SET resolved = 1, resolved_by = ?, resolved_at = NOW() WHERE id = ?");
-                $result = $stmt->execute([$_SESSION['user_id'], $id]);
-                
-                echo json_encode(['success' => $result]);
-            } catch (Exception $e) {
-                echo json_encode(['success' => false, 'error' => 'Database error']);
-            }
-            exit;
+            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(clock_in) = CURDATE()");
+            $stmt->execute([$_SESSION['user_id']]);
+            $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Today attendance fetch error: ' . $e->getMessage());
         }
+        
+        $this->view('attendance/clock', ['today_attendance' => $todayAttendance, 'active_page' => 'attendance']);
+    }
+    
+    private function ensureAttendanceTable($db) {
+        // Table already exists with correct structure
+        return true;
     }
 }
 ?>

@@ -21,6 +21,7 @@ ob_start();
         <h2 class="card__title">
             <span>✅</span> <?= htmlspecialchars($task['title'] ?? 'Task') ?>
         </h2>
+
     </div>
     <div class="card__body">
         <div class="detail-grid">
@@ -46,7 +47,7 @@ ob_start();
             </div>
             <div class="detail-item">
                 <label>Due Date</label>
-                <span><?= $task['due_date'] ? date('M d, Y', strtotime($task['due_date'])) : 'No due date' ?></span>
+                <span><?= ($task['deadline'] ?? $task['due_date']) ? date('M d, Y', strtotime($task['deadline'] ?? $task['due_date'])) : 'No due date' ?></span>
             </div>
         </div>
     </div>

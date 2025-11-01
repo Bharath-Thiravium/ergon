@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../app/helpers/Security.php';
 $title = 'Edit Department';
 $active_page = 'departments';
 ob_start();

@@ -5,7 +5,49 @@ class Expense {
     private $db;
     
     public function __construct() {
-        $this->db = Database::connect();
+        try {
+            $this->db = Database::connect();
+            $this->ensureExpenseTable();
+        } catch (Exception $e) {
+            error_log('Expense model: Database connection failed - ' . $e->getMessage());
+            throw $e;
+        }
+    }
+    
+    private function ensureExpenseTable() {
+        try {
+            // First check if table exists
+            $stmt = $this->db->query("SHOW TABLES LIKE 'expenses'");
+            if ($stmt->rowCount() == 0) {
+                // Create new table
+                $sql = "CREATE TABLE expenses (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    category VARCHAR(100) NOT NULL DEFAULT 'general',
+                    amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                    description TEXT,
+                    expense_date DATE NOT NULL,
+                    attachment VARCHAR(255) NULL,
+                    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                    approved_by INT NULL,
+                    approved_at TIMESTAMP NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )";
+                
+                $this->db->exec($sql);
+                error_log('Expenses table created successfully');
+            } else {
+                // Table exists, check if expense_date column exists
+                $stmt = $this->db->query("SHOW COLUMNS FROM expenses LIKE 'expense_date'");
+                if ($stmt->rowCount() == 0) {
+                    $this->db->exec("ALTER TABLE expenses ADD COLUMN expense_date DATE NOT NULL DEFAULT (CURDATE())");
+                    error_log('Added expense_date column to existing expenses table');
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Error ensuring expense table: ' . $e->getMessage());
+        }
     }
     
     public function create($data) {
@@ -14,17 +56,29 @@ class Expense {
                 return false;
             }
             
-            $sql = "INSERT INTO expenses (user_id, category, amount, description, expense_date, attachment, status) 
-                    VALUES (?, ?, ?, ?, ?, ?, 'pending')";
+            $sql = "INSERT INTO expenses (user_id, category, amount, description, expense_date, attachment, status, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())";
             $stmt = $this->db->prepare($sql);
-            return $stmt->execute([
+            
+            $params = [
                 $data['user_id'],
                 $data['category'],
                 $data['amount'],
                 $data['description'] ?? '',
                 $data['expense_date'] ?? date('Y-m-d'),
                 $data['attachment'] ?? null
-            ]);
+            ];
+            
+            $result = $stmt->execute($params);
+            
+            if (!$result) {
+                $errorInfo = $stmt->errorInfo();
+                error_log('Expense SQL Error: ' . implode(' - ', $errorInfo));
+                error_log('SQL: ' . $sql);
+                error_log('Params: ' . json_encode($params));
+            }
+            
+            return $result;
         } catch (Exception $e) {
             error_log('Expense create error: ' . $e->getMessage());
             return false;
@@ -33,7 +87,7 @@ class Expense {
     
     public function getAll() {
         try {
-            $sql = "SELECT e.*, u.name as user_name 
+            $sql = "SELECT e.*, u.name as user_name, u.role as user_role 
                     FROM expenses e 
                     JOIN users u ON e.user_id = u.id 
                     ORDER BY e.created_at DESC";
@@ -47,7 +101,10 @@ class Expense {
     
     public function getByUserId($user_id) {
         try {
-            $sql = "SELECT * FROM expenses WHERE user_id = ? ORDER BY created_at DESC";
+            $sql = "SELECT e.*, u.name as user_name, u.role as user_role 
+                    FROM expenses e 
+                    JOIN users u ON e.user_id = u.id 
+                    WHERE e.user_id = ? ORDER BY e.created_at DESC";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$user_id]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);

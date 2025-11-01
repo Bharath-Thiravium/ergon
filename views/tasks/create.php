@@ -17,7 +17,7 @@ $content = ob_start();
         <h2 class="card__title">Task Details</h2>
     </div>
     <div class="card__body">
-        <form id="createTaskForm">
+        <form id="createTaskForm" method="POST" action="/ergon/tasks/create">
             <div class="form-group">
                 <label for="title" class="form-label">Title</label>
                 <input type="text" class="form-control" id="title" name="title" required>
@@ -28,13 +28,18 @@ $content = ob_start();
             </div>
             <div class="form-group">
                 <label for="assigned_to" class="form-label">Assign To</label>
-                <select class="form-control" id="assigned_to" name="assigned_to">
+                <select class="form-control" id="assigned_to" name="assigned_to" required>
                     <option value="">Select User</option>
+                    <?php if (!empty($users)): ?>
+                        <?php foreach ($users as $user): ?>
+                            <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['name']) ?> (<?= htmlspecialchars($user['role']) ?>)</option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </select>
             </div>
             <div class="form-group">
-                <label for="due_date" class="form-label">Due Date</label>
-                <input type="date" class="form-control" id="due_date" name="due_date">
+                <label for="deadline" class="form-label">Due Date</label>
+                <input type="date" class="form-control" id="deadline" name="deadline">
             </div>
             <div class="form-group">
                 <label for="priority" class="form-label">Priority</label>
@@ -50,29 +55,7 @@ $content = ob_start();
     </div>
 </div>
 
-<script>
-document.getElementById('createTaskForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    
-    fetch('/ergon/tasks/create', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Task created successfully!');
-            window.location.href = '/ergon/tasks';
-        } else {
-            alert(data.error || 'Failed to create task');
-        }
-    })
-    .catch(error => {
-        alert('Error creating task');
-    });
-});
-</script>
+
 
 <?php
 $content = ob_get_clean();

@@ -370,6 +370,19 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         z-index: 1;
     }
     
+    /* Hide duplicate headers in notification content only */
+    body[data-page="notifications"] .main-content .main-header,
+    body[data-page="notifications"] .main-content .header__top {
+        display: none !important;
+    }
+    
+    /* Decrease container size for notifications page */
+    body[data-page="notifications"] .main-content {
+        max-width: 1500px !important;
+        margin: 0 auto !important;
+        padding: 5px !important;
+    }
+    
     @media (max-width: 1200px) {
         .nav-group {
             padding: 0 8px;
@@ -794,6 +807,47 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         color: #14532d !important;
     }
     
+    /* Global Icon System - Force Filled Icons Without Outlines */
+    .bi, .bi::before {
+        font-weight: 900 !important;
+        font-variation-settings: 'FILL' 1, 'wght' 700 !important;
+        -webkit-font-smoothing: antialiased !important;
+        -moz-osx-font-smoothing: grayscale !important;
+        text-stroke: none !important;
+        -webkit-text-stroke: none !important;
+        text-shadow: none !important;
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+    }
+    
+    /* Force filled versions for all common icons */
+    .bi-calendar::before { content: "\f1ec" !important; }
+    .bi-calendar-check::before { content: "\f1ed" !important; }
+    .bi-plus-circle::before { content: "\f62c" !important; }
+    .bi-check-circle::before { content: "\f26d" !important; }
+    .bi-exclamation-triangle::before { content: "\f33e" !important; }
+    .bi-eye::before { content: "\f341" !important; }
+    .bi-pencil::before { content: "\f4cb" !important; }
+    .bi-trash::before { content: "\f5de" !important; }
+    .bi-x-circle::before { content: "\f659" !important; }
+    .bi-hourglass::before { content: "\f39e" !important; }
+    .bi-table::before { content: "\f4fe" !important; }
+    .bi-gear::before { content: "\f3e2" !important; }
+    .bi-person::before { content: "\f4da" !important; }
+    .bi-house::before { content: "\f3af" !important; }
+    .bi-bell::before { content: "\f1f7" !important; }
+    .bi-search::before { content: "\f52a" !important; }
+    .bi-filter::before { content: "\f349" !important; }
+    .bi-file::before { content: "\f345" !important; }
+    .bi-folder::before { content: "\f364" !important; }
+    .bi-star::before { content: "\f588" !important; }
+    .bi-heart::before { content: "\f391" !important; }
+    .bi-bookmark::before { content: "\f1f3" !important; }
+    .bi-three-dots::before { content: "\f506" !important; }
+    .bi-grid::before { content: "\f386" !important; }
+    .bi-list-ul::before { content: "\f47c" !important; }
+    
     /* Prevent scroll restoration */
     html {
         scroll-behavior: auto !important;
@@ -978,21 +1032,21 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     </style>
     <?php endif; ?>
 </head>
-<body data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>">
+<body data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
     <header class="main-header">
         <div class="header__top">
             <div class="header__brand">
-                <span class="brand-icon">🧭</span>
+                <span class="brand-icon"><i class="bi bi-compass-fill"></i></span>
                 <span class="brand-text">Ergon</span>
                 <span class="role-badge"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             
             <div class="header__controls">
                 <button class="control-btn" onclick="toggleTheme()" title="Toggle Theme">
-                    <span id="themeIcon"><?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? '☀️' : '🌙' ?></span>
+                    <span id="themeIcon"><i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i></span>
                 </button>
-                <button class="control-btn" onclick="toggleNotifications()" title="Notifications">
-                    <span>🔔</span>
+                <button class="control-btn" onclick="toggleNotifications(event)" title="Notifications">
+                    <i class="bi bi-bell-fill"></i>
                     <span class="notification-badge" id="notificationBadge">0</span>
                 </button>
                 <button class="profile-btn" onclick="document.getElementById('profileMenu').classList.toggle('show')">
@@ -1003,16 +1057,16 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                 
                 <div class="profile-menu" id="profileMenu">
                     <a href="/ergon/profile/change-password" class="profile-menu-item">
-                        <span class="menu-icon">🔒</span>
+                        <span class="menu-icon"><i class="bi bi-lock-fill"></i></span>
                         Change Password
                     </a>
                     <a href="/ergon/profile/preferences" class="profile-menu-item">
-                        <span class="menu-icon">⚙️</span>
+                        <span class="menu-icon"><i class="bi bi-gear-fill"></i></span>
                         Preferences
                     </a>
                     <div class="profile-menu-divider"></div>
                     <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
-                        <span class="menu-icon">🚪</span>
+                        <span class="menu-icon"><i class="bi bi-box-arrow-right"></i></span>
                         Logout
                     </a>
                 </div>
@@ -1024,17 +1078,17 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
                     <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
-                            <span class="nav-icon">📊</span>
+                            <span class="nav-icon"><i class="bi bi-graph-up"></i></span>
                             Overview
                             <span class="dropdown-arrow">▼</span>
                         </button>
                         <div class="nav-dropdown-menu" id="overview">
                             <a href="/ergon/dashboard" class="nav-dropdown-item <?= ($active_page ?? '') === 'dashboard' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">📊</span>
+                                <span class="nav-icon"><i class="bi bi-speedometer2"></i></span>
                                 Dashboard
                             </a>
                             <a href="/ergon/gamification/team-competition" class="nav-dropdown-item <?= ($active_page ?? '') === 'team-competition' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">🏆</span>
+                                <span class="nav-icon"><i class="bi bi-trophy-fill"></i></span>
                                 Competition
                             </a>
                         </div>
@@ -1289,18 +1343,27 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         </div>
     </header>
     
-    <div class="notification-dropdown" id="notificationDropdown">
-        <div class="notification-header">
-            <h3>Notifications</h3>
-            <a href="/ergon/notifications" class="view-all-link">View All</a>
+    <div class="notification-dropdown" id="notificationDropdown" style="display: none; position: fixed; top: 60px; right: 20px; width: 350px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 10000;">
+        <div class="notification-header" style="padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Notifications</h3>
+            <a href="#" class="view-all-link" style="color: #3b82f6; text-decoration: none; font-size: 14px;" onclick="navigateToNotifications(event)">View All</a>
         </div>
-        <div class="notification-list" id="notificationList">
-            <div class="notification-loading">Loading...</div>
+        <div class="notification-list" id="notificationList" style="max-height: 300px; overflow-y: auto;">
+            <div class="notification-item" style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
+                <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px;">New Task Assigned</div>
+                <div style="font-size: 12px; color: #6b7280;">You have been assigned a new task</div>
+                <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">2 minutes ago</div>
+            </div>
+            <div class="notification-item" style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
+                <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px;">Leave Approved</div>
+                <div style="font-size: 12px; color: #6b7280;">Your leave request has been approved</div>
+                <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">1 hour ago</div>
+            </div>
         </div>
     </div>
 
     <main class="main-content">
-            <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports'])): ?>
+            <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports']) && ($active_page ?? '') !== 'notifications'): ?>
             <div class="page-header">
                 <div class="page-title">
                     <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
@@ -1327,11 +1390,37 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }).catch(function(error) { console.log('Theme save failed:', error); });
     }
     
-    function toggleNotifications() {
+    function toggleNotifications(event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
         var dropdown = document.getElementById('notificationDropdown');
         if (dropdown) {
-            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+            var isVisible = dropdown.style.display === 'block';
+            dropdown.style.display = isVisible ? 'none' : 'block';
+            
+            // Close other dropdowns
+            document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
+                menu.classList.remove('show');
+            });
+            var profileMenu = document.getElementById('profileMenu');
+            if (profileMenu) profileMenu.classList.remove('show');
         }
+    }
+    
+    function navigateToNotifications(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Close the dropdown first
+        var dropdown = document.getElementById('notificationDropdown');
+        if (dropdown) {
+            dropdown.style.display = 'none';
+        }
+        
+        // Navigate to notifications page
+        window.location.href = '/ergon/notifications';
     }
     
     function showDropdown(id) {
@@ -1411,7 +1500,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
         
         var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown && !e.target.closest('.control-btn')) {
+        if (dropdown && !e.target.closest('.control-btn') && !e.target.closest('#notificationDropdown')) {
             dropdown.style.display = 'none';
         }
         
