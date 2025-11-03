@@ -74,6 +74,25 @@ ob_start();
                                     <input type="text" name="plans[0][title]" class="form-control" required placeholder="What will you work on today?">
                                 </div>
                                 <div class="form-group">
+                                    <label class="form-label">Department</label>
+                                    <select name="plans[0][department_id]" class="form-control department-select" onchange="loadPlannerCategories(this, 0)">
+                                        <option value="">Select Dept</option>
+                                        <?php if (!empty($data['departments'])): ?>
+                                            <?php foreach ($data['departments'] as $dept): ?>
+                                                <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Category</label>
+                                    <select name="plans[0][task_category]" class="form-control category-select" onchange="checkFollowupCategory(this, 0)">
+                                        <option value="">Select Category</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
                                     <label class="form-label">Priority</label>
                                     <select name="plans[0][priority]" class="form-control">
                                         <option value="low">🟢 Low</option>
@@ -96,6 +115,22 @@ ob_start();
                             <div class="form-group">
                                 <label class="form-label">Description</label>
                                 <textarea name="plans[0][description]" class="form-control" rows="2" placeholder="Brief description of the task"></textarea>
+                            </div>
+                            <div id="followup-fields-0" class="followup-fields" style="display: none;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Company Name</label>
+                                        <input type="text" name="plans[0][company_name]" class="form-control" placeholder="Company name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Contact Person</label>
+                                        <input type="text" name="plans[0][contact_person]" class="form-control" placeholder="Contact person">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Contact Phone</label>
+                                        <input type="tel" name="plans[0][contact_phone]" class="form-control" placeholder="Phone number">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     <?php else: ?>
@@ -199,6 +234,40 @@ ob_start();
 <script>
 let planRowIndex = <?= count($data['todayPlans']) ?>;
 
+function loadPlannerCategories(deptSelect, index) {
+    const categorySelect = deptSelect.closest('.plan-row').querySelector('.category-select');
+    const deptId = deptSelect.value;
+    
+    categorySelect.innerHTML = '<option value="">Select Category</option>';
+    
+    if (!deptId) return;
+    
+    fetch(`/ergon/api/task-categories?department_id=${deptId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.categories) {
+                data.categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.category_name;
+                    option.textContent = category.category_name;
+                    categorySelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('Error loading categories:', error));
+}
+
+function checkFollowupCategory(categorySelect, index) {
+    const followupFields = document.getElementById(`followup-fields-${index}`);
+    const category = categorySelect.value.toLowerCase();
+    
+    if (category.includes('follow')) {
+        followupFields.style.display = 'block';
+    } else {
+        followupFields.style.display = 'none';
+    }
+}
+
 function addPlanRow() {
     const planRows = document.getElementById('planRows');
     const newRow = document.createElement('div');
@@ -209,6 +278,25 @@ function addPlanRow() {
                 <label class="form-label">Task Title *</label>
                 <input type="text" name="plans[${planRowIndex}][title]" class="form-control" required placeholder="What will you work on today?">
             </div>
+            <div class="form-group">
+                <label class="form-label">Department</label>
+                <select name="plans[${planRowIndex}][department_id]" class="form-control department-select" onchange="loadPlannerCategories(this, ${planRowIndex})">
+                    <option value="">Select Dept</option>
+                    <?php if (!empty($data['departments'])): ?>
+                        <?php foreach ($data['departments'] as $dept): ?>
+                            <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select name="plans[${planRowIndex}][task_category]" class="form-control category-select" onchange="checkFollowupCategory(this, ${planRowIndex})">
+                    <option value="">Select Category</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
             <div class="form-group">
                 <label class="form-label">Priority</label>
                 <select name="plans[${planRowIndex}][priority]" class="form-control">
@@ -232,6 +320,22 @@ function addPlanRow() {
         <div class="form-group">
             <label class="form-label">Description</label>
             <textarea name="plans[${planRowIndex}][description]" class="form-control" rows="2" placeholder="Brief description of the task"></textarea>
+        </div>
+        <div id="followup-fields-${planRowIndex}" class="followup-fields" style="display: none;">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Company Name</label>
+                    <input type="text" name="plans[${planRowIndex}][company_name]" class="form-control" placeholder="Company name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contact Person</label>
+                    <input type="text" name="plans[${planRowIndex}][contact_person]" class="form-control" placeholder="Contact person">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contact Phone</label>
+                    <input type="tel" name="plans[${planRowIndex}][contact_phone]" class="form-control" placeholder="Phone number">
+                </div>
+            </div>
         </div>
     `;
     planRows.appendChild(newRow);

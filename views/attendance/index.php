@@ -10,6 +10,12 @@ ob_start();
         <p>Track employee attendance and working hours</p>
     </div>
     <div class="page-actions">
+        <select id="filterSelect" onchange="filterAttendance(this.value)" class="form-control" style="width: auto; margin-right: 1rem;">
+            <option value="today" <?= ($current_filter ?? 'today') === 'today' ? 'selected' : '' ?>>Today</option>
+            <option value="week" <?= ($current_filter ?? '') === 'week' ? 'selected' : '' ?>>One Week</option>
+            <option value="two_weeks" <?= ($current_filter ?? '') === 'two_weeks' ? 'selected' : '' ?>>Two Weeks</option>
+            <option value="month" <?= ($current_filter ?? '') === 'month' ? 'selected' : '' ?>>One Month</option>
+        </select>
         <a href="/ergon/attendance/clock" class="btn btn--primary">
             <span>🕰️</span> Clock In/Out
         </a>
@@ -30,20 +36,20 @@ ob_start();
     <div class="kpi-card">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">✅</div>
-            <div class="kpi-card__trend">↗ +8%</div>
+            <div class="kpi-card__trend">Present</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($attendance ?? [], fn($a) => ($a['status'] ?? 'present') === 'present')) ?></div>
-        <div class="kpi-card__label">Present Today</div>
+        <div class="kpi-card__value"><?= $stats['present_days'] ?? 0 ?></div>
+        <div class="kpi-card__label">Days Present</div>
         <div class="kpi-card__status">Active</div>
     </div>
     
     <div class="kpi-card">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">🕰️</div>
-            <div class="kpi-card__trend">↗ +3%</div>
+            <div class="kpi-card__trend">Total</div>
         </div>
-        <div class="kpi-card__value"><?= number_format(array_sum(array_map(function($a) { return $a['clock_out'] ? (strtotime($a['clock_out']) - strtotime($a['clock_in'])) / 3600 : 0; }, $attendance ?? [])), 1) ?>h</div>
-        <div class="kpi-card__label">Total Hours</div>
+        <div class="kpi-card__value"><?= ($stats['total_hours'] ?? 0) ?>h <?= round($stats['total_minutes'] ?? 0) ?>m</div>
+        <div class="kpi-card__label">Working Hours</div>
         <div class="kpi-card__status">Logged</div>
     </div>
 </div>
@@ -79,10 +85,21 @@ ob_start();
                         <?php foreach ($attendance as $record): ?>
                         <tr>
                             <td><?= htmlspecialchars($record['user_name'] ?? 'Unknown') ?></td>
-                            <td><?= $record['clock_in'] ? date('M d, Y', strtotime($record['clock_in'])) : '-' ?></td>
-                            <td><?= $record['clock_in'] ? date('H:i', strtotime($record['clock_in'])) : '-' ?></td>
-                            <td><?= $record['clock_out'] ? date('H:i', strtotime($record['clock_out'])) : '-' ?></td>
-                            <td><?= $record['clock_out'] ? round((strtotime($record['clock_out']) - strtotime($record['clock_in'])) / 3600, 1) . 'h' : '-' ?></td>
+                            <td><?= $record['check_in'] ? date('M d, Y', strtotime($record['check_in'])) : '-' ?></td>
+                            <td><?= $record['check_in'] ? date('H:i', strtotime($record['check_in'])) : '-' ?></td>
+                            <td><?= $record['check_out'] ? date('H:i', strtotime($record['check_out'])) : '-' ?></td>
+                            <td>
+                                <?php if ($record['check_out']): ?>
+                                    <?php 
+                                    $totalMins = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 60;
+                                    $hrs = floor($totalMins / 60);
+                                    $mins = $totalMins % 60;
+                                    ?>
+                                    <?= $hrs ?>h <?= round($mins) ?>m
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
+                            </td>
                             <td><span class="badge badge--success"><?= ucfirst($record['status'] ?? 'present') ?></span></td>
                         </tr>
                         <?php endforeach; ?>
@@ -92,6 +109,12 @@ ob_start();
         </div>
     </div>
 </div>
+
+<script>
+function filterAttendance(filter) {
+    window.location.href = '/ergon/attendance?filter=' + filter;
+}
+</script>
 
 <?php
 $content = ob_get_clean();

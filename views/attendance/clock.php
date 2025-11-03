@@ -30,12 +30,24 @@ ob_start();
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 300px; margin: 0 auto;">
-                <button id="clockInBtn" class="btn btn--primary" style="padding: 1rem 2rem; font-size: 1.1rem; font-weight: 600;">
-                    <span>▶️</span> Clock In
-                </button>
-                <button id="clockOutBtn" class="btn btn--secondary" style="padding: 1rem 2rem; font-size: 1.1rem; font-weight: 600; background: #dc2626 !important; color: white !important; border-color: #dc2626 !important;">
-                    <span>⏹️</span> Clock Out
-                </button>
+                <?php if ($on_leave): ?>
+                    <div style="padding: 1rem; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; text-align: center; color: #92400e;">
+                        <span>🏖️</span> You are on approved leave today
+                    </div>
+                    <button class="btn btn--secondary" disabled style="padding: 1rem 2rem; font-size: 1.1rem; font-weight: 600; opacity: 0.5; cursor: not-allowed;">
+                        <span>▶️</span> Clock In (Disabled)
+                    </button>
+                    <button class="btn btn--secondary" disabled style="padding: 1rem 2rem; font-size: 1.1rem; font-weight: 600; opacity: 0.5; cursor: not-allowed;">
+                        <span>⏹️</span> Clock Out (Disabled)
+                    </button>
+                <?php else: ?>
+                    <button id="clockInBtn" class="btn btn--primary" style="padding: 1rem 2rem; font-size: 1.1rem; font-weight: 600;">
+                        <span>▶️</span> Clock In
+                    </button>
+                    <button id="clockOutBtn" class="btn btn--secondary" style="padding: 1rem 2rem; font-size: 1.1rem; font-weight: 600; background: #dc2626 !important; color: white !important; border-color: #dc2626 !important;">
+                        <span>⏹️</span> Clock Out
+                    </button>
+                <?php endif; ?>
             </div>
             
             <div id="locationStatus" style="margin-top: 1.5rem; color: #6b7280; font-size: 0.875rem;">
@@ -108,8 +120,10 @@ function clockAction(type) {
     });
 }
 
+<?php if (!$on_leave): ?>
 document.getElementById('clockInBtn').addEventListener('click', () => clockAction('in'));
 document.getElementById('clockOutBtn').addEventListener('click', () => clockAction('out'));
+<?php endif; ?>
 
 // Initialize
 updateTime();

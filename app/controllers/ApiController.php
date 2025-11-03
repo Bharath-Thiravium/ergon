@@ -210,6 +210,41 @@ class ApiController extends Controller {
         $this->json(['error' => 'JWT session not implemented'], 501);
     }
     
+    public function taskCategories() {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $departmentId = $_GET['department_id'] ?? null;
+            
+            if (!$departmentId) {
+                $this->json(['error' => 'Department ID is required'], 400);
+                return;
+            }
+            
+            // Get department name first
+            $stmt = $db->prepare("SELECT name FROM departments WHERE id = ?");
+            $stmt->execute([$departmentId]);
+            $department = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$department) {
+                $this->json(['error' => 'Department not found'], 404);
+                return;
+            }
+            
+            // Get task categories for this department
+            $stmt = $db->prepare("SELECT DISTINCT category_name, description FROM task_categories WHERE department_name = ? AND is_active = 1 ORDER BY category_name");
+            $stmt->execute([$department['name']]);
+            $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->json(['categories' => $categories]);
+            
+        } catch (Exception $e) {
+            error_log('Task categories API error: ' . $e->getMessage());
+            $this->json(['error' => 'Failed to fetch categories'], 500);
+        }
+    }
+    
     public function test() {
         $this->json(['status' => 'API working', 'timestamp' => date('Y-m-d H:i:s')]);
     }

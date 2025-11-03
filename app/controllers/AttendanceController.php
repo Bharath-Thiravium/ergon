@@ -11,18 +11,33 @@ class AttendanceController extends Controller {
         if ($role === 'user') {
             // User view - show only their attendance
             $attendance = [];
+            $filter = $_GET['filter'] ?? 'today';
+            
             try {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
                 
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM attendance a LEFT JOIN users u ON a.user_id = u.id WHERE a.user_id = ? ORDER BY a.created_at DESC LIMIT 30");
+                // Calculate date range based on filter
+                $dateCondition = $this->getDateCondition($filter);
+                
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name, COALESCE(d.name, 'Not Assigned') as department FROM attendance a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN departments d ON u.department_id = d.id WHERE a.user_id = ? AND $dateCondition ORDER BY a.check_in DESC");
                 $stmt->execute([$_SESSION['user_id']]);
                 $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Calculate stats for the filtered period
+                $stats = $this->calculateUserStats($attendance);
+                
             } catch (Exception $e) {
                 error_log('Attendance index error: ' . $e->getMessage());
+                $stats = ['total_hours' => 0, 'total_minutes' => 0, 'present_days' => 0];
             }
             
-            $this->view('attendance/index', ['attendance' => $attendance, 'active_page' => 'attendance']);
+            $this->view('attendance/index', [
+                'attendance' => $attendance, 
+                'stats' => $stats,
+                'current_filter' => $filter,
+                'active_page' => 'attendance'
+            ]);
         } else {
             // Admin/Owner view - show employees or all users based on role
             $employeeAttendance = [];
@@ -45,10 +60,11 @@ class AttendanceController extends Controller {
                         u.name,
                         u.email,
                         u.role,
-                        COALESCE(d.name, u.department, 'Not Assigned') as department,
+                        COALESCE(d.name, 'Not Assigned') as department,
                         a.check_in,
                         a.check_out,
                         CASE 
+                            WHEN a.location = 'On Approved Leave' THEN 'On Leave'
                             WHEN a.check_in IS NOT NULL THEN 'Present'
                             ELSE 'Absent'
                         END as status,
@@ -58,13 +74,19 @@ class AttendanceController extends Controller {
                             ELSE 0
                         END as total_hours
                     FROM users u
-                    LEFT JOIN departments d ON u.department = d.id
+                    LEFT JOIN departments d ON u.department_id = d.id
                     LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
                     WHERE $roleFilter AND u.id != ?
                     ORDER BY u.role DESC, u.name
                 ");
                 $stmt->execute([$filterDate, $_SESSION['user_id']]);
                 $employeeAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Get admin's own attendance for today
+                $adminAttendance = null;
+                $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+                $stmt->execute([$_SESSION['user_id'], $filterDate]);
+                $adminAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
                 
             } catch (Exception $e) {
                 error_log('Attendance error: ' . $e->getMessage());
@@ -91,7 +113,11 @@ class AttendanceController extends Controller {
                         echo "<td>" . htmlspecialchars($employee['department']) . "</td>";
                         $statusBadge = $employee['status'] === 'Present' ? 'success' : 'danger';
                         $statusIcon = $employee['status'] === 'Present' ? '✅' : '❌';
-                        echo "<td><span class='badge badge--$statusBadge'>$statusIcon {$employee['status']}</span></td>";
+                        if ($employee['status'] === 'On Leave') {
+                            echo "<td><span class='badge badge--warning'>🏖️ On Leave</span></td>";
+                        } else {
+                            echo "<td><span class='badge badge--$statusBadge'>$statusIcon {$employee['status']}</span></td>";
+                        }
                         echo "<td>" . ($employee['check_in'] ? date('H:i', strtotime($employee['check_in'])) : '<span style="color: #6b7280;">-</span>') . "</td>";
                         if ($employee['check_out']) {
                             echo "<td><span style='color: #dc2626; font-weight: 500;'>" . date('H:i', strtotime($employee['check_out'])) . "</span></td>";
@@ -116,6 +142,7 @@ class AttendanceController extends Controller {
             $viewName = ($role === 'owner') ? 'attendance/owner_index' : 'attendance/admin_index';
             $this->view($viewName, [
                 'employees' => $employeeAttendance, 
+                'admin_attendance' => $adminAttendance,
                 'active_page' => 'attendance',
                 'filter_date' => $filterDate,
                 'user_role' => $role
@@ -141,8 +168,17 @@ class AttendanceController extends Controller {
                 header('Content-Type: application/json');
                 
                 if ($type === 'in') {
+                    // Check if user is on approved leave today
+                    $stmt = $db->prepare("SELECT id FROM leaves WHERE user_id = ? AND status = 'approved' AND CURDATE() BETWEEN start_date AND end_date");
+                    $stmt->execute([$userId]);
+                    
+                    if ($stmt->fetch()) {
+                        echo json_encode(['success' => false, 'error' => 'You are on approved leave today']);
+                        exit;
+                    }
+                    
                     // Check if already clocked in today
-                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(clock_in) = CURDATE() AND clock_out IS NULL");
+                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND check_out IS NULL");
                     $stmt->execute([$userId]);
                     
                     if ($stmt->fetch()) {
@@ -151,7 +187,7 @@ class AttendanceController extends Controller {
                     }
                     
                     // Clock in
-                    $stmt = $db->prepare("INSERT INTO attendance (user_id, clock_in, latitude, longitude, location, status, created_at) VALUES (?, NOW(), ?, ?, 'Office', 'present', NOW())");
+                    $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, latitude, longitude, location, status, created_at) VALUES (?, NOW(), ?, ?, 'Office', 'present', NOW())");
                     $result = $stmt->execute([$userId, $latitude, $longitude]);
                     
                     if ($result) {
@@ -162,7 +198,7 @@ class AttendanceController extends Controller {
                     
                 } elseif ($type === 'out') {
                     // Find today's clock in record
-                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(clock_in) = CURDATE() AND clock_out IS NULL");
+                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND check_out IS NULL");
                     $stmt->execute([$userId]);
                     $attendance = $stmt->fetch();
                     
@@ -172,7 +208,7 @@ class AttendanceController extends Controller {
                     }
                     
                     // Clock out
-                    $stmt = $db->prepare("UPDATE attendance SET clock_out = NOW(), updated_at = NOW() WHERE id = ?");
+                    $stmt = $db->prepare("UPDATE attendance SET check_out = NOW(), updated_at = NOW() WHERE id = ?");
                     $result = $stmt->execute([$attendance['id']]);
                     
                     if ($result) {
@@ -196,19 +232,25 @@ class AttendanceController extends Controller {
         
         // GET request - show clock page
         $todayAttendance = null;
+        $onLeave = false;
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             $this->ensureAttendanceTable($db);
             
-            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(clock_in) = CURDATE()");
+            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE()");
             $stmt->execute([$_SESSION['user_id']]);
             $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Check if user is on approved leave today
+            $stmt = $db->prepare("SELECT id FROM leaves WHERE user_id = ? AND status = 'approved' AND CURDATE() BETWEEN start_date AND end_date");
+            $stmt->execute([$_SESSION['user_id']]);
+            $onLeave = $stmt->fetch() ? true : false;
         } catch (Exception $e) {
             error_log('Today attendance fetch error: ' . $e->getMessage());
         }
         
-        $this->view('attendance/clock', ['today_attendance' => $todayAttendance, 'active_page' => 'attendance']);
+        $this->view('attendance/clock', ['today_attendance' => $todayAttendance, 'on_leave' => $onLeave, 'active_page' => 'attendance']);
     }
     
     public function status() {
@@ -289,6 +331,45 @@ class AttendanceController extends Controller {
     private function ensureAttendanceTable($db) {
         // Enhanced tables are created via schema
         return true;
+    }
+    
+    private function getDateCondition($filter) {
+        switch ($filter) {
+            case 'today':
+                return "DATE(a.check_in) = CURDATE()";
+            case 'week':
+                return "DATE(a.check_in) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+            case 'two_weeks':
+                return "DATE(a.check_in) >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)";
+            case 'month':
+                return "DATE(a.check_in) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+            default:
+                return "DATE(a.check_in) = CURDATE()";
+        }
+    }
+    
+    private function calculateUserStats($attendance) {
+        $totalMinutes = 0;
+        $presentDays = 0;
+        
+        foreach ($attendance as $record) {
+            if ($record['check_in'] && $record['check_out']) {
+                $minutes = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 60;
+                $totalMinutes += $minutes;
+                $presentDays++;
+            } elseif ($record['check_in']) {
+                $presentDays++;
+            }
+        }
+        
+        $totalHours = floor($totalMinutes / 60);
+        $remainingMinutes = $totalMinutes % 60;
+        
+        return [
+            'total_hours' => $totalHours,
+            'total_minutes' => $remainingMinutes,
+            'present_days' => $presentDays
+        ];
     }
 }
 ?>
