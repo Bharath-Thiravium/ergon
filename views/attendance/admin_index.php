@@ -48,14 +48,52 @@ ob_start();
         <div class="kpi-card__status">Not Checked</div>
     </div>
     
-    <div class="kpi-card">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">🕰️</div>
-            <div class="kpi-card__trend">Avg</div>
+
+</div>
+
+<!-- Admin Personal Attendance Card -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card__header">
+        <h2 class="card__title">
+            <span>👔</span> My Attendance - <?= $_SESSION['user_name'] ?? 'Admin' ?>
+        </h2>
+        <div class="card__actions">
+            <span class="badge badge--info">Admin Panel</span>
         </div>
-        <div class="kpi-card__value"><?= number_format(array_sum(array_column($employees, 'total_hours')) / max(count(array_filter($employees, fn($e) => $e['status'] === 'Present')), 1), 1) ?>h</div>
-        <div class="kpi-card__label">Avg Hours</div>
-        <div class="kpi-card__status">Working</div>
+    </div>
+    <div class="card__body">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #f8fafc; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: #8b5cf6; display: flex; align-items: center; justify-content: center; color: white; font-size: 1rem; font-weight: bold;">
+                    👔
+                </div>
+                <div>
+                    <div style="font-weight: 600; font-size: 1.1rem;"><?= $_SESSION['user_name'] ?? 'Admin' ?></div>
+                    <div style="color: #6b7280; font-size: 0.875rem;">Administrator</div>
+                    <?php if ($admin_attendance): ?>
+                        <div style="color: #059669; font-size: 0.875rem; font-weight: 500;">
+                            In: <?= $admin_attendance['check_in'] ? date('H:i', strtotime($admin_attendance['check_in'])) : '-' ?>
+                            <?php if ($admin_attendance['check_out']): ?>
+                                | Out: <?= date('H:i', strtotime($admin_attendance['check_out'])) ?>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <?php if (!$admin_attendance): ?>
+                    <button id="adminClockInBtn" class="btn btn--primary" onclick="adminClockAction('in')">
+                        <span>▶️</span> Clock In
+                    </button>
+                <?php elseif (!$admin_attendance['check_out']): ?>
+                    <button id="adminClockOutBtn" class="btn btn--secondary" onclick="adminClockAction('out')" style="background: #dc2626 !important; border-color: #dc2626 !important;">
+                        <span>⏹️</span> Clock Out
+                    </button>
+                <?php else: ?>
+                    <span class="badge badge--success">✅ Completed</span>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -114,9 +152,15 @@ ob_start();
                             </td>
                             <td><?= htmlspecialchars($employee['department'] ?? 'General') ?></td>
                             <td>
-                                <span class="badge badge--<?= $employee['status'] === 'Present' ? 'success' : 'danger' ?>">
-                                    <?= $employee['status'] === 'Present' ? '✅ Present' : '❌ Absent' ?>
-                                </span>
+                                <?php if ($employee['status'] === 'On Leave'): ?>
+                                    <span class="badge badge--warning">
+                                        🏖️ On Leave
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge badge--<?= $employee['status'] === 'Present' ? 'success' : 'danger' ?>">
+                                        <?= $employee['status'] === 'Present' ? '✅ Present' : '❌ Absent' ?>
+                                    </span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($employee['check_in']): ?>
@@ -263,10 +307,59 @@ function markManualAttendance(employeeId) {
     });
 }
 
-// Simple page refresh every 10 seconds for guaranteed updates
+// Admin clock in/out functionality
+function adminClockAction(type) {
+    // Get location if available
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                performAdminClock(type, position.coords.latitude, position.coords.longitude);
+            },
+            function(error) {
+                performAdminClock(type, null, null);
+            }
+        );
+    } else {
+        performAdminClock(type, null, null);
+    }
+}
+
+function performAdminClock(type, latitude, longitude) {
+    const formData = new FormData();
+    formData.append('type', type);
+    if (latitude && longitude) {
+        formData.append('latitude', latitude);
+        formData.append('longitude', longitude);
+    }
+    
+    fetch('/ergon/attendance/clock', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert(`Admin clocked ${type} successfully!`);
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to clock ' + type));
+        }
+    })
+    .catch(error => {
+        console.error('Clock error:', error);
+        alert('Server error occurred');
+    });
+}
+
+// Simple page refresh every 15 seconds for guaranteed updates
 setInterval(function() {
     window.location.reload();
-}, 10000);
+}, 15000);
 </script>
 
 <style>
@@ -295,6 +388,12 @@ setInterval(function() {
     background-color: #fef2f2;
     color: #991b1b;
     border: 1px solid #fecaca;
+}
+
+.badge--warning {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
 }
 </style>
 

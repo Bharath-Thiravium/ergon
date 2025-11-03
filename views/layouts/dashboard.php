@@ -46,7 +46,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
 
     <link rel="preload" href="/ergon/assets/css/ergon.css?v=<?= time() ?>" as="style">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
     <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
     <style>
     /* Header styles - two-row layout */
@@ -1295,13 +1295,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">✅</span>
                                 Tasks
                             </a>
-                            <a href="/ergon/daily-workflow/morning-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'planner' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">🌅</span>
-                                Planner
+                            <a href="/ergon/planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'planner' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📅</span>
+                                Daily Planner
                             </a>
-                            <a href="/ergon/daily-workflow/evening-update" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">🌆</span>
-                                Evening
+                            <a href="/ergon/evening-update" class="nav-dropdown-item <?= ($active_page ?? '') === 'evening_update' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🌅</span>
+                                Evening Update
                             </a>
                             <a href="/ergon/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>

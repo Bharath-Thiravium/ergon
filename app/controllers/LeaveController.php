@@ -184,18 +184,52 @@ class LeaveController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("UPDATE leaves SET status = 'approved' WHERE id = ? AND status = 'pending'");
+            // Get leave details before approval
+            $stmt = $db->prepare("SELECT user_id, start_date, end_date FROM leaves WHERE id = ? AND status = 'pending'");
+            $stmt->execute([$id]);
+            $leave = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$leave) {
+                header('Location: /ergon/leaves?error=Leave not found or already processed');
+                exit;
+            }
+            
+            // Approve the leave
+            $stmt = $db->prepare("UPDATE leaves SET status = 'approved' WHERE id = ?");
             $result = $stmt->execute([$id]);
             
-            if ($result && $stmt->rowCount() > 0) {
+            if ($result) {
+                // Create attendance records for leave dates
+                $this->createLeaveAttendanceRecords($db, $leave['user_id'], $leave['start_date'], $leave['end_date']);
                 header('Location: /ergon/leaves?success=Leave approved successfully');
             } else {
-                header('Location: /ergon/leaves?error=Leave not found or already processed');
+                header('Location: /ergon/leaves?error=Failed to approve leave');
             }
         } catch (Exception $e) {
             header('Location: /ergon/leaves?error=Database error: ' . $e->getMessage());
         }
         exit;
+    }
+    
+    private function createLeaveAttendanceRecords($db, $userId, $startDate, $endDate) {
+        $start = new DateTime($startDate);
+        $end = new DateTime($endDate);
+        
+        while ($start <= $end) {
+            $currentDate = $start->format('Y-m-d');
+            
+            // Check if attendance record already exists
+            $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+            $stmt->execute([$userId, $currentDate]);
+            
+            if (!$stmt->fetch()) {
+                // Create new attendance record for leave
+                $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status, location, created_at) VALUES (?, ?, NULL, 'absent', 'On Approved Leave', NOW())");
+                $stmt->execute([$userId, $currentDate . ' 00:00:00']);
+            }
+            
+            $start->add(new DateInterval('P1D'));
+        }
     }
     
     public function reject($id = null) {
@@ -219,10 +253,19 @@ class LeaveController extends Controller {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
                 
+                // Get leave details before rejection
+                $stmt = $db->prepare("SELECT user_id, start_date, end_date FROM leaves WHERE id = ? AND status = 'pending'");
+                $stmt->execute([$id]);
+                $leave = $stmt->fetch(PDO::FETCH_ASSOC);
+                
                 $stmt = $db->prepare("UPDATE leaves SET status = 'rejected', rejection_reason = ? WHERE id = ? AND status = 'pending'");
                 $result = $stmt->execute([$reason, $id]);
                 
                 if ($result && $stmt->rowCount() > 0) {
+                    // Remove any leave attendance records if they exist
+                    if ($leave) {
+                        $this->removeLeaveAttendanceRecords($db, $leave['user_id'], $leave['start_date'], $leave['end_date']);
+                    }
                     header('Location: /ergon/leaves?success=Leave rejected successfully');
                 } else {
                     header('Location: /ergon/leaves?error=Leave not found or already processed');
@@ -234,6 +277,11 @@ class LeaveController extends Controller {
             header('Location: /ergon/leaves?error=Rejection reason is required');
         }
         exit;
+    }
+    
+    private function removeLeaveAttendanceRecords($db, $userId, $startDate, $endDate) {
+        $stmt = $db->prepare("DELETE FROM attendance WHERE user_id = ? AND location = 'On Approved Leave' AND DATE(check_in) BETWEEN ? AND ?");
+        $stmt->execute([$userId, $startDate, $endDate]);
     }
     
     public function apiCreate() {

@@ -229,6 +229,7 @@ function updateProgressDisplay(slider) {
 
 function addUnplannedTask() {
     const container = document.getElementById('unplannedTasks');
+    if (!container) return;
     const newTask = document.createElement('div');
     newTask.className = 'unplanned-task-row';
     newTask.style.cssText = 'border: 1px dashed var(--border-color); border-radius: var(--border-radius); padding: 1rem; margin-bottom: 1rem;';
@@ -272,9 +273,11 @@ function removeUnplannedTask(button) {
 // Initialize progress displays
 document.addEventListener('DOMContentLoaded', function() {
     const sliders = document.querySelectorAll('input[type="range"]');
-    sliders.forEach(slider => {
-        updateProgressDisplay(slider);
-    });
+    if (sliders.length > 0) {
+        sliders.forEach(slider => {
+            updateProgressDisplay(slider);
+        });
+    }
 });
 </script>
 

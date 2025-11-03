@@ -70,6 +70,15 @@ $router->get('/tasks/calendar', 'TasksController', 'calendar');
 $router->get('/tasks/overdue', 'TasksController', 'overdue');
 $router->post('/tasks/bulk-create', 'TasksController', 'bulkCreate');
 
+// Daily Planner Integration
+$router->get('/planner', 'PlannerController', 'index');
+$router->post('/planner/add-task', 'PlannerController', 'addTask');
+$router->post('/planner/update-status', 'PlannerController', 'updateStatus');
+
+// Evening Update Integration
+$router->get('/evening-update', 'EveningUpdateController', 'index');
+$router->post('/evening-update/submit', 'EveningUpdateController', 'submit');
+
 // Attendance
 $router->get('/attendance', 'AttendanceController', 'index');
 $router->get('/attendance/clock', 'AttendanceController', 'clock');
@@ -188,6 +197,7 @@ $router->post('/api/login', 'ApiController', 'login');
 $router->post('/api/attendance', 'ApiController', 'attendance');
 $router->get('/api/tasks', 'ApiController', 'tasks');
 $router->post('/api/tasks/update', 'ApiController', 'updateTask');
+$router->get('/api/task-categories', 'ApiController', 'taskCategories');
 $router->get('/api/generate-employee-id', 'ApiController', 'generateEmployeeId');
 $router->post('/api/update-preference', 'ApiController', 'updatePreference');
 $router->post('/api/activity-log', 'ApiController', 'activityLog');

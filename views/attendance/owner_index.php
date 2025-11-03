@@ -51,15 +51,7 @@ ob_start();
         <div class="kpi-card__status">Checked In</div>
     </div>
     
-    <div class="kpi-card">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">🕰️</div>
-            <div class="kpi-card__trend">Avg</div>
-        </div>
-        <div class="kpi-card__value"><?= number_format(array_sum(array_column($employees, 'total_hours')) / max(count(array_filter($employees, fn($e) => $e['status'] === 'Present')), 1), 1) ?>h</div>
-        <div class="kpi-card__label">Avg Hours</div>
-        <div class="kpi-card__status">Working</div>
-    </div>
+
 </div>
 
 <div class="card">
@@ -114,9 +106,15 @@ ob_start();
                             </td>
                             <td><?= htmlspecialchars($employee['department'] ?? 'General') ?></td>
                             <td>
-                                <span class="badge badge--<?= $employee['status'] === 'Present' ? 'success' : 'danger' ?>">
-                                    <?= $employee['status'] === 'Present' ? '✅ Present' : '❌ Absent' ?>
-                                </span>
+                                <?php if ($employee['status'] === 'On Leave'): ?>
+                                    <span class="badge badge--warning">
+                                        🏖️ On Leave
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge badge--<?= $employee['status'] === 'Present' ? 'success' : 'danger' ?>">
+                                        <?= $employee['status'] === 'Present' ? '✅ Present' : '❌ Absent' ?>
+                                    </span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($employee['check_in']): ?>
@@ -266,6 +264,12 @@ setInterval(refreshAttendance, 60000);
     background-color: #fef2f2;
     color: #991b1b;
     border: 1px solid #fecaca;
+}
+
+.badge--warning {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
 }
 </style>
 

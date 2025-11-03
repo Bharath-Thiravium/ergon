@@ -30,10 +30,16 @@ class DailyWorkflowController extends Controller {
             // Can submit if not submitted yet or if it's before 10 AM
             $canSubmit = !$workflowStatus || !$workflowStatus['morning_submitted_at'] || date('H') < 10;
             
+            // Get departments for dropdown
+            $stmt = $db->prepare("SELECT id, name FROM departments WHERE status = 'active' ORDER BY name");
+            $stmt->execute();
+            $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
             $data = [
                 'todayPlans' => $todayPlans,
                 'workflowStatus' => $workflowStatus,
                 'canSubmit' => $canSubmit,
+                'departments' => $departments,
                 'active_page' => 'tasks'
             ];
             
@@ -191,6 +197,30 @@ class DailyWorkflowController extends Controller {
         }
     }
     
+    private function createPlannerFollowup($db, $taskId, $plan, $userId) {
+        try {
+            $followupDate = date('Y-m-d', strtotime('+1 day'));
+            
+            $stmt = $db->prepare("INSERT INTO followups (user_id, task_id, title, description, company_name, contact_person, contact_phone, follow_up_date, original_date, status, priority, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW())");
+            $stmt->execute([
+                $userId,
+                $taskId,
+                'Follow-up: ' . $plan['title'],
+                'Auto-created from daily planner: ' . ($plan['description'] ?? ''),
+                $plan['company_name'] ?? '',
+                $plan['contact_person'] ?? '',
+                $plan['contact_phone'] ?? '',
+                $followupDate,
+                $followupDate,
+                $plan['priority'] ?? 'medium'
+            ]);
+            
+            error_log('Auto-followup created from planner for task ID: ' . $taskId);
+        } catch (Exception $e) {
+            error_log('Planner auto-followup creation failed: ' . $e->getMessage());
+        }
+    }
+    
     private function ensureTables($db) {
         try {
             // Create daily_tasks table
@@ -206,6 +236,8 @@ class DailyWorkflowController extends Controller {
                 status ENUM('planned','in_progress','completed','cancelled') DEFAULT 'planned',
                 progress INT DEFAULT 0,
                 completion_notes TEXT,
+                department_id INT DEFAULT NULL,
+                task_category VARCHAR(100) DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_assigned_date (assigned_to, planned_date),
@@ -244,15 +276,24 @@ class DailyWorkflowController extends Controller {
                 if (isset($_POST['plans'])) {
                     foreach ($_POST['plans'] as $plan) {
                         if (!empty($plan['title'])) {
-                            $stmt = $db->prepare("INSERT INTO daily_tasks (title, description, assigned_to, planned_date, priority, estimated_hours, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'planned', NOW())");
+                            $stmt = $db->prepare("INSERT INTO daily_tasks (title, description, assigned_to, planned_date, priority, estimated_hours, status, department_id, task_category, created_at) VALUES (?, ?, ?, ?, ?, ?, 'planned', ?, ?, NOW())");
                             $stmt->execute([
                                 trim($plan['title']),
                                 trim($plan['description'] ?? ''),
                                 $userId,
                                 $today,
                                 $plan['priority'] ?? 'medium',
-                                floatval($plan['estimated_hours'] ?? 1)
+                                floatval($plan['estimated_hours'] ?? 1),
+                                !empty($plan['department_id']) ? intval($plan['department_id']) : null,
+                                trim($plan['task_category'] ?? '')
                             ]);
+                            
+                            $taskId = $db->lastInsertId();
+                            
+                            // Auto-create followup if category contains "follow"
+                            if (!empty($plan['task_category']) && stripos($plan['task_category'], 'follow') !== false) {
+                                $this->createPlannerFollowup($db, $taskId, $plan, $userId);
+                            }
                         }
                     }
                 }
