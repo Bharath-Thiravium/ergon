@@ -211,11 +211,11 @@ class UserController extends Controller {
     
     private function getTodayAttendanceStatus($user_id) {
         try {
-            $sql = "SELECT clock_out FROM attendance WHERE user_id = ? AND DATE(date) = CURDATE() ORDER BY date DESC LIMIT 1";
+            $sql = "SELECT check_out FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() ORDER BY check_in DESC LIMIT 1";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$user_id]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $result ? ($result['clock_out'] === null ? 'Clocked In' : 'Clocked Out') : 'Not Clocked In';
+            return $result ? ($result['check_out'] === null ? 'Clocked In' : 'Clocked Out') : 'Not Clocked In';
         } catch (Exception $e) {
             error_log('getTodayAttendanceStatus error: ' . $e->getMessage());
             return 'Not Clocked In';

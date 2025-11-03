@@ -61,10 +61,11 @@ class TasksController extends Controller {
         }
         
         $users = $this->getActiveUsers();
-        error_log('Users for dropdown: ' . json_encode($users));
+        $departments = $this->getDepartments();
         
         $data = [
             'users' => $users,
+            'departments' => $departments,
             'active_page' => 'tasks'
         ];
         $this->view('tasks/create', $data);
@@ -76,6 +77,19 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
+            // If user role is 'user', only return themselves
+            if (($_SESSION['role'] ?? '') === 'user') {
+                $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (empty($users)) {
+                    return [['id' => $_SESSION['user_id'], 'name' => $_SESSION['user_name'] ?? 'Current User', 'email' => '', 'role' => 'user']];
+                }
+                return $users;
+            }
+            
+            // For admin/owner, return all users
             $stmt = $db->prepare("SELECT id, name, email, role FROM users ORDER BY name");
             $stmt->execute();
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -103,15 +117,27 @@ class TasksController extends Controller {
             'description' => trim($_POST['description'] ?? ''),
             'assigned_by' => $_SESSION['user_id'],
             'assigned_to' => intval($_POST['assigned_to'] ?? 0),
+            'task_type' => $_POST['task_type'] ?? 'ad-hoc',
             'priority' => $_POST['priority'] ?? 'medium',
-            'deadline' => !empty($_POST['deadline']) ? $_POST['deadline'] : null
+            'deadline' => !empty($_POST['deadline']) ? $_POST['deadline'] : null,
+            'status' => $_POST['status'] ?? 'assigned',
+            'progress' => intval($_POST['progress'] ?? 0),
+
+            'sla_hours' => intval($_POST['sla_hours'] ?? 24),
+            'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
+            'task_category' => trim($_POST['task_category'] ?? '')
         ];
         
         error_log('Task store data: ' . json_encode($taskData));
-        error_log('POST deadline: ' . ($_POST['deadline'] ?? 'empty'));
         
         if (empty($taskData['title']) || $taskData['assigned_to'] <= 0) {
             header('Location: /ergon/tasks/create?error=Title and assigned user are required');
+            exit;
+        }
+        
+        // Validate progress range
+        if ($taskData['progress'] < 0 || $taskData['progress'] > 100) {
+            header('Location: /ergon/tasks/create?error=Progress must be between 0 and 100');
             exit;
         }
         
@@ -120,12 +146,31 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, priority, deadline, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'assigned', NOW())");
-            $result = $stmt->execute([$taskData['title'], $taskData['description'], $taskData['assigned_by'], $taskData['assigned_to'], $taskData['priority'], $taskData['deadline']]);
+            $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, status, progress, sla_hours, department_id, task_category, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $result = $stmt->execute([
+                $taskData['title'], 
+                $taskData['description'], 
+                $taskData['assigned_by'], 
+                $taskData['assigned_to'], 
+                $taskData['task_type'],
+                $taskData['priority'], 
+                $taskData['deadline'],
+                $taskData['status'],
+                $taskData['progress'],
+                $taskData['sla_hours'],
+                $taskData['department_id'],
+                $taskData['task_category']
+            ]);
             
             if ($result) {
                 $taskId = $db->lastInsertId();
-                error_log('Task created with ID: ' . $taskId . ', deadline: ' . ($taskData['deadline'] ?? 'null'));
+                
+                // Auto-create followup if task category contains "follow-up"
+                if (!empty($taskData['task_category']) && stripos($taskData['task_category'], 'follow') !== false) {
+                    $this->createAutoFollowup($db, $taskId, $taskData);
+                }
+                
+                error_log('Task created with ID: ' . $taskId . ', type: ' . $taskData['task_type'] . ', progress: ' . $taskData['progress'] . '%');
                 header('Location: /ergon/tasks?success=Task created successfully');
             } else {
                 error_log('Task creation failed: ' . implode(', ', $stmt->errorInfo()));
@@ -305,21 +350,21 @@ class TasksController extends Controller {
     public function delete($id) {
         AuthMiddleware::requireAuth();
         
-        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
-            echo json_encode(['success' => false, 'message' => 'Access denied']);
-            exit;
-        }
-        
         try {
-            if ($this->taskModel !== null) {
-                $result = $this->taskModel->delete($id);
-            } else {
-                // Fallback direct database delete
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Check if user can delete this task
+            if (in_array($_SESSION['role'], ['admin', 'owner'])) {
+                // Admin/Owner can delete any task
                 $stmt = $db->prepare("DELETE FROM tasks WHERE id = ?");
                 $result = $stmt->execute([$id]);
+            } else {
+                // Regular users can only delete their own tasks
+                $stmt = $db->prepare("DELETE FROM tasks WHERE id = ? AND assigned_to = ?");
+                $result = $stmt->execute([$id, $_SESSION['user_id']]);
             }
+            
             echo json_encode(['success' => $result]);
         } catch (Exception $e) {
             error_log('Task delete error: ' . $e->getMessage());
@@ -328,20 +373,111 @@ class TasksController extends Controller {
         exit;
     }
     
+    private function getDepartments() {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("SELECT id, name FROM departments WHERE status = 'active' ORDER BY name");
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Error fetching departments: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
+    private function createAutoFollowup($db, $taskId, $taskData) {
+        try {
+            // Ensure followups table exists
+            $this->ensureFollowupsTable($db);
+            
+            $followupDate = !empty($taskData['deadline']) ? $taskData['deadline'] : date('Y-m-d', strtotime('+1 day'));
+            
+            // Use correct followups table structure
+            $stmt = $db->prepare("INSERT INTO followups (user_id, title, description, follow_up_date, original_date, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', NOW())");
+            $stmt->execute([
+                $taskData['assigned_to'],
+                'Follow-up: ' . $taskData['title'],
+                'Auto-created follow-up for task: ' . $taskData['description'],
+                $followupDate,
+                $followupDate
+            ]);
+            
+            $followupId = $db->lastInsertId();
+            error_log('Auto-followup created with ID: ' . $followupId . ' for task ID: ' . $taskId . ' with category: ' . $taskData['task_category']);
+        } catch (Exception $e) {
+            error_log('Auto-followup creation failed: ' . $e->getMessage());
+        }
+    }
+    
+    private function ensureFollowupsTable($db) {
+        try {
+            $db->exec("CREATE TABLE IF NOT EXISTS followups (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                company_name VARCHAR(255),
+                contact_person VARCHAR(255),
+                contact_phone VARCHAR(20),
+                project_name VARCHAR(255),
+                follow_up_date DATE NOT NULL,
+                original_date DATE,
+                reminder_time TIME NULL,
+                description TEXT,
+                status ENUM('pending','in_progress','completed','postponed','cancelled','rescheduled') DEFAULT 'pending',
+                completed_at TIMESTAMP NULL,
+                reminder_sent BOOLEAN DEFAULT FALSE,
+                next_reminder DATE NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id),
+                INDEX idx_follow_date (follow_up_date),
+                INDEX idx_status (status)
+            )");
+        } catch (Exception $e) {
+            error_log('ensureFollowupsTable error: ' . $e->getMessage());
+        }
+    }
+    
     private function ensureTasksTable($db) {
         try {
+            // Create tasks table with all required columns
             $db->exec("CREATE TABLE IF NOT EXISTS tasks (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 title VARCHAR(255) NOT NULL,
                 description TEXT,
                 assigned_by INT DEFAULT NULL,
                 assigned_to INT DEFAULT NULL,
-                task_type VARCHAR(50) DEFAULT 'ad-hoc',
-                priority VARCHAR(20) DEFAULT 'medium',
-                deadline DATE DEFAULT NULL,
-                status VARCHAR(20) DEFAULT 'assigned',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                task_type ENUM('checklist','milestone','timed','ad-hoc') DEFAULT 'ad-hoc',
+                priority ENUM('low','medium','high') DEFAULT 'medium',
+                deadline DATETIME DEFAULT NULL,
+                progress INT DEFAULT 0,
+                status ENUM('assigned','in_progress','completed','blocked') DEFAULT 'assigned',
+                due_date DATE DEFAULT NULL,
+                depends_on_task_id INT DEFAULT NULL,
+                sla_hours INT DEFAULT 24,
+                department_id INT DEFAULT NULL,
+                task_category VARCHAR(100) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )");
+            
+            // Check if department_id column exists, if not add it
+            $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'department_id'");
+            $stmt->execute();
+            if ($stmt->rowCount() == 0) {
+                $db->exec("ALTER TABLE tasks ADD COLUMN department_id INT DEFAULT NULL");
+                error_log('Added department_id column to tasks table');
+            }
+            
+            // Check if task_category column exists, if not add it
+            $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'task_category'");
+            $stmt->execute();
+            if ($stmt->rowCount() == 0) {
+                $db->exec("ALTER TABLE tasks ADD COLUMN task_category VARCHAR(100) DEFAULT NULL");
+                error_log('Added task_category column to tasks table');
+            }
         } catch (Exception $e) {
             error_log('ensureTasksTable error: ' . $e->getMessage());
         }

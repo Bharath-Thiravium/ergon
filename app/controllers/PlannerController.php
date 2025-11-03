@@ -1,118 +1,132 @@
 <?php
+require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 
 class PlannerController extends Controller {
     
-    public function calendar() {
-        $this->requireAuth();
+    public function index() {
+        AuthMiddleware::requireAuth();
         
-        $title = 'Daily Planner';
-        $active_page = 'planner';
+        $date = $_GET['date'] ?? date('Y-m-d');
+        $userId = $_SESSION['user_id'];
         
-        $data = [
-            'plans' => [
-                ['id' => 1, 'title' => 'Team Meeting', 'description' => 'Weekly team sync', 'plan_date' => '2024-01-20 10:00:00'],
-                ['id' => 2, 'title' => 'Project Review', 'description' => 'Review project progress', 'plan_date' => '2024-01-21 14:00:00']
-            ]
-        ];
-        
-        include __DIR__ . '/../../views/planner/calendar.php';
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensurePlannerTables($db);
+            
+            // Get today's planned tasks
+            $plannedTasks = $this->getPlannedTasks($db, $userId, $date);
+            
+            // Get available assigned tasks not yet planned
+            $availableTasks = $this->getAvailableAssignedTasks($db, $userId, $date);
+            
+            $data = [
+                'planned_tasks' => $plannedTasks,
+                'available_tasks' => $availableTasks,
+                'current_date' => $date,
+                'active_page' => 'planner'
+            ];
+            
+            $this->view('planner/index', $data);
+        } catch (Exception $e) {
+            error_log('Planner error: ' . $e->getMessage());
+            $this->view('planner/index', ['planned_tasks' => [], 'available_tasks' => [], 'current_date' => $date, 'active_page' => 'planner']);
+        }
     }
     
-    public function create() {
-        $this->requireAuth();
-        
-        $title = 'Create Plan';
-        $active_page = 'planner';
+    public function addTask() {
+        AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            header('Content-Type: application/json');
+            
             try {
+                require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
-                $stmt = $db->prepare("INSERT INTO daily_planner (user_id, plan_date, title, description, created_at) VALUES (?, ?, ?, ?, NOW())");
-                $stmt->execute([$_SESSION['user_id'], $_POST['plan_date'], $_POST['title'], $_POST['description']]);
                 
-                $this->redirect('/ergon/planner/calendar');
-            } catch (Exception $e) {
-                $this->handleError($e, 'Failed to create plan');
-            }
-        }
-        
-        // Load categories and departments
-        $db = Database::connect();
-        
-        // Get user's departments
-        $stmt = $db->prepare("SELECT d.* FROM departments d JOIN users u ON FIND_IN_SET(d.name, u.department) WHERE u.id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $departments = $stmt->fetchAll();
-        
-        // Get categories for user's departments
-        $categories = [];
-        if (!empty($departments)) {
-            $deptNames = array_column($departments, 'name');
-            $placeholders = str_repeat('?,', count($deptNames) - 1) . '?';
-            $stmt = $db->prepare("SELECT * FROM task_categories WHERE department_name IN ($placeholders) AND is_active = 1 ORDER BY category_name");
-            $stmt->execute($deptNames);
-            $categories = $stmt->fetchAll();
-        }
-        
-        $data = [
-            'departments' => $departments,
-            'categories' => $categories
-        ];
-        
-        ob_start();
-        include __DIR__ . '/../../views/planner/create.php';
-        $content = ob_get_clean();
-        include __DIR__ . '/../../views/layouts/dashboard.php';
-    }
-    
-    public function store() {
-        $this->create();
-    }
-    
-    public function update() {
-        $this->requireAuth();
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            try {
-                $db = Database::connect();
-                $stmt = $db->prepare("UPDATE daily_planner SET title = ?, description = ? WHERE id = ? AND user_id = ?");
-                $stmt->execute([$_POST['title'], $_POST['description'], $_POST['id'], $_SESSION['user_id']]);
+                $data = [
+                    'user_id' => $_SESSION['user_id'],
+                    'date' => $_POST['date'] ?? date('Y-m-d'),
+                    'task_id' => !empty($_POST['task_id']) ? intval($_POST['task_id']) : null,
+                    'task_type' => $_POST['task_type'] ?? 'personal',
+                    'title' => trim($_POST['title'] ?? ''),
+                    'description' => trim($_POST['description'] ?? ''),
+                    'planned_start_time' => $_POST['planned_start_time'] ?? null,
+                    'planned_duration' => intval($_POST['planned_duration'] ?? 60),
+                    'priority_order' => intval($_POST['priority_order'] ?? 1)
+                ];
                 
-                echo json_encode(['success' => true]);
+                if (empty($data['title'])) {
+                    echo json_encode(['success' => false, 'error' => 'Title is required']);
+                    exit;
+                }
+                
+                $stmt = $db->prepare("INSERT INTO daily_planner (user_id, date, task_id, task_type, title, description, planned_start_time, planned_duration, priority_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $result = $stmt->execute([$data['user_id'], $data['date'], $data['task_id'], $data['task_type'], $data['title'], $data['description'], $data['planned_start_time'], $data['planned_duration'], $data['priority_order']]);
+                
+                echo json_encode(['success' => $result, 'id' => $db->lastInsertId()]);
             } catch (Exception $e) {
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
+            exit;
         }
     }
     
-    public function getDepartmentForm() {
-        $this->requireAuth(['admin', 'owner']);
+    public function updateStatus() {
+        AuthMiddleware::requireAuth();
         
-        try {
-            $db = Database::connect();
-            $stmt = $db->prepare("SELECT * FROM departments WHERE status = 'active'");
-            $stmt->execute();
-            $departments = $stmt->fetchAll();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            header('Content-Type: application/json');
             
-            echo json_encode(['departments' => $departments]);
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
+            try {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
+                $plannerId = intval($_POST['planner_id']);
+                $status = $_POST['status'];
+                
+                $stmt = $db->prepare("UPDATE daily_planner SET status = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
+                $result = $stmt->execute([$status, $plannerId, $_SESSION['user_id']]);
+                
+                echo json_encode(['success' => $result]);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
+            exit;
         }
     }
     
-    public function getPlansForDate() {
-        $this->requireAuth();
-        
-        try {
-            $date = $_GET['date'] ?? date('Y-m-d');
-            $db = Database::connect();
-            $stmt = $db->prepare("SELECT * FROM daily_planner WHERE DATE(plan_date) = ? ORDER BY created_at ASC");
-            $stmt->execute([$date]);
-            $plans = $stmt->fetchAll();
-            
-            echo json_encode(['plans' => $plans]);
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
+    private function getPlannedTasks($db, $userId, $date) {
+        $stmt = $db->prepare("
+            SELECT dp.*, t.deadline, t.priority as task_priority 
+            FROM daily_planner dp 
+            LEFT JOIN tasks t ON dp.task_id = t.id 
+            WHERE dp.user_id = ? AND dp.date = ? 
+            ORDER BY dp.priority_order, dp.planned_start_time
+        ");
+        $stmt->execute([$userId, $date]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    private function getAvailableAssignedTasks($db, $userId, $date) {
+        $stmt = $db->prepare("
+            SELECT t.* FROM tasks t 
+            WHERE t.assigned_to = ? 
+            AND t.status IN ('assigned', 'in_progress') 
+            AND t.id NOT IN (
+                SELECT COALESCE(dp.task_id, 0) FROM daily_planner dp 
+                WHERE dp.user_id = ? AND dp.date = ? AND dp.task_id IS NOT NULL
+            )
+            ORDER BY t.priority DESC, t.deadline ASC
+        ");
+        $stmt->execute([$userId, $userId, $date]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    private function ensurePlannerTables($db) {
+        // Tables created via schema file
+        return true;
     }
 }
+?>
