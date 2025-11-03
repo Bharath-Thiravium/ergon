@@ -29,8 +29,12 @@ ob_start();
                 <span><?= htmlspecialchars($advance['user_name'] ?? 'Unknown') ?></span>
             </div>
             <div class="detail-item">
+                <label>Type</label>
+                <span><?= htmlspecialchars($advance['type'] ?? 'N/A') ?></span>
+            </div>
+            <div class="detail-item">
                 <label>Amount</label>
-                <span>$<?= number_format($advance['amount'] ?? 0, 2) ?></span>
+                <span>₹<?= number_format($advance['amount'] ?? 0, 2) ?></span>
             </div>
             <div class="detail-item">
                 <label>Reason</label>
@@ -38,15 +42,49 @@ ob_start();
             </div>
             <div class="detail-item">
                 <label>Status</label>
-                <span class="badge badge--warning"><?= ucfirst($advance['status'] ?? 'pending') ?></span>
+                <?php 
+                $status = $advance['status'] ?? 'pending';
+                $badgeClass = 'badge--warning';
+                if ($status === 'approved') $badgeClass = 'badge--success';
+                elseif ($status === 'rejected') $badgeClass = 'badge--danger';
+                ?>
+                <span class="badge <?= $badgeClass ?>"><?= ucfirst($status) ?></span>
             </div>
             <div class="detail-item">
                 <label>Requested</label>
                 <span><?= date('M d, Y', strtotime($advance['created_at'] ?? 'now')) ?></span>
             </div>
+            <?php if (!empty($advance['rejection_reason'])): ?>
+            <div class="detail-item rejection-reason">
+                <label>Rejection Reason</label>
+                <span><?= htmlspecialchars($advance['rejection_reason']) ?></span>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
+
+<style>
+.rejection-reason {
+    grid-column: 1 / -1;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 8px;
+}
+
+.rejection-reason label {
+    color: #dc2626;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.rejection-reason span {
+    color: #991b1b;
+    font-style: italic;
+}
+</style>
 
 <?php
 $content = ob_get_clean();

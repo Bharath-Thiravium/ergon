@@ -34,7 +34,7 @@ ob_start();
             </div>
             <div class="detail-item">
                 <label>Amount</label>
-                <span>$<?= number_format($expense['amount'] ?? 0, 2) ?></span>
+                <span>₹<?= number_format($expense['amount'] ?? 0, 2) ?></span>
             </div>
             <div class="detail-item">
                 <label>Category</label>
@@ -46,15 +46,64 @@ ob_start();
             </div>
             <div class="detail-item">
                 <label>Status</label>
-                <span class="badge badge--warning"><?= ucfirst($expense['status'] ?? 'pending') ?></span>
+                <?php 
+                $status = $expense['status'] ?? 'pending';
+                $badgeClass = 'badge--warning';
+                if ($status === 'approved') $badgeClass = 'badge--success';
+                elseif ($status === 'rejected') $badgeClass = 'badge--danger';
+                ?>
+                <span class="badge <?= $badgeClass ?>"><?= ucfirst($status) ?></span>
             </div>
+            <?php if (($expense['status'] ?? 'pending') === 'rejected' && !empty($expense['rejection_reason'])): ?>
+            <div class="detail-item">
+                <label>Rejection Reason</label>
+                <span class="rejection-reason"><?= htmlspecialchars($expense['rejection_reason']) ?></span>
+            </div>
+            <?php endif; ?>
             <div class="detail-item">
                 <label>Submitted</label>
                 <span><?= date('M d, Y', strtotime($expense['created_at'] ?? 'now')) ?></span>
             </div>
+            <?php if (!empty($expense['approved_at'])): ?>
+            <div class="detail-item">
+                <label><?= ($expense['status'] ?? 'pending') === 'approved' ? 'Approved' : 'Processed' ?> Date</label>
+                <span><?= date('M d, Y', strtotime($expense['approved_at'])) ?></span>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
+
+<style>
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.detail-item label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+}
+.detail-item span {
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+.rejection-reason {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 0.75rem;
+    color: #dc2626 !important;
+    font-style: italic;
+}
+</style>
 
 <?php
 $content = ob_get_clean();

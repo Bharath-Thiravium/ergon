@@ -64,21 +64,15 @@ ob_start();
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Department</label>
-                    <select name="departments[]" class="form-control" multiple>
-                        <?php 
-                        require_once __DIR__ . '/../../app/models/Department.php';
-                        $departmentModel = new Department();
-                        $departments = $departmentModel->getAll();
-                        $userDepts = isset($user['department']) ? explode(',', $user['department']) : [];
-                        foreach ($departments as $dept): 
-                        ?>
-                        <option value="<?= htmlspecialchars($dept['name']) ?>" 
-                                <?= in_array($dept['name'], $userDepts) ? 'selected' : '' ?>>
+                    <select name="department_id" class="form-control">
+                        <option value="">Select Department</option>
+                        <?php foreach ($departments ?? [] as $dept): ?>
+                        <option value="<?= $dept['id'] ?>" 
+                                <?= ($user['department_id'] ?? '') == $dept['id'] ? 'selected' : '' ?>>
                             <?= htmlspecialchars($dept['name']) ?>
                         </option>
                         <?php endforeach; ?>
                     </select>
-                    <small class="form-text">Hold Ctrl/Cmd to select multiple departments</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Designation</label>

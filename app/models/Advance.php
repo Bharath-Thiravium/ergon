@@ -1,22 +1,41 @@
 <?php
-require_once __DIR__ . '/../config/database.php';
 
 class Advance {
     private $db;
     private $table = 'advances';
     
     public function __construct() {
-        $this->db = Database::connect();
+        $this->db = null;
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $this->db = Database::connect();
+            $this->ensureTableExists();
+        } catch (Exception $e) {
+            error_log('Advance model init error: ' . $e->getMessage());
+        }
     }
     
     public function getAll() {
-        $stmt = $this->db->query("
-            SELECT a.*, u.name as user_name 
-            FROM {$this->table} a 
-            JOIN users u ON a.user_id = u.id 
-            ORDER BY a.created_at DESC
-        ");
-        return $stmt->fetchAll();
+        if (!$this->db) {
+            error_log('Advance getAll: No database connection');
+            return [];
+        }
+        
+        try {
+            // Ensure table exists first
+            $this->ensureTableExists();
+            
+            $stmt = $this->db->query("
+                SELECT a.*, u.name as user_name 
+                FROM {$this->table} a 
+                LEFT JOIN users u ON a.user_id = u.id 
+                ORDER BY a.created_at DESC
+            ");
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Advance getAll error: ' . $e->getMessage());
+            return [];
+        }
     }
     
     public function getByUserId($userId) {
@@ -50,6 +69,32 @@ class Advance {
             WHERE id = ?
         ");
         return $stmt->execute([$status, $remarks, $id]);
+    }
+    
+    private function ensureTableExists() {
+        if (!$this->db) return;
+        
+        try {
+            $stmt = $this->db->query("SHOW TABLES LIKE '{$this->table}'");
+            if ($stmt->rowCount() == 0) {
+                $sql = "CREATE TABLE {$this->table} (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    amount DECIMAL(10,2) NOT NULL,
+                    reason TEXT NOT NULL,
+                    requested_date DATE NULL,
+                    status VARCHAR(20) DEFAULT 'pending',
+                    approved_by INT NULL,
+                    approved_at DATETIME NULL,
+                    admin_remarks TEXT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )";
+                $this->db->exec($sql);
+            }
+        } catch (Exception $e) {
+            error_log('Table creation error: ' . $e->getMessage());
+        }
     }
 }
 ?>

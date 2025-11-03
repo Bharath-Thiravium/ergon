@@ -33,18 +33,15 @@ ob_start();
                 </div>
                 <div class="form-group">
                     <label class="form-label">Department</label>
-                    <select name="departments[]" class="form-control" multiple>
-                        <?php 
-                        $selectedDepts = isset($old_data['departments']) ? (is_array($old_data['departments']) ? $old_data['departments'] : explode(',', $old_data['departments'])) : [];
-                        foreach ($departments as $dept): 
-                        ?>
-                        <option value="<?= htmlspecialchars($dept['name']) ?>" 
-                                <?= in_array($dept['name'], $selectedDepts) ? 'selected' : '' ?>>
+                    <select name="department_id" class="form-control">
+                        <option value="">Select Department</option>
+                        <?php foreach ($departments ?? [] as $dept): ?>
+                        <option value="<?= $dept['id'] ?>" 
+                                <?= ($old_data['department_id'] ?? '') == $dept['id'] ? 'selected' : '' ?>>
                             <?= htmlspecialchars($dept['name']) ?>
                         </option>
                         <?php endforeach; ?>
                     </select>
-                    <small class="form-text">Hold Ctrl/Cmd to select multiple departments</small>
                 </div>
             </div>
             

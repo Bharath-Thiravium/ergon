@@ -42,7 +42,16 @@ ob_start();
             </div>
             <div class="detail-item">
                 <label>Days</label>
-                <span><?= $leave['days'] ?? 1 ?></span>
+                <span><?php 
+                    if (isset($leave['days_requested']) && $leave['days_requested'] > 0) {
+                        echo $leave['days_requested'];
+                    } else {
+                        $start = new DateTime($leave['start_date']);
+                        $end = new DateTime($leave['end_date']);
+                        $days = $end->diff($start)->days + 1;
+                        echo $days;
+                    }
+                ?></span>
             </div>
             <div class="detail-item">
                 <label>Status</label>

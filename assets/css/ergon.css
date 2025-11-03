@@ -1205,7 +1205,7 @@ body {
 .modal {
   display: none;
   position: fixed;
-  z-index: 1000;
+  z-index: 999999;
   left: 0;
   top: 0;
   width: 100%;
@@ -1740,6 +1740,26 @@ body {
   border-top: 1px solid var(--border-color);
 }
 
+/* Form Group Flex */
+.form-group--flex-2 {
+  flex: 2;
+}
+
+/* Plan Row Styling */
+.plan-row {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  transition: var(--transition);
+}
+
+.plan-row:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
 @media (max-width: 768px) {
   .mobile-menu-toggle {
     display: block;
@@ -1776,6 +1796,10 @@ body {
   
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .form-group--flex-2 {
+    flex: 1;
   }
 }
 

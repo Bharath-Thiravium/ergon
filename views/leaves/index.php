@@ -16,6 +16,18 @@ ob_start();
     </div>
 </div>
 
+<?php if (isset($_GET['success'])): ?>
+<div class="alert alert-success" style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
+    ✅ <?= htmlspecialchars($_GET['success']) ?>
+</div>
+<?php endif; ?>
+
+<?php if (isset($_GET['error'])): ?>
+<div class="alert alert-error" style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
+    ❌ <?= htmlspecialchars($_GET['error']) ?>
+</div>
+<?php endif; ?>
+
 <div class="dashboard-grid">
     <div class="kpi-card">
         <div class="kpi-card__header">
@@ -32,7 +44,7 @@ ob_start();
             <div class="kpi-card__icon">⏳</div>
             <div class="kpi-card__trend kpi-card__trend--down">— 0%</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($leaves ?? [], fn($l) => ($l['status'] ?? 'pending') === 'pending')) ?></div>
+        <div class="kpi-card__value"><?= count(array_filter($leaves ?? [], fn($l) => strtolower($l['status'] ?? 'pending') === 'pending')) ?></div>
         <div class="kpi-card__label">Pending Approval</div>
         <div class="kpi-card__status kpi-card__status--pending">Needs Review</div>
     </div>
@@ -42,7 +54,7 @@ ob_start();
             <div class="kpi-card__icon">✅</div>
             <div class="kpi-card__trend">↗ +8%</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($leaves ?? [], fn($l) => ($l['status'] ?? 'pending') === 'approved')) ?></div>
+        <div class="kpi-card__value"><?= count(array_filter($leaves ?? [], fn($l) => strtolower($l['status'] ?? 'pending') === 'approved')) ?></div>
         <div class="kpi-card__label">Approved</div>
         <div class="kpi-card__status">Granted</div>
     </div>
@@ -71,20 +83,75 @@ ob_start();
                 <tbody>
                     <?php foreach ($leaves ?? [] as $leave): ?>
                     <tr>
-                        <td><?= htmlspecialchars($leave['user_name'] ?? 'Unknown') ?></td>
-                        <td><?= htmlspecialchars($leave['leave_type'] ?? 'Annual') ?></td>
+                        <td>
+                            <?php 
+                            $role = ucfirst($leave['user_role'] ?? 'user');
+                            if ($role === 'User') $role = 'Employee';
+                            
+                            if (($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)) {
+                                echo 'My Self (' . htmlspecialchars($leave['user_name'] ?? 'Unknown') . ') - ' . $role;
+                            } else {
+                                echo htmlspecialchars($leave['user_name'] ?? 'Unknown') . ' - ' . $role;
+                            }
+                            ?>
+                        </td>
+                        <td><?= htmlspecialchars($leave['type'] ?? 'Annual') ?></td>
                         <td><?= date('M d, Y', strtotime($leave['start_date'])) ?></td>
                         <td><?= date('M d, Y', strtotime($leave['end_date'])) ?></td>
-                        <td><?= $leave['days'] ?? 1 ?></td>
-                        <td><span class="badge badge--warning"><?= ucfirst($leave['status'] ?? 'pending') ?></span></td>
+                        <td><?php 
+                            if (isset($leave['days_requested']) && $leave['days_requested'] > 0) {
+                                echo $leave['days_requested'];
+                            } else {
+                                $start = new DateTime($leave['start_date']);
+                                $end = new DateTime($leave['end_date']);
+                                $days = $end->diff($start)->days + 1;
+                                echo $days;
+                            }
+                        ?></td>
+                        <td>
+                            <?php 
+                            $status = strtolower($leave['status'] ?? 'pending');
+                            $badgeClass = 'badge--warning';
+                            if ($status === 'approved') $badgeClass = 'badge--success';
+                            elseif ($status === 'rejected') $badgeClass = 'badge--danger';
+                            ?>
+                            <span class="badge <?= $badgeClass ?>"><?= ucfirst($leave['status'] ?? 'pending') ?></span>
+                        </td>
                         <td>
                             <div class="btn-group">
                                 <a href="/ergon/leaves/view/<?= $leave['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
                                     <span>👁️</span> View
                                 </a>
+                                <?php if (strtolower($leave['status'] ?? 'pending') === 'pending' && ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
+                                <a href="/ergon/leaves/edit/<?= $leave['id'] ?>" class="btn btn--sm btn--info" title="Edit Leave">
+                                    <span>✏️</span> Edit
+                                </a>
+                                <?php endif; ?>
+                                <?php 
+                                // Debug: Show current values
+                                // echo "<!-- DEBUG: user_role=" . ($user_role ?? 'NULL') . ", leave_status=" . ($leave['status'] ?? 'NULL') . ", leave_user_id=" . ($leave['user_id'] ?? 'NULL') . ", session_user_id=" . ($_SESSION['user_id'] ?? 'NULL') . " -->";
+                                
+                                $canApprove = false;
+                                $leaveStatus = strtolower($leave['status'] ?? 'pending');
+                                if (($user_role ?? '') === 'owner' && $leaveStatus === 'pending') {
+                                    $canApprove = true;
+                                } elseif (($user_role ?? '') === 'admin' && $leaveStatus === 'pending' && ($leave['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0)) {
+                                    $canApprove = true;
+                                }
+                                ?>
+                                <?php if ($canApprove): ?>
+                                <a href="/ergon/leaves/approve/<?= $leave['id'] ?>" class="btn btn--sm btn--success" title="Approve Leave" onclick="return confirm('Are you sure you want to approve this leave?')">
+                                    <span>✅</span> Approve
+                                </a>
+                                <button onclick="showRejectModal(<?= $leave['id'] ?>)" class="btn btn--sm btn--danger" title="Reject Leave">
+                                    <span>❌</span> Reject
+                                </button>
+                                <?php endif; ?>
+                                <?php if (strtolower($leave['status'] ?? 'pending') === 'pending' && (in_array($user_role ?? '', ['admin', 'owner']) || ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0))): ?>
                                 <button onclick="deleteRecord('leaves', <?= $leave['id'] ?>, 'Leave Request')" class="btn btn--sm btn--danger" title="Delete Request">
                                     <span>🗑️</span> Delete
                                 </button>
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>
@@ -94,6 +161,99 @@ ob_start();
         </div>
     </div>
 </div>
+
+<!-- Rejection Modal -->
+<div id="rejectModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Reject Leave Request</h3>
+            <span class="close" onclick="closeRejectModal()">&times;</span>
+        </div>
+        <form id="rejectForm" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="rejection_reason">Reason for Rejection:</label>
+                    <textarea id="rejection_reason" name="rejection_reason" class="form-control" rows="4" placeholder="Please provide a reason for rejecting this leave request..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" onclick="closeRejectModal()">Cancel</button>
+                <button type="submit" class="btn btn--danger">Reject Leave</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 0;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.modal-header h3 {
+    margin: 0;
+    color: #333;
+}
+.close {
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #aaa;
+}
+.close:hover {
+    color: #000;
+}
+.modal-body {
+    padding: 20px;
+}
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+</style>
+
+<script>
+function showRejectModal(leaveId) {
+    document.getElementById('rejectForm').action = '/ergon/leaves/reject/' + leaveId;
+    document.getElementById('rejectModal').style.display = 'block';
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+    document.getElementById('rejection_reason').value = '';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('rejectModal');
+    if (event.target === modal) {
+        closeRejectModal();
+    }
+}
+</script>
 
 <?php
 $content = ob_get_clean();

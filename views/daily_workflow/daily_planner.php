@@ -1,11 +1,11 @@
 <div class="page-header">
     <div class="page-title">
-        <h1><span>📋</span> Daily Planner</h1>
+        <h1><i class="bi bi-clipboard-check-fill"></i> Daily Planner</h1>
         <p>Plan, track, and update your daily tasks - <?= htmlspecialchars($data['userDept']['dept_name'] ?? $data['userDept']['department'] ?? 'General') ?> Department</p>
     </div>
     <div class="page-actions">
         <button class="btn btn--primary" onclick="showAddTaskModal()">
-            <span>➕</span> Add Task
+            <i class="bi bi-plus-circle-fill"></i> Add Task
         </button>
         <input type="date" id="planDate" class="form-control" value="<?= date('Y-m-d') ?>" onchange="loadTasksForDate(this.value)" style="width: auto;">
     </div>
@@ -14,7 +14,7 @@
 <div class="dashboard-grid">
     <div class="kpi-card">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">📋</div>
+            <div class="kpi-card__icon"><i class="bi bi-list-task"></i></div>
         </div>
         <div class="kpi-card__value"><?= count($data['todayPlans']) ?></div>
         <div class="kpi-card__label">Total Tasks</div>
@@ -23,7 +23,7 @@
     
     <div class="kpi-card">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">✅</div>
+            <div class="kpi-card__icon"><i class="bi bi-check-circle-fill"></i></div>
         </div>
         <div class="kpi-card__value"><?= count(array_filter($data['todayPlans'], function($t) { return $t['status'] === 'completed'; })) ?></div>
         <div class="kpi-card__label">Completed</div>
@@ -32,7 +32,7 @@
     
     <div class="kpi-card">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">⏱️</div>
+            <div class="kpi-card__icon"><i class="bi bi-clock-fill"></i></div>
         </div>
         <div class="kpi-card__value"><?= array_sum(array_column($data['todayPlans'], 'estimated_hours')) ?>h</div>
         <div class="kpi-card__label">Planned Hours</div>
@@ -41,7 +41,7 @@
     
     <div class="kpi-card">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">🎯</div>
+            <div class="kpi-card__icon"><i class="bi bi-bullseye"></i></div>
         </div>
         <div class="kpi-card__value"><?= array_sum(array_column($data['todayPlans'], 'actual_hours')) ?>h</div>
         <div class="kpi-card__label">Actual Hours</div>
@@ -52,17 +52,17 @@
 <div class="card">
     <div class="card__header">
         <h2 class="card__title">
-            <span>📝</span> My Tasks - <?= date('M j, Y') ?>
+            <i class="bi bi-journal-text"></i> My Tasks - <?= date('M j, Y') ?>
         </h2>
     </div>
     <div class="card__body">
         <?php if (empty($data['todayPlans'])): ?>
             <div class="empty-state">
-                <div class="empty-icon">📋</div>
+                <div class="empty-icon"><i class="bi bi-clipboard-x" style="font-size: 48px;"></i></div>
                 <h3>No Tasks Yet</h3>
                 <p>Start your day by adding your first task.</p>
                 <button class="btn btn--primary" onclick="showAddTaskModal()">
-                    <span>➕</span> Add First Task
+                    <i class="bi bi-plus-circle-fill"></i> Add First Task
                 </button>
             </div>
         <?php else: ?>
@@ -77,12 +77,12 @@
                                 <?php endif; ?>
                                 <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                                     <?php if ($task['project_name']): ?>
-                                        <span class="badge badge--secondary">📁 <?= htmlspecialchars($task['project_name']) ?></span>
+                                        <span class="badge badge--secondary"><i class="bi bi-folder-fill"></i> <?= htmlspecialchars($task['project_name']) ?></span>
                                     <?php else: ?>
-                                        <span class="badge badge--secondary">📋 General Task</span>
+                                        <span class="badge badge--secondary"><i class="bi bi-list-task"></i> General Task</span>
                                     <?php endif; ?>
                                     <?php if ($task['task_category']): ?>
-                                        <span class="badge badge--info">🏷️ <?= htmlspecialchars($task['task_category']) ?></span>
+                                        <span class="badge badge--info"><i class="bi bi-tag-fill"></i> <?= htmlspecialchars($task['task_category']) ?></span>
                                     <?php endif; ?>
                                     <span class="badge badge--<?= $task['priority'] === 'urgent' ? 'danger' : ($task['priority'] === 'high' ? 'warning' : 'success') ?>">
                                         <?= ucfirst($task['priority']) ?> Priority
@@ -92,25 +92,25 @@
                                         <span class="badge badge--success">Actual: <?= $task['actual_hours'] ?>h</span>
                                     <?php endif; ?>
                                     <?php if ($task['is_followup']): ?>
-                                        <span class="badge badge--info">📞 Follow-up</span>
+                                        <span class="badge badge--info"><i class="bi bi-telephone-fill"></i> Follow-up</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
                             <div class="task-actions" style="display: flex; gap: 0.25rem;">
                                 <button class="btn btn--sm btn--secondary" onclick="editTask(<?= $task['id'] ?>)" title="Edit Task">
-                                    ✏️
+                                    <i class="bi bi-pencil-fill"></i>
                                 </button>
                                 <?php if (!$task['is_followup']): ?>
                                     <button class="btn btn--sm btn--info" onclick="createFollowup(<?= $task['id'] ?>)" title="Create Follow-up">
-                                        📞
+                                        <i class="bi bi-telephone-plus-fill"></i>
                                     </button>
                                 <?php else: ?>
                                     <button class="btn btn--sm btn--success" onclick="viewFollowup(<?= $task['followup_id'] ?>)" title="View Follow-up">
-                                        👁️📞
+                                        <i class="bi bi-eye-fill"></i>
                                     </button>
                                 <?php endif; ?>
                                 <button class="btn btn--sm btn--danger" onclick="deleteTask(<?= $task['id'] ?>)" title="Delete Task">
-                                    🗑️
+                                    <i class="bi bi-trash-fill"></i>
                                 </button>
                             </div>
                         </div>
@@ -119,10 +119,10 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                                 <label style="font-weight: 500; font-size: 0.875rem;">Progress: <span id="progress-display-<?= $task['id'] ?>"><?= $task['progress'] ?>%</span></label>
                                 <select onchange="updateTaskStatus(<?= $task['id'] ?>, this.value)" style="padding: 0.25rem; border-radius: 4px; border: 1px solid var(--border-color);">
-                                    <option value="pending" <?= $task['status'] === 'pending' ? 'selected' : '' ?>>📋 Pending</option>
-                                    <option value="in_progress" <?= $task['status'] === 'in_progress' ? 'selected' : '' ?>>⏳ In Progress</option>
-                                    <option value="completed" <?= $task['status'] === 'completed' ? 'selected' : '' ?>>✅ Completed</option>
-                                    <option value="blocked" <?= $task['status'] === 'blocked' ? 'selected' : '' ?>>🚫 Blocked</option>
+                                    <option value="pending" <?= $task['status'] === 'pending' ? 'selected' : '' ?>>Pending</option>
+                                    <option value="in_progress" <?= $task['status'] === 'in_progress' ? 'selected' : '' ?>>In Progress</option>
+                                    <option value="completed" <?= $task['status'] === 'completed' ? 'selected' : '' ?>>Completed</option>
+                                    <option value="blocked" <?= $task['status'] === 'blocked' ? 'selected' : '' ?>>Blocked</option>
                                 </select>
                             </div>
                             <input type="range" min="0" max="100" value="<?= $task['progress'] ?>" 

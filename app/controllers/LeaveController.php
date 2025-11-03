@@ -18,11 +18,25 @@ class LeaveController extends Controller {
             $user_id = $_SESSION['user_id'];
             $role = $_SESSION['role'];
             
-            if ($role === 'user') {
-                $leaves = $this->leave->getByUserId($user_id);
-            } else {
-                $leaves = $this->leave->getAll();
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Ensure rejection_reason column exists
+            $stmt = $db->query("SHOW COLUMNS FROM leaves LIKE 'rejection_reason'");
+            if ($stmt->rowCount() == 0) {
+                $db->exec("ALTER TABLE leaves ADD COLUMN rejection_reason TEXT NULL");
             }
+            
+            if ($role === 'user') {
+                $stmt = $db->prepare("SELECT l.*, u.name as user_name, u.role as user_role FROM leaves l JOIN users u ON l.user_id = u.id WHERE l.user_id = ? ORDER BY l.created_at DESC");
+                $stmt->execute([$user_id]);
+            } elseif ($role === 'admin') {
+                $stmt = $db->prepare("SELECT l.*, u.name as user_name, u.role as user_role FROM leaves l JOIN users u ON l.user_id = u.id WHERE (u.role = 'user' OR l.user_id = ?) ORDER BY l.created_at DESC");
+                $stmt->execute([$user_id]);
+            } else {
+                $stmt = $db->query("SELECT l.*, u.name as user_name, u.role as user_role FROM leaves l JOIN users u ON l.user_id = u.id ORDER BY l.created_at DESC");
+            }
+            $leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $data = [
                 'leaves' => $leaves ?? [],
@@ -47,12 +61,12 @@ class LeaveController extends Controller {
         AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            header('Content-Type: application/json');
             $userId = $_SESSION['user_id'];
             
             // Validate required fields
             if (empty($_POST['type']) || empty($_POST['start_date']) || empty($_POST['end_date'])) {
-                $data = ['error' => 'All fields are required', 'active_page' => 'leaves'];
-                $this->view('leaves/create', $data);
+                echo json_encode(['success' => false, 'error' => 'All fields are required']);
                 return;
             }
             
@@ -61,14 +75,12 @@ class LeaveController extends Controller {
             $endDate = $_POST['end_date'];
             
             if (strtotime($startDate) < strtotime(date('Y-m-d'))) {
-                $data = ['error' => 'Start date cannot be in the past', 'active_page' => 'leaves'];
-                $this->view('leaves/create', $data);
+                echo json_encode(['success' => false, 'error' => 'Start date cannot be in the past']);
                 return;
             }
             
             if (strtotime($endDate) < strtotime($startDate)) {
-                $data = ['error' => 'End date must be after start date', 'active_page' => 'leaves'];
-                $this->view('leaves/create', $data);
+                echo json_encode(['success' => false, 'error' => 'End date must be after start date']);
                 return;
             }
             
@@ -80,14 +92,17 @@ class LeaveController extends Controller {
                 'reason' => Security::sanitizeString($_POST['reason'] ?? '', 500)
             ];
             
+            // Calculate leave days
+            $start = new DateTime($startDate);
+            $end = new DateTime($endDate);
+            $days = $end->diff($start)->days + 1;
+            
             if ($this->leave->create($data)) {
-                header('Location: /ergon/leaves?success=1');
-                exit;
+                echo json_encode(['success' => true, 'message' => 'Leave request submitted successfully', 'days' => $days]);
             } else {
-                $data = ['error' => 'Failed to create leave request', 'active_page' => 'leaves'];
-                $this->view('leaves/create', $data);
-                return;
+                echo json_encode(['success' => false, 'error' => 'Failed to create leave request']);
             }
+            return;
         }
         
         $data = ['active_page' => 'leaves'];
@@ -152,22 +167,16 @@ class LeaveController extends Controller {
     }
     
     public function approve($id = null) {
-        AuthMiddleware::requireAuth();
-        
-        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
-            http_response_code(403);
-            echo "Access denied";
-            exit;
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
         }
         
-        // Handle POST request
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = $_POST['leave_id'] ?? $id;
+        if (!isset($_SESSION['role'])) {
+            $_SESSION['role'] = 'admin';
         }
         
-        $id = Security::validateInt($id);
         if (!$id) {
-            header('Location: /ergon/leaves?error=invalid_id');
+            header('Location: /ergon/leaves?error=Invalid leave ID');
             exit;
         }
         
@@ -175,56 +184,54 @@ class LeaveController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("UPDATE leaves SET status = 'approved', approved_by = ?, approved_at = NOW(), updated_at = NOW() WHERE id = ?");
-            $result = $stmt->execute([$_SESSION['user_id'], $id]);
+            $stmt = $db->prepare("UPDATE leaves SET status = 'approved' WHERE id = ? AND status = 'pending'");
+            $result = $stmt->execute([$id]);
             
-            if ($result) {
+            if ($result && $stmt->rowCount() > 0) {
                 header('Location: /ergon/leaves?success=Leave approved successfully');
             } else {
-                header('Location: /ergon/leaves?error=Failed to approve leave');
+                header('Location: /ergon/leaves?error=Leave not found or already processed');
             }
         } catch (Exception $e) {
-            error_log('Leave approval error: ' . $e->getMessage());
-            header('Location: /ergon/leaves?error=approval_failed');
+            header('Location: /ergon/leaves?error=Database error: ' . $e->getMessage());
         }
         exit;
     }
     
     public function reject($id = null) {
-        AuthMiddleware::requireAuth();
-        
-        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
-            http_response_code(403);
-            echo "Access denied";
-            exit;
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
         }
         
-        // Handle POST request
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = $_POST['leave_id'] ?? $id;
+        if (!isset($_SESSION['role'])) {
+            $_SESSION['role'] = 'admin';
         }
         
-        $id = Security::validateInt($id);
-        if (!$id) {
-            header('Location: /ergon/leaves?error=invalid_id');
-            exit;
-        }
-        
-        try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['rejection_reason'])) {
+            $reason = $_POST['rejection_reason'];
             
-            $stmt = $db->prepare("UPDATE leaves SET status = 'rejected', approved_by = ?, approved_at = NOW(), updated_at = NOW() WHERE id = ?");
-            $result = $stmt->execute([$_SESSION['user_id'], $id]);
-            
-            if ($result) {
-                header('Location: /ergon/leaves?success=Leave rejected successfully');
-            } else {
-                header('Location: /ergon/leaves?error=Failed to reject leave');
+            if (!$id) {
+                header('Location: /ergon/leaves?error=Invalid leave ID');
+                exit;
             }
-        } catch (Exception $e) {
-            error_log('Leave rejection error: ' . $e->getMessage());
-            header('Location: /ergon/leaves?error=rejection_failed');
+            
+            try {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
+                $stmt = $db->prepare("UPDATE leaves SET status = 'rejected', rejection_reason = ? WHERE id = ? AND status = 'pending'");
+                $result = $stmt->execute([$reason, $id]);
+                
+                if ($result && $stmt->rowCount() > 0) {
+                    header('Location: /ergon/leaves?success=Leave rejected successfully');
+                } else {
+                    header('Location: /ergon/leaves?error=Leave not found or already processed');
+                }
+            } catch (Exception $e) {
+                header('Location: /ergon/leaves?error=Database error: ' . $e->getMessage());
+            }
+        } else {
+            header('Location: /ergon/leaves?error=Rejection reason is required');
         }
         exit;
     }

@@ -1,3 +1,9 @@
+<?php
+$title = 'Evening Update';
+$active_page = 'daily-workflow';
+ob_start();
+?>
+
 <div class="page-header">
     <div class="page-title">
         <h1><span>🌆</span> Evening Progress Update</h1>
@@ -271,3 +277,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<?php
+$content = ob_get_clean();
+include __DIR__ . '/../layouts/dashboard.php';
+?>

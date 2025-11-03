@@ -81,4 +81,50 @@ class AdminManagementController extends Controller {
             }
         }
     }
+    
+    public function changePassword() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Access denied']);
+            exit;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                $userId = intval($_POST['user_id']);
+                $newPassword = $_POST['new_password'];
+                
+                if (strlen($newPassword) < 6) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => 'Password must be at least 6 characters long']);
+                    exit;
+                }
+                
+                $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+                
+                $db = Database::connect();
+                $stmt = $db->prepare("UPDATE users SET password = ? WHERE id = ?");
+                $result = $stmt->execute([$hashedPassword, $userId]);
+                
+                if ($result) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'message' => 'Password changed successfully']);
+                } else {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => 'Failed to update password']);
+                }
+                exit;
+                
+            } catch (Exception $e) {
+                error_log('Change Password Error: ' . $e->getMessage());
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Server error occurred']);
+                exit;
+            }
+        }
+    }
 }
