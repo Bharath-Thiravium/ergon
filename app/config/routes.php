@@ -74,6 +74,8 @@ $router->post('/tasks/bulk-create', 'TasksController', 'bulkCreate');
 $router->get('/attendance', 'AttendanceController', 'index');
 $router->get('/attendance/clock', 'AttendanceController', 'clock');
 $router->post('/attendance/clock', 'AttendanceController', 'clock');
+$router->post('/attendance/manual', 'AttendanceController', 'manual');
+$router->get('/attendance/status', 'AttendanceController', 'status');
 $router->get('/attendance/conflicts', 'AttendanceController', 'conflicts');
 $router->post('/attendance/resolve-conflict/{id}', 'AttendanceController', 'resolveConflict');
 
@@ -216,6 +218,7 @@ $router->post('/users/delete-document/{userId}/{filename}', 'UsersController', '
 $router->get('/admin/management', 'AdminManagementController', 'index');
 $router->post('/admin/assign', 'AdminManagementController', 'assignAdmin');
 $router->post('/admin/remove', 'AdminManagementController', 'removeAdmin');
+$router->post('/admin/change-password', 'AdminManagementController', 'changePassword');
 
 // System Admin Management Routes (Owner only)
 $router->get('/system-admin', 'SystemAdminController', 'index');
