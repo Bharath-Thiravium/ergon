@@ -99,6 +99,9 @@ ob_start();
                         <button class="btn btn--sm btn--secondary" onclick="editUser(<?= $user['id'] ?>)">
                             <span>✏️</span> Edit
                         </button>
+                        <button class="btn btn--sm btn--info" onclick="changePassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')">
+                            <span>🔑</span> Change Password
+                        </button>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -152,6 +155,45 @@ function editUser(userId) {
 
 function exportUserList() {
     window.location.href = '/ergon/admin/export';
+}
+
+function changePassword(userId, userName) {
+    const newPassword = prompt(`Enter new password for ${userName}:`);
+    if (!newPassword) return;
+    
+    if (newPassword.length < 6) {
+        alert('Password must be at least 6 characters long.');
+        return;
+    }
+    
+    const confirmPassword = prompt('Confirm new password:');
+    if (newPassword !== confirmPassword) {
+        alert('Passwords do not match.');
+        return;
+    }
+    
+    if (confirm(`Are you sure you want to change password for ${userName}?`)) {
+        const formData = new FormData();
+        formData.append('user_id', userId);
+        formData.append('new_password', newPassword);
+        
+        fetch('/ergon/admin/change-password', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Password changed successfully!');
+            } else {
+                alert('Error: ' + (data.error || 'Failed to change password'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Server error occurred');
+        });
+    }
 }
 </script>
 
