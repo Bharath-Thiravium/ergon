@@ -16919,3 +16919,64 @@ Stack trace:
 [03-Nov-2025 08:45:49 UTC] ergon: Index.php executed - URI: /ergon/attendance
 [03-Nov-2025 08:45:49 UTC] Displaying 4 employees in admin view
 >>>>>>> 89cb783c6dab3a59e1b818279d6c5de3950c6de5
+[03-Nov-2025 08:55:09 UTC] ergon: Index.php executed - URI: /ergon/daily-planner/delayed-tasks-overview
+[03-Nov-2025 08:55:10 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 08:55:10 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[03-Nov-2025 08:55:10 UTC] ergon: Index.php executed - URI: /ergon/daily-planner/delayed-tasks-overview
+[03-Nov-2025 08:55:10 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 08:55:11 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[03-Nov-2025 08:55:32 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[03-Nov-2025 08:55:32 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 08:55:32 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[03-Nov-2025 10:41:39 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 10:41:39 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[03-Nov-2025 10:41:39 UTC] ergon: Index.php executed - URI: /ergon/gamification/team-competition
+[03-Nov-2025 10:41:39 UTC] ergon: Index.php executed - URI: /ergon/login?timeout=1
+[03-Nov-2025 10:41:46 UTC] ergon: Index.php executed - URI: /ergon/login
+[03-Nov-2025 10:41:46 UTC] Login successful - Session data set: {"user_id":1,"role":"owner","login_time":1762166506}
+[03-Nov-2025 10:41:47 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[03-Nov-2025 10:42:16 UTC] ergon: Index.php executed - URI: /ergon/system-admin
+[03-Nov-2025 10:42:16 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 10:42:16 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[03-Nov-2025 10:42:22 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 10:42:22 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[03-Nov-2025 10:42:22 UTC] ergon: Index.php executed - URI: /ergon/expenses
+[03-Nov-2025 10:42:23 UTC] Added expense_date column to existing expenses table
+[03-Nov-2025 10:42:23 UTC] Created test expense for approval testing with user ID: 1
+[03-Nov-2025 10:42:49 UTC] ergon: Index.php executed - URI: /ergon/reports
+[03-Nov-2025 10:42:49 UTC] getAttendanceSummary error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'check_in' in 'field list'
+[03-Nov-2025 10:42:49 UTC] getUserPerformance error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'a.check_in' in 'on clause'
+[03-Nov-2025 10:42:49 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 10:42:49 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[03-Nov-2025 10:43:01 UTC] ergon: Index.php executed - URI: /ergon/logout
+[03-Nov-2025 10:43:01 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\AuthController.php on line 91
+[03-Nov-2025 10:43:01 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 10:43:01 UTC] ergon: Index.php executed - URI: /ergon/login
+[03-Nov-2025 10:43:01 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[03-Nov-2025 11:50:23 UTC] ergon: Index.php executed - URI: /ergon/login
+[03-Nov-2025 11:50:24 UTC] ergon: Index.php executed - URI: /ergon/login
+[03-Nov-2025 11:50:24 UTC] ergon: Index.php executed - URI: /ergon/login
+[03-Nov-2025 11:50:24 UTC] ergon: Index.php executed - URI: /ergon/login
+[03-Nov-2025 11:50:29 UTC] ergon: Index.php executed - URI: /ergon/login
+[03-Nov-2025 11:50:29 UTC] Login successful - Session data set: {"user_id":1,"role":"owner","login_time":1762170629}
+[03-Nov-2025 11:50:30 UTC] ergon: Index.php executed - URI: /ergon/owner/dashboard
+[03-Nov-2025 11:50:33 UTC] ergon: Index.php executed - URI: /ergon/tasks
+[03-Nov-2025 11:50:33 UTC] PHP Warning:  Undefined array key "created_at" in C:\laragon\www\ergon\views\tasks\index.php on line 81
+[03-Nov-2025 11:50:33 UTC] PHP Warning:  Undefined array key "created_at" in C:\laragon\www\ergon\views\tasks\index.php on line 81
+[03-Nov-2025 11:50:33 UTC] PHP Warning:  Undefined array key "created_at" in C:\laragon\www\ergon\views\tasks\index.php on line 81
+[03-Nov-2025 11:50:33 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 11:50:33 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[03-Nov-2025 11:50:35 UTC] ergon: Index.php executed - URI: /ergon/tasks/create
+[03-Nov-2025 11:50:35 UTC] Users for dropdown: [{"id":2,"name":"Admin User","email":"admin@athenas.co.in","role":"admin"},{"id":29,"name":"Alice Johnson","email":"alice@ergon.test","role":"user"},{"id":1,"name":"Athenas Owner","email":"info@athenas.co.in","role":"owner"},{"id":30,"name":"Bob Smith","email":"bob@ergon.test","role":"user"},{"id":31,"name":"Carol Davis","email":"carol@ergon.test","role":"user"},{"id":32,"name":"David Wilson","email":"david@ergon.test","role":"admin"},{"id":16,"name":"Harini","email":"harini@athenas.co.in","role":"user"},{"id":33,"name":"Sarumalini","email":"sarumalini@athenas.co.in","role":"admin"},{"id":7,"name":"System Admin","email":"admin@ergon.com","role":"owner"},{"id":34,"name":"Test Admin","email":"test@admin.com","role":"admin"}]
+[03-Nov-2025 11:50:35 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 11:50:35 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[03-Nov-2025 11:50:38 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 11:50:38 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
+[03-Nov-2025 11:50:38 UTC] ergon: Index.php executed - URI: /ergon/tasks
+[03-Nov-2025 11:50:38 UTC] PHP Warning:  Undefined array key "created_at" in C:\laragon\www\ergon\views\tasks\index.php on line 81
+[03-Nov-2025 11:50:38 UTC] PHP Warning:  Undefined array key "created_at" in C:\laragon\www\ergon\views\tasks\index.php on line 81
+[03-Nov-2025 11:50:38 UTC] PHP Warning:  Undefined array key "created_at" in C:\laragon\www\ergon\views\tasks\index.php on line 81
+[03-Nov-2025 11:50:40 UTC] ergon: Index.php executed - URI: /ergon/followups
+[03-Nov-2025 11:50:40 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from C:\laragon\www\ergon\index.php on line 11) in C:\laragon\www\ergon\app\controllers\FollowupController.php on line 8
+[03-Nov-2025 11:50:40 UTC] ergon: Index.php executed - URI: /ergon/api/activity-log
+[03-Nov-2025 11:50:40 UTC] Activity log DB error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'action' in 'field list'
