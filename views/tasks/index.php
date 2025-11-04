@@ -78,7 +78,7 @@ ob_start();
                         <td><span class="badge badge--<?= $task['priority'] === 'high' ? 'danger' : ($task['priority'] === 'medium' ? 'warning' : 'info') ?>"><?= ucfirst($task['priority']) ?></span></td>
                         <td><span class="badge badge--<?= $task['status'] === 'completed' ? 'success' : ($task['status'] === 'in_progress' ? 'info' : 'secondary') ?>"><?= ucfirst(str_replace('_', ' ', $task['status'])) ?></span></td>
                         <td><?= ($task['deadline'] ?? $task['due_date']) ? date('M d, Y', strtotime($task['deadline'] ?? $task['due_date'])) : 'No due date' ?></td>
-                        <td><?= $task['created_at'] ? date('M d, Y', strtotime($task['created_at'])) : '' ?></td>
+                        <td><?= isset($task['created_at']) && $task['created_at'] ? date('M d, Y', strtotime($task['created_at'])) : 'N/A' ?></td>
                         <td>
                             <div class="btn-group">
                                 <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
