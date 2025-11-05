@@ -153,4 +153,62 @@ class SystemAdminController extends Controller {
             }
         }
     }
+    
+    public function changePassword() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $adminId = $_POST['admin_id'] ?? '';
+            $password = $_POST['password'] ?? '';
+            $confirmPassword = $_POST['confirm_password'] ?? '';
+            
+            if (empty($adminId) || empty($password) || empty($confirmPassword)) {
+                header('Location: /ergon/system-admin?error=All fields are required');
+                exit;
+            }
+            
+            if ($password !== $confirmPassword) {
+                header('Location: /ergon/system-admin?error=Passwords do not match');
+                exit;
+            }
+            
+            try {
+                $db = Database::connect();
+                $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+                $stmt = $db->prepare("UPDATE users SET password = ? WHERE id = ? AND role = 'admin'");
+                $stmt->execute([$hashedPassword, $adminId]);
+                
+                header('Location: /ergon/system-admin?success=Password changed successfully');
+                exit;
+            } catch (Exception $e) {
+                header('Location: /ergon/system-admin?error=Failed to change password');
+                exit;
+            }
+        }
+    }
+    
+    public function delete() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $adminId = $_POST['admin_id'] ?? '';
+            
+            if (empty($adminId)) {
+                header('Location: /ergon/system-admin?error=Invalid admin ID');
+                exit;
+            }
+            
+            try {
+                $db = Database::connect();
+                $stmt = $db->prepare("DELETE FROM users WHERE id = ? AND role = 'admin'");
+                $stmt->execute([$adminId]);
+                
+                header('Location: /ergon/system-admin?success=Admin deleted successfully');
+                exit;
+            } catch (Exception $e) {
+                header('Location: /ergon/system-admin?error=Failed to delete admin');
+                exit;
+            }
+        }
+    }
 }
