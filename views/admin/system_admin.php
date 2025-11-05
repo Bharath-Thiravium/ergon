@@ -97,8 +97,11 @@ ob_start();
                         <p class="admin-card__date">Created: <?= date('M d, Y', strtotime($admin['created_at'])) ?></p>
                     </div>
                     <div class="admin-card__actions">
-                        <button class="btn btn--sm btn--secondary" onclick="editAdmin(<?= $admin['id'] ?>)">
-                            <span>✏️</span> Edit
+                        <button class="btn btn--sm btn--secondary" onclick="changePassword(<?= $admin['id'] ?>)">
+                            <span>🔑</span> Change Password
+                        </button>
+                        <button class="btn btn--sm btn--danger" onclick="deleteAdmin(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>')">
+                            <span>🗑️</span> Delete
                         </button>
                         <?php if ($admin['status'] === 'active'): ?>
                         <button class="btn btn--sm btn--warning" onclick="deactivateAdmin(<?= $admin['id'] ?>)">
@@ -112,6 +115,39 @@ ob_start();
         <?php endif; ?>
     </div>
 </div>
+
+<style>
+.btn--danger {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
+}
+.btn--danger:hover {
+    background: #b91c1c !important;
+    border-color: #b91c1c !important;
+    color: #ffffff !important;
+}
+.modal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 10000 !important;
+    display: none !important;
+}
+.modal-content {
+    position: relative !important;
+    background: white !important;
+    margin: 5% auto !important;
+    padding: 0 !important;
+    width: 90% !important;
+    max-width: 500px !important;
+    border-radius: 8px !important;
+    z-index: 10001 !important;
+}
+</style>
 
 <!-- Create Admin Modal -->
 <div class="modal" id="createAdminModal">
@@ -143,32 +179,32 @@ ob_start();
     </div>
 </div>
 
-<!-- Edit Admin Modal -->
-<div class="modal" id="editAdminModal">
-    <div class="modal-content">
+<!-- Change Password Modal -->
+<div class="modal" id="changePasswordModal" style="z-index: 10001 !important;">
+    <div class="modal-content" style="z-index: 10002 !important;">
         <div class="modal-header">
-            <h3>Edit System Admin</h3>
-            <button class="modal-close" onclick="closeModal('editAdminModal')">&times;</button>
+            <h3>Change Admin Password</h3>
+            <button class="modal-close" onclick="closeModal('changePasswordModal')">&times;</button>
         </div>
-        <form method="POST" action="/ergon/system-admin/edit" id="editAdminForm">
-            <input type="hidden" name="admin_id" id="editAdminId">
+        <form method="POST" action="/ergon/system-admin/change-password" id="changePasswordForm">
+            <input type="hidden" name="admin_id" id="changePasswordId">
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Full Name</label>
-                    <input type="text" name="name" id="editAdminName" class="form-control" required>
+                    <label class="form-label">Admin Name</label>
+                    <input type="text" id="changePasswordName" class="form-control" readonly>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Email Address</label>
-                    <input type="email" name="email" id="editAdminEmail" class="form-control" required>
+                    <label class="form-label">New Password</label>
+                    <input type="password" name="password" class="form-control" required minlength="6">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">New Password (leave blank to keep current)</label>
-                    <input type="password" name="password" class="form-control">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" name="confirm_password" class="form-control" required minlength="6">
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn--secondary" onclick="closeModal('editAdminModal')">Cancel</button>
-                <button type="submit" class="btn btn--primary">Update Admin</button>
+                <button type="button" class="btn btn--secondary" onclick="closeModal('changePasswordModal')">Cancel</button>
+                <button type="submit" class="btn btn--primary">Change Password</button>
             </div>
         </form>
     </div>
@@ -183,27 +219,41 @@ function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
 }
 
-function editAdmin(adminId) {
-    // Find admin data from the page
+function changePassword(adminId) {
     const adminCards = document.querySelectorAll('.admin-card');
     let adminData = null;
     
     adminCards.forEach(card => {
-        const editBtn = card.querySelector('button[onclick*="editAdmin(' + adminId + ')"]');
-        if (editBtn) {
+        const btn = card.querySelector('button[onclick*="changePassword(' + adminId + ')"]');
+        if (btn) {
             adminData = {
                 id: adminId,
-                name: card.querySelector('.admin-card__name').textContent,
-                email: card.querySelector('.admin-card__email').textContent
+                name: card.querySelector('.admin-card__name').textContent
             };
         }
     });
     
     if (adminData) {
-        document.getElementById('editAdminId').value = adminData.id;
-        document.getElementById('editAdminName').value = adminData.name;
-        document.getElementById('editAdminEmail').value = adminData.email;
-        document.getElementById('editAdminModal').style.display = 'block';
+        document.getElementById('changePasswordId').value = adminData.id;
+        document.getElementById('changePasswordName').value = adminData.name;
+        document.getElementById('changePasswordModal').style.display = 'block';
+    }
+}
+
+function deleteAdmin(adminId, adminName) {
+    if (confirm('Are you sure you want to permanently delete admin "' + adminName + '"? This action cannot be undone.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/ergon/system-admin/delete';
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'admin_id';
+        input.value = adminId;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 
@@ -242,13 +292,30 @@ document.addEventListener('DOMContentLoaded', function() {
 // Close modal when clicking outside
 window.addEventListener('click', function(event) {
     const createModal = document.getElementById('createAdminModal');
-    const editModal = document.getElementById('editAdminModal');
+    const passwordModal = document.getElementById('changePasswordModal');
     
     if (event.target === createModal) {
         closeModal('createAdminModal');
     }
-    if (event.target === editModal) {
-        closeModal('editAdminModal');
+    if (event.target === passwordModal) {
+        closeModal('changePasswordModal');
+    }
+});
+
+// Add password confirmation validation
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordForm = document.getElementById('changePasswordForm');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', function(e) {
+            const password = this.querySelector('input[name="password"]').value;
+            const confirmPassword = this.querySelector('input[name="confirm_password"]').value;
+            
+            if (password !== confirmPassword) {
+                e.preventDefault();
+                alert('Passwords do not match!');
+                return false;
+            }
+        });
     }
 });
 </script>

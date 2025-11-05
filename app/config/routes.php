@@ -238,6 +238,8 @@ $router->post('/admin/change-password', 'AdminManagementController', 'changePass
 $router->get('/system-admin', 'SystemAdminController', 'index');
 $router->post('/system-admin/create', 'SystemAdminController', 'create');
 $router->post('/system-admin/edit', 'SystemAdminController', 'edit');
+$router->post('/system-admin/change-password', 'SystemAdminController', 'changePassword');
+$router->post('/system-admin/delete', 'SystemAdminController', 'delete');
 $router->post('/system-admin/deactivate', 'SystemAdminController', 'deactivate');
 $router->get('/system-admin/export', 'SystemAdminController', 'export');
 
