@@ -94,57 +94,47 @@ class DailyTaskPlannerController extends Controller {
     }
     
     public function projectOverview() {
-        $this->requireAuth();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         
-        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
-            http_response_code(403);
-            echo "Access denied";
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /ergon/login');
             exit;
         }
         
-        try {
-            $data = [
-                'projectProgress' => [
-                    ['id' => 1, 'name' => 'ERGON Development', 'department' => 'IT', 'total_tasks' => 20, 'completed_tasks' => 15, 'completion_percentage' => 75],
-                    ['id' => 2, 'name' => 'Client Portal', 'department' => 'Sales', 'total_tasks' => 12, 'completed_tasks' => 8, 'completion_percentage' => 67],
-                    ['id' => 3, 'name' => 'Mobile App', 'department' => 'IT', 'total_tasks' => 18, 'completed_tasks' => 14, 'completion_percentage' => 78],
-                    ['id' => 4, 'name' => 'Marketing Campaign', 'department' => 'Marketing', 'total_tasks' => 10, 'completed_tasks' => 6, 'completion_percentage' => 60]
-                ]
-            ];
-            
-            include __DIR__ . '/../../views/daily_planner/project_overview.php';
-        } catch (Exception $e) {
-            error_log('Project overview error: ' . $e->getMessage());
-            http_response_code(500);
-            echo "Error loading project overview";
-        }
+        $data = [
+            'projectProgress' => [
+                ['id' => 1, 'name' => 'ERGON Development', 'department' => 'IT', 'total_tasks' => 20, 'completed_tasks' => 15, 'completion_percentage' => 75],
+                ['id' => 2, 'name' => 'Client Portal', 'department' => 'Sales', 'total_tasks' => 12, 'completed_tasks' => 8, 'completion_percentage' => 67],
+                ['id' => 3, 'name' => 'Mobile App', 'department' => 'IT', 'total_tasks' => 18, 'completed_tasks' => 14, 'completion_percentage' => 78],
+                ['id' => 4, 'name' => 'Marketing Campaign', 'department' => 'Marketing', 'total_tasks' => 10, 'completed_tasks' => 6, 'completion_percentage' => 60]
+            ]
+        ];
+        
+        include __DIR__ . '/../../views/daily_planner/project_overview.php';
     }
     
     public function delayedTasksOverview() {
-        $this->requireAuth();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         
-        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
-            http_response_code(403);
-            echo "Access denied";
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /ergon/login');
             exit;
         }
         
-        try {
-            $data = [
-                'delayedTasks' => [
-                    ['id' => 1, 'task_name' => 'Database Optimization', 'user_name' => 'John Doe', 'completion_percentage' => 30, 'days_overdue' => 3, 'priority' => 'high'],
-                    ['id' => 2, 'task_name' => 'UI Testing', 'user_name' => 'Jane Smith', 'completion_percentage' => 45, 'days_overdue' => 2, 'priority' => 'medium'],
-                    ['id' => 3, 'task_name' => 'API Integration', 'user_name' => 'Mike Johnson', 'completion_percentage' => 25, 'days_overdue' => 5, 'priority' => 'high'],
-                    ['id' => 4, 'task_name' => 'Code Review', 'user_name' => 'Sarah Wilson', 'completion_percentage' => 60, 'days_overdue' => 1, 'priority' => 'low']
-                ]
-            ];
-            
-            include __DIR__ . '/../../views/daily_planner/delayed_tasks_overview.php';
-        } catch (Exception $e) {
-            error_log('Delayed tasks overview error: ' . $e->getMessage());
-            http_response_code(500);
-            echo "Error loading delayed tasks overview";
-        }
+        $data = [
+            'delayedTasks' => [
+                ['id' => 1, 'task_name' => 'Database Optimization', 'user_name' => 'John Doe', 'completion_percentage' => 30, 'days_overdue' => 3, 'priority' => 'high'],
+                ['id' => 2, 'task_name' => 'UI Testing', 'user_name' => 'Jane Smith', 'completion_percentage' => 45, 'days_overdue' => 2, 'priority' => 'medium'],
+                ['id' => 3, 'task_name' => 'API Integration', 'user_name' => 'Mike Johnson', 'completion_percentage' => 25, 'days_overdue' => 5, 'priority' => 'high'],
+                ['id' => 4, 'task_name' => 'Code Review', 'user_name' => 'Sarah Wilson', 'completion_percentage' => 60, 'days_overdue' => 1, 'priority' => 'low']
+            ]
+        ];
+        
+        include __DIR__ . '/../../views/daily_planner/delayed_tasks_overview.php';
     }
     
     public function projectProgressApi() {
