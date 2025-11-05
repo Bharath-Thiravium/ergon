@@ -7,6 +7,19 @@ class AdvanceController extends Controller {
         $this->requireAuth();
         
         try {
+<<<<<<< HEAD
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a LEFT JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC");
+            $stmt->execute();
+            $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->view('advances/index', ['advances' => $advances]);
+        } catch (Exception $e) {
+            error_log('Advances index error: ' . $e->getMessage());
+            $this->view('advances/index', ['advances' => [], 'error' => 'Failed to load advances']);
+=======
             $user_id = $_SESSION['user_id'];
             $role = $_SESSION['role'];
             
@@ -63,6 +76,7 @@ class AdvanceController extends Controller {
                 'active_page' => 'advances'
             ];
             $this->view('advances/index', $data);
+>>>>>>> 89cb783c6dab3a59e1b818279d6c5de3950c6de5
         }
     }
     

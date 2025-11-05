@@ -121,9 +121,7 @@ ob_start();
 <!-- Follow-ups List -->
 <div class="card">
     <div class="card__header">
-        <h2 class="card__title">
-            <span>📞</span> Follow-ups List
-        </h2>
+        <h2 class="card__title">Follow-ups List</h2>
         <div class="card__actions">
             <label class="checkbox-label">
                 <input type="checkbox" id="consolidatedView"> 👥 Consolidated by Contact

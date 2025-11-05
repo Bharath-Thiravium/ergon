@@ -5,7 +5,6 @@ require_once __DIR__ . '/../config/database.php';
 class FollowupController extends Controller {
     
     public function index() {
-        session_start();
         
         if (!isset($_SESSION['user_id'])) {
             header('Location: /ergon/login');
@@ -49,7 +48,6 @@ class FollowupController extends Controller {
     }
     
     public function handlePost() {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: /ergon/followups');
@@ -72,7 +70,6 @@ class FollowupController extends Controller {
     }
     
     public function create() {
-        session_start();
         
         if (!isset($_SESSION['user_id'])) {
             header('Location: /ergon/login');
@@ -84,7 +81,6 @@ class FollowupController extends Controller {
     }
     
     public function store() {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: /ergon/followups');
@@ -164,7 +160,6 @@ class FollowupController extends Controller {
     }
     
     public function reschedule() {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: /ergon/followups');
@@ -252,7 +247,6 @@ class FollowupController extends Controller {
     }
     
     public function viewFollowup($id) {
-        session_start();
         
         if (!isset($_SESSION['user_id'])) {
             echo '<p>Unauthorized access</p>';
@@ -296,7 +290,6 @@ class FollowupController extends Controller {
     }
     
     public function getHistory($id) {
-        session_start();
         
         if (!isset($_SESSION['user_id'])) {
             echo json_encode(['success' => false, 'error' => 'Unauthorized']);
