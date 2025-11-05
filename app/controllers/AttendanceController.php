@@ -64,7 +64,7 @@ class AttendanceController extends Controller {
                         a.check_in,
                         a.check_out,
                         CASE 
-                            WHEN a.location = 'On Approved Leave' THEN 'On Leave'
+                            WHEN a.location_name = 'On Approved Leave' THEN 'On Leave'
                             WHEN a.check_in IS NOT NULL THEN 'Present'
                             ELSE 'Absent'
                         END as status,
@@ -187,7 +187,7 @@ class AttendanceController extends Controller {
                     }
                     
                     // Clock in
-                    $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, latitude, longitude, location, status, created_at) VALUES (?, NOW(), ?, ?, 'Office', 'present', NOW())");
+                    $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, latitude, longitude, location_name, status, created_at) VALUES (?, NOW(), ?, ?, 'Office', 'present', NOW())");
                     $result = $stmt->execute([$userId, $latitude, $longitude]);
                     
                     if ($result) {
@@ -308,7 +308,7 @@ class AttendanceController extends Controller {
                         $existing['id']
                     ]);
                 } else {
-                    $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status, location, created_at) VALUES (?, ?, ?, 'present', 'Manual Entry', NOW())");
+                    $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status, location_name, created_at) VALUES (?, ?, ?, 'present', 'Manual Entry', NOW())");
                     $stmt->execute([
                         $userId,
                         $date . ' ' . $checkIn,

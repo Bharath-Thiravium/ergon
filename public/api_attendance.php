@@ -1,72 +1,46 @@
 <?php
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Not authenticated']);
-    exit;
-}
-
-require_once __DIR__ . '/../app/config/database.php';
-require_once __DIR__ . '/../app/models/Attendance.php';
+require_once '../app/config/database.php';
+require_once '../app/models/Attendance.php';
 
 try {
-    $input = json_decode(file_get_contents('php://input'), true);
+    $database = new Database();
+    $db = $database->getConnection();
+    $attendance = new Attendance($db);
     
-    if (!$input || !isset($input['action'])) {
-        throw new Exception('Invalid request data');
-    }
-    
-    $attendance = new Attendance();
-    $userId = $_SESSION['user_id'];
-    $action = $input['action'];
-    
-    if ($action === 'clock_in') {
-        $result = $attendance->clockIn($userId, [
-            'latitude' => $input['latitude'] ?? 0,
-            'longitude' => $input['longitude'] ?? 0,
-            'location_name' => $input['location_name'] ?? 'Office'
-        ]);
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true);
         
-        echo json_encode([
-            'success' => true,
-            'message' => 'Clocked in successfully',
-            'data' => $result
-        ]);
+        if (!isset($input['action']) || !isset($input['user_id'])) {
+            throw new Exception('Missing required parameters');
+        }
         
-    } elseif ($action === 'clock_out') {
-        $result = $attendance->clockOut($userId, [
-            'latitude' => $input['latitude'] ?? 0,
-            'longitude' => $input['longitude'] ?? 0,
-            'location_name' => $input['location_name'] ?? 'Office'
-        ]);
+        $user_id = $input['user_id'];
+        $action = $input['action'];
+        $latitude = $input['latitude'] ?? null;
+        $longitude = $input['longitude'] ?? null;
         
-        echo json_encode([
-            'success' => true,
-            'message' => 'Clocked out successfully',
-            'data' => $result
-        ]);
+        if ($action === 'clock_in') {
+            $result = $attendance->clockIn($user_id, $latitude, $longitude);
+        } elseif ($action === 'clock_out') {
+            $result = $attendance->clockOut($user_id, $latitude, $longitude);
+        } else {
+            throw new Exception('Invalid action');
+        }
         
-    } else {
-        throw new Exception('Invalid action');
+        echo json_encode(['success' => true, 'data' => $result]);
     }
     
 } catch (Exception $e) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => $e->getMessage()
-    ]);
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
 ?>

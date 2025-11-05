@@ -113,6 +113,61 @@ class LeaveController extends Controller {
         $this->create();
     }
     
+    public function edit($id) {
+        AuthMiddleware::requireAuth();
+        
+        $id = Security::validateInt($id);
+        if (!$id) {
+            header('Location: /ergon/leaves?error=invalid_id');
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Check if user can edit this leave
+            if ($_SESSION['role'] === 'user') {
+                $stmt = $db->prepare("SELECT * FROM leaves WHERE id = ? AND user_id = ? AND status = 'pending'");
+                $stmt->execute([$id, $_SESSION['user_id']]);
+            } else {
+                $stmt = $db->prepare("SELECT * FROM leaves WHERE id = ?");
+                $stmt->execute([$id]);
+            }
+            
+            $leave = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$leave) {
+                header('Location: /ergon/leaves?error=not_found');
+                exit;
+            }
+            
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $stmt = $db->prepare("UPDATE leaves SET type = ?, start_date = ?, end_date = ?, reason = ? WHERE id = ?");
+                $result = $stmt->execute([
+                    $_POST['type'] ?? $leave['type'],
+                    $_POST['start_date'] ?? $leave['start_date'],
+                    $_POST['end_date'] ?? $leave['end_date'],
+                    $_POST['reason'] ?? $leave['reason'],
+                    $id
+                ]);
+                
+                if ($result) {
+                    header('Location: /ergon/leaves?success=updated');
+                } else {
+                    header('Location: /ergon/leaves/edit/' . $id . '?error=1');
+                }
+                exit;
+            }
+            
+            $this->view('leaves/edit', ['leave' => $leave, 'active_page' => 'leaves']);
+        } catch (Exception $e) {
+            error_log('Leave edit error: ' . $e->getMessage());
+            header('Location: /ergon/leaves?error=1');
+            exit;
+        }
+    }
+    
     public function viewLeave($id) {
         AuthMiddleware::requireAuth();
         
@@ -224,7 +279,7 @@ class LeaveController extends Controller {
             
             if (!$stmt->fetch()) {
                 // Create new attendance record for leave
-                $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status, location, created_at) VALUES (?, ?, NULL, 'absent', 'On Approved Leave', NOW())");
+                $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status, location_name, created_at) VALUES (?, ?, NULL, 'absent', 'On Approved Leave', NOW())");
                 $stmt->execute([$userId, $currentDate . ' 00:00:00']);
             }
             
@@ -280,7 +335,7 @@ class LeaveController extends Controller {
     }
     
     private function removeLeaveAttendanceRecords($db, $userId, $startDate, $endDate) {
-        $stmt = $db->prepare("DELETE FROM attendance WHERE user_id = ? AND location = 'On Approved Leave' AND DATE(check_in) BETWEEN ? AND ?");
+        $stmt = $db->prepare("DELETE FROM attendance WHERE user_id = ? AND location_name = 'On Approved Leave' AND DATE(check_in) BETWEEN ? AND ?");
         $stmt->execute([$userId, $startDate, $endDate]);
     }
     
