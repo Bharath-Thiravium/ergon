@@ -227,19 +227,56 @@ ob_start();
 <script>
 function approveItem(type, id) {
     if (confirm('Approve this ' + type + '?')) {
-        fetch(`/ergon/${type}s/approve/${id}`, {
+        const formData = new FormData();
+        formData.append('type', type);
+        formData.append('id', id);
+        formData.append('remarks', '');
+        
+        fetch('/ergon/owner/approve-request', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'}
-        }).then(() => location.reload());
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Request approved successfully!');
+                location.reload();
+            } else {
+                alert('Failed to approve request: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to approve request');
+        });
     }
 }
 
 function rejectItem(type, id) {
-    if (confirm('Reject this ' + type + '?')) {
-        fetch(`/ergon/${type}s/reject/${id}`, {
+    const reason = prompt('Please provide a reason for rejection:');
+    if (reason !== null && reason.trim() !== '') {
+        const formData = new FormData();
+        formData.append('type', type);
+        formData.append('id', id);
+        formData.append('remarks', reason);
+        
+        fetch('/ergon/owner/reject-request', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'}
-        }).then(() => location.reload());
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Request rejected successfully!');
+                location.reload();
+            } else {
+                alert('Failed to reject request: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to reject request');
+        });
     }
 }
 

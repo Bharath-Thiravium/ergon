@@ -60,25 +60,32 @@ ob_start();
                 <thead>
                     <tr>
                         <th>Title</th>
+                        <th>Description</th>
                         <th>Assigned To</th>
                         <th>Priority</th>
                         <th>Status</th>
                         <th>Due Date</th>
+                        <th>Created</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($tasks ?? [] as $task): ?>
                     <tr>
-                        <td><?= htmlspecialchars($task['title']) ?></td>
+                        <td><strong><?= htmlspecialchars($task['title']) ?></strong></td>
+                        <td><?= htmlspecialchars(substr($task['description'] ?? '', 0, 50)) ?><?= strlen($task['description'] ?? '') > 50 ? '...' : '' ?></td>
                         <td><?= htmlspecialchars($task['assigned_user'] ?? 'Unassigned') ?></td>
-                        <td><span class="badge badge--warning"><?= ucfirst($task['priority']) ?></span></td>
-                        <td><span class="badge badge--success"><?= ucfirst($task['status']) ?></span></td>
-                        <td><?= $task['due_date'] ? date('M d, Y', strtotime($task['due_date'])) : 'No due date' ?></td>
+                        <td><span class="badge badge--<?= $task['priority'] === 'high' ? 'danger' : ($task['priority'] === 'medium' ? 'warning' : 'info') ?>"><?= ucfirst($task['priority']) ?></span></td>
+                        <td><span class="badge badge--<?= $task['status'] === 'completed' ? 'success' : ($task['status'] === 'in_progress' ? 'info' : 'secondary') ?>"><?= ucfirst(str_replace('_', ' ', $task['status'])) ?></span></td>
+                        <td><?= ($task['deadline'] ?? $task['due_date']) ? date('M d, Y', strtotime($task['deadline'] ?? $task['due_date'])) : 'No due date' ?></td>
+                        <td><?= isset($task['created_at']) && $task['created_at'] ? date('M d, Y', strtotime($task['created_at'])) : 'N/A' ?></td>
                         <td>
                             <div class="btn-group">
                                 <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
                                     <span>👁️</span> View
+                                </a>
+                                <a href="/ergon/tasks/edit/<?= $task['id'] ?>" class="btn btn--sm btn--secondary" title="Edit Task">
+                                    <span>✏️</span> Edit
                                 </a>
                                 <button onclick="deleteRecord('tasks', <?= $task['id'] ?>, '<?= htmlspecialchars($task['title']) ?>')" class="btn btn--sm btn--danger" title="Delete Task">
                                     <span>🗑️</span> Delete

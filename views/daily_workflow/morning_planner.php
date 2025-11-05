@@ -1,17 +1,17 @@
-<div class="page-header">
-    <div class="page-title">
-        <h1><span>🌅</span> Morning Planner</h1>
-        <p>Plan your day - Submit by 10:00 AM</p>
-    </div>
-    <div class="page-actions">
-        <?php if ($data['canSubmit']): ?>
-            <button class="btn btn--primary" onclick="addPlanRow()">
-                <span>➕</span> Add Task
-            </button>
-        <?php else: ?>
-            <span class="badge badge--success">✅ Submitted</span>
-        <?php endif; ?>
-    </div>
+<?php
+$title = 'Morning Planner';
+$active_page = 'tasks';
+ob_start();
+?>
+
+<div class="header-actions">
+    <?php if ($data['canSubmit']): ?>
+        <button class="btn btn--primary" onclick="addPlanRow()">
+            <span>➕</span> Add Task
+        </button>
+    <?php else: ?>
+        <span class="badge badge--success">✅ Plan Submitted</span>
+    <?php endif; ?>
 </div>
 
 <?php if (isset($_GET['error']) && $_GET['error'] === 'no_morning_plan'): ?>
@@ -21,31 +21,38 @@
 <?php endif; ?>
 
 <div class="dashboard-grid">
-    <div class="kpi-card">
+    <div class="kpi-card kpi-card--primary">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">📅</div>
+            <div class="kpi-card__trend kpi-card__trend--neutral">— Today</div>
         </div>
         <div class="kpi-card__value"><?= date('d') ?></div>
         <div class="kpi-card__label"><?= date('M Y') ?></div>
-        <div class="kpi-card__status">Today</div>
+        <div class="kpi-card__status kpi-card__status--info">Current Date</div>
     </div>
     
-    <div class="kpi-card">
+    <div class="kpi-card kpi-card--success">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">⏰</div>
+            <div class="kpi-card__trend kpi-card__trend--up">↗ Live</div>
         </div>
         <div class="kpi-card__value"><?= date('H:i') ?></div>
         <div class="kpi-card__label">Current Time</div>
-        <div class="kpi-card__status">Live</div>
+        <div class="kpi-card__status kpi-card__status--active">Real-time</div>
     </div>
     
-    <div class="kpi-card">
+    <div class="kpi-card <?= $data['canSubmit'] ? 'kpi-card--warning' : 'kpi-card--success' ?>">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">📋</div>
+            <div class="kpi-card__trend <?= $data['canSubmit'] ? 'kpi-card__trend--neutral' : 'kpi-card__trend--up' ?>">
+                <?= $data['canSubmit'] ? '— Draft' : '↗ Done' ?>
+            </div>
         </div>
         <div class="kpi-card__value"><?= count($data['todayPlans']) ?></div>
         <div class="kpi-card__label">Planned Tasks</div>
-        <div class="kpi-card__status"><?= $data['canSubmit'] ? 'Draft' : 'Submitted' ?></div>
+        <div class="kpi-card__status <?= $data['canSubmit'] ? 'kpi-card__status--pending' : 'kpi-card__status--active' ?>">
+            <?= $data['canSubmit'] ? 'In Progress' : 'Submitted' ?>
+        </div>
     </div>
 </div>
 
@@ -62,10 +69,29 @@
                     <?php if (empty($data['todayPlans'])): ?>
                         <div class="plan-row">
                             <div class="form-row">
-                                <div class="form-group" style="flex: 2;">
+                                <div class="form-group form-group--flex-2">
                                     <label class="form-label">Task Title *</label>
-                                    <input type="text" name="plans[0][title]" class="form-control" required placeholder="What will you work on?">
+                                    <input type="text" name="plans[0][title]" class="form-control" required placeholder="What will you work on today?">
                                 </div>
+                                <div class="form-group">
+                                    <label class="form-label">Department</label>
+                                    <select name="plans[0][department_id]" class="form-control department-select" onchange="loadPlannerCategories(this, 0)">
+                                        <option value="">Select Dept</option>
+                                        <?php if (!empty($data['departments'])): ?>
+                                            <?php foreach ($data['departments'] as $dept): ?>
+                                                <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Category</label>
+                                    <select name="plans[0][task_category]" class="form-control category-select" onchange="checkFollowupCategory(this, 0)">
+                                        <option value="">Select Category</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label class="form-label">Priority</label>
                                     <select name="plans[0][priority]" class="form-control">
@@ -81,19 +107,37 @@
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Action</label>
-                                    <button type="button" class="btn btn--danger btn--sm" onclick="removePlanRow(this)">🗑️</button>
+                                    <button type="button" class="btn btn--danger btn--sm" onclick="removePlanRow(this)">
+                                        <span>🗑️</span>
+                                    </button>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Description</label>
                                 <textarea name="plans[0][description]" class="form-control" rows="2" placeholder="Brief description of the task"></textarea>
                             </div>
+                            <div id="followup-fields-0" class="followup-fields" style="display: none;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Company Name</label>
+                                        <input type="text" name="plans[0][company_name]" class="form-control" placeholder="Company name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Contact Person</label>
+                                        <input type="text" name="plans[0][contact_person]" class="form-control" placeholder="Contact person">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Contact Phone</label>
+                                        <input type="tel" name="plans[0][contact_phone]" class="form-control" placeholder="Phone number">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     <?php else: ?>
                         <?php foreach ($data['todayPlans'] as $index => $plan): ?>
                             <div class="plan-row">
                                 <div class="form-row">
-                                    <div class="form-group" style="flex: 2;">
+                                    <div class="form-group form-group--flex-2">
                                         <label class="form-label">Task Title *</label>
                                         <input type="text" name="plans[<?= $index ?>][title]" class="form-control" required value="<?= htmlspecialchars($plan['title']) ?>">
                                     </div>
@@ -112,7 +156,9 @@
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label">Action</label>
-                                        <button type="button" class="btn btn--danger btn--sm" onclick="removePlanRow(this)">🗑️</button>
+                                        <button type="button" class="btn btn--danger btn--sm" onclick="removePlanRow(this)">
+                                            <span>🗑️</span>
+                                        </button>
                                     </div>
                                 </div>
                                 <div class="form-group">
@@ -124,7 +170,7 @@
                     <?php endif; ?>
                 </div>
                 
-                <div class="form-actions" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                <div class="form-actions">
                     <button type="button" class="btn btn--secondary" onclick="addPlanRow()">
                         <span>➕</span> Add Another Task
                     </button>
@@ -156,7 +202,7 @@
                                 <td>
                                     <strong><?= htmlspecialchars($plan['title']) ?></strong>
                                     <?php if ($plan['description']): ?>
-                                        <br><small class="text-muted"><?= htmlspecialchars($plan['description']) ?></small>
+                                        <br><small style="color: var(--text-muted);"><?= htmlspecialchars($plan['description']) ?></small>
                                     <?php endif; ?>
                                 </td>
                                 <td>
@@ -166,7 +212,7 @@
                                 </td>
                                 <td><?= $plan['estimated_hours'] ?>h</td>
                                 <td>
-                                    <span class="badge badge--<?= $plan['status'] === 'completed' ? 'success' : ($plan['status'] === 'in_progress' ? 'warning' : 'secondary') ?>">
+                                    <span class="badge badge--<?= $plan['status'] === 'completed' ? 'success' : ($plan['status'] === 'in_progress' ? 'warning' : 'info') ?>">
                                         <?= ucfirst(str_replace('_', ' ', $plan['status'])) ?>
                                     </span>
                                 </td>
@@ -188,16 +234,69 @@
 <script>
 let planRowIndex = <?= count($data['todayPlans']) ?>;
 
+function loadPlannerCategories(deptSelect, index) {
+    const categorySelect = deptSelect.closest('.plan-row').querySelector('.category-select');
+    const deptId = deptSelect.value;
+    
+    categorySelect.innerHTML = '<option value="">Select Category</option>';
+    
+    if (!deptId) return;
+    
+    fetch(`/ergon/api/task-categories?department_id=${deptId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.categories) {
+                data.categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.category_name;
+                    option.textContent = category.category_name;
+                    categorySelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('Error loading categories:', error));
+}
+
+function checkFollowupCategory(categorySelect, index) {
+    const followupFields = document.getElementById(`followup-fields-${index}`);
+    const category = categorySelect.value.toLowerCase();
+    
+    if (category.includes('follow')) {
+        followupFields.style.display = 'block';
+    } else {
+        followupFields.style.display = 'none';
+    }
+}
+
 function addPlanRow() {
     const planRows = document.getElementById('planRows');
     const newRow = document.createElement('div');
     newRow.className = 'plan-row';
     newRow.innerHTML = `
         <div class="form-row">
-            <div class="form-group" style="flex: 2;">
+            <div class="form-group form-group--flex-2">
                 <label class="form-label">Task Title *</label>
-                <input type="text" name="plans[${planRowIndex}][title]" class="form-control" required placeholder="What will you work on?">
+                <input type="text" name="plans[${planRowIndex}][title]" class="form-control" required placeholder="What will you work on today?">
             </div>
+            <div class="form-group">
+                <label class="form-label">Department</label>
+                <select name="plans[${planRowIndex}][department_id]" class="form-control department-select" onchange="loadPlannerCategories(this, ${planRowIndex})">
+                    <option value="">Select Dept</option>
+                    <?php if (!empty($data['departments'])): ?>
+                        <?php foreach ($data['departments'] as $dept): ?>
+                            <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select name="plans[${planRowIndex}][task_category]" class="form-control category-select" onchange="checkFollowupCategory(this, ${planRowIndex})">
+                    <option value="">Select Category</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
             <div class="form-group">
                 <label class="form-label">Priority</label>
                 <select name="plans[${planRowIndex}][priority]" class="form-control">
@@ -213,12 +312,30 @@ function addPlanRow() {
             </div>
             <div class="form-group">
                 <label class="form-label">Action</label>
-                <button type="button" class="btn btn--danger btn--sm" onclick="removePlanRow(this)">🗑️</button>
+                <button type="button" class="btn btn--danger btn--sm" onclick="removePlanRow(this)">
+                    <span>🗑️</span>
+                </button>
             </div>
         </div>
         <div class="form-group">
             <label class="form-label">Description</label>
             <textarea name="plans[${planRowIndex}][description]" class="form-control" rows="2" placeholder="Brief description of the task"></textarea>
+        </div>
+        <div id="followup-fields-${planRowIndex}" class="followup-fields" style="display: none;">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Company Name</label>
+                    <input type="text" name="plans[${planRowIndex}][company_name]" class="form-control" placeholder="Company name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contact Person</label>
+                    <input type="text" name="plans[${planRowIndex}][contact_person]" class="form-control" placeholder="Contact person">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contact Phone</label>
+                    <input type="tel" name="plans[${planRowIndex}][contact_phone]" class="form-control" placeholder="Phone number">
+                </div>
+            </div>
         </div>
     `;
     planRows.appendChild(newRow);
@@ -234,3 +351,8 @@ function removePlanRow(button) {
     }
 }
 </script>
+
+<?php
+$content = ob_get_clean();
+include __DIR__ . '/../layouts/dashboard.php';
+?>

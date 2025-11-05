@@ -13,9 +13,9 @@ ob_start();
         <button class="btn btn--secondary" onclick="toggleFilters()">
             <span>🔍</span> Filters
         </button>
-        <button class="btn btn--primary" onclick="showAddForm()">
+        <a href="/ergon/followups/create" class="btn btn--primary">
             <span>➕</span> Add Follow-up
-        </button>
+        </a>
     </div>
 </div>
 
@@ -121,9 +121,7 @@ ob_start();
 <!-- Follow-ups List -->
 <div class="card">
     <div class="card__header">
-        <h2 class="card__title">
-            <span>📞</span> Follow-ups List
-        </h2>
+        <h2 class="card__title">Follow-ups List</h2>
         <div class="card__actions">
             <label class="checkbox-label">
                 <input type="checkbox" id="consolidatedView"> 👥 Consolidated by Contact
@@ -302,64 +300,13 @@ ob_start();
                 <div class="empty-icon">📞</div>
                 <h3>No Follow-ups Yet</h3>
                 <p>Create your first follow-up to get started</p>
-                <button class="btn btn--primary" onclick="showAddForm()">Add Follow-up</button>
+                <a href="/ergon/followups/create" class="btn btn--primary">Add Follow-up</a>
             </div>
         <?php endif; ?>
     </div>
 </div>
 
-<!-- Add Form Modal -->
-<div id="followupModal" class="modal" style="display:none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Add New Follow-up</h3>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
-        </div>
-        <form method="POST">
-            <input type="hidden" name="action" value="create">
-            <div class="modal-body">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Title *</label>
-                        <input type="text" name="title" class="form-input" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Company</label>
-                        <input type="text" name="company_name" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Contact Person</label>
-                        <input type="text" name="contact_person" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Phone</label>
-                        <input type="tel" name="contact_phone" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Project</label>
-                        <input type="text" name="project_name" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Follow-up Date *</label>
-                        <input type="date" name="follow_up_date" class="form-input" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Follow-up Time</label>
-                        <input type="time" name="reminder_time" class="form-input" value="09:00">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea name="description" class="form-input" rows="3"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn--secondary" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn btn--primary">Save Follow-up</button>
-            </div>
-        </form>
-    </div>
-</div>
+
 
 <!-- Reschedule Modal -->
 <div id="rescheduleModal" class="modal" style="display:none;">
@@ -640,14 +587,6 @@ function toggleView() {
     }
 }
 
-function showAddForm() {
-    document.getElementById('followupModal').style.display = 'flex';
-}
-
-function closeModal() {
-    document.getElementById('followupModal').style.display = 'none';
-}
-
 function viewFollowup(id) {
     fetch(`/ergon/followups/view/${id}`)
         .then(response => response.text())
@@ -900,9 +839,25 @@ document.addEventListener('DOMContentLoaded', function() {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 999999 !important;
     padding: 1rem;
     box-sizing: border-box;
+}
+
+/* Ensure modals appear above all other elements */
+.modal * {
+    z-index: inherit;
+}
+
+/* Override any header z-index */
+header, .header, .navbar, .nav {
+    z-index: 1000 !important;
+}
+
+/* Ensure modal content has proper stacking */
+.modal-content {
+    position: relative;
+    z-index: 1000000 !important;
 }
 
 .modal-content {
@@ -1292,6 +1247,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .reminder-item:last-of-type {
     margin-bottom: 1.5rem;
+}
+
+/* Horizontal History Layout */
+.history-horizontal {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.history-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
+    border-left: 4px solid #3b82f6;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.history-header h4 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.history-date {
+    color: #6b7280;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.history-content p {
+    margin: 0 0 0.5rem 0;
+    color: #374151;
+    line-height: 1.5;
+}
+
+.history-change {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 4px;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    font-size: 0.875rem;
+    color: #92400e;
+}
+
+.history-user {
+    color: #9ca3af;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
 }
 </style>
 

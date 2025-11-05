@@ -5,7 +5,6 @@ require_once __DIR__ . '/../config/database.php';
 class FollowupController extends Controller {
     
     public function index() {
-        session_start();
         
         if (!isset($_SESSION['user_id'])) {
             header('Location: /ergon/login');
@@ -49,7 +48,6 @@ class FollowupController extends Controller {
     }
     
     public function handlePost() {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: /ergon/followups');
@@ -72,23 +70,50 @@ class FollowupController extends Controller {
     }
     
     public function create() {
+        
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
+        // Show create form
+        $this->view('followups/create');
+    }
+    
+    public function store() {
+        
+        if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /ergon/followups');
+            exit;
+        }
+        
         try {
             $db = Database::connect();
             $this->ensureTables($db);
             
-            $stmt = $db->prepare("INSERT INTO followups (user_id, title, company_name, contact_person, contact_phone, project_name, follow_up_date, original_date, description, next_reminder, reminder_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+            // Validate required fields
+            $title = trim($_POST['title'] ?? '');
+            $followUpDate = $_POST['follow_up_date'] ?? date('Y-m-d');
+            $status = $_POST['status'] ?? 'pending';
+            
+            if (empty($title)) {
+                header('Location: /ergon/followups/create?error=Title is required');
+                exit;
+            }
+            
+            $stmt = $db->prepare("INSERT INTO followups (user_id, title, company_name, contact_person, contact_phone, project_name, follow_up_date, original_date, description, status, reminder_time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
             $result = $stmt->execute([
                 $_SESSION['user_id'],
-                trim($_POST['title'] ?? ''),
+                $title,
                 trim($_POST['company_name'] ?? ''),
                 trim($_POST['contact_person'] ?? ''),
                 trim($_POST['contact_phone'] ?? ''),
                 trim($_POST['project_name'] ?? ''),
-                $_POST['follow_up_date'] ?? date('Y-m-d'),
-                $_POST['follow_up_date'] ?? date('Y-m-d'),
+                $followUpDate,
+                $followUpDate,
                 trim($_POST['description'] ?? ''),
-                $_POST['follow_up_date'] ?? date('Y-m-d'),
-                !empty($_POST['reminder_time']) ? $_POST['reminder_time'] : '09:00:00'
+                $status,
+                $_POST['reminder_time'] ?? null
             ]);
             
             if ($result) {
@@ -96,13 +121,19 @@ class FollowupController extends Controller {
                 $this->logHistory($followupId, 'created', null, 'Follow-up created', 'Initial creation');
                 header('Location: /ergon/followups?success=Follow-up created successfully');
             } else {
-                header('Location: /ergon/followups?error=Failed to create follow-up');
+                $errorInfo = $stmt->errorInfo();
+                header('Location: /ergon/followups/create?error=Failed to create follow-up: ' . $errorInfo[2]);
             }
         } catch (Exception $e) {
-            error_log('Create error: ' . $e->getMessage());
-            header('Location: /ergon/followups?error=Failed to create follow-up');
+            error_log('Store error: ' . $e->getMessage());
+            header('Location: /ergon/followups/create?error=Failed to create follow-up: ' . $e->getMessage());
         }
         exit;
+    }
+    
+    public function createFromPost() {
+        // Legacy method for modal form submission
+        $this->store();
     }
     
     public function complete() {
@@ -129,7 +160,6 @@ class FollowupController extends Controller {
     }
     
     public function reschedule() {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: /ergon/followups');
@@ -217,7 +247,6 @@ class FollowupController extends Controller {
     }
     
     public function viewFollowup($id) {
-        session_start();
         
         if (!isset($_SESSION['user_id'])) {
             echo '<p>Unauthorized access</p>';
@@ -261,7 +290,6 @@ class FollowupController extends Controller {
     }
     
     public function getHistory($id) {
-        session_start();
         
         if (!isset($_SESSION['user_id'])) {
             echo json_encode(['success' => false, 'error' => 'Unauthorized']);
@@ -301,17 +329,19 @@ class FollowupController extends Controller {
                 $html .= '<small>Total history records in system: ' . ($totalCount ?? 0) . '</small>';
                 $html .= '</div>';
             } else {
-                $html = '<div class="timeline">';
+                $html = '<div class="history-horizontal">';
                 foreach ($history as $entry) {
-                    $html .= '<div class="timeline-item">';
-                    $html .= '<div class="timeline-marker"></div>';
-                    $html .= '<div class="timeline-content">';
+                    $html .= '<div class="history-card">';
+                    $html .= '<div class="history-header">';
                     $html .= '<h4>' . ucfirst($entry['action']) . '</h4>';
+                    $html .= '<span class="history-date">' . date('M d, Y H:i', strtotime($entry['created_at'])) . '</span>';
+                    $html .= '</div>';
+                    $html .= '<div class="history-content">';
                     $html .= '<p>' . htmlspecialchars($entry['notes'] ?? '') . '</p>';
                     if ($entry['old_value'] && $entry['new_value']) {
-                        $html .= '<small>Changed from: ' . htmlspecialchars($entry['old_value']) . ' to: ' . htmlspecialchars($entry['new_value']) . '</small><br>';
+                        $html .= '<div class="history-change">Changed from: <strong>' . htmlspecialchars($entry['old_value']) . '</strong> to: <strong>' . htmlspecialchars($entry['new_value']) . '</strong></div>';
                     }
-                    $html .= '<small>By: ' . htmlspecialchars($entry['user_name'] ?? 'Unknown') . ' on ' . date('M d, Y H:i', strtotime($entry['created_at'])) . '</small>';
+                    $html .= '<div class="history-user">By: ' . htmlspecialchars($entry['user_name'] ?? 'Unknown') . '</div>';
                     $html .= '</div></div>';
                 }
                 $html .= '</div>';
@@ -337,6 +367,7 @@ class FollowupController extends Controller {
                 project_name VARCHAR(255),
                 follow_up_date DATE NOT NULL,
                 original_date DATE,
+                reminder_time TIME NULL,
                 description TEXT,
                 status ENUM('pending','in_progress','completed','postponed','cancelled','rescheduled') DEFAULT 'pending',
                 completed_at TIMESTAMP NULL,
@@ -348,6 +379,16 @@ class FollowupController extends Controller {
                 INDEX idx_follow_date (follow_up_date),
                 INDEX idx_status (status)
             )");
+            
+            // Add reminder_time column if it doesn't exist
+            try {
+                $columns = $db->query("SHOW COLUMNS FROM followups")->fetchAll(PDO::FETCH_COLUMN);
+                if (!in_array('reminder_time', $columns)) {
+                    $db->exec("ALTER TABLE followups ADD COLUMN reminder_time TIME NULL AFTER original_date");
+                }
+            } catch (Exception $e) {
+                error_log('Column addition error: ' . $e->getMessage());
+            }
             
             // Create history table
             $db->exec("CREATE TABLE IF NOT EXISTS followup_history (

@@ -4,10 +4,16 @@ $active_page = 'departments';
 ob_start();
 ?>
 
-<div class="header-actions">
-    <a href="/ergon/departments/create" class="btn btn--primary">
-        <span>➕</span> Create Department
-    </a>
+<div class="page-header">
+    <div class="page-title">
+        <h1><span>🏢</span> Department Management</h1>
+        <p>Manage organizational departments and structure</p>
+    </div>
+    <div class="page-actions">
+        <a href="/ergon/departments/create" class="btn btn--primary">
+            <span>➕</span> Create Department
+        </a>
+    </div>
 </div>
 
 <div class="dashboard-grid">
@@ -77,6 +83,9 @@ ob_start();
                             <div class="btn-group">
                                 <a href="/ergon/departments/view/<?= $dept['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
                                     <span>👁️</span> View
+                                </a>
+                                <a href="/ergon/departments/edit/<?= $dept['id'] ?>" class="btn btn--sm btn--secondary" title="Edit Department">
+                                    <span>✏️</span> Edit
                                 </a>
                                 <button onclick="deleteRecord('departments', <?= $dept['id'] ?>, '<?= htmlspecialchars($dept['name']) ?>')" class="btn btn--sm btn--danger" title="Delete Department">
                                     <span>🗑️</span> Delete

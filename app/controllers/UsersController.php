@@ -29,20 +29,59 @@ class UsersController extends Controller {
     
     public function viewUser($id) {
         session_start();
-        $userModel = new User();
-        $user = $userModel->getById($id);
         
-        if (!$user) {
-            header('Location: /ergon/users?error=user_not_found');
-            exit;
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Ensure employee_id column exists and generate IDs if needed
+            $this->ensureUserColumns($db);
+            
+            // Fetch user with department name
+            $stmt = $db->prepare("SELECT u.*, d.name as department_name FROM users u LEFT JOIN departments d ON u.department_id = d.id WHERE u.id = ?");
+            $stmt->execute([$id]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                header('Location: /ergon/users?error=user_not_found');
+                exit;
+            }
+            
+            // Fetch user documents
+            $documents = $this->getUserDocuments($user['id']);
+            
+            $data = [
+                'user' => $user, 
+                'documents' => $documents,
+                'active_page' => 'users'
+            ];
+            $this->view('users/view', $data);
+        } catch (Exception $e) {
+            error_log('viewUser error: ' . $e->getMessage());
+            // Fallback to model method
+            $userModel = new User();
+            $user = $userModel->getById($id);
+            
+            if (!$user) {
+                header('Location: /ergon/users?error=user_not_found');
+                exit;
+            }
+            
+            // Fetch user documents
+            $documents = $this->getUserDocuments($user['id']);
+            
+            $data = [
+                'user' => $user, 
+                'documents' => $documents,
+                'active_page' => 'users'
+            ];
+            $this->view('users/view', $data);
         }
-        
-        $data = ['user' => $user, 'active_page' => 'users'];
-        $this->view('users/view', $data);
     }
     
     public function edit($id) {
         session_start();
+        $this->ensureDepartmentsTable();
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             header('Location: /ergon/login');
@@ -109,12 +148,22 @@ class UsersController extends Controller {
             exit;
         }
         
-        $data = ['user' => $user, 'active_page' => 'users'];
+        // Fetch departments for dropdown
+        require_once __DIR__ . '/../models/Department.php';
+        $departmentModel = new Department();
+        $departments = $departmentModel->getAll();
+        
+        $data = [
+            'user' => $user, 
+            'active_page' => 'users',
+            'departments' => $departments
+        ];
         $this->view('users/edit', $data);
     }
     
     public function create() {
         session_start();
+        $this->ensureDepartmentsTable();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
@@ -142,15 +191,31 @@ class UsersController extends Controller {
                 $tempPassword = 'PWD' . rand(1000, 9999);
                 $hashedPassword = password_hash($tempPassword, PASSWORD_BCRYPT);
                 
-                $stmt = $db->prepare("INSERT INTO users (employee_id, name, email, password, phone, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'active', NOW())");
+                // Handle department - get department ID from form
+                $departmentId = !empty($_POST['department_id']) ? intval($_POST['department_id']) : null;
+                
+                // Ensure users table has department_id column
+                $this->ensureUserColumns($db);
+                
+                $stmt = $db->prepare("INSERT INTO users (employee_id, name, email, password, phone, role, status, department_id, designation, joining_date, salary, date_of_birth, gender, address, emergency_contact, created_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
                 $result = $stmt->execute([
                     $employeeId,
                     trim($_POST['name'] ?? ''),
                     trim($_POST['email'] ?? ''),
                     $hashedPassword,
                     trim($_POST['phone'] ?? ''),
-                    $_POST['role'] ?? 'user'
+                    $_POST['role'] ?? 'user',
+                    $departmentId,
+                    trim($_POST['designation'] ?? ''),
+                    !empty($_POST['joining_date']) ? $_POST['joining_date'] : null,
+                    !empty($_POST['salary']) ? floatval($_POST['salary']) : null,
+                    !empty($_POST['date_of_birth']) ? $_POST['date_of_birth'] : null,
+                    $_POST['gender'] ?? null,
+                    trim($_POST['address'] ?? ''),
+                    trim($_POST['emergency_contact'] ?? '')
                 ]);
+                
+                error_log('User creation data: ' . json_encode($_POST));
                 
                 if ($result) {
                     $userId = $db->lastInsertId();
@@ -166,17 +231,33 @@ class UsersController extends Controller {
                     header('Location: /ergon/users?success=User created successfully');
                     exit;
                 } else {
+                    $_SESSION['old_data'] = $_POST;
                     header('Location: /ergon/users/create?error=Failed to create user');
                     exit;
                 }
             } catch (Exception $e) {
                 error_log('User creation error: ' . $e->getMessage());
+                $_SESSION['old_data'] = $_POST;
                 header('Location: /ergon/users/create?error=Failed to create user');
                 exit;
             }
         }
         
-        $this->view('users/create', ['active_page' => 'users']);
+        // Fetch departments for dropdown
+        require_once __DIR__ . '/../models/Department.php';
+        $departmentModel = new Department();
+        $departments = $departmentModel->getAll();
+        
+        $data = [
+            'active_page' => 'users',
+            'departments' => $departments,
+            'old_data' => $_SESSION['old_data'] ?? []
+        ];
+        
+        // Clear old data after use
+        unset($_SESSION['old_data']);
+        
+        $this->view('users/create', $data);
     }
     
     public function resetPassword() {
@@ -257,7 +338,8 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("UPDATE users SET status = 'deleted', updated_at = NOW() WHERE id = ?");
+            // Permanently delete the user record
+            $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
             $result = $stmt->execute([$id]);
             
             echo json_encode(['success' => $result]);
@@ -434,25 +516,158 @@ class UsersController extends Controller {
     }
     
     private function ensureUserColumns($db) {
-        $stmt = $db->query("DESCRIBE users");
-        $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        try {
+            $stmt = $db->query("DESCRIBE users");
+            $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            $requiredColumns = [
+                'employee_id' => 'VARCHAR(20) UNIQUE',
+                'phone' => 'VARCHAR(20)',
+                'date_of_birth' => 'DATE',
+                'gender' => 'ENUM(\'male\', \'female\', \'other\')',
+                'address' => 'TEXT',
+                'emergency_contact' => 'VARCHAR(255)',
+                'joining_date' => 'DATE',
+                'designation' => 'VARCHAR(255)',
+                'salary' => 'DECIMAL(10,2)',
+                'department_id' => 'INT DEFAULT NULL'
+            ];
+            
+            foreach ($requiredColumns as $column => $type) {
+                if (!in_array($column, $columns)) {
+                    $db->exec("ALTER TABLE users ADD COLUMN $column $type");
+                    error_log("Added column $column to users table");
+                }
+            }
+            
+            // Generate employee IDs for existing users without them
+            $this->generateEmployeeIds($db);
+        } catch (Exception $e) {
+            error_log('ensureUserColumns error: ' . $e->getMessage());
+        }
+    }
+    
+    private function generateEmployeeIds($db) {
+        try {
+            // Get users without employee IDs
+            $stmt = $db->query("SELECT id FROM users WHERE employee_id IS NULL OR employee_id = ''");
+            $usersWithoutIds = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (empty($usersWithoutIds)) return;
+            
+            // Get the highest existing employee ID number
+            $stmt = $db->query("SELECT employee_id FROM users WHERE employee_id LIKE 'EMP%' ORDER BY employee_id DESC LIMIT 1");
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $nextNum = 1;
+            if ($result && $result['employee_id']) {
+                $lastNum = intval(substr($result['employee_id'], 3));
+                $nextNum = $lastNum + 1;
+            }
+            
+            // Generate IDs for users without them
+            foreach ($usersWithoutIds as $user) {
+                $employeeId = 'EMP' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+                $stmt = $db->prepare("UPDATE users SET employee_id = ? WHERE id = ?");
+                $stmt->execute([$employeeId, $user['id']]);
+                $nextNum++;
+            }
+            
+            error_log('Generated employee IDs for ' . count($usersWithoutIds) . ' users');
+        } catch (Exception $e) {
+            error_log('generateEmployeeIds error: ' . $e->getMessage());
+        }
+    }
+    
+    private function getUserDocuments($userId) {
+        $documents = [];
+        $uploadDir = __DIR__ . '/../../public/uploads/users/' . $userId;
         
-        $requiredColumns = [
-            'phone' => 'VARCHAR(20)',
-            'date_of_birth' => 'DATE',
-            'gender' => 'ENUM(\'male\', \'female\', \'other\')',
-            'address' => 'TEXT',
-            'emergency_contact' => 'VARCHAR(255)',
-            'joining_date' => 'DATE',
-            'designation' => 'VARCHAR(255)',
-            'salary' => 'DECIMAL(10,2)',
-            'department_id' => 'INT'
+        if (is_dir($uploadDir)) {
+            $files = scandir($uploadDir);
+            foreach ($files as $file) {
+                if ($file !== '.' && $file !== '..' && is_file($uploadDir . '/' . $file)) {
+                    $filePath = $uploadDir . '/' . $file;
+                    $documents[] = [
+                        'name' => $this->getDocumentDisplayName($file),
+                        'filename' => $file,
+                        'size' => $this->formatFileSize(filesize($filePath)),
+                        'type' => pathinfo($file, PATHINFO_EXTENSION)
+                    ];
+                }
+            }
+        }
+        
+        return $documents;
+    }
+    
+    private function getDocumentDisplayName($filename) {
+        $docTypes = [
+            'passport_photo' => 'Passport Photo',
+            'aadhar' => 'Aadhar Card',
+            'pan' => 'PAN Card',
+            'resume' => 'Resume',
+            'education_docs' => 'Education Documents',
+            'experience_certs' => 'Experience Certificates'
         ];
         
-        foreach ($requiredColumns as $column => $type) {
-            if (!in_array($column, $columns)) {
-                $db->exec("ALTER TABLE users ADD COLUMN $column $type");
+        foreach ($docTypes as $type => $displayName) {
+            if (strpos($filename, $type) === 0) {
+                return $displayName;
             }
+        }
+        
+        return ucfirst(str_replace('_', ' ', pathinfo($filename, PATHINFO_FILENAME)));
+    }
+    
+    private function formatFileSize($bytes) {
+        if ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 2) . ' MB';
+        } elseif ($bytes >= 1024) {
+            return number_format($bytes / 1024, 2) . ' KB';
+        } else {
+            return $bytes . ' bytes';
+        }
+    }
+    
+    private function ensureDepartmentsTable() {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Create departments table if it doesn't exist
+            $stmt = $db->query("SHOW TABLES LIKE 'departments'");
+            if ($stmt->rowCount() == 0) {
+                $sql = "CREATE TABLE departments (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL UNIQUE,
+                    description TEXT,
+                    head_id INT NULL,
+                    status VARCHAR(20) DEFAULT 'active',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )";
+                $db->exec($sql);
+                
+                // Insert default departments
+                $defaultDepts = [
+                    ['Human Resources', 'Manages employee relations and policies'],
+                    ['Information Technology', 'Handles technology infrastructure and support'],
+                    ['Finance', 'Manages financial operations and accounting'],
+                    ['Marketing', 'Handles marketing and promotional activities'],
+                    ['Operations', 'Manages day-to-day business operations'],
+                    ['Sales', 'Handles sales and customer acquisition']
+                ];
+                
+                $stmt = $db->prepare("INSERT INTO departments (name, description) VALUES (?, ?)");
+                foreach ($defaultDepts as $dept) {
+                    $stmt->execute($dept);
+                }
+                
+                error_log('Departments table created with default data');
+            }
+        } catch (Exception $e) {
+            error_log('ensureDepartmentsTable error: ' . $e->getMessage());
         }
     }
 }

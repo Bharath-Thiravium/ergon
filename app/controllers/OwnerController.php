@@ -125,6 +125,98 @@ class OwnerController extends Controller {
         exit;
     }
     
+    public function approveRequest() {
+        session_start();
+        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
+            exit;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $type = $_POST['type'] ?? '';
+            $id = intval($_POST['id'] ?? 0);
+            $remarks = $_POST['remarks'] ?? '';
+            
+            error_log("Approve request: type=$type, id=$id, user={$_SESSION['user_id']}");
+            
+            try {
+                $db = Database::connect();
+                
+                // Ensure required columns exist before updating
+                $this->ensureApprovalColumns($db);
+                
+                if ($type === 'leave') {
+                    $stmt = $db->prepare("UPDATE leaves SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?");
+                } elseif ($type === 'expense') {
+                    $stmt = $db->prepare("UPDATE expenses SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?");
+                } elseif ($type === 'advance') {
+                    $stmt = $db->prepare("UPDATE advances SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?");
+                } else {
+                    error_log("Invalid approval type: $type");
+                    echo json_encode(['success' => false, 'message' => 'Invalid type']);
+                    exit;
+                }
+                
+                $result = $stmt->execute([$_SESSION['user_id'], $id]);
+                $rowCount = $stmt->rowCount();
+                
+                error_log("Approval result: success=$result, rows_affected=$rowCount");
+                
+                echo json_encode(['success' => $result && $rowCount > 0, 'rows_affected' => $rowCount]);
+            } catch (Exception $e) {
+                error_log("Approval error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Approval failed: ' . $e->getMessage()]);
+            }
+        }
+        exit;
+    }
+    
+    public function rejectRequest() {
+        session_start();
+        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
+            exit;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $type = $_POST['type'] ?? '';
+            $id = intval($_POST['id'] ?? 0);
+            $remarks = $_POST['remarks'] ?? '';
+            
+            error_log("Reject request: type=$type, id=$id, remarks=$remarks");
+            
+            try {
+                $db = Database::connect();
+                
+                // Ensure required columns exist before updating
+                $this->ensureApprovalColumns($db);
+                
+                if ($type === 'leave') {
+                    $stmt = $db->prepare("UPDATE leaves SET status = 'rejected', rejection_reason = ? WHERE id = ?");
+                } elseif ($type === 'expense') {
+                    $stmt = $db->prepare("UPDATE expenses SET status = 'rejected', rejection_reason = ? WHERE id = ?");
+                } elseif ($type === 'advance') {
+                    $stmt = $db->prepare("UPDATE advances SET status = 'rejected', rejection_reason = ? WHERE id = ?");
+                } else {
+                    error_log("Invalid rejection type: $type");
+                    echo json_encode(['success' => false, 'message' => 'Invalid type']);
+                    exit;
+                }
+                
+                $result = $stmt->execute([$remarks, $id]);
+                $rowCount = $stmt->rowCount();
+                
+                error_log("Rejection result: success=$result, rows_affected=$rowCount");
+                
+                echo json_encode(['success' => $result && $rowCount > 0, 'rows_affected' => $rowCount]);
+            } catch (Exception $e) {
+                error_log("Rejection error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Rejection failed: ' . $e->getMessage()]);
+            }
+        }
+        exit;
+    }
+    
     public function dashboard() {
         $data = [
             'stats' => [
@@ -146,6 +238,27 @@ class OwnerController extends Controller {
         ];
         
         include __DIR__ . '/../../views/owner/dashboard.php';
+    }
+    
+    private function ensureApprovalColumns($db) {
+        try {
+            // Add missing columns to leaves table
+            $db->exec("ALTER TABLE leaves ADD COLUMN IF NOT EXISTS approved_by INT DEFAULT NULL");
+            $db->exec("ALTER TABLE leaves ADD COLUMN IF NOT EXISTS approved_at DATETIME DEFAULT NULL");
+            $db->exec("ALTER TABLE leaves ADD COLUMN IF NOT EXISTS rejection_reason TEXT DEFAULT NULL");
+            
+            // Add missing columns to expenses table
+            $db->exec("ALTER TABLE expenses ADD COLUMN IF NOT EXISTS approved_by INT DEFAULT NULL");
+            $db->exec("ALTER TABLE expenses ADD COLUMN IF NOT EXISTS approved_at DATETIME DEFAULT NULL");
+            $db->exec("ALTER TABLE expenses ADD COLUMN IF NOT EXISTS rejection_reason TEXT DEFAULT NULL");
+            
+            // Add missing columns to advances table
+            $db->exec("ALTER TABLE advances ADD COLUMN IF NOT EXISTS approved_by INT DEFAULT NULL");
+            $db->exec("ALTER TABLE advances ADD COLUMN IF NOT EXISTS approved_at DATETIME DEFAULT NULL");
+            $db->exec("ALTER TABLE advances ADD COLUMN IF NOT EXISTS rejection_reason TEXT DEFAULT NULL");
+        } catch (Exception $e) {
+            error_log('Column creation error: ' . $e->getMessage());
+        }
     }
 }
 ?>

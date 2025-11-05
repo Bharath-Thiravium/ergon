@@ -18,9 +18,11 @@ class AdminController extends Controller {
             
             // Get dashboard stats
             $stats = $this->getDashboardStats($db);
+            $pendingApprovals = $this->getPendingApprovals($db);
             
             $data = [
                 'stats' => $stats,
+                'pending_approvals' => $pendingApprovals,
                 'active_page' => 'dashboard'
             ];
             
@@ -29,6 +31,7 @@ class AdminController extends Controller {
             error_log('Admin dashboard error: ' . $e->getMessage());
             $data = [
                 'stats' => $this->getDefaultStats(),
+                'pending_approvals' => ['leaves' => [], 'expenses' => [], 'advances' => []],
                 'active_page' => 'dashboard',
                 'error' => 'Unable to load dashboard data'
             ];
@@ -62,6 +65,24 @@ class AdminController extends Controller {
             ];
         } catch (Exception $e) {
             return $this->getDefaultStats();
+        }
+    }
+    
+    private function getPendingApprovals($db) {
+        try {
+            $stmt = $db->query("SELECT l.*, u.name as user_name FROM leaves l LEFT JOIN users u ON l.user_id = u.id WHERE l.status = 'pending' ORDER BY l.created_at DESC LIMIT 10");
+            $leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $stmt = $db->query("SELECT e.*, u.name as user_name FROM expenses e LEFT JOIN users u ON e.user_id = u.id WHERE e.status = 'pending' ORDER BY e.created_at DESC LIMIT 10");
+            $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $stmt = $db->query("SELECT a.*, u.name as user_name FROM advances a LEFT JOIN users u ON a.user_id = u.id WHERE a.status = 'pending' ORDER BY a.created_at DESC LIMIT 10");
+            $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            return ['leaves' => $leaves, 'expenses' => $expenses, 'advances' => $advances];
+        } catch (Exception $e) {
+            error_log('Error fetching pending approvals: ' . $e->getMessage());
+            return ['leaves' => [], 'expenses' => [], 'advances' => []];
         }
     }
     

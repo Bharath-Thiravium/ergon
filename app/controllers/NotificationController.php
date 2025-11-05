@@ -1,68 +1,149 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 
 class NotificationController extends Controller {
     
     public function index() {
-        $this->requireAuth();
+        AuthMiddleware::requireAuth();
         
         $title = 'Notifications';
         $active_page = 'notifications';
         
         try {
-            $notifications = [
-                ['id' => 1, 'title' => 'New Task Assigned', 'message' => 'You have been assigned a new task', 'type' => 'info', 'read' => false, 'created_at' => date('Y-m-d H:i:s')],
-                ['id' => 2, 'title' => 'Leave Approved', 'message' => 'Your leave request has been approved', 'type' => 'success', 'read' => false, 'created_at' => date('Y-m-d H:i:s', strtotime('-1 hour'))],
-                ['id' => 3, 'title' => 'System Maintenance', 'message' => 'System will be under maintenance tonight', 'type' => 'warning', 'read' => true, 'created_at' => date('Y-m-d H:i:s', strtotime('-2 hours'))]
-            ];
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureNotificationTable($db);
             
-            $data = ['notifications' => $notifications];
+            $userId = $_SESSION['user_id'];
+            $role = $_SESSION['role'];
             
-            ob_start();
-            include __DIR__ . '/../../views/notifications/index.php';
-            $content = ob_get_clean();
-            include __DIR__ . '/../../views/layouts/dashboard.php';
+            // Get notifications for the user
+            $stmt = $db->prepare("SELECT * FROM notifications WHERE user_id = ? OR user_id IS NULL ORDER BY created_at DESC LIMIT 50");
+            $stmt->execute([$userId]);
+            $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // If no notifications exist, create some sample ones
+            if (empty($notifications)) {
+                $this->createSampleNotifications($db, $userId, $role);
+                $stmt->execute([$userId]);
+                $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
             
         } catch (Exception $e) {
-            $this->handleError($e, 'Failed to load notifications');
+            error_log('Notification index error: ' . $e->getMessage());
+            $notifications = [];
         }
+        
+        ob_start();
+        include __DIR__ . '/../../views/notifications/index.php';
+        $content = ob_get_clean();
+        include __DIR__ . '/../../views/layouts/dashboard.php';
     }
     
     public function getUnreadCount() {
-        $this->requireAuth();
+        AuthMiddleware::requireAuth();
         
         try {
-            // Mock unread count
-            $count = 2;
-            echo json_encode(['count' => $count]);
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureNotificationTable($db);
+            
+            $userId = $_SESSION['user_id'];
+            $stmt = $db->prepare("SELECT COUNT(*) as count FROM notifications WHERE (user_id = ? OR user_id IS NULL) AND is_read = 0");
+            $stmt->execute([$userId]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            header('Content-Type: application/json');
+            echo json_encode(['count' => $result['count'] ?? 0]);
         } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
+            header('Content-Type: application/json');
+            echo json_encode(['count' => 0]);
         }
+        exit;
     }
     
     public function markAsRead() {
-        $this->requireAuth();
+        AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
-                // Mock mark as read
-                echo json_encode(['success' => true]);
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
+                $id = $_POST['id'] ?? 0;
+                if ($id) {
+                    $stmt = $db->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND (user_id = ? OR user_id IS NULL)");
+                    $stmt->execute([$id, $_SESSION['user_id']]);
+                }
+                
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Notification marked as read']);
             } catch (Exception $e) {
+                header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
+            exit;
         }
     }
     
     public function markAllAsRead() {
-        $this->requireAuth();
+        AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
-                // Mock mark all as read
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
+                $stmt = $db->prepare("UPDATE notifications SET is_read = 1 WHERE (user_id = ? OR user_id IS NULL) AND is_read = 0");
+                $stmt->execute([$_SESSION['user_id']]);
+                
+                header('Content-Type: application/json');
                 echo json_encode(['success' => true, 'message' => 'All notifications marked as read']);
             } catch (Exception $e) {
+                header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
+            exit;
+        }
+    }
+    
+    private function ensureNotificationTable($db) {
+        try {
+            $sql = "CREATE TABLE IF NOT EXISTS notifications (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NULL,
+                title VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                type VARCHAR(50) DEFAULT 'info',
+                is_read TINYINT(1) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )";
+            $db->exec($sql);
+        } catch (Exception $e) {
+            error_log('Notification table creation error: ' . $e->getMessage());
+        }
+    }
+    
+    private function createSampleNotifications($db, $userId, $role) {
+        try {
+            $notifications = [
+                ['title' => 'Welcome to ERGON', 'message' => 'Welcome to the employee tracking system!', 'type' => 'success'],
+                ['title' => 'New Task Available', 'message' => 'You have new tasks assigned to you', 'type' => 'info'],
+                ['title' => 'System Update', 'message' => 'System has been updated with new features', 'type' => 'warning']
+            ];
+            
+            if ($role === 'admin' || $role === 'owner') {
+                $notifications[] = ['title' => 'Pending Approvals', 'message' => 'You have pending leave/expense requests to review', 'type' => 'warning'];
+            }
+            
+            foreach ($notifications as $notification) {
+                $stmt = $db->prepare("INSERT INTO notifications (user_id, title, message, type, is_read, created_at) VALUES (?, ?, ?, ?, 0, NOW())");
+                $stmt->execute([$userId, $notification['title'], $notification['message'], $notification['type']]);
+            }
+        } catch (Exception $e) {
+            error_log('Sample notification creation error: ' . $e->getMessage());
         }
     }
 }

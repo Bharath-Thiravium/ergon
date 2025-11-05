@@ -95,19 +95,13 @@ ob_start();
                     </span>
                 </div>
                 <div class="profile-item">
-                    <label>Departments</label>
+                    <label>Department</label>
                     <span>
-                        <?php 
-                        $departments = explode(',', $user['department'] ?? '');
-                        $departments = array_filter($departments);
-                        if (count($departments) > 0) {
-                            foreach ($departments as $dept) {
-                                echo '<span class="badge badge--info">' . htmlspecialchars(trim($dept)) . '</span> ';
-                            }
-                        } else {
-                            echo 'N/A';
-                        }
-                        ?>
+                        <?php if (!empty($user['department_name'])): ?>
+                            <span class="badge badge--info"><?= htmlspecialchars($user['department_name']) ?></span>
+                        <?php else: ?>
+                            N/A
+                        <?php endif; ?>
                     </span>
                 </div>
             </div>
@@ -137,6 +131,68 @@ ob_start();
                         </div>
                     <?php endforeach; ?>
                 </div>
+
+<style>
+.documents-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 900px) {
+    .documents-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .documents-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.document-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    text-align: center;
+    min-height: 140px;
+}
+
+.document-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.document-info {
+    flex: 1;
+    margin-bottom: 1rem;
+}
+
+.document-name {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.document-size {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.document-actions {
+    width: 100%;
+}
+
+.document-actions .btn {
+    width: 100%;
+    justify-content: center;
+}
+</style>
             <?php endif; ?>
         </div>
     </div>

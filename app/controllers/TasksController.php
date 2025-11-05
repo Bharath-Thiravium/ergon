@@ -24,21 +24,20 @@ class TasksController extends Controller {
     public function index() {
         AuthMiddleware::requireAuth();
         
-        $title = 'Tasks';
-        $active_page = 'tasks';
-        
-        // Try to get tasks from database, fallback to static data
-        if ($this->taskModel !== null) {
-            try {
-                $tasks = $this->taskModel->getAll();
-                if (empty($tasks)) {
-                    $tasks = $this->getStaticTasks();
-                }
-            } catch (Exception $e) {
-                error_log("Task fetch error: " . $e->getMessage());
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureTasksTable($db);
+            
+            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id ORDER BY t.created_at DESC");
+            $stmt->execute();
+            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (empty($tasks)) {
                 $tasks = $this->getStaticTasks();
             }
-        } else {
+        } catch (Exception $e) {
+            error_log("Task fetch error: " . $e->getMessage());
             $tasks = $this->getStaticTasks();
         }
         
@@ -58,54 +57,11 @@ class TasksController extends Controller {
         AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (!Security::validateCSRFToken($_POST['csrf_token'] ?? '')) {
-                http_response_code(403);
-                die('CSRF validation failed');
-            }
-            
-            $taskData = [
-                'title' => Security::sanitizeString($_POST['title']),
-                'description' => Security::sanitizeString($_POST['description'], 1000),
-                'assigned_by' => $_SESSION['user_id'],
-                'assigned_to' => Security::validateInt($_POST['assigned_to']),
-                'task_type' => Security::sanitizeString($_POST['task_type']),
-                'priority' => Security::sanitizeString($_POST['priority']),
-                'deadline' => $_POST['deadline']
-            ];
-            
-            $result = $this->taskModel->create($taskData);
-            if ($result) {
-                header('Location: /ergon/tasks?success=created');
-                exit;
-            }
+            return $this->store();
         }
         
-        // Get users with fallback
-        try {
-            if ($this->userModel !== null) {
-                $users = $this->userModel->getAll();
-            } else {
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
-                $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE status = 'active' ORDER BY name");
-                $stmt->execute();
-                $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            }
-        } catch (Exception $e) {
-            error_log("Error fetching users: " . $e->getMessage());
-            $users = [];
-        }
-        
-        // Get departments for task assignment
-        try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            $stmt = $db->prepare("SELECT id, name FROM departments WHERE status = 'active' ORDER BY name");
-            $stmt->execute();
-            $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            $departments = [];
-        }
+        $users = $this->getActiveUsers();
+        $departments = $this->getDepartments();
         
         $data = [
             'users' => $users,
@@ -115,51 +71,181 @@ class TasksController extends Controller {
         $this->view('tasks/create', $data);
     }
     
+    private function getActiveUsers() {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureTasksTable($db);
+            
+            // If user role is 'user', only return themselves
+            if (($_SESSION['role'] ?? '') === 'user') {
+                $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (empty($users)) {
+                    return [['id' => $_SESSION['user_id'], 'name' => $_SESSION['user_name'] ?? 'Current User', 'email' => '', 'role' => 'user']];
+                }
+                return $users;
+            }
+            
+            // For admin/owner, return all users
+            $stmt = $db->prepare("SELECT id, name, email, role FROM users ORDER BY name");
+            $stmt->execute();
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (empty($users)) {
+                return [
+                    ['id' => 1, 'name' => 'System Owner', 'email' => 'owner@ergon.com', 'role' => 'owner'],
+                    ['id' => 2, 'name' => 'Admin User', 'email' => 'admin@ergon.com', 'role' => 'admin']
+                ];
+            }
+            return $users;
+        } catch (Exception $e) {
+            error_log("Error fetching users: " . $e->getMessage());
+            return [
+                ['id' => 1, 'name' => 'System Owner', 'email' => 'owner@ergon.com', 'role' => 'owner']
+            ];
+        }
+    }
+    
     public function store() {
         AuthMiddleware::requireAuth();
         
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            try {
-                $taskData = [
-                    'title' => Security::sanitizeString($_POST['title']),
-                    'description' => Security::sanitizeString($_POST['description'], 1000),
-                    'assigned_by' => $_SESSION['user_id'],
-                    'assigned_to' => Security::validateInt($_POST['assigned_to']),
-                    'task_type' => Security::sanitizeString($_POST['task_type'] ?? 'task'),
-                    'priority' => Security::sanitizeString($_POST['priority']),
-                    'deadline' => $_POST['deadline']
-                ];
-                
-                if ($this->taskModel !== null) {
-                    $result = $this->taskModel->create($taskData);
-                } else {
-                    // Fallback direct database insert
-                    require_once __DIR__ . '/../config/database.php';
-                    $db = Database::connect();
-                    $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
-                    $result = $stmt->execute([
-                        $taskData['title'],
-                        $taskData['description'],
-                        $taskData['assigned_by'],
-                        $taskData['assigned_to'],
-                        $taskData['task_type'],
-                        $taskData['priority'],
-                        $taskData['deadline']
-                    ]);
-                }
-                
-                if ($result) {
-                    header('Location: /ergon/tasks?success=created');
-                    exit;
-                }
-            } catch (Exception $e) {
-                error_log('Task creation error: ' . $e->getMessage());
-                header('Location: /ergon/tasks/create?error=creation_failed');
-                exit;
-            }
+        $taskData = [
+            'title' => trim($_POST['title'] ?? ''),
+            'description' => trim($_POST['description'] ?? ''),
+            'assigned_by' => $_SESSION['user_id'],
+            'assigned_to' => intval($_POST['assigned_to'] ?? 0),
+            'task_type' => $_POST['task_type'] ?? 'ad-hoc',
+            'priority' => $_POST['priority'] ?? 'medium',
+            'deadline' => !empty($_POST['deadline']) ? $_POST['deadline'] : null,
+            'status' => $_POST['status'] ?? 'assigned',
+            'progress' => intval($_POST['progress'] ?? 0),
+
+            'sla_hours' => intval($_POST['sla_hours'] ?? 24),
+            'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
+            'task_category' => trim($_POST['task_category'] ?? '')
+        ];
+        
+        error_log('Task store data: ' . json_encode($taskData));
+        
+        if (empty($taskData['title']) || $taskData['assigned_to'] <= 0) {
+            header('Location: /ergon/tasks/create?error=Title and assigned user are required');
+            exit;
         }
         
-        $this->create();
+        // Validate progress range
+        if ($taskData['progress'] < 0 || $taskData['progress'] > 100) {
+            header('Location: /ergon/tasks/create?error=Progress must be between 0 and 100');
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureTasksTable($db);
+            
+            $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, status, progress, sla_hours, department_id, task_category, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $result = $stmt->execute([
+                $taskData['title'], 
+                $taskData['description'], 
+                $taskData['assigned_by'], 
+                $taskData['assigned_to'], 
+                $taskData['task_type'],
+                $taskData['priority'], 
+                $taskData['deadline'],
+                $taskData['status'],
+                $taskData['progress'],
+                $taskData['sla_hours'],
+                $taskData['department_id'],
+                $taskData['task_category']
+            ]);
+            
+            if ($result) {
+                $taskId = $db->lastInsertId();
+                
+                // Auto-create followup if task category contains "follow-up"
+                if (!empty($taskData['task_category']) && stripos($taskData['task_category'], 'follow') !== false) {
+                    $this->createAutoFollowup($db, $taskId, $taskData);
+                }
+                
+                error_log('Task created with ID: ' . $taskId . ', type: ' . $taskData['task_type'] . ', progress: ' . $taskData['progress'] . '%');
+                header('Location: /ergon/tasks?success=Task created successfully');
+            } else {
+                error_log('Task creation failed: ' . implode(', ', $stmt->errorInfo()));
+                header('Location: /ergon/tasks/create?error=Failed to create task');
+            }
+        } catch (Exception $e) {
+            error_log('Task creation exception: ' . $e->getMessage());
+            header('Location: /ergon/tasks/create?error=Task creation failed');
+        }
+        exit;
+    }
+    
+    public function edit($id) {
+        AuthMiddleware::requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $taskData = [
+                'title' => trim($_POST['title'] ?? ''),
+                'description' => trim($_POST['description'] ?? ''),
+                'assigned_to' => intval($_POST['assigned_to'] ?? 0),
+                'priority' => $_POST['priority'] ?? 'medium',
+                'deadline' => !empty($_POST['deadline']) ? $_POST['deadline'] : null,
+                'status' => $_POST['status'] ?? 'assigned'
+            ];
+            
+            if (empty($taskData['title']) || $taskData['assigned_to'] <= 0) {
+                header('Location: /ergon/tasks/edit/' . $id . '?error=Title and assigned user are required');
+                exit;
+            }
+            
+            try {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
+                $stmt = $db->prepare("UPDATE tasks SET title=?, description=?, assigned_to=?, priority=?, deadline=?, status=? WHERE id=?");
+                $result = $stmt->execute([$taskData['title'], $taskData['description'], $taskData['assigned_to'], $taskData['priority'], $taskData['deadline'], $taskData['status'], $id]);
+                
+                if ($result) {
+                    header('Location: /ergon/tasks?success=Task updated successfully');
+                } else {
+                    header('Location: /ergon/tasks/edit/' . $id . '?error=Failed to update task');
+                }
+            } catch (Exception $e) {
+                header('Location: /ergon/tasks/edit/' . $id . '?error=Update failed');
+            }
+            exit;
+        }
+        
+        // Get task data
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("SELECT * FROM tasks WHERE id = ?");
+            $stmt->execute([$id]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$task) {
+                header('Location: /ergon/tasks?error=Task not found');
+                exit;
+            }
+            
+            $users = $this->getActiveUsers();
+            
+            $data = [
+                'task' => $task,
+                'users' => $users,
+                'active_page' => 'tasks'
+            ];
+            
+            $this->view('tasks/edit', $data);
+        } catch (Exception $e) {
+            header('Location: /ergon/tasks?error=Failed to load task');
+            exit;
+        }
     }
     
     public function update($taskId) {
@@ -231,16 +317,17 @@ class TasksController extends Controller {
         AuthMiddleware::requireAuth();
         
         try {
-            if ($this->taskModel !== null) {
-                $task = $this->taskModel->getTaskById($id);
-            } else {
-                // Fallback direct database query
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
-                $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.id = ?");
-                $stmt->execute([$id]);
-                $task = $stmt->fetch(PDO::FETCH_ASSOC);
-            }
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Always use direct database query with proper JOIN
+            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.id = ?");
+            $stmt->execute([$id]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Debug logging
+            error_log('Task view debug - ID: ' . $id);
+            error_log('Task data: ' . json_encode($task));
             
             if (!$task) {
                 header('Location: /ergon/tasks?error=not_found');
@@ -263,27 +350,137 @@ class TasksController extends Controller {
     public function delete($id) {
         AuthMiddleware::requireAuth();
         
-        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
-            echo json_encode(['success' => false, 'message' => 'Access denied']);
-            exit;
-        }
-        
         try {
-            if ($this->taskModel !== null) {
-                $result = $this->taskModel->delete($id);
-            } else {
-                // Fallback direct database delete
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Check if user can delete this task
+            if (in_array($_SESSION['role'], ['admin', 'owner'])) {
+                // Admin/Owner can delete any task
                 $stmt = $db->prepare("DELETE FROM tasks WHERE id = ?");
                 $result = $stmt->execute([$id]);
+            } else {
+                // Regular users can only delete their own tasks
+                $stmt = $db->prepare("DELETE FROM tasks WHERE id = ? AND assigned_to = ?");
+                $result = $stmt->execute([$id, $_SESSION['user_id']]);
             }
+            
             echo json_encode(['success' => $result]);
         } catch (Exception $e) {
             error_log('Task delete error: ' . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Delete failed']);
         }
         exit;
+    }
+    
+    private function getDepartments() {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("SELECT id, name FROM departments WHERE status = 'active' ORDER BY name");
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Error fetching departments: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
+    private function createAutoFollowup($db, $taskId, $taskData) {
+        try {
+            // Ensure followups table exists
+            $this->ensureFollowupsTable($db);
+            
+            $followupDate = !empty($taskData['deadline']) ? $taskData['deadline'] : date('Y-m-d', strtotime('+1 day'));
+            
+            // Use correct followups table structure
+            $stmt = $db->prepare("INSERT INTO followups (user_id, title, description, follow_up_date, original_date, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', NOW())");
+            $stmt->execute([
+                $taskData['assigned_to'],
+                'Follow-up: ' . $taskData['title'],
+                'Auto-created follow-up for task: ' . $taskData['description'],
+                $followupDate,
+                $followupDate
+            ]);
+            
+            $followupId = $db->lastInsertId();
+            error_log('Auto-followup created with ID: ' . $followupId . ' for task ID: ' . $taskId . ' with category: ' . $taskData['task_category']);
+        } catch (Exception $e) {
+            error_log('Auto-followup creation failed: ' . $e->getMessage());
+        }
+    }
+    
+    private function ensureFollowupsTable($db) {
+        try {
+            $db->exec("CREATE TABLE IF NOT EXISTS followups (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                company_name VARCHAR(255),
+                contact_person VARCHAR(255),
+                contact_phone VARCHAR(20),
+                project_name VARCHAR(255),
+                follow_up_date DATE NOT NULL,
+                original_date DATE,
+                reminder_time TIME NULL,
+                description TEXT,
+                status ENUM('pending','in_progress','completed','postponed','cancelled','rescheduled') DEFAULT 'pending',
+                completed_at TIMESTAMP NULL,
+                reminder_sent BOOLEAN DEFAULT FALSE,
+                next_reminder DATE NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id),
+                INDEX idx_follow_date (follow_up_date),
+                INDEX idx_status (status)
+            )");
+        } catch (Exception $e) {
+            error_log('ensureFollowupsTable error: ' . $e->getMessage());
+        }
+    }
+    
+    private function ensureTasksTable($db) {
+        try {
+            // Create tasks table with all required columns
+            $db->exec("CREATE TABLE IF NOT EXISTS tasks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                assigned_by INT DEFAULT NULL,
+                assigned_to INT DEFAULT NULL,
+                task_type ENUM('checklist','milestone','timed','ad-hoc') DEFAULT 'ad-hoc',
+                priority ENUM('low','medium','high') DEFAULT 'medium',
+                deadline DATETIME DEFAULT NULL,
+                progress INT DEFAULT 0,
+                status ENUM('assigned','in_progress','completed','blocked') DEFAULT 'assigned',
+                due_date DATE DEFAULT NULL,
+                depends_on_task_id INT DEFAULT NULL,
+                sla_hours INT DEFAULT 24,
+                department_id INT DEFAULT NULL,
+                task_category VARCHAR(100) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            
+            // Check if department_id column exists, if not add it
+            $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'department_id'");
+            $stmt->execute();
+            if ($stmt->rowCount() == 0) {
+                $db->exec("ALTER TABLE tasks ADD COLUMN department_id INT DEFAULT NULL");
+                error_log('Added department_id column to tasks table');
+            }
+            
+            // Check if task_category column exists, if not add it
+            $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'task_category'");
+            $stmt->execute();
+            if ($stmt->rowCount() == 0) {
+                $db->exec("ALTER TABLE tasks ADD COLUMN task_category VARCHAR(100) DEFAULT NULL");
+                error_log('Added task_category column to tasks table');
+            }
+        } catch (Exception $e) {
+            error_log('ensureTasksTable error: ' . $e->getMessage());
+        }
     }
 }
 ?>
