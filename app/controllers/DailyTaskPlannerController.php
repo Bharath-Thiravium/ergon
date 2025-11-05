@@ -112,6 +112,7 @@ class DailyTaskPlannerController extends Controller {
             ]
         ];
         
+        extract($data);
         include __DIR__ . '/../../views/daily_planner/project_overview.php';
     }
     
@@ -134,6 +135,7 @@ class DailyTaskPlannerController extends Controller {
             ]
         ];
         
+        extract($data);
         include __DIR__ . '/../../views/daily_planner/delayed_tasks_overview.php';
     }
     
