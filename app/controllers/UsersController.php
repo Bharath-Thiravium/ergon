@@ -34,6 +34,9 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
+            // Ensure employee_id column exists and generate IDs if needed
+            $this->ensureUserColumns($db);
+            
             // Fetch user with department name
             $stmt = $db->prepare("SELECT u.*, d.name as department_name FROM users u LEFT JOIN departments d ON u.department_id = d.id WHERE u.id = ?");
             $stmt->execute([$id]);
@@ -518,6 +521,7 @@ class UsersController extends Controller {
             $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
             
             $requiredColumns = [
+                'employee_id' => 'VARCHAR(20) UNIQUE',
                 'phone' => 'VARCHAR(20)',
                 'date_of_birth' => 'DATE',
                 'gender' => 'ENUM(\'male\', \'female\', \'other\')',
@@ -535,8 +539,43 @@ class UsersController extends Controller {
                     error_log("Added column $column to users table");
                 }
             }
+            
+            // Generate employee IDs for existing users without them
+            $this->generateEmployeeIds($db);
         } catch (Exception $e) {
             error_log('ensureUserColumns error: ' . $e->getMessage());
+        }
+    }
+    
+    private function generateEmployeeIds($db) {
+        try {
+            // Get users without employee IDs
+            $stmt = $db->query("SELECT id FROM users WHERE employee_id IS NULL OR employee_id = ''");
+            $usersWithoutIds = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (empty($usersWithoutIds)) return;
+            
+            // Get the highest existing employee ID number
+            $stmt = $db->query("SELECT employee_id FROM users WHERE employee_id LIKE 'EMP%' ORDER BY employee_id DESC LIMIT 1");
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $nextNum = 1;
+            if ($result && $result['employee_id']) {
+                $lastNum = intval(substr($result['employee_id'], 3));
+                $nextNum = $lastNum + 1;
+            }
+            
+            // Generate IDs for users without them
+            foreach ($usersWithoutIds as $user) {
+                $employeeId = 'EMP' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+                $stmt = $db->prepare("UPDATE users SET employee_id = ? WHERE id = ?");
+                $stmt->execute([$employeeId, $user['id']]);
+                $nextNum++;
+            }
+            
+            error_log('Generated employee IDs for ' . count($usersWithoutIds) . ' users');
+        } catch (Exception $e) {
+            error_log('generateEmployeeIds error: ' . $e->getMessage());
         }
     }
     

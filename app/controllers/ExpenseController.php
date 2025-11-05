@@ -14,14 +14,8 @@ class ExpenseController extends Controller {
     
     private function ensureExpenseTables() {
         try {
-            $host = 'localhost';
-            $dbname = 'ergon_db';
-            $username = 'root';
-            $password = '';
-            
-            $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
             
             $sql = "CREATE TABLE IF NOT EXISTS expenses (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -39,7 +33,7 @@ class ExpenseController extends Controller {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )";
             
-            $pdo->exec($sql);
+            $db->exec($sql);
             
         } catch (Exception $e) {
             error_log('Error ensuring expense tables: ' . $e->getMessage());
@@ -118,19 +112,12 @@ class ExpenseController extends Controller {
     
     private function getExpensesForAdmin($adminUserId) {
         try {
-            $host = 'localhost';
-            $dbname = 'ergon_db';
-            $username = 'root';
-            $password = '';
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
             
-            $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-            ]);
-            
-            $stmt = $pdo->prepare("SELECT e.*, u.name as user_name, u.role as user_role FROM expenses e JOIN users u ON e.user_id = u.id WHERE (u.role = 'user' OR e.user_id = ?) ORDER BY e.created_at DESC");
+            $stmt = $db->prepare("SELECT e.*, u.name as user_name, u.role as user_role FROM expenses e JOIN users u ON e.user_id = u.id WHERE (u.role = 'user' OR e.user_id = ?) ORDER BY e.created_at DESC");
             $stmt->execute([$adminUserId]);
-            return $stmt->fetchAll();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             error_log('Error getting expenses for admin: ' . $e->getMessage());
             return [];
@@ -212,6 +199,61 @@ class ExpenseController extends Controller {
         $this->view('expenses/create', $data);
     }
     
+    public function edit($id) {
+        AuthMiddleware::requireAuth();
+        
+        $id = Security::validateInt($id);
+        if (!$id) {
+            header('Location: /ergon/expenses?error=invalid_id');
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Check if user can edit this expense
+            if ($_SESSION['role'] === 'user') {
+                $stmt = $db->prepare("SELECT * FROM expenses WHERE id = ? AND user_id = ? AND status = 'pending'");
+                $stmt->execute([$id, $_SESSION['user_id']]);
+            } else {
+                $stmt = $db->prepare("SELECT * FROM expenses WHERE id = ?");
+                $stmt->execute([$id]);
+            }
+            
+            $expense = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$expense) {
+                header('Location: /ergon/expenses?error=not_found');
+                exit;
+            }
+            
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $stmt = $db->prepare("UPDATE expenses SET category = ?, amount = ?, description = ?, expense_date = ? WHERE id = ?");
+                $result = $stmt->execute([
+                    $_POST['category'] ?? $expense['category'],
+                    floatval($_POST['amount'] ?? $expense['amount']),
+                    $_POST['description'] ?? $expense['description'],
+                    $_POST['expense_date'] ?? $expense['expense_date'],
+                    $id
+                ]);
+                
+                if ($result) {
+                    header('Location: /ergon/expenses?success=updated');
+                } else {
+                    header('Location: /ergon/expenses/edit/' . $id . '?error=1');
+                }
+                exit;
+            }
+            
+            $this->view('expenses/edit', ['expense' => $expense, 'active_page' => 'expenses']);
+        } catch (Exception $e) {
+            error_log('Expense edit error: ' . $e->getMessage());
+            header('Location: /ergon/expenses?error=1');
+            exit;
+        }
+    }
+    
     public function viewExpense($id) {
         AuthMiddleware::requireAuth();
         
@@ -251,23 +293,17 @@ class ExpenseController extends Controller {
         }
         
         try {
-            $host = 'localhost';
-            $dbname = 'ergon_db';
-            $username = 'root';
-            $password = '';
-            
-            $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
             
             // Check if user can delete this expense
             if (in_array($_SESSION['role'], ['admin', 'owner'])) {
                 // Admin/Owner can delete any expense
-                $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ?");
+                $stmt = $db->prepare("DELETE FROM expenses WHERE id = ?");
                 $result = $stmt->execute([$id]);
             } else {
                 // Users can only delete their own pending expenses
-                $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ? AND user_id = ? AND status = 'pending'");
+                $stmt = $db->prepare("DELETE FROM expenses WHERE id = ? AND user_id = ? AND status = 'pending'");
                 $result = $stmt->execute([$id, $_SESSION['user_id']]);
             }
             
@@ -298,17 +334,10 @@ class ExpenseController extends Controller {
         }
         
         try {
-            $host = 'localhost';
-            $dbname = 'ergon_db';
-            $username = 'root';
-            $password = '';
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
             
-            $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-            ]);
-            
-            $stmt = $pdo->prepare("UPDATE expenses SET status = 'approved' WHERE id = ? AND status = 'pending'");
+            $stmt = $db->prepare("UPDATE expenses SET status = 'approved' WHERE id = ? AND status = 'pending'");
             $result = $stmt->execute([$id]);
             
             if ($result && $stmt->rowCount() > 0) {
@@ -344,17 +373,10 @@ class ExpenseController extends Controller {
             }
             
             try {
-                $host = 'localhost';
-                $dbname = 'ergon_db';
-                $username = 'root';
-                $password = '';
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
                 
-                $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password, [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-                ]);
-                
-                $stmt = $pdo->prepare("UPDATE expenses SET status = 'rejected', rejection_reason = ? WHERE id = ? AND status = 'pending'");
+                $stmt = $db->prepare("UPDATE expenses SET status = 'rejected', rejection_reason = ? WHERE id = ? AND status = 'pending'");
                 $result = $stmt->execute([$reason, $id]);
                 
                 if ($result && $stmt->rowCount() > 0) {
