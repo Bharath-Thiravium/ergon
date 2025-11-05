@@ -94,7 +94,13 @@ class DailyTaskPlannerController extends Controller {
     }
     
     public function projectOverview() {
-        $this->requireAuth(['admin', 'owner']);
+        $this->requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            http_response_code(403);
+            echo "Access denied";
+            exit;
+        }
         
         try {
             $data = [
@@ -108,12 +114,20 @@ class DailyTaskPlannerController extends Controller {
             
             include __DIR__ . '/../../views/daily_planner/project_overview.php';
         } catch (Exception $e) {
-            $this->handleError($e, 'Failed to load project overview');
+            error_log('Project overview error: ' . $e->getMessage());
+            http_response_code(500);
+            echo "Error loading project overview";
         }
     }
     
     public function delayedTasksOverview() {
-        $this->requireAuth(['admin', 'owner']);
+        $this->requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            http_response_code(403);
+            echo "Access denied";
+            exit;
+        }
         
         try {
             $data = [
@@ -127,7 +141,9 @@ class DailyTaskPlannerController extends Controller {
             
             include __DIR__ . '/../../views/daily_planner/delayed_tasks_overview.php';
         } catch (Exception $e) {
-            $this->handleError($e, 'Failed to load delayed tasks overview');
+            error_log('Delayed tasks overview error: ' . $e->getMessage());
+            http_response_code(500);
+            echo "Error loading delayed tasks overview";
         }
     }
     
