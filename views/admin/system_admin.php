@@ -85,9 +85,12 @@ ob_start();
                     <div class="admin-card__header">
                         <div class="user-avatar user-avatar--lg"><?= strtoupper(substr($admin['name'], 0, 1)) ?></div>
                         <div class="admin-card__status">
-                            <span class="badge badge--<?= $admin['status'] === 'active' ? 'success' : 'warning' ?>">
-                                <?= ucfirst($admin['status']) ?>
-                            </span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" <?= $admin['status'] === 'active' ? 'checked' : '' ?> 
+                                       onchange="toggleStatus(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>', this.checked)">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label"><?= $admin['status'] === 'active' ? 'Active' : 'Inactive' ?></span>
+                            </label>
                         </div>
                     </div>
                     <div class="admin-card__body">
@@ -100,14 +103,9 @@ ob_start();
                         <button class="btn btn--sm btn--secondary" onclick="changePassword(<?= $admin['id'] ?>)">
                             <span>🔑</span> Change Password
                         </button>
-                        <button class="btn btn--sm btn--danger" onclick="deleteAdmin(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>')">
+                        <button class="btn btn--sm btn--delete" onclick="deleteAdmin(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>')">
                             <span>🗑️</span> Delete
                         </button>
-                        <?php if ($admin['status'] === 'active'): ?>
-                        <button class="btn btn--sm btn--warning" onclick="deactivateAdmin(<?= $admin['id'] ?>)">
-                            <span>⏸️</span> Deactivate
-                        </button>
-                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -117,15 +115,57 @@ ob_start();
 </div>
 
 <style>
-.btn--danger {
-    background: #dc2626 !important;
-    color: #ffffff !important;
-    border-color: #dc2626 !important;
+.btn--delete {
+    background: #f3f4f6 !important;
+    color: #dc2626 !important;
+    border-color: #e5e7eb !important;
 }
-.btn--danger:hover {
-    background: #b91c1c !important;
-    border-color: #b91c1c !important;
-    color: #ffffff !important;
+.btn--delete:hover {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #b91c1c !important;
+}
+.toggle-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.toggle-slider {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background-color: #ccc;
+    border-radius: 24px;
+    transition: 0.3s;
+    cursor: pointer;
+}
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+.toggle-switch input:checked + .toggle-slider {
+    background-color: #10b981;
+}
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+.toggle-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6b7280;
 }
 .modal {
     position: fixed !important;
@@ -257,20 +297,32 @@ function deleteAdmin(adminId, adminName) {
     }
 }
 
-function deactivateAdmin(adminId) {
-    if (confirm('Are you sure you want to deactivate this admin?')) {
+function toggleStatus(adminId, adminName, isActive) {
+    const action = isActive ? 'activate' : 'deactivate';
+    const message = `Are you sure you want to ${action} admin "${adminName}"?`;
+    
+    if (confirm(message)) {
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = '/ergon/system-admin/deactivate';
+        form.action = '/ergon/system-admin/toggle-status';
         
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'admin_id';
-        input.value = adminId;
+        const adminIdInput = document.createElement('input');
+        adminIdInput.type = 'hidden';
+        adminIdInput.name = 'admin_id';
+        adminIdInput.value = adminId;
         
-        form.appendChild(input);
+        const statusInput = document.createElement('input');
+        statusInput.type = 'hidden';
+        statusInput.name = 'status';
+        statusInput.value = isActive ? 'active' : 'inactive';
+        
+        form.appendChild(adminIdInput);
+        form.appendChild(statusInput);
         document.body.appendChild(form);
         form.submit();
+    } else {
+        // Revert toggle if cancelled
+        event.target.checked = !isActive;
     }
 }
 

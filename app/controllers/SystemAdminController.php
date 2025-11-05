@@ -134,21 +134,28 @@ class SystemAdminController extends Controller {
         }
     }
     
-    public function deactivate() {
+    public function toggleStatus() {
         $this->requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $adminId = $_POST['admin_id'] ?? '';
+            $status = $_POST['status'] ?? '';
+            
+            if (empty($adminId) || !in_array($status, ['active', 'inactive'])) {
+                header('Location: /ergon/system-admin?error=Invalid request');
+                exit;
+            }
             
             try {
                 $db = Database::connect();
-                $stmt = $db->prepare("UPDATE users SET status = 'inactive' WHERE id = ? AND role = 'admin'");
-                $stmt->execute([$adminId]);
+                $stmt = $db->prepare("UPDATE users SET status = ? WHERE id = ? AND role = 'admin'");
+                $stmt->execute([$status, $adminId]);
                 
-                header('Location: /ergon/system-admin');
+                $action = $status === 'active' ? 'activated' : 'deactivated';
+                header("Location: /ergon/system-admin?success=Admin {$action} successfully");
                 exit;
             } catch (Exception $e) {
-                header('Location: /ergon/system-admin?error=' . urlencode($e->getMessage()));
+                header('Location: /ergon/system-admin?error=Failed to update status');
                 exit;
             }
         }
@@ -172,16 +179,25 @@ class SystemAdminController extends Controller {
                 exit;
             }
             
+            if (strlen($password) < 6) {
+                header('Location: /ergon/system-admin?error=Password must be at least 6 characters');
+                exit;
+            }
+            
             try {
                 $db = Database::connect();
                 $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
                 $stmt = $db->prepare("UPDATE users SET password = ? WHERE id = ? AND role = 'admin'");
-                $stmt->execute([$hashedPassword, $adminId]);
+                $result = $stmt->execute([$hashedPassword, $adminId]);
                 
-                header('Location: /ergon/system-admin?success=Password changed successfully');
+                if ($result && $stmt->rowCount() > 0) {
+                    header('Location: /ergon/system-admin?success=Password changed successfully');
+                } else {
+                    header('Location: /ergon/system-admin?error=Admin not found or no changes made');
+                }
                 exit;
             } catch (Exception $e) {
-                header('Location: /ergon/system-admin?error=Failed to change password');
+                header('Location: /ergon/system-admin?error=Failed to change password: ' . $e->getMessage());
                 exit;
             }
         }
