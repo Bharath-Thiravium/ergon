@@ -161,6 +161,10 @@ $router->post('/notifications/markAllAsRead', 'NotificationController', 'markAll
 $router->post('/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
 $router->post('/notifications/mark-as-read', 'NotificationController', 'markAsRead');
 
+// Additional notification API routes
+$router->get('/api/notifications', 'NotificationController', 'getUnreadCount');
+$router->post('/api/notifications', 'NotificationController', 'markAllAsRead');
+
 // Daily Workflow Management (New Integrated System)
 $router->get('/daily-workflow/morning-planner', 'DailyWorkflowController', 'morningPlanner');
 $router->post('/daily-workflow/submit-morning-plans', 'DailyWorkflowController', 'submitMorningPlans');

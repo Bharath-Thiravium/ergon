@@ -11,9 +11,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
     require_once __DIR__ . '/../../app/config/database.php';
     
     $db = Database::connect();
+    
+    if (!$db) {
+        throw new Exception('Database connection failed');
+    }
     
     // Ensure activity_logs table exists
     $stmt = $db->query("SHOW TABLES LIKE 'activity_logs'");
