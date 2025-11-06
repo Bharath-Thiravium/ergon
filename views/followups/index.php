@@ -839,9 +839,25 @@ document.addEventListener('DOMContentLoaded', function() {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 999999;
+    z-index: 999999 !important;
     padding: 1rem;
     box-sizing: border-box;
+}
+
+/* Ensure modals appear above all other elements */
+.modal * {
+    z-index: inherit;
+}
+
+/* Override any header z-index */
+header, .header, .navbar, .nav {
+    z-index: 1000 !important;
+}
+
+/* Ensure modal content has proper stacking */
+.modal-content {
+    position: relative;
+    z-index: 1000000 !important;
 }
 
 .modal-content {

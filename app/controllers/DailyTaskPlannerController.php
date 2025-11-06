@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../core/Controller.php';
+
 class DailyTaskPlannerController extends Controller {
     
     public function index() {
@@ -94,6 +96,15 @@ class DailyTaskPlannerController extends Controller {
     }
     
     public function projectOverview() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
         $data = [
             'projectProgress' => [
                 ['id' => 1, 'name' => 'ERGON Development', 'department' => 'IT', 'total_tasks' => 20, 'completed_tasks' => 15, 'completion_percentage' => 75],
@@ -103,10 +114,20 @@ class DailyTaskPlannerController extends Controller {
             ]
         ];
         
+        extract($data);
         include __DIR__ . '/../../views/daily_planner/project_overview.php';
     }
     
     public function delayedTasksOverview() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
         $data = [
             'delayedTasks' => [
                 ['id' => 1, 'task_name' => 'Database Optimization', 'user_name' => 'John Doe', 'completion_percentage' => 30, 'days_overdue' => 3, 'priority' => 'high'],
@@ -116,6 +137,7 @@ class DailyTaskPlannerController extends Controller {
             ]
         ];
         
+        extract($data);
         include __DIR__ . '/../../views/daily_planner/delayed_tasks_overview.php';
     }
     

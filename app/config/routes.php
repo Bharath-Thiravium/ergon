@@ -92,6 +92,8 @@ $router->post('/attendance/resolve-conflict/{id}', 'AttendanceController', 'reso
 $router->get('/leaves', 'LeaveController', 'index');
 $router->get('/leaves/create', 'LeaveController', 'create');
 $router->post('/leaves/create', 'LeaveController', 'store');
+$router->get('/leaves/edit/{id}', 'LeaveController', 'edit');
+$router->post('/leaves/edit/{id}', 'LeaveController', 'edit');
 $router->get('/leaves/view/{id}', 'LeaveController', 'viewLeave');
 $router->post('/leaves/delete/{id}', 'LeaveController', 'delete');
 $router->get('/leaves/approve/{id}', 'LeaveController', 'approve');
@@ -103,6 +105,8 @@ $router->post('/leaves/reject/{id}', 'LeaveController', 'reject');
 $router->get('/expenses', 'ExpenseController', 'index');
 $router->get('/expenses/create', 'ExpenseController', 'create');
 $router->post('/expenses/create', 'ExpenseController', 'create');
+$router->get('/expenses/edit/{id}', 'ExpenseController', 'edit');
+$router->post('/expenses/edit/{id}', 'ExpenseController', 'edit');
 $router->get('/expenses/view/{id}', 'ExpenseController', 'viewExpense');
 $router->post('/expenses/delete/{id}', 'ExpenseController', 'delete');
 $router->get('/expenses/approve/{id}', 'ExpenseController', 'approve');
@@ -238,7 +242,9 @@ $router->post('/admin/change-password', 'AdminManagementController', 'changePass
 $router->get('/system-admin', 'SystemAdminController', 'index');
 $router->post('/system-admin/create', 'SystemAdminController', 'create');
 $router->post('/system-admin/edit', 'SystemAdminController', 'edit');
-$router->post('/system-admin/deactivate', 'SystemAdminController', 'deactivate');
+$router->post('/system-admin/change-password', 'SystemAdminController', 'changePassword');
+$router->post('/system-admin/delete', 'SystemAdminController', 'delete');
+$router->post('/system-admin/toggle-status', 'SystemAdminController', 'toggleStatus');
 $router->get('/system-admin/export', 'SystemAdminController', 'export');
 
 // Project Management Routes (Admin/Owner)
