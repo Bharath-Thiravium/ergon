@@ -102,6 +102,11 @@ ob_start();
                         <button class="btn btn--sm btn--info" onclick="changePassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')">
                             <span>🔑</span> Change Password
                         </button>
+                        <?php if ($user['role'] !== 'owner'): ?>
+                        <button class="btn btn--sm btn--delete" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')">
+                            <span>🗑️</span> Delete
+                        </button>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -109,6 +114,19 @@ ob_start();
         <?php endif; ?>
     </div>
 </div>
+
+<style>
+.btn--delete {
+    background: #f3f4f6 !important;
+    color: #dc2626 !important;
+    border-color: #e5e7eb !important;
+}
+.btn--delete:hover {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #b91c1c !important;
+}
+</style>
 
 <script>
 function showAssignAdminModal() {
@@ -193,6 +211,23 @@ function changePassword(userId, userName) {
             console.error('Error:', error);
             alert('Server error occurred');
         });
+    }
+}
+
+function deleteUser(userId, userName) {
+    if (confirm(`Are you sure you want to permanently delete user "${userName}"? This action cannot be undone and will remove all associated data.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/ergon/admin/delete-user';
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'user_id';
+        input.value = userId;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 </script>

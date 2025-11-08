@@ -233,6 +233,7 @@ $router->get('/admin/management', 'AdminManagementController', 'index');
 $router->post('/admin/assign', 'AdminManagementController', 'assignAdmin');
 $router->post('/admin/remove', 'AdminManagementController', 'removeAdmin');
 $router->post('/admin/change-password', 'AdminManagementController', 'changePassword');
+$router->post('/admin/delete-user', 'AdminManagementController', 'deleteUser');
 
 // System Admin Management Routes (Owner only)
 $router->get('/system-admin', 'SystemAdminController', 'index');
