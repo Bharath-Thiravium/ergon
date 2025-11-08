@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../helpers/Security.php';
+require_once __DIR__ . '/../config/database.php';
 
 class ProfileController extends Controller {
     private $db;

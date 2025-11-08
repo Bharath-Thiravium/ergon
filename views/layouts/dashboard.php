@@ -10,6 +10,11 @@ if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) {
     exit;
 }
 
+// Initialize content variable to prevent undefined variable warning
+if (!isset($content)) {
+    $content = '';
+}
+
 if (!headers_sent()) {
     header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0, private');
     header('Pragma: no-cache');
@@ -370,18 +375,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         z-index: 1;
     }
     
-    /* Hide duplicate headers in notification content only */
-    body[data-page="notifications"] .main-content .main-header,
-    body[data-page="notifications"] .main-content .header__top {
-        display: none !important;
-    }
-    
-    /* Decrease container size for notifications page */
-    body[data-page="notifications"] .main-content {
-        max-width: 1500px !important;
-        margin: 0 auto !important;
-        padding: 5px !important;
-    }
+    /* Remove notification-specific layout overrides */
     
     @media (max-width: 1200px) {
         .nav-group {
@@ -1056,13 +1050,22 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                 </button>
                 
                 <div class="profile-menu" id="profileMenu">
+                    <a href="/ergon/profile" class="profile-menu-item">
+                        <span class="menu-icon"><i class="bi bi-person-fill"></i></span>
+                        My Profile
+                    </a>
                     <a href="/ergon/profile/change-password" class="profile-menu-item">
                         <span class="menu-icon"><i class="bi bi-lock-fill"></i></span>
                         Change Password
                     </a>
+                    <div class="profile-menu-divider"></div>
                     <a href="/ergon/profile/preferences" class="profile-menu-item">
+                        <span class="menu-icon"><i class="bi bi-palette-fill"></i></span>
+                        Appearance
+                    </a>
+                    <a href="/ergon/settings" class="profile-menu-item">
                         <span class="menu-icon"><i class="bi bi-gear-fill"></i></span>
-                        Preferences
+                        System Settings
                     </a>
                     <div class="profile-menu-divider"></div>
                     <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
@@ -1343,31 +1346,29 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         </div>
     </header>
     
-    <div class="notification-dropdown" id="notificationDropdown" style="display: none; position: fixed; top: 60px; right: 20px; width: 350px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 10000;">
-        <div class="notification-header" style="padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+    <div class="notification-dropdown" id="notificationDropdown" style="display: none; position: fixed; width: 350px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 10000; max-height: 400px; overflow: hidden;">
+        <div class="notification-header" style="padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: white; position: relative; z-index: 10001;">
             <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Notifications</h3>
-            <a href="#" class="view-all-link" style="color: #3b82f6; text-decoration: none; font-size: 14px;" onclick="navigateToNotifications(event)">View All</a>
+            <button type="button" class="view-all-link" style="color: #3b82f6; text-decoration: none; font-size: 14px; background: none; border: none; cursor: pointer;" onclick="navigateToNotifications(event)">View All</button>
         </div>
-        <div class="notification-list" id="notificationList" style="max-height: 300px; overflow-y: auto;">
-            <div class="notification-item" style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
-                <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px;">New Task Assigned</div>
-                <div style="font-size: 12px; color: #6b7280;">You have been assigned a new task</div>
-                <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">2 minutes ago</div>
-            </div>
-            <div class="notification-item" style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
-                <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px;">Leave Approved</div>
-                <div style="font-size: 12px; color: #6b7280;">Your leave request has been approved</div>
-                <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">1 hour ago</div>
-            </div>
+        <div class="notification-list" id="notificationList" style="max-height: 300px; overflow-y: auto; background: white;">
+            <div style="padding: 16px; text-align: center; color: #6b7280;">Loading notifications...</div>
         </div>
     </div>
 
     <main class="main-content">
-            <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports']) && ($active_page ?? '') !== 'notifications'): ?>
+            <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports', 'Notifications'])): ?>
             <div class="page-header">
                 <div class="page-title">
                     <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
                 </div>
+                <?php if ($title === 'Notifications'): ?>
+                <div class="page-actions">
+                    <button class="btn btn--primary" onclick="markAllAsRead()">
+                        Mark All Read
+                    </button>
+                </div>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
             <?= $content ?>
@@ -1396,16 +1397,33 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             event.stopPropagation();
         }
         var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown) {
+        var button = event.target.closest('.control-btn');
+        
+        if (dropdown && button) {
             var isVisible = dropdown.style.display === 'block';
-            dropdown.style.display = isVisible ? 'none' : 'block';
             
-            // Close other dropdowns
+            // Close other dropdowns first
             document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
                 menu.classList.remove('show');
             });
             var profileMenu = document.getElementById('profileMenu');
             if (profileMenu) profileMenu.classList.remove('show');
+            
+            if (isVisible) {
+                dropdown.style.display = 'none';
+            } else {
+                // Position dropdown relative to notification button
+                var rect = button.getBoundingClientRect();
+                dropdown.style.position = 'fixed';
+                dropdown.style.top = (rect.bottom + 8) + 'px';
+                dropdown.style.right = (window.innerWidth - rect.right) + 'px';
+                dropdown.style.left = 'auto';
+                dropdown.style.zIndex = '10000';
+                dropdown.style.display = 'block';
+                
+                // Load notifications
+                loadNotifications();
+            }
         }
     }
     
@@ -1419,8 +1437,83 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             dropdown.style.display = 'none';
         }
         
-        // Navigate to notifications page
-        window.location.href = '/ergon/notifications';
+        // Navigate to notifications page in the main window
+        setTimeout(function() {
+            window.location.href = '/ergon/notifications';
+        }, 100);
+        return false;
+    }
+    
+    function loadNotifications() {
+        var list = document.getElementById('notificationList');
+        if (!list) return;
+        
+        fetch('/ergon/api/notifications')
+        .then(response => response.json())
+        .then(data => {
+            if (data.notifications && data.notifications.length > 0) {
+                list.innerHTML = data.notifications.map(function(notif) {
+                    var link = getNotificationLink(notif.type, notif.message);
+                    return '<a href="' + link + '" class="notification-item" style="display: block; padding: 12px 16px; border-bottom: 1px solid #f3f4f6; text-decoration: none; color: inherit;" onclick="closeNotificationDropdown()">' +
+                           '<div style="font-weight: 500; font-size: 14px; margin-bottom: 4px; color: #1f2937;">' + (notif.title || 'Notification') + '</div>' +
+                           '<div style="font-size: 12px; color: #6b7280;">' + (notif.message || '') + '</div>' +
+                           '<div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">' + formatTime(notif.created_at) + '</div>' +
+                           '</a>';
+                }).join('');
+            } else {
+                list.innerHTML = '<div style="padding: 16px; text-align: center; color: #6b7280;">No notifications</div>';
+            }
+        })
+        .catch(error => {
+            list.innerHTML = '<div style="padding: 16px; text-align: center; color: #ef4444;">Failed to load notifications</div>';
+        });
+    }
+    
+    function getNotificationLink(type, message) {
+        if (message.includes('task')) return '/ergon/tasks';
+        if (message.includes('leave')) return '/ergon/leaves';
+        if (message.includes('expense')) return '/ergon/expenses';
+        if (message.includes('advance')) return '/ergon/advances';
+        if (message.includes('approval')) return '/ergon/owner/approvals';
+        return '/ergon/notifications';
+    }
+    
+    function formatTime(dateStr) {
+        var date = new Date(dateStr);
+        var now = new Date();
+        var diff = now - date;
+        var minutes = Math.floor(diff / 60000);
+        if (minutes < 1) return 'Just now';
+        if (minutes < 60) return minutes + ' min ago';
+        var hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + ' hour' + (hours > 1 ? 's' : '') + ' ago';
+        return date.toLocaleDateString();
+    }
+    
+    function closeNotificationDropdown() {
+        var dropdown = document.getElementById('notificationDropdown');
+        if (dropdown) dropdown.style.display = 'none';
+    }
+    
+    function markAllAsRead() {
+        fetch('/ergon/api/notifications/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to mark all as read');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Network error occurred');
+        });
     }
     
     function showDropdown(id) {
@@ -1555,6 +1648,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
 
     </script>
+    <script src="/ergon/notification_fix.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/auth-guard.min.js?v=<?= time() ?>" defer></script>
 </body>
 </html>

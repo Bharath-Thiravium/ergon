@@ -27,7 +27,7 @@ class SettingsController extends Controller {
             'active_page' => 'settings'
         ];
         
-        $this->view('settings/index', $data);
+        include __DIR__ . '/../../views/settings/index.php';
     }
     
     public function update() {
@@ -41,23 +41,30 @@ class SettingsController extends Controller {
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
+                error_log('Settings POST received: ' . json_encode($_POST));
+                
                 $settings = [
-                    'company_name' => Security::sanitizeString($_POST['company_name'] ?? ''),
+                    'company_name' => trim($_POST['company_name'] ?? ''),
                     'working_hours_start' => $_POST['working_hours_start'] ?? '09:00',
                     'working_hours_end' => $_POST['working_hours_end'] ?? '18:00',
-                    'timezone' => Security::sanitizeString($_POST['timezone'] ?? 'Asia/Kolkata'),
+                    'timezone' => trim($_POST['timezone'] ?? 'Asia/Kolkata'),
                     'office_latitude' => floatval($_POST['office_latitude'] ?? 0),
                     'office_longitude' => floatval($_POST['office_longitude'] ?? 0),
-                    'office_address' => Security::sanitizeString($_POST['office_address'] ?? '', 500),
-                    'attendance_radius' => intval($_POST['attendance_radius'] ?? 200)
+                    'office_address' => trim($_POST['office_address'] ?? ''),
+                    'attendance_radius' => max(5, intval($_POST['attendance_radius'] ?? 5))
                 ];
                 
-                error_log('Form POST data: ' . json_encode($_POST));
+                error_log('Processed settings: ' . json_encode($settings));
                 
-                if ($this->updateSettings($settings)) {
-                    header('Location: /ergon/settings?success=1');
+                $result = $this->updateSettings($settings);
+                error_log('Update result: ' . ($result ? 'success' : 'failed'));
+                
+                if ($result) {
+                    $_SESSION['success'] = 'Settings updated successfully';
+                    header('Location: /ergon/settings');
                 } else {
-                    header('Location: /ergon/settings?error=1');
+                    $_SESSION['error'] = 'Failed to update settings';
+                    header('Location: /ergon/settings');
                 }
             } catch (Exception $e) {
                 error_log('Settings update error: ' . $e->getMessage());
@@ -81,49 +88,51 @@ class SettingsController extends Controller {
         include __DIR__ . '/../../views/settings/location_picker.php';
     }
     
+    public function mapPicker() {
+        AuthMiddleware::requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            http_response_code(403);
+            echo "Access denied";
+            exit;
+        }
+        
+        $this->view('settings/map_picker');
+    }
+    
     private function getSettings() {
         try {
             $stmt = $this->db->query("SELECT * FROM settings LIMIT 1");
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             return $result ?: [
                 'company_name' => 'ERGON Company',
-                'timezone' => 'Asia/Kolkata',
-                'working_hours_start' => '09:00:00',
-                'working_hours_end' => '18:00:00',
                 'base_location_lat' => 0,
                 'base_location_lng' => 0,
-                'attendance_radius' => 200,
-                'office_address' => ''
+                'attendance_radius' => 5
             ];
         } catch (Exception $e) {
-            return ['company_name' => 'ERGON Company', 'timezone' => 'Asia/Kolkata', 'working_hours_start' => '09:00:00', 'working_hours_end' => '18:00:00', 'attendance_radius' => 200];
+            return ['company_name' => 'ERGON Company', 'attendance_radius' => 5];
         }
     }
     
     private function updateSettings($settings) {
         try {
-            // Check if settings record exists
-            $stmt = $this->db->query("SELECT id FROM settings LIMIT 1");
-            $exists = $stmt->fetch();
+            $sql = "UPDATE settings SET 
+                    company_name = ?, 
+                    base_location_lat = ?, 
+                    base_location_lng = ?, 
+                    attendance_radius = ? 
+                    WHERE id = 1";
             
-            if ($exists) {
-                // Update existing record
-                $sql = "UPDATE settings SET company_name=?, timezone=?, working_hours_start=?, working_hours_end=?, base_location_lat=?, base_location_lng=?, attendance_radius=?, office_address=? WHERE id=?";
-                $result = $this->db->prepare($sql)->execute([
-                    $settings['company_name'], $settings['timezone'], $settings['working_hours_start'], $settings['working_hours_end'],
-                    $settings['office_latitude'], $settings['office_longitude'], $settings['attendance_radius'], $settings['office_address'], $exists['id']
-                ]);
-            } else {
-                // Insert new record
-                $sql = "INSERT INTO settings (company_name, timezone, working_hours_start, working_hours_end, base_location_lat, base_location_lng, attendance_radius, office_address) VALUES (?,?,?,?,?,?,?,?)";
-                $result = $this->db->prepare($sql)->execute([
-                    $settings['company_name'], $settings['timezone'], $settings['working_hours_start'], $settings['working_hours_end'],
-                    $settings['office_latitude'], $settings['office_longitude'], $settings['attendance_radius'], $settings['office_address']
-                ]);
-            }
-            return $result;
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([
+                $settings['company_name'],
+                $settings['office_latitude'],
+                $settings['office_longitude'],
+                $settings['attendance_radius']
+            ]);
         } catch (Exception $e) {
-            error_log('Settings error: ' . $e->getMessage());
+            error_log('Settings update error: ' . $e->getMessage());
             return false;
         }
     }

@@ -5,7 +5,6 @@ require_once __DIR__ . '/../models/User.php';
 class UsersController extends Controller {
     
     public function index() {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             header('Location: /ergon/login');
@@ -28,7 +27,6 @@ class UsersController extends Controller {
     }
     
     public function viewUser($id) {
-        session_start();
         
         try {
             require_once __DIR__ . '/../config/database.php';
@@ -80,7 +78,6 @@ class UsersController extends Controller {
     }
     
     public function edit($id) {
-        session_start();
         $this->ensureDepartmentsTable();
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
@@ -162,7 +159,6 @@ class UsersController extends Controller {
     }
     
     public function create() {
-        session_start();
         $this->ensureDepartmentsTable();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -261,7 +257,6 @@ class UsersController extends Controller {
     }
     
     public function resetPassword() {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             http_response_code(401);
@@ -304,7 +299,6 @@ class UsersController extends Controller {
     }
     
     public function downloadCredentials() {
-        session_start();
         
         $credentials = $_SESSION['new_credentials'] ?? $_SESSION['reset_credentials'] ?? null;
         
@@ -327,7 +321,6 @@ class UsersController extends Controller {
     }
     
     public function delete($id) {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             echo json_encode(['success' => false, 'message' => 'Access denied']);
@@ -350,7 +343,6 @@ class UsersController extends Controller {
     }
     
     public function inactive($id) {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             header('Location: /ergon/login');
@@ -379,7 +371,6 @@ class UsersController extends Controller {
     }
     
     public function export() {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             header('Location: /ergon/login');
@@ -474,7 +465,6 @@ class UsersController extends Controller {
     }
     
     public function downloadDocument($userId, $filename) {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             http_response_code(403);
@@ -497,7 +487,6 @@ class UsersController extends Controller {
     }
     
     public function deleteDocument($userId, $filename) {
-        session_start();
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             echo json_encode(['success' => false, 'message' => 'Access denied']);

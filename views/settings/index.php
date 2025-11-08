@@ -15,46 +15,32 @@ ob_start();
             <form id="settingsForm" method="POST" action="/ergon/settings">
                 <div class="form-group">
                     <label class="form-label">Company Name</label>
-                    <input type="text" class="form-control" name="company_name" value="<?= htmlspecialchars($settings['company_name'] ?? 'ERGON Company') ?>">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Timezone</label>
-                    <select class="form-control" name="timezone">
-                        <option value="Asia/Kolkata" <?= ($settings['timezone'] ?? '') === 'Asia/Kolkata' ? 'selected' : '' ?>>Asia/Kolkata</option>
-                        <option value="UTC" <?= ($settings['timezone'] ?? '') === 'UTC' ? 'selected' : '' ?>>UTC</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Working Hours Start Time</label>
-                    <input type="time" class="form-control" name="working_hours_start" value="<?= htmlspecialchars(substr($settings['working_hours_start'] ?? '09:00:00', 0, 5)) ?>">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Working Hours End Time</label>
-                    <input type="time" class="form-control" name="working_hours_end" value="<?= htmlspecialchars(substr($settings['working_hours_end'] ?? '18:00:00', 0, 5)) ?>">
+                    <input type="text" class="form-control" name="company_name" value="<?= htmlspecialchars($data['settings']['company_name'] ?? 'ERGON Company') ?>">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Attendance Radius (meters)</label>
-                    <input type="number" class="form-control" name="attendance_radius" value="<?= htmlspecialchars($settings['attendance_radius'] ?? '200') ?>">
+                    <input type="number" class="form-control" name="attendance_radius" value="<?= htmlspecialchars($data['settings']['attendance_radius'] ?? '5') ?>" min="5" step="1">
+                    <small class="form-text">Minimum 5 meters required for attendance validation</small>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Office Address</label>
-                    <input type="text" class="form-control" name="office_address" id="office_address" placeholder="Enter office address..." value="<?= htmlspecialchars($settings['office_address'] ?? '') ?>">
-                </div>
+
                 <div class="form-group">
                     <label class="form-label">Office Coordinates</label>
                     <div class="location-input-grid">
                         <div class="form-group">
                             <label class="form-label">Latitude</label>
-                            <input type="number" class="form-control" name="office_latitude" id="office_latitude" step="0.000001" placeholder="28.6139" value="<?= htmlspecialchars($settings['base_location_lat'] ?? '') ?>">
+                            <input type="number" class="form-control" name="office_latitude" id="office_latitude" step="0.000001" placeholder="28.6139" value="<?= htmlspecialchars($data['settings']['base_location_lat'] ?? '') ?>"
                         </div>
                         <div class="form-group">
                             <label class="form-label">Longitude</label>
-                            <input type="number" class="form-control" name="office_longitude" id="office_longitude" step="0.000001" placeholder="77.2090" value="<?= htmlspecialchars($settings['base_location_lng'] ?? '') ?>">
+                            <input type="number" class="form-control" name="office_longitude" id="office_longitude" step="0.000001" placeholder="77.2090" value="<?= htmlspecialchars($data['settings']['base_location_lng'] ?? '') ?>">
                         </div>
                     </div>
                     <button type="button" class="btn btn--secondary" onclick="getCurrentLocation()">
                         <span>📍</span> Use Current Location
                     </button>
+                    <a href="/ergon/settings/map-picker" class="btn btn--secondary">
+                        <span>🗺️</span> Open Map Picker
+                    </a>
                 </div>
                 <button type="submit" class="btn btn--primary">Save Settings</button>
             </form>

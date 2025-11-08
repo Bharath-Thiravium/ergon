@@ -10,6 +10,7 @@ $router->get('/favicon.ico', 'StaticController', 'favicon');
 // Test routes
 $router->get('/test', 'TestController', 'index');
 $router->get('/status', 'TestController', 'status');
+$router->get('/test-notifications', 'TestController', 'testNotifications');
 
 // Authentication Routes
 $router->get('/', 'AuthController', 'index');
@@ -42,10 +43,22 @@ $router->get('/users/download-credentials', 'UsersController', 'downloadCredenti
 $router->get('/users/export', 'UsersController', 'export');
 $router->get('/admin/export', 'UsersController', 'export');
 
-// User Request Routes
-$router->get('/user/requests', 'UserController', 'requests');
-$router->get('/user/attendance', 'UserController', 'attendance');
-$router->get('/user/tasks', 'UserController', 'tasks');
+// User Routes - Complete User Panel
+$router->get('/user/requests', 'UserController', 'myRequests');
+$router->get('/user/my-requests', 'UserController', 'myRequests');
+$router->get('/user/attendance', 'UserController', 'myAttendance');
+$router->get('/user/my-attendance', 'UserController', 'myAttendance');
+$router->get('/user/tasks', 'UserController', 'myTasks');
+$router->get('/user/my-tasks', 'UserController', 'myTasks');
+$router->post('/user/update-task-progress', 'UserController', 'updateTaskProgress');
+$router->get('/user/submit-leave', 'UserController', 'submitLeaveRequest');
+$router->post('/user/submit-leave', 'UserController', 'submitLeaveRequest');
+$router->get('/user/submit-expense', 'UserController', 'submitExpenseClaim');
+$router->post('/user/submit-expense', 'UserController', 'submitExpenseClaim');
+$router->get('/user/submit-advance', 'UserController', 'submitAdvanceRequest');
+$router->post('/user/submit-advance', 'UserController', 'submitAdvanceRequest');
+$router->post('/user/clock-in', 'UserController', 'clockIn');
+$router->post('/user/clock-out', 'UserController', 'clockOut');
 
 // Department Management
 $router->get('/departments', 'DepartmentController', 'index');
@@ -137,13 +150,27 @@ $router->get('/reports/approvals-export', 'ReportsController', 'approvalsExport'
 // Settings
 $router->get('/settings', 'SettingsController', 'index');
 $router->get('/settings/location', 'SettingsController', 'locationPicker');
+$router->get('/settings/map-picker', 'SettingsController', 'mapPicker');
+$router->get('/settings/map-picker', 'SettingsController', 'mapPicker');
 $router->post('/settings', 'SettingsController', 'update');
 $router->post('/settings/save', 'SettingsController', 'update');
 
-// Owner Approvals
+// Owner Routes - Complete Management
 $router->get('/owner/approvals', 'OwnerController', 'approvals');
 $router->get('/owner/approvals/view/{type}/{id}', 'OwnerController', 'viewApproval');
 $router->post('/owner/approvals/delete/{type}/{id}', 'OwnerController', 'deleteApproval');
+$router->post('/owner/final-approve', 'OwnerController', 'finalApprove');
+$router->get('/owner/create-user', 'OwnerController', 'createUser');
+$router->post('/owner/create-user', 'OwnerController', 'createUser');
+$router->get('/owner/manage-users', 'OwnerController', 'manageUsers');
+$router->post('/owner/assign-role', 'OwnerController', 'assignRole');
+$router->get('/owner/system-settings', 'OwnerController', 'systemSettings');
+$router->post('/owner/system-settings', 'OwnerController', 'systemSettings');
+$router->get('/owner/analytics', 'OwnerController', 'analytics');
+
+// Legacy Owner Routes
+$router->post('/owner/approveRequest', 'OwnerController', 'approveRequest');
+$router->post('/owner/rejectRequest', 'OwnerController', 'rejectRequest');
 $router->post('/owner/approve-request', 'OwnerController', 'approveRequest');
 $router->post('/owner/reject-request', 'OwnerController', 'rejectRequest');
 
@@ -159,6 +186,7 @@ $router->post('/profile/preferences', 'ProfileController', 'preferences');
 $router->get('/notifications', 'NotificationController', 'index');
 $router->get('/api/notifications/unread-count', 'NotificationController', 'getUnreadCount');
 $router->post('/api/notifications/mark-read', 'NotificationController', 'markAsRead');
+$router->post('/api/notifications/mark-as-read', 'NotificationController', 'markAsRead');
 $router->post('/api/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
 $router->post('/notifications/markAsRead', 'NotificationController', 'markAsRead');
 $router->post('/notifications/markAllAsRead', 'NotificationController', 'markAllAsRead');
@@ -232,7 +260,23 @@ $router->get('/attendance/anomalies/{userId}', 'AttendanceController', 'getAnoma
 $router->get('/users/download-document/{userId}/{filename}', 'UsersController', 'downloadDocument');
 $router->post('/users/delete-document/{userId}/{filename}', 'UsersController', 'deleteDocument');
 
-// Admin Management Routes
+// Admin Routes - Department vs System Admin
+$router->get('/admin/create-task', 'AdminController', 'createTask');
+$router->post('/admin/create-task', 'AdminController', 'createTask');
+$router->get('/admin/manage-tasks', 'AdminController', 'manageTasks');
+$router->post('/admin/approve-request', 'AdminController', 'approveRequest');
+$router->get('/admin/manage-users', 'AdminController', 'manageUsers');
+$router->get('/admin/create-user', 'AdminController', 'createUser');
+$router->post('/admin/create-user', 'AdminController', 'createUser');
+$router->get('/admin/attendance-overview', 'AdminController', 'attendanceOverview');
+$router->get('/admin/reports', 'AdminController', 'reports');
+
+// System Admin Only Routes
+$router->get('/admin/system-settings', 'AdminController', 'systemSettings');
+$router->post('/admin/system-settings', 'AdminController', 'systemSettings');
+$router->get('/admin/manage-departments', 'AdminController', 'manageDepartments');
+
+// Legacy Admin Management Routes
 $router->get('/admin/management', 'AdminManagementController', 'index');
 $router->post('/admin/assign', 'AdminManagementController', 'assignAdmin');
 $router->post('/admin/remove', 'AdminManagementController', 'removeAdmin');

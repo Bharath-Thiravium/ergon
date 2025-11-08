@@ -7,9 +7,6 @@ class NotificationController extends Controller {
     public function index() {
         AuthMiddleware::requireAuth();
         
-        $title = 'Notifications';
-        $active_page = 'notifications';
-        
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
@@ -35,14 +32,37 @@ class NotificationController extends Controller {
             $notifications = [];
         }
         
-        ob_start();
-        include __DIR__ . '/../../views/notifications/index.php';
-        $content = ob_get_clean();
-        include __DIR__ . '/../../views/layouts/dashboard.php';
+        $data = [
+            'notifications' => $notifications,
+            'active_page' => 'notifications'
+        ];
+        
+        $this->view('notifications/index', $data);
     }
     
     public function getUnreadCount() {
         AuthMiddleware::requireAuth();
+        
+        // If this is a GET request to /api/notifications, return notifications list
+        if ($_SERVER['REQUEST_METHOD'] === 'GET' && strpos($_SERVER['REQUEST_URI'], '/api/notifications') !== false && !strpos($_SERVER['REQUEST_URI'], 'unread-count')) {
+            try {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                $this->ensureNotificationTable($db);
+                
+                $userId = $_SESSION['user_id'];
+                $stmt = $db->prepare("SELECT * FROM notifications WHERE (user_id = ? OR user_id IS NULL) ORDER BY created_at DESC LIMIT 5");
+                $stmt->execute([$userId]);
+                $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                header('Content-Type: application/json');
+                echo json_encode(['notifications' => $notifications]);
+            } catch (Exception $e) {
+                header('Content-Type: application/json');
+                echo json_encode(['notifications' => []]);
+            }
+            exit;
+        }
         
         try {
             require_once __DIR__ . '/../config/database.php';
@@ -70,8 +90,12 @@ class NotificationController extends Controller {
             try {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
+                $this->ensureNotificationTable($db);
                 
-                $id = $_POST['id'] ?? 0;
+                // Parse form data
+                parse_str(file_get_contents('php://input'), $postData);
+                $id = $postData['id'] ?? $_POST['id'] ?? 0;
+                
                 if ($id) {
                     $stmt = $db->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND (user_id = ? OR user_id IS NULL)");
                     $stmt->execute([$id, $_SESSION['user_id']]);
@@ -130,12 +154,15 @@ class NotificationController extends Controller {
         try {
             $notifications = [
                 ['title' => 'Welcome to ERGON', 'message' => 'Welcome to the employee tracking system!', 'type' => 'success'],
-                ['title' => 'New Task Available', 'message' => 'You have new tasks assigned to you', 'type' => 'info'],
-                ['title' => 'System Update', 'message' => 'System has been updated with new features', 'type' => 'warning']
+                ['title' => 'New Task Assigned', 'message' => 'You have been assigned a new task for project development', 'type' => 'info'],
+                ['title' => 'Leave Request Update', 'message' => 'Your leave request status has been updated', 'type' => 'info'],
+                ['title' => 'Expense Claim Submitted', 'message' => 'Your expense claim has been submitted for approval', 'type' => 'warning'],
+                ['title' => 'System Update', 'message' => 'System has been updated with new features', 'type' => 'info']
             ];
             
             if ($role === 'admin' || $role === 'owner') {
-                $notifications[] = ['title' => 'Pending Approvals', 'message' => 'You have pending leave/expense requests to review', 'type' => 'warning'];
+                $notifications[] = ['title' => 'Pending Approvals', 'message' => 'You have pending approval requests to review', 'type' => 'warning'];
+                $notifications[] = ['title' => 'Advance Request', 'message' => 'New advance request requires your approval', 'type' => 'warning'];
             }
             
             foreach ($notifications as $notification) {
