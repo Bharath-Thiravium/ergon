@@ -7,6 +7,7 @@
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../helpers/RoleManager.php';
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Task.php';
 require_once __DIR__ . '/../models/Leave.php';
@@ -355,10 +356,19 @@ class AdminController extends Controller {
     }
     
     private function getDepartmentAdminStats($db) {
-        $deptId = $_SESSION['department_id'];
+        $deptId = $_SESSION['department_id'] ?? 1;
+        
+        $stmt1 = $db->prepare("SELECT COUNT(*) FROM users WHERE department_id = ? AND status = 'active'");
+        $stmt1->execute([$deptId]);
+        $departmentUsers = $stmt1->fetchColumn();
+        
+        $stmt2 = $db->prepare("SELECT COUNT(*) FROM tasks WHERE department_id = ? AND status = 'pending'");
+        $stmt2->execute([$deptId]);
+        $departmentTasks = $stmt2->fetchColumn();
+        
         return [
-            'department_users' => $db->prepare("SELECT COUNT(*) FROM users WHERE department_id = ? AND status = 'active'")->execute([$deptId]) ? $db->fetchColumn() : 0,
-            'department_tasks' => $db->prepare("SELECT COUNT(*) FROM tasks WHERE department_id = ? AND status = 'pending'")->execute([$deptId]) ? $db->fetchColumn() : 0,
+            'department_users' => $departmentUsers,
+            'department_tasks' => $departmentTasks,
             'pending_approvals' => $this->getDepartmentPendingApprovals($db, $deptId),
             'department_attendance' => $this->getDepartmentAttendanceToday($db, $deptId)
         ];

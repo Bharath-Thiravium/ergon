@@ -2111,3 +2111,133 @@ body {
     padding: var(--space-3) var(--space-4);
   }
 }
+/* Tab Navigation */
+.tab-nav {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: var(--space-4);
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  transition: var(--transition);
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.tab-btn--active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: var(--bg-secondary);
+}
+
+.tab-content {
+  margin-top: var(--space-4);
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel--active {
+  display: block;
+}
+
+/* Quick Menu */
+.quick-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.quick-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  color: var(--text-primary);
+  text-decoration: none;
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.quick-menu__item:hover {
+  background: var(--bg-secondary);
+  transform: translateX(4px);
+}
+
+.quick-menu__icon {
+  font-size: 1.1rem;
+  width: 20px;
+  text-align: center;
+}
+
+.quick-menu__text {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+}
+/* Team Section */
+.team-section {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-color);
+}
+
+.section-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.team-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.team-member {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2);
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius);
+}
+
+.member-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.member-role {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+/* KPI Card Status Variants */
+.kpi-card--danger {
+  border-color: rgba(220, 38, 38, 0.2);
+}
+
+.kpi-card__status--urgent {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--error);
+}
+
+/* Stat Value Variants */
+.stat-value--warning {
+  color: var(--warning);
+}
