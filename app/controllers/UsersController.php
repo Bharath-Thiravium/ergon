@@ -240,9 +240,22 @@ class UsersController extends Controller {
         }
         
         // Fetch departments for dropdown
-        require_once __DIR__ . '/../models/Department.php';
-        $departmentModel = new Department();
-        $departments = $departmentModel->getAll();
+        $departments = [];
+        try {
+            require_once __DIR__ . '/../models/Department.php';
+            $departmentModel = new Department();
+            $departments = $departmentModel->getAll();
+            if (empty($departments)) {
+                // Fallback: fetch directly from database
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                $stmt = $db->query("SELECT id, name FROM departments WHERE status = 'active' ORDER BY name");
+                $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        } catch (Exception $e) {
+            error_log('Department fetch error in create: ' . $e->getMessage());
+            $departments = [];
+        }
         
         $data = [
             'active_page' => 'users',

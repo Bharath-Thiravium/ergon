@@ -8,7 +8,7 @@ class AdvanceController extends Controller {
         
         try {
             $user_id = $_SESSION['user_id'];
-            $role = $_SESSION['role'];
+            $role = $_SESSION['role'] ?? 'user';
             
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
@@ -21,6 +21,7 @@ class AdvanceController extends Controller {
                 amount DECIMAL(10,2) NOT NULL,
                 reason TEXT NOT NULL,
                 requested_date DATE NULL,
+                repayment_months INT DEFAULT 1,
                 status VARCHAR(20) DEFAULT 'pending',
                 approved_by INT NULL,
                 approved_at DATETIME NULL,

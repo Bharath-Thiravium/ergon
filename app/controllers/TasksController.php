@@ -378,9 +378,43 @@ class TasksController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
+            // Ensure departments table exists
+            $db->exec("CREATE TABLE IF NOT EXISTS departments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL UNIQUE,
+                description TEXT,
+                head_id INT NULL,
+                status VARCHAR(20) DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            
             $stmt = $db->prepare("SELECT id, name FROM departments WHERE status = 'active' ORDER BY name");
             $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // If no departments exist, create default ones
+            if (empty($departments)) {
+                $defaultDepts = [
+                    'Human Resources',
+                    'Information Technology', 
+                    'Finance',
+                    'Marketing',
+                    'Operations',
+                    'Sales'
+                ];
+                
+                $insertStmt = $db->prepare("INSERT INTO departments (name, description) VALUES (?, ?)");
+                foreach ($defaultDepts as $dept) {
+                    $insertStmt->execute([$dept, 'Default department']);
+                }
+                
+                // Fetch again after creating defaults
+                $stmt->execute();
+                $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            
+            return $departments;
         } catch (Exception $e) {
             error_log('Error fetching departments: ' . $e->getMessage());
             return [];

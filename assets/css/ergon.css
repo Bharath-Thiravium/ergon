@@ -2241,3 +2241,25 @@ body {
 .stat-value--warning {
   color: var(--warning);
 }
+/* Modal Z-index Fix */
+.modal {
+  z-index: 9999 !important;
+}
+
+.modal-content {
+  z-index: 10000 !important;
+}
+
+/* Ensure modals appear above headers */
+.modal-backdrop {
+  z-index: 9998 !important;
+}
+
+/* Fix for followup modal specifically */
+#followupModal {
+  z-index: 10001 !important;
+}
+
+#followupModal .modal-content {
+  z-index: 10002 !important;
+}

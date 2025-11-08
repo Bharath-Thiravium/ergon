@@ -198,7 +198,7 @@ $router->get('/api/notifications', 'NotificationController', 'getUnreadCount');
 $router->post('/api/notifications', 'NotificationController', 'markAllAsRead');
 
 // Daily Workflow Management (New Integrated System)
-$router->get('/daily-workflow/morning-planner', 'DailyWorkflowController', 'morningPlanner');
+$router->get('/daily-workflow/morning-planner', 'PlannerController', 'index');
 $router->post('/daily-workflow/submit-morning-plans', 'DailyWorkflowController', 'submitMorningPlans');
 $router->get('/daily-workflow/evening-update', 'DailyWorkflowController', 'eveningUpdate');
 $router->post('/daily-workflow/submit-evening-updates', 'DailyWorkflowController', 'submitEveningUpdates');
@@ -212,7 +212,7 @@ $router->get('/api/projects-by-department', 'DailyWorkflowController', 'getProje
 $router->get('/api/task-categories-by-department', 'DailyWorkflowController', 'getTaskCategoriesByDepartment');
 
 // Legacy Planner Management (Redirected to new system)
-$router->get('/planner/calendar', 'DailyWorkflowController', 'morningPlanner');
+$router->get('/planner/calendar', 'PlannerController', 'index');
 $router->get('/planner/create', 'PlannerController', 'create');
 $router->post('/planner/create', 'PlannerController', 'store');
 $router->post('/planner/update', 'PlannerController', 'update');
