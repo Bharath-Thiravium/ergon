@@ -24,7 +24,7 @@ ob_start();
                 <input type="text" class="form-control" id="searchInput" placeholder="Search for your office location...">
             </div>
             
-            <div id="map" style="height: 400px; border-radius: 8px; margin: 1rem 0;"></div>
+            <div id="map" style="height: 500px; width: 100%; border-radius: 8px; margin: 1rem 0;"></div>
             
             <div class="form-grid">
                 <div class="form-group">
@@ -51,8 +51,8 @@ ob_start();
                 <button type="submit" class="btn btn--primary">
                     <span>💾</span> Save Location
                 </button>
-                <button type="button" class="btn btn--secondary" onclick="getCurrentLocation()">
-                    <span>📍</span> Use Current Location
+                <button type="button" class="btn-location" onclick="getCurrentLocation()" title="Use Current Location">
+                    📍
                 </button>
             </div>
         </form>
@@ -196,6 +196,27 @@ document.addEventListener('DOMContentLoaded', function() {
     margin-top: 1.5rem;
 }
 
+.btn-location {
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: var(--transition);
+    min-width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-location:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-1px);
+}
+
 @media (max-width: 768px) {
     .form-grid {
         grid-template-columns: 1fr;
@@ -207,12 +228,25 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 #map {
-    border: 2px solid #ddd;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border: 2px solid var(--border-color);
+    box-shadow: var(--shadow);
+    position: relative;
+    z-index: 1;
 }
 
 .leaflet-popup-content {
     font-family: inherit;
+}
+
+.leaflet-control-zoom {
+    border: none !important;
+    box-shadow: var(--shadow) !important;
+}
+
+.leaflet-bar a {
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
 }
 </style>
 

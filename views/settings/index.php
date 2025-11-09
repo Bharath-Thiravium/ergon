@@ -24,23 +24,26 @@ ob_start();
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Office Coordinates</label>
+                    <label class="form-label">Office Location</label>
+                    <div class="location-controls">
+                        <button type="button" class="btn-location-small" onclick="getCurrentLocation()" title="Use Current Location">
+                            📍
+                        </button>
+                        <a href="/ergon/settings/map-picker" class="btn btn--secondary">
+                            <span>🗺️</span> Open Map Picker
+                        </a>
+                    </div>
+                    <div id="preview-map" style="height: 300px; margin: 1rem 0; border-radius: 8px;"></div>
                     <div class="location-input-grid">
                         <div class="form-group">
                             <label class="form-label">Latitude</label>
-                            <input type="number" class="form-control" name="office_latitude" id="office_latitude" step="0.000001" placeholder="28.6139" value="<?= htmlspecialchars($data['settings']['base_location_lat'] ?? '') ?>"
+                            <input type="number" class="form-control" name="office_latitude" id="office_latitude" step="0.000001" placeholder="28.6139" value="<?= htmlspecialchars($data['settings']['base_location_lat'] ?? '') ?>">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Longitude</label>
                             <input type="number" class="form-control" name="office_longitude" id="office_longitude" step="0.000001" placeholder="77.2090" value="<?= htmlspecialchars($data['settings']['base_location_lng'] ?? '') ?>">
                         </div>
                     </div>
-                    <button type="button" class="btn btn--secondary" onclick="getCurrentLocation()">
-                        <span>📍</span> Use Current Location
-                    </button>
-                    <a href="/ergon/settings/map-picker" class="btn btn--secondary">
-                        <span>🗺️</span> Open Map Picker
-                    </a>
                 </div>
                 <button type="submit" class="btn btn--primary">Save Settings</button>
             </form>
@@ -86,11 +89,10 @@ function getCurrentLocation() {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 
-                document.getElementById('office_latitude').value = lat;
-                document.getElementById('office_longitude').value = lng;
+                document.getElementById('office_latitude').value = lat.toFixed(6);
+                document.getElementById('office_longitude').value = lng.toFixed(6);
                 
-                // Reverse geocoding using a free service
-                reverseGeocode(lat, lng);
+                updatePreviewMap(lat, lng);
             },
             function(error) {
                 alert('Error getting location: ' + error.message);
@@ -114,6 +116,50 @@ function reverseGeocode(lat, lng) {
         });
 }
 
+let previewMap, previewMarker;
+
+// Initialize preview map
+function initPreviewMap() {
+    const lat = parseFloat(document.getElementById('office_latitude').value) || 28.6139;
+    const lng = parseFloat(document.getElementById('office_longitude').value) || 77.2090;
+    
+    previewMap = L.map('preview-map').setView([lat, lng], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(previewMap);
+    
+    previewMarker = L.marker([lat, lng], { draggable: true }).addTo(previewMap);
+    
+    previewMarker.on('dragend', function(e) {
+        const pos = e.target.getLatLng();
+        document.getElementById('office_latitude').value = pos.lat.toFixed(6);
+        document.getElementById('office_longitude').value = pos.lng.toFixed(6);
+    });
+}
+
+// Update preview map when coordinates change
+function updatePreviewMap(lat, lng) {
+    if (previewMap && previewMarker) {
+        previewMap.setView([lat, lng], 15);
+        previewMarker.setLatLng([lat, lng]);
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Load Leaflet CSS and JS
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+    
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = initPreviewMap;
+    document.head.appendChild(script);
+});
+
 // Form will submit normally to POST /ergon/settings
 </script>
 
@@ -123,6 +169,38 @@ function reverseGeocode(lat, lng) {
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
     margin-bottom: 1rem;
+}
+
+.location-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.btn-location-small {
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: var(--transition);
+    min-width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-location-small:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-1px);
+}
+
+#preview-map {
+    border: 2px solid var(--border-color);
+    box-shadow: var(--shadow);
 }
 
 @media (max-width: 768px) {

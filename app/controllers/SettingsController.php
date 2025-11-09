@@ -102,8 +102,27 @@ class SettingsController extends Controller {
     
     private function getSettings() {
         try {
+            // Ensure settings table exists
+            $this->db->exec("CREATE TABLE IF NOT EXISTS settings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                company_name VARCHAR(255) DEFAULT 'ERGON Company',
+                base_location_lat DECIMAL(10,8) DEFAULT 0,
+                base_location_lng DECIMAL(11,8) DEFAULT 0,
+                attendance_radius INT DEFAULT 5,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            
             $stmt = $this->db->query("SELECT * FROM settings LIMIT 1");
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$result) {
+                // Insert default settings
+                $this->db->exec("INSERT INTO settings (company_name, base_location_lat, base_location_lng, attendance_radius) VALUES ('ERGON Company', 0, 0, 5)");
+                $stmt = $this->db->query("SELECT * FROM settings LIMIT 1");
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            
             return $result ?: [
                 'company_name' => 'ERGON Company',
                 'base_location_lat' => 0,
@@ -111,6 +130,7 @@ class SettingsController extends Controller {
                 'attendance_radius' => 5
             ];
         } catch (Exception $e) {
+            error_log('Settings fetch error: ' . $e->getMessage());
             return ['company_name' => 'ERGON Company', 'attendance_radius' => 5];
         }
     }
