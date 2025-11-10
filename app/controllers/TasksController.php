@@ -191,9 +191,14 @@ class TasksController extends Controller {
                 'title' => trim($_POST['title'] ?? ''),
                 'description' => trim($_POST['description'] ?? ''),
                 'assigned_to' => intval($_POST['assigned_to'] ?? 0),
+                'task_type' => $_POST['task_type'] ?? 'ad-hoc',
                 'priority' => $_POST['priority'] ?? 'medium',
                 'deadline' => !empty($_POST['deadline']) ? $_POST['deadline'] : null,
-                'status' => $_POST['status'] ?? 'assigned'
+                'status' => $_POST['status'] ?? 'assigned',
+                'progress' => intval($_POST['progress'] ?? 0),
+                'sla_hours' => intval($_POST['sla_hours'] ?? 24),
+                'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
+                'task_category' => trim($_POST['task_category'] ?? '')
             ];
             
             if (empty($taskData['title']) || $taskData['assigned_to'] <= 0) {
@@ -201,19 +206,42 @@ class TasksController extends Controller {
                 exit;
             }
             
+            // Validate progress range
+            if ($taskData['progress'] < 0 || $taskData['progress'] > 100) {
+                header('Location: /ergon/tasks/edit/' . $id . '?error=Progress must be between 0 and 100');
+                exit;
+            }
+            
             try {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
+                $this->ensureTasksTable($db);
                 
-                $stmt = $db->prepare("UPDATE tasks SET title=?, description=?, assigned_to=?, priority=?, deadline=?, status=? WHERE id=?");
-                $result = $stmt->execute([$taskData['title'], $taskData['description'], $taskData['assigned_to'], $taskData['priority'], $taskData['deadline'], $taskData['status'], $id]);
+                $stmt = $db->prepare("UPDATE tasks SET title=?, description=?, assigned_to=?, task_type=?, priority=?, deadline=?, status=?, progress=?, sla_hours=?, department_id=?, task_category=?, updated_at=NOW() WHERE id=?");
+                $result = $stmt->execute([
+                    $taskData['title'], 
+                    $taskData['description'], 
+                    $taskData['assigned_to'], 
+                    $taskData['task_type'],
+                    $taskData['priority'], 
+                    $taskData['deadline'], 
+                    $taskData['status'],
+                    $taskData['progress'],
+                    $taskData['sla_hours'],
+                    $taskData['department_id'],
+                    $taskData['task_category'],
+                    $id
+                ]);
                 
                 if ($result) {
+                    error_log('Task updated with ID: ' . $id . ', progress: ' . $taskData['progress'] . '%');
                     header('Location: /ergon/tasks?success=Task updated successfully');
                 } else {
+                    error_log('Task update failed: ' . implode(', ', $stmt->errorInfo()));
                     header('Location: /ergon/tasks/edit/' . $id . '?error=Failed to update task');
                 }
             } catch (Exception $e) {
+                error_log('Task update exception: ' . $e->getMessage());
                 header('Location: /ergon/tasks/edit/' . $id . '?error=Update failed');
             }
             exit;
@@ -223,8 +251,10 @@ class TasksController extends Controller {
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
+            $this->ensureTasksTable($db);
             
-            $stmt = $db->prepare("SELECT * FROM tasks WHERE id = ?");
+            // Get task with department name
+            $stmt = $db->prepare("SELECT t.*, d.name as department_name FROM tasks t LEFT JOIN departments d ON t.department_id = d.id WHERE t.id = ?");
             $stmt->execute([$id]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
             
@@ -234,15 +264,18 @@ class TasksController extends Controller {
             }
             
             $users = $this->getActiveUsers();
+            $departments = $this->getDepartments();
             
             $data = [
                 'task' => $task,
                 'users' => $users,
+                'departments' => $departments,
                 'active_page' => 'tasks'
             ];
             
             $this->view('tasks/edit', $data);
         } catch (Exception $e) {
+            error_log('Task edit load error: ' . $e->getMessage());
             header('Location: /ergon/tasks?error=Failed to load task');
             exit;
         }
@@ -320,8 +353,8 @@ class TasksController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Always use direct database query with proper JOIN
-            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.id = ?");
+            // Always use direct database query with proper JOINs
+            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user, d.name as department_name, ub.name as assigned_by_name FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id LEFT JOIN departments d ON t.department_id = d.id LEFT JOIN users ub ON t.assigned_by = ub.id WHERE t.id = ?");
             $stmt->execute([$id]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
             

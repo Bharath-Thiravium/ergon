@@ -1227,6 +1227,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">🌅</span>
                                 Planner
                             </a>
+                            <a href="/ergon/daily-workflow/evening-update" class="nav-dropdown-item <?= ($active_page ?? '') === 'evening-update' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🌆</span>
+                                Evening Update
+                            </a>
                             <a href="/ergon/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups

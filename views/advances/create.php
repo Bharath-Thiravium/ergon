@@ -13,7 +13,7 @@ ob_start();
         <h2 class="card__title">Request Advance</h2>
     </div>
     <div class="card__body">
-        <form method="POST" class="form">
+        <form method="POST" action="/ergon/advances/create" class="form">
             <div class="form-group">
                 <label class="form-label">Advance Type</label>
                 <select name="type" class="form-control" required>

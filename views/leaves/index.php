@@ -65,6 +65,35 @@ ob_start();
         <h2 class="card__title">
             <span>📅</span> Leave Requests
         </h2>
+        <div class="card__filters">
+            <form method="GET" class="filter-form">
+                <select name="employee" class="form-control">
+                    <option value="">All Employees</option>
+                    <?php foreach ($employees ?? [] as $employee): ?>
+                        <option value="<?= $employee['id'] ?>" <?= ($filters['employee'] ?? '') == $employee['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($employee['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <select name="leave_type" class="form-control">
+                    <option value="">All Leave Types</option>
+                    <option value="sick" <?= ($filters['leave_type'] ?? '') == 'sick' ? 'selected' : '' ?>>Sick Leave</option>
+                    <option value="casual" <?= ($filters['leave_type'] ?? '') == 'casual' ? 'selected' : '' ?>>Casual Leave</option>
+                    <option value="annual" <?= ($filters['leave_type'] ?? '') == 'annual' ? 'selected' : '' ?>>Annual Leave</option>
+                    <option value="emergency" <?= ($filters['leave_type'] ?? '') == 'emergency' ? 'selected' : '' ?>>Emergency Leave</option>
+                    <option value="maternity" <?= ($filters['leave_type'] ?? '') == 'maternity' ? 'selected' : '' ?>>Maternity Leave</option>
+                    <option value="paternity" <?= ($filters['leave_type'] ?? '') == 'paternity' ? 'selected' : '' ?>>Paternity Leave</option>
+                </select>
+                <select name="status" class="form-control">
+                    <option value="">All Status</option>
+                    <option value="pending" <?= ($filters['status'] ?? '') == 'pending' ? 'selected' : '' ?>>Pending</option>
+                    <option value="approved" <?= ($filters['status'] ?? '') == 'approved' ? 'selected' : '' ?>>Approved</option>
+                    <option value="rejected" <?= ($filters['status'] ?? '') == 'rejected' ? 'selected' : '' ?>>Rejected</option>
+                </select>
+                <button type="submit" class="btn btn--primary">Filter</button>
+                <a href="/ergon/leaves" class="btn btn--secondary">Clear</a>
+            </form>
+        </div>
     </div>
     <div class="card__body">
         <div class="table-responsive">
@@ -95,18 +124,15 @@ ob_start();
                             }
                             ?>
                         </td>
-                        <td><?= htmlspecialchars($leave['type'] ?? 'Annual') ?></td>
+                        <td><?= ucfirst(htmlspecialchars($leave['type'] ?? 'annual')) ?></td>
                         <td><?= date('M d, Y', strtotime($leave['start_date'])) ?></td>
                         <td><?= date('M d, Y', strtotime($leave['end_date'])) ?></td>
                         <td><?php 
-                            if (isset($leave['days_requested']) && $leave['days_requested'] > 0) {
-                                echo $leave['days_requested'];
-                            } else {
-                                $start = new DateTime($leave['start_date']);
-                                $end = new DateTime($leave['end_date']);
-                                $days = $end->diff($start)->days + 1;
-                                echo $days;
-                            }
+                            // Always calculate from dates to ensure accuracy after edits
+                            $start = new DateTime($leave['start_date']);
+                            $end = new DateTime($leave['end_date']);
+                            $days = $end->diff($start)->days + 1;
+                            echo $days;
                         ?></td>
                         <td>
                             <?php 
@@ -232,6 +258,24 @@ ob_start();
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+}
+.card__filters {
+    margin-top: 15px;
+}
+.filter-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+.filter-form .form-control {
+    flex: 1;
+    min-width: 140px;
+    max-width: 180px;
+}
+.filter-form .btn {
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 </style>
 

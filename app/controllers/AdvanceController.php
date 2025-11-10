@@ -7,19 +7,6 @@ class AdvanceController extends Controller {
         $this->requireAuth();
         
         try {
-<<<<<<< HEAD
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            
-            $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a LEFT JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC");
-            $stmt->execute();
-            $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $this->view('advances/index', ['advances' => $advances]);
-        } catch (Exception $e) {
-            error_log('Advances index error: ' . $e->getMessage());
-            $this->view('advances/index', ['advances' => [], 'error' => 'Failed to load advances']);
-=======
             $user_id = $_SESSION['user_id'];
             $role = $_SESSION['role'];
             
@@ -42,12 +29,6 @@ class AdvanceController extends Controller {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )");
-            
-            // Add rejection_reason column if it doesn't exist
-            $stmt = $db->query("SHOW COLUMNS FROM advances LIKE 'rejection_reason'");
-            if ($stmt->rowCount() == 0) {
-                $db->exec("ALTER TABLE advances ADD COLUMN rejection_reason TEXT NULL AFTER approved_at");
-            }
             
             if ($role === 'user') {
                 $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a JOIN users u ON a.user_id = u.id WHERE a.user_id = ? ORDER BY a.created_at DESC");
@@ -76,13 +57,17 @@ class AdvanceController extends Controller {
                 'active_page' => 'advances'
             ];
             $this->view('advances/index', $data);
->>>>>>> 89cb783c6dab3a59e1b818279d6c5de3950c6de5
         }
     }
     
     public function create() {
         $this->requireAuth();
-        $this->view('advances/create');
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            return $this->store();
+        }
+        
+        $this->view('advances/create', ['active_page' => 'advances']);
     }
     
     public function edit($id) {

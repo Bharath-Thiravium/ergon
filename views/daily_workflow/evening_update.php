@@ -18,6 +18,12 @@ ob_start();
     </div>
 </div>
 
+<?php if (!empty($data['message'])): ?>
+<div class="alert <?= strpos($data['message'], 'Error') === 0 ? 'alert--danger' : 'alert--success' ?>" style="margin-bottom: 1rem;">
+    <?= htmlspecialchars($data['message']) ?>
+</div>
+<?php endif; ?>
+
 <div class="dashboard-grid">
     <div class="kpi-card">
         <div class="kpi-card__header">
@@ -48,7 +54,7 @@ ob_start();
 </div>
 
 <?php if ($data['canUpdate']): ?>
-<form method="POST" action="/ergon/daily-workflow/submit-evening-updates" id="eveningUpdateForm">
+<form method="POST" action="/ergon/evening-update/submit" id="eveningUpdateForm">
     <div class="card">
         <div class="card__header">
             <h2 class="card__title">
@@ -96,7 +102,7 @@ ob_start();
                     
                     <div class="form-group">
                         <label class="form-label">Completion Notes / Blockers</label>
-                        <textarea name="updates[<?= $plan['id'] ?>][completion_notes]" class="form-control" rows="2" placeholder="What did you accomplish? Any blockers or issues?"><?= htmlspecialchars($plan['completion_notes']) ?></textarea>
+                        <textarea name="updates[<?= $plan['id'] ?>][completion_notes]" class="form-control" rows="2" placeholder="What did you accomplish? Any blockers or issues?"><?= htmlspecialchars($plan['completion_notes'] ?? '') ?></textarea>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -121,6 +127,25 @@ ob_start();
                             <label class="form-label">Task Title</label>
                             <input type="text" name="unplanned_tasks[0][title]" class="form-control" placeholder="What unplanned task did you work on?">
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Department</label>
+                            <select name="unplanned_tasks[0][department_id]" class="form-control department-select" onchange="loadUnplannedCategories(this, 0)">
+                                <option value="">Select Dept</option>
+                                <?php if (!empty($data['departments'])): ?>
+                                    <?php foreach ($data['departments'] as $dept): ?>
+                                        <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <select name="unplanned_tasks[0][task_category]" class="form-control category-select">
+                                <option value="">Select Category</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Hours Spent</label>
                             <input type="number" name="unplanned_tasks[0][actual_hours]" class="form-control" min="0" max="8" step="0.25" placeholder="0.0">
@@ -240,6 +265,25 @@ function addUnplannedTask() {
                 <input type="text" name="unplanned_tasks[${unplannedTaskIndex}][title]" class="form-control" placeholder="What unplanned task did you work on?">
             </div>
             <div class="form-group">
+                <label class="form-label">Department</label>
+                <select name="unplanned_tasks[${unplannedTaskIndex}][department_id]" class="form-control department-select" onchange="loadUnplannedCategories(this, ${unplannedTaskIndex})">
+                    <option value="">Select Dept</option>
+                    <?php if (!empty($data['departments'])): ?>
+                        <?php foreach ($data['departments'] as $dept): ?>
+                            <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select name="unplanned_tasks[${unplannedTaskIndex}][task_category]" class="form-control category-select">
+                    <option value="">Select Category</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
                 <label class="form-label">Hours Spent</label>
                 <input type="number" name="unplanned_tasks[${unplannedTaskIndex}][actual_hours]" class="form-control" min="0" max="8" step="0.25" placeholder="0.0">
             </div>
@@ -268,6 +312,31 @@ function addUnplannedTask() {
 function removeUnplannedTask(button) {
     const taskRow = button.closest('.unplanned-task-row');
     taskRow.remove();
+}
+
+function loadUnplannedCategories(deptSelect, index) {
+    const categorySelect = deptSelect.closest('.unplanned-task-row').querySelector('.category-select');
+    const deptId = deptSelect.value;
+    
+    categorySelect.innerHTML = '<option value="">Select Category</option>';
+    
+    if (!deptId) return;
+    
+    fetch(`/ergon/api/task-categories?department_id=${deptId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.categories) {
+                data.categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.category_name;
+                    option.textContent = category.category_name;
+                    categorySelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading categories:', error);
+        });
 }
 
 // Initialize progress displays

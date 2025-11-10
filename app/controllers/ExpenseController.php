@@ -165,6 +165,24 @@ class ExpenseController extends Controller {
             ];
             
             if ($this->expense->create($data)) {
+                // Create notification for admins/owners
+                require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                $stmt->execute([$userId]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($user) {
+                    NotificationHelper::createExpenseClaimNotification(
+                        $db->lastInsertId(),
+                        $userId,
+                        $user['name'],
+                        $amount,
+                        $data['description']
+                    );
+                }
+                
                 echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => '/ergon/expenses']);
             } else {
                 // Fallback: try direct database insertion

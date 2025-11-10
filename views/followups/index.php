@@ -206,19 +206,22 @@ ob_start();
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <button class="btn btn--sm btn--primary" onclick="viewFollowup(<?= $followup['id'] ?>)">
+                                        <a href="/ergon/followups/view/<?= $followup['id'] ?>" class="btn btn--sm btn--primary">
                                             <span>👁️</span>
-                                        </button>
+                                        </a>
                                         <?php if ($followup['status'] !== 'completed'): ?>
                                             <button class="btn btn--sm btn--success" onclick="completeFollowup(<?= $followup['id'] ?>)">
                                                 <span>✅</span>
                                             </button>
-                                            <button class="btn btn--sm btn--warning" onclick="rescheduleFollowup(<?= $followup['id'] ?>)">
+                                            <a href="/ergon/followups/reschedule/<?= $followup['id'] ?>" class="btn btn--sm btn--warning">
                                                 <span>📅</span>
-                                            </button>
+                                            </a>
                                         <?php endif; ?>
-                                        <button class="btn btn--sm btn--info" onclick="showHistory(<?= $followup['id'] ?>)">
+                                        <a href="/ergon/followups/history/<?= $followup['id'] ?>" class="btn btn--sm btn--info">
                                             <span>📋</span>
+                                        </a>
+                                        <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>)">
+                                            <span>🗑️</span>
                                         </button>
                                     </div>
                                 </td>
@@ -281,12 +284,13 @@ ob_start();
                             <?php endif; ?>
                         </div>
                         <div class="followup-card__actions">
-                            <button class="btn btn--sm btn--primary" onclick="viewFollowup(<?= $followup['id'] ?>)">View</button>
+                            <a href="/ergon/followups/view/<?= $followup['id'] ?>" class="btn btn--sm btn--primary">View</a>
                             <?php if ($followup['status'] !== 'completed'): ?>
                                 <button class="btn btn--sm btn--success" onclick="completeFollowup(<?= $followup['id'] ?>)">Complete</button>
-                                <button class="btn btn--sm btn--warning" onclick="rescheduleFollowup(<?= $followup['id'] ?>)">Reschedule</button>
+                                <a href="/ergon/followups/reschedule/<?= $followup['id'] ?>" class="btn btn--sm btn--warning">Reschedule</a>
                             <?php endif; ?>
-                            <button class="btn btn--sm btn--info" onclick="showHistory(<?= $followup['id'] ?>)">History</button>
+                            <a href="/ergon/followups/history/<?= $followup['id'] ?>" class="btn btn--sm btn--info">History</a>
+                            <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>)">Delete</button>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -477,6 +481,7 @@ function generateConsolidatedView() {
                 html += `<button class="btn btn--xs btn--warning" onclick="rescheduleFollowup(${followup.id})">Reschedule</button>`;
             }
             html += `<button class="btn btn--xs btn--info" onclick="showHistory(${followup.id})">History</button>`;
+            html += `<button class="btn btn--xs btn--danger" onclick="deleteFollowup(${followup.id})">Delete</button>`;
             html += `</div>`;
             html += `</div>`;
         });
@@ -554,6 +559,7 @@ function generateConsolidatedGridView() {
                 html += `<button class="btn btn--xs btn--warning" onclick="rescheduleFollowup(${followup.id})">Reschedule</button>`;
             }
             html += `<button class="btn btn--xs btn--info" onclick="showHistory(${followup.id})">History</button>`;
+            html += `<button class="btn btn--xs btn--danger" onclick="deleteFollowup(${followup.id})">Delete</button>`;
             html += `</div>`;
             html += `</div>`;
         });
@@ -609,6 +615,19 @@ function completeFollowup(id) {
         form.method = 'POST';
         form.innerHTML = `
             <input type="hidden" name="action" value="complete">
+            <input type="hidden" name="id" value="${id}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function deleteFollowup(id) {
+    if (confirm('Are you sure you want to delete this follow-up? This action cannot be undone.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="${id}">
         `;
         document.body.appendChild(form);
@@ -833,31 +852,14 @@ document.addEventListener('DOMContentLoaded', function() {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     background: rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 999999 !important;
+    z-index: 2147483647;
     padding: 1rem;
-    box-sizing: border-box;
-}
-
-/* Ensure modals appear above all other elements */
-.modal * {
-    z-index: inherit;
-}
-
-/* Override any header z-index */
-header, .header, .navbar, .nav {
-    z-index: 1000 !important;
-}
-
-/* Ensure modal content has proper stacking */
-.modal-content {
-    position: relative;
-    z-index: 1000000 !important;
 }
 
 .modal-content {
@@ -870,6 +872,8 @@ header, .header, .navbar, .nav {
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     transform: scale(1);
     transform-origin: center;
+    z-index: 10000;
+    position: relative;
 }
 
 .modal-content--large {

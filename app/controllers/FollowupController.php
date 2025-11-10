@@ -63,6 +63,9 @@ class FollowupController extends Controller {
             case 'complete':
                 $this->complete();
                 break;
+            case 'delete':
+                $this->delete();
+                break;
             default:
                 header('Location: /ergon/followups');
                 exit;
@@ -159,6 +162,61 @@ class FollowupController extends Controller {
         exit;
     }
     
+    public function delete() {
+        if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /ergon/followups');
+            exit;
+        }
+        
+        try {
+            $db = Database::connect();
+            $this->ensureTables($db);
+            
+            $followupId = $_POST['id'] ?? $_POST['followup_id'];
+            
+            if (!$followupId) {
+                header('Location: /ergon/followups?error=Invalid follow-up ID');
+                exit;
+            }
+            
+            // Get followup details for history log
+            $stmt = $db->prepare("SELECT title FROM followups WHERE id = ? AND user_id = ?");
+            $stmt->execute([$followupId, $_SESSION['user_id']]);
+            $followup = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$followup) {
+                header('Location: /ergon/followups?error=Follow-up not found');
+                exit;
+            }
+            
+            // Start transaction
+            $db->beginTransaction();
+            
+            // Delete history records first
+            $stmt = $db->prepare("DELETE FROM followup_history WHERE followup_id = ?");
+            $stmt->execute([$followupId]);
+            
+            // Delete the followup
+            $stmt = $db->prepare("DELETE FROM followups WHERE id = ? AND user_id = ?");
+            $result = $stmt->execute([$followupId, $_SESSION['user_id']]);
+            
+            if ($result && $stmt->rowCount() > 0) {
+                $db->commit();
+                header('Location: /ergon/followups?success=Follow-up deleted successfully');
+            } else {
+                $db->rollBack();
+                header('Location: /ergon/followups?error=Failed to delete follow-up');
+            }
+        } catch (Exception $e) {
+            if (isset($db)) {
+                $db->rollBack();
+            }
+            error_log('Delete error: ' . $e->getMessage());
+            header('Location: /ergon/followups?error=Failed to delete follow-up');
+        }
+        exit;
+    }
+    
     public function reschedule() {
         
         if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -181,10 +239,16 @@ class FollowupController extends Controller {
             
             // Build time string
             $timeNote = '';
+            $newTime = null;
             if (!empty($_POST['hour']) && !empty($_POST['minute']) && !empty($_POST['ampm'])) {
                 $hour = str_pad($_POST['hour'], 2, '0', STR_PAD_LEFT);
                 $minute = str_pad($_POST['minute'], 2, '0', STR_PAD_LEFT);
                 $timeNote = " at {$hour}:{$minute} {$_POST['ampm']}";
+                
+                // Convert to 24-hour format for database storage
+                $hour12 = (int)$_POST['hour'];
+                $hour24 = $_POST['ampm'] === 'PM' && $hour12 !== 12 ? $hour12 + 12 : ($hour12 === 12 && $_POST['ampm'] === 'AM' ? 0 : $hour12);
+                $newTime = sprintf('%02d:%02d:00', $hour24, (int)$_POST['minute']);
             }
             
             // Get old date
@@ -210,31 +274,24 @@ class FollowupController extends Controller {
                 exit;
             }
             
-            // Log history with detailed debugging
-            $historyNote = "Rescheduled from {$oldDate} to {$newDate}{$timeNote}. Reason: {$reason}";
+            // Update reminder time if provided
+            if ($newTime) {
+                $updateTimeStmt = $db->prepare("UPDATE followups SET reminder_time = ? WHERE id = ? AND user_id = ?");
+                $updateTimeStmt->execute([$newTime, $followupId, $_SESSION['user_id']]);
+            }
             
-            error_log("Attempting to insert history: followup_id=$followupId, user_id={$_SESSION['user_id']}");
+            // Log history
+            $historyNote = "Rescheduled from {$oldDate} to {$newDate}{$timeNote}. Reason: {$reason}";
             
             $stmt = $db->prepare("INSERT INTO followup_history (followup_id, action, old_value, new_value, notes, created_by) VALUES (?, ?, ?, ?, ?, ?)");
             $historyResult = $stmt->execute([$followupId, 'postponed', $oldDate, $newDate . $timeNote, $historyNote, $_SESSION['user_id']]);
             
             if ($historyResult) {
-                $historyId = $db->lastInsertId();
-                error_log("History inserted successfully with ID: $historyId");
-                
-                // Verify insertion
-                $verify = $db->prepare("SELECT COUNT(*) FROM followup_history WHERE id = ?");
-                $verify->execute([$historyId]);
-                $exists = $verify->fetchColumn();
-                error_log("History record verification: " . ($exists ? 'EXISTS' : 'NOT FOUND'));
-                
                 $db->commit();
                 header('Location: /ergon/followups?success=Follow-up rescheduled successfully');
             } else {
-                $errorInfo = $stmt->errorInfo();
-                error_log("History insertion failed: " . implode(', ', $errorInfo));
                 $db->rollBack();
-                header('Location: /ergon/followups?error=Failed to log history: ' . $errorInfo[2]);
+                header('Location: /ergon/followups?error=Failed to log history');
             }
         } catch (Exception $e) {
             if (isset($db)) {
@@ -247,10 +304,9 @@ class FollowupController extends Controller {
     }
     
     public function viewFollowup($id) {
-        
         if (!isset($_SESSION['user_id'])) {
-            echo '<p>Unauthorized access</p>';
-            return;
+            header('Location: /ergon/login');
+            exit;
         }
         
         try {
@@ -262,30 +318,73 @@ class FollowupController extends Controller {
             $followup = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$followup) {
-                echo '<p>Follow-up not found</p>';
-                return;
+                header('Location: /ergon/followups?error=Follow-up not found');
+                exit;
             }
             
-            header('Content-Type: text/html; charset=UTF-8');
-            echo '<!DOCTYPE html>';
-            echo '<div class="followup-details">';
-            echo '<div class="detail-grid">';
-            echo '<div class="detail-item"><strong>Title:</strong> ' . htmlspecialchars($followup['title']) . '</div>';
-            echo '<div class="detail-item"><strong>Company:</strong> ' . htmlspecialchars($followup['company_name'] ?? '-') . '</div>';
-            echo '<div class="detail-item"><strong>Contact:</strong> ' . htmlspecialchars($followup['contact_person'] ?? '-') . '</div>';
-            echo '<div class="detail-item"><strong>Phone:</strong> ' . htmlspecialchars($followup['contact_phone'] ?? '-') . '</div>';
-            echo '<div class="detail-item"><strong>Project:</strong> ' . htmlspecialchars($followup['project_name'] ?? '-') . '</div>';
-            echo '<div class="detail-item"><strong>Due Date:</strong> ' . date('M d, Y', strtotime($followup['follow_up_date'])) . '</div>';
-            echo '<div class="detail-item"><strong>Status:</strong> <span class="badge badge--' . $this->getStatusBadge($followup['status']) . '">' . ucfirst($followup['status']) . '</span></div>';
-            echo '<div class="detail-item"><strong>Created:</strong> ' . date('M d, Y H:i', strtotime($followup['created_at'])) . '</div>';
-            echo '</div>';
-            if ($followup['description']) {
-                echo '<div class="detail-description"><strong>Description:</strong><p>' . htmlspecialchars($followup['description']) . '</p></div>';
-            }
-            echo '</div>';
+            $this->view('followups/view_detail', ['followup' => $followup]);
         } catch (Exception $e) {
             error_log('View error: ' . $e->getMessage());
-            echo '<p>Error loading follow-up details</p>';
+            header('Location: /ergon/followups?error=Error loading follow-up');
+            exit;
+        }
+    }
+    
+    public function showReschedule($id) {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
+        try {
+            $db = Database::connect();
+            $this->ensureTables($db);
+            
+            $stmt = $db->prepare("SELECT * FROM followups WHERE id = ? AND user_id = ?");
+            $stmt->execute([$id, $_SESSION['user_id']]);
+            $followup = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$followup) {
+                header('Location: /ergon/followups?error=Follow-up not found');
+                exit;
+            }
+            
+            $this->view('followups/reschedule', ['followup' => $followup]);
+        } catch (Exception $e) {
+            error_log('Reschedule view error: ' . $e->getMessage());
+            header('Location: /ergon/followups?error=Error loading follow-up');
+            exit;
+        }
+    }
+    
+    public function showHistory($id) {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
+        try {
+            $db = Database::connect();
+            $this->ensureTables($db);
+            
+            $stmt = $db->prepare("SELECT * FROM followups WHERE id = ? AND user_id = ?");
+            $stmt->execute([$id, $_SESSION['user_id']]);
+            $followup = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$followup) {
+                header('Location: /ergon/followups?error=Follow-up not found');
+                exit;
+            }
+            
+            $stmt = $db->prepare("SELECT h.*, u.name as user_name FROM followup_history h LEFT JOIN users u ON h.created_by = u.id WHERE h.followup_id = ? ORDER BY h.created_at DESC");
+            $stmt->execute([$id]);
+            $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->view('followups/history', ['followup' => $followup, 'history' => $history]);
+        } catch (Exception $e) {
+            error_log('History view error: ' . $e->getMessage());
+            header('Location: /ergon/followups?error=Error loading history');
+            exit;
         }
     }
     

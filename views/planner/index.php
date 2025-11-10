@@ -11,11 +11,38 @@ ob_start();
     </div>
     <div class="page-actions">
         <input type="date" id="plannerDate" value="<?= $current_date ?>" onchange="changePlannerDate(this.value)" class="form-control" style="width: auto; margin-right: 1rem;">
-        <button class="btn btn--primary" onclick="showAddTaskModal()">
+        <a href="/ergon/planner/create?date=<?= $current_date ?>" class="btn btn--primary">
             <span>➕</span> Add Task
+        </a>
+        <button class="btn btn--secondary" onclick="showAddTaskModal()">
+            <span>⚡</span> Quick Add
         </button>
     </div>
 </div>
+
+<?php if (isset($_GET['success'])): ?>
+    <div class="alert alert--success">
+        <?php if ($_GET['success'] === '1'): ?>
+            <strong>✅ Success!</strong> Task has been added to your planner.
+        <?php elseif ($_GET['success'] === 'updated'): ?>
+            <strong>✅ Success!</strong> Task has been updated.
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
+
+<?php if (isset($_GET['error'])): ?>
+    <div class="alert alert--danger">
+        <?php if ($_GET['error'] === 'invalid_data'): ?>
+            <strong>❌ Error:</strong> Invalid data provided.
+        <?php elseif ($_GET['error'] === 'update_failed'): ?>
+            <strong>❌ Error:</strong> Failed to update task.
+        <?php elseif ($_GET['error'] === 'database_error'): ?>
+            <strong>❌ Error:</strong> Database error occurred.
+        <?php else: ?>
+            <strong>❌ Error:</strong> An error occurred. Please try again.
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
 
 <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr;">
     <!-- Today's Plan -->
@@ -297,6 +324,45 @@ document.getElementById('addTaskForm').addEventListener('submit', function(e) {
     gap: 0.5rem;
     justify-content: flex-end;
     margin-top: 1rem;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    border: 1px solid;
+}
+
+.alert--success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.alert--danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6b7280;
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.task-item {
+    transition: all 0.2s ease;
+}
+
+.task-item:hover {
+    border-color: #007cba;
+    box-shadow: 0 2px 8px rgba(0, 124, 186, 0.1);
 }
 </style>
 
