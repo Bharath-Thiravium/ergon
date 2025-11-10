@@ -1,7 +1,6 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../../app/core/Session.php';
+Session::init();
 
 if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) {
     if (!headers_sent()) {
@@ -15,15 +14,10 @@ if (!isset($content)) {
     $content = '';
 }
 
-if (!headers_sent()) {
-    header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0, private');
-    header('Pragma: no-cache');
-    header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
-    header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
-    header('ETag: "' . md5(time()) . '"');
-}
+// Removed aggressive cache headers
 
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 3600)) {
+// Extend session timeout to 8 hours for better user experience
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) {
     session_unset();
     session_destroy();
     $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
@@ -44,9 +38,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
+
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
 
@@ -59,8 +51,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         background: #1e293b;
         border-bottom: 1px solid #334155;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        position: sticky;
+        position: fixed;
         top: 0;
+        left: 0;
+        right: 0;
         z-index: 9999;
         width: 100%;
     }
@@ -365,14 +359,75 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     .main-content {
         margin-left: 0 !important;
         margin-right: 0 !important;
-        padding: 24px !important;
+        margin-top: 110px !important;
+        padding: 24px 24px 48px 24px !important;
         background: #f8fafc !important;
-        min-height: calc(100vh - 110px) !important;
+        height: calc(100vh - 110px) !important;
         width: 100vw !important;
         max-width: 100vw !important;
         box-sizing: border-box !important;
         position: relative;
         z-index: 1;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+    }
+    
+    /* Global responsive layout */
+    * {
+        box-sizing: border-box !important;
+    }
+    
+    html, body {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        height: 100vh !important;
+    }
+    
+    /* Tables responsive */
+    .table-responsive {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+    }
+    
+    table {
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+    }
+    
+    table td, table th {
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+    
+    /* Cards and containers */
+    .card, .container, .row, .col {
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        word-wrap: break-word !important;
+    }
+    
+    /* Forms responsive */
+    .form-control, input, select, textarea {
+        max-width: 100% !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Horizontal scroll for wide content */
+    .table-container {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    
+    /* Prevent content from breaking layout */
+    pre, code {
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
     }
     
     /* Remove notification-specific layout overrides */
@@ -446,8 +501,26 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
         
         .main-content {
-            padding: 16px !important;
-            min-height: calc(100vh - 90px) !important;
+            padding: 16px 16px 32px 16px !important;
+            margin-top: 90px !important;
+            height: calc(100vh - 90px) !important;
+            width: 100vw !important;
+            max-width: 100vw !important;
+        }
+        
+        /* Mobile responsive overrides */
+        .table-responsive {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
+        
+        .card {
+            margin: 0 !important;
+            width: 100% !important;
+        }
+        
+        .btn-group {
+            flex-wrap: wrap !important;
         }
     }
     
@@ -471,6 +544,21 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         
         .nav-icon {
             font-size: 11px;
+        }
+        
+        .main-content {
+            padding: 12px 12px 24px 12px !important;
+            margin-top: 80px !important;
+            height: calc(100vh - 80px) !important;
+        }
+        
+        /* Extra small screen adjustments */
+        .form-row {
+            grid-template-columns: 1fr !important;
+        }
+        
+        .detail-grid, .profile-grid {
+            grid-template-columns: 1fr !important;
         }
     }
 
@@ -757,6 +845,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             width: 100% !important;
             justify-content: flex-start !important;
         }
+        
+        /* Ensure all content fits horizontally */
+        .container-fluid, .container {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            max-width: 100% !important;
+        }
     }
     
     .btn:hover {
@@ -799,6 +894,30 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     .btn--success:hover {
         background: #dcfce7 !important;
         color: #14532d !important;
+    }
+    
+    .btn--danger {
+        background: #fef2f2 !important;
+        color: #dc2626 !important;
+        border-color: #fecaca !important;
+    }
+    
+    .btn--danger:hover {
+        background: #fee2e2 !important;
+        color: #b91c1c !important;
+        border-color: #fca5a5 !important;
+    }
+    
+    .btn--warning {
+        background: #fffbeb !important;
+        color: #d97706 !important;
+        border-color: #fed7aa !important;
+    }
+    
+    .btn--warning:hover {
+        background: #fef3c7 !important;
+        color: #b45309 !important;
+        border-color: #fbbf24 !important;
     }
     
     /* Global Icon System - Force Filled Icons Without Outlines */
@@ -1298,6 +1417,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">✅</span>
                                 Tasks
                             </a>
+
                             <a href="/ergon/planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'planner' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📅</span>
                                 Daily Planner
@@ -1610,11 +1730,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
 
     
-    window.onpageshow = function(event) {
-        if (event.persisted) {
-            window.location.replace('/ergon/login');
-        }
-    };
+    // Removed aggressive page show redirect
     
     // Disable scroll restoration to prevent data duplication
     if ('scrollRestoration' in history) {
@@ -1649,6 +1765,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 
     </script>
     <script src="/ergon/notification_fix.js?v=<?= time() ?>" defer></script>
-    <script src="/ergon/assets/js/auth-guard.min.js?v=<?= time() ?>" defer></script>
+
 </body>
 </html>

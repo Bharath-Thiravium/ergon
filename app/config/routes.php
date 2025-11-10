@@ -307,11 +307,13 @@ $router->post('/followups/update', 'FollowupController', 'update');
 $router->post('/followups/reschedule', 'FollowupController', 'reschedule');
 $router->post('/followups/complete', 'FollowupController', 'complete');
 $router->post('/followups/update-item', 'FollowupController', 'updateItem');
-$router->post('/followups/delete', 'FollowupController', 'delete');
+$router->post('/followups/delete/{id}', 'FollowupController', 'delete');
 $router->post('/followups/create-from-task', 'FollowupController', 'createFromTask');
 $router->get('/followups/history/{id}', 'FollowupController', 'getHistory');
 
 // Gamification Routes
 $router->get('/gamification/team-competition', 'GamificationController', 'teamCompetition');
 $router->get('/gamification/individual', 'GamificationController', 'individual');
+
+
 ?>

@@ -5,11 +5,11 @@ $content = ob_start();
 
 <div class="page-header">
     <div class="page-title">
-        <h1><i class="bi bi-people-fill"></i> Assign Task</h1>
-        <p>Create and assign a task to team members with detailed tracking</p>
+        <h1><i class="bi bi-person-plus-fill"></i> Create Personal Task</h1>
+        <p>Create a task for yourself with detailed tracking and management</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon/tasks" class="btn btn--secondary">
+        <a href="/ergon/admin/manage-tasks" class="btn btn--secondary">
             <i class="bi bi-arrow-left"></i> Back to Tasks
         </a>
     </div>
@@ -17,10 +17,10 @@ $content = ob_start();
 
 <div class="card">
     <div class="card__header">
-        <h2 class="card__title"><i class="bi bi-person-plus-fill"></i> Task Assignment Details</h2>
+        <h2 class="card__title"><i class="bi bi-person-check-fill"></i> Personal Task Details</h2>
     </div>
     <div class="card__body">
-        <form id="createTaskForm" method="POST" action="/ergon/tasks/create">
+        <form id="createTaskForm" method="POST" action="/ergon/admin/create-task">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <fieldset>
                 <legend>Basic Information</legend>
@@ -76,27 +76,13 @@ $content = ob_start();
 
                 <div class="form-row">
                     <div class="form-group col-md-6">
-                        <?php if (($_SESSION['role'] ?? '') === 'user'): ?>
-                            <label for="assigned_to" class="form-label"><i class="bi bi-person-fill"></i> Personal Task</label>
-                            <select class="form-control form-control--readonly" id="assigned_to" name="assigned_to" required readonly>
-                                <?php if (!empty($users)): ?>
-                                    <?php foreach ($users as $user): ?>
-                                        <option value="<?= $user['id'] ?>" selected><?= htmlspecialchars($user['name']) ?> (Personal)</option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </select>
-                            <small class="text-muted">You can only create personal tasks for yourself.</small>
-                        <?php else: ?>
-                            <label for="assigned_to" class="form-label"><i class="bi bi-person-fill"></i> Assign To *</label>
-                            <select class="form-control" id="assigned_to" name="assigned_to" required>
-                                <option value="">Select User</option>
-                                <?php if (!empty($users)): ?>
-                                    <?php foreach ($users as $user): ?>
-                                        <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['name']) ?> (<?= htmlspecialchars($user['role']) ?>)</option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </select>
-                        <?php endif; ?>
+                        <label for="assigned_to" class="form-label"><i class="bi bi-person-check-fill"></i> Assigned To</label>
+                        <select class="form-control form-control--readonly" id="assigned_to" name="assigned_to" required readonly>
+                            <option value="<?= $_SESSION['user_id'] ?? '' ?>" selected>
+                                <?= htmlspecialchars($_SESSION['user']['name'] ?? 'Current User') ?> (Personal Task)
+                            </option>
+                        </select>
+                        <small class="text-muted"><i class="bi bi-info-circle"></i> This task will be assigned to you automatically.</small>
                     </div>
                 </div>
             </fieldset>
@@ -193,9 +179,9 @@ $content = ob_start();
 
             <div class="form-actions">
                 <button type="submit" class="btn btn--primary">
-                    <i class="bi bi-people-fill"></i> Assign Task
+                    <i class="bi bi-person-plus-fill"></i> Create Personal Task
                 </button>
-                <a href="/ergon/tasks" class="btn btn--secondary">
+                <a href="/ergon/admin/manage-tasks" class="btn btn--secondary">
                     <i class="bi bi-x-circle-fill"></i> Cancel
                 </a>
             </div>
@@ -251,15 +237,8 @@ function handleCategoryChange() {
     }
 }
 
-// Initialize tooltips
-var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl);
-});
-
 // Form initialization
 document.addEventListener('DOMContentLoaded', function() {
-    
     // Set minimum date to today
     const deadlineInput = document.getElementById('deadline');
     const today = new Date().toISOString().split('T')[0];
@@ -313,10 +292,6 @@ document.addEventListener('DOMContentLoaded', function() {
     max-width: 66.666667%;
 }
 
-.form-control--readonly {
-    background: #f8f9fa;
-}
-
 .input-group {
     display: flex;
     align-items: center;
@@ -350,6 +325,11 @@ document.addEventListener('DOMContentLoaded', function() {
     color: var(--primary);
 }
 
+.form-control--readonly {
+    background: #f8f9fa;
+    cursor: not-allowed;
+}
+
 .form-actions {
     margin-top: 2rem;
     padding-top: 1rem;
@@ -372,6 +352,15 @@ legend {
     font-size: 1.1rem;
 }
 
+.card__title {
+    color: var(--primary);
+}
+
+.text-muted {
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
 @media (max-width: 768px) {
     .form-row .form-group {
         flex: 0 0 100%;
@@ -386,7 +375,5 @@ legend {
 
 <?php
 $content = ob_get_clean();
-$title = 'Create Task';
-$active_page = 'tasks';
 include __DIR__ . '/../layouts/dashboard.php';
 ?>

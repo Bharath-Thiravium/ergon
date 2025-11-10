@@ -218,7 +218,15 @@ class ApiController extends Controller {
             $departmentId = $_GET['department_id'] ?? null;
             
             if (!$departmentId) {
-                $this->json(['error' => 'Department ID is required'], 400);
+                // Return default categories if no department specified
+                $categories = [
+                    ['category_name' => 'General'],
+                    ['category_name' => 'Meeting'],
+                    ['category_name' => 'Development'],
+                    ['category_name' => 'Review'],
+                    ['category_name' => 'Follow-up']
+                ];
+                $this->json(['categories' => $categories]);
                 return;
             }
             
@@ -232,10 +240,21 @@ class ApiController extends Controller {
                 return;
             }
             
-            // Get task categories for this department
-            $stmt = $db->prepare("SELECT DISTINCT category_name, description FROM task_categories WHERE department_name = ? AND is_active = 1 ORDER BY category_name");
-            $stmt->execute([$department['name']]);
-            $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Department-specific categories
+            $deptCategories = [
+                'Information Technology' => ['Development', 'Bug Fix', 'Code Review', 'Deployment', 'Follow-up'],
+                'Human Resources' => ['Recruitment', 'Training', 'Performance Review', 'Follow-up'],
+                'Sales' => ['Lead Generation', 'Client Meeting', 'Proposal', 'Follow-up'],
+                'Marketing' => ['Campaign', 'Content Creation', 'Analysis', 'Follow-up'],
+                'Finance' => ['Budget Planning', 'Invoice Processing', 'Audit', 'Follow-up'],
+                'Operations' => ['Process Improvement', 'Quality Control', 'Maintenance', 'Follow-up']
+            ];
+            
+            $categoryList = $deptCategories[$department['name']] ?? ['General', 'Meeting', 'Task', 'Follow-up'];
+            
+            $categories = array_map(function($cat) {
+                return ['category_name' => $cat];
+            }, $categoryList);
             
             $this->json(['categories' => $categories]);
             

@@ -166,8 +166,11 @@ class TasksController extends Controller {
                 $taskId = $db->lastInsertId();
                 
                 // Auto-create followup if task category contains "follow-up"
-                if (!empty($taskData['task_category']) && stripos($taskData['task_category'], 'follow') !== false) {
-                    $this->createAutoFollowup($db, $taskId, $taskData);
+                if (!empty($taskData['task_category']) && (stripos($taskData['task_category'], 'follow') !== false || stripos($taskData['task_category'], 'Follow') !== false)) {
+                    error_log('Creating auto-followup for task category: ' . $taskData['task_category']);
+                    $this->createAutoFollowup($db, $taskId, $taskData, $_POST);
+                } else {
+                    error_log('No auto-followup created. Category: ' . ($taskData['task_category'] ?? 'empty'));
                 }
                 
                 error_log('Task created with ID: ' . $taskId . ', type: ' . $taskData['task_type'] . ', progress: ' . $taskData['progress'] . '%');
@@ -421,27 +424,79 @@ class TasksController extends Controller {
         }
     }
     
-    private function createAutoFollowup($db, $taskId, $taskData) {
+    private function createAutoFollowup($db, $taskId, $taskData, $postData) {
         try {
             // Ensure followups table exists
             $this->ensureFollowupsTable($db);
             
-            $followupDate = !empty($taskData['deadline']) ? $taskData['deadline'] : date('Y-m-d', strtotime('+1 day'));
+            // Use follow-up specific data if provided, otherwise use task data
+            $followupDate = !empty($postData['followup_date']) ? $postData['followup_date'] : 
+                          (!empty($taskData['deadline']) ? date('Y-m-d', strtotime($taskData['deadline'])) : date('Y-m-d', strtotime('+1 day')));
             
-            // Use correct followups table structure
-            $stmt = $db->prepare("INSERT INTO followups (user_id, title, description, follow_up_date, original_date, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', NOW())");
-            $stmt->execute([
+            $followupTime = !empty($postData['followup_time']) ? $postData['followup_time'] : '09:00:00';
+            
+            // Create followup title
+            $followupTitle = 'Follow-up: ' . $taskData['title'];
+            if (!empty($postData['company_name'])) {
+                $followupTitle = 'Follow-up: ' . $postData['company_name'] . ' - ' . $taskData['title'];
+            }
+            
+            // Create followup description
+            $followupDesc = 'Auto-created follow-up for task: ' . $taskData['title'];
+            if (!empty($taskData['description'])) {
+                $followupDesc .= "\n\nTask Description: " . $taskData['description'];
+            }
+            if (!empty($postData['description'])) {
+                $followupDesc = $postData['description'];
+            }
+            
+            // Create followup with extended fields
+            $stmt = $db->prepare("
+                INSERT INTO followups (
+                    user_id, task_id, title, description, company_name, contact_person, 
+                    contact_phone, project_name, follow_up_date, reminder_time, 
+                    original_date, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
+            ");
+            
+            $result = $stmt->execute([
                 $taskData['assigned_to'],
-                'Follow-up: ' . $taskData['title'],
-                'Auto-created follow-up for task: ' . $taskData['description'],
+                $taskId,
+                $followupTitle,
+                $followupDesc,
+                $postData['company_name'] ?? '',
+                $postData['contact_person'] ?? '',
+                $postData['contact_phone'] ?? '',
+                $postData['project_name'] ?? '',
                 $followupDate,
+                $followupTime,
                 $followupDate
             ]);
             
-            $followupId = $db->lastInsertId();
-            error_log('Auto-followup created with ID: ' . $followupId . ' for task ID: ' . $taskId . ' with category: ' . $taskData['task_category']);
+            error_log('Follow-up creation attempt - User ID: ' . $taskData['assigned_to'] . ', Title: ' . $followupTitle);
+            
+            if ($result) {
+                $followupId = $db->lastInsertId();
+                error_log('Enhanced follow-up created successfully with ID: ' . $followupId . ' for task ID: ' . $taskId . ' assigned to user: ' . $taskData['assigned_to']);
+                
+                // Log to followup history
+                try {
+                    $historyStmt = $db->prepare("INSERT INTO followup_history (followup_id, action, old_value, new_value, notes, created_by) VALUES (?, 'created', NULL, ?, ?, ?)");
+                    $historyStmt->execute([
+                        $followupId,
+                        'Auto-created from task',
+                        'Follow-up automatically created from task: ' . $taskData['title'],
+                        $taskData['assigned_by'] ?? $taskData['assigned_to']
+                    ]);
+                } catch (Exception $historyError) {
+                    error_log('Failed to log followup history: ' . $historyError->getMessage());
+                }
+            } else {
+                error_log('Failed to create follow-up: ' . implode(', ', $stmt->errorInfo()));
+            }
         } catch (Exception $e) {
             error_log('Auto-followup creation failed: ' . $e->getMessage());
+            error_log('Stack trace: ' . $e->getTraceAsString());
         }
     }
     
@@ -450,6 +505,7 @@ class TasksController extends Controller {
             $db->exec("CREATE TABLE IF NOT EXISTS followups (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
+                task_id INT NULL,
                 title VARCHAR(255) NOT NULL,
                 company_name VARCHAR(255),
                 contact_person VARCHAR(255),
@@ -466,9 +522,21 @@ class TasksController extends Controller {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_user_id (user_id),
+                INDEX idx_task_id (task_id),
                 INDEX idx_follow_date (follow_up_date),
                 INDEX idx_status (status)
             )");
+            
+            // Add task_id column if it doesn't exist
+            try {
+                $columns = $db->query("SHOW COLUMNS FROM followups")->fetchAll(PDO::FETCH_COLUMN);
+                if (!in_array('task_id', $columns)) {
+                    $db->exec("ALTER TABLE followups ADD COLUMN task_id INT NULL AFTER user_id");
+                    $db->exec("ALTER TABLE followups ADD INDEX idx_task_id (task_id)");
+                }
+            } catch (Exception $e) {
+                error_log('Task ID column addition error: ' . $e->getMessage());
+            }
         } catch (Exception $e) {
             error_log('ensureFollowupsTable error: ' . $e->getMessage());
         }

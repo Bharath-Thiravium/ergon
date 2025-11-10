@@ -21,9 +21,13 @@ class PlannerController extends Controller {
             // Get available assigned tasks not yet planned
             $availableTasks = $this->getAvailableAssignedTasks($db, $userId, $date);
             
+            // Get today's follow-ups (modular connection)
+            $todaysFollowups = $this->getTodaysFollowups($db, $userId, $date);
+            
             $data = [
                 'planned_tasks' => $plannedTasks,
                 'available_tasks' => $availableTasks,
+                'todays_followups' => $todaysFollowups,
                 'current_date' => $date,
                 'active_page' => 'planner'
             ];
@@ -31,7 +35,7 @@ class PlannerController extends Controller {
             $this->view('planner/index', $data);
         } catch (Exception $e) {
             error_log('Planner error: ' . $e->getMessage());
-            $this->view('planner/index', ['planned_tasks' => [], 'available_tasks' => [], 'current_date' => $date, 'active_page' => 'planner']);
+            $this->view('planner/index', ['planned_tasks' => [], 'available_tasks' => [], 'todays_followups' => [], 'current_date' => $date, 'active_page' => 'planner']);
         }
     }
     
@@ -122,6 +126,22 @@ class PlannerController extends Controller {
         ");
         $stmt->execute([$userId, $userId, $date]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    private function getTodaysFollowups($db, $userId, $date) {
+        try {
+            $stmt = $db->prepare("
+                SELECT *, 'followup' as entry_type 
+                FROM followups 
+                WHERE user_id = ? AND follow_up_date = ? 
+                ORDER BY reminder_time ASC
+            ");
+            $stmt->execute([$userId, $date]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Get todays followups error: ' . $e->getMessage());
+            return [];
+        }
     }
     
     private function ensurePlannerTables($db) {

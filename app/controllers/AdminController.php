@@ -67,35 +67,46 @@ class AdminController extends Controller {
                 $taskModel = new Task();
                 $taskData = [
                     'title' => $_POST['title'],
-                    'description' => $_POST['description'],
-                    'assigned_to' => $_POST['assigned_to'],
-                    'priority' => $_POST['priority'],
-                    'due_date' => $_POST['due_date'],
-                    'created_by' => $_SESSION['user_id'],
-                    'department_id' => $_POST['department_id'] ?? $_SESSION['department_id']
+                    'description' => $_POST['description'] ?? '',
+                    'assigned_by' => $_SESSION['user_id'],
+                    'assigned_to' => $_SESSION['user_id'], // Always assign to self for admin personal tasks
+                    'task_type' => $_POST['task_type'] ?? 'ad-hoc',
+                    'priority' => $_POST['priority'] ?? 'medium',
+                    'deadline' => $_POST['deadline'] ?? null,
+                    'depends_on_task_id' => null,
+                    'sla_hours' => $_POST['sla_hours'] ?? 24,
+                    'parent_task_id' => null
                 ];
                 
-                if ($taskModel->create($taskData)) {
-                    $this->json(['success' => true, 'message' => 'Task created successfully']);
+                $result = $taskModel->create($taskData);
+                if ($result) {
+                    $_SESSION['success_message'] = 'Personal task created successfully!';
+                    $this->redirect('/ergon/admin/manage-tasks');
                 } else {
-                    $this->json(['success' => false, 'message' => 'Failed to create task']);
+                    $_SESSION['error_message'] = 'Failed to create task. Please try again.';
+                    $this->redirect('/ergon/admin/create-task');
                 }
             } catch (Exception $e) {
                 $this->json(['success' => false, 'message' => $e->getMessage()]);
             }
         } else {
             $userModel = new User();
+            $departmentModel = new Department();
             $isSystemAdmin = $_SESSION['role'] === 'system_admin';
             
-            // System admin can assign to anyone, department admin only to their department
-            if ($isSystemAdmin) {
-                $users = $userModel->getUsersByRole(['user']);
-            } else {
-                $users = $userModel->getByDepartment($_SESSION['department_id']);
-            }
+            // For personal task creation, we need current user info and departments
+            $users = [[
+                'id' => $_SESSION['user_id'],
+                'name' => $_SESSION['user']['name'] ?? 'Current User',
+                'role' => $_SESSION['role']
+            ]];
+            
+            // Load all departments for category selection
+            $departments = $departmentModel->getAll();
             
             $this->view('admin/create_task', [
                 'users' => $users,
+                'departments' => $departments,
                 'is_system_admin' => $isSystemAdmin,
                 'active_page' => 'tasks'
             ]);
@@ -113,7 +124,7 @@ class AdminController extends Controller {
             if ($isSystemAdmin) {
                 $tasks = $taskModel->getAll();
             } else {
-                $tasks = $taskModel->getByDepartment($_SESSION['department_id']);
+                $tasks = $taskModel->getByDepartment($_SESSION['department_id'] ?? null);
             }
             
             $this->view('admin/manage_tasks', [

@@ -13,8 +13,8 @@ class AuthMiddleware {
             return;
         }
         
-        // Check if session is expired
-        if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 3600)) {
+        // Check if session is expired (8 hours timeout)
+        if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) {
             session_unset();
             session_destroy();
             self::redirectToLogin('timeout=1');
@@ -24,14 +24,7 @@ class AuthMiddleware {
         // Update last activity
         $_SESSION['last_activity'] = time();
         
-        // Set strongest no-cache headers to prevent back button access (only if headers not sent)
-        if (!headers_sent()) {
-            header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0, private');
-            header('Pragma: no-cache');
-            header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
-            header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
-            header('ETag: "' . md5(time()) . '"');
-        }
+        // Removed aggressive cache headers
     }
     
     public static function requireRole($requiredRole) {
