@@ -41,6 +41,7 @@ class AttendanceController extends Controller {
         } else {
             // Admin/Owner view - show employees or all users based on role
             $employeeAttendance = [];
+            $adminAttendance = null;
             try {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();

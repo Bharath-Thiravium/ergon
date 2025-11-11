@@ -182,10 +182,6 @@ class ApiController extends Controller {
     }
     
     public function updatePreference() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $key = $input['key'] ?? '';
@@ -206,7 +202,6 @@ class ApiController extends Controller {
                 $this->json(['error' => 'Failed to update preference'], 500);
             }
         } catch (Exception $e) {
-            error_log('UpdatePreference error: ' . $e->getMessage());
             $this->json(['error' => 'Internal server error'], 500);
         }
     }
@@ -223,7 +218,15 @@ class ApiController extends Controller {
             $departmentId = $_GET['department_id'] ?? null;
             
             if (!$departmentId) {
-                $this->json(['error' => 'Department ID is required'], 400);
+                // Return default categories if no department specified
+                $categories = [
+                    ['category_name' => 'General'],
+                    ['category_name' => 'Meeting'],
+                    ['category_name' => 'Development'],
+                    ['category_name' => 'Review'],
+                    ['category_name' => 'Follow-up']
+                ];
+                $this->json(['categories' => $categories]);
                 return;
             }
             
@@ -237,89 +240,27 @@ class ApiController extends Controller {
                 return;
             }
             
-            // Ensure task_categories table exists
-            $this->ensureTaskCategoriesTable($db);
+            // Department-specific categories
+            $deptCategories = [
+                'Information Technology' => ['Development', 'Bug Fix', 'Code Review', 'Deployment', 'Follow-up'],
+                'Human Resources' => ['Recruitment', 'Training', 'Performance Review', 'Follow-up'],
+                'Sales' => ['Lead Generation', 'Client Meeting', 'Proposal', 'Follow-up'],
+                'Marketing' => ['Campaign', 'Content Creation', 'Analysis', 'Follow-up'],
+                'Finance' => ['Budget Planning', 'Invoice Processing', 'Audit', 'Follow-up'],
+                'Operations' => ['Process Improvement', 'Quality Control', 'Maintenance', 'Follow-up']
+            ];
             
-            // Get task categories for this department
-            $stmt = $db->prepare("SELECT DISTINCT category_name, description FROM task_categories WHERE department_name = ? AND is_active = 1 ORDER BY category_name");
-            $stmt->execute([$department['name']]);
-            $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $categoryList = $deptCategories[$department['name']] ?? ['General', 'Meeting', 'Task', 'Follow-up'];
             
-            // If no categories found, provide default ones
-            if (empty($categories)) {
-                $categories = $this->getDefaultCategories($department['name']);
-                $this->insertDefaultCategories($db, $department['name'], $categories);
-            }
+            $categories = array_map(function($cat) {
+                return ['category_name' => $cat];
+            }, $categoryList);
             
             $this->json(['categories' => $categories]);
             
         } catch (Exception $e) {
             error_log('Task categories API error: ' . $e->getMessage());
             $this->json(['error' => 'Failed to fetch categories'], 500);
-        }
-    }
-    
-    private function ensureTaskCategoriesTable($db) {
-        try {
-            $db->exec("CREATE TABLE IF NOT EXISTS task_categories (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                department_name VARCHAR(255) NOT NULL,
-                category_name VARCHAR(255) NOT NULL,
-                description TEXT,
-                is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_dept_category (department_name, category_name)
-            )");
-        } catch (Exception $e) {
-            error_log('Task categories table creation error: ' . $e->getMessage());
-        }
-    }
-    
-    private function getDefaultCategories($departmentName) {
-        $defaultCategories = [
-            'IT' => [
-                ['category_name' => 'Development', 'description' => 'Software development tasks'],
-                ['category_name' => 'Bug Fix', 'description' => 'Bug fixing and troubleshooting'],
-                ['category_name' => 'Maintenance', 'description' => 'System maintenance tasks'],
-                ['category_name' => 'Testing', 'description' => 'Quality assurance and testing'],
-                ['category_name' => 'Documentation', 'description' => 'Technical documentation']
-            ],
-            'HR' => [
-                ['category_name' => 'Recruitment', 'description' => 'Hiring and recruitment tasks'],
-                ['category_name' => 'Training', 'description' => 'Employee training and development'],
-                ['category_name' => 'Policy', 'description' => 'HR policy and compliance'],
-                ['category_name' => 'Employee Relations', 'description' => 'Employee support and relations']
-            ],
-            'Finance' => [
-                ['category_name' => 'Accounting', 'description' => 'Financial accounting tasks'],
-                ['category_name' => 'Budgeting', 'description' => 'Budget planning and management'],
-                ['category_name' => 'Audit', 'description' => 'Financial audit and compliance'],
-                ['category_name' => 'Reporting', 'description' => 'Financial reporting']
-            ],
-            'Marketing' => [
-                ['category_name' => 'Campaign', 'description' => 'Marketing campaign tasks'],
-                ['category_name' => 'Content', 'description' => 'Content creation and management'],
-                ['category_name' => 'Social Media', 'description' => 'Social media management'],
-                ['category_name' => 'Analytics', 'description' => 'Marketing analytics and reporting']
-            ]
-        ];
-        
-        return $defaultCategories[$departmentName] ?? [
-            ['category_name' => 'General', 'description' => 'General tasks'],
-            ['category_name' => 'Administrative', 'description' => 'Administrative tasks'],
-            ['category_name' => 'Follow-up', 'description' => 'Follow-up tasks'],
-            ['category_name' => 'Research', 'description' => 'Research and analysis']
-        ];
-    }
-    
-    private function insertDefaultCategories($db, $departmentName, $categories) {
-        try {
-            $stmt = $db->prepare("INSERT IGNORE INTO task_categories (department_name, category_name, description) VALUES (?, ?, ?)");
-            foreach ($categories as $category) {
-                $stmt->execute([$departmentName, $category['category_name'], $category['description']]);
-            }
-        } catch (Exception $e) {
-            error_log('Insert default categories error: ' . $e->getMessage());
         }
     }
     

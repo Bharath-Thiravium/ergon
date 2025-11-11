@@ -2,6 +2,12 @@
 class Session {
     public static function init() {
         if (session_status() === PHP_SESSION_NONE) {
+            // Set session save path to a writable directory
+            $sessionPath = __DIR__ . '/../../storage/sessions';
+            if (!is_dir($sessionPath)) {
+                mkdir($sessionPath, 0755, true);
+            }
+            session_save_path($sessionPath);
             session_start();
         }
         header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");

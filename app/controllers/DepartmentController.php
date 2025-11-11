@@ -15,7 +15,6 @@ class DepartmentController extends Controller {
     }
     
     public function index() {
-        session_start();
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
             $this->redirect('/ergon/auth/login');
             return;
@@ -43,7 +42,6 @@ class DepartmentController extends Controller {
     }
     
     public function create() {
-        session_start();
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
             $this->redirect('/ergon/auth/login');
             return;
@@ -84,7 +82,6 @@ class DepartmentController extends Controller {
     }
     
     public function edit($id) {
-        session_start();
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
             $this->redirect('/ergon/auth/login');
             return;
@@ -135,7 +132,6 @@ class DepartmentController extends Controller {
     }
     
     public function delete($id) {
-        session_start();
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
             echo json_encode(['success' => false, 'message' => 'Access denied']);
             exit;
@@ -159,7 +155,6 @@ class DepartmentController extends Controller {
     }
     
     public function viewDepartment($id) {
-        session_start();
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
             $this->redirect('/ergon/auth/login');
             return;
@@ -180,7 +175,6 @@ class DepartmentController extends Controller {
     }
     
     public function editPost() {
-        session_start();
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
             header('Location: /ergon/login');
             exit;
@@ -208,7 +202,6 @@ class DepartmentController extends Controller {
     }
     
     public function deletePost() {
-        session_start();
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
             header('Location: /ergon/login');
             exit;

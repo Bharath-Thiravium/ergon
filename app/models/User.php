@@ -227,6 +227,22 @@ class User {
         }
     }
     
+    public function getByDepartment($departmentId) {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT id, name, email, role, department, status 
+                FROM {$this->table} 
+                WHERE department = ? AND status = 'active' 
+                ORDER BY name
+            ");
+            $stmt->execute([$departmentId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('getByDepartment error: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
     public function update($id, $data) {
         try {
             $fields = [];

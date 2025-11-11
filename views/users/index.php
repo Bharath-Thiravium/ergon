@@ -96,6 +96,9 @@ ob_start();
                                     <a href="/ergon/users/view/<?= $user['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
                                         <span>👁️</span> View
                                     </a>
+                                    <button onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--sm btn--warning" title="Reset Password">
+                                        <span>🔑</span> Reset
+                                    </button>
                                     <button onclick="deleteRecord('users', <?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--sm btn--danger" title="Delete User">
                                         <span>🗑️</span> Delete
                                     </button>
@@ -109,6 +112,29 @@ ob_start();
         </div>
     </div>
 </div>
+
+<script>
+function resetPassword(userId, userName) {
+    if (confirm(`Reset password for ${userName}?\n\nThis will generate a new random password.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/ergon/users/reset-password';
+        form.innerHTML = `<input type="hidden" name="user_id" value="${userId}">`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function deleteRecord(type, id, name) {
+    if (confirm(`Delete ${name}?\n\nThis action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/ergon/${type}/delete/${id}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
 
 <?php
 $content = ob_get_clean();

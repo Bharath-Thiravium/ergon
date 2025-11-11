@@ -135,5 +135,19 @@ class Task {
             return false;
         }
     }
+    
+    public function getByDepartment($departmentId) {
+        $query = "SELECT t.*, 
+                         u1.name as assigned_to_name,
+                         u2.name as assigned_by_name
+                  FROM tasks t 
+                  LEFT JOIN users u1 ON t.assigned_to = u1.id 
+                  LEFT JOIN users u2 ON t.assigned_by = u2.id 
+                  WHERE u1.department = ? OR u2.department = ?
+                  ORDER BY t.created_at DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$departmentId, $departmentId]);
+        return $stmt->fetchAll();
+    }
 }
 ?>

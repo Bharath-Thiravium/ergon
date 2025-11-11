@@ -1,256 +1,342 @@
 <?php
-$title = 'Admin Dashboard';
-$active_page = 'dashboard';
+/**
+ * Admin Dashboard - System Admin vs Department Admin
+ * ERGON - Employee Tracker & Task Manager
+ */
 
-if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
-    header('Location: /ergon/login');
-    exit;
-}
-
+$title = ($data['is_system_admin'] ?? false) ? 'System Admin Dashboard' : 'Department Admin Dashboard';
+$is_system_admin = $data['is_system_admin'] ?? false;
+$stats = $data['stats'] ?? [];
+$pending_approvals = $data['pending_approvals'] ?? [];
+$team_data = $data['team_data'] ?? [];
+$management_options = $data['management_options'] ?? [];
 ob_start();
 ?>
 
-<div class="header-actions">
-    <a href="/ergon/tasks/create" class="btn btn--primary">Assign Task</a>
-    <a href="/ergon/leaves" class="btn btn--secondary">Review Leaves</a>
-    <a href="/ergon/expenses" class="btn btn--secondary">Review Expenses</a>
+<div class="page-header">
+    <div class="page-title">
+        <h1><?= $is_system_admin ? 'System Admin Dashboard' : 'Department Admin Dashboard' ?></h1>
+        <p><?= $is_system_admin ? 'Complete system management and oversight' : 'Department team management and coordination' ?></p>
+    </div>
+    <div class="page-actions">
+        <a href="/ergon/admin/create-task" class="btn btn--primary">✅ Create Task</a>
+        <?php if (($management_options['create_users'] ?? false)): ?>
+        <a href="/ergon/admin/create-user" class="btn btn--secondary">👤 Create User</a>
+        <?php endif; ?>
+    </div>
 </div>
 
 <div class="dashboard-grid">
-    <div class="kpi-card kpi-card--primary">
+    <?php if ($is_system_admin): ?>
+    <div class="kpi-card">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">👥</div>
-            <div class="kpi-card__trend kpi-card__trend--up">↗ +8%</div>
+            <div class="kpi-card__trend">↗ +5%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['total_users'] ?? 0 ?></div>
-        <div class="kpi-card__label">Team Members</div>
-        <div class="kpi-card__status kpi-card__status--active">Active</div>
+        <div class="kpi-card__value"><?= $stats['total_users'] ?? 0 ?></div>
+        <div class="kpi-card__label">Total Users</div>
+        <div class="kpi-card__status">Active</div>
     </div>
-    
-    <div class="kpi-card kpi-card--success">
+
+    <div class="kpi-card">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">📋</div>
-            <div class="kpi-card__trend kpi-card__trend--up">↗ +15%</div>
+            <div class="kpi-card__icon">🏢</div>
+            <div class="kpi-card__trend">→ 0%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['active_tasks'] ?? 0 ?></div>
-        <div class="kpi-card__label">Active Tasks</div>
-        <div class="kpi-card__status kpi-card__status--active">Assigned</div>
+        <div class="kpi-card__value"><?= $stats['total_departments'] ?? 0 ?></div>
+        <div class="kpi-card__label">Departments</div>
+        <div class="kpi-card__status">Active</div>
+    </div>
+    <?php else: ?>
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">👥</div>
+            <div class="kpi-card__trend">↗ +3%</div>
+        </div>
+        <div class="kpi-card__value"><?= $stats['department_users'] ?? 0 ?></div>
+        <div class="kpi-card__label">Team Members</div>
+        <div class="kpi-card__status">Active</div>
     </div>
     
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">✅</div>
+            <div class="kpi-card__trend">↗ +8%</div>
+        </div>
+        <div class="kpi-card__value"><?= $stats['department_tasks'] ?? 0 ?></div>
+        <div class="kpi-card__label">Dept Tasks</div>
+        <div class="kpi-card__status">Pending</div>
+    </div>
+    <?php endif; ?>
+
     <div class="kpi-card kpi-card--warning">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">🏖️</div>
-            <div class="kpi-card__trend kpi-card__trend--neutral">— 0%</div>
+            <div class="kpi-card__icon">⏰</div>
+            <div class="kpi-card__trend kpi-card__trend--down">↘ -2%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['pending_leaves'] ?? 0 ?></div>
-        <div class="kpi-card__label">Leave Requests</div>
+        <div class="kpi-card__value"><?= $stats['pending_tasks'] ?? 0 ?></div>
+        <div class="kpi-card__label">Pending Tasks</div>
         <div class="kpi-card__status kpi-card__status--pending">Pending</div>
     </div>
     
-    <div class="kpi-card kpi-card--error">
+    <div class="kpi-card kpi-card--danger">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">⚠️</div>
-            <div class="kpi-card__trend kpi-card__trend--up">↗ +25%</div>
+            <div class="kpi-card__icon">📋</div>
+            <div class="kpi-card__trend">→ 0%</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['overdue_tasks'] ?? 0 ?></div>
-        <div class="kpi-card__label">Overdue Tasks</div>
+        <div class="kpi-card__value"><?= $stats['pending_approvals'] ?? 0 ?></div>
+        <div class="kpi-card__label">Pending Approvals</div>
         <div class="kpi-card__status kpi-card__status--urgent">Urgent</div>
     </div>
-    
-    <div class="kpi-card kpi-card--info">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">💰</div>
-            <div class="kpi-card__trend kpi-card__trend--down">↘ -12%</div>
-        </div>
-        <div class="kpi-card__value"><?= $data['stats']['pending_expenses'] ?? 0 ?></div>
-        <div class="kpi-card__label">Expense Claims</div>
-        <div class="kpi-card__status kpi-card__status--review">Review</div>
-    </div>
 </div>
 
-<div class="reports-grid">
+<div class="dashboard-grid">
     <div class="card">
         <div class="card__header">
-            <h2 class="card__title">Recent Tasks</h2>
+            <h3>📋 Pending Approvals (Admin Level)</h3>
         </div>
         <div class="card__body">
-            <?php if (empty($data['recent_tasks'])): ?>
-            <p>No recent tasks.</p>
+            <?php if (empty($pending_approvals['leaves']) && empty($pending_approvals['expenses']) && empty($pending_approvals['advances'])): ?>
+                <div class="empty-state">
+                    <div class="empty-icon">✅</div>
+                    <h3>No pending approvals</h3>
+                    <p>All requests have been processed</p>
+                </div>
+                    <?php else: ?>
+                        <!-- Tabs for different approval types -->
+                        <div class="tab-nav">
+                            <?php if (!empty($pending_approvals['leaves'])): ?>
+                            <button class="tab-btn tab-btn--active" onclick="showTab('leaves')">
+                                Leaves (<?= count($pending_approvals['leaves']) ?>)
+                            </button>
+                            <?php endif; ?>
+                            <?php if (!empty($pending_approvals['expenses'])): ?>
+                            <button class="tab-btn <?= empty($pending_approvals['leaves']) ? 'tab-btn--active' : '' ?>" onclick="showTab('expenses')">
+                                Expenses (<?= count($pending_approvals['expenses']) ?>)
+                            </button>
+                            <?php endif; ?>
+                            <?php if (!empty($pending_approvals['advances'])): ?>
+                            <button class="tab-btn <?= empty($pending_approvals['leaves']) && empty($pending_approvals['expenses']) ? 'tab-btn--active' : '' ?>" onclick="showTab('advances')">
+                                Advances (<?= count($pending_approvals['advances']) ?>)
+                            </button>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="tab-content">
+                            <!-- Leave Approvals -->
+                            <?php if (!empty($pending_approvals['leaves'])): ?>
+                            <div class="tab-panel tab-panel--active" id="leaves">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Employee</th>
+                                                <th>Type</th>
+                                                <th>Duration</th>
+                                                <th>Days</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($pending_approvals['leaves'] as $leave): ?>
+                                            <tr>
+                                                <td><?= htmlspecialchars($leave['user_name']) ?></td>
+                                                <td><?= htmlspecialchars($leave['leave_type']) ?></td>
+                                                <td><?= htmlspecialchars($leave['start_date']) ?> to <?= htmlspecialchars($leave['end_date']) ?></td>
+                                                <td><?= $leave['days'] ?? 1 ?></td>
+                                                <td>
+                                                    <button class="btn btn--sm btn--primary" onclick="approveRequest('leave', <?= $leave['id'] ?>, 'approved')">Approve</button>
+                                                    <button class="btn btn--sm btn--danger" onclick="approveRequest('leave', <?= $leave['id'] ?>, 'rejected')">Reject</button>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <!-- Expense Approvals -->
+                            <?php if (!empty($pending_approvals['expenses'])): ?>
+                            <div class="tab-panel <?= empty($pending_approvals['leaves']) ? 'tab-panel--active' : '' ?>" id="expenses">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Employee</th>
+                                                <th>Category</th>
+                                                <th>Amount</th>
+                                                <th>Date</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($pending_approvals['expenses'] as $expense): ?>
+                                            <tr>
+                                                <td><?= htmlspecialchars($expense['user_name']) ?></td>
+                                                <td><?= htmlspecialchars($expense['category']) ?></td>
+                                                <td>₹<?= number_format($expense['amount'], 2) ?></td>
+                                                <td><?= htmlspecialchars($expense['expense_date']) ?></td>
+                                                <td>
+                                                    <button class="btn btn--sm btn--primary" onclick="approveRequest('expense', <?= $expense['id'] ?>, 'approved')">Approve</button>
+                                                    <button class="btn btn--sm btn--danger" onclick="approveRequest('expense', <?= $expense['id'] ?>, 'rejected')">Reject</button>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <!-- Advance Approvals -->
+                            <?php if (!empty($pending_approvals['advances'])): ?>
+                            <div class="tab-panel <?= empty($pending_approvals['leaves']) && empty($pending_approvals['expenses']) ? 'tab-panel--active' : '' ?>" id="advances">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Employee</th>
+                                                <th>Amount</th>
+                                                <th>Reason</th>
+                                                <th>Repayment</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($pending_approvals['advances'] as $advance): ?>
+                                            <tr>
+                                                <td><?= htmlspecialchars($advance['user_name']) ?></td>
+                                                <td>₹<?= number_format($advance['amount'], 2) ?></td>
+                                                <td><?= htmlspecialchars(substr($advance['reason'], 0, 30)) ?>...</td>
+                                                <td><?= $advance['repayment_months'] ?? 1 ?> months</td>
+                                                <td>
+                                                    <button class="btn btn--sm btn--primary" onclick="approveRequest('advance', <?= $advance['id'] ?>, 'approved')">Approve</button>
+                                                    <button class="btn btn--sm btn--danger" onclick="approveRequest('advance', <?= $advance['id'] ?>, 'rejected')">Reject</button>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card__header">
+            <h3>👥 <?= $is_system_admin ? 'System Overview' : 'Team Overview' ?></h3>
+        </div>
+        <div class="card__body">
+            <?php if ($is_system_admin): ?>
+                <div class="stat-item">
+                    <div class="stat-label">Today's Attendance</div>
+                    <div class="stat-value"><?= $stats['today_attendance'] ?? 0 ?></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">System Alerts</div>
+                    <div class="stat-value stat-value--warning"><?= count($stats['system_alerts'] ?? []) ?></div>
+                </div>
             <?php else: ?>
-            <?php foreach ($data['recent_tasks'] as $task): ?>
-            <div class="timeline-item">
-                <div class="timeline-date"><?= date('M d', strtotime($task['created_at'])) ?></div>
-                <div class="timeline-content">
-                    <h4><?= htmlspecialchars($task['title']) ?></h4>
-                    <p>Assigned to: <?= htmlspecialchars($task['assigned_to_name']) ?></p>
+                <div class="stat-item">
+                    <div class="stat-label">Department Attendance</div>
+                    <div class="stat-value"><?= $stats['department_attendance'] ?? 0 ?></div>
+                </div>
+            <?php endif; ?>
+                    
+            <?php if (!empty($team_data)): ?>
+            <div class="team-section">
+                <div class="section-label">Team Members</div>
+                <div class="team-list">
+                    <?php foreach (array_slice($team_data, 0, 5) as $member): ?>
+                    <div class="team-member">
+                        <span class="member-name"><?= htmlspecialchars($member['name'] ?? $member['user_name'] ?? 'Unknown') ?></span>
+                        <span class="member-role"><?= htmlspecialchars($member['role'] ?? 'N/A') ?></span>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
-            <?php endforeach; ?>
             <?php endif; ?>
-        </div>
+                </div>
+            </div>
+
     </div>
     
-    <div class="card">
-        <div class="card__header">
-            <h2 class="card__title">Pending Approvals</h2>
+
+</div>
+
+<div class="modal" id="approvalModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Admin Approval</h3>
+            <button type="button" class="modal-close" onclick="closeModal()">&times;</button>
         </div>
-        <div class="card__body">
-            <div class="approvals-container">
-                <?php if (!empty($data['pending_approvals']['leaves'])): ?>
-                <div class="approval-section">
-                    <div class="approval-header">
-                        <span class="approval-icon">🏖️</span>
-                        <h4>Leave Requests</h4>
-                        <span class="approval-count"><?= count($data['pending_approvals']['leaves']) ?></span>
-                    </div>
-                    <div class="approval-list">
-                        <?php foreach ($data['pending_approvals']['leaves'] as $leave): ?>
-                        <div class="approval-item">
-                            <div class="approval-user"><?= htmlspecialchars($leave['user_name']) ?></div>
-                            <div class="approval-details">
-                                <span class="approval-type"><?= htmlspecialchars($leave['leave_type'] ?? 'Leave') ?></span>
-                                <span class="approval-period"><?= date('M d', strtotime($leave['start_date'])) ?> - <?= date('M d, Y', strtotime($leave['end_date'])) ?></span>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
+        <div class="modal-body">
+            <form id="approvalForm">
+                <input type="hidden" id="approvalType" name="type">
+                <input type="hidden" id="approvalId" name="id">
+                <input type="hidden" id="approvalAction" name="action">
                 
-                <?php if (!empty($data['pending_approvals']['expenses'])): ?>
-                <div class="approval-section">
-                    <div class="approval-header">
-                        <span class="approval-icon">💰</span>
-                        <h4>Expense Claims</h4>
-                        <span class="approval-count"><?= count($data['pending_approvals']['expenses']) ?></span>
-                    </div>
-                    <div class="approval-list">
-                        <?php foreach ($data['pending_approvals']['expenses'] as $expense): ?>
-                        <div class="approval-item">
-                            <div class="approval-user"><?= htmlspecialchars($expense['user_name']) ?></div>
-                            <div class="approval-details">
-                                <span class="approval-amount">₹<?= number_format($expense['amount'], 2) ?></span>
-                                <span class="approval-desc"><?= htmlspecialchars($expense['description'] ?? 'Expense claim') ?></span>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
+                <div class="form-group">
+                    <label for="comments" class="form-label">Comments (Optional)</label>
+                    <textarea class="form-control" id="comments" name="comments" rows="3"></textarea>
                 </div>
-                <?php endif; ?>
-                
-                <?php if (!empty($data['pending_approvals']['advances'])): ?>
-                <div class="approval-section">
-                    <div class="approval-header">
-                        <span class="approval-icon">💸</span>
-                        <h4>Advance Requests</h4>
-                        <span class="approval-count"><?= count($data['pending_approvals']['advances']) ?></span>
-                    </div>
-                    <div class="approval-list">
-                        <?php foreach ($data['pending_approvals']['advances'] as $advance): ?>
-                        <div class="approval-item">
-                            <div class="approval-user"><?= htmlspecialchars($advance['user_name']) ?></div>
-                            <div class="approval-details">
-                                <span class="approval-amount">₹<?= number_format($advance['amount'], 2) ?></span>
-                                <span class="approval-desc"><?= htmlspecialchars($advance['reason'] ?? 'Advance request') ?></span>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <?php if (empty($data['pending_approvals']['leaves']) && empty($data['pending_approvals']['expenses']) && empty($data['pending_approvals']['advances'])): ?>
-                <div class="no-approvals">
-                    <span class="no-approvals-icon">✅</span>
-                    <p>No pending approvals</p>
-                </div>
-                <?php endif; ?>
-            </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn--secondary" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn--primary" onclick="submitApproval()">Confirm</button>
         </div>
     </div>
 </div>
 
-<style>
-.approvals-container {
-    max-height: 400px;
-    overflow-y: auto;
+<script>
+function showTab(tabName) {
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.remove('tab-panel--active');
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('tab-btn--active');
+    });
+    document.getElementById(tabName).classList.add('tab-panel--active');
+    event.target.classList.add('tab-btn--active');
 }
-.approval-section {
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 1rem;
+
+function approveRequest(type, id, action) {
+    document.getElementById('approvalType').value = type;
+    document.getElementById('approvalId').value = id;
+    document.getElementById('approvalAction').value = action;
+    document.getElementById('approvalModal').style.display = 'block';
 }
-.approval-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
+
+function closeModal() {
+    document.getElementById('approvalModal').style.display = 'none';
 }
-.approval-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+
+function submitApproval() {
+    const formData = new FormData(document.getElementById('approvalForm'));
+    
+    fetch('/ergon/admin/approve-request', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred');
+    });
 }
-.approval-icon {
-    font-size: 1.2rem;
-}
-.approval-header h4 {
-    margin: 0;
-    flex: 1;
-    font-size: 0.9rem;
-    color: #333;
-}
-.approval-count {
-    background: #007bff;
-    color: white;
-    padding: 0.2rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-.approval-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.approval-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 0.5rem;
-    background: #f8f9fa;
-    border-radius: 6px;
-    border-left: 3px solid #007bff;
-}
-.approval-user {
-    font-weight: 600;
-    color: #333;
-    font-size: 0.85rem;
-}
-.approval-details {
-    text-align: right;
-    font-size: 0.8rem;
-}
-.approval-type, .approval-amount {
-    display: block;
-    font-weight: 600;
-    color: #007bff;
-}
-.approval-period, .approval-desc {
-    display: block;
-    color: #666;
-    margin-top: 0.2rem;
-}
-.no-approvals {
-    text-align: center;
-    padding: 2rem;
-    color: #666;
-}
-.no-approvals-icon {
-    font-size: 2rem;
-    display: block;
-    margin-bottom: 0.5rem;
-}
-</style>
+</script>
 
 <?php
 $content = ob_get_clean();

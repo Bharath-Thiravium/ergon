@@ -5,11 +5,11 @@ $content = ob_start();
 
 <div class="page-header">
     <div class="page-title">
-        <h1><i class="bi bi-people-fill"></i> Assign Task</h1>
-        <p>Create and assign a task to team members with detailed tracking</p>
+        <h1><i class="bi bi-person-plus-fill"></i> Create Personal Task</h1>
+        <p>Create a task for yourself with detailed tracking and management</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon/tasks" class="btn btn--secondary">
+        <a href="/ergon/admin/manage-tasks" class="btn btn--secondary">
             <i class="bi bi-arrow-left"></i> Back to Tasks
         </a>
     </div>
@@ -17,10 +17,10 @@ $content = ob_start();
 
 <div class="card">
     <div class="card__header">
-        <h2 class="card__title"><i class="bi bi-person-plus-fill"></i> Task Assignment Details</h2>
+        <h2 class="card__title"><i class="bi bi-person-check-fill"></i> Personal Task Details</h2>
     </div>
     <div class="card__body">
-        <form id="createTaskForm" method="POST" action="/ergon/workflow/create-task">
+        <form id="createTaskForm" method="POST" action="/ergon/admin/create-task">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <fieldset>
                 <legend>Basic Information</legend>
@@ -51,18 +51,7 @@ $content = ob_start();
             <fieldset>
                 <legend>Assignment & Category</legend>
                 <div class="form-row">
-                    <div class="form-group col-md-4">
-                        <label for="assigned_for" class="form-label">
-                            <i class="bi bi-person-check"></i> Assignment Type *
-                        </label>
-                        <select class="form-control" id="assigned_for" name="assigned_for" onchange="handleAssignmentTypeChange()" required>
-                            <option value="self">👤 For Myself</option>
-                            <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
-                                <option value="other">👥 For Others</option>
-                            <?php endif; ?>
-                        </select>
-                    </div>
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-6">
                         <label for="department_id" class="form-label">
                             <i class="bi bi-building"></i> Department
                         </label>
@@ -75,7 +64,7 @@ $content = ob_start();
                             <?php endif; ?>
                         </select>
                     </div>
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-6">
                         <label for="task_category" class="form-label">
                             <i class="bi bi-tags-fill"></i> Task Category
                         </label>
@@ -87,36 +76,13 @@ $content = ob_start();
 
                 <div class="form-row">
                     <div class="form-group col-md-6">
-                        <label for="assigned_to" class="form-label"><i class="bi bi-person-fill"></i> Assign To *</label>
-                        <select class="form-control" id="assigned_to" name="assigned_to" required>
-                            <option value="<?= $_SESSION['user_id'] ?>" selected><?= htmlspecialchars($_SESSION['user_name'] ?? 'You') ?></option>
-                            <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner']) && !empty($users)): ?>
-                                <?php foreach ($users as $user): ?>
-                                    <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                        <option value="<?= $user['id'] ?>" style="display: none;"><?= htmlspecialchars($user['name']) ?> (<?= htmlspecialchars($user['role']) ?>)</option>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                        <label for="assigned_to" class="form-label"><i class="bi bi-person-check-fill"></i> Assigned To</label>
+                        <select class="form-control form-control--readonly" id="assigned_to" name="assigned_to" required readonly>
+                            <option value="<?= $_SESSION['user_id'] ?? '' ?>" selected>
+                                <?= htmlspecialchars($_SESSION['user']['name'] ?? 'Current User') ?> (Personal Task)
+                            </option>
                         </select>
-                    </div>
-                    <div class="form-group col-md-6">
-                        <label for="planned_date" class="form-label">
-                            <i class="bi bi-calendar-plus"></i> Planned Date
-                        </label>
-                        <input type="date" class="form-control" id="planned_date" name="planned_date" min="<?= date('Y-m-d') ?>">
-                        <small class="text-muted">When do you plan to work on this task?</small>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group col-md-12">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="followup_required" name="followup_required">
-                            <label class="form-check-label" for="followup_required">
-                                <i class="bi bi-arrow-repeat"></i> This task requires follow-up
-                            </label>
-                            <small class="text-muted d-block">Check this if the task will need follow-up actions or tracking</small>
-                        </div>
+                        <small class="text-muted"><i class="bi bi-info-circle"></i> This task will be assigned to you automatically.</small>
                     </div>
                 </div>
             </fieldset>
@@ -213,9 +179,9 @@ $content = ob_start();
 
             <div class="form-actions">
                 <button type="submit" class="btn btn--primary">
-                    <i class="bi bi-people-fill"></i> Assign Task
+                    <i class="bi bi-person-plus-fill"></i> Create Personal Task
                 </button>
-                <a href="/ergon/tasks" class="btn btn--secondary">
+                <a href="/ergon/admin/manage-tasks" class="btn btn--secondary">
                     <i class="bi bi-x-circle-fill"></i> Cancel
                 </a>
             </div>
@@ -255,41 +221,13 @@ function loadTaskCategories() {
         .catch(error => console.error('Error loading categories:', error));
 }
 
-// Handle assignment type change
-function handleAssignmentTypeChange() {
-    const assignmentType = document.getElementById('assigned_for').value;
-    const assignedToSelect = document.getElementById('assigned_to');
-    const options = assignedToSelect.querySelectorAll('option');
-    
-    if (assignmentType === 'self') {
-        // Show only current user
-        options.forEach(option => {
-            if (option.value === '<?= $_SESSION['user_id'] ?>') {
-                option.style.display = 'block';
-                option.selected = true;
-            } else {
-                option.style.display = 'none';
-                option.selected = false;
-            }
-        });
-    } else {
-        // Show all users
-        options.forEach(option => {
-            option.style.display = 'block';
-        });
-        assignedToSelect.value = '';
-    }
-}
-
 // Handle category change to show/hide follow-up fields
 function handleCategoryChange() {
     const category = document.getElementById('task_category').value.toLowerCase();
     const followupFields = document.getElementById('followupFields');
-    const followupCheckbox = document.getElementById('followup_required');
     
     if (category.includes('follow')) {
         followupFields.style.display = 'block';
-        followupCheckbox.checked = true;
         // Set default follow-up date to tomorrow
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -299,15 +237,8 @@ function handleCategoryChange() {
     }
 }
 
-// Initialize tooltips
-var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl);
-});
-
 // Form initialization
 document.addEventListener('DOMContentLoaded', function() {
-    
     // Set minimum date to today
     const deadlineInput = document.getElementById('deadline');
     const today = new Date().toISOString().split('T')[0];
@@ -361,10 +292,6 @@ document.addEventListener('DOMContentLoaded', function() {
     max-width: 66.666667%;
 }
 
-.form-control--readonly {
-    background: #f8f9fa;
-}
-
 .input-group {
     display: flex;
     align-items: center;
@@ -398,6 +325,11 @@ document.addEventListener('DOMContentLoaded', function() {
     color: var(--primary);
 }
 
+.form-control--readonly {
+    background: #f8f9fa;
+    cursor: not-allowed;
+}
+
 .form-actions {
     margin-top: 2rem;
     padding-top: 1rem;
@@ -420,6 +352,15 @@ legend {
     font-size: 1.1rem;
 }
 
+.card__title {
+    color: var(--primary);
+}
+
+.text-muted {
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
 @media (max-width: 768px) {
     .form-row .form-group {
         flex: 0 0 100%;
@@ -434,7 +375,5 @@ legend {
 
 <?php
 $content = ob_get_clean();
-$title = 'Create Task';
-$active_page = 'tasks';
 include __DIR__ . '/../layouts/dashboard.php';
 ?>

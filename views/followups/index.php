@@ -141,6 +141,9 @@ ob_start();
                             <th>Company</th>
                             <th>Contact</th>
                             <th>Project</th>
+                            <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
+                                <th>Assigned To</th>
+                            <?php endif; ?>
                             <th>Due Date</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -175,6 +178,9 @@ ob_start();
                                     <?php endif; ?>
                                 </td>
                                 <td><?= htmlspecialchars($followup['project_name'] ?? '-') ?></td>
+                                <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
+                                    <td><?= htmlspecialchars($followup['assigned_user'] ?? 'User ID: ' . $followup['user_id']) ?></td>
+                                <?php endif; ?>
                                 <td>
                                     <?= date('M d, Y', strtotime($followup['follow_up_date'])) ?>
                                     <?php if (strtotime($followup['follow_up_date']) < time() && $followup['status'] !== 'completed'): ?>
@@ -206,23 +212,28 @@ ob_start();
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <a href="/ergon/followups/view/<?= $followup['id'] ?>" class="btn btn--sm btn--primary">
+                                        <button class="btn btn--sm btn--primary" onclick="viewFollowup(<?= $followup['id'] ?>)" title="View Details">
                                             <span>👁️</span>
-                                        </a>
+                                        </button>
                                         <?php if ($followup['status'] !== 'completed'): ?>
-                                            <button class="btn btn--sm btn--success" onclick="completeFollowup(<?= $followup['id'] ?>)">
+                                            <button class="btn btn--sm btn--success" onclick="completeFollowup(<?= $followup['id'] ?>)" title="Mark Complete">
                                                 <span>✅</span>
                                             </button>
-                                            <a href="/ergon/followups/reschedule/<?= $followup['id'] ?>" class="btn btn--sm btn--warning">
+                                            <button class="btn btn--sm btn--warning" onclick="rescheduleFollowup(<?= $followup['id'] ?>)" title="Reschedule">
                                                 <span>📅</span>
-                                            </a>
+                                            </button>
                                         <?php endif; ?>
-                                        <a href="/ergon/followups/history/<?= $followup['id'] ?>" class="btn btn--sm btn--info">
+                                        <button class="btn btn--sm btn--info" onclick="showHistory(<?= $followup['id'] ?>)" title="View History">
                                             <span>📋</span>
-                                        </a>
-                                        <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>)">
-                                            <span>🗑️</span>
                                         </button>
+                                        <?php 
+                                        $canDelete = ($followup['user_id'] == $_SESSION['user_id']) || in_array($_SESSION['role'] ?? '', ['admin', 'owner']);
+                                        if ($canDelete): 
+                                        ?>
+                                            <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')" title="Delete">
+                                                <span>🗑️</span>
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
@@ -284,13 +295,18 @@ ob_start();
                             <?php endif; ?>
                         </div>
                         <div class="followup-card__actions">
-                            <a href="/ergon/followups/view/<?= $followup['id'] ?>" class="btn btn--sm btn--primary">View</a>
+                            <button class="btn btn--sm btn--primary" onclick="viewFollowup(<?= $followup['id'] ?>)">View</button>
                             <?php if ($followup['status'] !== 'completed'): ?>
                                 <button class="btn btn--sm btn--success" onclick="completeFollowup(<?= $followup['id'] ?>)">Complete</button>
-                                <a href="/ergon/followups/reschedule/<?= $followup['id'] ?>" class="btn btn--sm btn--warning">Reschedule</a>
+                                <button class="btn btn--sm btn--warning" onclick="rescheduleFollowup(<?= $followup['id'] ?>)">Reschedule</button>
                             <?php endif; ?>
-                            <a href="/ergon/followups/history/<?= $followup['id'] ?>" class="btn btn--sm btn--info">History</a>
-                            <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>)">Delete</button>
+                            <button class="btn btn--sm btn--info" onclick="showHistory(<?= $followup['id'] ?>)">History</button>
+                            <?php 
+                            $canDelete = ($followup['user_id'] == $_SESSION['user_id']) || in_array($_SESSION['role'] ?? '', ['admin', 'owner']);
+                            if ($canDelete): 
+                            ?>
+                                <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')">Delete</button>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -481,7 +497,6 @@ function generateConsolidatedView() {
                 html += `<button class="btn btn--xs btn--warning" onclick="rescheduleFollowup(${followup.id})">Reschedule</button>`;
             }
             html += `<button class="btn btn--xs btn--info" onclick="showHistory(${followup.id})">History</button>`;
-            html += `<button class="btn btn--xs btn--danger" onclick="deleteFollowup(${followup.id})">Delete</button>`;
             html += `</div>`;
             html += `</div>`;
         });
@@ -559,7 +574,6 @@ function generateConsolidatedGridView() {
                 html += `<button class="btn btn--xs btn--warning" onclick="rescheduleFollowup(${followup.id})">Reschedule</button>`;
             }
             html += `<button class="btn btn--xs btn--info" onclick="showHistory(${followup.id})">History</button>`;
-            html += `<button class="btn btn--xs btn--danger" onclick="deleteFollowup(${followup.id})">Delete</button>`;
             html += `</div>`;
             html += `</div>`;
         });
@@ -622,19 +636,6 @@ function completeFollowup(id) {
     }
 }
 
-function deleteFollowup(id) {
-    if (confirm('Are you sure you want to delete this follow-up? This action cannot be undone.')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="id" value="${id}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
 function rescheduleFollowup(id) {
     document.getElementById('rescheduleModal').style.display = 'flex';
     document.getElementById('rescheduleFollowupId').value = id;
@@ -658,6 +659,30 @@ function showHistory(id) {
 
 function closeHistoryModal() {
     document.getElementById('historyModal').style.display = 'none';
+}
+
+function deleteFollowup(id, title) {
+    if (confirm(`Delete follow-up "${title}"?\n\nThis action cannot be undone.`)) {
+        fetch(`/ergon/followups/delete/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (data.message || 'Failed to delete follow-up'));
+            }
+        })
+        .catch(error => {
+            console.error('Delete error:', error);
+            alert('An error occurred while deleting the follow-up.');
+        });
+    }
 }
 
 function applyFilters() {
@@ -852,14 +877,31 @@ document.addEventListener('DOMContentLoaded', function() {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     background: rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 2147483647;
+    z-index: 999999 !important;
     padding: 1rem;
+    box-sizing: border-box;
+}
+
+/* Ensure modals appear above all other elements */
+.modal * {
+    z-index: inherit;
+}
+
+/* Override any header z-index */
+header, .header, .navbar, .nav {
+    z-index: 1000 !important;
+}
+
+/* Ensure modal content has proper stacking */
+.modal-content {
+    position: relative;
+    z-index: 1000000 !important;
 }
 
 .modal-content {
@@ -872,8 +914,6 @@ document.addEventListener('DOMContentLoaded', function() {
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     transform: scale(1);
     transform-origin: center;
-    z-index: 10000;
-    position: relative;
 }
 
 .modal-content--large {

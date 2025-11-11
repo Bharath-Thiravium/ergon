@@ -10,6 +10,7 @@ $router->get('/favicon.ico', 'StaticController', 'favicon');
 // Test routes
 $router->get('/test', 'TestController', 'index');
 $router->get('/status', 'TestController', 'status');
+$router->get('/test-notifications', 'TestController', 'testNotifications');
 
 // Authentication Routes
 $router->get('/', 'AuthController', 'index');
@@ -42,10 +43,22 @@ $router->get('/users/download-credentials', 'UsersController', 'downloadCredenti
 $router->get('/users/export', 'UsersController', 'export');
 $router->get('/admin/export', 'UsersController', 'export');
 
-// User Request Routes
-$router->get('/user/requests', 'UserController', 'requests');
-$router->get('/user/attendance', 'UserController', 'attendance');
-$router->get('/user/tasks', 'UserController', 'tasks');
+// User Routes - Complete User Panel
+$router->get('/user/requests', 'UserController', 'myRequests');
+$router->get('/user/my-requests', 'UserController', 'myRequests');
+$router->get('/user/attendance', 'UserController', 'myAttendance');
+$router->get('/user/my-attendance', 'UserController', 'myAttendance');
+$router->get('/user/tasks', 'UserController', 'myTasks');
+$router->get('/user/my-tasks', 'UserController', 'myTasks');
+$router->post('/user/update-task-progress', 'UserController', 'updateTaskProgress');
+$router->get('/user/submit-leave', 'UserController', 'submitLeaveRequest');
+$router->post('/user/submit-leave', 'UserController', 'submitLeaveRequest');
+$router->get('/user/submit-expense', 'UserController', 'submitExpenseClaim');
+$router->post('/user/submit-expense', 'UserController', 'submitExpenseClaim');
+$router->get('/user/submit-advance', 'UserController', 'submitAdvanceRequest');
+$router->post('/user/submit-advance', 'UserController', 'submitAdvanceRequest');
+$router->post('/user/clock-in', 'UserController', 'clockIn');
+$router->post('/user/clock-out', 'UserController', 'clockOut');
 
 // Department Management
 $router->get('/departments', 'DepartmentController', 'index');
@@ -70,11 +83,14 @@ $router->get('/tasks/calendar', 'TasksController', 'calendar');
 $router->get('/tasks/overdue', 'TasksController', 'overdue');
 $router->post('/tasks/bulk-create', 'TasksController', 'bulkCreate');
 
-// User Panel - Daily Workflow Routes
-$router->get('/planner', 'DailyWorkflowController', 'morningPlanner');
-$router->post('/planner/submit', 'DailyWorkflowController', 'submitMorningPlans');
-$router->get('/evening-update', 'DailyWorkflowController', 'eveningUpdate');
-$router->post('/evening-update/submit', 'DailyWorkflowController', 'submitEveningUpdates');
+// Daily Planner Integration
+$router->get('/planner', 'PlannerController', 'index');
+$router->post('/planner/add-task', 'PlannerController', 'addTask');
+$router->post('/planner/update-status', 'PlannerController', 'updateStatus');
+
+// Evening Update Integration
+$router->get('/evening-update', 'EveningUpdateController', 'index');
+$router->post('/evening-update/submit', 'EveningUpdateController', 'submit');
 
 // Attendance
 $router->get('/attendance', 'AttendanceController', 'index');
@@ -129,19 +145,32 @@ $router->post('/advances/reject/{id}', 'AdvanceController', 'reject');
 $router->get('/reports', 'ReportsController', 'index');
 $router->get('/reports/activity', 'ReportsController', 'activity');
 $router->get('/reports/export', 'ReportsController', 'export');
-$router->get('/reports/attendance-export', 'ReportsController', 'attendanceExport');
 $router->get('/reports/approvals-export', 'ReportsController', 'approvalsExport');
 
 // Settings
 $router->get('/settings', 'SettingsController', 'index');
 $router->get('/settings/location', 'SettingsController', 'locationPicker');
+$router->get('/settings/map-picker', 'SettingsController', 'mapPicker');
+$router->get('/settings/map-picker', 'SettingsController', 'mapPicker');
 $router->post('/settings', 'SettingsController', 'update');
 $router->post('/settings/save', 'SettingsController', 'update');
 
-// Owner Approvals
+// Owner Routes - Complete Management
 $router->get('/owner/approvals', 'OwnerController', 'approvals');
 $router->get('/owner/approvals/view/{type}/{id}', 'OwnerController', 'viewApproval');
 $router->post('/owner/approvals/delete/{type}/{id}', 'OwnerController', 'deleteApproval');
+$router->post('/owner/final-approve', 'OwnerController', 'finalApprove');
+$router->get('/owner/create-user', 'OwnerController', 'createUser');
+$router->post('/owner/create-user', 'OwnerController', 'createUser');
+$router->get('/owner/manage-users', 'OwnerController', 'manageUsers');
+$router->post('/owner/assign-role', 'OwnerController', 'assignRole');
+$router->get('/owner/system-settings', 'OwnerController', 'systemSettings');
+$router->post('/owner/system-settings', 'OwnerController', 'systemSettings');
+$router->get('/owner/analytics', 'OwnerController', 'analytics');
+
+// Legacy Owner Routes
+$router->post('/owner/approveRequest', 'OwnerController', 'approveRequest');
+$router->post('/owner/rejectRequest', 'OwnerController', 'rejectRequest');
 $router->post('/owner/approve-request', 'OwnerController', 'approveRequest');
 $router->post('/owner/reject-request', 'OwnerController', 'rejectRequest');
 
@@ -157,20 +186,25 @@ $router->post('/profile/preferences', 'ProfileController', 'preferences');
 $router->get('/notifications', 'NotificationController', 'index');
 $router->get('/api/notifications/unread-count', 'NotificationController', 'getUnreadCount');
 $router->post('/api/notifications/mark-read', 'NotificationController', 'markAsRead');
+$router->post('/api/notifications/mark-as-read', 'NotificationController', 'markAsRead');
 $router->post('/api/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
-$router->post('/notifications/mark-as-read', 'NotificationController', 'markAsRead');
+$router->post('/notifications/markAsRead', 'NotificationController', 'markAsRead');
+$router->post('/notifications/markAllAsRead', 'NotificationController', 'markAllAsRead');
 $router->post('/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
+$router->post('/notifications/mark-as-read', 'NotificationController', 'markAsRead');
+
+// Additional notification API routes
+$router->get('/api/notifications', 'NotificationController', 'getUnreadCount');
+$router->post('/api/notifications', 'NotificationController', 'markAllAsRead');
 
 // Daily Workflow Management (New Integrated System)
-$router->get('/daily-workflow/morning-planner', 'DailyWorkflowController', 'morningPlanner');
+$router->get('/daily-workflow/morning-planner', 'PlannerController', 'index');
 $router->post('/daily-workflow/submit-morning-plans', 'DailyWorkflowController', 'submitMorningPlans');
 $router->get('/daily-workflow/evening-update', 'DailyWorkflowController', 'eveningUpdate');
 $router->post('/daily-workflow/submit-evening-updates', 'DailyWorkflowController', 'submitEveningUpdates');
 $router->post('/daily-workflow/add-task', 'DailyWorkflowController', 'addTask');
 $router->post('/daily-workflow/update-task', 'DailyWorkflowController', 'updateTask');
 $router->post('/daily-workflow/delete-task', 'DailyWorkflowController', 'deleteTask');
-$router->get('/daily-workflow/get-tasks', 'DailyWorkflowController', 'getTasks');
-$router->get('/daily-workflow/get-task', 'DailyWorkflowController', 'getTask');
 $router->post('/daily-workflow/delete-user-workflow', 'DailyWorkflowController', 'deleteUserWorkflow');
 $router->get('/daily-workflow/progress-dashboard', 'DailyWorkflowController', 'progressDashboard');
 $router->get('/daily-workflow/task-categories', 'DailyWorkflowController', 'getTaskCategories');
@@ -178,12 +212,12 @@ $router->get('/api/projects-by-department', 'DailyWorkflowController', 'getProje
 $router->get('/api/task-categories-by-department', 'DailyWorkflowController', 'getTaskCategoriesByDepartment');
 
 // Legacy Planner Management (Redirected to new system)
-$router->get('/planner/calendar', 'DailyWorkflowController', 'morningPlanner');
-$router->get('/planner/create', 'DailyWorkflowController', 'morningPlanner');
-$router->post('/planner/create', 'DailyWorkflowController', 'submitMorningPlans');
-$router->post('/planner/update', 'DailyWorkflowController', 'submitMorningPlans');
-$router->get('/planner/getDepartmentForm', 'DailyWorkflowController', 'getProjectsByDepartment');
-$router->get('/planner/getPlansForDate', 'DailyWorkflowController', 'getTasks');
+$router->get('/planner/calendar', 'PlannerController', 'index');
+$router->get('/planner/create', 'PlannerController', 'create');
+$router->post('/planner/create', 'PlannerController', 'store');
+$router->post('/planner/update', 'PlannerController', 'update');
+$router->get('/planner/getDepartmentForm', 'PlannerController', 'getDepartmentForm');
+$router->get('/planner/getPlansForDate', 'PlannerController', 'getPlansForDate');
 
 // Legacy Daily Task Planner Routes (Redirected to new system)
 $router->get('/daily-planner', 'DailyWorkflowController', 'eveningUpdate');
@@ -200,12 +234,16 @@ $router->post('/api/attendance', 'ApiController', 'attendance');
 $router->get('/api/tasks', 'ApiController', 'tasks');
 $router->post('/api/tasks/update', 'ApiController', 'updateTask');
 $router->get('/api/task-categories', 'ApiController', 'taskCategories');
-$router->get('/api/task-categories-by-department', 'ApiController', 'taskCategories');
 $router->get('/api/generate-employee-id', 'ApiController', 'generateEmployeeId');
 $router->post('/api/update-preference', 'ApiController', 'updatePreference');
 $router->post('/api/activity-log', 'ApiController', 'activityLog');
 $router->post('/api/session_from_jwt', 'ApiController', 'sessionFromJWT');
 $router->post('/api/test', 'ApiController', 'test');
+
+// Unified Workflow API Routes
+$router->post('/api/update-task-status', 'UnifiedWorkflowController', 'updateTaskStatus');
+$router->get('/api/tasks-for-date', 'UnifiedWorkflowController', 'getTasksForDate');
+$router->post('/api/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
 
 // Mobile API Routes
 $router->post('/api/register_device', 'ApiController', 'registerDevice');
@@ -227,12 +265,27 @@ $router->get('/attendance/anomalies/{userId}', 'AttendanceController', 'getAnoma
 $router->get('/users/download-document/{userId}/{filename}', 'UsersController', 'downloadDocument');
 $router->post('/users/delete-document/{userId}/{filename}', 'UsersController', 'deleteDocument');
 
-// Admin Management Routes
+// Admin Routes - Department vs System Admin
+$router->get('/admin/create-task', 'AdminController', 'createTask');
+$router->post('/admin/create-task', 'AdminController', 'createTask');
+$router->get('/admin/manage-tasks', 'AdminController', 'manageTasks');
+$router->post('/admin/approve-request', 'AdminController', 'approveRequest');
+$router->get('/admin/manage-users', 'AdminController', 'manageUsers');
+$router->get('/admin/create-user', 'AdminController', 'createUser');
+$router->post('/admin/create-user', 'AdminController', 'createUser');
+$router->get('/admin/attendance-overview', 'AdminController', 'attendanceOverview');
+$router->get('/admin/reports', 'AdminController', 'reports');
+
+// System Admin Only Routes
+$router->get('/admin/system-settings', 'AdminController', 'systemSettings');
+$router->post('/admin/system-settings', 'AdminController', 'systemSettings');
+$router->get('/admin/manage-departments', 'AdminController', 'manageDepartments');
+
+// Legacy Admin Management Routes
 $router->get('/admin/management', 'AdminManagementController', 'index');
 $router->post('/admin/assign', 'AdminManagementController', 'assignAdmin');
 $router->post('/admin/remove', 'AdminManagementController', 'removeAdmin');
 $router->post('/admin/change-password', 'AdminManagementController', 'changePassword');
-$router->post('/admin/delete-user', 'AdminManagementController', 'deleteUser');
 
 // System Admin Management Routes (Owner only)
 $router->get('/system-admin', 'SystemAdminController', 'index');
@@ -249,22 +302,35 @@ $router->post('/project-management/create', 'ProjectManagementController', 'crea
 $router->post('/project-management/update', 'ProjectManagementController', 'update');
 $router->post('/project-management/delete', 'ProjectManagementController', 'delete');
 
-// Follow-up Routes
-$router->get('/followups', 'FollowupController', 'index');
+// Unified Workflow Routes
+$router->get('/workflow/create-task', 'UnifiedWorkflowController', 'createTask');
+$router->post('/workflow/create-task', 'UnifiedWorkflowController', 'createTask');
+$router->get('/workflow/daily-planner', 'UnifiedWorkflowController', 'dailyPlanner');
+$router->get('/workflow/daily-planner/{date}', 'UnifiedWorkflowController', 'dailyPlanner');
+$router->get('/workflow/evening-update', 'UnifiedWorkflowController', 'eveningUpdate');
+$router->get('/workflow/evening-update/{date}', 'UnifiedWorkflowController', 'eveningUpdate');
+$router->post('/workflow/evening-update/{date}', 'UnifiedWorkflowController', 'eveningUpdate');
+$router->get('/workflow/followups', 'UnifiedWorkflowController', 'followups');
+$router->get('/workflow/calendar', 'UnifiedWorkflowController', 'calendar');
+$router->post('/workflow/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
+
+// Follow-up Routes (Legacy - now filtered from tasks)
+$router->get('/followups', 'UnifiedWorkflowController', 'followups');
 $router->get('/followups/create', 'FollowupController', 'create');
 $router->post('/followups', 'FollowupController', 'handlePost');
 $router->post('/followups/create', 'FollowupController', 'store');
 $router->get('/followups/view/{id}', 'FollowupController', 'viewFollowup');
-$router->get('/followups/reschedule/{id}', 'FollowupController', 'showReschedule');
-$router->get('/followups/history/{id}', 'FollowupController', 'showHistory');
 $router->post('/followups/update', 'FollowupController', 'update');
 $router->post('/followups/reschedule', 'FollowupController', 'reschedule');
 $router->post('/followups/complete', 'FollowupController', 'complete');
 $router->post('/followups/update-item', 'FollowupController', 'updateItem');
-$router->post('/followups/delete', 'FollowupController', 'delete');
+$router->post('/followups/delete/{id}', 'FollowupController', 'delete');
 $router->post('/followups/create-from-task', 'FollowupController', 'createFromTask');
+$router->get('/followups/history/{id}', 'FollowupController', 'getHistory');
 
 // Gamification Routes
 $router->get('/gamification/team-competition', 'GamificationController', 'teamCompetition');
 $router->get('/gamification/individual', 'GamificationController', 'individual');
+
+
 ?>

@@ -23,8 +23,12 @@ define('MAX_FILE_SIZE', 5242880); // 5MB
 define('ALLOWED_EXTENSIONS', ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx']);
 
 // GPS Settings
-define('DEFAULT_ATTENDANCE_RADIUS', 200); // meters
+define('DEFAULT_ATTENDANCE_RADIUS', 5); // meters
 define('GPS_ACCURACY_THRESHOLD', 50); // meters
+
+// Google Maps API Settings
+define('GOOGLE_MAPS_API_KEY', 'AIzaSyBs_eUlf47Hry0q_hemamm4nge4lxx6iBc'); // Replace with your actual Google Maps API key
+define('USE_GOOGLE_MAPS', true); // Set to true to use Google Maps instead of OpenStreetMap
 
 // Pagination
 define('RECORDS_PER_PAGE', 20);

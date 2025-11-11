@@ -1,7 +1,6 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../../app/core/Session.php';
+Session::init();
 
 if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) {
     if (!headers_sent()) {
@@ -10,15 +9,15 @@ if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) {
     exit;
 }
 
-if (!headers_sent()) {
-    header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0, private');
-    header('Pragma: no-cache');
-    header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
-    header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
-    header('ETag: "' . md5(time()) . '"');
+// Initialize content variable to prevent undefined variable warning
+if (!isset($content)) {
+    $content = '';
 }
 
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 3600)) {
+// Removed aggressive cache headers
+
+// Extend session timeout to 8 hours for better user experience
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) {
     session_unset();
     session_destroy();
     $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
@@ -39,9 +38,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
+
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
 
@@ -54,8 +51,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         background: #1e293b;
         border-bottom: 1px solid #334155;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        position: sticky;
+        position: fixed;
         top: 0;
+        left: 0;
+        right: 0;
         z-index: 9999;
         width: 100%;
     }
@@ -360,28 +359,78 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     .main-content {
         margin-left: 0 !important;
         margin-right: 0 !important;
-        padding: 24px !important;
+        margin-top: 110px !important;
+        padding: 24px 24px 48px 24px !important;
         background: #f8fafc !important;
-        min-height: calc(100vh - 110px) !important;
+        height: calc(100vh - 110px) !important;
         width: 100vw !important;
         max-width: 100vw !important;
         box-sizing: border-box !important;
         position: relative;
         z-index: 1;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
     }
     
-    /* Hide duplicate headers in notification content only */
-    body[data-page="notifications"] .main-content .main-header,
-    body[data-page="notifications"] .main-content .header__top {
-        display: none !important;
+    /* Global responsive layout */
+    * {
+        box-sizing: border-box !important;
     }
     
-    /* Decrease container size for notifications page */
-    body[data-page="notifications"] .main-content {
-        max-width: 1500px !important;
-        margin: 0 auto !important;
-        padding: 5px !important;
+    html, body {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        height: 100vh !important;
     }
+    
+    /* Tables responsive */
+    .table-responsive {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+    }
+    
+    table {
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+    }
+    
+    table td, table th {
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+    
+    /* Cards and containers */
+    .card, .container, .row, .col {
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        word-wrap: break-word !important;
+    }
+    
+    /* Forms responsive */
+    .form-control, input, select, textarea {
+        max-width: 100% !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Horizontal scroll for wide content */
+    .table-container {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    
+    /* Prevent content from breaking layout */
+    pre, code {
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+    
+    /* Remove notification-specific layout overrides */
     
     @media (max-width: 1200px) {
         .nav-group {
@@ -452,8 +501,26 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
         
         .main-content {
-            padding: 16px !important;
-            min-height: calc(100vh - 90px) !important;
+            padding: 16px 16px 32px 16px !important;
+            margin-top: 90px !important;
+            height: calc(100vh - 90px) !important;
+            width: 100vw !important;
+            max-width: 100vw !important;
+        }
+        
+        /* Mobile responsive overrides */
+        .table-responsive {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
+        
+        .card {
+            margin: 0 !important;
+            width: 100% !important;
+        }
+        
+        .btn-group {
+            flex-wrap: wrap !important;
         }
     }
     
@@ -477,6 +544,21 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         
         .nav-icon {
             font-size: 11px;
+        }
+        
+        .main-content {
+            padding: 12px 12px 24px 12px !important;
+            margin-top: 80px !important;
+            height: calc(100vh - 80px) !important;
+        }
+        
+        /* Extra small screen adjustments */
+        .form-row {
+            grid-template-columns: 1fr !important;
+        }
+        
+        .detail-grid, .profile-grid {
+            grid-template-columns: 1fr !important;
         }
     }
 
@@ -763,6 +845,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             width: 100% !important;
             justify-content: flex-start !important;
         }
+        
+        /* Ensure all content fits horizontally */
+        .container-fluid, .container {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            max-width: 100% !important;
+        }
     }
     
     .btn:hover {
@@ -805,6 +894,30 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     .btn--success:hover {
         background: #dcfce7 !important;
         color: #14532d !important;
+    }
+    
+    .btn--danger {
+        background: #fef2f2 !important;
+        color: #dc2626 !important;
+        border-color: #fecaca !important;
+    }
+    
+    .btn--danger:hover {
+        background: #fee2e2 !important;
+        color: #b91c1c !important;
+        border-color: #fca5a5 !important;
+    }
+    
+    .btn--warning {
+        background: #fffbeb !important;
+        color: #d97706 !important;
+        border-color: #fed7aa !important;
+    }
+    
+    .btn--warning:hover {
+        background: #fef3c7 !important;
+        color: #b45309 !important;
+        border-color: #fbbf24 !important;
     }
     
     /* Global Icon System - Force Filled Icons Without Outlines */
@@ -1042,7 +1155,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             </div>
             
             <div class="header__controls">
-                <button class="control-btn" id="theme-toggle" title="Toggle Theme">
+                <button class="control-btn" onclick="toggleTheme()" title="Toggle Theme">
                     <span id="themeIcon"><i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i></span>
                 </button>
                 <button class="control-btn" onclick="toggleNotifications(event)" title="Notifications">
@@ -1056,13 +1169,22 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                 </button>
                 
                 <div class="profile-menu" id="profileMenu">
+                    <a href="/ergon/profile" class="profile-menu-item">
+                        <span class="menu-icon"><i class="bi bi-person-fill"></i></span>
+                        My Profile
+                    </a>
                     <a href="/ergon/profile/change-password" class="profile-menu-item">
                         <span class="menu-icon"><i class="bi bi-lock-fill"></i></span>
                         Change Password
                     </a>
+                    <div class="profile-menu-divider"></div>
                     <a href="/ergon/profile/preferences" class="profile-menu-item">
+                        <span class="menu-icon"><i class="bi bi-palette-fill"></i></span>
+                        Appearance
+                    </a>
+                    <a href="/ergon/settings" class="profile-menu-item">
                         <span class="menu-icon"><i class="bi bi-gear-fill"></i></span>
-                        Preferences
+                        System Settings
                     </a>
                     <div class="profile-menu-divider"></div>
                     <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
@@ -1129,9 +1251,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">✅</span>
                                 Tasks
                             </a>
-                            <a href="/ergon/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
+                            </a>
+                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📆</span>
+                                Calendar
                             </a>
                         </div>
                     </div>
@@ -1223,17 +1349,17 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">✅</span>
                                 Allocation
                             </a>
-                            <a href="/ergon/daily-workflow/morning-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'planner' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/daily-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">🌅</span>
                                 Planner
                             </a>
-                            <a href="/ergon/daily-workflow/evening-update" class="nav-dropdown-item <?= ($active_page ?? '') === 'evening-update' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">🌆</span>
-                                Evening Update
-                            </a>
-                            <a href="/ergon/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
+                            </a>
+                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📆</span>
+                                Calendar
                             </a>
                         </div>
                     </div>
@@ -1299,17 +1425,22 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">✅</span>
                                 Tasks
                             </a>
-                            <a href="/ergon/planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'planner' ? 'nav-dropdown-item--active' : '' ?>">
+
+                            <a href="/ergon/workflow/daily-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📅</span>
                                 Daily Planner
                             </a>
-                            <a href="/ergon/evening-update" class="nav-dropdown-item <?= ($active_page ?? '') === 'evening_update' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/evening-update" class="nav-dropdown-item <?= ($active_page ?? '') === 'evening-update' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">🌅</span>
                                 Evening Update
                             </a>
-                            <a href="/ergon/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
+                            </a>
+                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📆</span>
+                                Calendar
                             </a>
                         </div>
                     </div>
@@ -1347,31 +1478,29 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         </div>
     </header>
     
-    <div class="notification-dropdown" id="notificationDropdown" style="display: none; position: fixed; top: 60px; right: 20px; width: 350px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 10000;">
-        <div class="notification-header" style="padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+    <div class="notification-dropdown" id="notificationDropdown" style="display: none; position: fixed; width: 350px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 10000; max-height: 400px; overflow: hidden;">
+        <div class="notification-header" style="padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: white; position: relative; z-index: 10001;">
             <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Notifications</h3>
-            <a href="#" class="view-all-link" style="color: #3b82f6; text-decoration: none; font-size: 14px;" onclick="navigateToNotifications(event)">View All</a>
+            <button type="button" class="view-all-link" style="color: #3b82f6; text-decoration: none; font-size: 14px; background: none; border: none; cursor: pointer;" onclick="navigateToNotifications(event)">View All</button>
         </div>
-        <div class="notification-list" id="notificationList" style="max-height: 300px; overflow-y: auto;">
-            <div class="notification-item" style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
-                <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px;">New Task Assigned</div>
-                <div style="font-size: 12px; color: #6b7280;">You have been assigned a new task</div>
-                <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">2 minutes ago</div>
-            </div>
-            <div class="notification-item" style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
-                <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px;">Leave Approved</div>
-                <div style="font-size: 12px; color: #6b7280;">Your leave request has been approved</div>
-                <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">1 hour ago</div>
-            </div>
+        <div class="notification-list" id="notificationList" style="max-height: 300px; overflow-y: auto; background: white;">
+            <div style="padding: 16px; text-align: center; color: #6b7280;">Loading notifications...</div>
         </div>
     </div>
 
     <main class="main-content">
-            <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports']) && ($active_page ?? '') !== 'notifications'): ?>
+            <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports', 'Notifications'])): ?>
             <div class="page-header">
                 <div class="page-title">
                     <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
                 </div>
+                <?php if ($title === 'Notifications'): ?>
+                <div class="page-actions">
+                    <button class="btn btn--primary" onclick="markAllAsRead()">
+                        Mark All Read
+                    </button>
+                </div>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
             <?= $content ?>
@@ -1380,7 +1509,19 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <script>
 
     
-
+    function toggleTheme() {
+        var currentTheme = document.body.getAttribute('data-theme') || 'light';
+        var newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        document.body.setAttribute('data-theme', newTheme);
+        var themeIcon = document.getElementById('themeIcon');
+        if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        
+        fetch('/ergon/api/update-preference', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({key: 'theme', value: newTheme})
+        }).catch(function(error) { console.log('Theme save failed:', error); });
+    }
     
     function toggleNotifications(event) {
         if (event) {
@@ -1388,42 +1529,35 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             event.stopPropagation();
         }
         var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown) {
+        var button = event.target.closest('.control-btn');
+        
+        if (dropdown && button) {
             var isVisible = dropdown.style.display === 'block';
-            if (!isVisible) {
-                // Load notifications when opening dropdown
-                loadNotifications();
-            }
-            dropdown.style.display = isVisible ? 'none' : 'block';
             
-            // Close other dropdowns
+            // Close other dropdowns first
             document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
                 menu.classList.remove('show');
             });
             var profileMenu = document.getElementById('profileMenu');
             if (profileMenu) profileMenu.classList.remove('show');
+            
+            if (isVisible) {
+                dropdown.style.display = 'none';
+            } else {
+                // Position dropdown relative to notification button
+                var rect = button.getBoundingClientRect();
+                dropdown.style.position = 'fixed';
+                dropdown.style.top = (rect.bottom + 8) + 'px';
+                dropdown.style.right = (window.innerWidth - rect.right) + 'px';
+                dropdown.style.left = 'auto';
+                dropdown.style.zIndex = '10000';
+                dropdown.style.display = 'block';
+                
+                // Load notifications
+                loadNotifications();
+            }
         }
     }
-    
-    function loadNotifications() {
-        fetch('/ergon/api/notifications/unread-count')
-        .then(response => response.json())
-        .then(data => {
-            var badge = document.getElementById('notificationBadge');
-            if (badge) {
-                badge.textContent = data.count || 0;
-                badge.style.display = data.count > 0 ? 'block' : 'none';
-            }
-        })
-        .catch(error => console.log('Notification load error:', error));
-    }
-    
-    // Load notification count on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        loadNotifications();
-        // Auto-refresh every 30 seconds
-        setInterval(loadNotifications, 30000);
-    });
     
     function navigateToNotifications(event) {
         event.preventDefault();
@@ -1435,8 +1569,83 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             dropdown.style.display = 'none';
         }
         
-        // Navigate to notifications page
-        window.location.href = '/ergon/notifications';
+        // Navigate to notifications page in the main window
+        setTimeout(function() {
+            window.location.href = '/ergon/notifications';
+        }, 100);
+        return false;
+    }
+    
+    function loadNotifications() {
+        var list = document.getElementById('notificationList');
+        if (!list) return;
+        
+        fetch('/ergon/api/notifications')
+        .then(response => response.json())
+        .then(data => {
+            if (data.notifications && data.notifications.length > 0) {
+                list.innerHTML = data.notifications.map(function(notif) {
+                    var link = getNotificationLink(notif.type, notif.message);
+                    return '<a href="' + link + '" class="notification-item" style="display: block; padding: 12px 16px; border-bottom: 1px solid #f3f4f6; text-decoration: none; color: inherit;" onclick="closeNotificationDropdown()">' +
+                           '<div style="font-weight: 500; font-size: 14px; margin-bottom: 4px; color: #1f2937;">' + (notif.title || 'Notification') + '</div>' +
+                           '<div style="font-size: 12px; color: #6b7280;">' + (notif.message || '') + '</div>' +
+                           '<div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">' + formatTime(notif.created_at) + '</div>' +
+                           '</a>';
+                }).join('');
+            } else {
+                list.innerHTML = '<div style="padding: 16px; text-align: center; color: #6b7280;">No notifications</div>';
+            }
+        })
+        .catch(error => {
+            list.innerHTML = '<div style="padding: 16px; text-align: center; color: #ef4444;">Failed to load notifications</div>';
+        });
+    }
+    
+    function getNotificationLink(type, message) {
+        if (message.includes('task')) return '/ergon/tasks';
+        if (message.includes('leave')) return '/ergon/leaves';
+        if (message.includes('expense')) return '/ergon/expenses';
+        if (message.includes('advance')) return '/ergon/advances';
+        if (message.includes('approval')) return '/ergon/owner/approvals';
+        return '/ergon/notifications';
+    }
+    
+    function formatTime(dateStr) {
+        var date = new Date(dateStr);
+        var now = new Date();
+        var diff = now - date;
+        var minutes = Math.floor(diff / 60000);
+        if (minutes < 1) return 'Just now';
+        if (minutes < 60) return minutes + ' min ago';
+        var hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + ' hour' + (hours > 1 ? 's' : '') + ' ago';
+        return date.toLocaleDateString();
+    }
+    
+    function closeNotificationDropdown() {
+        var dropdown = document.getElementById('notificationDropdown');
+        if (dropdown) dropdown.style.display = 'none';
+    }
+    
+    function markAllAsRead() {
+        fetch('/ergon/api/notifications/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to mark all as read');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Network error occurred');
+        });
     }
     
     function showDropdown(id) {
@@ -1533,11 +1742,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
 
     
-    window.onpageshow = function(event) {
-        if (event.persisted) {
-            window.location.replace('/ergon/login');
-        }
-    };
+    // Removed aggressive page show redirect
     
     // Disable scroll restoration to prevent data duplication
     if ('scrollRestoration' in history) {
@@ -1571,7 +1776,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
 
     </script>
-    <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
-    <script src="/ergon/assets/js/auth-guard.min.js?v=<?= time() ?>" defer></script>
+    <script src="/ergon/notification_fix.js?v=<?= time() ?>" defer></script>
+
 </body>
 </html>
