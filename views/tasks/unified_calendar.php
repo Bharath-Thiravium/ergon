@@ -23,21 +23,23 @@ $content = ob_start();
     </div>
 </div>
 
-<div class="calendar-container">
-    <div class="calendar-grid">
-        <!-- Calendar Header -->
-        <div class="calendar-header">
-            <div class="day-header">Sun</div>
-            <div class="day-header">Mon</div>
-            <div class="day-header">Tue</div>
-            <div class="day-header">Wed</div>
-            <div class="day-header">Thu</div>
-            <div class="day-header">Fri</div>
-            <div class="day-header">Sat</div>
-        </div>
+<div class="calendar-wrapper">
+    <div class="calendar-container">
+        <div class="calendar-main">
+            <div class="calendar-grid">
+                <!-- Calendar Header -->
+                <div class="calendar-header">
+                    <div class="day-header">Sun</div>
+                    <div class="day-header">Mon</div>
+                    <div class="day-header">Tue</div>
+                    <div class="day-header">Wed</div>
+                    <div class="day-header">Thu</div>
+                    <div class="day-header">Fri</div>
+                    <div class="day-header">Sat</div>
+                </div>
 
-        <!-- Calendar Body -->
-        <div class="calendar-body">
+                <!-- Calendar Body -->
+                <div class="calendar-body">
             <?php
             $firstDay = mktime(0, 0, 0, $current_month, 1, $current_year);
             $daysInMonth = date('t', $firstDay);
@@ -96,17 +98,21 @@ $content = ob_start();
                 echo '</div>';
             }
             ?>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- Task Details Sidebar -->
-    <div class="task-sidebar" id="taskSidebar" style="display: none;">
-        <div class="sidebar-header">
-            <h3 id="sidebarDate">Select a date</h3>
-            <button class="sidebar-close" onclick="closeSidebar()">&times;</button>
-        </div>
-        <div class="sidebar-content" id="sidebarContent">
-            <!-- Task details will be loaded here -->
+        <!-- Task Details Sidebar -->
+        <div class="calendar-sidebar">
+            <div class="task-sidebar" id="taskSidebar" style="display: none;">
+                <div class="sidebar-header">
+                    <h3 id="sidebarDate">Select a date</h3>
+                    <button class="sidebar-close" onclick="closeSidebar()">&times;</button>
+                </div>
+                <div class="sidebar-content" id="sidebarContent">
+                    <!-- Task details will be loaded here -->
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -248,11 +254,32 @@ function formatDate(dateString) {
 </script>
 
 <style>
-.calendar-container {
-    display: grid;
-    grid-template-columns: 1fr 300px;
-    gap: 1.5rem;
+.calendar-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
     margin-top: 1rem;
+}
+
+.calendar-container {
+    display: flex;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.calendar-main {
+    flex: 1;
+    min-width: 0;
+    max-width: calc(100% - 320px);
+    overflow: hidden;
+}
+
+.calendar-sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    max-width: 300px;
 }
 
 .calendar-nav {
@@ -274,6 +301,9 @@ function formatDate(dateString) {
     border-radius: var(--border-radius);
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .calendar-header {
@@ -281,13 +311,16 @@ function formatDate(dateString) {
     grid-template-columns: repeat(7, 1fr);
     background: var(--primary);
     color: white;
+    width: 100%;
 }
 
 .day-header {
-    padding: 1rem;
+    padding: 0.75rem 0.5rem;
     text-align: center;
     font-weight: 600;
     font-size: 0.9rem;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .calendar-body {
@@ -295,6 +328,8 @@ function formatDate(dateString) {
     grid-template-columns: repeat(7, 1fr);
     gap: 1px;
     background: var(--border-color);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .calendar-day {
@@ -304,6 +339,11 @@ function formatDate(dateString) {
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
+    box-sizing: border-box;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .calendar-day:hover {
@@ -328,12 +368,16 @@ function formatDate(dateString) {
     font-weight: 600;
     margin-bottom: 0.5rem;
     color: var(--text-primary);
+    flex-shrink: 0;
+    font-size: 0.9rem;
 }
 
 .day-tasks {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    flex: 1;
+    overflow: hidden;
 }
 
 .task-item {
@@ -511,9 +555,19 @@ function formatDate(dateString) {
     background: var(--info-light);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
     .calendar-container {
-        grid-template-columns: 1fr;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .calendar-main {
+        max-width: 100%;
+    }
+    
+    .calendar-sidebar {
+        width: 100%;
+        max-width: 100%;
     }
     
     .task-sidebar {
@@ -525,14 +579,27 @@ function formatDate(dateString) {
         z-index: 1000;
         max-height: none;
     }
-    
+}
+
+@media (max-width: 768px) {
     .calendar-day {
         min-height: 80px;
+        padding: 0.25rem;
     }
     
     .day-header {
-        padding: 0.5rem;
+        padding: 0.5rem 0.25rem;
         font-size: 0.8rem;
+    }
+    
+    .day-number {
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .task-item {
+        font-size: 0.7rem;
+        padding: 1px 2px;
     }
 }
 </style>

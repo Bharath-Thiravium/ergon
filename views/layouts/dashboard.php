@@ -360,9 +360,9 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         margin-left: 0 !important;
         margin-right: 0 !important;
         margin-top: 110px !important;
-        padding: 24px 24px 48px 24px !important;
+        padding: 24px 24px 80px 24px !important;
         background: #f8fafc !important;
-        height: calc(100vh - 110px) !important;
+        min-height: calc(100vh - 110px) !important;
         width: 100vw !important;
         max-width: 100vw !important;
         box-sizing: border-box !important;
@@ -380,7 +380,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     html, body {
         width: 100% !important;
         max-width: 100% !important;
-        overflow: hidden !important;
+        overflow-x: hidden !important;
         height: 100vh !important;
     }
     

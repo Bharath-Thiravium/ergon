@@ -1,7 +1,8 @@
--- Minimal Unified Workflow Migration
--- Only essential changes for unified workflow
+-- Consolidated Migration for ERGON Employee Tracker
+-- Works with both localhost and Hostinger environments
+-- Ensures task categories are properly set based on department
 
--- Add required columns to tasks table (skip if already exist)
+-- Add required columns to tasks table if they don't exist
 SET @sql = (SELECT IF(
     (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name='tasks' AND column_name='assigned_for' AND table_schema=DATABASE()) = 0,
     'ALTER TABLE tasks ADD COLUMN assigned_for ENUM("self","other") DEFAULT "self"',
@@ -44,7 +45,7 @@ SET @sql = (SELECT IF(
 ));
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
--- Create daily_planner table
+-- Create daily_planner table if it doesn't exist
 CREATE TABLE IF NOT EXISTS daily_planner (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -58,10 +59,12 @@ CREATE TABLE IF NOT EXISTS daily_planner (
     status VARCHAR(50) DEFAULT 'planned',
     priority_order INT DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_user_date (user_id, date),
+    KEY idx_status (completion_status)
 );
 
--- Create evening_updates table
+-- Create evening_updates table if it doesn't exist
 CREATE TABLE IF NOT EXISTS evening_updates (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -72,10 +75,11 @@ CREATE TABLE IF NOT EXISTS evening_updates (
     overall_productivity INT DEFAULT 0,
     planner_date DATE DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_user_date (user_id, planner_date)
 );
 
--- Create task_categories table for department-based categories
+-- Create task_categories table if it doesn't exist
 CREATE TABLE IF NOT EXISTS task_categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     department_name VARCHAR(100) NOT NULL,
@@ -83,7 +87,8 @@ CREATE TABLE IF NOT EXISTS task_categories (
     description TEXT DEFAULT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_dept_category (department_name, category_name)
+    UNIQUE KEY unique_dept_category (department_name, category_name),
+    KEY idx_department (department_name)
 );
 
 -- Insert default categories for common departments
@@ -105,25 +110,38 @@ INSERT IGNORE INTO task_categories (department_name, category_name, description)
 ('Operations', 'Logistics', 'Supply chain and logistics'),
 ('Sales', 'Lead Generation', 'Lead generation activities'),
 ('Sales', 'Client Follow-up', 'Client follow-up and relationship management'),
-('Sales', 'Proposal', 'Proposal and contract management');
+('Sales', 'Proposal', 'Proposal and contract management'),
+('IT', 'Development', 'Software development and coding tasks'),
+('IT', 'Testing', 'Quality assurance and testing activities'),
+('IT', 'Bug Fixing', 'Error resolution and debugging'),
+('Accounting', 'Ledger Update', 'General ledger maintenance and updates'),
+('Accounting', 'Invoice Creation', 'Customer invoice generation'),
+('Accounting', 'Payment Follow-up', 'Outstanding payment collection');
 
--- Update existing data
+-- Update existing data with safe defaults
 UPDATE tasks SET assigned_for = 'self' WHERE assigned_for IS NULL;
 UPDATE tasks SET followup_required = FALSE WHERE followup_required IS NULL;
 UPDATE tasks SET progress = 0 WHERE progress IS NULL;
 UPDATE tasks SET sla_hours = 24 WHERE sla_hours IS NULL OR sla_hours = 0;
 
--- Update task_category based on department
+-- Update task_category based on department (with collation handling)
 UPDATE tasks t 
-JOIN users u ON t.assigned_to = u.id 
-JOIN departments d ON u.department_id = d.id 
+LEFT JOIN users u ON t.assigned_to = u.id 
+LEFT JOIN departments d ON u.department_id = d.id 
 SET t.task_category = (
     SELECT tc.category_name 
     FROM task_categories tc 
-    WHERE CONVERT(tc.department_name USING utf8mb4) COLLATE utf8mb4_0900_ai_ci = CONVERT(d.name USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+    WHERE tc.department_name = d.name 
+       OR tc.department_name = CASE 
+           WHEN d.name LIKE '%IT%' OR d.name LIKE '%Information%' THEN 'IT'
+           WHEN d.name LIKE '%Finance%' OR d.name LIKE '%Account%' THEN 'Accounting'
+           WHEN d.name LIKE '%HR%' OR d.name LIKE '%Human%' THEN 'Human Resources'
+           WHEN d.name LIKE '%Marketing%' OR d.name LIKE '%Sales%' THEN 'Marketing'
+           ELSE d.name
+       END
     LIMIT 1
 )
-WHERE t.task_category IS NULL;
+WHERE t.task_category IS NULL AND d.name IS NOT NULL;
 
 -- Set default category for tasks without department mapping
 UPDATE tasks SET task_category = 'General' WHERE task_category IS NULL;
