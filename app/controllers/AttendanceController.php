@@ -41,6 +41,7 @@ class AttendanceController extends Controller {
         } else {
             // Admin/Owner view - show employees or all users based on role
             $employeeAttendance = [];
+            $adminAttendance = null;
             try {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
@@ -151,6 +152,10 @@ class AttendanceController extends Controller {
     }
     
     public function clock() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
         $this->requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -169,12 +174,17 @@ class AttendanceController extends Controller {
                 
                 if ($type === 'in') {
                     // Check if user is on approved leave today
-                    $stmt = $db->prepare("SELECT id FROM leaves WHERE user_id = ? AND status = 'approved' AND CURDATE() BETWEEN start_date AND end_date");
-                    $stmt->execute([$userId]);
-                    
-                    if ($stmt->fetch()) {
-                        echo json_encode(['success' => false, 'error' => 'You are on approved leave today']);
-                        exit;
+                    try {
+                        $stmt = $db->prepare("SELECT id FROM leaves WHERE user_id = ? AND status = 'approved' AND CURDATE() BETWEEN start_date AND end_date");
+                        $stmt->execute([$userId]);
+                        
+                        if ($stmt->fetch()) {
+                            echo json_encode(['success' => false, 'error' => 'You are on approved leave today']);
+                            exit;
+                        }
+                    } catch (Exception $e) {
+                        // If leaves table doesn't exist, skip leave check
+                        error_log('Leave check error (table may not exist): ' . $e->getMessage());
                     }
                     
                     // Check if already clocked in today
@@ -187,10 +197,28 @@ class AttendanceController extends Controller {
                     }
                     
                     // Clock in
-                    $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, latitude, longitude, location_name, status, created_at) VALUES (?, NOW(), ?, ?, 'Office', 'present', NOW())");
-                    $result = $stmt->execute([$userId, $latitude, $longitude]);
+                    $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, created_at) VALUES (?, NOW(), NOW())");
+                    $result = $stmt->execute([$userId]);
                     
                     if ($result) {
+                        // Check if late arrival (after 9:30 AM) and notify owners
+                        $currentTime = date('H:i:s');
+                        if ($currentTime > '09:30:00') {
+                            require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                            $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                            $stmt->execute([$userId]);
+                            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                            
+                            if ($user) {
+                                NotificationHelper::notifyOwners(
+                                    $userId,
+                                    'attendance',
+                                    'late_arrival',
+                                    "{$user['name']} arrived late at " . date('H:i'),
+                                    $db->lastInsertId()
+                                );
+                            }
+                        }
                         echo json_encode(['success' => true, 'message' => 'Clocked in successfully']);
                     } else {
                         echo json_encode(['success' => false, 'error' => 'Failed to clock in']);
@@ -224,8 +252,9 @@ class AttendanceController extends Controller {
                 
             } catch (Exception $e) {
                 error_log('Attendance clock error: ' . $e->getMessage());
+                error_log('Stack trace: ' . $e->getTraceAsString());
                 header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'error' => 'Server error occurred']);
+                echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
                 exit;
             }
         }
@@ -243,9 +272,15 @@ class AttendanceController extends Controller {
             $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Check if user is on approved leave today
-            $stmt = $db->prepare("SELECT id FROM leaves WHERE user_id = ? AND status = 'approved' AND CURDATE() BETWEEN start_date AND end_date");
-            $stmt->execute([$_SESSION['user_id']]);
-            $onLeave = $stmt->fetch() ? true : false;
+            try {
+                $stmt = $db->prepare("SELECT id FROM leaves WHERE user_id = ? AND status = 'approved' AND CURDATE() BETWEEN start_date AND end_date");
+                $stmt->execute([$_SESSION['user_id']]);
+                $onLeave = $stmt->fetch() ? true : false;
+            } catch (Exception $e) {
+                // If leaves table doesn't exist, assume not on leave
+                error_log('Leave check error (table may not exist): ' . $e->getMessage());
+                $onLeave = false;
+            }
         } catch (Exception $e) {
             error_log('Today attendance fetch error: ' . $e->getMessage());
         }
@@ -329,8 +364,24 @@ class AttendanceController extends Controller {
     }
     
     private function ensureAttendanceTable($db) {
-        // Enhanced tables are created via schema
-        return true;
+        try {
+            $db->exec("CREATE TABLE IF NOT EXISTS attendance (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                check_in DATETIME NOT NULL,
+                check_out DATETIME NULL,
+                latitude DECIMAL(10, 8) NULL,
+                longitude DECIMAL(11, 8) NULL,
+                location_name VARCHAR(255) DEFAULT 'Office',
+                status VARCHAR(20) DEFAULT 'present',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id),
+                INDEX idx_check_in_date (check_in)
+            )");
+        } catch (Exception $e) {
+            error_log('ensureAttendanceTable error: ' . $e->getMessage());
+        }
     }
     
     private function getDateCondition($filter) {
@@ -362,8 +413,8 @@ class AttendanceController extends Controller {
             }
         }
         
-        $totalHours = floor($totalMinutes / 60);
-        $remainingMinutes = $totalMinutes % 60;
+        $totalHours = (int)floor($totalMinutes / 60);
+        $remainingMinutes = (int)((int)$totalMinutes % 60);
         
         return [
             'total_hours' => $totalHours,

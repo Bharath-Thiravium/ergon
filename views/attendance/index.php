@@ -48,7 +48,7 @@ ob_start();
             <div class="kpi-card__icon">🕰️</div>
             <div class="kpi-card__trend">Total</div>
         </div>
-        <div class="kpi-card__value"><?= ($stats['total_hours'] ?? 0) ?>h <?= round($stats['total_minutes'] ?? 0) ?>m</div>
+        <div class="kpi-card__value"><?= ($stats['total_hours'] ?? 0) ?>h <?= (int)round($stats['total_minutes'] ?? 0) ?>m</div>
         <div class="kpi-card__label">Working Hours</div>
         <div class="kpi-card__status">Logged</div>
     </div>
@@ -92,10 +92,10 @@ ob_start();
                                 <?php if ($record['check_out']): ?>
                                     <?php 
                                     $totalMins = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 60;
-                                    $hrs = floor($totalMins / 60);
-                                    $mins = $totalMins % 60;
+                                    $hrs = (int)floor($totalMins / 60);
+                                    $mins = (int)round((int)$totalMins % 60);
                                     ?>
-                                    <?= $hrs ?>h <?= round($mins) ?>m
+                                    <?= $hrs ?>h <?= $mins ?>m
                                 <?php else: ?>
                                     -
                                 <?php endif; ?>

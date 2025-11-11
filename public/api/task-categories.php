@@ -27,9 +27,14 @@ try {
     }
     
     // Get task categories for this department
-    $stmt = $db->prepare("SELECT DISTINCT category_name, description FROM task_categories WHERE department_name = ? AND is_active = 1 ORDER BY category_name");
-    $stmt->execute([$department['name']]);
+    $deptName = html_entity_decode($department['name'], ENT_QUOTES, 'UTF-8');
+    $stmt = $db->prepare("SELECT category_name, description FROM task_categories WHERE department_name = ? AND is_active = 1 ORDER BY category_name");
+    $stmt->execute([$deptName]);
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Debug: log the query and results
+    error_log("Department: " . $department['name']);
+    error_log("Categories found: " . count($categories));
     
     echo json_encode(['categories' => $categories]);
     

@@ -141,6 +141,9 @@ ob_start();
                             <th>Company</th>
                             <th>Contact</th>
                             <th>Project</th>
+                            <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
+                                <th>Assigned To</th>
+                            <?php endif; ?>
                             <th>Due Date</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -175,6 +178,9 @@ ob_start();
                                     <?php endif; ?>
                                 </td>
                                 <td><?= htmlspecialchars($followup['project_name'] ?? '-') ?></td>
+                                <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
+                                    <td><?= htmlspecialchars($followup['assigned_user'] ?? 'User ID: ' . $followup['user_id']) ?></td>
+                                <?php endif; ?>
                                 <td>
                                     <?= date('M d, Y', strtotime($followup['follow_up_date'])) ?>
                                     <?php if (strtotime($followup['follow_up_date']) < time() && $followup['status'] !== 'completed'): ?>
@@ -206,20 +212,28 @@ ob_start();
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <button class="btn btn--sm btn--primary" onclick="viewFollowup(<?= $followup['id'] ?>)">
+                                        <button class="btn btn--sm btn--primary" onclick="viewFollowup(<?= $followup['id'] ?>)" title="View Details">
                                             <span>👁️</span>
                                         </button>
                                         <?php if ($followup['status'] !== 'completed'): ?>
-                                            <button class="btn btn--sm btn--success" onclick="completeFollowup(<?= $followup['id'] ?>)">
+                                            <button class="btn btn--sm btn--success" onclick="completeFollowup(<?= $followup['id'] ?>)" title="Mark Complete">
                                                 <span>✅</span>
                                             </button>
-                                            <button class="btn btn--sm btn--warning" onclick="rescheduleFollowup(<?= $followup['id'] ?>)">
+                                            <button class="btn btn--sm btn--warning" onclick="rescheduleFollowup(<?= $followup['id'] ?>)" title="Reschedule">
                                                 <span>📅</span>
                                             </button>
                                         <?php endif; ?>
-                                        <button class="btn btn--sm btn--info" onclick="showHistory(<?= $followup['id'] ?>)">
+                                        <button class="btn btn--sm btn--info" onclick="showHistory(<?= $followup['id'] ?>)" title="View History">
                                             <span>📋</span>
                                         </button>
+                                        <?php 
+                                        $canDelete = ($followup['user_id'] == $_SESSION['user_id']) || in_array($_SESSION['role'] ?? '', ['admin', 'owner']);
+                                        if ($canDelete): 
+                                        ?>
+                                            <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')" title="Delete">
+                                                <span>🗑️</span>
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
@@ -287,6 +301,12 @@ ob_start();
                                 <button class="btn btn--sm btn--warning" onclick="rescheduleFollowup(<?= $followup['id'] ?>)">Reschedule</button>
                             <?php endif; ?>
                             <button class="btn btn--sm btn--info" onclick="showHistory(<?= $followup['id'] ?>)">History</button>
+                            <?php 
+                            $canDelete = ($followup['user_id'] == $_SESSION['user_id']) || in_array($_SESSION['role'] ?? '', ['admin', 'owner']);
+                            if ($canDelete): 
+                            ?>
+                                <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')">Delete</button>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -641,6 +661,30 @@ function closeHistoryModal() {
     document.getElementById('historyModal').style.display = 'none';
 }
 
+function deleteFollowup(id, title) {
+    if (confirm(`Delete follow-up "${title}"?\n\nThis action cannot be undone.`)) {
+        fetch(`/ergon/followups/delete/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (data.message || 'Failed to delete follow-up'));
+            }
+        })
+        .catch(error => {
+            console.error('Delete error:', error);
+            alert('An error occurred while deleting the follow-up.');
+        });
+    }
+}
+
 function applyFilters() {
     const company = document.getElementById('companyFilter').value;
     const project = document.getElementById('projectFilter').value;
@@ -683,7 +727,10 @@ function clearFilters() {
 // Check for reminders
 function checkReminders() {
     fetch('/ergon/check_reminders.php')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) return { reminders: [] };
+            return response.json();
+        })
         .then(data => {
             if (data.reminders && data.reminders.length > 0) {
                 showReminderPopup(data.reminders);

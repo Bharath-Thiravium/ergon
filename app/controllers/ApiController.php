@@ -232,9 +232,10 @@ class ApiController extends Controller {
                 return;
             }
             
-            // Get task categories for this department
-            $stmt = $db->prepare("SELECT DISTINCT category_name, description FROM task_categories WHERE department_name = ? AND is_active = 1 ORDER BY category_name");
-            $stmt->execute([$department['name']]);
+            // Get task categories from database
+            $deptName = html_entity_decode($department['name'], ENT_QUOTES, 'UTF-8');
+            $stmt = $db->prepare("SELECT category_name, description FROM task_categories WHERE department_name = ? AND is_active = 1 ORDER BY category_name");
+            $stmt->execute([$deptName]);
             $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $this->json(['categories' => $categories]);
@@ -242,6 +243,23 @@ class ApiController extends Controller {
         } catch (Exception $e) {
             error_log('Task categories API error: ' . $e->getMessage());
             $this->json(['error' => 'Failed to fetch categories'], 500);
+        }
+    }
+    
+    public function followupDetails() {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Get recent follow-ups for suggestions
+            $stmt = $db->query("SELECT DISTINCT company_name, contact_person, project_name, contact_phone FROM tasks WHERE followup_required = 1 AND company_name IS NOT NULL AND company_name != '' ORDER BY created_at DESC LIMIT 50");
+            $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->json(['followups' => $followups]);
+            
+        } catch (Exception $e) {
+            error_log('Followup details API error: ' . $e->getMessage());
+            $this->json(['followups' => []]);
         }
     }
     

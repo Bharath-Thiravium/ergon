@@ -134,21 +134,95 @@ class SystemAdminController extends Controller {
         }
     }
     
-    public function deactivate() {
+    public function toggleStatus() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $adminId = $_POST['admin_id'] ?? '';
+            $status = $_POST['status'] ?? '';
+            
+            if (empty($adminId) || !in_array($status, ['active', 'inactive'])) {
+                header('Location: /ergon/system-admin?error=Invalid request');
+                exit;
+            }
+            
+            try {
+                $db = Database::connect();
+                $stmt = $db->prepare("UPDATE users SET status = ? WHERE id = ? AND role = 'admin'");
+                $stmt->execute([$status, $adminId]);
+                
+                $action = $status === 'active' ? 'activated' : 'deactivated';
+                header("Location: /ergon/system-admin?success=Admin {$action} successfully");
+                exit;
+            } catch (Exception $e) {
+                header('Location: /ergon/system-admin?error=Failed to update status');
+                exit;
+            }
+        }
+    }
+    
+    public function changePassword() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $adminId = $_POST['admin_id'] ?? '';
+            $password = $_POST['password'] ?? '';
+            $confirmPassword = $_POST['confirm_password'] ?? '';
+            
+            if (empty($adminId) || empty($password) || empty($confirmPassword)) {
+                header('Location: /ergon/system-admin?error=All fields are required');
+                exit;
+            }
+            
+            if ($password !== $confirmPassword) {
+                header('Location: /ergon/system-admin?error=Passwords do not match');
+                exit;
+            }
+            
+            if (strlen($password) < 6) {
+                header('Location: /ergon/system-admin?error=Password must be at least 6 characters');
+                exit;
+            }
+            
+            try {
+                $db = Database::connect();
+                $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+                $stmt = $db->prepare("UPDATE users SET password = ? WHERE id = ? AND role = 'admin'");
+                $result = $stmt->execute([$hashedPassword, $adminId]);
+                
+                if ($result && $stmt->rowCount() > 0) {
+                    header('Location: /ergon/system-admin?success=Password changed successfully');
+                } else {
+                    header('Location: /ergon/system-admin?error=Admin not found or no changes made');
+                }
+                exit;
+            } catch (Exception $e) {
+                header('Location: /ergon/system-admin?error=Failed to change password: ' . $e->getMessage());
+                exit;
+            }
+        }
+    }
+    
+    public function delete() {
         $this->requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $adminId = $_POST['admin_id'] ?? '';
             
+            if (empty($adminId)) {
+                header('Location: /ergon/system-admin?error=Invalid admin ID');
+                exit;
+            }
+            
             try {
                 $db = Database::connect();
-                $stmt = $db->prepare("UPDATE users SET status = 'inactive' WHERE id = ? AND role = 'admin'");
+                $stmt = $db->prepare("DELETE FROM users WHERE id = ? AND role = 'admin'");
                 $stmt->execute([$adminId]);
                 
-                header('Location: /ergon/system-admin');
+                header('Location: /ergon/system-admin?success=Admin deleted successfully');
                 exit;
             } catch (Exception $e) {
-                header('Location: /ergon/system-admin?error=' . urlencode($e->getMessage()));
+                header('Location: /ergon/system-admin?error=Failed to delete admin');
                 exit;
             }
         }

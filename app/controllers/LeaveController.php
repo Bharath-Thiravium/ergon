@@ -21,27 +21,69 @@ class LeaveController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Ensure rejection_reason column exists
-            $stmt = $db->query("SHOW COLUMNS FROM leaves LIKE 'rejection_reason'");
-            if ($stmt->rowCount() == 0) {
-                $db->exec("ALTER TABLE leaves ADD COLUMN rejection_reason TEXT NULL");
-            }
+            // Ensure leaves table exists
+            $this->ensureLeavesTable($db);
+            
+            // Get filter parameters
+            $filterEmployee = $_GET['employee'] ?? '';
+            $filterLeaveType = $_GET['leave_type'] ?? '';
+            $filterStatus = $_GET['status'] ?? '';
+            
+            // Build WHERE clause for filters
+            $whereConditions = [];
+            $params = [];
             
             if ($role === 'user') {
-                $stmt = $db->prepare("SELECT l.*, u.name as user_name, u.role as user_role FROM leaves l JOIN users u ON l.user_id = u.id WHERE l.user_id = ? ORDER BY l.created_at DESC");
-                $stmt->execute([$user_id]);
+                $whereConditions[] = "l.user_id = ?";
+                $params[] = $user_id;
             } elseif ($role === 'admin') {
-                $stmt = $db->prepare("SELECT l.*, u.name as user_name, u.role as user_role FROM leaves l JOIN users u ON l.user_id = u.id WHERE (u.role = 'user' OR l.user_id = ?) ORDER BY l.created_at DESC");
-                $stmt->execute([$user_id]);
-            } else {
-                $stmt = $db->query("SELECT l.*, u.name as user_name, u.role as user_role FROM leaves l JOIN users u ON l.user_id = u.id ORDER BY l.created_at DESC");
+                $whereConditions[] = "(u.role = 'user' OR l.user_id = ?)";
+                $params[] = $user_id;
             }
+            
+            if ($filterEmployee) {
+                $whereConditions[] = "l.user_id = ?";
+                $params[] = $filterEmployee;
+            }
+            
+            if ($filterLeaveType) {
+                $whereConditions[] = "l.leave_type = ?";
+                $params[] = $filterLeaveType;
+            }
+            
+            if ($filterStatus) {
+                $whereConditions[] = "l.status = ?";
+                $params[] = $filterStatus;
+            }
+            
+            $whereClause = $whereConditions ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+            
+            $sql = "SELECT l.*, u.name as user_name, u.role as user_role FROM leaves l JOIN users u ON l.user_id = u.id {$whereClause} ORDER BY l.created_at DESC";
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
             $leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Get all employees for filter dropdown
+            $employeesStmt = $db->query("SELECT id, name FROM users ORDER BY name");
+            $employees = $employeesStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Map leave_type to type for display consistency
+            foreach ($leaves as &$leave) {
+                if (isset($leave['leave_type'])) {
+                    $leave['type'] = $leave['leave_type'];
+                }
+            }
             
             $data = [
                 'leaves' => $leaves ?? [],
+                'employees' => $employees ?? [],
                 'user_role' => $role,
-                'active_page' => 'leaves'
+                'active_page' => 'leaves',
+                'filters' => [
+                    'employee' => $filterEmployee,
+                    'leave_type' => $filterLeaveType,
+                    'status' => $filterStatus
+                ]
             ];
             
             $this->view('leaves/index', $data);
@@ -97,14 +139,51 @@ class LeaveController extends Controller {
             $end = new DateTime($endDate);
             $days = $end->diff($start)->days + 1;
             
-            if ($this->leave->create($data)) {
-                echo json_encode(['success' => true, 'message' => 'Leave request submitted successfully', 'days' => $days]);
-            } else {
-                echo json_encode(['success' => false, 'error' => 'Failed to create leave request']);
+            // Try direct database insertion
+            try {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
+                $stmt = $db->prepare("INSERT INTO leaves (user_id, leave_type, start_date, end_date, reason, days_requested, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())");
+                $result = $stmt->execute([
+                    $data['user_id'],
+                    $data['type'],
+                    $data['start_date'],
+                    $data['end_date'],
+                    $data['reason'],
+                    $days
+                ]);
+                
+                if ($result) {
+                    $leaveId = $db->lastInsertId();
+                    
+                    // Create notification for owners
+                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                    $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                    $stmt->execute([$userId]);
+                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($user) {
+                        NotificationHelper::notifyOwners(
+                            $userId,
+                            'leave',
+                            'request',
+                            "{$user['name']} has requested leave from {$startDate} to {$endDate}",
+                            $leaveId
+                        );
+                    }
+                    
+                    echo json_encode(['success' => true, 'message' => 'Leave request submitted successfully', 'days' => $days]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Failed to create leave request']);
+                }
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
             }
             return;
         }
         
+        $data = ['active_page' => 'leaves'];
         $data = ['active_page' => 'leaves'];
         $this->view('leaves/create', $data);
     }
@@ -126,15 +205,9 @@ class LeaveController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Check if user can edit this leave
-            if ($_SESSION['role'] === 'user') {
-                $stmt = $db->prepare("SELECT * FROM leaves WHERE id = ? AND user_id = ? AND status = 'pending'");
-                $stmt->execute([$id, $_SESSION['user_id']]);
-            } else {
-                $stmt = $db->prepare("SELECT * FROM leaves WHERE id = ?");
-                $stmt->execute([$id]);
-            }
-            
+            // Use leaves table with leave_type column (based on model)
+            $stmt = $db->prepare("SELECT * FROM leaves WHERE id = ?");
+            $stmt->execute([$id]);
             $leave = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$leave) {
@@ -142,20 +215,41 @@ class LeaveController extends Controller {
                 exit;
             }
             
+            // Check permissions
+            if ($_SESSION['role'] === 'user' && $leave['user_id'] != $_SESSION['user_id']) {
+                header('Location: /ergon/leaves?error=access_denied');
+                exit;
+            }
+            
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                $stmt = $db->prepare("UPDATE leaves SET type = ?, start_date = ?, end_date = ?, reason = ? WHERE id = ?");
-                $result = $stmt->execute([
-                    $_POST['type'] ?? $leave['type'],
-                    $_POST['start_date'] ?? $leave['start_date'],
-                    $_POST['end_date'] ?? $leave['end_date'],
-                    $_POST['reason'] ?? $leave['reason'],
-                    $id
-                ]);
+                $type = trim($_POST['type'] ?? '');
+                $startDate = $_POST['start_date'] ?? '';
+                $endDate = $_POST['end_date'] ?? '';
+                $reason = trim($_POST['reason'] ?? '');
+                
+                if (empty($type) || empty($startDate) || empty($endDate) || empty($reason)) {
+                    header('Location: /ergon/leaves/edit/' . $id . '?error=All fields are required');
+                    exit;
+                }
+                
+                if (strtotime($endDate) < strtotime($startDate)) {
+                    header('Location: /ergon/leaves/edit/' . $id . '?error=End date must be after start date');
+                    exit;
+                }
+                
+                // Calculate days
+                $start = new DateTime($startDate);
+                $end = new DateTime($endDate);
+                $days = $end->diff($start)->days + 1;
+                
+                // Update using leave_type column with days calculation
+                $stmt = $db->prepare("UPDATE leaves SET leave_type = ?, start_date = ?, end_date = ?, reason = ?, days_requested = ? WHERE id = ?");
+                $result = $stmt->execute([$type, $startDate, $endDate, $reason, $days, $id]);
                 
                 if ($result) {
-                    header('Location: /ergon/leaves?success=updated');
+                    header('Location: /ergon/leaves?success=Leave request updated successfully');
                 } else {
-                    header('Location: /ergon/leaves/edit/' . $id . '?error=1');
+                    header('Location: /ergon/leaves/edit/' . $id . '?error=Update failed');
                 }
                 exit;
             }
@@ -163,7 +257,7 @@ class LeaveController extends Controller {
             $this->view('leaves/edit', ['leave' => $leave, 'active_page' => 'leaves']);
         } catch (Exception $e) {
             error_log('Leave edit error: ' . $e->getMessage());
-            header('Location: /ergon/leaves?error=1');
+            header('Location: /ergon/leaves?error=database_error');
             exit;
         }
     }
@@ -198,14 +292,9 @@ class LeaveController extends Controller {
     }
     
     public function delete($id) {
+        header('Content-Type: application/json');
         AuthMiddleware::requireAuth();
         
-        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
-            echo json_encode(['success' => false, 'message' => 'Access denied']);
-            exit;
-        }
-        
-        $id = Security::validateInt($id);
         if (!$id) {
             echo json_encode(['success' => false, 'message' => 'Invalid ID']);
             exit;
@@ -213,10 +302,9 @@ class LeaveController extends Controller {
         
         try {
             $result = $this->leave->delete($id);
-            echo json_encode(['success' => $result]);
+            echo json_encode(['success' => $result, 'message' => $result ? 'Leave deleted successfully' : 'Delete failed']);
         } catch (Exception $e) {
-            error_log('Leave delete error: ' . $e->getMessage());
-            echo json_encode(['success' => false, 'message' => 'Delete failed']);
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
         exit;
     }
@@ -279,7 +367,7 @@ class LeaveController extends Controller {
             
             if (!$stmt->fetch()) {
                 // Create new attendance record for leave
-                $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status, location_name, created_at) VALUES (?, ?, NULL, 'absent', 'On Approved Leave', NOW())");
+                $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status, created_at) VALUES (?, ?, NULL, 'absent', NOW())");
                 $stmt->execute([$userId, $currentDate . ' 00:00:00']);
             }
             
@@ -335,7 +423,7 @@ class LeaveController extends Controller {
     }
     
     private function removeLeaveAttendanceRecords($db, $userId, $startDate, $endDate) {
-        $stmt = $db->prepare("DELETE FROM attendance WHERE user_id = ? AND location_name = 'On Approved Leave' AND DATE(check_in) BETWEEN ? AND ?");
+        $stmt = $db->prepare("DELETE FROM attendance WHERE user_id = ? AND status = 'absent' AND DATE(check_in) BETWEEN ? AND ?");
         $stmt->execute([$userId, $startDate, $endDate]);
     }
     
@@ -367,6 +455,30 @@ class LeaveController extends Controller {
             } catch (Exception $e) {
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
+        }
+    }
+    
+    private function ensureLeavesTable($db) {
+        try {
+            $db->exec("CREATE TABLE IF NOT EXISTS leaves (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                leave_type VARCHAR(50) NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                days_requested INT DEFAULT 1,
+                reason TEXT NOT NULL,
+                status VARCHAR(20) DEFAULT 'pending',
+                rejection_reason TEXT NULL,
+                approved_by INT NULL,
+                approved_at DATETIME NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id),
+                INDEX idx_status (status)
+            )");
+        } catch (Exception $e) {
+            error_log('ensureLeavesTable error: ' . $e->getMessage());
         }
     }
 }

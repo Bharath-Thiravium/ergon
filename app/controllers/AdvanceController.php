@@ -7,26 +7,13 @@ class AdvanceController extends Controller {
         $this->requireAuth();
         
         try {
-<<<<<<< HEAD
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            
-            $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a LEFT JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC");
-            $stmt->execute();
-            $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $this->view('advances/index', ['advances' => $advances]);
-        } catch (Exception $e) {
-            error_log('Advances index error: ' . $e->getMessage());
-            $this->view('advances/index', ['advances' => [], 'error' => 'Failed to load advances']);
-=======
             $user_id = $_SESSION['user_id'];
-            $role = $_SESSION['role'];
+            $role = $_SESSION['role'] ?? 'user';
             
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Ensure table exists with rejection_reason column
+            // Ensure table exists
             $db->exec("CREATE TABLE IF NOT EXISTS advances (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
@@ -34,103 +21,32 @@ class AdvanceController extends Controller {
                 amount DECIMAL(10,2) NOT NULL,
                 reason TEXT NOT NULL,
                 requested_date DATE NULL,
+                repayment_months INT DEFAULT 1,
                 status VARCHAR(20) DEFAULT 'pending',
                 approved_by INT NULL,
                 approved_at DATETIME NULL,
                 rejection_reason TEXT NULL,
-                admin_remarks TEXT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )");
             
-            // Add rejection_reason column if it doesn't exist
-            $stmt = $db->query("SHOW COLUMNS FROM advances LIKE 'rejection_reason'");
-            if ($stmt->rowCount() == 0) {
-                $db->exec("ALTER TABLE advances ADD COLUMN rejection_reason TEXT NULL AFTER approved_at");
-            }
-            
             if ($role === 'user') {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a JOIN users u ON a.user_id = u.id WHERE a.user_id = ? ORDER BY a.created_at DESC");
-                $stmt->execute([$user_id]);
-            } elseif ($role === 'admin') {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a JOIN users u ON a.user_id = u.id WHERE (u.role = 'user' OR a.user_id = ?) ORDER BY a.created_at DESC");
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id WHERE a.user_id = ? ORDER BY a.created_at DESC");
                 $stmt->execute([$user_id]);
             } else {
-                $stmt = $db->query("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC");
+                $stmt = $db->query("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC");
             }
             $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            $data = [
-                'advances' => $advances ?? [],
-                'user_role' => $role,
-                'active_page' => 'advances'
-            ];
-            
-            $this->view('advances/index', $data);
+            $this->view('advances/index', ['advances' => $advances, 'active_page' => 'advances']);
         } catch (Exception $e) {
             error_log('Advance index error: ' . $e->getMessage());
-            $data = [
-                'advances' => [],
-                'user_role' => $_SESSION['role'],
-                'error' => 'Unable to load advance data.',
-                'active_page' => 'advances'
-            ];
-            $this->view('advances/index', $data);
->>>>>>> 89cb783c6dab3a59e1b818279d6c5de3950c6de5
+            $this->view('advances/index', ['advances' => [], 'error' => 'Unable to load advances', 'active_page' => 'advances']);
         }
     }
     
     public function create() {
         $this->requireAuth();
         $this->view('advances/create');
-    }
-    
-    public function edit($id) {
-        $this->requireAuth();
-        
-        try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            
-            // Add user access control for editing advances
-            if ($_SESSION['role'] === 'user') {
-                $stmt = $db->prepare("SELECT * FROM advances WHERE id = ? AND user_id = ?");
-                $stmt->execute([$id, $_SESSION['user_id']]);
-            } else {
-                $stmt = $db->prepare("SELECT * FROM advances WHERE id = ?");
-                $stmt->execute([$id]);
-            }
-            
-            $advance = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$advance) {
-                header('Location: /ergon/advances?error=not_found');
-                exit;
-            }
-            
-            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                $stmt = $db->prepare("UPDATE advances SET type = ?, amount = ?, reason = ? WHERE id = ?");
-                $result = $stmt->execute([
-                    trim($_POST['type'] ?? ''),
-                    floatval($_POST['amount'] ?? 0),
-                    trim($_POST['reason'] ?? ''),
-                    $id
-                ]);
-                
-                if ($result) {
-                    header('Location: /ergon/advances?success=updated');
-                } else {
-                    header('Location: /ergon/advances/edit/' . $id . '?error=1');
-                }
-                exit;
-            }
-            
-            $this->view('advances/edit', ['advance' => $advance, 'active_page' => 'advances']);
-        } catch (Exception $e) {
-            error_log('Advance edit error: ' . $e->getMessage());
-            header('Location: /ergon/advances?error=1');
-            exit;
-        }
     }
     
     public function store() {
@@ -172,10 +88,6 @@ class AdvanceController extends Controller {
             session_start();
         }
         
-        if (!isset($_SESSION['role'])) {
-            $_SESSION['role'] = 'admin';
-        }
-        
         if (!$id) {
             header('Location: /ergon/advances?error=Invalid advance ID');
             exit;
@@ -202,10 +114,6 @@ class AdvanceController extends Controller {
     public function reject($id = null) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
-        }
-        
-        if (!isset($_SESSION['role'])) {
-            $_SESSION['role'] = 'admin';
         }
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['rejection_reason'])) {
@@ -244,7 +152,6 @@ class AdvanceController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Add user access control for viewing advances
             if ($_SESSION['role'] === 'user') {
                 $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a LEFT JOIN users u ON a.user_id = u.id WHERE a.id = ? AND a.user_id = ?");
                 $stmt->execute([$id, $_SESSION['user_id']]);
