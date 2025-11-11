@@ -1,9 +1,18 @@
 <?php
 
+require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../config/database.php';
+
 class ProjectManagementController extends Controller {
     
     public function index() {
-        $this->requireAuth(['admin', 'owner']);
+        $this->requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            http_response_code(403);
+            echo "Access denied";
+            exit;
+        }
         
         $title = 'Project Management';
         $active_page = 'project-management';
@@ -11,13 +20,24 @@ class ProjectManagementController extends Controller {
         try {
             $db = Database::connect();
             
+            // Ensure projects table exists
+            $db->exec("CREATE TABLE IF NOT EXISTS projects (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                department_id INT,
+                status VARCHAR(50) DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            
             // Get all projects with department info
             $stmt = $db->prepare("SELECT p.*, d.name as department_name FROM projects p LEFT JOIN departments d ON p.department_id = d.id ORDER BY p.created_at DESC");
             $stmt->execute();
             $projects = $stmt->fetchAll();
             
             // Get departments
-            $stmt = $db->prepare("SELECT * FROM departments WHERE status = 'active' ORDER BY name");
+            $stmt = $db->prepare("SELECT * FROM departments ORDER BY name");
             $stmt->execute();
             $departments = $stmt->fetchAll();
             
@@ -26,18 +46,17 @@ class ProjectManagementController extends Controller {
                 'departments' => $departments
             ];
             
-            ob_start();
             include __DIR__ . '/../../views/admin/project_management.php';
-            $content = ob_get_clean();
-            include __DIR__ . '/../../views/layouts/dashboard.php';
             
         } catch (Exception $e) {
-            $this->handleError($e, 'Failed to load project management');
+            error_log('Project management error: ' . $e->getMessage());
+            http_response_code(500);
+            echo "Error loading project management";
         }
     }
     
     public function create() {
-        $this->requireAuth(['admin', 'owner']);
+        $this->requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             echo json_encode(['success' => false, 'error' => 'Invalid request method']);
@@ -62,7 +81,7 @@ class ProjectManagementController extends Controller {
     }
     
     public function update() {
-        $this->requireAuth(['admin', 'owner']);
+        $this->requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             echo json_encode(['success' => false, 'error' => 'Invalid request method']);
@@ -89,7 +108,7 @@ class ProjectManagementController extends Controller {
     }
     
     public function delete() {
-        $this->requireAuth(['admin', 'owner']);
+        $this->requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             echo json_encode(['success' => false, 'error' => 'Invalid request method']);

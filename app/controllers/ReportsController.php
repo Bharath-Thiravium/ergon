@@ -116,6 +116,59 @@ class ReportsController extends Controller {
         exit;
     }
     
+    public function attendanceExport() {
+        AuthMiddleware::requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            http_response_code(403);
+            echo "Access denied";
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureTablesExist();
+            
+            // Get attendance data for the last 30 days
+            $stmt = $db->query("SELECT a.*, u.name as user_name, u.employee_id FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.check_in >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) ORDER BY a.check_in DESC");
+            $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $csv = "ERGON Attendance Report - " . date('Y-m-d H:i:s') . "\n\n";
+            $csv .= "Employee ID,Employee Name,Check In,Check Out,Hours Worked,Status,Date\n";
+            
+            foreach ($attendance as $record) {
+                $checkIn = $record['check_in'] ? date('H:i', strtotime($record['check_in'])) : 'N/A';
+                $checkOut = $record['check_out'] ? date('H:i', strtotime($record['check_out'])) : 'N/A';
+                $hoursWorked = 0;
+                
+                if ($record['check_in'] && $record['check_out']) {
+                    $start = new DateTime($record['check_in']);
+                    $end = new DateTime($record['check_out']);
+                    $diff = $start->diff($end);
+                    $hoursWorked = $diff->h + ($diff->i / 60);
+                    $hoursWorked = round($hoursWorked, 2);
+                }
+                
+                $csv .= ($record['employee_id'] ?? 'N/A') . "," . 
+                       ($record['user_name'] ?? 'N/A') . "," . 
+                       $checkIn . "," . 
+                       $checkOut . "," . 
+                       $hoursWorked . "," . 
+                       ($record['status'] ?? 'present') . "," . 
+                       date('Y-m-d', strtotime($record['check_in'])) . "\n";
+            }
+            
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment; filename="ergon_attendance_' . date('Y-m-d') . '.csv"');
+            echo $csv;
+        } catch (Exception $e) {
+            error_log('Attendance export error: ' . $e->getMessage());
+            header('Location: /ergon/reports?error=Attendance export failed');
+        }
+        exit;
+    }
+    
     public function approvalsExport() {
         AuthMiddleware::requireAuth();
         

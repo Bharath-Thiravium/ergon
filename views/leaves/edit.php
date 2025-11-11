@@ -16,6 +16,18 @@ ob_start();
     </div>
 </div>
 
+<?php if (isset($_GET['error'])): ?>
+    <div class="alert alert-danger">
+        <?= htmlspecialchars($_GET['error']) ?>
+    </div>
+<?php endif; ?>
+
+<?php if (isset($_GET['success'])): ?>
+    <div class="alert alert-success">
+        <?= htmlspecialchars($_GET['success']) ?>
+    </div>
+<?php endif; ?>
+
 <div class="card">
     <div class="card__header">
         <h2 class="card__title">Leave Request Details</h2>
@@ -26,12 +38,13 @@ ob_start();
                 <div class="form-group">
                     <label class="form-label">Leave Type</label>
                     <select name="type" class="form-control" required>
-                        <option value="sick" <?= $leave['type'] === 'sick' ? 'selected' : '' ?>>Sick Leave</option>
-                        <option value="casual" <?= $leave['type'] === 'casual' ? 'selected' : '' ?>>Casual Leave</option>
-                        <option value="annual" <?= $leave['type'] === 'annual' ? 'selected' : '' ?>>Annual Leave</option>
-                        <option value="emergency" <?= $leave['type'] === 'emergency' ? 'selected' : '' ?>>Emergency Leave</option>
-                        <option value="maternity" <?= $leave['type'] === 'maternity' ? 'selected' : '' ?>>Maternity Leave</option>
-                        <option value="paternity" <?= $leave['type'] === 'paternity' ? 'selected' : '' ?>>Paternity Leave</option>
+                        <?php $currentType = $leave['leave_type'] ?? $leave['type'] ?? ''; ?>
+                        <option value="sick" <?= $currentType === 'sick' ? 'selected' : '' ?>>Sick Leave</option>
+                        <option value="casual" <?= $currentType === 'casual' ? 'selected' : '' ?>>Casual Leave</option>
+                        <option value="annual" <?= $currentType === 'annual' ? 'selected' : '' ?>>Annual Leave</option>
+                        <option value="emergency" <?= $currentType === 'emergency' ? 'selected' : '' ?>>Emergency Leave</option>
+                        <option value="maternity" <?= $currentType === 'maternity' ? 'selected' : '' ?>>Maternity Leave</option>
+                        <option value="paternity" <?= $currentType === 'paternity' ? 'selected' : '' ?>>Paternity Leave</option>
                     </select>
                 </div>
             </div>

@@ -1,3 +1,9 @@
+<?php
+$title = 'Project Management';
+$active_page = 'project-management';
+ob_start();
+?>
+
 <div class="page-header">
     <div class="page-title">
         <h1><span>📁</span> Project Management</h1>
@@ -226,3 +232,8 @@ document.getElementById('projectForm').addEventListener('submit', function(e) {
     });
 });
 </script>
+
+<?php
+$content = ob_get_clean();
+include __DIR__ . '/../layouts/dashboard.php';
+?>
