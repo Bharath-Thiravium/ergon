@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Planner Functionality</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { color: green; }
+        .error { color: red; }
+        button { padding: 10px 15px; margin: 5px; }
+        input, textarea { width: 300px; padding: 5px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Planner Functionality Test</h1>
+    
+    <div class="test-section">
+        <h3>Test 1: Add Task via AJAX</h3>
+        <input type="text" id="taskTitle" placeholder="Task Title" value="Test Task">
+        <textarea id="taskDesc" placeholder="Description">Test task description</textarea>
+        <input type="time" id="startTime" value="09:00">
+        <input type="number" id="duration" value="60" min="15">
+        <button onclick="testAddTask()">Add Task</button>
+        <div id="result1"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 2: Update Task Status</h3>
+        <input type="number" id="plannerId" placeholder="Planner ID" value="1">
+        <select id="status">
+            <option value="planned">Planned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+        </select>
+        <button onclick="testUpdateStatus()">Update Status</button>
+        <div id="result2"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 3: Form Submission</h3>
+        <form id="testForm" action="/ergon/planner/create" method="POST" target="_blank">
+            <input type="hidden" name="date" value="<?= date('Y-m-d') ?>">
+            <input type="text" name="title" placeholder="Task Title" value="Form Test Task" required>
+            <textarea name="description" placeholder="Description">Form test description</textarea>
+            <input type="time" name="planned_start_time" value="10:00">
+            <input type="number" name="planned_duration" value="90">
+            <button type="submit">Submit Form</button>
+        </form>
+    </div>
+    
+    <script>
+        function testAddTask() {
+            const formData = new FormData();
+            formData.append('title', document.getElementById('taskTitle').value);
+            formData.append('description', document.getElementById('taskDesc').value);
+            formData.append('planned_start_time', document.getElementById('startTime').value);
+            formData.append('planned_duration', document.getElementById('duration').value);
+            formData.append('date', new Date().toISOString().split('T')[0]);
+            formData.append('task_type', 'personal');
+            
+            fetch('/ergon/planner/add-task', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const result = document.getElementById('result1');
+                if (data.success) {
+                    result.innerHTML = '<span class="success">✓ Task added successfully! ID: ' + data.id + '</span>';
+                } else {
+                    result.innerHTML = '<span class="error">✗ Error: ' + (data.error || 'Unknown error') + '</span>';
+                }
+            })
+            .catch(error => {
+                document.getElementById('result1').innerHTML = '<span class="error">✗ Network error: ' + error.message + '</span>';
+            });
+        }
+        
+        function testUpdateStatus() {
+            const formData = new FormData();
+            formData.append('planner_id', document.getElementById('plannerId').value);
+            formData.append('status', document.getElementById('status').value);
+            
+            fetch('/ergon/planner/update-status', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const result = document.getElementById('result2');
+                if (data.success) {
+                    result.innerHTML = '<span class="success">✓ Status updated successfully!</span>';
+                } else {
+                    result.innerHTML = '<span class="error">✗ Error: ' + (data.error || 'Unknown error') + '</span>';
+                }
+            })
+            .catch(error => {
+                document.getElementById('result2').innerHTML = '<span class="error">✗ Network error: ' + error.message + '</span>';
+            });
+        }
+    </script>
+</body>
+</html>

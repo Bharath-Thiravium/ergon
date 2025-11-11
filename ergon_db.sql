@@ -837,6 +837,7 @@ CREATE TABLE `leaves` (
   `rejection_reason` text
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+<<<<<<< HEAD
 --
 -- Triggers `leaves`
 --
@@ -867,14 +868,35 @@ CREATE TABLE `login_attempts` (
 
 CREATE TABLE `notifications` (
   `id` int NOT NULL,
+=======
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `sender_id` int DEFAULT NULL,
+  `receiver_id` int DEFAULT NULL,
+>>>>>>> 110bccc6579bdab02d47cc7b49dc59ccf5be890b
   `user_id` int NOT NULL,
   `title` varchar(150) NOT NULL,
   `message` text NOT NULL,
+<<<<<<< HEAD
   `link` varchar(255) DEFAULT NULL,
+=======
+  `module_name` varchar(50) DEFAULT NULL,
+  `action_type` varchar(50) DEFAULT NULL,
+  `action_url` varchar(500) DEFAULT NULL,
+  `priority` enum('low','medium','high') DEFAULT 'medium',
+>>>>>>> 110bccc6579bdab02d47cc7b49dc59ccf5be890b
   `is_read` tinyint(1) DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+<<<<<<< HEAD
   `type` varchar(50) DEFAULT 'info',
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+=======
+  PRIMARY KEY (`id`),
+  KEY `fk_notifications_sender` (`sender_id`),
+  KEY `fk_notifications_receiver` (`receiver_id`),
+  CONSTRAINT `fk_notifications_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_notifications_receiver` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+>>>>>>> 110bccc6579bdab02d47cc7b49dc59ccf5be890b
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --

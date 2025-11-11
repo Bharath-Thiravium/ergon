@@ -100,7 +100,7 @@ ob_start();
                         <p class="admin-card__date">Created: <?= date('M d, Y', strtotime($admin['created_at'])) ?></p>
                     </div>
                     <div class="admin-card__actions">
-                        <button class="btn btn--sm btn--secondary" onclick="changePassword(<?= $admin['id'] ?>)">
+                        <button class="btn btn--sm btn--secondary" onclick="changePassword(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>')">
                             <span>🔑</span> Change Password
                         </button>
                         <button class="btn btn--sm btn--delete" onclick="deleteAdmin(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>')">
@@ -219,36 +219,7 @@ ob_start();
     </div>
 </div>
 
-<!-- Change Password Modal -->
-<div class="modal" id="changePasswordModal" style="z-index: 10001 !important;">
-    <div class="modal-content" style="z-index: 10002 !important;">
-        <div class="modal-header">
-            <h3>Change Admin Password</h3>
-            <button class="modal-close" onclick="closeModal('changePasswordModal')">&times;</button>
-        </div>
-        <form method="POST" action="/ergon/system-admin/change-password" id="changePasswordForm">
-            <input type="hidden" name="admin_id" id="changePasswordId">
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Admin Name</label>
-                    <input type="text" id="changePasswordName" class="form-control" readonly>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">New Password</label>
-                    <input type="password" name="password" class="form-control" required minlength="6">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Confirm Password</label>
-                    <input type="password" name="confirm_password" class="form-control" required minlength="6">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn--secondary" onclick="closeModal('changePasswordModal')">Cancel</button>
-                <button type="submit" class="btn btn--primary">Change Password</button>
-            </div>
-        </form>
-    </div>
-</div>
+
 
 <script>
 function showCreateAdminModal() {
@@ -259,24 +230,40 @@ function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
 }
 
-function changePassword(adminId) {
-    const adminCards = document.querySelectorAll('.admin-card');
-    let adminData = null;
+function changePassword(userId, userName) {
+    const newPassword = prompt(`Enter new password for ${userName}:`);
+    if (!newPassword) return;
     
-    adminCards.forEach(card => {
-        const btn = card.querySelector('button[onclick*="changePassword(' + adminId + ')"]');
-        if (btn) {
-            adminData = {
-                id: adminId,
-                name: card.querySelector('.admin-card__name').textContent
-            };
-        }
-    });
+    if (newPassword.length < 6) {
+        alert('Password must be at least 6 characters long.');
+        return;
+    }
     
-    if (adminData) {
-        document.getElementById('changePasswordId').value = adminData.id;
-        document.getElementById('changePasswordName').value = adminData.name;
-        document.getElementById('changePasswordModal').style.display = 'block';
+    const confirmPassword = prompt('Confirm new password:');
+    if (newPassword !== confirmPassword) {
+        alert('Passwords do not match.');
+        return;
+    }
+    
+    if (confirm(`Are you sure you want to change password for ${userName}?`)) {
+        const formData = new FormData();
+        formData.append('admin_id', userId);
+        formData.append('password', newPassword);
+        formData.append('confirm_password', newPassword);
+        
+        fetch('/ergon/system-admin/change-password', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.text())
+        .then(data => {
+            alert('Password changed successfully!');
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to change password. Please try again.');
+        });
     }
 }
 
@@ -344,32 +331,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // Close modal when clicking outside
 window.addEventListener('click', function(event) {
     const createModal = document.getElementById('createAdminModal');
-    const passwordModal = document.getElementById('changePasswordModal');
     
     if (event.target === createModal) {
         closeModal('createAdminModal');
     }
-    if (event.target === passwordModal) {
-        closeModal('changePasswordModal');
-    }
 });
 
-// Add password confirmation validation
-document.addEventListener('DOMContentLoaded', function() {
-    const passwordForm = document.getElementById('changePasswordForm');
-    if (passwordForm) {
-        passwordForm.addEventListener('submit', function(e) {
-            const password = this.querySelector('input[name="password"]').value;
-            const confirmPassword = this.querySelector('input[name="confirm_password"]').value;
-            
-            if (password !== confirmPassword) {
-                e.preventDefault();
-                alert('Passwords do not match!');
-                return false;
-            }
-        });
-    }
-});
+
 </script>
 
 <?php

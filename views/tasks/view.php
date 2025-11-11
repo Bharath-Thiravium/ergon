@@ -42,7 +42,7 @@ ob_start();
             </div>
             <div class="detail-item">
                 <label>Assigned By</label>
-                <span><?= htmlspecialchars($task['assigned_by_name'] ?? 'N/A') ?></span>
+                <span><?= htmlspecialchars($task['assigned_by_name'] ?? 'Not Assigned') ?></span>
             </div>
             <div class="detail-item">
                 <label>Priority</label>
@@ -71,6 +71,14 @@ ob_start();
             <div class="detail-item">
                 <label>Created Date</label>
                 <span><?= ($task['created_at']) ? date('M d, Y H:i', strtotime($task['created_at'])) : 'N/A' ?></span>
+            </div>
+            <div class="detail-item">
+                <label>Task Type</label>
+                <span><?= htmlspecialchars($task['task_type'] ?? 'ad-hoc') ?></span>
+            </div>
+            <div class="detail-item">
+                <label>SLA Hours</label>
+                <span><?= htmlspecialchars($task['sla_hours'] ?? '24') ?> hours</span>
             </div>
             <div class="detail-item">
                 <label>Last Updated</label>

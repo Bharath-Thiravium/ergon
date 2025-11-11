@@ -9,8 +9,16 @@ class AuthMiddleware {
         
         // Check if session is valid
         if (empty($_SESSION['user_id'])) {
-            self::redirectToLogin();
-            return;
+            // For development/testing - auto-login as user 1
+            if ($_SERVER['HTTP_HOST'] === 'localhost' || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false) {
+                $_SESSION['user_id'] = 1;
+                $_SESSION['username'] = 'test_user';
+                $_SESSION['role'] = 'user';
+                $_SESSION['last_activity'] = time();
+            } else {
+                self::redirectToLogin();
+                return;
+            }
         }
         
         // Check if session is expired (8 hours timeout)

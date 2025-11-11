@@ -127,4 +127,43 @@ class AdminManagementController extends Controller {
             }
         }
     }
+    
+    public function deleteUser() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                $userId = intval($_POST['user_id']);
+                
+                // Prevent deleting self
+                if ($userId === $_SESSION['user_id']) {
+                    header('Location: /ergon/admin/management?error=cannot_delete_self');
+                    exit;
+                }
+                
+                $db = Database::connect();
+                $stmt = $db->prepare("DELETE FROM users WHERE id = ? AND role != 'owner'");
+                $result = $stmt->execute([$userId]);
+                
+                if ($result && $stmt->rowCount() > 0) {
+                    header('Location: /ergon/admin/management?success=user_deleted');
+                } else {
+                    header('Location: /ergon/admin/management?error=delete_failed');
+                }
+                exit;
+                
+            } catch (Exception $e) {
+                error_log('Delete User Error: ' . $e->getMessage());
+                header('Location: /ergon/admin/management?error=delete_failed');
+                exit;
+            }
+        }
+    }
 }
