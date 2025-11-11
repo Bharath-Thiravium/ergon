@@ -106,10 +106,10 @@ class UnifiedWorkflowController extends Controller {
                 'active_page' => 'daily-planner'
             ];
             
-            $this->view('daily_workflow/daily_planner', $data);
+            $this->view('daily_workflow/unified_daily_planner', $data);
         } catch (Exception $e) {
             error_log('Daily planner error: ' . $e->getMessage());
-            $this->view('daily_workflow/daily_planner', ['planned_tasks' => [], 'selected_date' => $date]);
+            $this->view('daily_workflow/unified_daily_planner', ['planned_tasks' => [], 'selected_date' => $date]);
         }
     }
     
@@ -149,10 +149,10 @@ class UnifiedWorkflowController extends Controller {
                 'active_page' => 'evening-update'
             ];
             
-            $this->view('evening-update/index', $data);
+            $this->view('evening-update/unified_index', $data);
         } catch (Exception $e) {
             error_log('Evening update error: ' . $e->getMessage());
-            $this->view('evening-update/index', ['today_tasks' => [], 'selected_date' => $date]);
+            $this->view('evening-update/unified_index', ['today_tasks' => [], 'selected_date' => $date]);
         }
     }
     
@@ -292,10 +292,10 @@ class UnifiedWorkflowController extends Controller {
                 'active_page' => 'calendar'
             ];
             
-            $this->view('tasks/calendar', $data);
+            $this->view('tasks/unified_calendar', $data);
         } catch (Exception $e) {
             error_log('Calendar error: ' . $e->getMessage());
-            $this->view('tasks/calendar', ['calendar_tasks' => [], 'current_month' => $month, 'current_year' => $year]);
+            $this->view('tasks/unified_calendar', ['calendar_tasks' => [], 'current_month' => $month, 'current_year' => $year]);
         }
     }
     

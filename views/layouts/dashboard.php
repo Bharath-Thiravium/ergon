@@ -1251,9 +1251,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">✅</span>
                                 Tasks
                             </a>
-                            <a href="/ergon/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
+                            </a>
+                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📆</span>
+                                Calendar
                             </a>
                         </div>
                     </div>
@@ -1345,13 +1349,17 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">✅</span>
                                 Allocation
                             </a>
-                            <a href="/ergon/daily-workflow/morning-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'planner' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/daily-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">🌅</span>
                                 Planner
                             </a>
-                            <a href="/ergon/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
+                            </a>
+                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📆</span>
+                                Calendar
                             </a>
                         </div>
                     </div>
@@ -1418,17 +1426,21 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 Tasks
                             </a>
 
-                            <a href="/ergon/planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'planner' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/daily-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📅</span>
                                 Daily Planner
                             </a>
-                            <a href="/ergon/evening-update" class="nav-dropdown-item <?= ($active_page ?? '') === 'evening_update' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/evening-update" class="nav-dropdown-item <?= ($active_page ?? '') === 'evening-update' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">🌅</span>
                                 Evening Update
                             </a>
-                            <a href="/ergon/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
+                            </a>
+                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📆</span>
+                                Calendar
                             </a>
                         </div>
                     </div>
