@@ -150,7 +150,7 @@
             ?>
             
             <br><br>
-            <button class="btn btn-safe" onclick="window.location.href='/ergon/workflow/create-task'">Test Unified Workflow</button>
+            <button class="btn btn-safe" onclick="window.location.href='/ergon/tasks/create'">Test Unified Workflow</button>
             <button class="btn btn-safe" onclick="window.location.href='/ergon/dashboard'">Back to Dashboard</button>
         </div>
     <?php endif; ?>
@@ -159,7 +159,7 @@
         <h2>📋 Audit Summary</h2>
         <p><strong>Unified Workflow System Status:</strong></p>
         <ul>
-            <li>✅ Single entry point: <code>/workflow/create-task</code></li>
+            <li>✅ Single entry point: <code>/tasks/create</code></li>
             <li>✅ Unified daily planner: <code>/workflow/daily-planner</code></li>
             <li>✅ Unified evening update: <code>/workflow/evening-update</code></li>
             <li>✅ Unified follow-ups: <code>/workflow/followups</code></li>

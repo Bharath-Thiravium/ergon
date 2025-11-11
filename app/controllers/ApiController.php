@@ -218,15 +218,7 @@ class ApiController extends Controller {
             $departmentId = $_GET['department_id'] ?? null;
             
             if (!$departmentId) {
-                // Return default categories if no department specified
-                $categories = [
-                    ['category_name' => 'General'],
-                    ['category_name' => 'Meeting'],
-                    ['category_name' => 'Development'],
-                    ['category_name' => 'Review'],
-                    ['category_name' => 'Follow-up']
-                ];
-                $this->json(['categories' => $categories]);
+                $this->json(['error' => 'Department ID is required'], 400);
                 return;
             }
             
@@ -240,27 +232,34 @@ class ApiController extends Controller {
                 return;
             }
             
-            // Department-specific categories
-            $deptCategories = [
-                'Information Technology' => ['Development', 'Bug Fix', 'Code Review', 'Deployment', 'Follow-up'],
-                'Human Resources' => ['Recruitment', 'Training', 'Performance Review', 'Follow-up'],
-                'Sales' => ['Lead Generation', 'Client Meeting', 'Proposal', 'Follow-up'],
-                'Marketing' => ['Campaign', 'Content Creation', 'Analysis', 'Follow-up'],
-                'Finance' => ['Budget Planning', 'Invoice Processing', 'Audit', 'Follow-up'],
-                'Operations' => ['Process Improvement', 'Quality Control', 'Maintenance', 'Follow-up']
-            ];
-            
-            $categoryList = $deptCategories[$department['name']] ?? ['General', 'Meeting', 'Task', 'Follow-up'];
-            
-            $categories = array_map(function($cat) {
-                return ['category_name' => $cat];
-            }, $categoryList);
+            // Get task categories from database
+            $deptName = html_entity_decode($department['name'], ENT_QUOTES, 'UTF-8');
+            $stmt = $db->prepare("SELECT category_name, description FROM task_categories WHERE department_name = ? AND is_active = 1 ORDER BY category_name");
+            $stmt->execute([$deptName]);
+            $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $this->json(['categories' => $categories]);
             
         } catch (Exception $e) {
             error_log('Task categories API error: ' . $e->getMessage());
             $this->json(['error' => 'Failed to fetch categories'], 500);
+        }
+    }
+    
+    public function followupDetails() {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Get recent follow-ups for suggestions
+            $stmt = $db->query("SELECT DISTINCT company_name, contact_person, project_name, contact_phone FROM tasks WHERE followup_required = 1 AND company_name IS NOT NULL AND company_name != '' ORDER BY created_at DESC LIMIT 50");
+            $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->json(['followups' => $followups]);
+            
+        } catch (Exception $e) {
+            error_log('Followup details API error: ' . $e->getMessage());
+            $this->json(['followups' => []]);
         }
     }
     

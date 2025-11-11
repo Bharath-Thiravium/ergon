@@ -10,7 +10,7 @@ ob_start();
         <p>View and manage all tasks</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon/admin/create-task" class="btn btn--primary">
+        <a href="/ergon/tasks/create" class="btn btn--primary">
             <i class="bi bi-plus-circle"></i> Create Task
         </a>
     </div>
@@ -69,7 +69,7 @@ ob_start();
                 <div class="empty-icon">📋</div>
                 <h3>No Tasks Found</h3>
                 <p>There are no tasks to display.</p>
-                <a href="/ergon/admin/create-task" class="btn btn--primary">Create First Task</a>
+                <a href="/ergon/tasks/create" class="btn btn--primary">Create First Task</a>
             </div>
         <?php endif; ?>
     </div>

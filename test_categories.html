@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Categories</title>
+</head>
+<body>
+    <h1>Test Task Categories</h1>
+    <select id="department">
+        <option value="">Select Department</option>
+        <option value="1">Human Resources</option>
+        <option value="2">Finance & Accounts</option>
+        <option value="3">Information Technology</option>
+        <option value="4">Operations</option>
+        <option value="5">Marketing & Sales</option>
+        <option value="6">Liaison</option>
+    </select>
+    
+    <select id="categories">
+        <option value="">Select Category</option>
+    </select>
+    
+    <div id="result"></div>
+
+    <script>
+    document.getElementById('department').addEventListener('change', function() {
+        const deptId = this.value;
+        const categorySelect = document.getElementById('categories');
+        const result = document.getElementById('result');
+        
+        categorySelect.innerHTML = '<option value="">Select Category</option>';
+        result.innerHTML = '';
+        
+        if (!deptId) return;
+        
+        fetch(`/ergon/api/task-categories?department_id=${deptId}`)
+            .then(response => response.json())
+            .then(data => {
+                result.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                if (data.categories) {
+                    data.categories.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.category_name;
+                        option.textContent = category.category_name;
+                        categorySelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                result.innerHTML = `<p style="color: red;">Error: ${error}</p>`;
+            });
+    });
+    </script>
+</body>
+</html>

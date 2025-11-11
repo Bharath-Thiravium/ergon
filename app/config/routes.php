@@ -234,6 +234,7 @@ $router->post('/api/attendance', 'ApiController', 'attendance');
 $router->get('/api/tasks', 'ApiController', 'tasks');
 $router->post('/api/tasks/update', 'ApiController', 'updateTask');
 $router->get('/api/task-categories', 'ApiController', 'taskCategories');
+$router->get('/api/followup-details', 'ApiController', 'followupDetails');
 $router->get('/api/generate-employee-id', 'ApiController', 'generateEmployeeId');
 $router->post('/api/update-preference', 'ApiController', 'updatePreference');
 $router->post('/api/activity-log', 'ApiController', 'activityLog');
@@ -266,8 +267,7 @@ $router->get('/users/download-document/{userId}/{filename}', 'UsersController', 
 $router->post('/users/delete-document/{userId}/{filename}', 'UsersController', 'deleteDocument');
 
 // Admin Routes - Department vs System Admin
-$router->get('/admin/create-task', 'AdminController', 'createTask');
-$router->post('/admin/create-task', 'AdminController', 'createTask');
+
 $router->get('/admin/manage-tasks', 'AdminController', 'manageTasks');
 $router->post('/admin/approve-request', 'AdminController', 'approveRequest');
 $router->get('/admin/manage-users', 'AdminController', 'manageUsers');
@@ -303,8 +303,7 @@ $router->post('/project-management/update', 'ProjectManagementController', 'upda
 $router->post('/project-management/delete', 'ProjectManagementController', 'delete');
 
 // Unified Workflow Routes
-$router->get('/workflow/create-task', 'UnifiedWorkflowController', 'createTask');
-$router->post('/workflow/create-task', 'UnifiedWorkflowController', 'createTask');
+
 $router->get('/workflow/daily-planner', 'UnifiedWorkflowController', 'dailyPlanner');
 $router->get('/workflow/daily-planner/{date}', 'UnifiedWorkflowController', 'dailyPlanner');
 $router->get('/workflow/evening-update', 'UnifiedWorkflowController', 'eveningUpdate');

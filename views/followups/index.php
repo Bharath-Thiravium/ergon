@@ -727,7 +727,10 @@ function clearFilters() {
 // Check for reminders
 function checkReminders() {
     fetch('/ergon/check_reminders.php')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) return { reminders: [] };
+            return response.json();
+        })
         .then(data => {
             if (data.reminders && data.reminders.length > 0) {
                 showReminderPopup(data.reminders);
