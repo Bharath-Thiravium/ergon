@@ -240,6 +240,11 @@ $router->post('/api/activity-log', 'ApiController', 'activityLog');
 $router->post('/api/session_from_jwt', 'ApiController', 'sessionFromJWT');
 $router->post('/api/test', 'ApiController', 'test');
 
+// Unified Workflow API Routes
+$router->post('/api/update-task-status', 'UnifiedWorkflowController', 'updateTaskStatus');
+$router->get('/api/tasks-for-date', 'UnifiedWorkflowController', 'getTasksForDate');
+$router->post('/api/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
+
 // Mobile API Routes
 $router->post('/api/register_device', 'ApiController', 'registerDevice');
 $router->post('/api/sync', 'ApiController', 'syncOfflineData');
@@ -297,8 +302,20 @@ $router->post('/project-management/create', 'ProjectManagementController', 'crea
 $router->post('/project-management/update', 'ProjectManagementController', 'update');
 $router->post('/project-management/delete', 'ProjectManagementController', 'delete');
 
-// Follow-up Routes
-$router->get('/followups', 'FollowupController', 'index');
+// Unified Workflow Routes
+$router->get('/workflow/create-task', 'UnifiedWorkflowController', 'createTask');
+$router->post('/workflow/create-task', 'UnifiedWorkflowController', 'createTask');
+$router->get('/workflow/daily-planner', 'UnifiedWorkflowController', 'dailyPlanner');
+$router->get('/workflow/daily-planner/{date}', 'UnifiedWorkflowController', 'dailyPlanner');
+$router->get('/workflow/evening-update', 'UnifiedWorkflowController', 'eveningUpdate');
+$router->get('/workflow/evening-update/{date}', 'UnifiedWorkflowController', 'eveningUpdate');
+$router->post('/workflow/evening-update/{date}', 'UnifiedWorkflowController', 'eveningUpdate');
+$router->get('/workflow/followups', 'UnifiedWorkflowController', 'followups');
+$router->get('/workflow/calendar', 'UnifiedWorkflowController', 'calendar');
+$router->post('/workflow/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
+
+// Follow-up Routes (Legacy - now filtered from tasks)
+$router->get('/followups', 'UnifiedWorkflowController', 'followups');
 $router->get('/followups/create', 'FollowupController', 'create');
 $router->post('/followups', 'FollowupController', 'handlePost');
 $router->post('/followups/create', 'FollowupController', 'store');

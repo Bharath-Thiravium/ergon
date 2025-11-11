@@ -20,7 +20,7 @@ $content = ob_start();
         <h2 class="card__title"><i class="bi bi-person-plus-fill"></i> Task Assignment Details</h2>
     </div>
     <div class="card__body">
-        <form id="createTaskForm" method="POST" action="/ergon/tasks/create">
+        <form id="createTaskForm" method="POST" action="/ergon/workflow/create-task">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
             <fieldset>
                 <legend>Basic Information</legend>
@@ -51,7 +51,18 @@ $content = ob_start();
             <fieldset>
                 <legend>Assignment & Category</legend>
                 <div class="form-row">
-                    <div class="form-group col-md-6">
+                    <div class="form-group col-md-4">
+                        <label for="assigned_for" class="form-label">
+                            <i class="bi bi-person-check"></i> Assignment Type *
+                        </label>
+                        <select class="form-control" id="assigned_for" name="assigned_for" onchange="handleAssignmentTypeChange()" required>
+                            <option value="self">👤 For Myself</option>
+                            <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
+                                <option value="other">👥 For Others</option>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4">
                         <label for="department_id" class="form-label">
                             <i class="bi bi-building"></i> Department
                         </label>
@@ -64,7 +75,7 @@ $content = ob_start();
                             <?php endif; ?>
                         </select>
                     </div>
-                    <div class="form-group col-md-6">
+                    <div class="form-group col-md-4">
                         <label for="task_category" class="form-label">
                             <i class="bi bi-tags-fill"></i> Task Category
                         </label>
@@ -76,27 +87,36 @@ $content = ob_start();
 
                 <div class="form-row">
                     <div class="form-group col-md-6">
-                        <?php if (($_SESSION['role'] ?? '') === 'user'): ?>
-                            <label for="assigned_to" class="form-label"><i class="bi bi-person-fill"></i> Personal Task</label>
-                            <select class="form-control form-control--readonly" id="assigned_to" name="assigned_to" required readonly>
-                                <?php if (!empty($users)): ?>
-                                    <?php foreach ($users as $user): ?>
-                                        <option value="<?= $user['id'] ?>" selected><?= htmlspecialchars($user['name']) ?> (Personal)</option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </select>
-                            <small class="text-muted">You can only create personal tasks for yourself.</small>
-                        <?php else: ?>
-                            <label for="assigned_to" class="form-label"><i class="bi bi-person-fill"></i> Assign To *</label>
-                            <select class="form-control" id="assigned_to" name="assigned_to" required>
-                                <option value="">Select User</option>
-                                <?php if (!empty($users)): ?>
-                                    <?php foreach ($users as $user): ?>
-                                        <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['name']) ?> (<?= htmlspecialchars($user['role']) ?>)</option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </select>
-                        <?php endif; ?>
+                        <label for="assigned_to" class="form-label"><i class="bi bi-person-fill"></i> Assign To *</label>
+                        <select class="form-control" id="assigned_to" name="assigned_to" required>
+                            <option value="<?= $_SESSION['user_id'] ?>" selected><?= htmlspecialchars($_SESSION['user_name'] ?? 'You') ?></option>
+                            <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner']) && !empty($users)): ?>
+                                <?php foreach ($users as $user): ?>
+                                    <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                                        <option value="<?= $user['id'] ?>" style="display: none;"><?= htmlspecialchars($user['name']) ?> (<?= htmlspecialchars($user['role']) ?>)</option>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="planned_date" class="form-label">
+                            <i class="bi bi-calendar-plus"></i> Planned Date
+                        </label>
+                        <input type="date" class="form-control" id="planned_date" name="planned_date" min="<?= date('Y-m-d') ?>">
+                        <small class="text-muted">When do you plan to work on this task?</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-12">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="followup_required" name="followup_required">
+                            <label class="form-check-label" for="followup_required">
+                                <i class="bi bi-arrow-repeat"></i> This task requires follow-up
+                            </label>
+                            <small class="text-muted d-block">Check this if the task will need follow-up actions or tracking</small>
+                        </div>
                     </div>
                 </div>
             </fieldset>
@@ -235,13 +255,41 @@ function loadTaskCategories() {
         .catch(error => console.error('Error loading categories:', error));
 }
 
+// Handle assignment type change
+function handleAssignmentTypeChange() {
+    const assignmentType = document.getElementById('assigned_for').value;
+    const assignedToSelect = document.getElementById('assigned_to');
+    const options = assignedToSelect.querySelectorAll('option');
+    
+    if (assignmentType === 'self') {
+        // Show only current user
+        options.forEach(option => {
+            if (option.value === '<?= $_SESSION['user_id'] ?>') {
+                option.style.display = 'block';
+                option.selected = true;
+            } else {
+                option.style.display = 'none';
+                option.selected = false;
+            }
+        });
+    } else {
+        // Show all users
+        options.forEach(option => {
+            option.style.display = 'block';
+        });
+        assignedToSelect.value = '';
+    }
+}
+
 // Handle category change to show/hide follow-up fields
 function handleCategoryChange() {
     const category = document.getElementById('task_category').value.toLowerCase();
     const followupFields = document.getElementById('followupFields');
+    const followupCheckbox = document.getElementById('followup_required');
     
     if (category.includes('follow')) {
         followupFields.style.display = 'block';
+        followupCheckbox.checked = true;
         // Set default follow-up date to tomorrow
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
