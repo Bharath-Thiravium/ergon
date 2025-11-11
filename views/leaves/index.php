@@ -159,9 +159,9 @@ ob_start();
                                 
                                 $canApprove = false;
                                 $leaveStatus = strtolower($leave['status'] ?? 'pending');
-                                if (($user_role ?? '') === 'owner' && $leaveStatus === 'pending') {
+                                if ($user_role === 'owner' && $leaveStatus === 'pending') {
                                     $canApprove = true;
-                                } elseif (($user_role ?? '') === 'admin' && $leaveStatus === 'pending' && ($leave['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0)) {
+                                } elseif ($user_role === 'admin' && $leaveStatus === 'pending' && ($leave['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0)) {
                                     $canApprove = true;
                                 }
                                 ?>
@@ -173,7 +173,7 @@ ob_start();
                                     <span>❌</span> Reject
                                 </button>
                                 <?php endif; ?>
-                                <?php if (strtolower($leave['status'] ?? 'pending') === 'pending' && (in_array($user_role ?? '', ['admin', 'owner']) || ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0))): ?>
+                                <?php if (strtolower($leave['status'] ?? 'pending') === 'pending' && ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
                                 <button onclick="deleteRecord('leaves', <?= $leave['id'] ?>, 'Leave Request')" class="btn btn--sm btn--danger" title="Delete Request">
                                     <span>🗑️</span> Delete
                                 </button>

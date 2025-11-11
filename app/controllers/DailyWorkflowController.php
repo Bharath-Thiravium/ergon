@@ -302,6 +302,22 @@ class DailyWorkflowController extends Controller {
                 
                 error_log("Evening update completed - Tasks: $totalCompletedTasks, Hours: $totalActualHours, Score: $productivityScore");
                 
+                // Notify owners about evening update submission
+                require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                $stmt->execute([$userId]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($user) {
+                    NotificationHelper::notifyOwners(
+                        $userId,
+                        'evening_update',
+                        'submitted',
+                        "{$user['name']} submitted evening update with {$productivityScore}% productivity",
+                        null
+                    );
+                }
+                
                 // Determine redirect URL based on current request path
                 $redirectUrl = strpos($_SERVER['REQUEST_URI'], '/evening-update') !== false ? 
                     '/ergon/evening-update?success=1&t=' . time() : 
@@ -482,6 +498,22 @@ class DailyWorkflowController extends Controller {
                 // Update workflow status
                 $stmt = $db->prepare("INSERT INTO daily_workflow_status (user_id, workflow_date, morning_submitted_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE morning_submitted_at = NOW()");
                 $stmt->execute([$userId, $today]);
+                
+                // Notify owners about daily plan submission
+                require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                $stmt->execute([$userId]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($user) {
+                    NotificationHelper::notifyOwners(
+                        $userId,
+                        'planner',
+                        'submitted',
+                        "{$user['name']} submitted daily plan with " . count($_POST['plans']) . " tasks",
+                        null
+                    );
+                }
                 
                 // Always redirect to show updated tasks (no AJAX for form submission)
                 // Determine redirect URL based on current request path

@@ -200,6 +200,24 @@ class AttendanceController extends Controller {
                     $result = $stmt->execute([$userId]);
                     
                     if ($result) {
+                        // Check if late arrival (after 9:30 AM) and notify owners
+                        $currentTime = date('H:i:s');
+                        if ($currentTime > '09:30:00') {
+                            require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                            $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                            $stmt->execute([$userId]);
+                            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                            
+                            if ($user) {
+                                NotificationHelper::notifyOwners(
+                                    $userId,
+                                    'attendance',
+                                    'late_arrival',
+                                    "{$user['name']} arrived late at " . date('H:i'),
+                                    $db->lastInsertId()
+                                );
+                            }
+                        }
                         echo json_encode(['success' => true, 'message' => 'Clocked in successfully']);
                     } else {
                         echo json_encode(['success' => false, 'error' => 'Failed to clock in']);

@@ -165,6 +165,33 @@ class TasksController extends Controller {
             if ($result) {
                 $taskId = $db->lastInsertId();
                 
+                // Create notifications for task assignment
+                require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                $stmt->execute([$taskData['assigned_to']]);
+                $assignedUser = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($assignedUser) {
+                    // Notify assigned user
+                    NotificationHelper::notifyUser(
+                        $taskData['assigned_by'],
+                        $taskData['assigned_to'],
+                        'task',
+                        'assigned',
+                        "You have been assigned a new task: {$taskData['title']}",
+                        $taskId
+                    );
+                    
+                    // Notify owners about new task creation
+                    NotificationHelper::notifyOwners(
+                        $taskData['assigned_by'],
+                        'task',
+                        'created',
+                        "New task '{$taskData['title']}' assigned to {$assignedUser['name']}",
+                        $taskId
+                    );
+                }
+                
                 // Auto-create followup if task category contains "follow-up"
                 if (!empty($taskData['task_category']) && stripos($taskData['task_category'], 'follow') !== false) {
                     $this->createAutoFollowup($db, $taskId, $taskData);
@@ -381,27 +408,24 @@ class TasksController extends Controller {
     }
     
     public function delete($id) {
+        header('Content-Type: application/json');
         AuthMiddleware::requireAuth();
+        
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid ID']);
+            exit;
+        }
         
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Check if user can delete this task
-            if (in_array($_SESSION['role'], ['admin', 'owner'])) {
-                // Admin/Owner can delete any task
-                $stmt = $db->prepare("DELETE FROM tasks WHERE id = ?");
-                $result = $stmt->execute([$id]);
-            } else {
-                // Regular users can only delete their own tasks
-                $stmt = $db->prepare("DELETE FROM tasks WHERE id = ? AND assigned_to = ?");
-                $result = $stmt->execute([$id, $_SESSION['user_id']]);
-            }
+            $stmt = $db->prepare("DELETE FROM tasks WHERE id = ?");
+            $result = $stmt->execute([$id]);
             
-            echo json_encode(['success' => $result]);
+            echo json_encode(['success' => $result, 'message' => $result ? 'Task deleted successfully' : 'Delete failed']);
         } catch (Exception $e) {
-            error_log('Task delete error: ' . $e->getMessage());
-            echo json_encode(['success' => false, 'message' => 'Delete failed']);
+            echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $e->getMessage()]);
         }
         exit;
     }

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../models/Notification.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 
 class NotificationController extends Controller {
@@ -8,30 +9,13 @@ class NotificationController extends Controller {
         AuthMiddleware::requireAuth();
         
         try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            $this->ensureNotificationTable($db);
-            
             $userId = $_SESSION['user_id'];
             $role = $_SESSION['role'];
             
-            // Get notifications based on role
-            if ($role === 'owner') {
-                // Owner sees all notifications
-                $notifications = $this->getOwnerNotifications($db);
-            } elseif ($role === 'admin') {
-                // Admin sees department-specific notifications
-                $notifications = $this->getAdminNotifications($db, $userId);
-            } else {
-                // User sees personal notifications
-                $notifications = $this->getUserNotifications($db, $userId);
-            }
+            require_once __DIR__ . '/../models/Notification.php';
+            $notificationModel = new Notification();
             
-            // Generate real-time notifications if none exist
-            if (empty($notifications)) {
-                $this->generateRealTimeNotifications($db, $userId, $role);
-                $notifications = $this->getNotificationsByRole($db, $userId, $role);
-            }
+            $notifications = $notificationModel->getForUser($userId);
             
             $data = [
                 'notifications' => $notifications,
@@ -41,16 +25,17 @@ class NotificationController extends Controller {
             
             $this->view('notifications/index', $data);
         } catch (Exception $e) {
-            error_log('Notification index error: ' . $e->getMessage());
             $data = [
                 'notifications' => [],
                 'user_role' => $_SESSION['role'],
                 'active_page' => 'notifications',
-                'error' => 'Unable to load notifications'
+                'error' => 'Unable to load notifications: ' . $e->getMessage()
             ];
             $this->view('notifications/index', $data);
         }
     }
+    
+
     
     private function getOwnerNotifications($db) {
         $sql = "SELECT n.*, u.name as actor_name 
@@ -238,28 +223,14 @@ class NotificationController extends Controller {
         AuthMiddleware::requireAuth();
         
         try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            
-            $userId = $_SESSION['user_id'];
-            $role = $_SESSION['role'];
-            
-            if ($role === 'owner') {
-                $stmt = $db->query("SELECT COUNT(*) as count FROM notifications WHERE (target_role IN ('owner', 'all') OR target_user_id IS NULL) AND is_read = 0");
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            } elseif ($role === 'admin') {
-                $stmt = $db->prepare("SELECT COUNT(*) as count FROM notifications WHERE (target_role IN ('admin', 'all') OR target_user_id = ?) AND is_read = 0");
-                $stmt->execute([$userId]);
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            } else {
-                $stmt = $db->prepare("SELECT COUNT(*) as count FROM notifications WHERE (target_user_id = ? OR target_role = 'all') AND is_read = 0");
-                $stmt->execute([$userId]);
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            }
+            require_once __DIR__ . '/../models/Notification.php';
+            $notificationModel = new Notification();
+            $count = $notificationModel->getUnreadCount($_SESSION['user_id']);
             
             header('Content-Type: application/json');
-            echo json_encode(['count' => $result['count'] ?? 0]);
+            echo json_encode(['count' => $count]);
         } catch (Exception $e) {
+            error_log('Unread count error: ' . $e->getMessage());
             header('Content-Type: application/json');
             echo json_encode(['count' => 0]);
         }
@@ -271,18 +242,20 @@ class NotificationController extends Controller {
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
+                require_once __DIR__ . '/../models/Notification.php';
+                $notificationModel = new Notification();
                 
                 $id = $_POST['id'] ?? 0;
+                $success = false;
+                
                 if ($id) {
-                    $stmt = $db->prepare("UPDATE notifications SET is_read = 1, read_at = NOW() WHERE id = ?");
-                    $stmt->execute([$id]);
+                    $success = $notificationModel->markAsRead($id, $_SESSION['user_id']);
                 }
                 
                 header('Content-Type: application/json');
-                echo json_encode(['success' => true, 'message' => 'Notification marked as read']);
+                echo json_encode(['success' => $success, 'message' => $success ? 'Notification marked as read' : 'Failed to mark as read']);
             } catch (Exception $e) {
+                error_log('Mark as read error: ' . $e->getMessage());
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
@@ -295,26 +268,15 @@ class NotificationController extends Controller {
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
+                require_once __DIR__ . '/../models/Notification.php';
+                $notificationModel = new Notification();
                 
-                $userId = $_SESSION['user_id'];
-                $role = $_SESSION['role'];
-                
-                if ($role === 'owner') {
-                    $stmt = $db->prepare("UPDATE notifications SET is_read = 1, read_at = NOW() WHERE (target_role IN ('owner', 'all') OR target_user_id IS NULL) AND is_read = 0");
-                    $stmt->execute();
-                } elseif ($role === 'admin') {
-                    $stmt = $db->prepare("UPDATE notifications SET is_read = 1, read_at = NOW() WHERE (target_role IN ('admin', 'all') OR target_user_id = ?) AND is_read = 0");
-                    $stmt->execute([$userId]);
-                } else {
-                    $stmt = $db->prepare("UPDATE notifications SET is_read = 1, read_at = NOW() WHERE (target_user_id = ? OR target_role = 'all') AND is_read = 0");
-                    $stmt->execute([$userId]);
-                }
+                $success = $notificationModel->markAllAsRead($_SESSION['user_id']);
                 
                 header('Content-Type: application/json');
-                echo json_encode(['success' => true, 'message' => 'All notifications marked as read']);
+                echo json_encode(['success' => $success, 'message' => $success ? 'All notifications marked as read' : 'Failed to mark all as read']);
             } catch (Exception $e) {
+                error_log('Mark all as read error: ' . $e->getMessage());
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
@@ -326,24 +288,19 @@ class NotificationController extends Controller {
         try {
             $sql = "CREATE TABLE IF NOT EXISTS notifications (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
+                sender_id INT NOT NULL,
+                receiver_id INT NOT NULL,
+                module_name VARCHAR(50) NOT NULL,
+                action_type VARCHAR(50) NOT NULL,
                 message TEXT NOT NULL,
-                type VARCHAR(50) DEFAULT 'info',
-                target_role VARCHAR(20) NULL,
-                target_user_id INT NULL,
-                actor_id INT NULL,
-                reference_id INT NULL,
-                reference_type VARCHAR(50) NULL,
+                reference_id INT DEFAULT NULL,
                 is_read TINYINT(1) DEFAULT 0,
-                read_at TIMESTAMP NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_target_role (target_role),
-                INDEX idx_target_user (target_user_id),
-                INDEX idx_is_read (is_read),
+                INDEX idx_receiver_read (receiver_id, is_read),
                 INDEX idx_created_at (created_at)
             )";
             $db->exec($sql);
+            error_log('Notification table ensured');
         } catch (Exception $e) {
             error_log('Notification table creation error: ' . $e->getMessage());
         }

@@ -136,6 +136,22 @@ class AdvanceController extends Controller {
                 ]);
                 
                 if ($result) {
+                    // Create notification for owners
+                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                    $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                    $stmt->execute([$_SESSION['user_id']]);
+                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($user) {
+                        NotificationHelper::notifyOwners(
+                            $_SESSION['user_id'],
+                            'advance',
+                            'request',
+                            "{$user['name']} requested advance of ₹" . number_format(floatval($_POST['amount'] ?? 0), 2),
+                            $db->lastInsertId()
+                        );
+                    }
+                    
                     header('Location: /ergon/advances?success=1');
                 } else {
                     header('Location: /ergon/advances/create?error=1');

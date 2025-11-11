@@ -92,16 +92,33 @@ ob_start();
                 <?php foreach ($notifications as $notification): ?>
                 <div class="notification-item <?= ($notification['is_read'] ?? false) ? 'notification-item--read' : 'notification-item--unread' ?>" 
                      data-notification-id="<?= $notification['id'] ?? 0 ?>" 
-                     data-type="<?= htmlspecialchars($notification['type'] ?? '') ?>">
+                     data-type="<?php
+                        $moduleType = $notification['module_name'] ?? $notification['type'] ?? '';
+                        // Map module names to filter values
+                        switch ($moduleType) {
+                            case 'leave': echo 'leave_request'; break;
+                            case 'expense': echo 'expense_claim'; break;
+                            case 'attendance': echo 'attendance_alert'; break;
+                            case 'task': echo 'task_overdue'; break;
+                            case 'workflow': echo 'workflow_missing'; break;
+                            default: echo htmlspecialchars($moduleType);
+                        }
+                     ?>">
                     
                     <div class="notification-icon">
                         <?php
+                        $type = $notification['type'] ?? $notification['module_name'] ?? '';
                         $icon = '🔔';
-                        switch ($notification['type'] ?? '') {
+                        switch ($type) {
+                            case 'leave':
                             case 'leave_request': $icon = '📅'; break;
+                            case 'expense':
                             case 'expense_claim': $icon = '💰'; break;
+                            case 'attendance':
                             case 'attendance_alert': $icon = '⏰'; break;
+                            case 'task':
                             case 'task_overdue': $icon = '⚠️'; break;
+                            case 'workflow':
                             case 'workflow_missing': $icon = '📋'; break;
                             default: $icon = '🔔';
                         }
@@ -111,11 +128,11 @@ ob_start();
                     
                     <div class="notification-content">
                         <div class="notification-header">
-                            <h4 class="notification-title"><?= htmlspecialchars($notification['title'] ?? 'Notification') ?></h4>
+                            <h4 class="notification-title"><?= htmlspecialchars($notification['title'] ?? $notification['message'] ?? 'Notification') ?></h4>
                             <div class="notification-meta">
                                 <span class="notification-time"><?= date('M d, H:i', strtotime($notification['created_at'] ?? 'now')) ?></span>
-                                <?php if ($notification['actor_name'] ?? false): ?>
-                                    <span class="notification-actor">by <?= htmlspecialchars($notification['actor_name']) ?></span>
+                                <?php if ($notification['actor_name'] ?? $notification['sender_name'] ?? false): ?>
+                                    <span class="notification-actor">by <?= htmlspecialchars($notification['actor_name'] ?? $notification['sender_name']) ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -129,7 +146,7 @@ ob_start();
                                 </button>
                             <?php endif; ?>
                             
-                            <?php if ($notification['reference_type'] && $notification['reference_id']): ?>
+                            <?php if (($notification['reference_type'] ?? false) && ($notification['reference_id'] ?? false)): ?>
                                 <button class="btn btn--sm btn--secondary" onclick="viewReference('<?= $notification['reference_type'] ?>', <?= $notification['reference_id'] ?>)">
                                     <span>👁️</span> View Details
                                 </button>
@@ -314,15 +331,20 @@ function refreshNotifications() {
 function filterNotifications() {
     const filterType = document.getElementById('filterType').value;
     const notifications = document.querySelectorAll('.notification-item');
+    let visibleCount = 0;
     
     notifications.forEach(item => {
-        const type = item.getAttribute('data-type');
-        if (!filterType || type === filterType) {
+        const type = item.getAttribute('data-type') || '';
+        if (!filterType || type === filterType || type.includes(filterType)) {
             item.style.display = 'flex';
+            visibleCount++;
         } else {
             item.style.display = 'none';
         }
     });
+    
+    // Show count of filtered results
+    console.log(`Showing ${visibleCount} notifications for filter: ${filterType || 'All'}`);
 }
 
 function viewReference(type, id) {

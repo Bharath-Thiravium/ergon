@@ -139,32 +139,51 @@ class LeaveController extends Controller {
             $end = new DateTime($endDate);
             $days = $end->diff($start)->days + 1;
             
-            if ($this->leave->create($data)) {
-                // Create notification for admins/owners
-                require_once __DIR__ . '/../helpers/NotificationHelper.php';
+            // Try direct database insertion
+            try {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
-                $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
-                $stmt->execute([$userId]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
                 
-                if ($user) {
-                    NotificationHelper::createLeaveRequestNotification(
-                        $db->lastInsertId(),
-                        $userId,
-                        $user['name'],
-                        $startDate,
-                        $endDate
-                    );
+                $stmt = $db->prepare("INSERT INTO leaves (user_id, leave_type, start_date, end_date, reason, days_requested, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())");
+                $result = $stmt->execute([
+                    $data['user_id'],
+                    $data['type'],
+                    $data['start_date'],
+                    $data['end_date'],
+                    $data['reason'],
+                    $days
+                ]);
+                
+                if ($result) {
+                    $leaveId = $db->lastInsertId();
+                    
+                    // Create notification for owners
+                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                    $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                    $stmt->execute([$userId]);
+                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($user) {
+                        NotificationHelper::notifyOwners(
+                            $userId,
+                            'leave',
+                            'request',
+                            "{$user['name']} has requested leave from {$startDate} to {$endDate}",
+                            $leaveId
+                        );
+                    }
+                    
+                    echo json_encode(['success' => true, 'message' => 'Leave request submitted successfully', 'days' => $days]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Failed to create leave request']);
                 }
-                
-                echo json_encode(['success' => true, 'message' => 'Leave request submitted successfully', 'days' => $days]);
-            } else {
-                echo json_encode(['success' => false, 'error' => 'Failed to create leave request']);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
             }
             return;
         }
         
+        $data = ['active_page' => 'leaves'];
         $data = ['active_page' => 'leaves'];
         $this->view('leaves/create', $data);
     }
@@ -273,14 +292,9 @@ class LeaveController extends Controller {
     }
     
     public function delete($id) {
+        header('Content-Type: application/json');
         AuthMiddleware::requireAuth();
         
-        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
-            echo json_encode(['success' => false, 'message' => 'Access denied']);
-            exit;
-        }
-        
-        $id = Security::validateInt($id);
         if (!$id) {
             echo json_encode(['success' => false, 'message' => 'Invalid ID']);
             exit;
@@ -288,10 +302,9 @@ class LeaveController extends Controller {
         
         try {
             $result = $this->leave->delete($id);
-            echo json_encode(['success' => $result]);
+            echo json_encode(['success' => $result, 'message' => $result ? 'Leave deleted successfully' : 'Delete failed']);
         } catch (Exception $e) {
-            error_log('Leave delete error: ' . $e->getMessage());
-            echo json_encode(['success' => false, 'message' => 'Delete failed']);
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
         exit;
     }

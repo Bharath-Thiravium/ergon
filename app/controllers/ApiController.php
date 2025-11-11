@@ -182,6 +182,10 @@ class ApiController extends Controller {
     }
     
     public function updatePreference() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $key = $input['key'] ?? '';
@@ -202,6 +206,7 @@ class ApiController extends Controller {
                 $this->json(['error' => 'Failed to update preference'], 500);
             }
         } catch (Exception $e) {
+            error_log('UpdatePreference error: ' . $e->getMessage());
             $this->json(['error' => 'Internal server error'], 500);
         }
     }

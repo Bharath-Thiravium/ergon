@@ -122,6 +122,23 @@ class FollowupController extends Controller {
             if ($result) {
                 $followupId = $db->lastInsertId();
                 $this->logHistory($followupId, 'created', null, 'Follow-up created', 'Initial creation');
+                
+                // Notify owners about new followup
+                require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($user) {
+                    NotificationHelper::notifyOwners(
+                        $_SESSION['user_id'],
+                        'followup',
+                        'created',
+                        "{$user['name']} created follow-up: {$title}",
+                        $followupId
+                    );
+                }
+                
                 header('Location: /ergon/followups?success=Follow-up created successfully');
             } else {
                 $errorInfo = $stmt->errorInfo();

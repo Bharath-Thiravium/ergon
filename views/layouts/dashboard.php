@@ -1042,7 +1042,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             </div>
             
             <div class="header__controls">
-                <button class="control-btn" onclick="toggleTheme()" title="Toggle Theme">
+                <button class="control-btn" id="theme-toggle" title="Toggle Theme">
                     <span id="themeIcon"><i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i></span>
                 </button>
                 <button class="control-btn" onclick="toggleNotifications(event)" title="Notifications">
@@ -1380,19 +1380,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <script>
 
     
-    function toggleTheme() {
-        var currentTheme = document.body.getAttribute('data-theme') || 'light';
-        var newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        document.body.setAttribute('data-theme', newTheme);
-        var themeIcon = document.getElementById('themeIcon');
-        if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-        
-        fetch('/ergon/api/update-preference', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({key: 'theme', value: newTheme})
-        }).catch(function(error) { console.log('Theme save failed:', error); });
-    }
+
     
     function toggleNotifications(event) {
         if (event) {
@@ -1402,6 +1390,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         var dropdown = document.getElementById('notificationDropdown');
         if (dropdown) {
             var isVisible = dropdown.style.display === 'block';
+            if (!isVisible) {
+                // Load notifications when opening dropdown
+                loadNotifications();
+            }
             dropdown.style.display = isVisible ? 'none' : 'block';
             
             // Close other dropdowns
@@ -1412,6 +1404,26 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             if (profileMenu) profileMenu.classList.remove('show');
         }
     }
+    
+    function loadNotifications() {
+        fetch('/ergon/api/notifications/unread-count')
+        .then(response => response.json())
+        .then(data => {
+            var badge = document.getElementById('notificationBadge');
+            if (badge) {
+                badge.textContent = data.count || 0;
+                badge.style.display = data.count > 0 ? 'block' : 'none';
+            }
+        })
+        .catch(error => console.log('Notification load error:', error));
+    }
+    
+    // Load notification count on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadNotifications();
+        // Auto-refresh every 30 seconds
+        setInterval(loadNotifications, 30000);
+    });
     
     function navigateToNotifications(event) {
         event.preventDefault();
@@ -1559,6 +1571,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
 
     </script>
+    <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/auth-guard.min.js?v=<?= time() ?>" defer></script>
 </body>
 </html>
