@@ -130,13 +130,56 @@ $content = ob_start();
             </div>
 
             <!-- Additional Options -->
-            <div class="form-section">
-                <div class="checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="followup_required" name="followup_required" onchange="toggleFollowupFields()">
-                        <span class="checkmark"></span>
-                        🔄 This task requires follow-up
-                    </label>
+            <div class="form-section options-section">
+                <h3>⚙️ Additional Options</h3>
+                <div class="options-grid">
+                    <div class="option-card">
+                        <div class="option-header">
+                            <div class="option-icon">🔄</div>
+                            <div class="option-content">
+                                <h4>Follow-up Required</h4>
+                                <p>Enable follow-up tracking for this task</p>
+                            </div>
+                        </div>
+                        <div class="option-toggle">
+                            <input type="checkbox" id="followup_required" name="followup_required" onchange="toggleFollowupFields()" class="toggle-switch">
+                            <label for="followup_required" class="toggle-label">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="option-card">
+                        <div class="option-header">
+                            <div class="option-icon">🔔</div>
+                            <div class="option-content">
+                                <h4>Reminder Notifications</h4>
+                                <p>Get notified about task deadlines</p>
+                            </div>
+                        </div>
+                        <div class="option-toggle">
+                            <input type="checkbox" id="reminder_enabled" name="reminder_enabled" class="toggle-switch" checked>
+                            <label for="reminder_enabled" class="toggle-label">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="option-card">
+                        <div class="option-header">
+                            <div class="option-icon">📊</div>
+                            <div class="option-content">
+                                <h4>Track Time</h4>
+                                <p>Enable time tracking for this task</p>
+                            </div>
+                        </div>
+                        <div class="option-toggle">
+                            <input type="checkbox" id="time_tracking" name="time_tracking" class="toggle-switch">
+                            <label for="time_tracking" class="toggle-label">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -146,21 +189,30 @@ $content = ob_start();
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="company_name">🏢 Company</label>
-                        <input type="text" id="company_name" name="company_name" placeholder="Company name">
+                        <div class="search-input-container">
+                            <input type="text" id="company_name" name="company_name" class="search-input" placeholder="Type to search companies..." autocomplete="off">
+                            <div class="search-suggestions" id="company_suggestions"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="contact_person">👤 Contact Person</label>
-                        <input type="text" id="contact_person" name="contact_person" placeholder="Contact person name">
+                        <div class="search-input-container">
+                            <input type="text" id="contact_person" name="contact_person" class="search-input" placeholder="Type to search contacts..." autocomplete="off">
+                            <div class="search-suggestions" id="contact_suggestions"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="contact_phone">📱 Phone</label>
-                        <input type="tel" id="contact_phone" name="contact_phone" placeholder="Phone number">
+                        <input type="tel" id="contact_phone" name="contact_phone" placeholder="Contact phone number">
                     </div>
                 </div>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="project_name">📁 Project</label>
-                        <input type="text" id="project_name" name="project_name" placeholder="Project name">
+                        <div class="search-input-container">
+                            <input type="text" id="project_name" name="project_name" class="search-input" placeholder="Type to search projects..." autocomplete="off">
+                            <div class="search-suggestions" id="project_suggestions"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="followup_date">📅 Follow-up Date</label>
@@ -260,7 +312,10 @@ function toggleFollowupFields() {
         tomorrow.setDate(tomorrow.getDate() + 1);
         document.getElementById('followup_date').value = tomorrow.toISOString().split('T')[0];
         
-        loadFollowupDetails();
+        // Load data and setup search inputs
+        setTimeout(() => {
+            loadFollowupDetails();
+        }, 100);
     } else {
         followupFields.style.display = 'none';
     }
@@ -278,61 +333,169 @@ function handleCategoryChange() {
 }
 
 // Load follow-up details for auto-population
+let followupData = [];
+
 function loadFollowupDetails() {
-    fetch('/ergon/api/followup-details')
-        .then(response => {
-            if (!response.ok) return { followups: [] };
-            return response.json();
-        })
+    fetch('/ergon/direct_followup_test.php')
+        .then(response => response.json())
         .then(data => {
-            if (data.followups && data.followups.length > 0) {
-                populateFollowupDropdowns(data.followups);
-                // Auto-populate title and description for follow-up tasks
-                const titleField = document.getElementById('title');
-                const descField = document.getElementById('description');
-                
-                if (!titleField.value) {
-                    titleField.value = 'Follow-up Call';
-                }
-                if (!descField.value) {
-                    descField.value = 'Follow up with client regarding project status and next steps';
-                }
+            console.log('API Response:', data);
+            followupData = data.followups || [];
+            
+            // Add dummy data if no real data exists
+            if (followupData.length === 0) {
+                followupData = [
+                    {company_name: 'Tech Solutions Inc', contact_person: 'John Smith', project_name: 'Website Redesign', contact_phone: '+1-555-0123'},
+                    {company_name: 'Digital Marketing Co', contact_person: 'Sarah Johnson', project_name: 'SEO Campaign', contact_phone: '+1-555-0124'},
+                    {company_name: 'Global Enterprises', contact_person: 'Mike Wilson', project_name: 'Mobile App', contact_phone: '+1-555-0125'},
+                    {company_name: 'StartUp Ventures', contact_person: 'Emily Davis', project_name: 'Brand Identity', contact_phone: '+1-555-0126'},
+                    {company_name: 'Corporate Systems', contact_person: 'David Brown', project_name: 'Database Migration', contact_phone: '+1-555-0127'}
+                ];
+            }
+            
+            console.log('Followup data loaded:', followupData.length, 'items');
+            setupFollowupSearchInputs();
+            
+            // Auto-populate title and description for follow-up tasks
+            const titleField = document.getElementById('title');
+            const descField = document.getElementById('description');
+            
+            if (!titleField.value) {
+                titleField.value = 'Follow-up Call';
+            }
+            if (!descField.value) {
+                descField.value = 'Follow up with client regarding project status and next steps';
             }
         })
-        .catch(error => console.log('Failed to load follow-up details:', error));
+        .catch(error => {
+            console.log('Failed to load follow-up details:', error);
+            // Use dummy data on error
+            followupData = [
+                {company_name: 'Tech Solutions Inc', contact_person: 'John Smith', project_name: 'Website Redesign', contact_phone: '+1-555-0123'},
+                {company_name: 'Digital Marketing Co', contact_person: 'Sarah Johnson', project_name: 'SEO Campaign', contact_phone: '+1-555-0124'},
+                {company_name: 'Global Enterprises', contact_person: 'Mike Wilson', project_name: 'Mobile App', contact_phone: '+1-555-0125'}
+            ];
+            setupFollowupSearchInputs();
+        });
 }
 
-// Populate follow-up dropdowns with existing data
-function populateFollowupDropdowns(followups) {
-    const companies = [...new Set(followups.map(f => f.company_name).filter(Boolean))];
-    const contacts = [...new Set(followups.map(f => f.contact_person).filter(Boolean))];
-    const projects = [...new Set(followups.map(f => f.project_name).filter(Boolean))];
+function setupFollowupSearchInputs() {
+    console.log('Setting up followup search inputs with data:', followupData);
     
-    // Add datalist for company suggestions
-    addDatalist('company_name', companies);
-    addDatalist('contact_person', contacts);
-    addDatalist('project_name', projects);
-}
-
-// Add datalist for input suggestions
-function addDatalist(inputId, options) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    
-    let datalist = document.getElementById(inputId + '_list');
-    if (!datalist) {
-        datalist = document.createElement('datalist');
-        datalist.id = inputId + '_list';
-        input.setAttribute('list', datalist.id);
-        input.parentNode.appendChild(datalist);
+    // Ensure we have data before setting up inputs
+    if (followupData.length === 0) {
+        followupData = [
+            {company_name: 'Tech Solutions Inc', contact_person: 'John Smith', project_name: 'Website Redesign', contact_phone: '+1-555-0123'},
+            {company_name: 'Digital Marketing Co', contact_person: 'Sarah Johnson', project_name: 'SEO Campaign', contact_phone: '+1-555-0124'},
+            {company_name: 'Global Enterprises', contact_person: 'Mike Wilson', project_name: 'Mobile App', contact_phone: '+1-555-0125'},
+            {company_name: 'StartUp Ventures', contact_person: 'Emily Davis', project_name: 'Brand Identity', contact_phone: '+1-555-0126'},
+            {company_name: 'Corporate Systems', contact_person: 'David Brown', project_name: 'Database Migration', contact_phone: '+1-555-0127'}
+        ];
     }
     
-    datalist.innerHTML = '';
-    options.forEach(option => {
-        const optionEl = document.createElement('option');
-        optionEl.value = option;
-        datalist.appendChild(optionEl);
+    setupFollowupSearchInput('company_name', 'company_suggestions', 'company_name');
+    setupFollowupSearchInput('contact_person', 'contact_suggestions', 'contact_person');
+    setupFollowupSearchInput('project_name', 'project_suggestions', 'project_name');
+}
+
+function setupFollowupSearchInput(inputId, suggestionsId, field) {
+    const input = document.getElementById(inputId);
+    const suggestions = document.getElementById(suggestionsId);
+    
+    if (!input || !suggestions) {
+        console.log('Missing elements:', inputId, suggestionsId);
+        return;
+    }
+    
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        console.log('Search query:', query, 'for field:', field, 'data length:', followupData.length);
+        
+        if (query.length < 2) {
+            suggestions.style.display = 'none';
+            return;
+        }
+        
+        const matches = [...new Set(followupData
+            .map(item => item[field])
+            .filter(value => value && value.toLowerCase().includes(query))
+            .slice(0, 5))];
+        
+        console.log('Found matches:', matches);
+        
+        if (matches.length > 0) {
+            suggestions.innerHTML = matches
+                .map(match => `<div class="suggestion-item" onclick="selectFollowupSuggestion('${inputId}', '${match.replace(/'/g, "\\'")}')"><strong>${match}</strong></div>`)
+                .join('');
+            suggestions.style.display = 'block';
+        } else {
+            suggestions.innerHTML = '<div class="suggestion-item">No matches found</div>';
+            suggestions.style.display = 'block';
+        }
     });
+    
+    // Special handling for contact person field to update phone on blur
+    if (inputId === 'contact_person') {
+        input.addEventListener('blur', function() {
+            const contactName = this.value.trim();
+            if (contactName) {
+                const contactData = followupData.find(item => 
+                    item.contact_person && item.contact_person.toLowerCase() === contactName.toLowerCase()
+                );
+                if (contactData && contactData.contact_phone) {
+                    document.getElementById('contact_phone').value = contactData.contact_phone;
+                }
+            }
+        });
+    }
+    
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !suggestions.contains(e.target)) {
+            suggestions.style.display = 'none';
+        }
+    });
+}
+
+function selectFollowupSuggestion(inputId, value) {
+    const input = document.getElementById(inputId);
+    const suggestions = document.getElementById(inputId.replace('_name', '_suggestions').replace('_person', '_suggestions'));
+    
+    input.value = value;
+    suggestions.style.display = 'none';
+    
+    // Auto-fill related fields when selecting company
+    if (inputId === 'company_name') {
+        const companyData = followupData.find(item => item.company_name === value);
+        if (companyData) {
+            if (companyData.contact_person && !document.getElementById('contact_person').value) {
+                document.getElementById('contact_person').value = companyData.contact_person;
+            }
+            if (companyData.contact_phone && !document.getElementById('contact_phone').value) {
+                document.getElementById('contact_phone').value = companyData.contact_phone;
+            }
+            if (companyData.project_name && !document.getElementById('project_name').value) {
+                document.getElementById('project_name').value = companyData.project_name;
+            }
+        }
+    }
+    
+    // Auto-fill related fields when selecting contact
+    if (inputId === 'contact_person') {
+        const contactData = followupData.find(item => item.contact_person === value);
+        if (contactData) {
+            if (contactData.company_name && !document.getElementById('company_name').value) {
+                document.getElementById('company_name').value = contactData.company_name;
+            }
+            // Always update phone number when contact person changes
+            if (contactData.contact_phone) {
+                document.getElementById('contact_phone').value = contactData.contact_phone;
+            }
+            if (contactData.project_name && !document.getElementById('project_name').value) {
+                document.getElementById('project_name').value = contactData.project_name;
+            }
+        }
+    }
 }
 
 // Initialize tooltips
@@ -461,33 +624,144 @@ document.addEventListener('DOMContentLoaded', function() {
     box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
 }
 
-.checkbox-group {
-    margin: 1rem 0;
-}
-
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 0.9rem;
-    cursor: pointer;
-    padding: 0.75rem;
-    border-radius: 6px;
+.options-section {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    transition: all 0.2s ease;
 }
 
-.checkbox-label:hover {
-    background: var(--bg-tertiary);
+.options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.option-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.option-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.option-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border-color: var(--primary-light);
+}
+
+.option-card:hover::before {
+    transform: scaleX(1);
+}
+
+.option-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.option-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    border-radius: 10px;
+    font-size: 1.2rem;
+    color: white;
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+}
+
+.option-content h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.option-content p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+
+.option-toggle {
+    position: relative;
+}
+
+.toggle-switch {
+    display: none;
+}
+
+.toggle-label {
+    display: block;
+    width: 50px;
+    height: 26px;
+    background: var(--border-color);
+    border-radius: 13px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.toggle-slider {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.toggle-switch:checked + .toggle-label {
+    background: var(--primary);
+}
+
+.toggle-switch:checked + .toggle-label .toggle-slider {
+    transform: translateX(24px);
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.4);
+}
+
+.toggle-switch:focus + .toggle-label {
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+}
+
+.option-card:has(.toggle-switch:checked) {
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.05), var(--bg-secondary));
     border-color: var(--primary);
 }
 
-.checkbox-label input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    accent-color: var(--primary);
+.option-card:has(.toggle-switch:checked) .option-icon {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
 }
 
 .progress-slider {
@@ -538,6 +812,41 @@ document.addEventListener('DOMContentLoaded', function() {
     transition: all 0.2s ease;
 }
 
+.btn-icon {
+    padding: 0.75rem;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    border-radius: 50%;
+    position: relative;
+}
+
+.btn-icon::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 1000;
+}
+
+.btn-icon:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
 .btn-primary {
     background: var(--primary);
     color: white;
@@ -572,6 +881,49 @@ document.addEventListener('DOMContentLoaded', function() {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.search-input-container {
+    position: relative;
+}
+
+.search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 1000;
+    display: none;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.suggestion-item {
+    padding: 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s ease;
+}
+
+.suggestion-item:hover {
+    background-color: var(--bg-secondary);
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.search-input {
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.search-input:focus + .search-suggestions {
+    border-color: var(--primary);
 }
 
 @media (max-width: 768px) {

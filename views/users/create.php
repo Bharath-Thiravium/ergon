@@ -139,8 +139,8 @@ ob_start();
             </div>
             
             <div class="form-actions">
-                <button type="submit" class="btn btn--primary">Create User</button>
-                <a href="/ergon/users" class="btn btn--secondary">Cancel</a>
+                <button type="submit" class="btn btn--primary">✨ Create User</button>
+                <a href="/ergon/users" class="btn btn--secondary">❌ Cancel</a>
             </div>
         </form>
     </div>

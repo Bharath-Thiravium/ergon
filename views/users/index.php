@@ -93,14 +93,14 @@ ob_start();
                             <td><?= isset($user['last_login']) ? date('M d, Y', strtotime($user['last_login'])) : 'Never' ?></td>
                             <td>
                                 <div class="btn-group">
-                                    <a href="/ergon/users/view/<?= $user['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
-                                        <span>👁️</span> View
+                                    <a href="/ergon/users/view/<?= $user['id'] ?>" class="btn btn--sm btn--primary btn-icon" title="View Details">
+                                        👁️
                                     </a>
-                                    <button onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--sm btn--warning" title="Reset Password">
-                                        <span>🔑</span> Reset
+                                    <button onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--sm btn--warning btn-icon" title="Reset Password">
+                                        🔑
                                     </button>
-                                    <button onclick="deleteRecord('users', <?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--sm btn--danger" title="Delete User">
-                                        <span>🗑️</span> Delete
+                                    <button onclick="deleteRecord('users', <?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--sm btn--danger btn-icon" title="Delete User">
+                                        🗑️
                                     </button>
                                 </div>
                             </td>

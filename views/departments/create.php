@@ -46,8 +46,8 @@ ob_start();
             </div>
             
             <div class="form-actions">
-                <button type="submit" class="btn btn--primary">Create Department</button>
-                <a href="/ergon/departments" class="btn btn--secondary">Cancel</a>
+                <button type="submit" class="btn btn--primary">✨ Create Department</button>
+                <a href="/ergon/departments" class="btn btn--secondary">❌ Cancel</a>
             </div>
         </form>
     </div>

@@ -81,14 +81,14 @@ ob_start();
                         <td><?= date('M d, Y', strtotime($dept['created_at'])) ?></td>
                         <td>
                             <div class="btn-group">
-                                <a href="/ergon/departments/view/<?= $dept['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
-                                    <span>👁️</span> View
+                                <a href="/ergon/departments/view/<?= $dept['id'] ?>" class="btn btn--sm btn--primary btn-icon" title="View Details">
+                                    👁️
                                 </a>
-                                <a href="/ergon/departments/edit/<?= $dept['id'] ?>" class="btn btn--sm btn--secondary" title="Edit Department">
-                                    <span>✏️</span> Edit
+                                <a href="/ergon/departments/edit/<?= $dept['id'] ?>" class="btn btn--sm btn--secondary btn-icon" title="Edit Department">
+                                    ✏️
                                 </a>
-                                <button onclick="deleteRecord('departments', <?= $dept['id'] ?>, '<?= htmlspecialchars($dept['name']) ?>')" class="btn btn--sm btn--danger" title="Delete Department">
-                                    <span>🗑️</span> Delete
+                                <button onclick="deleteRecord('departments', <?= $dept['id'] ?>, '<?= htmlspecialchars($dept['name']) ?>')" class="btn btn--sm btn--danger btn-icon" title="Delete Department">
+                                    🗑️
                                 </button>
                             </div>
                         </td>

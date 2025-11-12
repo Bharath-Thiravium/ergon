@@ -81,14 +81,14 @@ ob_start();
                         <td><?= isset($task['created_at']) && $task['created_at'] ? date('M d, Y', strtotime($task['created_at'])) : 'N/A' ?></td>
                         <td>
                             <div class="btn-group">
-                                <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
-                                    <span>👁️</span> View
+                                <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="btn btn--sm btn--primary btn-icon" title="View Details">
+                                    👁️
                                 </a>
-                                <a href="/ergon/tasks/edit/<?= $task['id'] ?>" class="btn btn--sm btn--secondary" title="Edit Task">
-                                    <span>✏️</span> Edit
+                                <a href="/ergon/tasks/edit/<?= $task['id'] ?>" class="btn btn--sm btn--secondary btn-icon" title="Edit Task">
+                                    ✏️
                                 </a>
-                                <button onclick="deleteRecord('tasks', <?= $task['id'] ?>, '<?= htmlspecialchars($task['title']) ?>')" class="btn btn--sm btn--danger" title="Delete Task">
-                                    <span>🗑️</span> Delete
+                                <button onclick="deleteRecord('tasks', <?= $task['id'] ?>, '<?= htmlspecialchars($task['title']) ?>')" class="btn btn--sm btn--danger btn-icon" title="Delete Task">
+                                    🗑️
                                 </button>
                             </div>
                         </td>

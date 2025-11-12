@@ -221,60 +221,7 @@ class FollowupController extends Controller {
         exit;
     }
     
-    public function delete() {
-        if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /ergon/followups');
-            exit;
-        }
-        
-        try {
-            $db = Database::connect();
-            $this->ensureTables($db);
-            
-            $followupId = $_POST['id'] ?? $_POST['followup_id'];
-            
-            if (!$followupId) {
-                header('Location: /ergon/followups?error=Invalid follow-up ID');
-                exit;
-            }
-            
-            // Get followup details for history log
-            $stmt = $db->prepare("SELECT title FROM followups WHERE id = ? AND user_id = ?");
-            $stmt->execute([$followupId, $_SESSION['user_id']]);
-            $followup = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$followup) {
-                header('Location: /ergon/followups?error=Follow-up not found');
-                exit;
-            }
-            
-            // Start transaction
-            $db->beginTransaction();
-            
-            // Delete history records first
-            $stmt = $db->prepare("DELETE FROM followup_history WHERE followup_id = ?");
-            $stmt->execute([$followupId]);
-            
-            // Delete the followup
-            $stmt = $db->prepare("DELETE FROM followups WHERE id = ? AND user_id = ?");
-            $result = $stmt->execute([$followupId, $_SESSION['user_id']]);
-            
-            if ($result && $stmt->rowCount() > 0) {
-                $db->commit();
-                header('Location: /ergon/followups?success=Follow-up deleted successfully');
-            } else {
-                $db->rollBack();
-                header('Location: /ergon/followups?error=Failed to delete follow-up');
-            }
-        } catch (Exception $e) {
-            if (isset($db)) {
-                $db->rollBack();
-            }
-            error_log('Delete error: ' . $e->getMessage());
-            header('Location: /ergon/followups?error=Failed to delete follow-up');
-        }
-        exit;
-    }
+
     
     public function reschedule() {
         

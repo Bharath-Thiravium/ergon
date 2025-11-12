@@ -77,9 +77,9 @@ ob_start();
             
             <div class="form-actions">
                 <button type="submit" class="btn btn--primary" id="submitBtn">
-                    <span>📤</span> Submit Leave Request
+                    📤 Submit Leave Request
                 </button>
-                <a href="/ergon/leaves" class="btn btn--secondary">Cancel</a>
+                <a href="/ergon/leaves" class="btn btn--secondary">❌ Cancel</a>
             </div>
         </form>
     </div>
@@ -202,7 +202,7 @@ document.getElementById('leaveForm').addEventListener('submit', function(e) {
     }
     
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>⏳</span> Submitting...';
+    submitBtn.innerHTML = '⏳ Submitting...';
     
     const formData = new FormData(this);
     

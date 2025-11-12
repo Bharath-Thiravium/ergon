@@ -920,6 +920,42 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         border-color: #fbbf24 !important;
     }
     
+    /* Icon-only button styles */
+    .btn-icon {
+        padding: 0.75rem !important;
+        width: 44px !important;
+        height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 1.2rem !important;
+        border-radius: 50% !important;
+        position: relative !important;
+    }
+    
+    .btn-icon::after {
+        content: attr(title) !important;
+        position: absolute !important;
+        bottom: -35px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        background: rgba(0,0,0,0.8) !important;
+        color: white !important;
+        padding: 0.5rem 0.75rem !important;
+        border-radius: 4px !important;
+        font-size: 0.75rem !important;
+        white-space: nowrap !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transition: all 0.2s ease !important;
+        z-index: 1000 !important;
+    }
+    
+    .btn-icon:hover::after {
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+    
     /* Global Icon System - Force Filled Icons Without Outlines */
     .bi, .bi::before {
         font-weight: 900 !important;

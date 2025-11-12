@@ -77,9 +77,9 @@ ob_start();
             
             <div class="form-actions">
                 <button type="submit" class="btn btn--primary" id="submitBtn">
-                    <span>💸</span> Submit Expense Claim
+                    💸 Submit Expense Claim
                 </button>
-                <a href="/ergon/expenses" class="btn btn--secondary">Cancel</a>
+                <a href="/ergon/expenses" class="btn btn--secondary">❌ Cancel</a>
             </div>
         </form>
     </div>
@@ -157,7 +157,7 @@ document.getElementById('expenseForm').addEventListener('submit', function(e) {
     }
     
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>⏳</span> Submitting...';
+    submitBtn.innerHTML = '⏳ Submitting...';
     
     const formData = new FormData(this);
     

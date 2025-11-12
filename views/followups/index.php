@@ -1,5 +1,4 @@
 <?php
-$title = 'Follow-ups Management';
 $active_page = 'followups';
 ob_start();
 ?>
@@ -7,7 +6,7 @@ ob_start();
 <div class="page-header">
     <div class="page-title">
         <h1><span>📞</span> Follow-ups Management</h1>
-        <p>Track and manage client follow-ups with history and reminders</p>
+        <p>Track and manage client follow-ups and communications</p>
     </div>
     <div class="page-actions">
         <button class="btn btn--secondary" onclick="toggleFilters()">
@@ -212,26 +211,26 @@ ob_start();
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <button class="btn btn--sm btn--primary" onclick="viewFollowup(<?= $followup['id'] ?>)" title="View Details">
-                                            <span>👁️</span>
+                                        <button class="btn btn--sm btn--primary btn-icon" onclick="viewFollowup(<?= $followup['id'] ?>)" title="View Details">
+                                            👁️
                                         </button>
                                         <?php if ($followup['status'] !== 'completed'): ?>
-                                            <button class="btn btn--sm btn--success" onclick="completeFollowup(<?= $followup['id'] ?>)" title="Mark Complete">
-                                                <span>✅</span>
+                                            <button class="btn btn--sm btn--success btn-icon" onclick="completeFollowup(<?= $followup['id'] ?>)" title="Mark Complete">
+                                                ✅
                                             </button>
-                                            <button class="btn btn--sm btn--warning" onclick="rescheduleFollowup(<?= $followup['id'] ?>)" title="Reschedule">
-                                                <span>📅</span>
+                                            <button class="btn btn--sm btn--warning btn-icon" onclick="rescheduleFollowup(<?= $followup['id'] ?>)" title="Reschedule">
+                                                📅
                                             </button>
                                         <?php endif; ?>
-                                        <button class="btn btn--sm btn--info" onclick="showHistory(<?= $followup['id'] ?>)" title="View History">
-                                            <span>📋</span>
+                                        <button class="btn btn--sm btn--info btn-icon" onclick="showHistory(<?= $followup['id'] ?>)" title="View History">
+                                            📋
                                         </button>
                                         <?php 
                                         $canDelete = ($followup['user_id'] == $_SESSION['user_id']) || in_array($_SESSION['role'] ?? '', ['admin', 'owner']);
                                         if ($canDelete): 
                                         ?>
-                                            <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')" title="Delete">
-                                                <span>🗑️</span>
+                                            <button class="btn btn--sm btn--danger btn-icon" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')" title="Delete">
+                                                🗑️
                                             </button>
                                         <?php endif; ?>
                                     </div>

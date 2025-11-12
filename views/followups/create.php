@@ -88,10 +88,8 @@ ob_start();
             </div>
             
             <div class="form-actions">
-                <a href="/ergon/followups" class="btn btn--secondary">Cancel</a>
-                <button type="submit" class="btn btn--primary">
-                    <span>💾</span> Save Follow-up
-                </button>
+                <a href="/ergon/followups" class="btn btn--secondary">❌ Cancel</a>
+                <button type="submit" class="btn btn--primary">💾 Save Follow-up</button>
             </div>
         </form>
     </div>
