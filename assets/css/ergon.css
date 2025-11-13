@@ -1328,17 +1328,17 @@ body {
 }
 
 .badge--warning {
-  background: #fef3c7;
+  
   color: #d97706;
 }
 
 .badge--danger {
-  background: #fee2e2;
+  
   color: #dc2626;
 }
 
 .badge--info {
-  background: #dbeafe;
+  
   color: #1d4ed8;
 }
 
