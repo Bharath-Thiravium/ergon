@@ -84,19 +84,38 @@ class ProfileController extends Controller {
             $newPassword = $_POST['new_password'] ?? '';
             $confirmPassword = $_POST['confirm_password'] ?? '';
             
+            // Check if this is an AJAX request
+            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+            
             if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => 'All password fields are required']);
+                    exit;
+                }
                 $data = ['error' => 'All password fields are required', 'active_page' => 'profile'];
                 $this->view('profile/change-password', $data);
                 return;
             }
             
             if ($newPassword !== $confirmPassword) {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => 'New passwords do not match']);
+                    exit;
+                }
                 $data = ['error' => 'New passwords do not match', 'active_page' => 'profile'];
                 $this->view('profile/change-password', $data);
                 return;
             }
             
             if (strlen($newPassword) < 6) {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => 'Password must be at least 6 characters']);
+                    exit;
+                }
                 $data = ['error' => 'Password must be at least 6 characters', 'active_page' => 'profile'];
                 $this->view('profile/change-password', $data);
                 return;
@@ -104,12 +123,27 @@ class ProfileController extends Controller {
             
             if ($this->verifyCurrentPassword($_SESSION['user_id'], $currentPassword)) {
                 if ($this->updatePassword($_SESSION['user_id'], $newPassword)) {
+                    if ($isAjax) {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => true, 'message' => 'Password changed successfully']);
+                        exit;
+                    }
                     header('Location: /ergon/profile?password_changed=1');
                 } else {
+                    if ($isAjax) {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => false, 'error' => 'Failed to update password']);
+                        exit;
+                    }
                     $data = ['error' => 'Failed to update password', 'active_page' => 'profile'];
                     $this->view('profile/change-password', $data);
                 }
             } else {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => 'Current password is incorrect']);
+                    exit;
+                }
                 $data = ['error' => 'Current password is incorrect', 'active_page' => 'profile'];
                 $this->view('profile/change-password', $data);
             }
@@ -167,7 +201,11 @@ class ProfileController extends Controller {
     
     private function getUserProfile($userId) {
         try {
-            $sql = "SELECT id, name, email, phone, address, role, created_at FROM users WHERE id = ?";
+            $sql = "SELECT u.id, u.name, u.email, u.phone, u.address, u.role, u.created_at, 
+                           COALESCE(d.name, u.department, 'General') as department
+                    FROM users u 
+                    LEFT JOIN departments d ON u.department_id = d.id 
+                    WHERE u.id = ?";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$userId]);
             return $stmt->fetch(PDO::FETCH_ASSOC);

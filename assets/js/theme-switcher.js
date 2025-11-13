@@ -10,7 +10,7 @@ class ThemeSwitcher {
     }
     
     loadTheme() {
-        const savedTheme = localStorage.getItem('ergon-theme');
+        const savedTheme = localStorage.getItem('ergon_theme') || document.body.getAttribute('data-theme');
         this.currentTheme = savedTheme || 'light';
         
         this.applyTheme(this.currentTheme);
@@ -53,7 +53,7 @@ class ThemeSwitcher {
         document.body.offsetHeight; // Trigger reflow
         document.body.style.display = '';
         
-        localStorage.setItem('ergon-theme', theme);
+        localStorage.setItem('ergon_theme', theme);
         this.saveToServer(theme);
     }
     
@@ -85,6 +85,12 @@ class ThemeSwitcher {
             if (icon) {
                 icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
             }
+        }
+        
+        // Also update header background for dark theme
+        const header = document.querySelector('.main-header');
+        if (header) {
+            header.setAttribute('data-theme', theme);
         }
     }
     
