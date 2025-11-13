@@ -410,6 +410,44 @@ class TasksController extends Controller {
         }
     }
     
+    public function updateStatus() {
+        header('Content-Type: application/json');
+        AuthMiddleware::requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $taskId = intval($input['task_id'] ?? 0);
+        $progress = intval($input['progress'] ?? 0);
+        $status = $input['status'] ?? 'assigned';
+        
+        if (!$taskId || $progress < 0 || $progress > 100) {
+            echo json_encode(['success' => false, 'message' => 'Invalid parameters']);
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureTasksTable($db);
+            
+            $stmt = $db->prepare("UPDATE tasks SET progress = ?, status = ?, updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$progress, $status, $taskId]);
+            
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'Task status updated successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to update task status']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Update failed: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+    
     public function delete($id) {
         header('Content-Type: application/json');
         AuthMiddleware::requireAuth();

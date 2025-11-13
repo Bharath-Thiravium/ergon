@@ -4,28 +4,20 @@ $active_page = 'expenses';
 ob_start();
 ?>
 
-<div class="page-header">
-    <div class="page-title">
-        <h1><span>✏️</span> Edit Expense Claim</h1>
-        <p>Modify your expense claim details</p>
-    </div>
-    <div class="page-actions">
-        <a href="/ergon/expenses" class="btn btn--secondary">
-            <span>←</span> Back to Expenses
-        </a>
+<div class="compact-header">
+    <h1>✏️ Edit Expense Claim</h1>
+    <div class="header-actions">
+        <a href="/ergon/expenses" class="btn-back">← Back</a>
     </div>
 </div>
 
-<div class="card">
-    <div class="card__header">
-        <h2 class="card__title">Expense Details</h2>
-    </div>
-    <div class="card__body">
-        <form method="POST" action="/ergon/expenses/edit/<?= $expense['id'] ?>">
-            <div class="form-row">
+<div class="compact-form">
+    <form method="POST" action="/ergon/expenses/edit/<?= $expense['id'] ?>">
+        <div class="form-section">
+            <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label">Category</label>
-                    <select name="category" class="form-control" required>
+                    <label for="category">💰 Category</label>
+                    <select name="category" id="category" required>
                         <option value="travel" <?= $expense['category'] === 'travel' ? 'selected' : '' ?>>Travel</option>
                         <option value="food" <?= $expense['category'] === 'food' ? 'selected' : '' ?>>Food & Meals</option>
                         <option value="accommodation" <?= $expense['category'] === 'accommodation' ? 'selected' : '' ?>>Accommodation</option>
@@ -37,29 +29,28 @@ ob_start();
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Amount</label>
-                    <input type="number" name="amount" class="form-control" step="0.01" min="0" value="<?= htmlspecialchars($expense['amount']) ?>" required>
+                    <label for="amount">💵 Amount</label>
+                    <input type="number" name="amount" id="amount" step="0.01" min="0" value="<?= htmlspecialchars($expense['amount']) ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="expense_date">📅 Expense Date</label>
+                    <input type="date" name="expense_date" id="expense_date" value="<?= htmlspecialchars($expense['expense_date']) ?>" required>
                 </div>
             </div>
             
             <div class="form-group">
-                <label class="form-label">Expense Date</label>
-                <input type="date" name="expense_date" class="form-control" value="<?= htmlspecialchars($expense['expense_date']) ?>" required>
+                <label for="description">📝 Description</label>
+                <textarea name="description" id="description" rows="4" placeholder="Provide details about the expense" required><?= htmlspecialchars($expense['description']) ?></textarea>
             </div>
-            
-            <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea name="description" class="form-control" rows="4" placeholder="Provide details about the expense" required><?= htmlspecialchars($expense['description']) ?></textarea>
-            </div>
-            
-            <div class="form-actions">
-                <button type="submit" class="btn btn--primary">
-                    <span>💾</span> Update Expense Claim
-                </button>
-                <a href="/ergon/expenses" class="btn btn--secondary">Cancel</a>
-            </div>
-        </form>
-    </div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                ✨ Update Expense Claim
+            </button>
+            <a href="/ergon/expenses" class="btn-secondary">❌ Cancel</a>
+        </div>
+    </form>
 </div>
 
 <?php

@@ -82,6 +82,7 @@ $router->get('/tasks/edit/{id}', 'TasksController', 'edit');
 $router->post('/tasks/edit/{id}', 'TasksController', 'edit');
 $router->get('/tasks/view/{id}', 'TasksController', 'viewTask');
 $router->post('/tasks/delete/{id}', 'TasksController', 'delete');
+$router->post('/tasks/update-status', 'TasksController', 'updateStatus');
 $router->get('/tasks/calendar', 'TasksController', 'calendar');
 $router->get('/tasks/overdue', 'TasksController', 'overdue');
 $router->post('/tasks/bulk-create', 'TasksController', 'bulkCreate');
@@ -236,6 +237,7 @@ $router->post('/api/attendance', 'ApiController', 'attendance');
 $router->get('/api/tasks', 'ApiController', 'tasks');
 $router->post('/api/tasks/update', 'ApiController', 'updateTask');
 $router->get('/api/task-categories', 'ApiController', 'taskCategories');
+$router->get('/api/task-categories.php', 'ApiController', 'taskCategories');
 $router->get('/api/followup-details', 'ApiController', 'followupDetails');
 $router->get('/direct_followup_test.php', 'ApiController', 'followupDetails');
 $router->get('/check_reminders.php', 'FollowupController', 'checkReminders');
@@ -317,6 +319,7 @@ $router->post('/workflow/evening-update/{date}', 'UnifiedWorkflowController', 'e
 $router->get('/workflow/followups', 'UnifiedWorkflowController', 'followups');
 $router->get('/workflow/calendar', 'UnifiedWorkflowController', 'calendar');
 $router->get('/workflow/create-task', 'TasksController', 'create');
+$router->post('/workflow/create-task', 'TasksController', 'store');
 $router->post('/workflow/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
 
 // Follow-up Routes (Legacy - now filtered from tasks)

@@ -347,6 +347,15 @@ $content = ob_start();
 // Update progress value display
 function updateProgressValue(value) {
     document.getElementById('progressValue').textContent = value + '%';
+    
+    const statusSelect = document.getElementById('status');
+    if (value >= 100) {
+        statusSelect.value = 'completed';
+    } else if (value > 0) {
+        statusSelect.value = 'in_progress';
+    } else {
+        statusSelect.value = 'assigned';
+    }
 }
 
 // Load task categories based on selected department
@@ -703,6 +712,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const today = new Date().toISOString().split('T')[0];
     deadlineInput.min = today;
     
+    // Status/Progress sync
+    const statusSelect = document.getElementById('status');
+    const progressSlider = document.getElementById('progress');
+    
+    statusSelect.addEventListener('change', function() {
+        if (this.value === 'completed') {
+            progressSlider.value = 100;
+            document.getElementById('progressValue').textContent = '100%';
+        } else if (this.value === 'assigned' && progressSlider.value == 100) {
+            progressSlider.value = 0;
+            document.getElementById('progressValue').textContent = '0%';
+        }
+    });
+    
     // Form validation
     document.getElementById('createTaskForm').addEventListener('submit', function(e) {
         const title = document.getElementById('title').value.trim();
@@ -747,34 +770,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .compact-form {
     background: var(--bg-primary);
-    border-radius: 12px;
-    padding: 2rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border-radius: 6px;
+    padding: 0.5rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
     border: 1px solid var(--border-color);
 }
 
 .form-section {
-    margin-bottom: 2rem;
-    padding: 1.5rem;
+    margin-bottom: 0.5rem;
+    padding: 0.6rem;
     background: var(--bg-secondary);
-    border-radius: 8px;
+    border-radius: 4px;
     border: 1px solid var(--border-color);
 }
 
 .form-section h3 {
-    margin: 0 0 1rem 0;
-    font-size: 1rem;
+    margin: 0 0 0.4rem 0;
+    font-size: 0.85rem;
     font-weight: 600;
     color: var(--primary);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.3rem;
 }
 
 .form-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    gap: 0.5rem;
 }
 
 .form-group {
@@ -791,19 +814,19 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .form-group label {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     font-weight: 500;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.1rem;
     color: var(--text-primary);
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
-    padding: 0.5rem;
+    padding: 0.3rem;
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    font-size: 0.875rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
     background: var(--bg-primary);
 }
 
@@ -822,20 +845,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .options-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.4rem;
+    margin-top: 0.4rem;
 }
 
 .option-card {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.25rem;
+    padding: 0.6rem;
     background: var(--bg-secondary);
-    border: 2px solid var(--border-color);
-    border-radius: 12px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    transition: all 0.15s ease;
     cursor: pointer;
     position: relative;
     overflow: hidden;
@@ -871,30 +894,30 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .option-icon {
-    width: 40px;
-    height: 40px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, var(--primary-light), var(--primary));
-    border-radius: 10px;
-    font-size: 1.2rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
     color: white;
-    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+    box-shadow: 0 1px 3px rgba(var(--primary-rgb), 0.15);
 }
 
 .option-content h4 {
-    margin: 0 0 0.25rem 0;
-    font-size: 0.95rem;
+    margin: 0 0 0.1rem 0;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-primary);
 }
 
 .option-content p {
     margin: 0;
-    font-size: 0.8rem;
+    font-size: 0.65rem;
     color: var(--text-secondary);
-    line-height: 1.3;
+    line-height: 1.1;
 }
 
 .option-toggle {
@@ -1143,33 +1166,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .help-panel {
     background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-    border: 2px solid var(--primary-light);
-    border-radius: 12px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border: 1px solid var(--primary-light);
+    border-radius: 4px;
+    padding: 0.6rem;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
 .help-content h3 {
-    margin: 0 0 1.5rem 0;
+    margin: 0 0 0.6rem 0;
     color: var(--primary);
-    font-size: 1.25rem;
+    font-size: 1rem;
     text-align: center;
 }
 
 .help-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
 }
 
 .help-section {
     background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    border-left: 4px solid var(--primary);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    padding: 0.6rem;
+    border-radius: 4px;
+    border-left: 2px solid var(--primary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
 
 .help-section h4 {
@@ -1250,10 +1273,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .field-hint {
     display: block;
-    margin-top: 0.25rem;
-    font-size: 0.75rem;
+    margin-top: 0.1rem;
+    font-size: 0.65rem;
     color: var(--text-secondary);
-    line-height: 1.3;
+    line-height: 1.1;
     font-style: italic;
 }
 

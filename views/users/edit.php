@@ -4,47 +4,40 @@ $active_page = 'users';
 ob_start();
 ?>
 
-<div class="page-header">
-    <h1>Edit User</h1>
-    <a href="/ergon/users" class="btn btn--secondary">Back to Users</a>
+<div class="compact-header">
+    <h1>👥 Edit User</h1>
+    <div class="header-actions">
+        <a href="/ergon/users" class="btn-back">← Back</a>
+    </div>
 </div>
 
-<div class="card">
-    <div class="card__header">
-        <h2 class="card__title">User Information</h2>
-    </div>
-    <div class="card__body">
-        <form method="POST" enctype="multipart/form-data">
-            <div class="form-row">
+<div class="compact-form">
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-section">
+            <h3>👤 Basic Information</h3>
+            <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label">Employee ID</label>
-                    <input type="text" name="employee_id" class="form-control" 
-                           value="<?= htmlspecialchars($user['employee_id'] ?? '') ?>" readonly>
+                    <label for="employee_id">🆔 Employee ID</label>
+                    <input type="text" name="employee_id" id="employee_id" value="<?= htmlspecialchars($user['employee_id'] ?? '') ?>" readonly>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Full Name *</label>
-                    <input type="text" name="name" class="form-control" 
-                           value="<?= htmlspecialchars($user['name'] ?? '') ?>" required>
-                </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Email Address *</label>
-                    <input type="email" name="email" class="form-control" 
-                           value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
+                    <label for="name">📝 Full Name *</label>
+                    <input type="text" name="name" id="name" value="<?= htmlspecialchars($user['name'] ?? '') ?>" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Phone Number</label>
-                    <input type="tel" name="phone" class="form-control" 
-                           value="<?= htmlspecialchars($user['phone'] ?? '') ?>">
+                    <label for="email">📧 Email Address *</label>
+                    <input type="email" name="email" id="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
                 </div>
             </div>
             
-            <div class="form-row">
+            <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label">Role *</label>
-                    <select name="role" class="form-control" required>
+                    <label for="phone">📱 Phone Number</label>
+                    <input type="tel" name="phone" id="phone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                    <label for="role">🔑 Role *</label>
+                    <select name="role" id="role" required>
                         <option value="user" <?= ($user['role'] ?? '') === 'user' ? 'selected' : '' ?>>User</option>
                         <option value="admin" <?= ($user['role'] ?? '') === 'admin' ? 'selected' : '' ?>>Admin</option>
                         <?php if (($_SESSION['role'] ?? '') === 'owner'): ?>
@@ -53,56 +46,51 @@ ob_start();
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Status *</label>
-                    <select name="status" class="form-control" required>
+                    <label for="status">🟢 Status *</label>
+                    <select name="status" id="status" required>
                         <option value="active" <?= ($user['status'] ?? '') === 'active' ? 'selected' : '' ?>>Active</option>
                         <option value="inactive" <?= ($user['status'] ?? '') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
                     </select>
                 </div>
             </div>
-            
-            <div class="form-row">
+        </div>
+        
+        <div class="form-section">
+            <h3>🏢 Work Information</h3>
+            <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label">Department</label>
-                    <select name="department_id" class="form-control">
+                    <label for="department_id">🏢 Department</label>
+                    <select name="department_id" id="department_id">
                         <option value="">Select Department</option>
                         <?php foreach ($departments ?? [] as $dept): ?>
-                        <option value="<?= $dept['id'] ?>" 
-                                <?= ($user['department_id'] ?? '') == $dept['id'] ? 'selected' : '' ?>>
+                        <option value="<?= $dept['id'] ?>" <?= ($user['department_id'] ?? '') == $dept['id'] ? 'selected' : '' ?>>
                             <?= htmlspecialchars($dept['name']) ?>
                         </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Designation</label>
-                    <input type="text" name="designation" class="form-control" 
-                           value="<?= htmlspecialchars($user['designation'] ?? '') ?>">
+                    <label for="designation">💼 Designation</label>
+                    <input type="text" name="designation" id="designation" value="<?= htmlspecialchars($user['designation'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                    <label for="joining_date">📅 Joining Date</label>
+                    <input type="date" name="joining_date" id="joining_date" value="<?= htmlspecialchars($user['joining_date'] ?? '') ?>">
                 </div>
             </div>
             
-            <div class="form-row">
+            <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label">Joining Date</label>
-                    <input type="date" name="joining_date" class="form-control" 
-                           value="<?= htmlspecialchars($user['joining_date'] ?? '') ?>">
+                    <label for="salary">💰 Salary</label>
+                    <input type="number" name="salary" id="salary" value="<?= htmlspecialchars($user['salary'] ?? '') ?>" step="0.01">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Salary</label>
-                    <input type="number" name="salary" class="form-control" 
-                           value="<?= htmlspecialchars($user['salary'] ?? '') ?>" step="0.01">
-                </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Date of Birth</label>
-                    <input type="date" name="date_of_birth" class="form-control" 
-                           value="<?= htmlspecialchars($user['date_of_birth'] ?? '') ?>">
+                    <label for="date_of_birth">🎂 Date of Birth</label>
+                    <input type="date" name="date_of_birth" id="date_of_birth" value="<?= htmlspecialchars($user['date_of_birth'] ?? '') ?>">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Gender</label>
-                    <select name="gender" class="form-control">
+                    <label for="gender">🚪 Gender</label>
+                    <select name="gender" id="gender">
                         <option value="">Select Gender</option>
                         <option value="male" <?= ($user['gender'] ?? '') === 'male' ? 'selected' : '' ?>>Male</option>
                         <option value="female" <?= ($user['gender'] ?? '') === 'female' ? 'selected' : '' ?>>Female</option>
@@ -110,112 +98,31 @@ ob_start();
                     </select>
                 </div>
             </div>
-            
+        </div>
+        
+        <div class="form-section">
+            <h3>📍 Contact Information</h3>
             <div class="form-group">
-                <label class="form-label">Address</label>
-                <textarea name="address" class="form-control" rows="3"><?= htmlspecialchars($user['address'] ?? '') ?></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Emergency Contact</label>
-                <input type="text" name="emergency_contact" class="form-control" 
-                       value="<?= htmlspecialchars($user['emergency_contact'] ?? '') ?>">
+                <label for="address">🏠 Address</label>
+                <textarea name="address" id="address" rows="3"><?= htmlspecialchars($user['address'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
-                <label class="form-label">Documents</label>
-                <div class="document-upload">
-                    <?php
-                    $documentsPath = __DIR__ . '/../../public/uploads/users/' . ($user['id'] ?? 0);
-                    $docTypes = ['passport_photo', 'aadhar', 'pan', 'resume', 'education_docs', 'experience_certs'];
-                    $docLabels = ['Passport Photo', 'Aadhar Card', 'PAN Card', 'Resume', 'Education Documents', 'Experience Certificates'];
-                    
-                    foreach ($docTypes as $index => $docType) {
-                        echo '<div class="document-category">';
-                        echo '<label>' . $docLabels[$index] . '</label>';
-                        
-                        // Show existing files for this category
-                        if (is_dir($documentsPath)) {
-                            $pattern = $documentsPath . '/' . $docType . '_*';
-                            $files = glob($pattern);
-                            if (!empty($files)) {
-                                echo '<div class="existing-files">';
-                                foreach ($files as $file) {
-                                    $filename = basename($file);
-                                    $filePath = '/ergon/users/download-document/' . $user['id'] . '/' . $filename;
-                                    echo '<div class="document-item">';
-                                    echo '<a href="' . $filePath . '" target="_blank">' . htmlspecialchars($filename) . '</a>';
-                                    echo '<button type="button" onclick="deleteDocument(\'' . $filename . '\')" class="btn btn--sm btn--danger">×</button>';
-                                    echo '</div>';
-                                }
-                                echo '</div>';
-                            }
-                        }
-                        
-                        // Upload input
-                        $accept = in_array($docType, ['passport_photo']) ? '.jpg,.jpeg,.png' : 
-                                 ($docType === 'resume' ? '.pdf,.doc,.docx' : '.pdf,.jpg,.jpeg,.png');
-                        $multiple = in_array($docType, ['education_docs', 'experience_certs']) ? 'multiple' : '';
-                        $inputName = in_array($docType, ['education_docs', 'experience_certs']) ? $docType . '[]' : $docType;
-                        
-                        echo '<input type="file" name="' . $inputName . '" class="form-control" accept="' . $accept . '" ' . $multiple . '>';
-                        echo '</div>';
-                    }
-                    ?>
-                    <small class="form-text">Max 5MB per file. JPG/PNG for photos, PDF/DOC for documents.</small>
-                </div>
+                <label for="emergency_contact">🆘 Emergency Contact</label>
+                <input type="text" name="emergency_contact" id="emergency_contact" value="<?= htmlspecialchars($user['emergency_contact'] ?? '') ?>">
             </div>
-            
-            <div class="form-actions">
-                <button type="submit" class="btn btn--primary">Update User</button>
-                <a href="/ergon/users" class="btn btn--secondary">Cancel</a>
-            </div>
-        </form>
-    </div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                ✨ Update User
+            </button>
+            <a href="/ergon/users" class="btn-secondary">❌ Cancel</a>
+        </div>
+    </form>
 </div>
 
-<style>
-.document-upload {
-    border: 1px solid #ddd;
-    padding: 1rem;
-    border-radius: 4px;
-    background: #f9f9f9;
-}
-.document-category {
-    margin-bottom: 1rem;
-    padding: 0.75rem;
-    background: white;
-    border-radius: 4px;
-    border: 1px solid #eee;
-}
-.document-category label {
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 0.5rem;
-    display: block;
-}
-.existing-files {
-    margin-bottom: 0.5rem;
-}
-.document-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.25rem 0.5rem;
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 3px;
-    margin-bottom: 0.25rem;
-    font-size: 0.9rem;
-}
-.document-item a {
-    color: #2563eb;
-    text-decoration: none;
-}
-.document-item a:hover {
-    text-decoration: underline;
-}
-</style>
+
 
 <script>
 function generateEmployeeId() {
