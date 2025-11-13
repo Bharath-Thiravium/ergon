@@ -170,6 +170,8 @@ ob_start();
                                     error_log('Date calculation error: ' . $e->getMessage());
                                     $days = 1;
                                 }
+                            } else {
+                                error_log('Missing date values for leave calculation');
                             }
                             ?>
                             <strong><?= $days ?></strong> <?= $days == 1 ? 'day' : 'days' ?>

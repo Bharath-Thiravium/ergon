@@ -669,7 +669,8 @@ function viewFollowup(id) {
             document.getElementById('viewContent').innerHTML = html;
             document.getElementById('viewModal').classList.remove('modal--hidden');
         })
-        .catch(() => {
+        .catch(error => {
+            console.error('Error loading followup details:', error);
             alert('Error loading followup details');
         });
 }
@@ -707,7 +708,8 @@ function showHistory(id) {
         .then(data => {
             document.getElementById('historyContent').innerHTML = data.html || 'No history available';
         })
-        .catch(() => {
+        .catch(error => {
+            console.error('Error loading history:', error);
             document.getElementById('historyContent').innerHTML = 'Error loading history';
         });
 }
@@ -795,7 +797,10 @@ function checkReminders() {
                 showReminderPopup(data.reminders);
             }
         })
-        .catch(error => console.log('Reminder check failed:', error));
+        .catch(error => {
+            console.error('Reminder check failed:', error);
+            // Fail silently for reminders to not disrupt user experience
+        });
 }
 
 function showReminderPopup(reminders) {
