@@ -60,7 +60,7 @@ ob_start();
         </h2>
     </div>
     <div class="card__body">
-        <div class="table-responsive">
+        <div class="table-responsive modern-table">
             <table class="table">
                 <thead>
                     <tr>
@@ -73,9 +73,9 @@ ob_start();
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (empty($users ?? [])): ?>
+                    <?php if (!is_array($users) || empty($users)): ?>
                     <tr>
-                        <td colspan="6" class="text-center" style="color: var(--text-muted); padding: 2rem;">
+                        <td colspan="6" class="text-center">
                             <div class="empty-state">
                                 <div class="empty-icon">👥</div>
                                 <h3>No Users Found</h3>
@@ -86,20 +86,35 @@ ob_start();
                     <?php else: ?>
                         <?php foreach ($users as $user): ?>
                         <tr>
-                            <td><?= htmlspecialchars($user['name']) ?></td>
-                            <td><?= htmlspecialchars($user['email']) ?></td>
-                            <td><span class="badge badge--success"><?= ucfirst($user['role']) ?></span></td>
-                            <td><span class="badge badge--success"><?= ucfirst($user['status']) ?></span></td>
+                            <td>
+                                <div class="cell-meta">
+                                    <div class="cell-primary"><?= htmlspecialchars($user['name']) ?></div>
+                                    <div class="cell-secondary">ID: <?= $user['id'] ?></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="cell-meta">
+                                    <div class="cell-primary"><?= htmlspecialchars($user['email']) ?></div>
+                                    <div class="cell-secondary">Employee ID: <?= $user['employee_id'] ?? 'N/A' ?></div>
+                                </div>
+                            </td>
+                            <td><span class="modern-badge modern-badge--<?= htmlspecialchars($user['role'] ?? 'user') === 'admin' ? 'warning' : (htmlspecialchars($user['role'] ?? 'user') === 'owner' ? 'danger' : 'info') ?>"><?= htmlspecialchars(ucfirst($user['role'] ?? 'user')) ?></span></td>
+                            <td>
+                                <div class="status-indicator">
+                                    <div class="status-dot status-dot--<?= htmlspecialchars($user['status'] ?? 'active') === 'active' ? 'success' : 'pending' ?>"></div>
+                                    <span class="modern-badge modern-badge--<?= htmlspecialchars($user['status'] ?? 'active') === 'active' ? 'success' : 'pending' ?>"><?= htmlspecialchars(ucfirst($user['status'] ?? 'active')) ?></span>
+                                </div>
+                            </td>
                             <td><?= isset($user['last_login']) ? date('M d, Y', strtotime($user['last_login'])) : 'Never' ?></td>
                             <td>
-                                <div class="btn-group">
-                                    <a href="/ergon/users/view/<?= $user['id'] ?>" class="btn btn--sm btn--primary btn-icon" title="View Details">
+                                <div class="modern-actions">
+                                    <a href="/ergon/users/view/<?= $user['id'] ?>" class="modern-btn modern-btn--primary modern-tooltip" data-tooltip="View Details">
                                         👁️
                                     </a>
-                                    <button onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--sm btn--warning btn-icon" title="Reset Password">
+                                    <button class="modern-btn modern-btn--warning modern-tooltip reset-password-btn" data-tooltip="Reset Password" data-user-id="<?= $user['id'] ?>" data-user-name="<?= htmlspecialchars($user['name']) ?>">
                                         🔑
                                     </button>
-                                    <button onclick="deleteRecord('users', <?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn btn--sm btn--danger btn-icon" title="Delete User">
+                                    <button class="modern-btn modern-btn--danger modern-tooltip delete-user-btn" data-tooltip="Delete User" data-user-id="<?= $user['id'] ?>" data-user-name="<?= htmlspecialchars($user['name']) ?>">
                                         🗑️
                                     </button>
                                 </div>
@@ -114,27 +129,37 @@ ob_start();
 </div>
 
 <script>
-function resetPassword(userId, userName) {
-    if (confirm(`Reset password for ${userName}?\n\nThis will generate a new random password.`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/ergon/users/reset-password';
-        form.innerHTML = `<input type="hidden" name="user_id" value="${userId}">`;
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-function deleteRecord(type, id, name) {
-    if (confirm(`Delete ${name}?\n\nThis action cannot be undone.`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/ergon/${type}/delete/${id}`;
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('reset-password-btn')) {
+            const userId = e.target.dataset.userId;
+            const userName = e.target.dataset.userName;
+            if (confirm(`Reset password for ${userName}?\n\nThis will generate a new random password.`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/ergon/users/reset-password';
+                form.innerHTML = `<input type="hidden" name="user_id" value="${userId}">`;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+        
+        if (e.target.classList.contains('delete-user-btn')) {
+            const userId = e.target.dataset.userId;
+            const userName = e.target.dataset.userName;
+            if (confirm(`Delete ${userName}?\n\nThis action cannot be undone.`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/ergon/users/delete/${userId}`;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    });
+});
 </script>
+
+<script src="/ergon/assets/js/table-utils.js"></script>
 
 <?php
 $content = ob_get_clean();

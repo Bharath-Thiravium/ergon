@@ -62,32 +62,34 @@ ob_start();
                         <th>Department Head</th>
                         <th>Employees</th>
                         <th>Status</th>
-                        <th>Created</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($data['departments'] as $dept): ?>
                     <tr>
-                        <td><strong><?= htmlspecialchars($dept['name']) ?></strong></td>
-                        <td><?= htmlspecialchars(substr($dept['description'], 0, 50)) ?>...</td>
-                        <td><?= $dept['head_name'] ? htmlspecialchars($dept['head_name']) : 'Not Assigned' ?></td>
-                        <td><?= $dept['employee_count'] ?></td>
                         <td>
-                            <span class="badge badge--<?= $dept['status'] === 'active' ? 'success' : 'warning' ?>">
-                                <?= ucfirst($dept['status']) ?>
-                            </span>
+                            <strong><?= htmlspecialchars($dept['name']) ?></strong>
+                            <br><small class="text-muted">Dept ID: <?= $dept['id'] ?></small>
                         </td>
-                        <td><?= date('M d, Y', strtotime($dept['created_at'])) ?></td>
+                        <td><?= htmlspecialchars(substr($dept['description'], 0, 60)) ?>...</td>
+                        <td>
+                            <strong><?= $dept['head_name'] ? htmlspecialchars($dept['head_name']) : 'Not Assigned' ?></strong>
+                            <br><small class="text-muted"><?= $dept['head_name'] ? 'Department Head' : 'Position Vacant' ?></small>
+                        </td>
+                        <td>
+                            <strong><?= $dept['employee_count'] ?></strong> employees
+                        </td>
+                        <td><span class="badge badge--<?= $dept['status'] === 'active' ? 'success' : 'warning' ?>"><?= ucfirst($dept['status']) ?></span></td>
                         <td>
                             <div class="btn-group">
-                                <a href="/ergon/departments/view/<?= $dept['id'] ?>" class="btn btn--sm btn--primary btn-icon" title="View Details">
+                                <a href="/ergon/departments/view/<?= $dept['id'] ?>" class="btn-icon btn--primary" title="View Details">
                                     👁️
                                 </a>
-                                <a href="/ergon/departments/edit/<?= $dept['id'] ?>" class="btn btn--sm btn--secondary btn-icon" title="Edit Department">
+                                <a href="/ergon/departments/edit/<?= $dept['id'] ?>" class="btn-icon btn--secondary" title="Edit Department">
                                     ✏️
                                 </a>
-                                <button onclick="deleteRecord('departments', <?= $dept['id'] ?>, '<?= htmlspecialchars($dept['name']) ?>')" class="btn btn--sm btn--danger btn-icon" title="Delete Department">
+                                <button onclick="deleteRecord('departments', <?= $dept['id'] ?>, '<?= htmlspecialchars($dept['name']) ?>')" class="btn-icon btn--danger" title="Delete Department">
                                     🗑️
                                 </button>
                             </div>
@@ -99,6 +101,8 @@ ob_start();
         </div>
     </div>
 </div>
+
+<script src="/ergon/assets/js/table-utils.js"></script>
 
 <?php
 $content = ob_get_clean();

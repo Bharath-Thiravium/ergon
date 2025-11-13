@@ -195,12 +195,15 @@ function showTasksForDate(date) {
                                 <span class="task-type">${task.type}</span>
                             </div>
                             <div class="task-meta">
-                                <span class="priority">Priority: ${task.priority}</span>
-                                <span class="status">Status: ${task.status}</span>
+                                <span class="priority">🔥 ${task.priority}</span>
+                                <span class="status">📊 ${task.status}</span>
+                                <span class="assignee">👤 ${task.assigned_to || 'Unassigned'}</span>
+                                <span class="due">📅 ${task.due_date || 'No due date'}</span>
                             </div>
                             <div class="task-actions">
-                                <a href="/ergon/workflow/daily-planner/${date}" class="btn btn--sm btn--primary">View Day</a>
-                                <a href="/ergon/tasks/view/${task.id}" class="btn btn--sm btn--secondary">Details</a>
+                                <a href="/ergon/workflow/daily-planner/${date}" class="btn btn--primary">📅 Day</a>
+                                <a href="/ergon/tasks/view/${task.id}" class="btn btn--secondary">👁️ View</a>
+                                <button onclick="markComplete(${task.id})" class="btn btn--success">✅ Done</button>
                             </div>
                         </div>
                     `;
@@ -262,24 +265,30 @@ function formatDate(dateString) {
 }
 
 .calendar-container {
-    display: flex;
-    gap: 1.5rem;
+    display: block;
     width: 100%;
-    max-width: 100%;
+    max-width: calc(100% - 340px);
     box-sizing: border-box;
+    margin-right: 340px;
 }
 
 .calendar-main {
     flex: 1;
     min-width: 0;
-    max-width: calc(100% - 320px);
     overflow: hidden;
 }
 
 .calendar-sidebar {
-    width: 300px;
-    flex-shrink: 0;
-    max-width: 300px;
+    position: fixed;
+    top: var(--header-height, 120px);
+    right: 0;
+    width: 320px;
+    height: calc(100vh - var(--header-height, 120px));
+    z-index: 1000;
+    background: var(--bg-primary);
+    border-left: 1px solid var(--border-color);
+    overflow-y: auto;
+    box-shadow: -2px 0 8px rgba(0,0,0,0.1);
 }
 
 .calendar-nav {
@@ -417,21 +426,20 @@ function formatDate(dateString) {
 }
 
 .task-sidebar {
-    background: var(--bg-primary);
-    border-radius: var(--border-radius);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    height: fit-content;
-    max-height: 80vh;
-    overflow-y: auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: transparent;
 }
 
 .sidebar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 1.5rem;
+    padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-secondary);
+    font-size: 0.85rem;
 }
 
 .sidebar-close {
@@ -443,15 +451,18 @@ function formatDate(dateString) {
 }
 
 .sidebar-content {
-    padding: 1.5rem;
+    padding: 0.75rem;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .sidebar-task {
-    padding: 1rem;
+    padding: 0.5rem 0.75rem;
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    margin-bottom: 1rem;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
     background: var(--bg-secondary);
+    font-size: 0.85rem;
 }
 
 .task-header {
@@ -463,7 +474,8 @@ function formatDate(dateString) {
 
 .task-header h4 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    line-height: 1.3;
 }
 
 .task-type {
@@ -475,16 +487,24 @@ function formatDate(dateString) {
 }
 
 .task-meta {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
 }
 
 .task-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.task-actions .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+    border-radius: 4px;
 }
 
 .sidebar-actions {
@@ -506,6 +526,10 @@ function formatDate(dateString) {
     font-size: 2rem;
     margin-bottom: 1rem;
     opacity: 0.5;
+}
+
+.page-actions {
+    margin-right: 340px;
 }
 
 .calendar-legend {

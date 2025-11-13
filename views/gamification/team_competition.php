@@ -56,24 +56,33 @@ $content = ob_start();
                         <?php foreach (array_slice($leaderboard, 0, 10) as $index => $leader): ?>
                             <tr>
                                 <td>
-                                    <?php if ($index === 0): ?>
-                                        <span class="badge badge--warning">🥇 1st</span>
-                                    <?php elseif ($index === 1): ?>
-                                        <span class="badge badge--success">🥈 2nd</span>
-                                    <?php elseif ($index === 2): ?>
-                                        <span class="badge">🥉 3rd</span>
-                                    <?php else: ?>
-                                        #<?= $index + 1 ?>
-                                    <?php endif; ?>
+                                    <?php 
+                                    $rankBadge = match($index) {
+                                        0 => '<span class="badge badge--warning">🥇 1st</span>',
+                                        1 => '<span class="badge badge--info">🥈 2nd</span>',
+                                        2 => '<span class="badge badge--success">🥉 3rd</span>',
+                                        default => '<span class="badge badge--pending">#' . ($index + 1) . '</span>'
+                                    };
+                                    echo $rankBadge;
+                                    ?>
                                 </td>
-                                <td><?= htmlspecialchars($leader['name']) ?></td>
-                                <td><strong><?= number_format($leader['total_points']) ?></strong></td>
                                 <td>
-                                    <?php if ($index < 3): ?>
-                                        <span class="badge badge--success">Top Performer</span>
-                                    <?php else: ?>
-                                        <span class="badge">Active</span>
-                                    <?php endif; ?>
+                                    <div class="cell-meta">
+                                        <div class="cell-primary"><?= htmlspecialchars($leader['name']) ?></div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="cell-meta">
+                                        <div class="cell-primary"><?= number_format($leader['total_points']) ?></div>
+                                        <div class="cell-secondary">points</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <?php 
+                                    $performanceStatus = $index < 3 ? 'Top Performer' : 'Active';
+                                    $performanceBadge = $index < 3 ? 'badge--success' : 'badge--pending';
+                                    ?>
+                                    <span class="badge <?= $performanceBadge ?>"><?= $performanceStatus ?></span>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

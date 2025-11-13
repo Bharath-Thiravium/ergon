@@ -74,18 +74,27 @@ $content = ob_start();
                         <?php foreach ($leaderboard as $index => $leader): ?>
                             <tr>
                                 <td>
-                                    <?php if ($index === 0): ?>
-                                        <span class="badge badge--warning">🥇 1st</span>
-                                    <?php elseif ($index === 1): ?>
-                                        <span class="badge badge--success">🥈 2nd</span>
-                                    <?php elseif ($index === 2): ?>
-                                        <span class="badge">🥉 3rd</span>
-                                    <?php else: ?>
-                                        #<?= $index + 1 ?>
-                                    <?php endif; ?>
+                                    <?php 
+                                    $rankBadge = match($index) {
+                                        0 => '<span class="badge badge--warning">🥇 1st</span>',
+                                        1 => '<span class="badge badge--info">🥈 2nd</span>',
+                                        2 => '<span class="badge badge--success">🥉 3rd</span>',
+                                        default => '<span class="badge badge--pending">#' . ($index + 1) . '</span>'
+                                    };
+                                    echo $rankBadge;
+                                    ?>
                                 </td>
-                                <td><?= htmlspecialchars($leader['name']) ?></td>
-                                <td><strong><?= number_format($leader['total_points']) ?></strong> pts</td>
+                                <td>
+                                    <div class="cell-meta">
+                                        <div class="cell-primary"><?= htmlspecialchars($leader['name']) ?></div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="cell-meta">
+                                        <div class="cell-primary"><?= number_format($leader['total_points']) ?></div>
+                                        <div class="cell-secondary">points</div>
+                                    </div>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -104,11 +113,9 @@ $content = ob_start();
             <?php foreach ($all_users as $user): ?>
                 <?php 
                 $userPoints = 0;
-                foreach ($leaderboard as $leader) {
-                    if ($leader['name'] === $user['name']) {
-                        $userPoints = $leader['total_points'];
-                        break;
-                    }
+                $leaderData = array_filter($leaderboard, fn($leader) => $leader['name'] === $user['name']);
+                if (!empty($leaderData)) {
+                    $userPoints = reset($leaderData)['total_points'];
                 }
                 ?>
                 <div class="user-card">

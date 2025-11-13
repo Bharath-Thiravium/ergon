@@ -62,51 +62,55 @@ ob_start();
 </div>
 
 <!-- Filters -->
-<div id="filtersPanel" class="card" style="display:none;">
+<div id="filtersPanel" class="card" style="display: none;">
     <div class="card__header">
         <h3 class="card__title">
             <span>🔍</span> Filters
         </h3>
     </div>
     <div class="card__body">
-        <div class="filter-grid">
-            <div class="filter-item">
-                <label>Company</label>
-                <select id="companyFilter" class="form-input">
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Company</label>
+                <select id="companyFilter" class="form-control">
                     <option value="">All Companies</option>
                 </select>
             </div>
-            <div class="filter-item">
-                <label>Project</label>
-                <select id="projectFilter" class="form-input">
+            <div class="form-group">
+                <label class="form-label">Project</label>
+                <select id="projectFilter" class="form-control">
                     <option value="">All Projects</option>
                 </select>
             </div>
-            <div class="filter-item">
-                <label>Contact Person</label>
-                <select id="contactFilter" class="form-input">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Contact Person</label>
+                <select id="contactFilter" class="form-control">
                     <option value="">All Contacts</option>
                 </select>
             </div>
-            <div class="filter-item">
-                <label>Status</label>
-                <select id="statusFilter" class="form-input">
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select id="statusFilter" class="form-control">
                     <option value="">All Status</option>
                     <option value="pending">Pending</option>
                     <option value="completed">Completed</option>
                     <option value="postponed">Postponed</option>
                 </select>
             </div>
-            <div class="filter-item">
-                <label>Date From</label>
-                <input type="date" id="dateFrom" class="form-input">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Date From</label>
+                <input type="date" id="dateFrom" class="form-control">
             </div>
-            <div class="filter-item">
-                <label>Date To</label>
-                <input type="date" id="dateTo" class="form-input">
+            <div class="form-group">
+                <label class="form-label">Date To</label>
+                <input type="date" id="dateTo" class="form-control">
             </div>
         </div>
-        <div class="filter-actions">
+        <div class="card__footer">
             <button class="btn btn--secondary" onclick="clearFilters()">Clear</button>
             <button class="btn btn--primary" onclick="applyFilters()">Apply Filters</button>
         </div>
@@ -147,7 +151,7 @@ ob_start();
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
-                        <tr id="consolidatedHeader" style="display:none;">
+                        <tr id="consolidatedHeader" class="table-row--hidden">
                             <th>Contact Person</th>
                             <th>Follow-ups</th>
                             <th>Actions</th>
@@ -180,57 +184,99 @@ ob_start();
                                 <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
                                     <td><?= htmlspecialchars($followup['assigned_user'] ?? 'User ID: ' . $followup['user_id']) ?></td>
                                 <?php endif; ?>
-                                <td>
-                                    <?= date('M d, Y', strtotime($followup['follow_up_date'])) ?>
-                                    <?php if (strtotime($followup['follow_up_date']) < time() && $followup['status'] !== 'completed'): ?>
-                                        <br><span class="badge badge--danger">Overdue</span>
-                                    <?php endif; ?>
-                                    <?php 
-                                    if ($followup['reminder_time'] && !$followup['reminder_sent']) {
-                                        $reminderDateTime = $followup['follow_up_date'] . ' ' . $followup['reminder_time'];
-                                        if (strtotime($reminderDateTime) <= time()) {
-                                            echo '<br><span class="badge badge--warning">🔔 Time</span>';
+                                <td data-sort-value="<?= $followup['follow_up_date'] ?>">
+                                    <div class="cell-meta">
+                                        <?php if (!empty($followup['follow_up_date'])): ?>
+                                            <div class="cell-primary"><?= date('M d, Y', strtotime($followup['follow_up_date'])) ?></div>
+                                            <div class="cell-secondary"><?php
+                                                $followupTime = strtotime($followup['follow_up_date']);
+                                                if ($followupTime !== false) {
+                                                    $todayTime = strtotime('today');
+                                                    $currentTime = time();
+                                                    
+                                                    if ($followupTime < $todayTime) {
+                                                        $daysAgo = abs(floor(($currentTime - $followupTime) / 86400));
+                                                        echo $daysAgo . ' days ago';
+                                                    } elseif ($followupTime == $todayTime) {
+                                                        echo 'Today';
+                                                    } else {
+                                                        $daysLeft = ceil(($followupTime - $currentTime) / 86400);
+                                                        echo $daysLeft . ' days left';
+                                                    }
+                                                } else {
+                                                    echo 'Invalid date';
+                                                }
+                                            ?></div>
+                                        <?php else: ?>
+                                            <div class="cell-primary">No date set</div>
+                                        <?php endif; ?>
+                                        <?php if (strtotime($followup['follow_up_date']) < time() && $followup['status'] !== 'completed'): ?>
+                                            <span class="badge badge--danger">⚠️ Overdue</span>
+                                        <?php endif; ?>
+                                        <?php 
+                                        $hasReminder = !empty($followup['reminder_time']) && !($followup['reminder_sent'] ?? false);
+                                        if ($hasReminder && !empty($followup['follow_up_date'])) {
+                                            try {
+                                                $reminderDateTime = $followup['follow_up_date'] . ' ' . $followup['reminder_time'];
+                                                $isReminderDue = strtotime($reminderDateTime) <= time();
+                                                if ($isReminderDue) {
+                                                    echo '<span class="badge badge--warning">🔔 Time</span>';
+                                                }
+                                            } catch (Exception $e) {
+                                                error_log('Reminder time calculation error: ' . $e->getMessage());
+                                            }
                                         }
-                                    }
-                                    ?>
+                                        ?>
+                                    </div>
                                 </td>
-                                <td>
+                                <td data-sort-value="<?= $followup['status'] ?>">
                                     <?php 
-                                    $badgeClass = 'info';
-                                    switch($followup['status']) {
-                                        case 'completed': $badgeClass = 'success'; break;
-                                        case 'pending': $badgeClass = 'pending'; break;
-                                        case 'in_progress': $badgeClass = 'info'; break;
-                                        case 'postponed': case 'rescheduled': $badgeClass = 'warning'; break;
-                                        case 'cancelled': $badgeClass = 'cancelled'; break;
+                                    $status = $followup['status'];
+                                    $isOverdue = strtotime($followup['follow_up_date']) < time() && $status !== 'completed';
+                                    
+                                    if ($isOverdue) {
+                                        $badgeClass = 'danger';
+                                    } else {
+                                        $badgeClass = match($status) {
+                                            'completed' => 'success',
+                                            'pending' => 'pending',
+                                            'in_progress' => 'info',
+                                            'postponed', 'rescheduled' => 'warning',
+                                            'cancelled' => 'cancelled',
+                                            default => 'info'
+                                        };
                                     }
                                     ?>
                                     <span class="badge badge--<?= $badgeClass ?>">
-                                        <?= ucfirst($followup['status']) ?>
+                                        <?= ucfirst(str_replace('_', ' ', $followup['status'])) ?>
                                     </span>
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <button class="btn btn--sm btn--primary btn-icon" onclick="viewFollowup(<?= $followup['id'] ?>)" title="View Details">
-                                            👁️
+                                        <button class="btn btn--sm btn--primary" onclick="viewFollowup(<?= $followup['id'] ?>)" title="View Details">
+                                            👁️ View
                                         </button>
                                         <?php if ($followup['status'] !== 'completed'): ?>
-                                            <button class="btn btn--sm btn--success btn-icon" onclick="completeFollowup(<?= $followup['id'] ?>)" title="Mark Complete">
-                                                ✅
+                                            <button class="btn btn--sm btn--success" onclick="completeFollowup(<?= $followup['id'] ?>)" title="Mark Complete">
+                                                ✅ Complete
                                             </button>
-                                            <button class="btn btn--sm btn--warning btn-icon" onclick="rescheduleFollowup(<?= $followup['id'] ?>)" title="Reschedule">
-                                                📅
+                                            <button class="btn btn--sm btn--warning" onclick="rescheduleFollowup(<?= $followup['id'] ?>)" title="Reschedule">
+                                                📅 Reschedule
                                             </button>
                                         <?php endif; ?>
-                                        <button class="btn btn--sm btn--info btn-icon" onclick="showHistory(<?= $followup['id'] ?>)" title="View History">
-                                            📋
+                                        <button class="btn btn--sm btn--info" onclick="showHistory(<?= $followup['id'] ?>)" title="View History">
+                                            📋 History
                                         </button>
                                         <?php 
-                                        $canDelete = ($followup['user_id'] == $_SESSION['user_id']) || in_array($_SESSION['role'] ?? '', ['admin', 'owner']);
+                                        $currentUserId = $_SESSION['user_id'] ?? 0;
+                                        $currentUserRole = $_SESSION['role'] ?? '';
+                                        $isOwner = ($followup['user_id'] ?? 0) == $currentUserId;
+                                        $isAdmin = in_array($currentUserRole, ['admin', 'owner']);
+                                        $canDelete = $isOwner || $isAdmin;
                                         if ($canDelete): 
                                         ?>
-                                            <button class="btn btn--sm btn--danger btn-icon" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')" title="Delete">
-                                                🗑️
+                                            <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')" title="Delete">
+                                                🗑️ Delete
                                             </button>
                                         <?php endif; ?>
                                     </div>
@@ -238,13 +284,15 @@ ob_start();
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
-                    <tbody id="consolidatedTable" style="display:none;">
+                    <tbody id="consolidatedTable" class="table-body--hidden">
                         <!-- Consolidated rows will be generated by JavaScript -->
                     </tbody>
                 </table>
             </div>
+                </table>
+            </div>
             
-            <div id="gridView" class="followups-grid" style="display:none;">
+            <div id="gridView" class="followups-grid grid--hidden">
                 <?php foreach ($followups as $followup): ?>
                     <div class="followup-card normal-card" data-company="<?= htmlspecialchars($followup['company_name'] ?? '') ?>" 
                          data-project="<?= htmlspecialchars($followup['project_name'] ?? '') ?>"
@@ -257,14 +305,14 @@ ob_start();
                         <div class="followup-card__header">
                             <h4><?= htmlspecialchars($followup['title']) ?></h4>
                             <?php 
-                            $badgeClass = 'info';
-                            switch($followup['status']) {
-                                case 'completed': $badgeClass = 'success'; break;
-                                case 'pending': $badgeClass = 'pending'; break;
-                                case 'in_progress': $badgeClass = 'info'; break;
-                                case 'postponed': case 'rescheduled': $badgeClass = 'warning'; break;
-                                case 'cancelled': $badgeClass = 'cancelled'; break;
-                            }
+                            $badgeClass = match($followup['status']) {
+                                'completed' => 'success',
+                                'pending' => 'pending',
+                                'in_progress' => 'info',
+                                'postponed', 'rescheduled' => 'warning',
+                                'cancelled' => 'cancelled',
+                                default => 'info'
+                            };
                             ?>
                             <span class="badge badge--<?= $badgeClass ?>">
                                 <?= ucfirst($followup['status']) ?>
@@ -279,10 +327,14 @@ ob_start();
                                 <?php if ($followup['reminder_time']): ?>
                                     <div><strong>Time:</strong> <?= date('g:i A', strtotime($followup['reminder_time'])) ?>
                                         <?php 
-                                        if (!$followup['reminder_sent']) {
-                                            $reminderDateTime = $followup['follow_up_date'] . ' ' . $followup['reminder_time'];
-                                            if (strtotime($reminderDateTime) <= time()) {
-                                                echo ' <span class="badge badge--warning">🔔</span>';
+                                        if (!($followup['reminder_sent'] ?? false) && !empty($followup['follow_up_date']) && !empty($followup['reminder_time'])) {
+                                            try {
+                                                $reminderDateTime = $followup['follow_up_date'] . ' ' . $followup['reminder_time'];
+                                                if (strtotime($reminderDateTime) <= time()) {
+                                                    echo ' <span class="badge badge--warning">🔔</span>';
+                                                }
+                                            } catch (Exception $e) {
+                                                error_log('Reminder display error: ' . $e->getMessage());
                                             }
                                         }
                                         ?>
@@ -301,7 +353,11 @@ ob_start();
                             <?php endif; ?>
                             <button class="btn btn--sm btn--info" onclick="showHistory(<?= $followup['id'] ?>)">History</button>
                             <?php 
-                            $canDelete = ($followup['user_id'] == $_SESSION['user_id']) || in_array($_SESSION['role'] ?? '', ['admin', 'owner']);
+                            $currentUserId = $_SESSION['user_id'] ?? 0;
+                            $currentUserRole = $_SESSION['role'] ?? '';
+                            $isOwner = ($followup['user_id'] ?? 0) == $currentUserId;
+                            $isAdmin = in_array($currentUserRole, ['admin', 'owner']);
+                            $canDelete = $isOwner || $isAdmin;
                             if ($canDelete): 
                             ?>
                                 <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')">Delete</button>
@@ -311,7 +367,7 @@ ob_start();
                 <?php endforeach; ?>
             </div>
             
-            <div id="consolidatedGridView" class="consolidated-grid" style="display:none;">
+            <div id="consolidatedGridView" class="consolidated-grid grid--hidden">
                 <!-- Consolidated grid cards will be generated by JavaScript -->
             </div>
         <?php else: ?>
@@ -328,7 +384,7 @@ ob_start();
 
 
 <!-- Reschedule Modal -->
-<div id="rescheduleModal" class="modal" style="display:none;">
+<div id="rescheduleModal" class="modal modal--hidden">
     <div class="modal-content">
         <div class="modal-header">
             <h3>Reschedule Follow-up</h3>
@@ -366,7 +422,7 @@ ob_start();
 </div>
 
 <!-- View Modal -->
-<div id="viewModal" class="modal" style="display:none;">
+<div id="viewModal" class="modal modal--hidden">
     <div class="modal-content modal-content--large">
         <div class="modal-header">
             <h3>Follow-up Details</h3>
@@ -379,7 +435,7 @@ ob_start();
 </div>
 
 <!-- History Modal -->
-<div id="historyModal" class="modal" style="display:none;">
+<div id="historyModal" class="modal modal--hidden">
     <div class="modal-content">
         <div class="modal-header">
             <h3>Follow-up History</h3>
@@ -410,28 +466,28 @@ function toggleConsolidatedView() {
         const consolidatedTable = document.getElementById('consolidatedTable');
         
         if (isConsolidated) {
-            normalHeader.style.display = 'none';
-            consolidatedHeader.style.display = '';
-            normalTable.style.display = 'none';
-            consolidatedTable.style.display = '';
+            normalHeader.classList.add('table-row--hidden');
+            consolidatedHeader.classList.remove('table-row--hidden');
+            normalTable.classList.add('table-body--hidden');
+            consolidatedTable.classList.remove('table-body--hidden');
             generateConsolidatedView();
         } else {
-            normalHeader.style.display = '';
-            consolidatedHeader.style.display = 'none';
-            normalTable.style.display = '';
-            consolidatedTable.style.display = 'none';
+            normalHeader.classList.remove('table-row--hidden');
+            consolidatedHeader.classList.add('table-row--hidden');
+            normalTable.classList.remove('table-body--hidden');
+            consolidatedTable.classList.add('table-body--hidden');
         }
     } else {
         const normalGrid = document.getElementById('gridView');
         const consolidatedGrid = document.getElementById('consolidatedGridView');
         
         if (isConsolidated) {
-            normalGrid.style.display = 'none';
-            consolidatedGrid.style.display = 'grid';
+            normalGrid.classList.add('grid--hidden');
+            consolidatedGrid.classList.remove('grid--hidden');
             generateConsolidatedGridView();
         } else {
-            normalGrid.style.display = 'grid';
-            consolidatedGrid.style.display = 'none';
+            normalGrid.classList.remove('grid--hidden');
+            consolidatedGrid.classList.add('grid--hidden');
         }
     }
 }
@@ -514,7 +570,7 @@ function generateConsolidatedGridView() {
     
     // Group by contact person (only visible cards)
     cards.forEach(card => {
-        if (card.style.display === 'none') return; // Skip filtered out cards
+        if (card.classList.contains('grid--hidden')) return; // Skip filtered out cards
         
         const contact = card.dataset.contact || 'No Contact';
         if (!contactGroups[contact]) {
@@ -594,13 +650,13 @@ function toggleView() {
     const toggleBtn = document.getElementById('viewToggle');
     
     if (currentView === 'list') {
-        listView.style.display = 'none';
-        gridView.style.display = 'grid';
+        listView.classList.add('grid--hidden');
+        gridView.classList.remove('grid--hidden');
         toggleBtn.nextSibling.textContent = ' List View';
         currentView = 'grid';
     } else {
-        listView.style.display = 'block';
-        gridView.style.display = 'none';
+        listView.classList.remove('grid--hidden');
+        gridView.classList.add('grid--hidden');
         toggleBtn.nextSibling.textContent = ' Grid View';
         currentView = 'list';
     }
@@ -611,7 +667,7 @@ function viewFollowup(id) {
         .then(response => response.text())
         .then(html => {
             document.getElementById('viewContent').innerHTML = html;
-            document.getElementById('viewModal').style.display = 'flex';
+            document.getElementById('viewModal').classList.remove('modal--hidden');
         })
         .catch(() => {
             alert('Error loading followup details');
@@ -619,7 +675,7 @@ function viewFollowup(id) {
 }
 
 function closeViewModal() {
-    document.getElementById('viewModal').style.display = 'none';
+    document.getElementById('viewModal').classList.add('modal--hidden');
 }
 
 function completeFollowup(id) {
@@ -636,16 +692,16 @@ function completeFollowup(id) {
 }
 
 function rescheduleFollowup(id) {
-    document.getElementById('rescheduleModal').style.display = 'flex';
+    document.getElementById('rescheduleModal').classList.remove('modal--hidden');
     document.getElementById('rescheduleFollowupId').value = id;
 }
 
 function closeRescheduleModal() {
-    document.getElementById('rescheduleModal').style.display = 'none';
+    document.getElementById('rescheduleModal').classList.add('modal--hidden');
 }
 
 function showHistory(id) {
-    document.getElementById('historyModal').style.display = 'flex';
+    document.getElementById('historyModal').classList.remove('modal--hidden');
     fetch(`/ergon/followups/history/${id}`)
         .then(response => response.json())
         .then(data => {
@@ -657,7 +713,7 @@ function showHistory(id) {
 }
 
 function closeHistoryModal() {
-    document.getElementById('historyModal').style.display = 'none';
+    document.getElementById('historyModal').classList.add('modal--hidden');
 }
 
 function deleteFollowup(id, title) {
@@ -704,7 +760,11 @@ function applyFilters() {
         if (dateFrom && row.dataset.date < dateFrom) show = false;
         if (dateTo && row.dataset.date > dateTo) show = false;
         
-        row.style.display = show ? '' : 'none';
+        if (show) {
+            row.classList.remove('grid--hidden');
+        } else {
+            row.classList.add('grid--hidden');
+        }
     });
     
     // Refresh consolidated view if active
@@ -802,558 +862,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<style>
-.filter-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.filter-item {
-    display: flex;
-    flex-direction: column;
-}
-
-.filter-item label {
-    font-weight: 500;
-    color: #374151;
-    margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-}
-
-.filter-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    padding-top: 1rem;
-    border-top: 1px solid #e5e7eb;
-}
-
-.followups-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-}
-
-.followup-card {
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 1rem;
-    background: white;
-}
-
-.followup-card__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.followup-card__header h4 {
-    margin: 0;
-    font-size: 1.1rem;
-}
-
-.followup-info div {
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-}
-
-.followup-desc {
-    margin: 1rem 0;
-    padding: 0.5rem;
-    background: #f9fafb;
-    border-radius: 4px;
-    font-size: 0.9rem;
-}
-
-.followup-card__actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-top: 1rem;
-}
-
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999999 !important;
-    padding: 1rem;
-    box-sizing: border-box;
-}
-
-/* Ensure modals appear above all other elements */
-.modal * {
-    z-index: inherit;
-}
-
-/* Override any header z-index */
-header, .header, .navbar, .nav {
-    z-index: 1000 !important;
-}
-
-/* Ensure modal content has proper stacking */
-.modal-content {
-    position: relative;
-    z-index: 1000000 !important;
-}
-
-.modal-content {
-    background: white;
-    border-radius: 8px;
-    width: 100%;
-    max-width: min(600px, 90vw);
-    max-height: min(90vh, calc(100vh - 2rem));
-    overflow-y: auto;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    transform: scale(1);
-    transform-origin: center;
-}
-
-.modal-content--large {
-    max-width: min(800px, 95vw);
-}
-
-@media (max-width: 768px) {
-    .modal {
-        padding: 0.5rem;
-    }
-    
-    .modal-content {
-        max-width: 100%;
-        max-height: calc(100vh - 1rem);
-    }
-}
-
-/* Fix for different zoom levels */
-@media screen and (min-resolution: 120dpi) {
-    .modal-content {
-        transform: scale(0.9);
-    }
-}
-
-@media screen and (min-resolution: 144dpi) {
-    .modal-content {
-        transform: scale(0.8);
-    }
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-}
-
-.modal-body {
-    padding: 1rem;
-}
-
-.modal-footer {
-    padding: 1rem;
-    border-top: 1px solid #e5e7eb;
-    text-align: right;
-}
-
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-}
-
-.form-group {
-    margin-bottom: 1rem;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-}
-
-.form-input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    box-sizing: border-box;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.time-input {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.time-input input,
-.time-input select {
-    margin: 0;
-    min-width: 0;
-    box-sizing: border-box;
-}
-
-.followup-details {
-    padding: 1rem 0;
-}
-
-.detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.detail-item {
-    padding: 0.75rem;
-    background: #f9fafb;
-    border-radius: 6px;
-    border-left: 3px solid #3b82f6;
-}
-
-.detail-item strong {
-    color: #374151;
-    display: block;
-    margin-bottom: 0.25rem;
-    font-size: 0.875rem;
-}
-
-.detail-description {
-    padding: 1rem;
-    background: #f9fafb;
-    border-radius: 6px;
-    border-left: 3px solid #10b981;
-}
-
-.detail-description strong {
-    color: #374151;
-    display: block;
-    margin-bottom: 0.5rem;
-}
-
-.detail-description p {
-    margin: 0;
-    color: #6b7280;
-    line-height: 1.5;
-}
-
-.timeline {
-    position: relative;
-    padding-left: 2rem;
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.timeline-marker {
-    position: absolute;
-    left: -2rem;
-    top: 0.5rem;
-    width: 12px;
-    height: 12px;
-    background: #3b82f6;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 0 0 2px #e5e7eb;
-}
-
-.timeline-content h4 {
-    margin: 0 0 0.5rem 0;
-    color: #1f2937;
-}
-
-.timeline-content p {
-    margin: 0.5rem 0;
-    color: #6b7280;
-}
-
-.timeline-content small {
-    color: #9ca3af;
-    font-size: 0.875rem;
-}
-
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: #374151;
-    cursor: pointer;
-    margin-right: 1rem;
-}
-
-.checkbox-label input[type="checkbox"] {
-    margin: 0;
-}
-
-.consolidated-row {
-    border-bottom: 2px solid #e5e7eb;
-}
-
-.followups-list {
-    max-width: 600px;
-}
-
-.followup-item {
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    background: #f9fafb;
-}
-
-.followup-item:last-child {
-    margin-bottom: 0;
-}
-
-.followup-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.followup-desc {
-    margin: 0.5rem 0;
-    color: #6b7280;
-    font-size: 0.9rem;
-    line-height: 1.4;
-}
-
-.followup-meta {
-    display: flex;
-    gap: 1rem;
-    margin: 0.5rem 0;
-}
-
-.followup-meta small {
-    color: #9ca3af;
-    font-size: 0.8rem;
-}
-
-.followup-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-top: 0.75rem;
-}
-
-.btn--xs {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    border-radius: 4px;
-}
-
-.consolidated-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: 1.5rem;
-}
-
-.contact-group-card {
-    border: 2px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 1.5rem;
-    background: white;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.contact-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 2px solid #f3f4f6;
-}
-
-.contact-header h3 {
-    margin: 0;
-    color: #1f2937;
-    font-size: 1.25rem;
-}
-
-.contact-company {
-    background: #f3f4f6;
-    color: #6b7280;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.875rem;
-}
-
-.contact-followups {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.mini-followup-card {
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 1rem;
-    background: #f9fafb;
-}
-
-.mini-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.mini-desc {
-    margin: 0.5rem 0;
-    color: #6b7280;
-    font-size: 0.9rem;
-    line-height: 1.4;
-}
-
-.mini-meta {
-    display: flex;
-    gap: 1rem;
-    margin: 0.5rem 0;
-}
-
-.mini-meta small {
-    color: #9ca3af;
-    font-size: 0.8rem;
-}
-
-.mini-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-top: 0.75rem;
-}
-
-.reminder-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 9999;
-}
-
-.reminder-popup {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-    z-index: 10000;
-    max-width: 400px;
-    width: 90%;
-}
-
-.reminder-popup h3 {
-    margin: 0 0 1rem 0;
-    color: #1f2937;
-}
-
-.reminder-item {
-    padding: 1rem;
-    margin-bottom: 1rem;
-    background: #fef3c7;
-    border-left: 4px solid #f59e0b;
-    border-radius: 6px;
-}
-
-.reminder-item:last-of-type {
-    margin-bottom: 1.5rem;
-}
-
-/* Horizontal History Layout */
-.history-horizontal {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-.history-card {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 1rem;
-    border-left: 4px solid #3b82f6;
-}
-
-.history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-}
-
-.history-header h4 {
-    margin: 0;
-    color: #1f2937;
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.history-date {
-    color: #6b7280;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.history-content p {
-    margin: 0 0 0.5rem 0;
-    color: #374151;
-    line-height: 1.5;
-}
-
-.history-change {
-    background: #fef3c7;
-    border: 1px solid #f59e0b;
-    border-radius: 4px;
-    padding: 0.5rem;
-    margin: 0.5rem 0;
-    font-size: 0.875rem;
-    color: #92400e;
-}
-
-.history-user {
-    color: #9ca3af;
-    font-size: 0.875rem;
-    margin-top: 0.5rem;
-}
-</style>
+<script src="/ergon/assets/js/table-utils.js"></script>
 
 <?php
 $content = ob_get_clean();

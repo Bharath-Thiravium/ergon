@@ -17,13 +17,13 @@ ob_start();
 </div>
 
 <?php if (isset($_GET['success'])): ?>
-<div class="alert alert-success" style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
+<div class="alert alert--success">
     ✅ <?= htmlspecialchars($_GET['success']) ?>
 </div>
 <?php endif; ?>
 
 <?php if (isset($_GET['error'])): ?>
-<div class="alert alert-error" style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
+<div class="alert alert--error">
     ❌ <?= htmlspecialchars($_GET['error']) ?>
 </div>
 <?php endif; ?>
@@ -65,33 +65,53 @@ ob_start();
         <h2 class="card__title">
             <span>📅</span> Leave Requests
         </h2>
-        <div class="card__filters">
+        <div class="card__actions">
+            <button class="btn btn--secondary" onclick="toggleLeaveFilters()">
+                <span>🔍</span> Filters
+            </button>
+        </div>
+    </div>
+    <div id="leaveFiltersPanel" class="card" style="display: none; margin-bottom: 1rem;">
+        <div class="card__body">
             <form method="GET" class="filter-form">
-                <select name="employee" class="form-control">
-                    <option value="">All Employees</option>
-                    <?php foreach ($employees ?? [] as $employee): ?>
-                        <option value="<?= $employee['id'] ?>" <?= ($filters['employee'] ?? '') == $employee['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($employee['name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <select name="leave_type" class="form-control">
-                    <option value="">All Leave Types</option>
-                    <option value="sick" <?= ($filters['leave_type'] ?? '') == 'sick' ? 'selected' : '' ?>>Sick Leave</option>
-                    <option value="casual" <?= ($filters['leave_type'] ?? '') == 'casual' ? 'selected' : '' ?>>Casual Leave</option>
-                    <option value="annual" <?= ($filters['leave_type'] ?? '') == 'annual' ? 'selected' : '' ?>>Annual Leave</option>
-                    <option value="emergency" <?= ($filters['leave_type'] ?? '') == 'emergency' ? 'selected' : '' ?>>Emergency Leave</option>
-                    <option value="maternity" <?= ($filters['leave_type'] ?? '') == 'maternity' ? 'selected' : '' ?>>Maternity Leave</option>
-                    <option value="paternity" <?= ($filters['leave_type'] ?? '') == 'paternity' ? 'selected' : '' ?>>Paternity Leave</option>
-                </select>
-                <select name="status" class="form-control">
-                    <option value="">All Status</option>
-                    <option value="pending" <?= ($filters['status'] ?? '') == 'pending' ? 'selected' : '' ?>>Pending</option>
-                    <option value="approved" <?= ($filters['status'] ?? '') == 'approved' ? 'selected' : '' ?>>Approved</option>
-                    <option value="rejected" <?= ($filters['status'] ?? '') == 'rejected' ? 'selected' : '' ?>>Rejected</option>
-                </select>
-                <button type="submit" class="btn btn--primary">Filter</button>
-                <a href="/ergon/leaves" class="btn btn--secondary">Clear</a>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Employee</label>
+                        <select name="employee" class="form-control">
+                            <option value="">All Employees</option>
+                            <?php foreach ($employees ?? [] as $employee): ?>
+                                <option value="<?= $employee['id'] ?>" <?= ($filters['employee'] ?? '') == $employee['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($employee['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Leave Type</label>
+                        <select name="leave_type" class="form-control">
+                            <option value="">All Leave Types</option>
+                            <option value="sick" <?= ($filters['leave_type'] ?? '') == 'sick' ? 'selected' : '' ?>>Sick Leave</option>
+                            <option value="casual" <?= ($filters['leave_type'] ?? '') == 'casual' ? 'selected' : '' ?>>Casual Leave</option>
+                            <option value="annual" <?= ($filters['leave_type'] ?? '') == 'annual' ? 'selected' : '' ?>>Annual Leave</option>
+                            <option value="emergency" <?= ($filters['leave_type'] ?? '') == 'emergency' ? 'selected' : '' ?>>Emergency Leave</option>
+                            <option value="maternity" <?= ($filters['leave_type'] ?? '') == 'maternity' ? 'selected' : '' ?>>Maternity Leave</option>
+                            <option value="paternity" <?= ($filters['leave_type'] ?? '') == 'paternity' ? 'selected' : '' ?>>Paternity Leave</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-control">
+                            <option value="">All Status</option>
+                            <option value="pending" <?= ($filters['status'] ?? '') == 'pending' ? 'selected' : '' ?>>Pending</option>
+                            <option value="approved" <?= ($filters['status'] ?? '') == 'approved' ? 'selected' : '' ?>>Approved</option>
+                            <option value="rejected" <?= ($filters['status'] ?? '') == 'rejected' ? 'selected' : '' ?>>Rejected</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card__footer">
+                    <button type="submit" class="btn btn--primary">Apply Filters</button>
+                    <a href="/ergon/leaves" class="btn btn--secondary">Clear</a>
+                </div>
             </form>
         </div>
     </div>
@@ -114,68 +134,84 @@ ob_start();
                     <tr>
                         <td>
                             <?php 
-                            $role = ucfirst($leave['user_role'] ?? 'user');
-                            if ($role === 'User') $role = 'Employee';
+                            $userRole = ucfirst($leave['user_role'] ?? 'user');
+                            if ($userRole === 'User') $userRole = 'Employee';
                             
-                            if (($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)) {
-                                echo 'My Self (' . htmlspecialchars($leave['user_name'] ?? 'Unknown') . ') - ' . $role;
-                            } else {
-                                echo htmlspecialchars($leave['user_name'] ?? 'Unknown') . ' - ' . $role;
+                            $employeeName = htmlspecialchars($leave['user_name'] ?? 'Unknown');
+                            $isCurrentUser = ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0);
+                            $displayName = $isCurrentUser ? "Myself ({$employeeName})" : $employeeName;
+                            ?>
+                            <strong><?= $displayName ?></strong>
+                            <br><small class="text-muted"><?= $userRole ?></small>
+                        </td>
+                        <td data-sort-value="<?= $leave['type'] ?? 'annual' ?>"><span class="badge badge--info"><?= ucfirst(htmlspecialchars($leave['type'] ?? 'annual')) ?></span></td>
+                        <td data-sort-value="<?= $leave['start_date'] ?>">
+                            <div class="cell-meta">
+                                <div class="cell-primary"><?= date('M d, Y', strtotime($leave['start_date'])) ?></div>
+                                <div class="cell-secondary">Start Date</div>
+                            </div>
+                        </td>
+                        <td data-sort-value="<?= $leave['end_date'] ?>">
+                            <div class="cell-meta">
+                                <div class="cell-primary"><?= date('M d, Y', strtotime($leave['end_date'])) ?></div>
+                                <div class="cell-secondary">End Date</div>
+                            </div>
+                        </td>
+                        <td data-sort-value="<?= $days ?>">
+                            <?php 
+                            $days = 1;
+                            if (!empty($leave['start_date']) && !empty($leave['end_date'])) {
+                                try {
+                                    $startDate = new DateTime($leave['start_date']);
+                                    $endDate = new DateTime($leave['end_date']);
+                                    $dateDiff = $endDate->diff($startDate);
+                                    $days = max(1, $dateDiff->days + 1);
+                                } catch (Exception $e) {
+                                    error_log('Date calculation error: ' . $e->getMessage());
+                                    $days = 1;
+                                }
                             }
                             ?>
+                            <strong><?= $days ?></strong> <?= $days == 1 ? 'day' : 'days' ?>
                         </td>
-                        <td><?= ucfirst(htmlspecialchars($leave['type'] ?? 'annual')) ?></td>
-                        <td><?= date('M d, Y', strtotime($leave['start_date'])) ?></td>
-                        <td><?= date('M d, Y', strtotime($leave['end_date'])) ?></td>
-                        <td><?php 
-                            // Always calculate from dates to ensure accuracy after edits
-                            $start = new DateTime($leave['start_date']);
-                            $end = new DateTime($leave['end_date']);
-                            $days = $end->diff($start)->days + 1;
-                            echo $days;
-                        ?></td>
-                        <td>
+                        <td data-sort-value="<?= $leave['status'] ?? 'pending' ?>">
                             <?php 
-                            $status = strtolower($leave['status'] ?? 'pending');
-                            $badgeClass = 'badge--warning';
-                            if ($status === 'approved') $badgeClass = 'badge--success';
-                            elseif ($status === 'rejected') $badgeClass = 'badge--danger';
+                            $leaveStatus = strtolower($leave['status'] ?? 'pending');
+                            $statusBadgeClass = match($leaveStatus) {
+                                'approved' => 'badge--success',
+                                'rejected' => 'badge--danger',
+                                default => 'badge--warning'
+                            };
                             ?>
-                            <span class="badge <?= $badgeClass ?>"><?= ucfirst($leave['status'] ?? 'pending') ?></span>
+                            <span class="badge <?= $statusBadgeClass ?>"><?= ucfirst($leave['status'] ?? 'pending') ?></span>
                         </td>
                         <td>
                             <div class="btn-group">
-                                <a href="/ergon/leaves/view/<?= $leave['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
-                                    <span>👁️</span> View
+                                <a href="/ergon/leaves/view/<?= $leave['id'] ?>" class="btn-icon btn-icon--view" title="View Details">
+                                    👁️
                                 </a>
                                 <?php if (strtolower($leave['status'] ?? 'pending') === 'pending' && ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
-                                <a href="/ergon/leaves/edit/<?= $leave['id'] ?>" class="btn btn--sm btn--info" title="Edit Leave">
-                                    <span>✏️</span> Edit
+                                <a href="/ergon/leaves/edit/<?= $leave['id'] ?>" class="btn-icon btn-icon--edit" title="Edit Leave">
+                                    ✏️
                                 </a>
                                 <?php endif; ?>
                                 <?php 
-                                // Debug: Show current values
-                                // echo "<!-- DEBUG: user_role=" . ($user_role ?? 'NULL') . ", leave_status=" . ($leave['status'] ?? 'NULL') . ", leave_user_id=" . ($leave['user_id'] ?? 'NULL') . ", session_user_id=" . ($_SESSION['user_id'] ?? 'NULL') . " -->";
-                                
-                                $canApprove = false;
+                                $userRole = $user_role ?? '';
                                 $leaveStatus = strtolower($leave['status'] ?? 'pending');
-                                if ($user_role === 'owner' && $leaveStatus === 'pending') {
-                                    $canApprove = true;
-                                } elseif ($user_role === 'admin' && $leaveStatus === 'pending' && ($leave['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0)) {
-                                    $canApprove = true;
-                                }
+                                $isNotOwnLeave = ($leave['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0);
+                                $canApprove = $leaveStatus === 'pending' && (($userRole === 'owner') || ($userRole === 'admin' && $isNotOwnLeave));
                                 ?>
                                 <?php if ($canApprove): ?>
-                                <a href="/ergon/leaves/approve/<?= $leave['id'] ?>" class="btn btn--sm btn--success" title="Approve Leave" onclick="return confirm('Are you sure you want to approve this leave?')">
-                                    <span>✅</span> Approve
+                                <a href="/ergon/leaves/approve/<?= $leave['id'] ?>" class="btn-icon btn-icon--approve" title="Approve Leave" onclick="return confirm('Are you sure you want to approve this leave?')">
+                                    ✅
                                 </a>
-                                <button onclick="showRejectModal(<?= $leave['id'] ?>)" class="btn btn--sm btn--danger" title="Reject Leave">
-                                    <span>❌</span> Reject
+                                <button onclick="showRejectModal(<?= $leave['id'] ?>)" class="btn-icon btn-icon--delete" title="Reject Leave">
+                                    ❌
                                 </button>
                                 <?php endif; ?>
                                 <?php if (strtolower($leave['status'] ?? 'pending') === 'pending' && ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
-                                <button onclick="deleteRecord('leaves', <?= $leave['id'] ?>, 'Leave Request')" class="btn btn--sm btn--danger" title="Delete Request">
-                                    <span>🗑️</span> Delete
+                                <button onclick="deleteRecord('leaves', <?= $leave['id'] ?>, 'Leave Request')" class="btn-icon btn-icon--delete" title="Delete Request">
+                                    🗑️
                                 </button>
                                 <?php endif; ?>
                             </div>
@@ -210,76 +246,14 @@ ob_start();
     </div>
 </div>
 
-<style>
-.modal {
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-}
-.modal-content {
-    background-color: #fefefe;
-    margin: 15% auto;
-    padding: 0;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-.modal-header {
-    padding: 20px;
-    border-bottom: 1px solid #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.modal-header h3 {
-    margin: 0;
-    color: #333;
-}
-.close {
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-    color: #aaa;
-}
-.close:hover {
-    color: #000;
-}
-.modal-body {
-    padding: 20px;
-}
-.modal-footer {
-    padding: 20px;
-    border-top: 1px solid #eee;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-.card__filters {
-    margin-top: 15px;
-}
-.filter-form {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: nowrap;
-}
-.filter-form .form-control {
-    flex: 1;
-    min-width: 140px;
-    max-width: 180px;
-}
-.filter-form .btn {
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-</style>
+
 
 <script>
+function toggleLeaveFilters() {
+    const panel = document.getElementById('leaveFiltersPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
 function showRejectModal(leaveId) {
     document.getElementById('rejectForm').action = '/ergon/leaves/reject/' + leaveId;
     document.getElementById('rejectModal').style.display = 'block';
@@ -298,6 +272,8 @@ window.onclick = function(event) {
     }
 }
 </script>
+
+<script src="/ergon/assets/js/table-utils.js"></script>
 
 <?php
 $content = ob_get_clean();

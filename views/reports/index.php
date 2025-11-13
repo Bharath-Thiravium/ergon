@@ -92,27 +92,25 @@ ob_start();
         </div>
         <div class="card__body">
             <div id="expenseChart"></div>
-            <div class="expense-legends">
-                <div class="legend-grid">
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #1e40af;"></span>
-                        <span class="legend-label">Travel (40%)</span>
-                        <span class="legend-desc">Transportation & fuel</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #059669;"></span>
-                        <span class="legend-label">Food (25%)</span>
-                        <span class="legend-desc">Meals & dining</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #d97706;"></span>
-                        <span class="legend-label">Supplies (20%)</span>
-                        <span class="legend-desc">Office materials</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #dc2626;"></span>
-                        <span class="legend-label">Other (15%)</span>
-                        <span class="legend-desc">Miscellaneous</span>
+            <div class="legends-grid">
+                <div class="legend-section">
+                    <div class="legend-items">
+                        <div class="legend-item">
+                            <div class="category-tag" style="background: #1e40af; color: white;">Travel</div>
+                            <span>40% - Transportation & fuel</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="category-tag" style="background: #059669; color: white;">Food</div>
+                            <span>25% - Meals & dining</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="category-tag" style="background: #d97706; color: white;">Supplies</div>
+                            <span>20% - Office materials</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="category-tag" style="background: #dc2626; color: white;">Other</div>
+                            <span>15% - Miscellaneous</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -122,56 +120,51 @@ ob_start();
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@latest"></script>
 <script>
+/**
+ * Common chart configuration constants
+ */
+const CHART_COMMON_CONFIG = {
+    height: 200,
+    toolbar: { show: false }
+};
+
+const AXIS_LABEL_STYLE = { style: { fontSize: '12px' } };
+const GRID_CONFIG = { borderColor: '#f1f5f9', strokeDashArray: 3 };
+
+/**
+ * Creates and renders an ApexChart with the given options
+ * @param {string} selector - CSS selector for the chart container
+ * @param {Object} options - Chart configuration options
+ */
+function createChart(selector, options) {
+    const chartElement = document.querySelector(selector);
+    if (chartElement) {
+        new ApexCharts(chartElement, options).render();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Attendance Chart - Advanced Area Chart
     const attendanceOptions = {
-        series: [{
-            name: 'Present',
-            data: [8, 7, 9, 8, 6, 3, 2]
-        }],
-        chart: {
-            type: 'area',
-            height: 200,
-            toolbar: { show: false },
-            sparkline: { enabled: false }
-        },
+        series: [{ name: 'Present', data: [8, 7, 9, 8, 6, 3, 2] }],
+        chart: { ...CHART_COMMON_CONFIG, type: 'area', sparkline: { enabled: false } },
         colors: ['#1e40af'],
         fill: {
             type: 'gradient',
-            gradient: {
-                shadeIntensity: 1,
-                opacityFrom: 0.4,
-                opacityTo: 0.1
-            }
+            gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 }
         },
-        stroke: {
-            curve: 'smooth',
-            width: 2
-        },
-        xaxis: {
-            categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            labels: { style: { fontSize: '12px' } }
-        },
-        yaxis: {
-            labels: { style: { fontSize: '12px' } }
-        },
-        grid: {
-            borderColor: '#f1f5f9',
-            strokeDashArray: 3
-        },
-        tooltip: {
-            theme: 'light'
-        }
+        stroke: { curve: 'smooth', width: 2 },
+        xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], labels: AXIS_LABEL_STYLE },
+        yaxis: { labels: AXIS_LABEL_STYLE },
+        grid: GRID_CONFIG,
+        tooltip: { theme: 'light' }
     };
-    new ApexCharts(document.querySelector('#attendanceChart'), attendanceOptions).render();
+    createChart('#attendanceChart', attendanceOptions);
 
     // Task Chart - Modern Donut
     const taskOptions = {
         series: [65, 25, 10],
-        chart: {
-            type: 'donut',
-            height: 200
-        },
+        chart: { type: 'donut', height: 200 },
         labels: ['Completed', 'In Progress', 'Pending'],
         colors: ['#059669', '#d97706', '#dc2626'],
         plotOptions: {
@@ -180,40 +173,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     size: '70%',
                     labels: {
                         show: true,
-                        total: {
-                            show: true,
-                            fontSize: '16px',
-                            fontWeight: 600
-                        }
+                        total: { show: true, fontSize: '16px', fontWeight: 600 }
                     }
                 }
             }
         },
-        legend: {
-            position: 'bottom',
-            fontSize: '12px'
-        },
+        legend: { position: 'bottom', fontSize: '12px' },
         responsive: [{
             breakpoint: 480,
-            options: {
-                chart: { height: 180 },
-                legend: { position: 'bottom' }
-            }
+            options: { chart: { height: 180 }, legend: { position: 'bottom' } }
         }]
     };
-    new ApexCharts(document.querySelector('#taskChart'), taskOptions).render();
+    createChart('#taskChart', taskOptions);
 
     // Leave Chart - Gradient Bar
     const leaveOptions = {
-        series: [{
-            name: 'Leave Requests',
-            data: [12, 8, 15, 3]
-        }],
-        chart: {
-            type: 'bar',
-            height: 200,
-            toolbar: { show: false }
-        },
+        series: [{ name: 'Leave Requests', data: [12, 8, 15, 3] }],
+        chart: { ...CHART_COMMON_CONFIG, type: 'bar' },
         colors: ['#1e40af'],
         fill: {
             type: 'gradient',
@@ -227,51 +203,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 opacityTo: 0.85
             }
         },
-        plotOptions: {
-            bar: {
-                borderRadius: 4,
-                columnWidth: '60%'
-            }
-        },
-        xaxis: {
-            categories: ['Casual', 'Sick', 'Annual', 'Emergency'],
-            labels: { style: { fontSize: '12px' } }
-        },
-        yaxis: {
-            labels: { style: { fontSize: '12px' } }
-        },
-        grid: {
-            borderColor: '#f1f5f9',
-            strokeDashArray: 3
-        }
+        plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } },
+        xaxis: { categories: ['Casual', 'Sick', 'Annual', 'Emergency'], labels: AXIS_LABEL_STYLE },
+        yaxis: { labels: AXIS_LABEL_STYLE },
+        grid: GRID_CONFIG
     };
-    new ApexCharts(document.querySelector('#leaveChart'), leaveOptions).render();
+    createChart('#leaveChart', leaveOptions);
 
     // Expense Chart - Radial Bar
     const expenseOptions = {
         series: [40, 25, 20, 15],
-        chart: {
-            type: 'radialBar',
-            height: 200
-        },
+        chart: { type: 'radialBar', height: 200 },
         plotOptions: {
             radialBar: {
                 dataLabels: {
-                    name: {
-                        fontSize: '12px'
-                    },
+                    name: { fontSize: '12px' },
                     value: {
                         fontSize: '14px',
-                        formatter: function (val) {
-                            return val + '%'
-                        }
+                        formatter: (val) => val + '%'
                     },
                     total: {
                         show: true,
                         label: 'Total',
-                        formatter: function () {
-                            return '100%'
-                        }
+                        formatter: () => '100%'
                     }
                 }
             }
@@ -279,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
         labels: ['Travel', 'Food', 'Supplies', 'Other'],
         colors: ['#1e40af', '#059669', '#d97706', '#dc2626']
     };
-    new ApexCharts(document.querySelector('#expenseChart'), expenseOptions).render();
+    createChart('#expenseChart', expenseOptions);
 });
 </script>
 

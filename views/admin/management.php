@@ -58,6 +58,11 @@ ob_start();
 <div class="card">
     <div class="card__header">
         <h2 class="card__title">User Management</h2>
+        <div class="card__actions">
+            <button class="btn btn--sm btn--secondary" onclick="toggleView()">
+                <span id="viewToggle">🔲</span> <span id="viewText">Grid View</span>
+            </button>
+        </div>
     </div>
     <div class="card__body">
         <?php if (empty($data['users'])): ?>
@@ -67,44 +72,94 @@ ob_start();
                 <p>No users are currently registered in the system.</p>
             </div>
         <?php else: ?>
-            <div class="user-grid">
+            <div id="listView" class="table-responsive view--active">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($data['users'] as $user): ?>
+                        <tr>
+                            <td>
+                                <div class="user-info">
+                                    <div class="user-avatar"><?= strtoupper(substr($user['name'], 0, 1)) ?></div>
+                                    <div>
+                                        <strong><?= htmlspecialchars($user['name']) ?></strong>
+                                        <br><small class="text-muted">ID: <?= $user['id'] ?></small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-sort-value="<?= $user['email'] ?>"><?= htmlspecialchars($user['email']) ?></td>
+                            <td data-sort-value="<?= $user['role'] ?>"><span class="badge badge--<?= $user['role'] === 'admin' ? 'success' : 'info' ?>"><?= ucfirst($user['role']) ?></span></td>
+                            <td data-sort-value="<?= $user['status'] ?>"><span class="badge badge--success"><?= ucfirst($user['status']) ?></span></td>
+                            <td>
+                                <div class="btn-group">
+                                    <?php if ($user['role'] === 'user'): ?>
+                                    <button class="btn btn--sm btn--primary" onclick="assignAdmin(<?= $user['id'] ?>)" title="Make Admin">
+                                        ⬆️
+                                    </button>
+                                    <?php elseif ($user['role'] === 'admin'): ?>
+                                    <button class="btn btn--sm btn--warning" onclick="removeAdmin(<?= $user['id'] ?>)" title="Remove Admin">
+                                        ⬇️
+                                    </button>
+                                    <?php endif; ?>
+                                    <button class="btn btn--sm btn--secondary" onclick="editUser(<?= $user['id'] ?>)" title="Edit User">
+                                        ✏️
+                                    </button>
+                                    <button class="btn btn--sm btn--info" onclick="changePassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" title="Change Password">
+                                        🔑
+                                    </button>
+                                    <?php if ($user['role'] !== 'owner'): ?>
+                                    <button class="btn btn--sm btn--danger" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" title="Delete User">
+                                        🗑️
+                                    </button>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div id="gridView" class="user-grid view--hidden">
                 <?php foreach ($data['users'] as $user): ?>
                 <div class="user-card">
                     <div class="user-card__header">
-                        <div class="user-avatar user-avatar--lg"><?= strtoupper(substr($user['name'], 0, 1)) ?></div>
+                        <div class="user-avatar"><?= strtoupper(substr($user['name'], 0, 1)) ?></div>
                         <div class="user-card__badges">
-                            <span class="badge badge--<?= $user['role'] === 'admin' ? 'success' : 'warning' ?>">
+                            <span class="badge badge--<?= $user['role'] === 'admin' ? 'success' : 'info' ?>">
                                 <?= ucfirst($user['role']) ?>
-                            </span>
-                            <span class="badge badge--success">
-                                <?= ucfirst($user['status']) ?>
                             </span>
                         </div>
                     </div>
-                    <div class="user-card__body">
-                        <h3 class="user-card__name"><?= htmlspecialchars($user['name']) ?></h3>
-                        <p class="user-card__email"><?= htmlspecialchars($user['email']) ?></p>
-                        <p class="user-card__role">Current Role: <?= ucfirst($user['role']) ?></p>
-                    </div>
+                    <h3 class="user-card__name"><?= htmlspecialchars($user['name']) ?></h3>
+                    <p class="user-card__email"><?= htmlspecialchars($user['email']) ?></p>
+                    <p class="user-card__role"><?= ucfirst($user['role']) ?></p>
                     <div class="user-card__actions">
                         <?php if ($user['role'] === 'user'): ?>
                         <button class="btn btn--sm btn--primary" onclick="assignAdmin(<?= $user['id'] ?>)">
-                            <span>⬆️</span> Make Admin
+                            ⬆️ Make Admin
                         </button>
                         <?php elseif ($user['role'] === 'admin'): ?>
                         <button class="btn btn--sm btn--warning" onclick="removeAdmin(<?= $user['id'] ?>)">
-                            <span>⬇️</span> Remove Admin
+                            ⬇️ Remove Admin
                         </button>
                         <?php endif; ?>
                         <button class="btn btn--sm btn--secondary" onclick="editUser(<?= $user['id'] ?>)">
-                            <span>✏️</span> Edit
+                            ✏️ Edit
                         </button>
                         <button class="btn btn--sm btn--info" onclick="changePassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')">
-                            <span>🔑</span> Change Password
+                            🔑 Password
                         </button>
                         <?php if ($user['role'] !== 'owner'): ?>
-                        <button class="btn btn--sm btn--delete" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')">
-                            <span>🗑️</span> Delete
+                        <button class="btn btn--sm btn--danger" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')">
+                            🗑️ Delete
                         </button>
                         <?php endif; ?>
                     </div>
@@ -115,20 +170,36 @@ ob_start();
     </div>
 </div>
 
-<style>
-.btn--delete {
-    background: #f3f4f6 !important;
-    color: #dc2626 !important;
-    border-color: #e5e7eb !important;
-}
-.btn--delete:hover {
-    background: #fef2f2 !important;
-    border-color: #fecaca !important;
-    color: #b91c1c !important;
-}
-</style>
+
 
 <script>
+let currentView = 'list';
+
+window.toggleView = function() {
+    const listView = document.getElementById('listView');
+    const gridView = document.getElementById('gridView');
+    const toggleIcon = document.getElementById('viewToggle');
+    const toggleText = document.getElementById('viewText');
+    
+    if (currentView === 'list') {
+        listView.classList.remove('view--active');
+        listView.classList.add('view--hidden');
+        gridView.classList.remove('view--hidden');
+        gridView.classList.add('view--active');
+        toggleIcon.textContent = '🔲';
+        toggleText.textContent = 'List View';
+        currentView = 'grid';
+    } else {
+        listView.classList.remove('view--hidden');
+        listView.classList.add('view--active');
+        gridView.classList.remove('view--active');
+        gridView.classList.add('view--hidden');
+        toggleIcon.textContent = '📋';
+        toggleText.textContent = 'Grid View';
+        currentView = 'list';
+    }
+}
+
 function showAssignAdminModal() {
     alert('Please use the individual "Make Admin" buttons on each user card to promote users to admin role.');
 }
@@ -231,6 +302,8 @@ function deleteUser(userId, userName) {
     }
 }
 </script>
+
+<script src="/ergon/assets/js/table-utils.js"></script>
 
 <?php
 $content = ob_get_clean();

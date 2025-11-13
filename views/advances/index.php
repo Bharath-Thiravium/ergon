@@ -17,13 +17,13 @@ ob_start();
 </div>
 
 <?php if (isset($_GET['success'])): ?>
-<div class="alert alert-success" style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
+<div class="alert alert--success">
     ✅ <?= htmlspecialchars($_GET['success']) ?>
 </div>
 <?php endif; ?>
 
 <?php if (isset($_GET['error'])): ?>
-<div class="alert alert-error" style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
+<div class="alert alert--error">
     ❌ <?= htmlspecialchars($_GET['error']) ?>
 </div>
 <?php endif; ?>
@@ -83,7 +83,7 @@ ob_start();
                 <tbody>
                     <?php if (empty($advances ?? [])): ?>
                     <tr>
-                        <td colspan="7" class="text-center" style="color: var(--text-muted); padding: 2rem;">
+                        <td colspan="7" class="text-center">
                             <div class="empty-state">
                                 <div class="empty-icon">💳</div>
                                 <h3>No Advance Requests</h3>
@@ -96,14 +96,13 @@ ob_start();
                         <tr>
                             <td>
                                 <?php 
-                                $role = ucfirst($advance['user_role'] ?? 'user');
-                                if ($role === 'User') $role = 'Employee';
+                                $employeeRole = ucfirst($advance['user_role'] ?? 'user');
+                                if ($employeeRole === 'User') $employeeRole = 'Employee';
                                 
-                                if (($advance['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)) {
-                                    echo 'My Self (' . htmlspecialchars($advance['user_name'] ?? 'Unknown') . ') - ' . $role;
-                                } else {
-                                    echo htmlspecialchars($advance['user_name'] ?? 'Unknown') . ' - ' . $role;
-                                }
+                                $employeeName = htmlspecialchars($advance['user_name'] ?? 'Unknown');
+                                $isCurrentUser = ($advance['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0);
+                                $displayName = $isCurrentUser ? "Myself ({$employeeName})" : $employeeName;
+                                echo $displayName . ' - ' . $employeeRole;
                                 ?>
                             </td>
                             <td><?= htmlspecialchars(!empty($advance['type']) ? $advance['type'] : 'General Advance') ?></td>
@@ -111,43 +110,43 @@ ob_start();
                             <td><?= htmlspecialchars($advance['reason'] ?? '') ?></td>
                             <td>
                                 <?php 
-                                $status = $advance['status'] ?? 'pending';
-                                $badgeClass = 'badge--warning';
-                                if ($status === 'approved') $badgeClass = 'badge--success';
-                                elseif ($status === 'rejected') $badgeClass = 'badge--danger';
+                                $advanceStatus = $advance['status'] ?? 'pending';
+                                $statusBadgeClass = match($advanceStatus) {
+                                    'approved' => 'badge--success',
+                                    'rejected' => 'badge--danger',
+                                    default => 'badge--warning'
+                                };
                                 ?>
-                                <span class="badge <?= $badgeClass ?>"><?= ucfirst($status) ?></span>
+                                <span class="badge <?= $statusBadgeClass ?>"><?= ucfirst($advanceStatus) ?></span>
                             </td>
                             <td><?= date('M d, Y', strtotime($advance['created_at'] ?? 'now')) ?></td>
                             <td>
                                 <div class="btn-group">
-                                    <a href="/ergon/advances/view/<?= $advance['id'] ?>" class="btn btn--sm btn--primary" title="View Details">
-                                        <span>👁️</span> View
+                                    <a href="/ergon/advances/view/<?= $advance['id'] ?>" class="btn-icon btn-icon--view" title="View Details">
+                                        👁️
                                     </a>
                                     <?php if (($advance['status'] ?? 'pending') === 'pending' && ($advance['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
-                                    <a href="/ergon/advances/edit/<?= $advance['id'] ?>" class="btn btn--sm btn--info" title="Edit Advance">
-                                        <span>✏️</span> Edit
+                                    <a href="/ergon/advances/edit/<?= $advance['id'] ?>" class="btn-icon btn-icon--edit" title="Edit Advance">
+                                        ✏️
                                     </a>
                                     <?php endif; ?>
                                     <?php 
-                                    $canApprove = false;
-                                    if (($user_role ?? '') === 'owner' && ($advance['status'] ?? 'pending') === 'pending') {
-                                        $canApprove = true;
-                                    } elseif (($user_role ?? '') === 'admin' && ($advance['status'] ?? 'pending') === 'pending' && ($advance['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0)) {
-                                        $canApprove = true;
-                                    }
+                                    $currentUserRole = $user_role ?? '';
+                                    $isPending = ($advance['status'] ?? 'pending') === 'pending';
+                                    $isNotOwnAdvance = ($advance['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0);
+                                    $canApprove = $isPending && (($currentUserRole === 'owner') || ($currentUserRole === 'admin' && $isNotOwnAdvance));
                                     ?>
                                     <?php if ($canApprove): ?>
-                                    <a href="/ergon/advances/approve/<?= $advance['id'] ?>" class="btn btn--sm btn--success" title="Approve Advance" onclick="return confirm('Are you sure you want to approve this advance?')">
-                                        <span>✅</span> Approve
+                                    <a href="/ergon/advances/approve/<?= $advance['id'] ?>" class="btn-icon btn-icon--approve" title="Approve Advance" onclick="return confirm('Are you sure you want to approve this advance?')">
+                                        ✅
                                     </a>
-                                    <button onclick="showRejectModal(<?= $advance['id'] ?>)" class="btn btn--sm btn--warning" title="Reject Advance">
-                                        <span>❌</span> Reject
+                                    <button onclick="showRejectModal(<?= $advance['id'] ?>)" class="btn-icon btn-icon--edit" title="Reject Advance">
+                                        ❌
                                     </button>
                                     <?php endif; ?>
                                     <?php if (in_array($user_role ?? '', ['admin', 'owner']) || (($user_role ?? '') === 'user' && ($advance['status'] ?? 'pending') === 'pending')): ?>
-                                    <button onclick="deleteRecord('advances', <?= $advance['id'] ?>, 'Advance Request')" class="btn btn--sm btn--danger" title="Delete Request">
-                                        <span>🗑️</span> Delete
+                                    <button onclick="deleteRecord('advances', <?= $advance['id'] ?>, 'Advance Request')" class="btn-icon btn-icon--delete" title="Delete Request">
+                                        🗑️
                                     </button>
                                     <?php endif; ?>
                                 </div>
@@ -253,6 +252,8 @@ window.onclick = function(event) {
     }
 }
 </script>
+
+<script src="/ergon/assets/js/table-utils.js"></script>
 
 <?php
 $content = ob_get_clean();

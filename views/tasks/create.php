@@ -5,7 +5,106 @@ $content = ob_start();
 
 <div class="compact-header">
     <h1><i class="bi bi-plus-circle"></i> Create Task</h1>
-    <a href="/ergon/tasks" class="btn-back">← Back</a>
+    <div class="header-actions">
+        <button type="button" class="btn-help" onclick="toggleHelpPanel()" title="Show Help">
+            ❓ Help
+        </button>
+        <a href="/ergon/tasks" class="btn-back">← Back</a>
+    </div>
+</div>
+
+<!-- Help Panel - Provides user guidance for task creation -->
+<div id="helpPanel" class="help-panel" style="display: none;">
+    <div class="help-content">
+        <h3>📚 Task Creation Guide</h3>
+        <div class="help-grid">
+            <!-- Basic Information Section -->
+            <div class="help-section">
+                <h4>📝 Basic Information</h4>
+                <ul>
+                    <li><strong>Title:</strong> Clear, descriptive name (e.g., "Update website homepage")</li>
+                    <li><strong>Type:</strong> Choose based on task nature - Task (general), Checklist (multiple steps), Milestone (important goal), Urgent (time-critical)</li>
+                    <li><strong>Description:</strong> Detailed requirements, acceptance criteria, and expected outcomes</li>
+                </ul>
+            </div>
+            <!-- Assignment & Schedule Section -->
+            <div class="help-section">
+                <h4>👥 Assignment & Schedule</h4>
+                <ul>
+                    <li><strong>Assignment Type:</strong> "For Myself" creates personal tasks, "For Others" allows delegation (admin only)</li>
+                    <li><strong>Assign To:</strong> Select team member responsible for completion</li>
+                    <li><strong>Planned Date:</strong> When you plan to work on this task (optional)</li>
+                </ul>
+            </div>
+            <!-- Configuration Section -->
+            <div class="help-section">
+                <h4>⚙️ Configuration</h4>
+                <ul>
+                    <li><strong>Department:</strong> Helps categorize and filter tasks by team</li>
+                    <li><strong>Category:</strong> Specific task type within department (loads based on department)</li>
+                    <li><strong>Priority:</strong> Low (routine), Medium (normal), High (urgent/important)</li>
+                </ul>
+            </div>
+            <!-- Timeline & Progress Section -->
+            <div class="help-section">
+                <h4>📊 Timeline & Progress</h4>
+                <ul>
+                    <li><strong>Due Date:</strong> Hard deadline for task completion</li>
+                    <li><strong>SLA Hours:</strong> Service Level Agreement - expected completion time (default: 24 hours)</li>
+                    <li><strong>Status:</strong> Starting status - Assigned (not started), In Progress (actively working), Blocked (waiting for something)</li>
+                    <li><strong>Progress:</strong> Initial completion percentage (usually 0% for new tasks)</li>
+                </ul>
+            </div>
+            <!-- Additional Options Section -->
+            <div class="help-section">
+                <h4>🔄 Additional Options</h4>
+                <ul>
+                    <li><strong>Follow-up Required:</strong> Enable if task needs client/stakeholder follow-up</li>
+                    <li><strong>Reminder Notifications:</strong> Get alerts before due date</li>
+                    <li><strong>Track Time:</strong> Monitor time spent on this task</li>
+                </ul>
+            </div>
+            <!-- Follow-up Details Section -->
+            <div class="help-section">
+                <h4>📞 Follow-up Details</h4>
+                <ul>
+                    <li><strong>Company/Contact:</strong> Type 3+ characters to search existing records</li>
+                    <li><strong>Auto-fill:</strong> Selecting company/contact automatically fills related fields</li>
+                    <li><strong>Follow-up Date/Time:</strong> When to contact client (defaults to next day, 9 AM)</li>
+                </ul>
+            </div>
+        </div>
+        <!-- Pro Tips Section -->
+        <div class="help-tips">
+            <h4>💡 Pro Tips</h4>
+            <div class="tips-grid">
+                <div class="tip-item">
+                    <span class="tip-icon">🎯</span>
+                    <span>Use specific, actionable titles like "Fix login bug" instead of "Bug fix"</span>
+                </div>
+                <div class="tip-item">
+                    <span class="tip-icon">📅</span>
+                    <span>Set realistic due dates - consider dependencies and workload</span>
+                </div>
+                <div class="tip-item">
+                    <span class="tip-icon">🏷️</span>
+                    <span>Choose appropriate priority - not everything can be high priority</span>
+                </div>
+                <div class="tip-item">
+                    <span class="tip-icon">📝</span>
+                    <span>Include acceptance criteria in description for clarity</span>
+                </div>
+                <div class="tip-item">
+                    <span class="tip-icon">🔄</span>
+                    <span>Enable follow-up for client-facing tasks or external dependencies</span>
+                </div>
+                <div class="tip-item">
+                    <span class="tip-icon">⏱️</span>
+                    <span>Use time tracking for billable work or performance analysis</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="compact-form">
@@ -16,23 +115,26 @@ $content = ob_start();
             <div class="form-section">
                 <div class="form-grid">
                     <div class="form-group span-2">
-                        <label for="title">📝 Task Title *</label>
-                        <input type="text" id="title" name="title" required placeholder="What needs to be done?">
+                        <label for="title">📝 Task Title * <span class="field-help" title="Clear, specific description of what needs to be done">ℹ️</span></label>
+                        <input type="text" id="title" name="title" required placeholder="e.g., Update homepage banner, Fix login bug, Review project proposal">
+                        <small class="field-hint">Be specific and actionable. Good: "Update contact form validation", Bad: "Fix form"</small>
                     </div>
                     <div class="form-group">
-                        <label for="task_type">🏷️ Type</label>
+                        <label for="task_type">🏷️ Type <span class="field-help" title="Choose based on task complexity and importance">ℹ️</span></label>
                         <select id="task_type" name="task_type">
-                            <option value="ad-hoc">📋 Task</option>
-                            <option value="checklist">✅ Checklist</option>
-                            <option value="milestone">🎯 Milestone</option>
-                            <option value="timed">⏰ Urgent</option>
+                            <option value="ad-hoc">📋 Task (General work item)</option>
+                            <option value="checklist">✅ Checklist (Multiple steps)</option>
+                            <option value="milestone">🎯 Milestone (Important goal)</option>
+                            <option value="timed">⏰ Urgent (Time-critical)</option>
                         </select>
+                        <small class="field-hint">Task: regular work | Checklist: multi-step process | Milestone: major deliverable | Urgent: immediate attention</small>
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="description">📄 Description</label>
-                    <textarea id="description" name="description" rows="3" placeholder="Describe the task details, requirements, and expected outcome..."></textarea>
+                    <label for="description">📄 Description <span class="field-help" title="Detailed requirements and acceptance criteria">ℹ️</span></label>
+                    <textarea id="description" name="description" rows="3" placeholder="What needs to be done? What are the requirements? What defines completion? Include any relevant links, files, or context..."></textarea>
+                    <small class="field-hint">Include: requirements, acceptance criteria, resources needed, expected outcome. Be detailed to avoid confusion.</small>
                 </div>
             </div>
 
@@ -41,13 +143,14 @@ $content = ob_start();
                 <h3>👥 Assignment & Schedule</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="assigned_for">👤 Assignment Type</label>
+                        <label for="assigned_for">👤 Assignment Type <span class="field-help" title="Who will be responsible for this task?">ℹ️</span></label>
                         <select id="assigned_for" name="assigned_for" onchange="handleAssignmentTypeChange()" required>
-                            <option value="self">For Myself</option>
+                            <option value="self">For Myself (I will do this)</option>
                             <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
-                                <option value="other">For Others</option>
+                                <option value="other">For Others (Delegate to team member)</option>
                             <?php endif; ?>
                         </select>
+                        <small class="field-hint">Choose "For Myself" for personal tasks, "For Others" to delegate (admin only)</small>
                     </div>
                     <div class="form-group">
                         <label for="assigned_to">🎯 Assign To *</label>
@@ -63,8 +166,9 @@ $content = ob_start();
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="planned_date">📅 Planned Date</label>
+                        <label for="planned_date">📅 Planned Date <span class="field-help" title="When do you plan to work on this? (Optional)">ℹ️</span></label>
                         <input type="date" id="planned_date" name="planned_date" min="<?= date('Y-m-d') ?>">
+                        <small class="field-hint">Optional: When you plan to start working on this task. Different from due date.</small>
                     </div>
                 </div>
             </div>
@@ -91,12 +195,13 @@ $content = ob_start();
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="priority">🚨 Priority</label>
+                        <label for="priority">🚨 Priority <span class="field-help" title="How urgent/important is this task?">ℹ️</span></label>
                         <select id="priority" name="priority">
-                            <option value="low">🟢 Low</option>
-                            <option value="medium" selected>🟡 Medium</option>
-                            <option value="high">🔴 High</option>
+                            <option value="low">🟢 Low (Routine, can wait)</option>
+                            <option value="medium" selected>🟡 Medium (Normal priority)</option>
+                            <option value="high">🔴 High (Urgent/Important)</option>
                         </select>
+                        <small class="field-hint">Low: routine tasks | Medium: normal work | High: urgent or business-critical</small>
                     </div>
                 </div>
             </div>
@@ -106,12 +211,14 @@ $content = ob_start();
                 <h3>📊 Timeline & Progress</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="deadline">⏰ Due Date</label>
+                        <label for="deadline">⏰ Due Date <span class="field-help" title="Hard deadline for task completion">ℹ️</span></label>
                         <input type="date" id="deadline" name="deadline" min="<?= date('Y-m-d') ?>">
+                        <small class="field-hint">Hard deadline when task must be completed. Leave empty if no specific deadline.</small>
                     </div>
                     <div class="form-group">
-                        <label for="sla_hours">⏱️ SLA Hours</label>
+                        <label for="sla_hours">⏱️ SLA Hours <span class="field-help" title="Expected completion time in hours">ℹ️</span></label>
                         <input type="number" id="sla_hours" name="sla_hours" value="24" min="1" max="720" placeholder="24">
+                        <small class="field-hint">Service Level Agreement: Expected hours to complete (24h = 1 day, 168h = 1 week)</small>
                     </div>
                     <div class="form-group">
                         <label for="status">📈 Initial Status</label>
@@ -237,28 +344,30 @@ $content = ob_start();
 </div>
 
 <script>
+// Update progress value display
 function updateProgressValue(value) {
     document.getElementById('progressValue').textContent = value + '%';
 }
 
-// Load task categories based on department
+// Load task categories based on selected department
 function loadTaskCategories() {
     const deptSelect = document.getElementById('department_id');
     const categorySelect = document.getElementById('task_category');
     const deptId = deptSelect.value;
-    
+
     // Clear existing options
     categorySelect.innerHTML = '<option value="">Select Category</option>';
-    
+
     if (!deptId) return;
-    
-    // Fetch categories for selected department
+
+    // Fetch categories for selected department via API
     fetch(`/ergon/api/task-categories?department_id=${deptId}`)
         .then(response => response.json())
         .then(data => {
             console.log('Categories data:', data);
             if (data.categories) {
                 console.log('Found categories:', data.categories.length);
+                // Populate category dropdown with fetched data
                 data.categories.forEach(category => {
                     const option = document.createElement('option');
                     option.value = category.category_name;
@@ -335,48 +444,102 @@ function handleCategoryChange() {
 // Load follow-up details for auto-population
 let followupData = [];
 
+/**
+ * Loads follow-up details from API for auto-population of search fields.
+ * Implements comprehensive error handling and falls back to dummy data if API is unavailable.
+ *
+ * Error Handling Strategy:
+ * - HTTP status code validation
+ * - JSON parsing error handling
+ * - DOM element null checks
+ * - Graceful fallback to dummy data
+ * - Informative error logging
+ */
 function loadFollowupDetails() {
-    fetch('/ergon/direct_followup_test.php')
-        .then(response => response.json())
+    const API_ENDPOINT = '/ergon/direct_followup_test.php';
+
+    fetch(API_ENDPOINT)
+        .then(response => {
+            // Check HTTP response status
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            // Parse JSON with error handling
+            return response.json().catch(jsonError => {
+                console.error('JSON parsing failed:', jsonError);
+                throw new Error('Invalid JSON response from server');
+            });
+        })
         .then(data => {
-            console.log('API Response:', data);
-            followupData = data.followups || [];
-            
-            // Add dummy data if no real data exists
+            console.log('API Response received successfully:', data);
+
+            // Extract followups data with fallback
+            followupData = Array.isArray(data.followups) ? data.followups : [];
+
+            // Use dummy data if no real data exists
             if (followupData.length === 0) {
-                followupData = [
-                    {company_name: 'Tech Solutions Inc', contact_person: 'John Smith', project_name: 'Website Redesign', contact_phone: '+1-555-0123'},
-                    {company_name: 'Digital Marketing Co', contact_person: 'Sarah Johnson', project_name: 'SEO Campaign', contact_phone: '+1-555-0124'},
-                    {company_name: 'Global Enterprises', contact_person: 'Mike Wilson', project_name: 'Mobile App', contact_phone: '+1-555-0125'},
-                    {company_name: 'StartUp Ventures', contact_person: 'Emily Davis', project_name: 'Brand Identity', contact_phone: '+1-555-0126'},
-                    {company_name: 'Corporate Systems', contact_person: 'David Brown', project_name: 'Database Migration', contact_phone: '+1-555-0127'}
-                ];
+                console.log('No real data available, using dummy data');
+                followupData = getDummyFollowupData();
             }
-            
-            console.log('Followup data loaded:', followupData.length, 'items');
+
+            console.log(`Followup data loaded: ${followupData.length} items`);
+
+            // Setup search inputs
             setupFollowupSearchInputs();
-            
-            // Auto-populate title and description for follow-up tasks
-            const titleField = document.getElementById('title');
-            const descField = document.getElementById('description');
-            
-            if (!titleField.value) {
-                titleField.value = 'Follow-up Call';
-            }
-            if (!descField.value) {
-                descField.value = 'Follow up with client regarding project status and next steps';
-            }
+
+            // Auto-populate form fields for follow-up tasks
+            autoPopulateFollowupFields();
         })
         .catch(error => {
-            console.log('Failed to load follow-up details:', error);
-            // Use dummy data on error
-            followupData = [
-                {company_name: 'Tech Solutions Inc', contact_person: 'John Smith', project_name: 'Website Redesign', contact_phone: '+1-555-0123'},
-                {company_name: 'Digital Marketing Co', contact_person: 'Sarah Johnson', project_name: 'SEO Campaign', contact_phone: '+1-555-0124'},
-                {company_name: 'Global Enterprises', contact_person: 'Mike Wilson', project_name: 'Mobile App', contact_phone: '+1-555-0125'}
-            ];
+            console.error('Failed to load follow-up details:', error.message || error);
+
+            // Use dummy data as fallback
+            followupData = getDummyFollowupData();
+            console.log('Using fallback dummy data due to API error');
+
+            // Setup search inputs with fallback data
             setupFollowupSearchInputs();
         });
+}
+
+/**
+ * Returns dummy follow-up data for fallback scenarios
+ * @returns {Array} Array of dummy follow-up objects
+ */
+function getDummyFollowupData() {
+    return [
+        {company_name: 'Tech Solutions Inc', contact_person: 'John Smith', project_name: 'Website Redesign', contact_phone: '+1-555-0123'},
+        {company_name: 'Digital Marketing Co', contact_person: 'Sarah Johnson', project_name: 'SEO Campaign', contact_phone: '+1-555-0124'},
+        {company_name: 'Global Enterprises', contact_person: 'Mike Wilson', project_name: 'Mobile App', contact_phone: '+1-555-0125'},
+        {company_name: 'StartUp Ventures', contact_person: 'Emily Davis', project_name: 'Brand Identity', contact_phone: '+1-555-0126'},
+        {company_name: 'Corporate Systems', contact_person: 'David Brown', project_name: 'Database Migration', contact_phone: '+1-555-0127'}
+    ];
+}
+
+/**
+ * Auto-populates title and description fields for follow-up tasks
+ * Includes null checks to prevent runtime errors
+ */
+function autoPopulateFollowupFields() {
+    try {
+        const titleField = document.getElementById('title');
+        const descField = document.getElementById('description');
+
+        // Null checks before accessing DOM elements
+        if (titleField && !titleField.value.trim()) {
+            titleField.value = 'Follow-up Call';
+            console.log('Auto-populated title field');
+        }
+
+        if (descField && !descField.value.trim()) {
+            descField.value = 'Follow up with client regarding project status and next steps';
+            console.log('Auto-populated description field');
+        }
+    } catch (error) {
+        console.error('Error during auto-population:', error);
+        // Continue execution - auto-population is not critical
+    }
 }
 
 function setupFollowupSearchInputs() {
@@ -398,31 +561,44 @@ function setupFollowupSearchInputs() {
     setupFollowupSearchInput('project_name', 'project_suggestions', 'project_name');
 }
 
+/**
+ * Sets up search input functionality with autocomplete suggestions
+ * @param {string} inputId - ID of the input element
+ * @param {string} suggestionsId - ID of the suggestions container
+ * @param {string} field - Field name in followupData to search
+ */
 function setupFollowupSearchInput(inputId, suggestionsId, field) {
     const input = document.getElementById(inputId);
     const suggestions = document.getElementById(suggestionsId);
-    
+
+    // Validate DOM elements exist
     if (!input || !suggestions) {
         console.log('Missing elements:', inputId, suggestionsId);
         return;
     }
-    
+
+    // Main search input handler
     input.addEventListener('input', function() {
         const query = this.value.toLowerCase().trim();
         console.log('Search query:', query, 'for field:', field, 'data length:', followupData.length);
-        
+
+        // Hide suggestions for short queries
         if (query.length < 2) {
             suggestions.style.display = 'none';
             return;
         }
-        
-        const matches = [...new Set(followupData
-            .map(item => item[field])
-            .filter(value => value && value.toLowerCase().includes(query))
-            .slice(0, 5))];
-        
+
+        // Optimized search: extract field values, filter matches, remove duplicates, limit results
+        const matches = [...new Set(
+            followupData
+                .map(item => item[field])  // Extract field values
+                .filter(value => value && value.toLowerCase().includes(query))  // Filter matches
+                .slice(0, 5)  // Limit to 5 results for performance
+        )];
+
         console.log('Found matches:', matches);
-        
+
+        // Render suggestions or no-results message
         if (matches.length > 0) {
             suggestions.innerHTML = matches
                 .map(match => `<div class="suggestion-item" onclick="selectFollowupSuggestion('${inputId}', '${match.replace(/'/g, "\\'")}')"><strong>${match}</strong></div>`)
@@ -433,23 +609,25 @@ function setupFollowupSearchInput(inputId, suggestionsId, field) {
             suggestions.style.display = 'block';
         }
     });
-    
-    // Special handling for contact person field to update phone on blur
+
+    // Special handling for contact person field to auto-update phone
     if (inputId === 'contact_person') {
         input.addEventListener('blur', function() {
             const contactName = this.value.trim();
             if (contactName) {
-                const contactData = followupData.find(item => 
+                // Find exact contact match (case-insensitive)
+                const contactData = followupData.find(item =>
                     item.contact_person && item.contact_person.toLowerCase() === contactName.toLowerCase()
                 );
+                // Auto-populate phone if found
                 if (contactData && contactData.contact_phone) {
                     document.getElementById('contact_phone').value = contactData.contact_phone;
                 }
             }
         });
     }
-    
-    // Hide suggestions when clicking outside
+
+    // Global click handler to hide suggestions when clicking outside
     document.addEventListener('click', function(e) {
         if (!input.contains(e.target) && !suggestions.contains(e.target)) {
             suggestions.style.display = 'none';
@@ -503,6 +681,19 @@ var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggl
 var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl);
 });
+
+// Help panel toggle
+function toggleHelpPanel() {
+    const helpPanel = document.getElementById('helpPanel');
+    const isVisible = helpPanel.style.display !== 'none';
+    
+    if (isVisible) {
+        helpPanel.style.display = 'none';
+    } else {
+        helpPanel.style.display = 'block';
+        helpPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
 
 // Form initialization
 document.addEventListener('DOMContentLoaded', function() {
@@ -926,6 +1117,183 @@ document.addEventListener('DOMContentLoaded', function() {
     border-color: var(--primary);
 }
 
+/* Help Panel Styles */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-help {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn-help:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.help-panel {
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    border: 2px solid var(--primary-light);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.help-content h3 {
+    margin: 0 0 1.5rem 0;
+    color: var(--primary);
+    font-size: 1.25rem;
+    text-align: center;
+}
+
+.help-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.help-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.help-section h4 {
+    margin: 0 0 1rem 0;
+    color: var(--primary);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.help-section ul {
+    margin: 0;
+    padding-left: 1rem;
+}
+
+.help-section li {
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+    font-size: 0.875rem;
+}
+
+.help-section li strong {
+    color: var(--text-primary);
+}
+
+.help-tips {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 2px dashed var(--primary-light);
+}
+
+.help-tips h4 {
+    margin: 0 0 1rem 0;
+    color: var(--primary);
+    text-align: center;
+}
+
+.tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.tip-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-light);
+}
+
+.tip-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.tip-item span:last-child {
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+/* Field Help Styles */
+.field-help {
+    color: var(--primary);
+    cursor: help;
+    font-size: 0.875rem;
+    margin-left: 0.25rem;
+}
+
+.field-help:hover {
+    color: var(--primary-dark);
+}
+
+.field-hint {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    font-style: italic;
+}
+
+.form-group input:focus + .field-hint,
+.form-group select:focus + .field-hint,
+.form-group textarea:focus + .field-hint {
+    color: var(--primary);
+}
+
+/* Enhanced form labels */
+.form-group label {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .help-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .tips-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .help-panel {
+        padding: 1rem;
+    }
+}
+
 @media (max-width: 768px) {
     .form-grid {
         grid-template-columns: 1fr;
@@ -944,6 +1312,28 @@ document.addEventListener('DOMContentLoaded', function() {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.5rem;
+    }
+    
+    .help-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .tips-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .header-actions {
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .help-panel {
+        padding: 1rem;
+    }
+    
+    .help-section {
+        padding: 1rem;
     }
 }
 </style>

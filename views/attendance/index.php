@@ -10,7 +10,7 @@ ob_start();
         <p>Track employee attendance and working hours</p>
     </div>
     <div class="page-actions">
-        <select id="filterSelect" onchange="filterAttendance(this.value)" class="form-control" style="width: auto; margin-right: 1rem;">
+        <select id="filterSelect" onchange="filterAttendance(this.value)" class="form-input" style="width: auto; margin-right: 1rem;">
             <option value="today" <?= ($current_filter ?? 'today') === 'today' ? 'selected' : '' ?>>Today</option>
             <option value="week" <?= ($current_filter ?? '') === 'week' ? 'selected' : '' ?>>One Week</option>
             <option value="two_weeks" <?= ($current_filter ?? '') === 'two_weeks' ? 'selected' : '' ?>>Two Weeks</option>
@@ -76,9 +76,12 @@ ob_start();
                 <tbody>
                     <?php if (empty($attendance)): ?>
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
-                            <i class="fas fa-clock fa-2x mb-2"></i><br>
-                            No attendance records found. <a href="/ergon/attendance/clock">Clock in</a> to start tracking.
+                        <td colspan="6" class="text-center">
+                            <div class="empty-state">
+                                <div class="empty-icon">🕰️</div>
+                                <h3>No Attendance Records</h3>
+                                <p>No attendance records found. <a href="/ergon/attendance/clock" class="text-primary">Clock in</a> to start tracking.</p>
+                            </div>
                         </td>
                     </tr>
                     <?php else: ?>
@@ -115,6 +118,8 @@ function filterAttendance(filter) {
     window.location.href = '/ergon/attendance?filter=' + filter;
 }
 </script>
+
+<script src="/ergon/assets/js/table-utils.js"></script>
 
 <?php
 $content = ob_get_clean();
