@@ -175,7 +175,97 @@
 }
 
 [data-theme="dark"] .main-header {
+  background: var(--gray-900) !important;
+}
+
+[data-theme="dark"] .header__top {
   background: var(--gray-900);
+}
+
+[data-theme="dark"] .header__brand .brand-text {
+  color: var(--white);
+}
+
+[data-theme="dark"] .role-badge {
+  background: var(--gray-700);
+  color: var(--gray-300);
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .control-btn,
+[data-theme="dark"] .profile-btn {
+  background: var(--gray-700);
+  border-color: var(--gray-600);
+  color: var(--gray-300);
+}
+
+[data-theme="dark"] .control-btn:hover,
+[data-theme="dark"] .profile-btn:hover {
+  background: var(--gray-600);
+  border-color: var(--gray-500);
+  color: var(--white);
+}
+
+[data-theme="dark"] .nav-dropdown-btn {
+  background: var(--gray-700);
+  border-color: var(--gray-600);
+  color: var(--gray-300);
+}
+
+[data-theme="dark"] .nav-dropdown-btn:hover {
+  background: var(--gray-600);
+  border-color: var(--gray-500);
+  color: var(--white);
+}
+
+[data-theme="dark"] .nav-dropdown-menu {
+  background: var(--gray-800);
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .nav-dropdown-item {
+  color: var(--gray-300);
+}
+
+[data-theme="dark"] .nav-dropdown-item:hover {
+  background: var(--gray-700);
+  color: var(--white);
+  border-left-color: var(--gray-500);
+}
+
+[data-theme="dark"] .nav-dropdown-item--active {
+  background: var(--gray-600);
+  color: var(--white);
+  border-left-color: var(--gray-400);
+}
+
+[data-theme="dark"] .profile-menu {
+  background: var(--gray-800);
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .profile-menu-item {
+  color: var(--gray-300);
+}
+
+[data-theme="dark"] .profile-menu-item:hover {
+  background: var(--gray-700);
+  color: var(--white);
+  border-left-color: var(--gray-500);
+}
+
+[data-theme="dark"] .profile-menu-item--danger {
+  color: #f87171;
+}
+
+[data-theme="dark"] .profile-menu-item--danger:hover {
+  background: #450a0a;
+  color: #fca5a5;
+  border-left-color: #dc2626;
+}
+
+[data-theme="dark"] .profile-menu-divider {
+  background: var(--gray-600);
 }
 
 [data-theme="dark"] .notification-dropdown {
@@ -1756,7 +1846,7 @@ body {
 
 /* Header styles - two-row layout */
 .main-header {
-  background:navy;
+  background: #000080;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   position: fixed;
   top: 0;
@@ -1764,6 +1854,7 @@ body {
   right: 0;
   z-index: 9999;
   width: 100%;
+  transition: var(--transition);
 }
 
 .header__top {

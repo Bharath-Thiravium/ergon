@@ -2,6 +2,20 @@
 $title = 'My Requests';
 $active_page = 'requests';
 ob_start();
+
+// Handle error case
+if (isset($error)) {
+    echo '<div class="alert alert-danger">' . htmlspecialchars($error) . '</div>';
+    $content = ob_get_clean();
+    include __DIR__ . '/../layouts/dashboard.php';
+    return;
+}
+
+// Set default values if data is missing
+$stats = $stats ?? ['pending_leaves' => 0, 'pending_expenses' => 0, 'pending_advances' => 0];
+$leaves = $leaves ?? [];
+$expenses = $expenses ?? [];
+$advances = $advances ?? [];
 ?>
 
 <div class="header-actions">
@@ -15,7 +29,7 @@ ob_start();
         <div class="kpi-card__header">
             <div class="kpi-card__icon">📅</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['pending_leaves'] ?></div>
+        <div class="kpi-card__value"><?= $stats['pending_leaves'] ?></div>
         <div class="kpi-card__label">Pending Leaves</div>
         <div class="kpi-card__status kpi-card__status--pending">Awaiting Approval</div>
     </div>
@@ -24,7 +38,7 @@ ob_start();
         <div class="kpi-card__header">
             <div class="kpi-card__icon">💰</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['pending_expenses'] ?></div>
+        <div class="kpi-card__value"><?= $stats['pending_expenses'] ?></div>
         <div class="kpi-card__label">Pending Expenses</div>
         <div class="kpi-card__status kpi-card__status--review">Under Review</div>
     </div>
@@ -33,7 +47,7 @@ ob_start();
         <div class="kpi-card__header">
             <div class="kpi-card__icon">💸</div>
         </div>
-        <div class="kpi-card__value"><?= $data['stats']['pending_advances'] ?></div>
+        <div class="kpi-card__value"><?= $stats['pending_advances'] ?></div>
         <div class="kpi-card__label">Pending Advances</div>
         <div class="kpi-card__status kpi-card__status--pending">Processing</div>
     </div>
@@ -45,7 +59,7 @@ ob_start();
             <h2 class="card__title">Leave Requests</h2>
         </div>
         <div class="card__body">
-            <?php if (empty($data['leaves'])): ?>
+            <?php if (empty($leaves)): ?>
             <p>No leave requests found.</p>
             <?php else: ?>
             <div class="table-responsive">
@@ -60,9 +74,9 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($data['leaves'] as $leave): ?>
+                        <?php foreach ($leaves as $leave): ?>
                         <tr>
-                            <td><?= htmlspecialchars($leave['type']) ?></td>
+                            <td><?= htmlspecialchars($leave['leave_type'] ?? $leave['type'] ?? 'N/A') ?></td>
                             <td><?= date('M d', strtotime($leave['start_date'])) ?> - <?= date('M d', strtotime($leave['end_date'])) ?></td>
                             <td><?= htmlspecialchars($leave['reason']) ?></td>
                             <td>
@@ -85,7 +99,7 @@ ob_start();
             <h2 class="card__title">Expense Claims</h2>
         </div>
         <div class="card__body">
-            <?php if (empty($data['expenses'])): ?>
+            <?php if (empty($expenses)): ?>
             <p>No expense claims found.</p>
             <?php else: ?>
             <div class="table-responsive">
@@ -100,7 +114,7 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($data['expenses'] as $expense): ?>
+                        <?php foreach ($expenses as $expense): ?>
                         <tr>
                             <td><?= htmlspecialchars($expense['category']) ?></td>
                             <td>₹<?= number_format($expense['amount'], 2) ?></td>
@@ -125,7 +139,7 @@ ob_start();
             <h2 class="card__title">Advance Requests</h2>
         </div>
         <div class="card__body">
-            <?php if (empty($data['advances'])): ?>
+            <?php if (empty($advances)): ?>
             <p>No advance requests found.</p>
             <?php else: ?>
             <div class="table-responsive">
@@ -141,12 +155,12 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($data['advances'] as $advance): ?>
+                        <?php foreach ($advances as $advance): ?>
                         <tr>
-                            <td><?= htmlspecialchars($advance['type']) ?></td>
+                            <td><?= htmlspecialchars($advance['type'] ?? 'Advance') ?></td>
                             <td>₹<?= number_format($advance['amount'], 2) ?></td>
                             <td><?= htmlspecialchars($advance['reason']) ?></td>
-                            <td><?= date('M d, Y', strtotime($advance['repayment_date'])) ?></td>
+                            <td><?= isset($advance['repayment_date']) ? date('M d, Y', strtotime($advance['repayment_date'])) : 'N/A' ?></td>
                             <td>
                                 <span class="badge badge--<?= $advance['status'] === 'approved' ? 'success' : ($advance['status'] === 'rejected' ? 'danger' : 'warning') ?>">
                                     <?= ucfirst($advance['status']) ?>

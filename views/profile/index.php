@@ -195,6 +195,9 @@ document.getElementById('profileForm').addEventListener('submit', function(e) {
     
     fetch('/ergon/profile', {
         method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
         body: formData
     })
     .then(response => response.json())
@@ -236,6 +239,9 @@ document.getElementById('passwordForm').addEventListener('submit', function(e) {
     
     fetch('/ergon/profile/change-password', {
         method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
         body: formData
     })
     .then(response => response.json())

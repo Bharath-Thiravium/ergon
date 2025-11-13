@@ -16,7 +16,6 @@ class NotificationHelper {
                 $notification->create([
                     'sender_id' => $senderId,
                     'receiver_id' => $owner['id'],
-                    'title' => ucfirst($module) . ' ' . ucfirst($action),
                     'module_name' => $module,
                     'action_type' => $action,
                     'message' => $message,
@@ -37,7 +36,6 @@ class NotificationHelper {
             $notification->create([
                 'sender_id' => $senderId,
                 'receiver_id' => $receiverId,
-                'title' => ucfirst($module) . ' ' . ucfirst($action),
                 'module_name' => $module,
                 'action_type' => $action,
                 'message' => $message,
@@ -60,7 +58,6 @@ class NotificationHelper {
                 $notification->create([
                     'sender_id' => $senderId,
                     'receiver_id' => $admin['id'],
-                    'title' => ucfirst($module) . ' ' . ucfirst($action),
                     'module_name' => $module,
                     'action_type' => $action,
                     'message' => $message,
@@ -70,6 +67,48 @@ class NotificationHelper {
         } catch (Exception $e) {
             error_log('NotificationHelper error: ' . $e->getMessage());
         }
+    }
+    
+    // Specific notification methods for common events
+    public static function notifyLeaveRequest($userId, $userName) {
+        self::notifyOwners(
+            $userId,
+            'leave',
+            'request',
+            "{$userName} has submitted a leave request for approval",
+            null
+        );
+    }
+    
+    public static function notifyExpenseClaim($userId, $userName, $amount) {
+        self::notifyOwners(
+            $userId,
+            'expense',
+            'claim',
+            "{$userName} submitted expense claim of ₹{$amount} for approval",
+            null
+        );
+    }
+    
+    public static function notifyAdvanceRequest($userId, $userName, $amount) {
+        self::notifyOwners(
+            $userId,
+            'advance',
+            'request',
+            "{$userName} requested salary advance of ₹{$amount}",
+            null
+        );
+    }
+    
+    public static function notifyTaskAssignment($assignedBy, $assignedTo, $taskTitle) {
+        self::notifyUser(
+            $assignedBy,
+            $assignedTo,
+            'task',
+            'assigned',
+            "You have been assigned a new task: {$taskTitle}",
+            null
+        );
     }
 }
 ?>

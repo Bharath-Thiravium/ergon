@@ -157,20 +157,14 @@ class LeaveController extends Controller {
                 if ($result) {
                     $leaveId = $db->lastInsertId();
                     
-                    // Create notification for owners
+                    // Create notification for owners and admins
                     require_once __DIR__ . '/../helpers/NotificationHelper.php';
                     $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
                     $stmt->execute([$userId]);
                     $user = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if ($user) {
-                        NotificationHelper::notifyOwners(
-                            $userId,
-                            'leave',
-                            'request',
-                            "{$user['name']} has requested leave from {$startDate} to {$endDate}",
-                            $leaveId
-                        );
+                        NotificationHelper::notifyLeaveRequest($userId, $user['name']);
                     }
                     
                     echo json_encode(['success' => true, 'message' => 'Leave request submitted successfully', 'days' => $days]);

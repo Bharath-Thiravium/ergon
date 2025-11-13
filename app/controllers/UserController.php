@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../helpers/RoleManager.php';
 require_once __DIR__ . '/../models/User.php';
@@ -326,20 +327,28 @@ class UserController extends Controller {
             $userId = $_SESSION['user_id'];
             
             // Get all user's requests
-            $requests = [
-                'leaves' => $this->getUserLeaves($db, $userId),
-                'expenses' => $this->getUserExpenses($db, $userId),
-                'advances' => $this->getUserAdvances($db, $userId)
+            $leaves = $this->getUserLeaves($db, $userId);
+            $expenses = $this->getUserExpenses($db, $userId);
+            $advances = $this->getUserAdvances($db, $userId);
+            
+            // Calculate stats
+            $stats = [
+                'pending_leaves' => count(array_filter($leaves, function($l) { return $l['status'] === 'pending'; })),
+                'pending_expenses' => count(array_filter($expenses, function($e) { return $e['status'] === 'pending'; })),
+                'pending_advances' => count(array_filter($advances, function($a) { return $a['status'] === 'pending'; }))
             ];
             
-            $this->view('user/my_requests', [
-                'requests' => $requests,
+            $this->view('user/requests', [
+                'leaves' => $leaves,
+                'expenses' => $expenses,
+                'advances' => $advances,
+                'stats' => $stats,
                 'active_page' => 'requests'
             ]);
             
         } catch (Exception $e) {
             error_log('My requests error: ' . $e->getMessage());
-            $this->view('user/my_requests', ['error' => 'Unable to load requests']);
+            $this->view('user/requests', ['error' => 'Unable to load requests']);
         }
     }
     

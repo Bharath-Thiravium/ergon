@@ -260,7 +260,8 @@ class UnifiedWorkflowController extends Controller {
                     u.name as assigned_user, 'task' as type
                 FROM tasks t
                 LEFT JOIN users u ON t.assigned_to = u.id
-                WHERE MONTH(t.planned_date) = ? AND YEAR(t.planned_date) = ?
+                WHERE (MONTH(t.planned_date) = ? AND YEAR(t.planned_date) = ?) 
+                   OR (t.planned_date IS NULL AND DATE(t.created_at) = CURDATE())
                 AND (t.assigned_to = ? OR t.assigned_by = ?)
                 
                 UNION ALL
