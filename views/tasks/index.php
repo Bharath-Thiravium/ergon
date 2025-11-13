@@ -4,13 +4,7 @@ $active_page = 'tasks';
 ob_start();
 ?>
 
-<style>
-.progress-fill { transition: none !important; }
-.progress-fill-mini { transition: none !important; }
-<?php for($i = 0; $i <= 100; $i += 5): ?>
-.progress-<?= $i ?> { width: <?= $i ?>% !important; background: <?= match(true) { $i >= 100 => 'linear-gradient(90deg, #10b981, #059669)', $i >= 75 => 'linear-gradient(90deg, #8b5cf6, #7c3aed)', $i >= 50 => 'linear-gradient(90deg, #3b82f6, #2563eb)', $i >= 25 => 'linear-gradient(90deg, #fbbf24, #f59e0b)', default => 'linear-gradient(90deg, #e2e8f0, #cbd5e1)' } ?> !important; }
-<?php endfor; ?>
-</style>
+
 
 <?php
 
@@ -127,13 +121,6 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                             <?php 
                             $progress = $task['progress'] ?? 0;
                             $status = $task['status'] ?? 'assigned';
-                            $progressClass = match(true) {
-                                $progress >= 100 => 'progress--completed',
-                                $progress >= 75 => 'progress--high',
-                                $progress >= 50 => 'progress--medium',
-                                $progress >= 25 => 'progress--low',
-                                default => 'progress--start'
-                            };
                             $statusIcon = match($status) {
                                 'completed' => '✅',
                                 'in_progress' => '⚡',
@@ -141,15 +128,13 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                                 default => '📋'
                             };
                             ?>
-                            <div class="progress-container <?= $progressClass ?>">
-                                <div class="progress-visual">
-                                    <div class="progress-bar">
-                                        <div class="progress-fill progress-<?= $progress ?>" data-width="<?= $progress ?>"></div>
-                                    </div>
-                                    <div class="progress-info">
-                                        <span class="progress-percentage"><?= $progress ?>%</span>
-                                        <span class="progress-status"><?= $statusIcon ?> <?= ucfirst(str_replace('_', ' ', $status)) ?></span>
-                                    </div>
+                            <div class="progress-container" data-task-id="<?= $task['id'] ?>">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: <?= $progress ?>%; background: <?= $progress >= 100 ? '#10b981' : ($progress >= 75 ? '#8b5cf6' : ($progress >= 50 ? '#3b82f6' : ($progress >= 25 ? '#f59e0b' : '#e2e8f0'))) ?>"></div>
+                                </div>
+                                <div class="progress-info">
+                                    <span class="progress-percentage"><?= $progress ?>%</span>
+                                    <span class="progress-status"><?= $statusIcon ?> <?= ucfirst(str_replace('_', ' ', $status)) ?></span>
                                 </div>
                             </div>
                         </td>
@@ -188,26 +173,14 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
     </div>
 </div>
 
-<!-- Progress Modal -->
-<div id="progressModal" class="modal-overlay modal-overlay--hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h4>📊 Update Progress</h4>
-            <button onclick="closeProgressModal()" class="close-btn">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div class="progress-control">
-                <label>Progress: <span id="modalProgressValue">0%</span></label>
-                <input type="range" id="modalTaskProgress" min="0" max="100" value="0" oninput="updateModalProgress(this.value)" class="progress-slider">
-            </div>
-            <div class="status-display">
-                <span>Status: <span id="modalCurrentStatus" class="status-badge">Assigned</span></span>
-                <button id="modalBlockBtn" onclick="toggleModalBlock()" class="block-btn">🚫 Block</button>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button onclick="closeProgressModal()" class="btn btn--secondary">Cancel</button>
-            <button onclick="saveModalProgress()" class="btn btn--primary">💾 Save</button>
+<div id="progressDialog" class="dialog" style="display: none;">
+    <div class="dialog-content">
+        <h4>Update Progress</h4>
+        <p>Progress: <span id="progressValue">0</span>%</p>
+        <input type="range" id="progressSlider" min="0" max="100" value="0">
+        <div class="dialog-buttons">
+            <button onclick="closeDialog()">Cancel</button>
+            <button onclick="saveProgress()">Save</button>
         </div>
     </div>
 </div>
@@ -240,151 +213,63 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Set exact progress widths for values not in CSS
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.progress-fill[data-width]').forEach(function(el) {
-        var width = el.getAttribute('data-width');
-        if (width % 5 !== 0) {
-            el.style.width = width + '%';
-            if (width >= 100) el.style.background = 'linear-gradient(90deg, #10b981, #059669)';
-            else if (width >= 75) el.style.background = 'linear-gradient(90deg, #8b5cf6, #7c3aed)';
-            else if (width >= 50) el.style.background = 'linear-gradient(90deg, #3b82f6, #2563eb)';
-            else if (width >= 25) el.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)';
-            else el.style.background = 'linear-gradient(90deg, #e2e8f0, #cbd5e1)';
-        }
-    });
-    
-    // Check for updated progress from localStorage
-    var updatedTask = localStorage.getItem('taskUpdated');
-    if (updatedTask) {
-        var taskData = JSON.parse(updatedTask);
-        updateTableProgress(taskData.id, taskData.progress, taskData.status);
-        localStorage.removeItem('taskUpdated');
-    }
-});
-
-var currentModalTaskId = null;
-var currentModalStatus = 'assigned';
+var currentTaskId;
 
 function openProgressModal(taskId, progress, status) {
-    currentModalTaskId = taskId;
-    currentModalStatus = status;
+    currentTaskId = taskId;
     
-    document.getElementById('modalTaskProgress').value = progress;
-    document.getElementById('modalProgressValue').textContent = progress + '%';
-    updateModalStatusDisplay(status);
-    document.getElementById('progressModal').classList.remove('modal-overlay--hidden');
-}
-
-function closeProgressModal() {
-    document.getElementById('progressModal').classList.add('modal-overlay--hidden');
-}
-
-function updateModalProgress(value) {
-    document.getElementById('modalProgressValue').textContent = value + '%';
-    if (currentModalStatus !== 'blocked') {
-        var newStatus = value >= 100 ? 'completed' : value > 0 ? 'in_progress' : 'assigned';
-        updateModalStatusDisplay(newStatus);
-    }
-}
-
-function updateModalStatusDisplay(status) {
-    currentModalStatus = status;
-    var statusEl = document.getElementById('modalCurrentStatus');
-    var statusText = {
-        'assigned': 'Assigned',
-        'in_progress': 'In Progress', 
-        'completed': 'Completed',
-        'blocked': 'Blocked'
-    };
-    statusEl.textContent = statusText[status];
-    statusEl.className = 'status-badge status-' + status;
+    var container = document.querySelector('[data-task-id="' + taskId + '"]');
+    var currentProgress = container ? container.querySelector('.progress-percentage').textContent.replace('%', '') : progress;
     
-    var blockBtn = document.getElementById('modalBlockBtn');
-    if (status === 'blocked') {
-        blockBtn.textContent = '✅ Unblock';
-        blockBtn.onclick = function() { toggleModalBlock(); };
-    } else {
-        blockBtn.textContent = '🚫 Block';
-        blockBtn.onclick = function() { toggleModalBlock(); };
-    }
+    document.getElementById('progressSlider').value = currentProgress;
+    document.getElementById('progressValue').textContent = currentProgress;
+    document.getElementById('progressDialog').style.display = 'flex';
 }
 
-function toggleModalBlock() {
-    if (currentModalStatus === 'blocked') {
-        var progress = document.getElementById('modalTaskProgress').value;
-        var newStatus = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'assigned';
-        updateModalStatusDisplay(newStatus);
-    } else {
-        updateModalStatusDisplay('blocked');
-    }
+function closeDialog() {
+    document.getElementById('progressDialog').style.display = 'none';
 }
 
-function saveModalProgress() {
-    var progress = document.getElementById('modalTaskProgress').value;
+function saveProgress() {
+    var progress = document.getElementById('progressSlider').value;
+    var status = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'assigned';
     
     fetch('/ergon/tasks/update-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            task_id: currentModalTaskId,
-            progress: progress,
-            status: currentModalStatus
-        })
+        body: JSON.stringify({ task_id: currentTaskId, progress: progress, status: status })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            updateTableProgress(currentModalTaskId, progress, currentModalStatus);
-            closeProgressModal();
-        } else alert('Error: ' + (data.message || 'Unknown error'));
+            var container = document.querySelector('[data-task-id="' + currentTaskId + '"]');
+            if (container) {
+                var fill = container.querySelector('.progress-fill');
+                var percentage = container.querySelector('.progress-percentage');
+                var statusEl = container.querySelector('.progress-status');
+                
+                fill.style.width = progress + '%';
+                fill.style.background = progress >= 100 ? '#10b981' : (progress >= 75 ? '#8b5cf6' : (progress >= 50 ? '#3b82f6' : (progress >= 25 ? '#f59e0b' : '#e2e8f0')));
+                percentage.textContent = progress + '%';
+                
+                var icon = status === 'completed' ? '✅' : status === 'in_progress' ? '⚡' : '📋';
+                statusEl.textContent = icon + ' ' + status.replace('_', ' ');
+            }
+            closeDialog();
+        } else {
+            alert('Error updating task');
+        }
     })
     .catch(() => alert('Error updating task'));
 }
 
-function updateTableProgress(taskId, progress, status) {
-    var rows = document.querySelectorAll('tbody tr');
-    rows.forEach(function(row) {
-        var viewLink = row.querySelector('a[href*="/view/' + taskId + '"]');
-        if (viewLink) {
-            var progressFill = row.querySelector('.progress-fill');
-            var progressText = row.querySelector('.progress-percentage');
-            var statusText = row.querySelector('.progress-status');
-            
-            if (progressFill) {
-                progressFill.style.width = progress + '%';
-                if (progress >= 100) progressFill.style.background = 'linear-gradient(90deg, #10b981, #059669)';
-                else if (progress >= 75) progressFill.style.background = 'linear-gradient(90deg, #8b5cf6, #7c3aed)';
-                else if (progress >= 50) progressFill.style.background = 'linear-gradient(90deg, #3b82f6, #2563eb)';
-                else if (progress >= 25) progressFill.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)';
-                else progressFill.style.background = 'linear-gradient(90deg, #e2e8f0, #cbd5e1)';
-            }
-            if (progressText) progressText.textContent = progress + '%';
-            if (statusText) {
-                var statusIcon = status === 'completed' ? '✅' : status === 'in_progress' ? '⚡' : status === 'blocked' ? '🚫' : '📋';
-                statusText.textContent = statusIcon + ' ' + status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
-            }
-        }
-    });
+document.getElementById('progressSlider').oninput = function() {
+    document.getElementById('progressValue').textContent = this.value;
 }
 </script>
 
 <style>
 
-
-.btn-icon--status {
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-    transition: all 0.2s ease;
-}
-
-.btn-icon--status:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--primary-light);
-    transform: translateY(-1px);
-}
 
 .progress-container {
     width: 140px;
@@ -392,51 +277,20 @@ function updateTableProgress(taskId, progress, status) {
     border-radius: 8px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-}
-
-.progress-container:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.progress-visual {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
 }
 
 .progress-bar {
-    position: relative;
     width: 100%;
     height: 8px;
-    background: var(--bg-tertiary);
+    background: #e5e7eb;
     border-radius: 4px;
     overflow: hidden;
+    margin-bottom: 0.25rem;
 }
 
 .progress-fill {
     height: 100%;
     border-radius: 4px;
-    position: relative;
-    width: 0%;
-    background: linear-gradient(90deg, #e2e8f0, #cbd5e1);
-}
-
-.progress-fill::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-    animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
 }
 
 .progress-info {
@@ -454,28 +308,57 @@ function updateTableProgress(taskId, progress, status) {
 .progress-status {
     font-size: 0.7rem;
     color: var(--text-secondary);
+}
+
+.dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    justify-content: center;
+    z-index: 1000;
 }
 
-
-
-.progress--completed {
-    border-color: #10b981;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), var(--bg-secondary));
+.dialog-content {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    width: 300px;
+    text-align: center;
 }
 
-.progress--high {
-    border-color: #8b5cf6;
+.dialog-content h4 {
+    margin: 0 0 1rem 0;
 }
 
-.progress--medium {
+.dialog-content input[type="range"] {
+    width: 100%;
+    margin: 1rem 0;
+}
+
+.dialog-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.dialog-buttons button {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+}
+
+.dialog-buttons button:last-child {
+    background: #3b82f6;
+    color: white;
     border-color: #3b82f6;
-}
-
-.progress--low {
-    border-color: #f59e0b;
 }
 
 .assignment-info {
