@@ -45,6 +45,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <link rel="preload" href="/ergon/assets/css/ergon.css?v=<?= time() ?>" as="style">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
     <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
+    <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
 </head>
 <body data-theme="light" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
     <header class="main-header">
@@ -56,8 +57,8 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             </div>
             
             <div class="header__controls">
-                <button class="control-btn" onclick="toggleTheme()" title="Toggle Theme">
-                    <span id="themeIcon"><i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i></span>
+                <button class="control-btn" id="theme-toggle" title="Toggle Theme">
+                    <i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i>
                 </button>
                 <button class="control-btn" onclick="toggleNotifications(event)" title="Notifications">
                     <i class="bi bi-bell-fill"></i>
@@ -83,10 +84,12 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                         <span class="menu-icon"><i class="bi bi-palette-fill"></i></span>
                         Appearance
                     </a>
+                    <?php if (isset($_SESSION['role']) && in_array($_SESSION['role'], ['owner', 'admin'])): ?>
                     <a href="/ergon/settings" class="profile-menu-item">
                         <span class="menu-icon"><i class="bi bi-gear-fill"></i></span>
                         System Settings
                     </a>
+                    <?php endif; ?>
                     <div class="profile-menu-divider"></div>
                     <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
                         <span class="menu-icon"><i class="bi bi-box-arrow-right"></i></span>
@@ -410,22 +413,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <script>
 
     
-    function toggleTheme() {
-        var currentTheme = document.body.getAttribute('data-theme') || 'light';
-        var newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        document.body.setAttribute('data-theme', newTheme);
-        localStorage.setItem('ergon_theme', newTheme);
-        var themeIcon = document.getElementById('themeIcon');
-        if (themeIcon) themeIcon.innerHTML = '<i class="bi bi-' + (newTheme === 'dark' ? 'sun-fill' : 'moon-fill') + '"></i>';
-    }
-    
-    // Load theme on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        var savedTheme = localStorage.getItem('ergon_theme') || 'light';
-        document.body.setAttribute('data-theme', savedTheme);
-        var themeIcon = document.getElementById('themeIcon');
-        if (themeIcon) themeIcon.innerHTML = '<i class="bi bi-' + (savedTheme === 'dark' ? 'sun-fill' : 'moon-fill') + '"></i>';
-    });
+
     
     function toggleNotifications(event) {
         if (event) {

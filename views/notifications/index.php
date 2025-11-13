@@ -10,7 +10,7 @@ ob_start();
             <div class="kpi-card__icon">🔔</div>
             <div class="kpi-card__trend">↗ +5%</div>
         </div>
-        <div class="kpi-card__value"><?= count($data['notifications'] ?? []) ?></div>
+        <div class="kpi-card__value"><?= count($notifications ?? []) ?></div>
         <div class="kpi-card__label">Total Notifications</div>
         <div class="kpi-card__status">Received</div>
     </div>
@@ -20,7 +20,7 @@ ob_start();
             <div class="kpi-card__icon">🔴</div>
             <div class="kpi-card__trend kpi-card__trend--down">— 0%</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($data['notifications'] ?? [], fn($n) => !($n['is_read'] ?? false))) ?></div>
+        <div class="kpi-card__value"><?= count(array_filter($notifications ?? [], fn($n) => !($n['is_read'] ?? false))) ?></div>
         <div class="kpi-card__label">Unread</div>
         <div class="kpi-card__status kpi-card__status--pending">Pending</div>
     </div>
@@ -30,7 +30,7 @@ ob_start();
             <div class="kpi-card__icon">✅</div>
             <div class="kpi-card__trend">↗ +12%</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($data['notifications'] ?? [], fn($n) => ($n['is_read'] ?? false))) ?></div>
+        <div class="kpi-card__value"><?= count(array_filter($notifications ?? [], fn($n) => ($n['is_read'] ?? false))) ?></div>
         <div class="kpi-card__label">Read</div>
         <div class="kpi-card__status">Processed</div>
     </div>
@@ -38,7 +38,7 @@ ob_start();
 
 <div class="card">
     <div class="card__body">
-        <?php if (empty($data['notifications'] ?? [])): ?>
+        <?php if (empty($notifications ?? [])): ?>
             <div class="empty-state">
                 <div class="empty-icon">🔔</div>
                 <h3>No Notifications</h3>
@@ -46,7 +46,7 @@ ob_start();
             </div>
         <?php else: ?>
             <div class="notification-list">
-                <?php foreach ($data['notifications'] as $notification): ?>
+                <?php foreach ($notifications as $notification): ?>
                 <div class="notification-item <?= ($notification['is_read'] ?? false) ? 'notification-item--read' : 'notification-item--unread' ?>" data-notification-id="<?= $notification['id'] ?? 0 ?>">
                     <div class="notification-header">
                         <h4 class="notification-title"><?= htmlspecialchars($notification['title'] ?? 'Notification') ?></h4>

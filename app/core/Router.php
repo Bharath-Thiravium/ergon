@@ -32,6 +32,11 @@ class Router {
         
         if (empty($path)) $path = '/';
         
+        // Remove trailing slash for consistency (except for root)
+        if ($path !== '/' && substr($path, -1) === '/') {
+            $path = rtrim($path, '/');
+        }
+        
         if (isset($this->routes[$method][$path])) {
             $this->executeRoute($this->routes[$method][$path]);
             return;
