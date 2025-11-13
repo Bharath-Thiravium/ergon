@@ -46,7 +46,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
     <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
 </head>
-<body data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
+<body data-theme="light" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
     <header class="main-header">
         <div class="header__top">
             <div class="header__brand">
@@ -414,15 +414,18 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         var currentTheme = document.body.getAttribute('data-theme') || 'light';
         var newTheme = currentTheme === 'light' ? 'dark' : 'light';
         document.body.setAttribute('data-theme', newTheme);
+        localStorage.setItem('ergon_theme', newTheme);
         var themeIcon = document.getElementById('themeIcon');
-        if (themeIcon) themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-        
-        fetch('/ergon/api/update-preference', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({key: 'theme', value: newTheme})
-        }).catch(function(error) { console.log('Theme save failed:', error); });
+        if (themeIcon) themeIcon.innerHTML = '<i class="bi bi-' + (newTheme === 'dark' ? 'sun-fill' : 'moon-fill') + '"></i>';
     }
+    
+    // Load theme on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        var savedTheme = localStorage.getItem('ergon_theme') || 'light';
+        document.body.setAttribute('data-theme', savedTheme);
+        var themeIcon = document.getElementById('themeIcon');
+        if (themeIcon) themeIcon.innerHTML = '<i class="bi bi-' + (savedTheme === 'dark' ? 'sun-fill' : 'moon-fill') + '"></i>';
+    });
     
     function toggleNotifications(event) {
         if (event) {
@@ -740,19 +743,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     }
     </script>
     
-    <style>
-    .custom-tooltip {
-        position: absolute;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        white-space: nowrap;
-        z-index: 10000;
-        pointer-events: none;
-    }
-    </style>
+
 
 </body>
 </html>

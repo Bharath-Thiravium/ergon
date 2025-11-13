@@ -4,6 +4,16 @@ require_once __DIR__ . '/../config/database.php';
 
 class SystemAdminController extends Controller {
     
+    protected function requireAuth() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (empty($_SESSION['user_id']) || empty($_SESSION['role']) || $_SESSION['role'] !== 'owner') {
+            header('Location: /ergon/login');
+            exit;
+        }
+    }
+    
     public function index() {
         $this->requireAuth();
         
@@ -27,6 +37,9 @@ class SystemAdminController extends Controller {
     public function create() {
         $this->requireAuth();
         
+        error_log('SystemAdminController::create called with method: ' . $_SERVER['REQUEST_METHOD']);
+        error_log('POST data: ' . json_encode($_POST));
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim($_POST['name'] ?? '');
             $email = trim($_POST['email'] ?? '');
@@ -37,23 +50,37 @@ class SystemAdminController extends Controller {
                 exit;
             }
             
-            $db = Database::connect();
-            
-            // Check if email already exists with a more robust query
-            $checkStmt = $db->query("SELECT email FROM users WHERE email = '$email' LIMIT 1");
-            if ($checkStmt && $checkStmt->fetch()) {
-                header('Location: /ergon/system-admin?error=Email already exists. Please use a different email address.');
+            if (strlen($password) < 6) {
+                header('Location: /ergon/system-admin?error=Password must be at least 6 characters');
                 exit;
             }
             
             try {
+                $db = Database::connect();
+                
+                // Check if email already exists
+                $checkStmt = $db->prepare("SELECT id FROM users WHERE email = ?");
+                $checkStmt->execute([$email]);
+                if ($checkStmt->fetch()) {
+                    header('Location: /ergon/system-admin?error=Email already exists. Please use a different email address.');
+                    exit;
+                }
+                
                 $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
                 $stmt = $db->prepare("INSERT INTO users (name, email, password, role, status, created_at) VALUES (?, ?, ?, 'admin', 'active', NOW())");
-                $stmt->execute([$name, $email, $hashedPassword]);
-                header('Location: /ergon/system-admin?success=Admin created successfully');
+                $result = $stmt->execute([$name, $email, $hashedPassword]);
+                
+                if ($result) {
+                    error_log('Admin created successfully: ' . $name . ' (' . $email . ')');
+                    header('Location: /ergon/system-admin?success=Admin created successfully');
+                } else {
+                    error_log('Failed to create admin: ' . $name . ' (' . $email . ')');
+                    header('Location: /ergon/system-admin?error=Failed to create admin');
+                }
                 exit;
             } catch (Exception $e) {
-                header('Location: /ergon/system-admin?error=Email already exists. Please use a different email address.');
+                error_log('Create admin error: ' . $e->getMessage());
+                header('Location: /ergon/system-admin?error=Failed to create admin: ' . $e->getMessage());
                 exit;
             }
         }
@@ -204,22 +231,27 @@ class SystemAdminController extends Controller {
         $this->requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            header('Content-Type: application/json');
+            
+            error_log('SystemAdminController::changePassword called');
+            error_log('POST data: ' . json_encode($_POST));
+            
             $adminId = $_POST['admin_id'] ?? '';
             $password = $_POST['password'] ?? '';
             $confirmPassword = $_POST['confirm_password'] ?? '';
             
             if (empty($adminId) || empty($password) || empty($confirmPassword)) {
-                header('Location: /ergon/system-admin?error=All fields are required');
+                echo json_encode(['success' => false, 'message' => 'All fields are required']);
                 exit;
             }
             
             if ($password !== $confirmPassword) {
-                header('Location: /ergon/system-admin?error=Passwords do not match');
+                echo json_encode(['success' => false, 'message' => 'Passwords do not match']);
                 exit;
             }
             
             if (strlen($password) < 6) {
-                header('Location: /ergon/system-admin?error=Password must be at least 6 characters');
+                echo json_encode(['success' => false, 'message' => 'Password must be at least 6 characters']);
                 exit;
             }
             
@@ -230,13 +262,15 @@ class SystemAdminController extends Controller {
                 $result = $stmt->execute([$hashedPassword, $adminId]);
                 
                 if ($result && $stmt->rowCount() > 0) {
-                    header('Location: /ergon/system-admin?success=Password changed successfully');
+                    error_log('Password changed successfully for admin ID: ' . $adminId);
+                    echo json_encode(['success' => true, 'message' => 'Password changed successfully']);
                 } else {
-                    header('Location: /ergon/system-admin?error=Admin not found or no changes made');
+                    error_log('Password change failed for admin ID: ' . $adminId . ', result: ' . ($result ? 'true' : 'false') . ', rowCount: ' . $stmt->rowCount());
+                    echo json_encode(['success' => false, 'message' => 'Admin not found or no changes made']);
                 }
                 exit;
             } catch (Exception $e) {
-                header('Location: /ergon/system-admin?error=Failed to change password: ' . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Failed to change password: ' . $e->getMessage()]);
                 exit;
             }
         }

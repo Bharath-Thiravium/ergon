@@ -287,18 +287,26 @@ function changePassword(userId, userName) {
 
 function deleteUser(userId, userName) {
     if (confirm(`Are you sure you want to permanently delete user "${userName}"? This action cannot be undone and will remove all associated data.`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/ergon/admin/delete-user';
+        const formData = new FormData();
+        formData.append('user_id', userId);
         
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'user_id';
-        input.value = userId;
-        
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
+        fetch('/ergon/admin/delete-user', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to delete user. Please try again.');
+        });
     }
 }
 </script>

@@ -148,11 +148,26 @@ document.addEventListener('DOMContentLoaded', function() {
             const userId = e.target.dataset.userId;
             const userName = e.target.dataset.userName;
             if (confirm(`Delete ${userName}?\n\nThis action cannot be undone.`)) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/ergon/users/delete/${userId}`;
-                document.body.appendChild(form);
-                form.submit();
+                const formData = new FormData();
+                formData.append('user_id', userId);
+                
+                fetch('/ergon/admin/delete-user', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to delete user. Please try again.');
+                });
             }
         }
     });

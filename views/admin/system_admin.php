@@ -11,7 +11,7 @@ ob_start();
         <p>Manage system-level administrators and their permissions</p>
     </div>
     <div class="page-actions">
-        <button class="btn btn--primary" onclick="showCreateAdminModal()">
+        <button class="btn btn--primary" onclick="document.getElementById('createAdminModal').style.display='block';" id="addAdminBtn" type="button">
             <span>➕</span> Add Admin
         </button>
         <button class="btn btn--secondary" onclick="exportAdmins()">
@@ -167,17 +167,22 @@ ob_start();
     font-weight: 500;
     color: #6b7280;
 }
-.modal {
+#createAdminModal {
     position: fixed !important;
-    top: 0 !important;
+    top: 110px !important;
     left: 0 !important;
     width: 100% !important;
-    height: 100% !important;
+    height: calc(100% - 110px) !important;
     background: rgba(0, 0, 0, 0.5) !important;
-    z-index: 10000 !important;
+    z-index: 1000 !important;
     display: none !important;
 }
-.modal-content {
+#createAdminModal[style*="display: block"] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+#createAdminModal .modal-content {
     position: relative !important;
     background: white !important;
     margin: 5% auto !important;
@@ -185,8 +190,116 @@ ob_start();
     width: 90% !important;
     max-width: 500px !important;
     border-radius: 8px !important;
-    z-index: 10001 !important;
+    z-index: 1001 !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
 }
+.modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-close:hover {
+    color: #374151;
+}
+.modal-body {
+    padding: 1.5rem;
+}
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+.admin-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.admin-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #3b82f6;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+.user-avatar--lg {
+    width: 50px;
+    height: 50px;
+}
+.admin-card__body {
+    margin-bottom: 1rem;
+}
+.admin-card__name {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+.admin-card__email {
+    margin: 0 0 0.25rem 0;
+    color: #6b7280;
+}
+.admin-card__role {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.875rem;
+    color: #059669;
+    font-weight: 500;
+}
+.admin-card__date {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+.admin-card__actions {
+    display: flex;
+    gap: 0.5rem;
+}
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
 </style>
 
 <!-- Create Admin Modal -->
@@ -223,11 +336,23 @@ ob_start();
 
 <script>
 function showCreateAdminModal() {
-    document.getElementById('createAdminModal').style.display = 'block';
+    console.log('Modal function called');
+    const modal = document.getElementById('createAdminModal');
+    console.log('Modal element:', modal);
+    if (modal) {
+        modal.style.display = 'block';
+        modal.style.visibility = 'visible';
+        document.body.style.overflow = 'hidden';
+        console.log('Modal should be visible now');
+    } else {
+        console.error('Modal element not found');
+    }
+    return false;
 }
 
 function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
+    document.body.style.overflow = 'auto';
 }
 
 function changePassword(userId, userName) {
@@ -255,10 +380,14 @@ function changePassword(userId, userName) {
             method: 'POST',
             body: formData
         })
-        .then(response => response.text())
+        .then(response => response.json())
         .then(data => {
-            alert('Password changed successfully!');
-            location.reload();
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
         })
         .catch(error => {
             console.error('Error:', error);
@@ -319,11 +448,47 @@ function exportAdmins() {
 
 // Ensure form submission works
 document.addEventListener('DOMContentLoaded', function() {
+    // Add fallback event listener for Add Admin button
+    const addAdminBtn = document.getElementById('addAdminBtn');
+    if (addAdminBtn) {
+        addAdminBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            showCreateAdminModal();
+        });
+    }
+    
     const form = document.getElementById('createAdminForm');
     if (form) {
         form.addEventListener('submit', function(e) {
-            // Let the form submit normally
-            console.log('Form submitting...');
+            const name = form.querySelector('input[name="name"]').value.trim();
+            const email = form.querySelector('input[name="email"]').value.trim();
+            const password = form.querySelector('input[name="password"]').value;
+            
+            if (!name || !email || !password) {
+                e.preventDefault();
+                alert('All fields are required.');
+                return false;
+            }
+            
+            if (password.length < 6) {
+                e.preventDefault();
+                alert('Password must be at least 6 characters long.');
+                return false;
+            }
+            
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                e.preventDefault();
+                alert('Please enter a valid email address.');
+                return false;
+            }
+            
+            console.log('Form submitting...', {
+                name: name,
+                email: email,
+                passwordLength: password.length
+            });
         });
     }
 });
