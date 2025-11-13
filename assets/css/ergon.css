@@ -840,8 +840,8 @@ body {
 }
 
 .btn--primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-  color: var(--text-inverse);
+  
+  
   border: none;
   box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
 }
@@ -1381,9 +1381,9 @@ body {
 }
 
 .btn--warning {
-  background: var(--warning);
-  color: white;
-  border-color: var(--warning);
+  
+ 
+  
 }
 
 .btn--warning:hover {
@@ -2305,6 +2305,23 @@ body {
   cursor: pointer;
   background: transparent;
   color: var(--gray-600);
+  position: relative;
+}
+
+.btn-icon[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 10000;
+  pointer-events: none;
 }
 
 .btn-icon:hover {

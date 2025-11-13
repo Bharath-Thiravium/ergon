@@ -2,6 +2,17 @@
 $title = 'Tasks';
 $active_page = 'tasks';
 ob_start();
+?>
+
+<style>
+.progress-fill { transition: none !important; }
+.progress-fill-mini { transition: none !important; }
+<?php for($i = 0; $i <= 100; $i += 5): ?>
+.progress-<?= $i ?> { width: <?= $i ?>% !important; background: <?= match(true) { $i >= 100 => 'linear-gradient(90deg, #10b981, #059669)', $i >= 75 => 'linear-gradient(90deg, #8b5cf6, #7c3aed)', $i >= 50 => 'linear-gradient(90deg, #3b82f6, #2563eb)', $i >= 25 => 'linear-gradient(90deg, #fbbf24, #f59e0b)', default => 'linear-gradient(90deg, #e2e8f0, #cbd5e1)' } ?> !important; }
+<?php endfor; ?>
+</style>
+
+<?php
 
 // Error handling: Ensure $tasks is an array
 if (!is_array($tasks)) {
@@ -133,7 +144,7 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                             <div class="progress-container <?= $progressClass ?>">
                                 <div class="progress-visual">
                                     <div class="progress-bar">
-                                        <div class="progress-fill" style="width: <?= $progress ?>%"></div>
+                                        <div class="progress-fill progress-<?= $progress ?>" data-width="<?= $progress ?>"></div>
                                     </div>
                                     <div class="progress-info">
                                         <span class="progress-percentage"><?= $progress ?>%</span>
@@ -152,18 +163,18 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                         </td>
                         <td>
                             <div class="btn-group">
-                                <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="btn-icon btn-icon--view" title="View Details">
+                                <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="btn-icon btn-icon--view" title="View Task Details">
                                     👁️
                                 </a>
                                 <?php if ($task['status'] !== 'completed'): ?>
-                                <button onclick="updateTaskStatus(<?= $task['id'] ?>, '<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>', <?= $task['progress'] ?? 0 ?>)" class="btn-icon btn-icon--status" title="Update Progress">
+                                <button onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>, '<?= addslashes($task['status'] ?? 'assigned') ?>')" class="btn-icon btn-icon--status" title="Update Progress & Status">
                                     📊
                                 </button>
                                 <?php endif; ?>
-                                <a href="/ergon/tasks/edit/<?= $task['id'] ?>" class="btn-icon btn-icon--edit" title="Edit Task">
+                                <a href="/ergon/tasks/edit/<?= $task['id'] ?>" class="btn-icon btn-icon--edit" title="Edit Task Details">
                                     ✏️
                                 </a>
-                                <button onclick="deleteRecord('tasks', <?= $task['id'] ?>, '<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>')" class="btn-icon btn-icon--delete" title="Delete Task">
+                                <button onclick="deleteRecord('tasks', <?= $task['id'] ?>, '<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>')" class="btn-icon btn-icon--delete" title="Delete Task Permanently">
                                     🗑️
                                 </button>
                             </div>
@@ -177,201 +188,189 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
     </div>
 </div>
 
-<script src="/ergon/assets/js/table-utils.js"></script>
-
-<!-- Task Status Update Modal -->
-<div id="statusModal" class="modal" style="display: none;">
+<!-- Progress Modal -->
+<div id="progressModal" class="modal-overlay modal-overlay--hidden">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>📊 Update Task Progress</h3>
-            <button class="modal-close" onclick="closeStatusModal()">&times;</button>
+            <h4>📊 Update Progress</h4>
+            <button onclick="closeProgressModal()" class="close-btn">&times;</button>
         </div>
         <div class="modal-body">
-            <div class="form-group">
-                <label>Task: <strong id="taskTitle"></strong></label>
+            <div class="progress-control">
+                <label>Progress: <span id="modalProgressValue">0%</span></label>
+                <input type="range" id="modalTaskProgress" min="0" max="100" value="0" oninput="updateModalProgress(this.value)" class="progress-slider">
             </div>
-            <div class="form-group">
-                <label for="taskProgress">Progress: <span id="progressValue">0%</span></label>
-                <input type="range" id="taskProgress" min="0" max="100" value="0" oninput="updateProgressValue(this.value)" class="progress-slider">
-            </div>
-            <div class="form-group">
-                <label for="taskStatus">Status</label>
-                <select id="taskStatus">
-                    <option value="assigned">📋 Assigned</option>
-                    <option value="in_progress">⚡ In Progress</option>
-                    <option value="completed">✅ Completed</option>
-                    <option value="blocked">🚫 Blocked</option>
-                </select>
+            <div class="status-display">
+                <span>Status: <span id="modalCurrentStatus" class="status-badge">Assigned</span></span>
+                <button id="modalBlockBtn" onclick="toggleModalBlock()" class="block-btn">🚫 Block</button>
             </div>
         </div>
         <div class="modal-footer">
-            <button onclick="saveTaskStatus()" class="btn btn--primary">💾 Update</button>
-            <button onclick="closeStatusModal()" class="btn btn--secondary">❌ Cancel</button>
+            <button onclick="closeProgressModal()" class="btn btn--secondary">Cancel</button>
+            <button onclick="saveModalProgress()" class="btn btn--primary">💾 Save</button>
         </div>
     </div>
 </div>
 
+<script src="/ergon/assets/js/table-utils.js"></script>
+
 <script>
-let currentTaskId = null;
+// Tooltip functionality for action buttons
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltip = document.createElement('div');
+    tooltip.className = 'tooltip';
+    document.body.appendChild(tooltip);
+    
+    document.querySelectorAll('[title]').forEach(element => {
+        element.addEventListener('mouseenter', function(e) {
+            const title = this.getAttribute('title');
+            if (title) {
+                tooltip.textContent = title;
+                tooltip.style.display = 'block';
+                
+                const rect = this.getBoundingClientRect();
+                tooltip.style.left = rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2) + 'px';
+                tooltip.style.top = rect.top - tooltip.offsetHeight - 8 + 'px';
+            }
+        });
+        
+        element.addEventListener('mouseleave', function() {
+            tooltip.style.display = 'none';
+        });
+    });
+});
 
-function updateTaskStatus(taskId, taskTitle, currentProgress) {
-    currentTaskId = taskId;
-    document.getElementById('taskTitle').textContent = taskTitle;
-    document.getElementById('taskProgress').value = currentProgress || 0;
-    document.getElementById('progressValue').textContent = (currentProgress || 0) + '%';
+// Set exact progress widths for values not in CSS
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.progress-fill[data-width]').forEach(function(el) {
+        var width = el.getAttribute('data-width');
+        if (width % 5 !== 0) {
+            el.style.width = width + '%';
+            if (width >= 100) el.style.background = 'linear-gradient(90deg, #10b981, #059669)';
+            else if (width >= 75) el.style.background = 'linear-gradient(90deg, #8b5cf6, #7c3aed)';
+            else if (width >= 50) el.style.background = 'linear-gradient(90deg, #3b82f6, #2563eb)';
+            else if (width >= 25) el.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)';
+            else el.style.background = 'linear-gradient(90deg, #e2e8f0, #cbd5e1)';
+        }
+    });
     
-    // Auto-set status based on progress
-    const statusSelect = document.getElementById('taskStatus');
-    if (currentProgress >= 100) {
-        statusSelect.value = 'completed';
-    } else if (currentProgress > 0) {
-        statusSelect.value = 'in_progress';
-    } else {
-        statusSelect.value = 'assigned';
+    // Check for updated progress from localStorage
+    var updatedTask = localStorage.getItem('taskUpdated');
+    if (updatedTask) {
+        var taskData = JSON.parse(updatedTask);
+        updateTableProgress(taskData.id, taskData.progress, taskData.status);
+        localStorage.removeItem('taskUpdated');
     }
+});
+
+var currentModalTaskId = null;
+var currentModalStatus = 'assigned';
+
+function openProgressModal(taskId, progress, status) {
+    currentModalTaskId = taskId;
+    currentModalStatus = status;
     
-    document.getElementById('statusModal').style.display = 'flex';
+    document.getElementById('modalTaskProgress').value = progress;
+    document.getElementById('modalProgressValue').textContent = progress + '%';
+    updateModalStatusDisplay(status);
+    document.getElementById('progressModal').classList.remove('modal-overlay--hidden');
 }
 
-function updateProgressValue(value) {
-    document.getElementById('progressValue').textContent = value + '%';
-    
-    // Auto-update status based on progress
-    const statusSelect = document.getElementById('taskStatus');
-    if (value >= 100) {
-        statusSelect.value = 'completed';
-    } else if (value > 0) {
-        statusSelect.value = 'in_progress';
-    } else {
-        statusSelect.value = 'assigned';
+function closeProgressModal() {
+    document.getElementById('progressModal').classList.add('modal-overlay--hidden');
+}
+
+function updateModalProgress(value) {
+    document.getElementById('modalProgressValue').textContent = value + '%';
+    if (currentModalStatus !== 'blocked') {
+        var newStatus = value >= 100 ? 'completed' : value > 0 ? 'in_progress' : 'assigned';
+        updateModalStatusDisplay(newStatus);
     }
 }
 
-function saveTaskStatus() {
-    const progress = document.getElementById('taskProgress').value;
-    const status = document.getElementById('taskStatus').value;
+function updateModalStatusDisplay(status) {
+    currentModalStatus = status;
+    var statusEl = document.getElementById('modalCurrentStatus');
+    var statusText = {
+        'assigned': 'Assigned',
+        'in_progress': 'In Progress', 
+        'completed': 'Completed',
+        'blocked': 'Blocked'
+    };
+    statusEl.textContent = statusText[status];
+    statusEl.className = 'status-badge status-' + status;
+    
+    var blockBtn = document.getElementById('modalBlockBtn');
+    if (status === 'blocked') {
+        blockBtn.textContent = '✅ Unblock';
+        blockBtn.onclick = function() { toggleModalBlock(); };
+    } else {
+        blockBtn.textContent = '🚫 Block';
+        blockBtn.onclick = function() { toggleModalBlock(); };
+    }
+}
+
+function toggleModalBlock() {
+    if (currentModalStatus === 'blocked') {
+        var progress = document.getElementById('modalTaskProgress').value;
+        var newStatus = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'assigned';
+        updateModalStatusDisplay(newStatus);
+    } else {
+        updateModalStatusDisplay('blocked');
+    }
+}
+
+function saveModalProgress() {
+    var progress = document.getElementById('modalTaskProgress').value;
     
     fetch('/ergon/tasks/update-status', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            task_id: currentTaskId,
+            task_id: currentModalTaskId,
             progress: progress,
-            status: status
+            status: currentModalStatus
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            location.reload();
-        } else {
-            alert('Error updating task: ' + (data.message || 'Unknown error'));
-        }
+            updateTableProgress(currentModalTaskId, progress, currentModalStatus);
+            closeProgressModal();
+        } else alert('Error: ' + (data.message || 'Unknown error'));
     })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error updating task status');
+    .catch(() => alert('Error updating task'));
+}
+
+function updateTableProgress(taskId, progress, status) {
+    var rows = document.querySelectorAll('tbody tr');
+    rows.forEach(function(row) {
+        var viewLink = row.querySelector('a[href*="/view/' + taskId + '"]');
+        if (viewLink) {
+            var progressFill = row.querySelector('.progress-fill');
+            var progressText = row.querySelector('.progress-percentage');
+            var statusText = row.querySelector('.progress-status');
+            
+            if (progressFill) {
+                progressFill.style.width = progress + '%';
+                if (progress >= 100) progressFill.style.background = 'linear-gradient(90deg, #10b981, #059669)';
+                else if (progress >= 75) progressFill.style.background = 'linear-gradient(90deg, #8b5cf6, #7c3aed)';
+                else if (progress >= 50) progressFill.style.background = 'linear-gradient(90deg, #3b82f6, #2563eb)';
+                else if (progress >= 25) progressFill.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)';
+                else progressFill.style.background = 'linear-gradient(90deg, #e2e8f0, #cbd5e1)';
+            }
+            if (progressText) progressText.textContent = progress + '%';
+            if (statusText) {
+                var statusIcon = status === 'completed' ? '✅' : status === 'in_progress' ? '⚡' : status === 'blocked' ? '🚫' : '📋';
+                statusText.textContent = statusIcon + ' ' + status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+            }
+        }
     });
 }
-
-function closeStatusModal() {
-    document.getElementById('statusModal').style.display = 'none';
-    currentTaskId = null;
-}
-
-// Close modal when clicking outside
-document.getElementById('statusModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeStatusModal();
-    }
-});
 </script>
 
 <style>
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
 
-.modal-content {
-    background: var(--bg-primary);
-    border-radius: 12px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.modal-header h3 {
-    margin: 0;
-    color: var(--primary);
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--text-secondary);
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-.modal-footer {
-    display: flex;
-    gap: 1rem;
-    padding: 1.5rem;
-    border-top: 1px solid var(--border-color);
-    justify-content: flex-end;
-}
-
-.progress-slider {
-    width: 100%;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--bg-secondary);
-    outline: none;
-    margin-top: 0.5rem;
-}
-
-.progress-slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--primary);
-    cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.progress-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--primary);
-    cursor: pointer;
-    border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
 
 .btn-icon--status {
     background: var(--bg-secondary);
@@ -418,9 +417,10 @@ document.getElementById('statusModal').addEventListener('click', function(e) {
 
 .progress-fill {
     height: 100%;
-    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 4px;
     position: relative;
+    width: 0%;
+    background: linear-gradient(90deg, #e2e8f0, #cbd5e1);
 }
 
 .progress-fill::after {
@@ -459,26 +459,7 @@ document.getElementById('statusModal').addEventListener('click', function(e) {
     gap: 0.25rem;
 }
 
-/* Progress state colors */
-.progress--start .progress-fill {
-    background: linear-gradient(90deg, #e2e8f0, #cbd5e1);
-}
 
-.progress--low .progress-fill {
-    background: linear-gradient(90deg, #fbbf24, #f59e0b);
-}
-
-.progress--medium .progress-fill {
-    background: linear-gradient(90deg, #3b82f6, #2563eb);
-}
-
-.progress--high .progress-fill {
-    background: linear-gradient(90deg, #8b5cf6, #7c3aed);
-}
-
-.progress--completed .progress-fill {
-    background: linear-gradient(90deg, #10b981, #059669);
-}
 
 .progress--completed {
     border-color: #10b981;
@@ -517,6 +498,130 @@ document.getElementById('statusModal').addEventListener('click', function(e) {
 .priority-badge .badge {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-overlay--hidden {
+    display: none;
+}
+
+.modal-content {
+    background: var(--bg-primary);
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90vw;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h4 {
+    margin: 0;
+    color: var(--primary);
+}
+
+.modal-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.progress-control label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.progress-slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--bg-secondary);
+    outline: none;
+}
+
+.progress-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+}
+
+.status-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.status-assigned { background: #fff3cd; color: #856404; }
+.status-in_progress { background: #d1ecf1; color: #0c5460; }
+.status-completed { background: #d4edda; color: #155724; }
+.status-blocked { background: #f8d7da; color: #721c24; }
+
+.block-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 10000;
+    pointer-events: none;
+    display: none;
 }
 </style>
 
