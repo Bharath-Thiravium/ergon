@@ -6,7 +6,7 @@ class SecurityService {
     private $maxAttempts = 5;
     private $lockoutDuration = 900; // 15 minutes in seconds
     private $rateLimitWindow = 300; // 5 minutes in seconds
-    private $maxRequestsPerWindow = 10;
+    private $maxRequestsPerWindow = 50; // Increased for development
     
     public function __construct() {
         $this->conn = Database::connect();
