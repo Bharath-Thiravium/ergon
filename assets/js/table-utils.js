@@ -362,3 +362,55 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Export for manual initialization
 window.TableUtils = TableUtils;
+
+// Global delete function for records
+function deleteRecord(type, id, name) {
+    if (!confirm(`Are you sure you want to delete this ${type.slice(0, -1)}?\n\n"${name}"\n\nThis action cannot be undone.`)) {
+        return;
+    }
+    
+    fetch(`/ergon/${type}/delete/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove the row from table
+            const row = document.querySelector(`button[onclick*="${id}"]`)?.closest('tr');
+            if (row) {
+                row.style.transition = 'opacity 0.3s ease';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+            }
+            
+            // Show success message
+            showNotification('success', data.message || `${type.slice(0, -1)} deleted successfully`);
+        } else {
+            showNotification('error', data.message || 'Delete failed');
+        }
+    })
+    .catch(error => {
+        console.error('Delete error:', error);
+        showNotification('error', 'Network error occurred');
+    });
+}
+
+// Simple notification function
+function showNotification(type, message) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert--${type === 'success' ? 'success' : 'error'}`;
+    notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; min-width: 300px;';
+    notification.innerHTML = `${type === 'success' ? '✅' : '❌'} ${message}`;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.transition = 'opacity 0.3s ease';
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}

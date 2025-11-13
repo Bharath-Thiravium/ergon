@@ -83,6 +83,88 @@ class AdvanceController extends Controller {
         exit;
     }
     
+    public function edit($id) {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
+                // Check if user owns this advance or is admin/owner
+                $stmt = $db->prepare("SELECT user_id, status FROM advances WHERE id = ?");
+                $stmt->execute([$id]);
+                $advance = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$advance) {
+                    header('Location: /ergon/advances?error=Advance not found');
+                    exit;
+                }
+                
+                // Only allow editing if user owns it or is admin/owner, and status is pending
+                $canEdit = (($advance['user_id'] == $_SESSION['user_id']) || 
+                           in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) && 
+                           $advance['status'] === 'pending';
+                
+                if (!$canEdit) {
+                    header('Location: /ergon/advances?error=Cannot edit this advance');
+                    exit;
+                }
+                
+                $stmt = $db->prepare("UPDATE advances SET type = ?, amount = ?, reason = ? WHERE id = ?");
+                $result = $stmt->execute([
+                    trim($_POST['type'] ?? ''),
+                    floatval($_POST['amount'] ?? 0),
+                    trim($_POST['reason'] ?? ''),
+                    $id
+                ]);
+                
+                if ($result) {
+                    header('Location: /ergon/advances?success=Advance updated successfully');
+                } else {
+                    header('Location: /ergon/advances/edit/' . $id . '?error=Update failed');
+                }
+                exit;
+            } catch (Exception $e) {
+                error_log('Advance edit error: ' . $e->getMessage());
+                header('Location: /ergon/advances/edit/' . $id . '?error=Update failed');
+                exit;
+            }
+        }
+        
+        // GET request - show edit form
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            if ($_SESSION['role'] === 'user') {
+                $stmt = $db->prepare("SELECT * FROM advances WHERE id = ? AND user_id = ?");
+                $stmt->execute([$id, $_SESSION['user_id']]);
+            } else {
+                $stmt = $db->prepare("SELECT * FROM advances WHERE id = ?");
+                $stmt->execute([$id]);
+            }
+            
+            $advance = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$advance) {
+                header('Location: /ergon/advances?error=Advance not found');
+                exit;
+            }
+            
+            if ($advance['status'] !== 'pending') {
+                header('Location: /ergon/advances?error=Cannot edit processed advance');
+                exit;
+            }
+            
+            $this->view('advances/edit', ['advance' => $advance, 'active_page' => 'advances']);
+        } catch (Exception $e) {
+            error_log('Advance edit load error: ' . $e->getMessage());
+            header('Location: /ergon/advances?error=Failed to load advance');
+            exit;
+        }
+    }
+    
     public function approve($id = null) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();

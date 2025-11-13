@@ -40,6 +40,7 @@ $router->get('/users/edit/{id}', 'UsersController', 'edit');
 $router->post('/users/edit/{id}', 'UsersController', 'edit');
 $router->post('/users/inactive/{id}', 'UsersController', 'inactive');
 $router->post('/users/delete/{id}', 'UsersController', 'delete');
+$router->post('/admin/delete-user', 'UsersController', 'deleteUser');
 $router->post('/users/reset-password', 'UsersController', 'resetPassword');
 $router->get('/users/download-credentials', 'UsersController', 'downloadCredentials');
 $router->get('/users/export', 'UsersController', 'export');
@@ -89,6 +90,8 @@ $router->post('/tasks/bulk-create', 'TasksController', 'bulkCreate');
 $router->get('/planner', 'PlannerController', 'index');
 $router->post('/planner/add-task', 'PlannerController', 'addTask');
 $router->post('/planner/update-status', 'PlannerController', 'updateStatus');
+$router->get('/daily-planner/project-overview', 'DashboardController', 'projectOverview');
+$router->get('/daily-planner/delayed-tasks-overview', 'DashboardController', 'delayedTasksOverview');
 
 // Evening Update Integration
 $router->get('/evening-update', 'EveningUpdateController', 'index');
@@ -147,6 +150,7 @@ $router->post('/advances/reject/{id}', 'AdvanceController', 'reject');
 $router->get('/reports', 'ReportsController', 'index');
 $router->get('/reports/activity', 'ReportsController', 'activity');
 $router->get('/reports/export', 'ReportsController', 'export');
+$router->get('/reports/attendance-export', 'AttendanceController', 'exportAttendance');
 $router->get('/reports/approvals-export', 'ReportsController', 'approvalsExport');
 
 // Settings
@@ -223,12 +227,8 @@ $router->get('/planner/getPlansForDate', 'PlannerController', 'getPlansForDate')
 
 // Legacy Daily Task Planner Routes (Redirected to new system)
 $router->get('/daily-planner', 'DailyWorkflowController', 'eveningUpdate');
-$router->post('/daily-planner/submit', 'DailyTaskPlannerController', 'submitTask');
-$router->get('/daily-planner/get-tasks', 'DailyTaskPlannerController', 'getProjectTasks');
 $router->get('/daily-planner/dashboard', 'DailyWorkflowController', 'progressDashboard');
-$router->get('/daily-planner/project-overview', 'DailyTaskPlannerController', 'projectOverview');
-$router->get('/daily-planner/delayed-tasks-overview', 'DailyTaskPlannerController', 'delayedTasksOverview');
-$router->get('/api/project-progress', 'DailyTaskPlannerController', 'projectProgressApi');
+// Note: project-overview and delayed-tasks-overview routes are handled by DashboardController above
 
 // API Routes
 $router->post('/api/login', 'ApiController', 'login');
@@ -237,6 +237,8 @@ $router->get('/api/tasks', 'ApiController', 'tasks');
 $router->post('/api/tasks/update', 'ApiController', 'updateTask');
 $router->get('/api/task-categories', 'ApiController', 'taskCategories');
 $router->get('/api/followup-details', 'ApiController', 'followupDetails');
+$router->get('/direct_followup_test.php', 'ApiController', 'followupDetails');
+$router->get('/check_reminders.php', 'FollowupController', 'checkReminders');
 $router->get('/api/generate-employee-id', 'ApiController', 'generateEmployeeId');
 $router->post('/api/update-preference', 'ApiController', 'updatePreference');
 $router->post('/api/activity-log', 'ApiController', 'activityLog');
@@ -292,6 +294,7 @@ $router->post('/admin/change-password', 'AdminManagementController', 'changePass
 // System Admin Management Routes (Owner only)
 $router->get('/system-admin', 'SystemAdminController', 'index');
 $router->post('/system-admin/create', 'SystemAdminController', 'create');
+$router->post('/system-admin/add-admin', 'SystemAdminController', 'addAdmin');
 $router->post('/system-admin/edit', 'SystemAdminController', 'edit');
 $router->post('/system-admin/change-password', 'SystemAdminController', 'changePassword');
 $router->post('/system-admin/delete', 'SystemAdminController', 'delete');
@@ -313,6 +316,7 @@ $router->get('/workflow/evening-update/{date}', 'UnifiedWorkflowController', 'ev
 $router->post('/workflow/evening-update/{date}', 'UnifiedWorkflowController', 'eveningUpdate');
 $router->get('/workflow/followups', 'UnifiedWorkflowController', 'followups');
 $router->get('/workflow/calendar', 'UnifiedWorkflowController', 'calendar');
+$router->get('/workflow/create-task', 'TasksController', 'create');
 $router->post('/workflow/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
 
 // Follow-up Routes (Legacy - now filtered from tasks)

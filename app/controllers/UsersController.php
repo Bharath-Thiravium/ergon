@@ -355,6 +355,35 @@ class UsersController extends Controller {
         exit;
     }
     
+    public function deleteUser() {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
+            exit;
+        }
+        
+        $userId = $_POST['user_id'] ?? null;
+        if (!$userId) {
+            echo json_encode(['success' => false, 'message' => 'User ID required']);
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Permanently delete the user record
+            $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
+            $result = $stmt->execute([$userId]);
+            
+            echo json_encode(['success' => $result, 'message' => $result ? 'User deleted successfully' : 'Delete failed']);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+    
     public function inactive($id) {
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {

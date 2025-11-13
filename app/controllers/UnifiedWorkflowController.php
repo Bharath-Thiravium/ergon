@@ -15,18 +15,75 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Get tasks planned for this date
-            $stmt = $db->prepare("
-                SELECT dp.*, t.title as task_title, t.priority, t.progress as task_progress
-                FROM daily_planner dp
-                LEFT JOIN tasks t ON dp.task_id = t.id
-                WHERE dp.user_id = ? AND dp.date = ?
-                ORDER BY dp.priority_order
-            ");
-            $stmt->execute([$_SESSION['user_id'], $date]);
-            $plannedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Get tasks planned for this date from daily_planner table
+            $plannedTasks = [];
+            try {
+                $stmt = $db->prepare("
+                    SELECT dp.*, t.title as task_title, t.priority, t.progress as task_progress
+                    FROM daily_planner dp
+                    LEFT JOIN tasks t ON dp.task_id = t.id
+                    WHERE dp.user_id = ? AND dp.date = ?
+                    ORDER BY dp.priority_order
+                ");
+                $stmt->execute([$_SESSION['user_id'], $date]);
+                $plannedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('Daily planner table query failed: ' . $e->getMessage());
+            }
             
-            // Add dummy data if no tasks exist
+            // If no planned tasks, get today's allocated tasks from tasks table
+            if (empty($plannedTasks)) {
+                try {
+                    $stmt = $db->prepare("
+                        SELECT 
+                            t.id,
+                            t.title,
+                            t.description,
+                            t.priority,
+                            t.status,
+                            t.progress as task_progress,
+                            t.deadline,
+                            u.name as assigned_user,
+                            'allocated' as completion_status
+                        FROM tasks t
+                        LEFT JOIN users u ON t.assigned_to = u.id
+                        WHERE t.assigned_to = ? 
+                        AND (DATE(t.deadline) = ? OR DATE(t.created_at) = ? OR t.status IN ('assigned', 'in_progress'))
+                        ORDER BY 
+                            CASE t.priority 
+                                WHEN 'high' THEN 1 
+                                WHEN 'medium' THEN 2 
+                                ELSE 3 
+                            END,
+                            t.created_at DESC
+                        LIMIT 10
+                    ");
+                    $stmt->execute([$_SESSION['user_id'], $date, $date]);
+                    $allocatedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    // Convert allocated tasks to planner format
+                    foreach ($allocatedTasks as $task) {
+                        $plannedTasks[] = [
+                            'id' => 'task_' . $task['id'],
+                            'task_id' => $task['id'],
+                            'title' => $task['title'],
+                            'description' => $task['description'],
+                            'priority' => $task['priority'],
+                            'task_progress' => $task['task_progress'],
+                            'completion_status' => $task['status'] === 'completed' ? 'completed' : 'not_started',
+                            'planned_start_time' => null,
+                            'planned_duration' => null,
+                            'notes' => '',
+                            'task_title' => $task['title'],
+                            'source' => 'tasks_table'
+                        ];
+                    }
+                } catch (Exception $e) {
+                    error_log('Tasks table query failed: ' . $e->getMessage());
+                }
+            }
+            
+            // Add dummy data if still no tasks exist
             if (empty($plannedTasks) && $date === date('Y-m-d')) {
                 $plannedTasks = $this->getDummyPlannerTasks($date);
             }

@@ -59,6 +59,45 @@ class SystemAdminController extends Controller {
         }
     }
     
+    public function addAdmin() {
+        header('Content-Type: application/json');
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $name = trim($_POST['name'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $password = $_POST['password'] ?? '';
+            
+            if (empty($name) || empty($email) || empty($password)) {
+                echo json_encode(['success' => false, 'message' => 'All fields are required']);
+                exit;
+            }
+            
+            try {
+                $db = Database::connect();
+                
+                // Check if email already exists
+                $checkStmt = $db->prepare("SELECT id FROM users WHERE email = ?");
+                $checkStmt->execute([$email]);
+                if ($checkStmt->fetch()) {
+                    echo json_encode(['success' => false, 'message' => 'Email already exists']);
+                    exit;
+                }
+                
+                $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+                $stmt = $db->prepare("INSERT INTO users (name, email, password, role, status, created_at) VALUES (?, ?, ?, 'admin', 'active', NOW())");
+                $result = $stmt->execute([$name, $email, $hashedPassword]);
+                
+                echo json_encode(['success' => $result, 'message' => $result ? 'Admin created successfully' : 'Failed to create admin']);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+        }
+        exit;
+    }
+    
     public function edit() {
         $this->requireAuth();
         

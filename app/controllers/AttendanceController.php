@@ -187,13 +187,27 @@ class AttendanceController extends Controller {
                         error_log('Leave check error (table may not exist): ' . $e->getMessage());
                     }
                     
-                    // Check if already clocked in today
-                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND check_out IS NULL");
-                    $stmt->execute([$userId]);
-                    
-                    if ($stmt->fetch()) {
-                        echo json_encode(['success' => false, 'error' => 'Already clocked in today']);
-                        exit;
+                    // Check if already clocked in today - handle missing columns gracefully
+                    try {
+                        // Check what columns exist in attendance table
+                        $stmt = $db->query("SHOW COLUMNS FROM attendance");
+                        $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                        
+                        if (in_array('check_in', $columns)) {
+                            $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND (check_out IS NULL OR check_out = '')");
+                        } else {
+                            // Fallback to created_at if check_in doesn't exist
+                            $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(created_at) = CURDATE()");
+                        }
+                        $stmt->execute([$userId]);
+                        
+                        if ($stmt->fetch()) {
+                            echo json_encode(['success' => false, 'error' => 'Already clocked in today']);
+                            exit;
+                        }
+                    } catch (Exception $e) {
+                        error_log('Clock in check error: ' . $e->getMessage());
+                        // Continue with clock in if check fails
                     }
                     
                     // Clock in
@@ -225,24 +239,42 @@ class AttendanceController extends Controller {
                     }
                     
                 } elseif ($type === 'out') {
-                    // Find today's clock in record
-                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND check_out IS NULL");
-                    $stmt->execute([$userId]);
-                    $attendance = $stmt->fetch();
-                    
-                    if (!$attendance) {
-                        echo json_encode(['success' => false, 'error' => 'No clock in record found for today']);
-                        exit;
-                    }
-                    
-                    // Clock out
-                    $stmt = $db->prepare("UPDATE attendance SET check_out = NOW(), updated_at = NOW() WHERE id = ?");
-                    $result = $stmt->execute([$attendance['id']]);
-                    
-                    if ($result) {
-                        echo json_encode(['success' => true, 'message' => 'Clocked out successfully']);
-                    } else {
-                        echo json_encode(['success' => false, 'error' => 'Failed to clock out']);
+                    // Find today's clock in record - handle missing columns gracefully
+                    try {
+                        $stmt = $db->query("SHOW COLUMNS FROM attendance");
+                        $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                        
+                        if (in_array('check_in', $columns)) {
+                            $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND (check_out IS NULL OR check_out = '')");
+                        } else {
+                            // Fallback to created_at if check_in doesn't exist
+                            $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(created_at) = CURDATE()");
+                        }
+                        $stmt->execute([$userId]);
+                        $attendance = $stmt->fetch();
+                        
+                        if (!$attendance) {
+                            echo json_encode(['success' => false, 'error' => 'No clock in record found for today']);
+                            exit;
+                        }
+                        
+                        // Clock out - use appropriate column
+                        if (in_array('check_out', $columns)) {
+                            $stmt = $db->prepare("UPDATE attendance SET check_out = NOW(), updated_at = NOW() WHERE id = ?");
+                        } else {
+                            // Fallback to updating status if check_out doesn't exist
+                            $stmt = $db->prepare("UPDATE attendance SET status = 'completed', updated_at = NOW() WHERE id = ?");
+                        }
+                        $result = $stmt->execute([$attendance['id']]);
+                        
+                        if ($result) {
+                            echo json_encode(['success' => true, 'message' => 'Clocked out successfully']);
+                        } else {
+                            echo json_encode(['success' => false, 'error' => 'Failed to clock out']);
+                        }
+                    } catch (Exception $e) {
+                        error_log('Clock out error: ' . $e->getMessage());
+                        echo json_encode(['success' => false, 'error' => 'Clock out failed: ' . $e->getMessage()]);
                     }
                     
                 } else {
@@ -396,6 +428,77 @@ class AttendanceController extends Controller {
                 return "DATE(a.check_in) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
             default:
                 return "DATE(a.check_in) = CURDATE()";
+        }
+    }
+    
+    public function exportAttendance() {
+        $this->requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('Location: /ergon/attendance?error=Access denied');
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Get date range from query parameters
+            $startDate = $_GET['start_date'] ?? date('Y-m-01'); // First day of current month
+            $endDate = $_GET['end_date'] ?? date('Y-m-d'); // Today
+            
+            $stmt = $db->prepare("
+                SELECT 
+                    u.name as employee_name,
+                    u.email,
+                    COALESCE(d.name, 'Not Assigned') as department,
+                    DATE(a.check_in) as date,
+                    TIME(a.check_in) as check_in_time,
+                    TIME(a.check_out) as check_out_time,
+                    CASE 
+                        WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
+                            ROUND(TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) / 60.0, 2)
+                        ELSE 0
+                    END as total_hours,
+                    CASE 
+                        WHEN a.location_name = 'On Approved Leave' THEN 'On Leave'
+                        WHEN a.check_in IS NOT NULL THEN 'Present'
+                        ELSE 'Absent'
+                    END as status
+                FROM users u
+                LEFT JOIN departments d ON u.department_id = d.id
+                LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) BETWEEN ? AND ?
+                WHERE u.role IN ('user', 'admin')
+                ORDER BY u.name, DATE(a.check_in)
+            ");
+            $stmt->execute([$startDate, $endDate]);
+            $attendanceData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment; filename="attendance_export_' . $startDate . '_to_' . $endDate . '.csv"');
+            
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['Employee Name', 'Email', 'Department', 'Date', 'Check In', 'Check Out', 'Total Hours', 'Status']);
+            
+            foreach ($attendanceData as $record) {
+                fputcsv($output, [
+                    $record['employee_name'],
+                    $record['email'],
+                    $record['department'],
+                    $record['date'] ?? 'N/A',
+                    $record['check_in_time'] ?? 'N/A',
+                    $record['check_out_time'] ?? 'N/A',
+                    $record['total_hours'],
+                    $record['status']
+                ]);
+            }
+            
+            fclose($output);
+            exit;
+        } catch (Exception $e) {
+            error_log('Attendance export error: ' . $e->getMessage());
+            header('Location: /ergon/attendance?error=Export failed');
+            exit;
         }
     }
     

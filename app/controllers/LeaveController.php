@@ -423,8 +423,21 @@ class LeaveController extends Controller {
     }
     
     private function removeLeaveAttendanceRecords($db, $userId, $startDate, $endDate) {
-        $stmt = $db->prepare("DELETE FROM attendance WHERE user_id = ? AND status = 'absent' AND DATE(check_in) BETWEEN ? AND ?");
-        $stmt->execute([$userId, $startDate, $endDate]);
+        try {
+            // Check if attendance table has the columns we need
+            $stmt = $db->query("SHOW COLUMNS FROM attendance");
+            $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            // Use appropriate column names based on what exists
+            if (in_array('location_name', $columns)) {
+                $stmt = $db->prepare("DELETE FROM attendance WHERE user_id = ? AND location_name = 'On Approved Leave' AND DATE(check_in) BETWEEN ? AND ?");
+            } else {
+                $stmt = $db->prepare("DELETE FROM attendance WHERE user_id = ? AND status = 'absent' AND DATE(check_in) BETWEEN ? AND ?");
+            }
+            $stmt->execute([$userId, $startDate, $endDate]);
+        } catch (Exception $e) {
+            error_log('Remove leave attendance error: ' . $e->getMessage());
+        }
     }
     
     public function apiCreate() {

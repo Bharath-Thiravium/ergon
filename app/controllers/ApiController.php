@@ -218,7 +218,23 @@ class ApiController extends Controller {
             $departmentId = $_GET['department_id'] ?? null;
             
             if (!$departmentId) {
-                $this->json(['error' => 'Department ID is required'], 400);
+                // Return default categories if no department specified
+                $defaultCategories = [
+                    ['category_name' => 'General Task', 'description' => 'General work task'],
+                    ['category_name' => 'Follow-up', 'description' => 'Follow-up task'],
+                    ['category_name' => 'Meeting', 'description' => 'Meeting or discussion'],
+                    ['category_name' => 'Development', 'description' => 'Development work'],
+                    ['category_name' => 'Testing', 'description' => 'Testing and QA'],
+                    ['category_name' => 'Documentation', 'description' => 'Documentation work']
+                ];
+                $this->json(['categories' => $defaultCategories]);
+                return;
+            }
+            
+            // Check if departments table exists
+            $stmt = $db->query("SHOW TABLES LIKE 'departments'");
+            if ($stmt->rowCount() == 0) {
+                $this->json(['categories' => []]);
                 return;
             }
             
@@ -228,7 +244,16 @@ class ApiController extends Controller {
             $department = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$department) {
-                $this->json(['error' => 'Department not found'], 404);
+                $this->json(['categories' => []]);
+                return;
+            }
+            
+            // Check if task_categories table exists
+            $stmt = $db->query("SHOW TABLES LIKE 'task_categories'");
+            if ($stmt->rowCount() == 0) {
+                // Return department-specific default categories
+                $deptCategories = $this->getDefaultCategoriesForDepartment($department['name']);
+                $this->json(['categories' => $deptCategories]);
                 return;
             }
             
@@ -238,11 +263,53 @@ class ApiController extends Controller {
             $stmt->execute([$deptName]);
             $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
+            // If no categories found, return defaults
+            if (empty($categories)) {
+                $categories = $this->getDefaultCategoriesForDepartment($department['name']);
+            }
+            
             $this->json(['categories' => $categories]);
             
         } catch (Exception $e) {
             error_log('Task categories API error: ' . $e->getMessage());
-            $this->json(['error' => 'Failed to fetch categories'], 500);
+            $defaultCategories = [
+                ['category_name' => 'General Task', 'description' => 'General work task'],
+                ['category_name' => 'Follow-up', 'description' => 'Follow-up task']
+            ];
+            $this->json(['categories' => $defaultCategories]);
+        }
+    }
+    
+    private function getDefaultCategoriesForDepartment($deptName) {
+        $baseCategories = [
+            ['category_name' => 'General Task', 'description' => 'General work task'],
+            ['category_name' => 'Follow-up', 'description' => 'Follow-up task'],
+            ['category_name' => 'Meeting', 'description' => 'Meeting or discussion']
+        ];
+        
+        switch (strtolower($deptName)) {
+            case 'information technology':
+            case 'it':
+                return array_merge($baseCategories, [
+                    ['category_name' => 'Development', 'description' => 'Software development'],
+                    ['category_name' => 'Bug Fix', 'description' => 'Bug fixing and debugging'],
+                    ['category_name' => 'Testing', 'description' => 'Testing and QA']
+                ]);
+            case 'marketing':
+                return array_merge($baseCategories, [
+                    ['category_name' => 'Campaign', 'description' => 'Marketing campaign'],
+                    ['category_name' => 'Content Creation', 'description' => 'Content creation'],
+                    ['category_name' => 'Social Media', 'description' => 'Social media management']
+                ]);
+            case 'human resources':
+            case 'hr':
+                return array_merge($baseCategories, [
+                    ['category_name' => 'Recruitment', 'description' => 'Recruitment activities'],
+                    ['category_name' => 'Training', 'description' => 'Employee training'],
+                    ['category_name' => 'Policy Review', 'description' => 'Policy review and updates']
+                ]);
+            default:
+                return $baseCategories;
         }
     }
     
@@ -251,9 +318,28 @@ class ApiController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Get recent follow-ups for suggestions
-            $stmt = $db->query("SELECT DISTINCT company_name, contact_person, project_name, contact_phone FROM tasks WHERE followup_required = 1 AND company_name IS NOT NULL AND company_name != '' ORDER BY created_at DESC LIMIT 50");
-            $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Check if tasks table exists and has required columns
+            $stmt = $db->query("SHOW TABLES LIKE 'tasks'");
+            if ($stmt->rowCount() == 0) {
+                $this->json(['followups' => []]);
+                return;
+            }
+            
+            // Check if required columns exist
+            $stmt = $db->query("SHOW COLUMNS FROM tasks");
+            $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            $followups = [];
+            
+            // Try different column combinations based on what exists
+            if (in_array('company_name', $columns)) {
+                $stmt = $db->query("SELECT DISTINCT company_name, contact_person, project_name, contact_phone FROM tasks WHERE company_name IS NOT NULL AND company_name != '' ORDER BY created_at DESC LIMIT 50");
+                $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } else {
+                // Fallback: get task titles as suggestions
+                $stmt = $db->query("SELECT DISTINCT title as company_name, '' as contact_person, '' as project_name, '' as contact_phone FROM tasks WHERE title IS NOT NULL ORDER BY created_at DESC LIMIT 20");
+                $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
             
             $this->json(['followups' => $followups]);
             

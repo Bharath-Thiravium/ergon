@@ -160,18 +160,60 @@ class DepartmentController extends Controller {
             return;
         }
         
-        $department = $this->departmentModel->findById($id);
-        if (!$department) {
-            $_SESSION['error'] = 'Department not found';
+        try {
+            $db = Database::connect();
+            
+            // Get department with head information
+            $stmt = $db->prepare("
+                SELECT d.*, u.name as head_name, u.email as head_email, u.phone as head_phone
+                FROM departments d 
+                LEFT JOIN users u ON d.head_id = u.id 
+                WHERE d.id = ?
+            ");
+            $stmt->execute([$id]);
+            $department = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$department) {
+                $_SESSION['error'] = 'Department not found';
+                $this->redirect('/ergon/departments');
+                return;
+            }
+            
+            // Get department statistics
+            $stmt = $db->prepare("
+                SELECT 
+                    COUNT(*) as total_employees,
+                    SUM(CASE WHEN u.status = 'active' THEN 1 ELSE 0 END) as active_employees
+                FROM users u 
+                WHERE u.department_id = ?
+            ");
+            $stmt->execute([$id]);
+            $stats = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Get department employees
+            $stmt = $db->prepare("
+                SELECT u.id, u.name, u.email, u.role, u.status, u.designation
+                FROM users u 
+                WHERE u.department_id = ?
+                ORDER BY u.name
+            ");
+            $stmt->execute([$id]);
+            $employees = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $data = [
+                'department' => $department,
+                'stats' => $stats,
+                'employees' => $employees
+            ];
+            $title = 'Department Details';
+            $active_page = 'departments';
+            
+            include __DIR__ . '/../../views/departments/view.php';
+        } catch (Exception $e) {
+            error_log('Department view error: ' . $e->getMessage());
+            $_SESSION['error'] = 'Failed to load department details';
             $this->redirect('/ergon/departments');
-            return;
         }
-        
-        $data = ['department' => $department];
-        $title = 'Department Details';
-        $active_page = 'departments';
-        
-        include __DIR__ . '/../../views/departments/view.php';
     }
     
     public function editPost() {

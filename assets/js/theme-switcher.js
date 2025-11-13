@@ -22,22 +22,36 @@ class ThemeSwitcher {
         document.documentElement.setAttribute('data-theme', theme);
         document.body.setAttribute('data-theme', theme);
         
-        // Apply to all elements that might need theme
-        const elements = document.querySelectorAll('*');
-        elements.forEach(el => {
-            if (el.classList.contains('card') || 
-                el.classList.contains('form-control') ||
-                el.classList.contains('table') ||
-                el.classList.contains('modal') ||
-                el.classList.contains('dropdown') ||
-                el.classList.contains('alert') ||
-                el.classList.contains('badge') ||
-                el.tagName === 'INPUT' ||
-                el.tagName === 'TEXTAREA' ||
-                el.tagName === 'SELECT') {
+        // Apply theme to main content areas
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.setAttribute('data-theme', theme);
+        }
+        
+        // Apply to all UI components
+        const selectors = [
+            '.card', '.card__header', '.card__body', '.card__footer',
+            '.table', '.table th', '.table td',
+            '.form-control', '.form-label',
+            '.modal', '.modal-content', '.modal-header', '.modal-body', '.modal-footer',
+            '.btn', '.btn--secondary',
+            '.kpi-card', '.admin-card', '.user-card',
+            '.alert', '.badge', '.notification-item',
+            '.page-title', '.empty-state',
+            'input', 'textarea', 'select', 'button'
+        ];
+        
+        selectors.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
                 el.setAttribute('data-theme', theme);
-            }
+            });
         });
+        
+        // Force repaint
+        document.body.style.display = 'none';
+        document.body.offsetHeight; // Trigger reflow
+        document.body.style.display = '';
         
         localStorage.setItem('ergon-theme', theme);
         this.saveToServer(theme);

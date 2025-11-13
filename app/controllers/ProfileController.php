@@ -37,7 +37,16 @@ class ProfileController extends Controller {
                 'address' => Security::sanitizeString($_POST['address'] ?? '', 500)
             ];
             
+            // Check if this is an AJAX request
+            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+            
             if (empty($updateData['name']) || !$updateData['email']) {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Name and valid email are required']);
+                    exit;
+                }
                 $data = ['error' => 'Name and valid email are required', 'active_page' => 'profile'];
                 $this->view('profile/index', $data);
                 return;
@@ -46,8 +55,19 @@ class ProfileController extends Controller {
             if ($this->updateUserProfile($userId, $updateData)) {
                 $_SESSION['user_name'] = $updateData['name'];
                 $_SESSION['user_email'] = $updateData['email'];
+                
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'message' => 'Profile updated successfully']);
+                    exit;
+                }
                 header('Location: /ergon/profile?success=1');
             } else {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Failed to update profile']);
+                    exit;
+                }
                 header('Location: /ergon/profile?error=1');
             }
             exit;
@@ -113,9 +133,23 @@ class ProfileController extends Controller {
                 'notifications_browser' => isset($_POST['notifications_browser']) ? 1 : 0
             ];
             
+            // Check if this is an AJAX request
+            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+            
             if ($this->updateUserPreferences($_SESSION['user_id'], $preferences)) {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'message' => 'Preferences saved successfully']);
+                    exit;
+                }
                 header('Location: /ergon/profile/preferences?success=1');
             } else {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Failed to save preferences']);
+                    exit;
+                }
                 header('Location: /ergon/profile/preferences?error=1');
             }
             exit;

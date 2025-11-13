@@ -612,6 +612,42 @@ class FollowupController extends Controller {
         exit;
     }
     
+    public function checkReminders() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->ensureTables($db);
+            
+            // Get today's reminders
+            $stmt = $db->prepare("
+                SELECT f.*, u.name as user_name 
+                FROM followups f 
+                LEFT JOIN users u ON f.user_id = u.id 
+                WHERE f.follow_up_date = CURDATE() 
+                AND f.status IN ('pending', 'in_progress')
+                ORDER BY f.reminder_time ASC
+            ");
+            $stmt->execute();
+            $reminders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode([
+                'success' => true,
+                'reminders' => $reminders,
+                'count' => count($reminders)
+            ]);
+        } catch (Exception $e) {
+            error_log('Check reminders error: ' . $e->getMessage());
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'reminders' => [],
+                'count' => 0
+            ]);
+        }
+        exit;
+    }
+    
     private function getStatusBadge($status) {
         switch ($status) {
             case 'completed':
