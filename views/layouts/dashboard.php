@@ -678,6 +678,81 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 
     </script>
 
+    <!-- Custom Tooltip Implementation -->
+    <script>
+    // Simple tooltip implementation to replace Bootstrap tooltips
+    function initTooltips() {
+        const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"], [title]');
+        
+        tooltipElements.forEach(element => {
+            const tooltipText = element.getAttribute('data-bs-original-title') || element.getAttribute('title');
+            if (!tooltipText) return;
+            
+            // Remove title to prevent default browser tooltip
+            element.removeAttribute('title');
+            
+            let tooltip = null;
+            
+            element.addEventListener('mouseenter', function() {
+                tooltip = document.createElement('div');
+                tooltip.className = 'custom-tooltip';
+                tooltip.textContent = tooltipText;
+                document.body.appendChild(tooltip);
+                
+                const rect = element.getBoundingClientRect();
+                tooltip.style.left = rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2) + 'px';
+                tooltip.style.top = rect.top - tooltip.offsetHeight - 8 + 'px';
+            });
+            
+            element.addEventListener('mouseleave', function() {
+                if (tooltip) {
+                    tooltip.remove();
+                    tooltip = null;
+                }
+            });
+        });
+    }
+    
+    // Smart back navigation function
+    function goBack() {
+        // Check if there's a previous page in history
+        if (document.referrer && document.referrer.includes('/ergon/')) {
+            window.history.back();
+        } else {
+            // Fallback to tasks list
+            window.location.href = '/ergon/tasks';
+        }
+    }
+    
+    // Toggle filters function
+    function toggleLeaveFilters() {
+        const panel = document.getElementById('leaveFiltersPanel');
+        if (panel) {
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+    
+    // Initialize tooltips when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTooltips);
+    } else {
+        initTooltips();
+    }
+    </script>
+    
+    <style>
+    .custom-tooltip {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 10000;
+        pointer-events: none;
+    }
+    </style>
 
 </body>
 </html>

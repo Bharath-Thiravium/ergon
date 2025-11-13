@@ -13,8 +13,11 @@ ob_start();
         <a href="/ergon/tasks/edit/<?= $task['id'] ?? '' ?>" class="btn btn--primary">
             <span>✏️</span> Edit Task
         </a>
+        <button onclick="goBack()" class="btn btn--secondary">
+            <span>←</span> Back
+        </button>
         <a href="/ergon/tasks" class="btn btn--secondary">
-            <span>←</span> Back to Tasks
+            <span>📋</span> All Tasks
         </a>
     </div>
 </div>

@@ -8,8 +8,11 @@ $content = ob_start();
         <p>Update task details and tracking information</p>
     </div>
     <div class="page-actions">
+        <button onclick="goBack()" class="btn btn--secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </button>
         <a href="/ergon/tasks" class="btn btn--secondary">
-            <i class="bi bi-arrow-left"></i> Back to Tasks
+            <i class="bi bi-list"></i> All Tasks
         </a>
     </div>
 </div>
@@ -159,9 +162,9 @@ $content = ob_start();
                 <button type="submit" class="btn btn--primary">
                     <i class="bi bi-check-circle-fill"></i> Update Task
                 </button>
-                <a href="/ergon/tasks" class="btn btn--secondary">
+                <button type="button" onclick="goBack()" class="btn btn--secondary">
                     <i class="bi bi-x-circle-fill"></i> Cancel
-                </a>
+                </button>
             </div>
         </form>
     </div>
@@ -212,11 +215,7 @@ function loadTaskCategories() {
         .catch(error => console.error('Error loading categories:', error));
 }
 
-// Initialize tooltips
-var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl);
-});
+// Tooltips are now handled by the dashboard layout
 
 // Form validation and initialization
 document.addEventListener('DOMContentLoaded', function() {
