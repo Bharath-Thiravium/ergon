@@ -22,6 +22,8 @@ $router->get('/auth/logout', 'AuthController', 'logout');
 $router->post('/auth/logout', 'AuthController', 'logout');
 $router->get('/auth/reset-password', 'AuthController', 'resetPassword');
 $router->post('/auth/reset-password', 'AuthController', 'resetPassword');
+$router->get('/auth/forgot-password', 'AuthController', 'forgotPassword');
+$router->post('/auth/forgot-password', 'AuthController', 'forgotPassword');
 
 // Dashboard Routes
 $router->get('/dashboard', 'DashboardController', 'index');

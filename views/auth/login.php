@@ -41,8 +41,8 @@
                     </button>
                     
                     <div style="text-align: center;">
-                        <a href="/ergon/auth/reset-password" class="btn btn--secondary" style="width: 100%;">
-                            <i class="fas fa-key"></i> Reset Password
+                        <a href="/ergon/auth/forgot-password" class="btn btn--secondary" style="width: 100%;">
+                            <i class="fas fa-key"></i> Forgot Password?
                         </a>
                     </div>
                 </form>

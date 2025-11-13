@@ -43,20 +43,79 @@ class User {
     
     public function resetPassword($userId, $newPassword) {
         try {
-            if (strlen($newPassword) < 6) {
+            // Enhanced password validation
+            if (strlen($newPassword) < 8 || 
+                !preg_match('/[A-Z]/', $newPassword) ||
+                !preg_match('/[a-z]/', $newPassword) ||
+                !preg_match('/[0-9]/', $newPassword) ||
+                !preg_match('/[^A-Za-z0-9]/', $newPassword)) {
                 return false;
             }
             
-            $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+            $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+            
+            // Log password change for audit
+            $this->logPasswordChange($userId);
+            
             $stmt = $this->conn->prepare("
                 UPDATE {$this->table} 
-                SET password = ?, is_first_login = FALSE, password_reset_required = FALSE, temp_password = NULL 
+                SET password = ?, is_first_login = FALSE, password_reset_required = FALSE, 
+                    temp_password = NULL, password_changed_at = NOW() 
                 WHERE id = ?
             ");
             return $stmt->execute([$hashedPassword, $userId]);
         } catch (Exception $e) {
             error_log("Password reset error: " . $e->getMessage());
             return false;
+        }
+    }
+    
+    public function initiatePasswordReset($email) {
+        try {
+            $user = $this->getUserByEmail($email);
+            if (!$user) {
+                return false; // Don't reveal if email exists
+            }
+            
+            $token = bin2hex(random_bytes(32));
+            $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
+            
+            $stmt = $this->conn->prepare("
+                UPDATE {$this->table} 
+                SET reset_token = ?, reset_token_expires = ? 
+                WHERE email = ?
+            ");
+            $stmt->execute([$token, $expires, $email]);
+            
+            return $token;
+        } catch (Exception $e) {
+            error_log("Password reset initiation error: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    public function getUserByEmail($email) {
+        try {
+            $stmt = $this->conn->prepare("SELECT * FROM {$this->table} WHERE email = ? AND status = 'active'");
+            $stmt->execute([$email]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Get user by email error: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+
+    
+    private function logPasswordChange($userId) {
+        try {
+            $stmt = $this->conn->prepare("
+                INSERT INTO password_change_log (user_id, changed_at, ip_address) 
+                VALUES (?, NOW(), ?)
+            ");
+            $stmt->execute([$userId, $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']);
+        } catch (Exception $e) {
+            error_log("Password change logging error: " . $e->getMessage());
         }
     }
     

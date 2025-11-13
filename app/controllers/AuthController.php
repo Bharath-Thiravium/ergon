@@ -37,9 +37,26 @@ class AuthController extends Controller {
         
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
+        $clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
         
         if (empty($email) || empty($password)) {
             $this->json(['error' => 'Email and password are required'], 400);
+            return;
+        }
+        
+        require_once __DIR__ . '/../services/SecurityService.php';
+        $securityService = new SecurityService();
+        
+        // Check rate limiting
+        if (!$securityService->checkRateLimit($clientIp, 'login')) {
+            $this->json(['error' => 'Too many login attempts. Please try again later.'], 429);
+            return;
+        }
+        
+        // Check account lockout
+        $lockoutStatus = $securityService->checkAccountLockout($email);
+        if ($lockoutStatus['locked']) {
+            $this->json(['error' => $lockoutStatus['message']], 423);
             return;
         }
         
@@ -47,6 +64,10 @@ class AuthController extends Controller {
             $user = $this->userModel->authenticate($email, $password);
             
             if ($user) {
+                // Record successful login
+                $securityService->recordLoginAttempt($email, true);
+                $securityService->logAttempt($clientIp, 'login', true);
+                
                 if (session_status() === PHP_SESSION_NONE) {
                     session_start();
                 }
@@ -59,14 +80,8 @@ class AuthController extends Controller {
                 $_SESSION['login_time'] = time();
                 $_SESSION['last_activity'] = time();
                 
-                error_log('Login successful - Session data set: ' . json_encode([
-                    'user_id' => $user['id'],
-                    'role' => $user['role'],
-                    'login_time' => $_SESSION['login_time']
-                ]));
-            
-            $redirectUrl = $this->getRedirectUrl($user['role']);
-            
+                $redirectUrl = $this->getRedirectUrl($user['role']);
+                
                 $this->json([
                     'success' => true,
                     'message' => 'Login successful',
@@ -79,10 +94,21 @@ class AuthController extends Controller {
                     'redirect' => $redirectUrl
                 ]);
             } else {
-                $this->json(['error' => 'Invalid email or password'], 401);
+                // Record failed login
+                $securityService->recordLoginAttempt($email, false);
+                $securityService->logAttempt($clientIp, 'login', false);
+                
+                $remainingAttempts = $lockoutStatus['remaining_attempts'] - 1;
+                $message = 'Invalid email or password';
+                if ($remainingAttempts <= 2 && $remainingAttempts > 0) {
+                    $message .= ". {$remainingAttempts} attempts remaining before account lockout.";
+                }
+                
+                $this->json(['error' => $message], 401);
             }
         } catch (Exception $e) {
             error_log('Login error: ' . $e->getMessage());
+            $securityService->logAttempt($clientIp, 'login', false);
             $this->json(['error' => 'Login failed. Please try again.'], 500);
         }
     }
@@ -119,8 +145,10 @@ class AuthController extends Controller {
                 return;
             }
             
-            if (strlen($newPassword) < 6) {
-                $this->json(['error' => 'Password must be at least 6 characters'], 400);
+            // Enhanced password validation
+            $passwordErrors = $this->validatePassword($newPassword);
+            if (!empty($passwordErrors)) {
+                $this->json(['error' => implode(', ', $passwordErrors)], 400);
                 return;
             }
             
@@ -132,6 +160,70 @@ class AuthController extends Controller {
         } else {
             $this->view('auth/reset-password');
         }
+    }
+    
+    public function forgotPassword() {
+        if ($this->isPost()) {
+            $email = trim($_POST['email'] ?? '');
+            $clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            
+            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $this->json(['error' => 'Valid email address is required'], 400);
+                return;
+            }
+            
+            require_once __DIR__ . '/../services/SecurityService.php';
+            $securityService = new SecurityService();
+            
+            // Check rate limiting for password reset requests
+            if (!$securityService->checkRateLimit($clientIp, 'password_reset')) {
+                $this->json(['error' => 'Too many password reset requests. Please try again later.'], 429);
+                return;
+            }
+            
+            $securityService->logAttempt($clientIp, 'password_reset', true);
+            
+            // Always return success to prevent email enumeration
+            $this->json([
+                'success' => true, 
+                'message' => 'If an account with this email exists, you will receive password reset instructions shortly.'
+            ]);
+            
+            // Process reset and send email
+            $resetToken = $this->userModel->initiatePasswordReset($email);
+            if ($resetToken) {
+                require_once __DIR__ . '/../services/EmailService.php';
+                $emailService = new EmailService();
+                $user = $this->userModel->getUserByEmail($email);
+                if ($user) {
+                    $emailService->sendPasswordResetEmail($email, $user['name'], $resetToken);
+                }
+            }
+        } else {
+            $this->view('auth/forgot-password');
+        }
+    }
+    
+    private function validatePassword($password) {
+        $errors = [];
+        
+        if (strlen($password) < 8) {
+            $errors[] = 'Password must be at least 8 characters';
+        }
+        if (!preg_match('/[A-Z]/', $password)) {
+            $errors[] = 'Password must contain at least one uppercase letter';
+        }
+        if (!preg_match('/[a-z]/', $password)) {
+            $errors[] = 'Password must contain at least one lowercase letter';
+        }
+        if (!preg_match('/[0-9]/', $password)) {
+            $errors[] = 'Password must contain at least one number';
+        }
+        if (!preg_match('/[^A-Za-z0-9]/', $password)) {
+            $errors[] = 'Password must contain at least one special character';
+        }
+        
+        return $errors;
     }
     
     private function getRedirectUrl($role) {
