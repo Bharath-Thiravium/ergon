@@ -2,6 +2,11 @@
 $title = 'Tasks';
 $active_page = 'tasks';
 ob_start();
+?>
+
+
+
+<?php
 
 // Error handling: Ensure $tasks is an array
 if (!is_array($tasks)) {
@@ -116,13 +121,6 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                             <?php 
                             $progress = $task['progress'] ?? 0;
                             $status = $task['status'] ?? 'assigned';
-                            $progressClass = match(true) {
-                                $progress >= 100 => 'progress--completed',
-                                $progress >= 75 => 'progress--high',
-                                $progress >= 50 => 'progress--medium',
-                                $progress >= 25 => 'progress--low',
-                                default => 'progress--start'
-                            };
                             $statusIcon = match($status) {
                                 'completed' => '✅',
                                 'in_progress' => '⚡',
@@ -130,15 +128,13 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                                 default => '📋'
                             };
                             ?>
-                            <div class="progress-container <?= $progressClass ?>">
-                                <div class="progress-visual">
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" style="width: <?= $progress ?>%"></div>
-                                    </div>
-                                    <div class="progress-info">
-                                        <span class="progress-percentage"><?= $progress ?>%</span>
-                                        <span class="progress-status"><?= $statusIcon ?> <?= ucfirst(str_replace('_', ' ', $status)) ?></span>
-                                    </div>
+                            <div class="progress-container" data-task-id="<?= $task['id'] ?>">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: <?= $progress ?>%; background: <?= $progress >= 100 ? '#10b981' : ($progress >= 75 ? '#8b5cf6' : ($progress >= 50 ? '#3b82f6' : ($progress >= 25 ? '#f59e0b' : '#e2e8f0'))) ?>"></div>
+                                </div>
+                                <div class="progress-info">
+                                    <span class="progress-percentage"><?= $progress ?>%</span>
+                                    <span class="progress-status"><?= $statusIcon ?> <?= ucfirst(str_replace('_', ' ', $status)) ?></span>
                                 </div>
                             </div>
                         </td>
@@ -152,18 +148,18 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                         </td>
                         <td>
                             <div class="btn-group">
-                                <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="btn-icon btn-icon--view" title="View Details">
+                                <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="btn-icon btn-icon--view" title="View Task Details">
                                     👁️
                                 </a>
                                 <?php if ($task['status'] !== 'completed'): ?>
-                                <button onclick="updateTaskStatus(<?= $task['id'] ?>, '<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>', <?= $task['progress'] ?? 0 ?>)" class="btn-icon btn-icon--status" title="Update Progress">
+                                <button onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>, '<?= addslashes($task['status'] ?? 'assigned') ?>')" class="btn-icon btn-icon--status" title="Update Progress & Status">
                                     📊
                                 </button>
                                 <?php endif; ?>
-                                <a href="/ergon/tasks/edit/<?= $task['id'] ?>" class="btn-icon btn-icon--edit" title="Edit Task">
+                                <a href="/ergon/tasks/edit/<?= $task['id'] ?>" class="btn-icon btn-icon--edit" title="Edit Task Details">
                                     ✏️
                                 </a>
-                                <button onclick="deleteRecord('tasks', <?= $task['id'] ?>, '<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>')" class="btn-icon btn-icon--delete" title="Delete Task">
+                                <button onclick="deleteRecord('tasks', <?= $task['id'] ?>, '<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>')" class="btn-icon btn-icon--delete" title="Delete Task Permanently">
                                     🗑️
                                 </button>
                             </div>
@@ -177,215 +173,103 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
     </div>
 </div>
 
-<script src="/ergon/assets/js/table-utils.js"></script>
-
-<!-- Task Status Update Modal -->
-<div id="statusModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>📊 Update Task Progress</h3>
-            <button class="modal-close" onclick="closeStatusModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div class="form-group">
-                <label>Task: <strong id="taskTitle"></strong></label>
-            </div>
-            <div class="form-group">
-                <label for="taskProgress">Progress: <span id="progressValue">0%</span></label>
-                <input type="range" id="taskProgress" min="0" max="100" value="0" oninput="updateProgressValue(this.value)" class="progress-slider">
-            </div>
-            <div class="form-group">
-                <label for="taskStatus">Status</label>
-                <select id="taskStatus">
-                    <option value="assigned">📋 Assigned</option>
-                    <option value="in_progress">⚡ In Progress</option>
-                    <option value="completed">✅ Completed</option>
-                    <option value="blocked">🚫 Blocked</option>
-                </select>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button onclick="saveTaskStatus()" class="btn btn--primary">💾 Update</button>
-            <button onclick="closeStatusModal()" class="btn btn--secondary">❌ Cancel</button>
+<div id="progressDialog" class="dialog" style="display: none;">
+    <div class="dialog-content">
+        <h4>Update Progress</h4>
+        <p>Progress: <span id="progressValue">0</span>%</p>
+        <input type="range" id="progressSlider" min="0" max="100" value="0">
+        <div class="dialog-buttons">
+            <button onclick="closeDialog()">Cancel</button>
+            <button onclick="saveProgress()">Save</button>
         </div>
     </div>
 </div>
 
+<script src="/ergon/assets/js/table-utils.js"></script>
+
 <script>
-let currentTaskId = null;
+// Tooltip functionality for action buttons
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltip = document.createElement('div');
+    tooltip.className = 'tooltip';
+    document.body.appendChild(tooltip);
+    
+    document.querySelectorAll('[title]').forEach(element => {
+        element.addEventListener('mouseenter', function(e) {
+            const title = this.getAttribute('title');
+            if (title) {
+                tooltip.textContent = title;
+                tooltip.style.display = 'block';
+                
+                const rect = this.getBoundingClientRect();
+                tooltip.style.left = rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2) + 'px';
+                tooltip.style.top = rect.top - tooltip.offsetHeight - 8 + 'px';
+            }
+        });
+        
+        element.addEventListener('mouseleave', function() {
+            tooltip.style.display = 'none';
+        });
+    });
+});
 
-function updateTaskStatus(taskId, taskTitle, currentProgress) {
+var currentTaskId;
+
+function openProgressModal(taskId, progress, status) {
     currentTaskId = taskId;
-    document.getElementById('taskTitle').textContent = taskTitle;
-    document.getElementById('taskProgress').value = currentProgress || 0;
-    document.getElementById('progressValue').textContent = (currentProgress || 0) + '%';
     
-    // Auto-set status based on progress
-    const statusSelect = document.getElementById('taskStatus');
-    if (currentProgress >= 100) {
-        statusSelect.value = 'completed';
-    } else if (currentProgress > 0) {
-        statusSelect.value = 'in_progress';
-    } else {
-        statusSelect.value = 'assigned';
-    }
+    var container = document.querySelector('[data-task-id="' + taskId + '"]');
+    var currentProgress = container ? container.querySelector('.progress-percentage').textContent.replace('%', '') : progress;
     
-    document.getElementById('statusModal').style.display = 'flex';
+    document.getElementById('progressSlider').value = currentProgress;
+    document.getElementById('progressValue').textContent = currentProgress;
+    document.getElementById('progressDialog').style.display = 'flex';
 }
 
-function updateProgressValue(value) {
-    document.getElementById('progressValue').textContent = value + '%';
-    
-    // Auto-update status based on progress
-    const statusSelect = document.getElementById('taskStatus');
-    if (value >= 100) {
-        statusSelect.value = 'completed';
-    } else if (value > 0) {
-        statusSelect.value = 'in_progress';
-    } else {
-        statusSelect.value = 'assigned';
-    }
+function closeDialog() {
+    document.getElementById('progressDialog').style.display = 'none';
 }
 
-function saveTaskStatus() {
-    const progress = document.getElementById('taskProgress').value;
-    const status = document.getElementById('taskStatus').value;
+function saveProgress() {
+    var progress = document.getElementById('progressSlider').value;
+    var status = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'assigned';
     
     fetch('/ergon/tasks/update-status', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            task_id: currentTaskId,
-            progress: progress,
-            status: status
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: currentTaskId, progress: progress, status: status })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            location.reload();
+            var container = document.querySelector('[data-task-id="' + currentTaskId + '"]');
+            if (container) {
+                var fill = container.querySelector('.progress-fill');
+                var percentage = container.querySelector('.progress-percentage');
+                var statusEl = container.querySelector('.progress-status');
+                
+                fill.style.width = progress + '%';
+                fill.style.background = progress >= 100 ? '#10b981' : (progress >= 75 ? '#8b5cf6' : (progress >= 50 ? '#3b82f6' : (progress >= 25 ? '#f59e0b' : '#e2e8f0')));
+                percentage.textContent = progress + '%';
+                
+                var icon = status === 'completed' ? '✅' : status === 'in_progress' ? '⚡' : '📋';
+                statusEl.textContent = icon + ' ' + status.replace('_', ' ');
+            }
+            closeDialog();
         } else {
-            alert('Error updating task: ' + (data.message || 'Unknown error'));
+            alert('Error updating task');
         }
     })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error updating task status');
-    });
+    .catch(() => alert('Error updating task'));
 }
 
-function closeStatusModal() {
-    document.getElementById('statusModal').style.display = 'none';
-    currentTaskId = null;
+document.getElementById('progressSlider').oninput = function() {
+    document.getElementById('progressValue').textContent = this.value;
 }
-
-// Close modal when clicking outside
-document.getElementById('statusModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeStatusModal();
-    }
-});
 </script>
 
 <style>
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
 
-.modal-content {
-    background: var(--bg-primary);
-    border-radius: 12px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.modal-header h3 {
-    margin: 0;
-    color: var(--primary);
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--text-secondary);
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-.modal-footer {
-    display: flex;
-    gap: 1rem;
-    padding: 1.5rem;
-    border-top: 1px solid var(--border-color);
-    justify-content: flex-end;
-}
-
-.progress-slider {
-    width: 100%;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--bg-secondary);
-    outline: none;
-    margin-top: 0.5rem;
-}
-
-.progress-slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--primary);
-    cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.progress-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--primary);
-    cursor: pointer;
-    border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.btn-icon--status {
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-    transition: all 0.2s ease;
-}
-
-.btn-icon--status:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--primary-light);
-    transform: translateY(-1px);
-}
 
 .progress-container {
     width: 140px;
@@ -393,50 +277,20 @@ document.getElementById('statusModal').addEventListener('click', function(e) {
     border-radius: 8px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-}
-
-.progress-container:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.progress-visual {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
 }
 
 .progress-bar {
-    position: relative;
     width: 100%;
     height: 8px;
-    background: var(--bg-tertiary);
+    background: #e5e7eb;
     border-radius: 4px;
     overflow: hidden;
+    margin-bottom: 0.25rem;
 }
 
 .progress-fill {
     height: 100%;
-    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 4px;
-    position: relative;
-}
-
-.progress-fill::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-    animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
 }
 
 .progress-info {
@@ -454,47 +308,57 @@ document.getElementById('statusModal').addEventListener('click', function(e) {
 .progress-status {
     font-size: 0.7rem;
     color: var(--text-secondary);
+}
+
+.dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    justify-content: center;
+    z-index: 1000;
 }
 
-/* Progress state colors */
-.progress--start .progress-fill {
-    background: linear-gradient(90deg, #e2e8f0, #cbd5e1);
+.dialog-content {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    width: 300px;
+    text-align: center;
 }
 
-.progress--low .progress-fill {
-    background: linear-gradient(90deg, #fbbf24, #f59e0b);
+.dialog-content h4 {
+    margin: 0 0 1rem 0;
 }
 
-.progress--medium .progress-fill {
-    background: linear-gradient(90deg, #3b82f6, #2563eb);
+.dialog-content input[type="range"] {
+    width: 100%;
+    margin: 1rem 0;
 }
 
-.progress--high .progress-fill {
-    background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+.dialog-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 1rem;
 }
 
-.progress--completed .progress-fill {
-    background: linear-gradient(90deg, #10b981, #059669);
+.dialog-buttons button {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
 }
 
-.progress--completed {
-    border-color: #10b981;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), var(--bg-secondary));
-}
-
-.progress--high {
-    border-color: #8b5cf6;
-}
-
-.progress--medium {
+.dialog-buttons button:last-child {
+    background: #3b82f6;
+    color: white;
     border-color: #3b82f6;
-}
-
-.progress--low {
-    border-color: #f59e0b;
 }
 
 .assignment-info {
@@ -517,6 +381,130 @@ document.getElementById('statusModal').addEventListener('click', function(e) {
 .priority-badge .badge {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-overlay--hidden {
+    display: none;
+}
+
+.modal-content {
+    background: var(--bg-primary);
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90vw;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h4 {
+    margin: 0;
+    color: var(--primary);
+}
+
+.modal-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.progress-control label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.progress-slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--bg-secondary);
+    outline: none;
+}
+
+.progress-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+}
+
+.status-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.status-assigned { background: #fff3cd; color: #856404; }
+.status-in_progress { background: #d1ecf1; color: #0c5460; }
+.status-completed { background: #d4edda; color: #155724; }
+.status-blocked { background: #f8d7da; color: #721c24; }
+
+.block-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 10000;
+    pointer-events: none;
+    display: none;
 }
 </style>
 
