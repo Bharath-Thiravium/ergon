@@ -42,10 +42,15 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
 
-    <link rel="preload" href="/ergon/assets/css/ergon.css?v=<?= time() ?>" as="style">
+    <!-- Bootstrap Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
+    
+    <!-- Main CSS -->
     <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
+    
+    <!-- JavaScript -->
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
+    <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
 </head>
 <body data-theme="light" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
     <header class="main-header">
