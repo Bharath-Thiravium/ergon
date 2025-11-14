@@ -4,63 +4,43 @@ $active_page = 'users';
 ob_start();
 ?>
 
-<div class="compact-header">
-    <h1>👥 Edit User</h1>
-    <div class="header-actions">
-        <a href="/ergon/users" class="btn-back">← Back</a>
-    </div>
+<div class="page-header">
+    <h1>Edit User</h1>
+    <a href="<?= ($_SESSION['role'] ?? '') === 'owner' ? '/ergon/admin/management' : '/ergon/users' ?>" class="btn btn--secondary">Back to Users</a>
 </div>
 
-<div class="compact-form">
-    <form method="POST" enctype="multipart/form-data">
-        <div class="form-section">
-            <h3>👤 Basic Information</h3>
-            <div class="form-grid">
+<div class="card">
+    <div class="card__header">
+        <h2 class="card__title">User Information</h2>
+    </div>
+    <div class="card__body">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="employee_id">🆔 Employee ID</label>
-                    <input type="text" name="employee_id" id="employee_id" value="<?= htmlspecialchars($user['employee_id'] ?? '') ?>" readonly>
+                    <label class="form-label">Employee ID</label>
+                    <input type="text" name="employee_id" class="form-control" value="<?= htmlspecialchars($user['employee_id'] ?? '') ?>" readonly>
                 </div>
                 <div class="form-group">
-                    <label for="name">📝 Full Name *</label>
-                    <input type="text" name="name" id="name" value="<?= htmlspecialchars($user['name'] ?? '') ?>" required>
-                </div>
-                <div class="form-group">
-                    <label for="email">📧 Email Address *</label>
-                    <input type="email" name="email" id="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($user['name'] ?? '') ?>" required>
                 </div>
             </div>
             
-            <div class="form-grid">
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="phone">📱 Phone Number</label>
-                    <input type="tel" name="phone" id="phone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>">
+                    <label class="form-label">Email Address *</label>
+                    <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
                 </div>
                 <div class="form-group">
-                    <label for="role">🔑 Role *</label>
-                    <select name="role" id="role" required>
-                        <option value="user" <?= ($user['role'] ?? '') === 'user' ? 'selected' : '' ?>>User</option>
-                        <option value="admin" <?= ($user['role'] ?? '') === 'admin' ? 'selected' : '' ?>>Admin</option>
-                        <?php if (($_SESSION['role'] ?? '') === 'owner'): ?>
-                        <option value="owner" <?= ($user['role'] ?? '') === 'owner' ? 'selected' : '' ?>>Owner</option>
-                        <?php endif; ?>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="status">🟢 Status *</label>
-                    <select name="status" id="status" required>
-                        <option value="active" <?= ($user['status'] ?? '') === 'active' ? 'selected' : '' ?>>Active</option>
-                        <option value="inactive" <?= ($user['status'] ?? '') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
-                    </select>
+                    <label class="form-label">Phone Number</label>
+                    <input type="tel" name="phone" class="form-control" value="<?= htmlspecialchars($user['phone'] ?? '') ?>">
                 </div>
             </div>
-        </div>
-        
-        <div class="form-section">
-            <h3>🏢 Work Information</h3>
-            <div class="form-grid">
+            
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="department_id">🏢 Department</label>
-                    <select name="department_id" id="department_id">
+                    <label class="form-label">Department</label>
+                    <select name="department_id" class="form-control">
                         <option value="">Select Department</option>
                         <?php foreach ($departments ?? [] as $dept): ?>
                         <option value="<?= $dept['id'] ?>" <?= ($user['department_id'] ?? '') == $dept['id'] ? 'selected' : '' ?>>
@@ -70,27 +50,50 @@ ob_start();
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="designation">💼 Designation</label>
-                    <input type="text" name="designation" id="designation" value="<?= htmlspecialchars($user['designation'] ?? '') ?>">
-                </div>
-                <div class="form-group">
-                    <label for="joining_date">📅 Joining Date</label>
-                    <input type="date" name="joining_date" id="joining_date" value="<?= htmlspecialchars($user['joining_date'] ?? '') ?>">
+                    <label class="form-label">Role *</label>
+                    <select name="role" class="form-control" required>
+                        <option value="user" <?= ($user['role'] ?? '') === 'user' ? 'selected' : '' ?>>User</option>
+                        <option value="admin" <?= ($user['role'] ?? '') === 'admin' ? 'selected' : '' ?>>Admin</option>
+                        <?php if (($_SESSION['role'] ?? '') === 'owner'): ?>
+                        <option value="owner" <?= ($user['role'] ?? '') === 'owner' ? 'selected' : '' ?>>Owner</option>
+                        <?php endif; ?>
+                    </select>
                 </div>
             </div>
             
-            <div class="form-grid">
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="salary">💰 Salary</label>
-                    <input type="number" name="salary" id="salary" value="<?= htmlspecialchars($user['salary'] ?? '') ?>" step="0.01">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-control">
+                        <option value="active" <?= ($user['status'] ?? '') === 'active' ? 'selected' : '' ?>>Active</option>
+                        <option value="inactive" <?= ($user['status'] ?? '') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label for="date_of_birth">🎂 Date of Birth</label>
-                    <input type="date" name="date_of_birth" id="date_of_birth" value="<?= htmlspecialchars($user['date_of_birth'] ?? '') ?>">
+                    <label class="form-label">Designation</label>
+                    <input type="text" name="designation" class="form-control" value="<?= htmlspecialchars($user['designation'] ?? '') ?>">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Joining Date</label>
+                    <input type="date" name="joining_date" class="form-control" value="<?= htmlspecialchars($user['joining_date'] ?? '') ?>">
                 </div>
                 <div class="form-group">
-                    <label for="gender">🚪 Gender</label>
-                    <select name="gender" id="gender">
+                    <label class="form-label">Salary</label>
+                    <input type="number" name="salary" class="form-control" value="<?= htmlspecialchars($user['salary'] ?? '') ?>" step="0.01">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Date of Birth</label>
+                    <input type="date" name="date_of_birth" class="form-control" value="<?= htmlspecialchars($user['date_of_birth'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Gender</label>
+                    <select name="gender" class="form-control">
                         <option value="">Select Gender</option>
                         <option value="male" <?= ($user['gender'] ?? '') === 'male' ? 'selected' : '' ?>>Male</option>
                         <option value="female" <?= ($user['gender'] ?? '') === 'female' ? 'selected' : '' ?>>Female</option>
@@ -98,28 +101,23 @@ ob_start();
                     </select>
                 </div>
             </div>
-        </div>
-        
-        <div class="form-section">
-            <h3>📍 Contact Information</h3>
+            
             <div class="form-group">
-                <label for="address">🏠 Address</label>
-                <textarea name="address" id="address" rows="3"><?= htmlspecialchars($user['address'] ?? '') ?></textarea>
+                <label class="form-label">Address</label>
+                <textarea name="address" class="form-control" rows="3"><?= htmlspecialchars($user['address'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
-                <label for="emergency_contact">🆘 Emergency Contact</label>
-                <input type="text" name="emergency_contact" id="emergency_contact" value="<?= htmlspecialchars($user['emergency_contact'] ?? '') ?>">
+                <label class="form-label">Emergency Contact</label>
+                <input type="text" name="emergency_contact" class="form-control" value="<?= htmlspecialchars($user['emergency_contact'] ?? '') ?>">
             </div>
-        </div>
-        
-        <div class="form-actions">
-            <button type="submit" class="btn-primary">
-                ✨ Update User
-            </button>
-            <a href="/ergon/users" class="btn-secondary">❌ Cancel</a>
-        </div>
-    </form>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn--primary">✨ Update User</button>
+                <a href="<?= ($_SESSION['role'] ?? '') === 'owner' ? '/ergon/admin/management' : '/ergon/users' ?>" class="btn btn--secondary">❌ Cancel</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 

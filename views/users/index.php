@@ -111,6 +111,9 @@ ob_start();
                                     <a href="/ergon/users/view/<?= $user['id'] ?>" class="modern-btn modern-btn--primary modern-tooltip" data-tooltip="View Details">
                                         👁️
                                     </a>
+                                    <a href="/ergon/users/edit/<?= $user['id'] ?>" class="modern-btn modern-btn--success modern-tooltip" data-tooltip="Edit User">
+                                        ✏️
+                                    </a>
                                     <button class="modern-btn modern-btn--warning modern-tooltip reset-password-btn" data-tooltip="Reset Password" data-user-id="<?= $user['id'] ?>" data-user-name="<?= htmlspecialchars($user['name']) ?>">
                                         🔑
                                     </button>

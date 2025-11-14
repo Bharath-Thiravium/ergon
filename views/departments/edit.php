@@ -5,57 +5,55 @@ $active_page = 'departments';
 ob_start();
 ?>
 
-<div class="compact-header">
-    <h1>🏢 Edit Department</h1>
-    <div class="header-actions">
-        <a href="/ergon/departments" class="btn-back">← Back</a>
-    </div>
+<div class="page-header">
+    <h1>Edit Department</h1>
+    <a href="/ergon/departments" class="btn btn--secondary">Back to Departments</a>
 </div>
 
-<div class="compact-form">
-    <form method="POST">
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
-        
-        <div class="form-section">
-            <div class="form-grid">
-                <div class="form-group span-2">
-                    <label for="name">🏢 Department Name *</label>
-                    <input type="text" name="name" id="name" value="<?= htmlspecialchars($data['department']['name']) ?>" required>
+<div class="card">
+    <div class="card__header">
+        <h2 class="card__title">Department Details</h2>
+    </div>
+    <div class="card__body">
+        <form method="POST" class="auth-form">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generateCSRFToken()) ?>">
+            <div class="form-group">
+                <label class="form-label">Department Name *</label>
+                <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($data['department']['name']) ?>" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-control" rows="4"><?= htmlspecialchars($data['department']['description']) ?></textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Department Head</label>
+                    <select name="head_id" class="form-control">
+                        <option value="">Select Department Head</option>
+                        <?php foreach ($data['users'] as $user): ?>
+                        <option value="<?= $user['id'] ?>" <?= $data['department']['head_id'] == $user['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($user['name']) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label for="status">🟢 Status</label>
-                    <select name="status" id="status">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-control">
                         <option value="active" <?= $data['department']['status'] === 'active' ? 'selected' : '' ?>>Active</option>
                         <option value="inactive" <?= $data['department']['status'] === 'inactive' ? 'selected' : '' ?>>Inactive</option>
                     </select>
                 </div>
             </div>
             
-            <div class="form-group">
-                <label for="description">📝 Description</label>
-                <textarea name="description" id="description" rows="4"><?= htmlspecialchars($data['department']['description']) ?></textarea>
+            <div class="form-actions">
+                <button type="submit" class="btn btn--primary">✨ Update Department</button>
+                <a href="/ergon/departments" class="btn btn--secondary">❌ Cancel</a>
             </div>
-            
-            <div class="form-group">
-                <label for="head_id">👥 Department Head</label>
-                <select name="head_id" id="head_id">
-                    <option value="">Select Department Head</option>
-                    <?php foreach ($data['users'] as $user): ?>
-                    <option value="<?= $user['id'] ?>" <?= $data['department']['head_id'] == $user['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($user['name']) ?>
-                    </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </div>
-        
-        <div class="form-actions">
-            <button type="submit" class="btn-primary">
-                ✨ Update Department
-            </button>
-            <a href="/ergon/departments" class="btn-secondary">❌ Cancel</a>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
 
 <?php
