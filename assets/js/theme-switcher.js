@@ -1,27 +1,61 @@
-// Theme Switcher - Minimal
 class ThemeSwitcher {
     constructor() {
+        this.currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
         this.init();
     }
     
     init() {
-        const theme = localStorage.getItem('theme') || 'light';
-        this.setTheme(theme);
+        this.updateToggleButton(this.currentTheme);
+        this.bindEvents();
     }
     
-    setTheme(theme) {
+    applyTheme(theme) {
+        this.currentTheme = theme;
+        
+        // Apply theme to root elements
         document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
+        document.documentElement.className = 'theme-' + theme;
+        document.body.setAttribute('data-theme', theme);
+        
+
+        
+        // Update toggle button icon
+        this.updateToggleButton(theme);
+        
+        // Save preference
+        localStorage.setItem('ergon_theme', theme);
     }
     
-    toggle() {
-        const current = document.documentElement.getAttribute('data-theme') || 'light';
-        const newTheme = current === 'light' ? 'dark' : 'light';
-        this.setTheme(newTheme);
+    updateToggleButton(theme) {
+        const toggleBtn = document.getElementById('theme-toggle');
+        if (toggleBtn) {
+            const icon = toggleBtn.querySelector('i');
+            if (icon) {
+                icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+            }
+        }
+    }
+    
+    toggleTheme() {
+        const newTheme = this.currentTheme === 'light' ? 'dark' : 'light';
+        this.applyTheme(newTheme);
+    }
+    
+    bindEvents() {
+        const toggleBtn = document.getElementById('theme-toggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.toggleTheme();
+            });
+        }
     }
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        window.themeSwitcher = new ThemeSwitcher();
+    });
+} else {
     window.themeSwitcher = new ThemeSwitcher();
-});
+}

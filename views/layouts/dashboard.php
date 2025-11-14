@@ -41,18 +41,26 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
+    
+    <!-- Instant theme application - prevents flashing -->
+    <script src="/ergon/assets/js/theme-preload.js"></script>
 
     <!-- Bootstrap Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
     
     <!-- Main CSS -->
     <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/admin-header-fix.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/theme-enhanced.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/instant-theme.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/hover-fix.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/force-dark-theme.css?v=<?= time() ?>" rel="stylesheet">
     
     <!-- JavaScript -->
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
 </head>
-<body data-theme="light" data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
+<body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
     <header class="main-header">
         <div class="header__top">
             <div class="header__brand">
