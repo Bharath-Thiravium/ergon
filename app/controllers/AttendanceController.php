@@ -210,8 +210,17 @@ class AttendanceController extends Controller {
                         // Continue with clock in if check fails
                     }
                     
-                    // Clock in
-                    $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, created_at) VALUES (?, NOW(), NOW())");
+                    // Clock in - handle both column name variations
+                    $stmt = $db->query("SHOW COLUMNS FROM attendance");
+                    $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                    
+                    if (in_array('check_in', $columns)) {
+                        $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, created_at) VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+                    } elseif (in_array('clock_in', $columns)) {
+                        $stmt = $db->prepare("INSERT INTO attendance (user_id, clock_in, date, created_at) VALUES (?, CURRENT_TIME, CURDATE(), CURRENT_TIMESTAMP)");
+                    } else {
+                        $stmt = $db->prepare("INSERT INTO attendance (user_id, created_at) VALUES (?, CURRENT_TIMESTAMP)");
+                    }
                     $result = $stmt->execute([$userId]);
                     
                     if ($result) {
@@ -239,42 +248,23 @@ class AttendanceController extends Controller {
                     }
                     
                 } elseif ($type === 'out') {
-                    // Find today's clock in record - handle missing columns gracefully
-                    try {
-                        $stmt = $db->query("SHOW COLUMNS FROM attendance");
-                        $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
-                        
-                        if (in_array('check_in', $columns)) {
-                            $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND (check_out IS NULL OR check_out = '')");
-                        } else {
-                            // Fallback to created_at if check_in doesn't exist
-                            $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(created_at) = CURDATE()");
-                        }
-                        $stmt->execute([$userId]);
-                        $attendance = $stmt->fetch();
-                        
-                        if (!$attendance) {
-                            echo json_encode(['success' => false, 'error' => 'No clock in record found for today']);
-                            exit;
-                        }
-                        
-                        // Clock out - use appropriate column
-                        if (in_array('check_out', $columns)) {
-                            $stmt = $db->prepare("UPDATE attendance SET check_out = NOW(), updated_at = NOW() WHERE id = ?");
-                        } else {
-                            // Fallback to updating status if check_out doesn't exist
-                            $stmt = $db->prepare("UPDATE attendance SET status = 'completed', updated_at = NOW() WHERE id = ?");
-                        }
-                        $result = $stmt->execute([$attendance['id']]);
-                        
-                        if ($result) {
-                            echo json_encode(['success' => true, 'message' => 'Clocked out successfully']);
-                        } else {
-                            echo json_encode(['success' => false, 'error' => 'Failed to clock out']);
-                        }
-                    } catch (Exception $e) {
-                        error_log('Clock out error: ' . $e->getMessage());
-                        echo json_encode(['success' => false, 'error' => 'Clock out failed: ' . $e->getMessage()]);
+                    // Find today's attendance record
+                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND check_out IS NULL");
+                    $stmt->execute([$userId]);
+                    $attendance = $stmt->fetch();
+                    
+                    if (!$attendance) {
+                        echo json_encode(['success' => false, 'error' => 'No clock in record found for today']);
+                        exit;
+                    }
+                    
+                    $stmt = $db->prepare("UPDATE attendance SET check_out = NOW() WHERE id = ?");
+                    $result = $stmt->execute([$attendance['id']]);
+                    
+                    if ($result) {
+                        echo json_encode(['success' => true, 'message' => 'Clocked out successfully']);
+                    } else {
+                        echo json_encode(['success' => false, 'error' => 'Failed to clock out']);
                     }
                     
                 } else {
@@ -411,6 +401,10 @@ class AttendanceController extends Controller {
                 INDEX idx_user_id (user_id),
                 INDEX idx_check_in_date (check_in)
             )");
+            
+            // Clean any empty string values that cause DATETIME errors
+            $db->exec("UPDATE attendance SET check_out = NULL WHERE check_out = '' OR check_out = '0000-00-00 00:00:00'");
+            
         } catch (Exception $e) {
             error_log('ensureAttendanceTable error: ' . $e->getMessage());
         }
