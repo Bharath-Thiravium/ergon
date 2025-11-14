@@ -12,84 +12,20 @@ class UnifiedWorkflowController extends Controller {
         $date = $date ?? date('Y-m-d');
         
         try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
+            require_once __DIR__ . '/../models/DailyPlanner.php';
+            $planner = new DailyPlanner();
             
-            // Get tasks planned for this date from daily_planner table
-            $plannedTasks = [];
-            try {
-                $stmt = $db->prepare("
-                    SELECT dp.*, t.title as task_title, t.priority, t.progress as task_progress
-                    FROM daily_planner dp
-                    LEFT JOIN tasks t ON dp.task_id = t.id
-                    WHERE dp.user_id = ? AND dp.date = ?
-                    ORDER BY dp.priority_order
-                ");
-                $stmt->execute([$_SESSION['user_id'], $date]);
-                $plannedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (Exception $e) {
-                error_log('Daily planner table query failed: ' . $e->getMessage());
-            }
+            $plannedTasks = $planner->getTasksForDate($_SESSION['user_id'], $date);
+            $dailyStats = $planner->getDailyStats($_SESSION['user_id'], $date);
             
-            // If no planned tasks, get today's allocated tasks from tasks table
-            if (empty($plannedTasks)) {
-                try {
-                    $stmt = $db->prepare("
-                        SELECT 
-                            t.id,
-                            t.title,
-                            t.description,
-                            t.priority,
-                            t.status,
-                            t.progress as task_progress,
-                            t.deadline,
-                            u.name as assigned_user,
-                            'allocated' as completion_status
-                        FROM tasks t
-                        LEFT JOIN users u ON t.assigned_to = u.id
-                        WHERE t.assigned_to = ? 
-                        AND (DATE(t.deadline) = ? OR DATE(t.created_at) = ? OR t.status IN ('assigned', 'in_progress'))
-                        ORDER BY 
-                            CASE t.priority 
-                                WHEN 'high' THEN 1 
-                                WHEN 'medium' THEN 2 
-                                ELSE 3 
-                            END,
-                            t.created_at DESC
-                        LIMIT 10
-                    ");
-                    $stmt->execute([$_SESSION['user_id'], $date, $date]);
-                    $allocatedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    
-                    // Convert allocated tasks to planner format
-                    foreach ($allocatedTasks as $task) {
-                        $plannedTasks[] = [
-                            'id' => 'task_' . $task['id'],
-                            'task_id' => $task['id'],
-                            'title' => $task['title'],
-                            'description' => $task['description'],
-                            'priority' => $task['priority'],
-                            'task_progress' => $task['task_progress'],
-                            'completion_status' => $task['status'] === 'completed' ? 'completed' : 'not_started',
-                            'planned_start_time' => null,
-                            'planned_duration' => null,
-                            'notes' => '',
-                            'task_title' => $task['title'],
-                            'source' => 'tasks_table'
-                        ];
-                    }
-                } catch (Exception $e) {
-                    error_log('Tasks table query failed: ' . $e->getMessage());
-                }
-            }
-            
-            // Add dummy data if still no tasks exist
+            // Add dummy data if no tasks exist for today
             if (empty($plannedTasks) && $date === date('Y-m-d')) {
                 $plannedTasks = $this->getDummyPlannerTasks($date);
             }
             
             $data = [
                 'planned_tasks' => $plannedTasks,
+                'daily_stats' => $dailyStats,
                 'selected_date' => $date,
                 'active_page' => 'daily-planner'
             ];
@@ -97,115 +33,17 @@ class UnifiedWorkflowController extends Controller {
             $this->view('daily_workflow/unified_daily_planner', $data);
         } catch (Exception $e) {
             error_log('Daily planner error: ' . $e->getMessage());
-            $this->view('daily_workflow/unified_daily_planner', ['planned_tasks' => [], 'selected_date' => $date]);
-        }
-    }
-    
-    public function eveningUpdate($date = null) {
-        AuthMiddleware::requireAuth();
-        
-        $date = $date ?? date('Y-m-d');
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            return $this->storeEveningUpdate($date);
-        }
-        
-        try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            
-            // Get today's planned tasks for update
-            $stmt = $db->prepare("
-                SELECT dp.*, t.title as task_title, t.priority
-                FROM daily_planner dp
-                LEFT JOIN tasks t ON dp.task_id = t.id
-                WHERE dp.user_id = ? AND dp.date = ?
-                ORDER BY dp.priority_order
-            ");
-            $stmt->execute([$_SESSION['user_id'], $date]);
-            $todayTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            // Get existing evening update
-            $stmt = $db->prepare("SELECT * FROM evening_updates WHERE user_id = ? AND DATE(created_at) = ?");
-            $stmt->execute([$_SESSION['user_id'], $date]);
-            $existingUpdate = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            // Add dummy data if no tasks exist
-            if (empty($todayTasks) && $date === date('Y-m-d')) {
-                $todayTasks = $this->getDummyEveningTasks($date);
-            }
-            
-            $data = [
-                'today_tasks' => $todayTasks,
-                'existing_update' => $existingUpdate,
-                'selected_date' => $date,
-                'active_page' => 'evening-update'
-            ];
-            
-            $this->view('evening-update/unified_index', $data);
-        } catch (Exception $e) {
-            error_log('Evening update error: ' . $e->getMessage());
-            $this->view('evening-update/unified_index', ['today_tasks' => [], 'selected_date' => $date]);
-        }
-    }
-    
-    private function storeEveningUpdate($date) {
-        try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            
-            // Update task completion status
-            if (isset($_POST['task_updates'])) {
-                foreach ($_POST['task_updates'] as $plannerId => $update) {
-                    $stmt = $db->prepare("UPDATE daily_planner SET completion_status = ?, notes = ? WHERE id = ? AND user_id = ?");
-                    $stmt->execute([
-                        $update['completion_status'],
-                        $update['notes'] ?? '',
-                        $plannerId,
-                        $_SESSION['user_id']
-                    ]);
-                    
-                    // Update task progress if linked
-                    if (!empty($update['task_id']) && isset($update['progress'])) {
-                        $stmt = $db->prepare("UPDATE tasks SET progress = ?, status = ? WHERE id = ?");
-                        $status = $update['progress'] == 100 ? 'completed' : 'in_progress';
-                        $stmt->execute([$update['progress'], $status, $update['task_id']]);
-                    }
-                }
-            }
-            
-            // Store evening update
-            $stmt = $db->prepare("
-                INSERT INTO evening_updates (user_id, title, accomplishments, challenges, tomorrow_plan, overall_productivity, planner_date, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-                ON DUPLICATE KEY UPDATE
-                accomplishments = VALUES(accomplishments),
-                challenges = VALUES(challenges),
-                tomorrow_plan = VALUES(tomorrow_plan),
-                overall_productivity = VALUES(overall_productivity),
-                updated_at = NOW()
-            ");
-            
-            $stmt->execute([
-                $_SESSION['user_id'],
-                $_POST['title'] ?? 'Daily Update',
-                $_POST['accomplishments'] ?? '',
-                $_POST['challenges'] ?? '',
-                $_POST['tomorrow_plan'] ?? '',
-                intval($_POST['overall_productivity'] ?? 0),
-                $date
+            $this->view('daily_workflow/unified_daily_planner', [
+                'planned_tasks' => [], 
+                'daily_stats' => [],
+                'selected_date' => $date
             ]);
-            
-            // Create followups for incomplete tasks
-            $this->createFollowupsFromIncomplete($db, $date);
-            
-            header('Location: /ergon/workflow/evening-update?success=Update saved successfully');
-        } catch (Exception $e) {
-            error_log('Evening update store error: ' . $e->getMessage());
-            header('Location: /ergon/workflow/evening-update?error=Failed to save update');
         }
-        exit;
     }
+    
+
+    
+
     
     public function followups() {
         AuthMiddleware::requireAuth();
@@ -381,32 +219,15 @@ class UnifiedWorkflowController extends Controller {
         }
     }
     
-    public function updateTaskStatus() {
-        // Set JSON header first
-        if (!headers_sent()) {
-            header('Content-Type: application/json');
-        }
-        
+    public function startTask() {
+        header('Content-Type: application/json');
         AuthMiddleware::requireAuth();
         
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            http_response_code(405);
-            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
-            return;
-        }
-        
         $input = json_decode(file_get_contents('php://input'), true);
-        
-        // Log the input for debugging
-        error_log('updateTaskStatus input: ' . print_r($input, true));
-        
         $taskId = $input['task_id'] ?? null;
-        $status = $input['status'] ?? null;
-        $date = $input['date'] ?? date('Y-m-d');
-        $isTasksTable = $input['is_tasks_table'] ?? false;
         
-        if (!$taskId || !$status) {
-            echo json_encode(['success' => false, 'message' => 'Missing required parameters', 'received' => $input]);
+        if (!$taskId) {
+            echo json_encode(['success' => false, 'message' => 'Task ID required']);
             return;
         }
         
@@ -414,36 +235,224 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            if ($isTasksTable) {
-                // Update tasks table directly
-                $taskStatus = $status === 'completed' ? 'completed' : ($status === 'in_progress' ? 'in_progress' : 'assigned');
-                $progress = $status === 'completed' ? 100 : ($status === 'in_progress' ? 50 : 0);
-                
-                $stmt = $db->prepare("UPDATE tasks SET status = ?, progress = ? WHERE id = ? AND assigned_to = ?");
-                $result = $stmt->execute([$taskStatus, $progress, $taskId, $_SESSION['user_id']]);
-                
-                error_log("Updated tasks table: taskId=$taskId, status=$taskStatus, progress=$progress, result=" . ($result ? 'true' : 'false'));
-            } else {
-                // Update daily planner status
-                $stmt = $db->prepare("UPDATE daily_planner SET completion_status = ? WHERE id = ? AND user_id = ?");
-                $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
-                
-                error_log("Updated daily_planner table: taskId=$taskId, status=$status, result=" . ($result ? 'true' : 'false'));
+            // Check if task exists and belongs to user
+            $checkStmt = $db->prepare("SELECT id, assigned_to FROM tasks WHERE id = ?");
+            $checkStmt->execute([$taskId]);
+            $task = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$task) {
+                echo json_encode(['success' => false, 'message' => 'Task not found']);
+                return;
             }
             
+            if ($task['assigned_to'] != $_SESSION['user_id']) {
+                echo json_encode(['success' => false, 'message' => 'Task not assigned to you']);
+                return;
+            }
+            
+            // Update task status
+            $stmt = $db->prepare("UPDATE tasks SET status = 'in_progress' WHERE id = ?");
+            $result = $stmt->execute([$taskId]);
+            
             if ($result) {
-                echo json_encode(['success' => true, 'message' => 'Status updated successfully']);
+                echo json_encode(['success' => true, 'message' => 'Task started successfully']);
             } else {
-                echo json_encode(['success' => false, 'message' => 'No rows affected - check task ID and permissions']);
+                echo json_encode(['success' => false, 'message' => 'Failed to update task']);
             }
         } catch (Exception $e) {
-            error_log('Update task status error: ' . $e->getMessage());
+            error_log('Start task error: ' . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         }
     }
     
-    public function updateTaskStatusDirect() {
-        return $this->updateTaskStatus();
+    public function pauseTask() {
+        header('Content-Type: application/json');
+        AuthMiddleware::requireAuth();
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $taskId = $input['task_id'] ?? null;
+        
+        if (!$taskId) {
+            echo json_encode(['success' => false, 'message' => 'Task ID required']);
+            return;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("UPDATE tasks SET status = 'assigned' WHERE id = ? AND assigned_to = ?");
+            $result = $stmt->execute([$taskId, $_SESSION['user_id']]);
+            
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'Task paused successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to pause task']);
+            }
+        } catch (Exception $e) {
+            error_log('Pause task error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        }
+    }
+    
+    public function resumeTask() {
+        header('Content-Type: application/json');
+        AuthMiddleware::requireAuth();
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $taskId = $input['task_id'] ?? null;
+        
+        if (!$taskId) {
+            echo json_encode(['success' => false, 'message' => 'Task ID required']);
+            return;
+        }
+        
+        try {
+            require_once __DIR__ . '/../models/DailyPlanner.php';
+            $planner = new DailyPlanner();
+            
+            if ($planner->resumeTask($taskId, $_SESSION['user_id'])) {
+                echo json_encode(['success' => true, 'message' => 'Task resumed successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to resume task']);
+            }
+        } catch (Exception $e) {
+            error_log('Resume task error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Error resuming task']);
+        }
+    }
+    
+    public function completeTask() {
+        header('Content-Type: application/json');
+        AuthMiddleware::requireAuth();
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $taskId = $input['task_id'] ?? null;
+        $percentage = $input['percentage'] ?? 100;
+        
+        if (!$taskId) {
+            echo json_encode(['success' => false, 'message' => 'Task ID required']);
+            return;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("UPDATE tasks SET status = 'completed', progress = ? WHERE id = ? AND assigned_to = ?");
+            $result = $stmt->execute([$percentage, $taskId, $_SESSION['user_id']]);
+            
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'Task completed successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to complete task']);
+            }
+        } catch (Exception $e) {
+            error_log('Complete task error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        }
+    }
+    
+    public function postponeTask() {
+        header('Content-Type: application/json');
+        AuthMiddleware::requireAuth();
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $taskId = $input['task_id'] ?? null;
+        $newDate = $input['new_date'] ?? null;
+        
+        if (!$taskId || !$newDate) {
+            echo json_encode(['success' => false, 'message' => 'Task ID and new date required']);
+            return;
+        }
+        
+        try {
+            require_once __DIR__ . '/../models/DailyPlanner.php';
+            $planner = new DailyPlanner();
+            
+            if ($planner->postponeTask($taskId, $_SESSION['user_id'], $newDate)) {
+                echo json_encode(['success' => true, 'message' => 'Task postponed successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to postpone task']);
+            }
+        } catch (Exception $e) {
+            error_log('Postpone task error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Error postponing task']);
+        }
+    }
+    
+    public function getTaskTimer() {
+        header('Content-Type: application/json');
+        AuthMiddleware::requireAuth();
+        
+        $taskId = $_GET['task_id'] ?? null;
+        
+        if (!$taskId) {
+            echo json_encode(['success' => false, 'message' => 'Task ID required']);
+            return;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("
+                SELECT active_seconds, start_time, resume_time, status
+                FROM daily_tasks 
+                WHERE id = ? AND user_id = ?
+            ");
+            $stmt->execute([$taskId, $_SESSION['user_id']]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($task) {
+                $currentActiveTime = 0;
+                if ($task['status'] === 'in_progress') {
+                    $startTime = $task['resume_time'] ?: $task['start_time'];
+                    if ($startTime) {
+                        $currentActiveTime = time() - strtotime($startTime);
+                    }
+                }
+                
+                echo json_encode([
+                    'success' => true,
+                    'active_seconds' => $task['active_seconds'] + $currentActiveTime,
+                    'status' => $task['status']
+                ]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Task not found']);
+            }
+        } catch (Exception $e) {
+            error_log('Get task timer error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Error getting timer']);
+        }
+    }
+    
+    public function updateTaskStatus() {
+        // Legacy method - redirect to appropriate new methods
+        header('Content-Type: application/json');
+        AuthMiddleware::requireAuth();
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $action = $input['action'] ?? $input['status'] ?? null;
+        
+        switch ($action) {
+            case 'start':
+            case 'in_progress':
+                return $this->startTask();
+            case 'pause':
+            case 'paused':
+                return $this->pauseTask();
+            case 'resume':
+                return $this->resumeTask();
+            case 'complete':
+            case 'completed':
+                return $this->completeTask();
+            case 'postpone':
+            case 'postponed':
+                return $this->postponeTask();
+            default:
+                echo json_encode(['success' => false, 'message' => 'Invalid action']);
+        }
     }
     
     public function getTasksForDate() {
@@ -578,46 +587,7 @@ class UnifiedWorkflowController extends Controller {
         ];
     }
     
-    private function getDummyEveningTasks($date) {
-        return [
-            [
-                'id' => 'dummy_1',
-                'title' => 'Morning Email Review',
-                'description' => 'Check and respond to overnight emails',
-                'completion_status' => 'completed',
-                'task_progress' => 100,
-                'task_id' => null,
-                'notes' => 'Completed all email responses'
-            ],
-            [
-                'id' => 'dummy_2',
-                'title' => 'Daily Standup Meeting',
-                'description' => 'Team synchronization meeting',
-                'completion_status' => 'completed',
-                'task_progress' => 100,
-                'task_id' => null,
-                'notes' => 'Good team sync, discussed blockers'
-            ],
-            [
-                'id' => 'dummy_3',
-                'title' => 'Feature Development',
-                'description' => 'Work on new dashboard features',
-                'completion_status' => 'in_progress',
-                'task_progress' => 75,
-                'task_id' => null,
-                'notes' => 'Made good progress, need to finish testing'
-            ],
-            [
-                'id' => 'dummy_4',
-                'title' => 'Code Review Session',
-                'description' => 'Review team members pull requests',
-                'completion_status' => 'postponed',
-                'task_progress' => 0,
-                'task_id' => null,
-                'notes' => 'Postponed due to urgent bug fix'
-            ]
-        ];
-    }
+
     
     private function getDummyFollowupTasks() {
         return [

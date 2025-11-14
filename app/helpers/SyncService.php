@@ -34,18 +34,7 @@ class SyncService {
             ");
             $stmt->execute([$progress, $progress, $taskId]);
             
-            // Update evening updates if exists
-            $stmt = $this->db->prepare("
-                UPDATE evening_updates SET 
-                    progress_percentage = ?,
-                    completion_status = CASE 
-                        WHEN ? >= 100 THEN 'completed'
-                        WHEN ? > 0 THEN 'in_progress'
-                        ELSE 'not_started'
-                    END
-                WHERE task_id = ? AND date = CURDATE()
-            ");
-            $stmt->execute([$progress, $progress, $progress, $taskId]);
+
             
             // Auto-create follow-up if task completed and has follow-up category
             if ($progress >= 100) {
@@ -121,47 +110,7 @@ class SyncService {
         }
     }
     
-    public function syncEveningUpdate($userId, $date, $updates) {
-        $this->db->beginTransaction();
-        
-        try {
-            foreach ($updates as $update) {
-                // Update evening_updates table
-                $stmt = $this->db->prepare("
-                    INSERT INTO evening_updates (
-                        user_id, date, planner_id, task_id, progress_percentage,
-                        actual_hours_spent, completion_status, blockers, notes
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE
-                        progress_percentage = VALUES(progress_percentage),
-                        actual_hours_spent = VALUES(actual_hours_spent),
-                        completion_status = VALUES(completion_status),
-                        blockers = VALUES(blockers),
-                        notes = VALUES(notes),
-                        updated_at = NOW()
-                ");
-                
-                $stmt->execute([
-                    $userId, $date, $update['planner_id'], $update['task_id'],
-                    $update['progress'], $update['hours'], $update['status'],
-                    $update['blockers'], $update['notes']
-                ]);
-                
-                // Sync back to tasks and planner
-                if ($update['task_id']) {
-                    $this->syncTaskProgress($update['task_id'], $update['progress'], 
-                                         $this->mapEveningStatusToTaskStatus($update['status']), $userId);
-                }
-            }
-            
-            $this->db->commit();
-            return true;
-        } catch (Exception $e) {
-            $this->db->rollBack();
-            error_log('Evening update sync error: ' . $e->getMessage());
-            return false;
-        }
-    }
+
     
     private function checkAutoFollowupCreation($taskId) {
         // Get task details
@@ -340,14 +289,6 @@ class SyncService {
         return $date->format('Y-m-d');
     }
     
-    private function mapEveningStatusToTaskStatus($eveningStatus) {
-        $mapping = [
-            'not_started' => 'assigned',
-            'in_progress' => 'in_progress',
-            'completed' => 'completed',
-            'blocked' => 'blocked'
-        ];
-        return $mapping[$eveningStatus] ?? 'assigned';
-    }
+
 }
 ?>

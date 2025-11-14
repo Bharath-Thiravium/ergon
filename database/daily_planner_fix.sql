@@ -29,18 +29,3 @@ ADD COLUMN IF NOT EXISTS task_category VARCHAR(100),
 ADD COLUMN IF NOT EXISTS followup_required BOOLEAN DEFAULT FALSE,
 MODIFY COLUMN status ENUM('assigned', 'in_progress', 'completed', 'cancelled', 'postponed') DEFAULT 'assigned';
 
--- Create evening_updates table if not exists
-CREATE TABLE IF NOT EXISTS evening_updates (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL,
-    title VARCHAR(255) DEFAULT 'Daily Update',
-    accomplishments TEXT,
-    challenges TEXT,
-    tomorrow_plan TEXT,
-    overall_productivity INT DEFAULT 0,
-    planner_date DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_user_date (user_id, planner_date)
-);

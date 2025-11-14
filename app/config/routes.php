@@ -94,9 +94,7 @@ $router->post('/planner/update-status', 'PlannerController', 'updateStatus');
 $router->get('/daily-planner/project-overview', 'DashboardController', 'projectOverview');
 $router->get('/daily-planner/delayed-tasks-overview', 'DashboardController', 'delayedTasksOverview');
 
-// Evening Update Integration
-$router->get('/evening-update', 'EveningUpdateController', 'index');
-$router->post('/evening-update/submit', 'EveningUpdateController', 'submit');
+
 
 // Attendance
 $router->get('/attendance', 'AttendanceController', 'index');
@@ -207,8 +205,7 @@ $router->post('/api/notifications', 'NotificationController', 'markAllAsRead');
 // Daily Workflow Management (New Integrated System)
 $router->get('/daily-workflow/morning-planner', 'PlannerController', 'index');
 $router->post('/daily-workflow/submit-morning-plans', 'DailyWorkflowController', 'submitMorningPlans');
-$router->get('/daily-workflow/evening-update', 'DailyWorkflowController', 'eveningUpdate');
-$router->post('/daily-workflow/submit-evening-updates', 'DailyWorkflowController', 'submitEveningUpdates');
+
 $router->post('/daily-workflow/add-task', 'DailyWorkflowController', 'addTask');
 $router->post('/daily-workflow/update-task', 'DailyWorkflowController', 'updateTask');
 $router->post('/daily-workflow/delete-task', 'DailyWorkflowController', 'deleteTask');
@@ -227,7 +224,7 @@ $router->get('/planner/getDepartmentForm', 'PlannerController', 'getDepartmentFo
 $router->get('/planner/getPlansForDate', 'PlannerController', 'getPlansForDate');
 
 // Legacy Daily Task Planner Routes (Redirected to new system)
-$router->get('/daily-planner', 'DailyWorkflowController', 'eveningUpdate');
+
 $router->get('/daily-planner/dashboard', 'DailyWorkflowController', 'progressDashboard');
 // Note: project-overview and delayed-tasks-overview routes are handled by DashboardController above
 
@@ -252,6 +249,15 @@ $router->post('/api/update-task-status', 'UnifiedWorkflowController', 'updateTas
 $router->post('/api/update-task-status-direct', 'UnifiedWorkflowController', 'updateTaskStatusDirect');
 $router->get('/api/tasks-for-date', 'UnifiedWorkflowController', 'getTasksForDate');
 $router->post('/api/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
+
+// Advanced Daily Planner Workflow API Routes
+$router->post('/workflow/start-task', 'UnifiedWorkflowController', 'startTask');
+$router->post('/workflow/pause-task', 'UnifiedWorkflowController', 'pauseTask');
+$router->post('/workflow/resume-task', 'UnifiedWorkflowController', 'resumeTask');
+$router->post('/workflow/complete-task', 'UnifiedWorkflowController', 'completeTask');
+$router->post('/workflow/postpone-task', 'UnifiedWorkflowController', 'postponeTask');
+$router->get('/workflow/task-timer', 'UnifiedWorkflowController', 'getTaskTimer');
+$router->post('/workflow/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
 
 // Mobile API Routes
 $router->post('/api/register_device', 'ApiController', 'registerDevice');
@@ -314,14 +320,15 @@ $router->post('/project-management/delete', 'ProjectManagementController', 'dele
 
 $router->get('/workflow/daily-planner', 'UnifiedWorkflowController', 'dailyPlanner');
 $router->get('/workflow/daily-planner/{date}', 'UnifiedWorkflowController', 'dailyPlanner');
-$router->get('/workflow/evening-update', 'UnifiedWorkflowController', 'eveningUpdate');
-$router->get('/workflow/evening-update/{date}', 'UnifiedWorkflowController', 'eveningUpdate');
-$router->post('/workflow/evening-update/{date}', 'UnifiedWorkflowController', 'eveningUpdate');
+
 $router->get('/workflow/followups', 'UnifiedWorkflowController', 'followups');
 $router->get('/workflow/calendar', 'UnifiedWorkflowController', 'calendar');
 $router->get('/workflow/create-task', 'TasksController', 'create');
 $router->post('/workflow/create-task', 'TasksController', 'store');
-$router->post('/workflow/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
+
+// Legacy redirect for old daily planner URL - handled by controller
+$router->get('/daily-planner', 'UnifiedWorkflowController', 'dailyPlanner');
+$router->get('/daily-planner/{date}', 'UnifiedWorkflowController', 'dailyPlanner');
 
 // Follow-up Routes (Legacy - now filtered from tasks)
 $router->get('/followups', 'UnifiedWorkflowController', 'followups');
