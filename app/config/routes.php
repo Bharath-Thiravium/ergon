@@ -249,6 +249,7 @@ $router->post('/api/test', 'ApiController', 'test');
 
 // Unified Workflow API Routes
 $router->post('/api/update-task-status', 'UnifiedWorkflowController', 'updateTaskStatus');
+$router->post('/api/update-task-status-direct', 'UnifiedWorkflowController', 'updateTaskStatusDirect');
 $router->get('/api/tasks-for-date', 'UnifiedWorkflowController', 'getTasksForDate');
 $router->post('/api/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
 

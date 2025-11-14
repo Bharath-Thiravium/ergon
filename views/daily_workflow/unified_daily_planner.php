@@ -55,13 +55,13 @@ $content = ob_start();
                                     <p class="task-description"><?= htmlspecialchars($task['description']) ?></p>
                                 <?php endif; ?>
                                 <div class="task-actions">
-                                    <button class="btn btn--sm btn--success" onclick="updateTaskStatus(<?= $task['id'] ?>, 'in_progress')">
+                                    <button class="btn btn--sm btn--success" onclick="event.preventDefault(); updateTaskStatus('<?= $task['id'] ?>', 'in_progress'); return false;">
                                         <i class="bi bi-play"></i> Start
                                     </button>
-                                    <button class="btn btn--sm btn--primary" onclick="updateTaskStatus(<?= $task['id'] ?>, 'completed')">
+                                    <button class="btn btn--sm btn--primary" onclick="event.preventDefault(); updateTaskStatus('<?= $task['id'] ?>', 'completed'); return false;">
                                         <i class="bi bi-check"></i> Complete
                                     </button>
-                                    <button class="btn btn--sm btn--warning" onclick="updateTaskStatus(<?= $task['id'] ?>, 'postponed')">
+                                    <button class="btn btn--sm btn--warning" onclick="event.preventDefault(); updateTaskStatus('<?= $task['id'] ?>', 'postponed'); return false;">
                                         <i class="bi bi-pause"></i> Postpone
                                     </button>
                                 </div>
@@ -151,29 +151,90 @@ function changeDate(newDate) {
     window.location.href = `/ergon/workflow/daily-planner/${newDate}`;
 }
 
+function updateTaskUI(taskId, status) {
+    console.log('Updating UI for task:', taskId, 'with status:', status);
+    
+    // Find the task item
+    const taskItem = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (!taskItem) {
+        console.log('Task item not found, reloading page...');
+        location.reload();
+        return;
+    }
+    
+    // Update the status badge
+    const statusBadge = taskItem.querySelector('.badge:last-child');
+    if (statusBadge) {
+        statusBadge.className = `badge badge--${status}`;
+        statusBadge.textContent = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    // Update button states
+    const buttons = taskItem.querySelectorAll('.task-actions button');
+    buttons.forEach(btn => {
+        btn.disabled = false;
+        if (status === 'completed') {
+            btn.disabled = btn.textContent.trim() !== 'Complete';
+        }
+    });
+    
+    console.log('UI updated successfully');
+}
+
 function updateTaskStatus(taskId, status) {
+    console.log('updateTaskStatus called with:', taskId, status);
+    
+    // Prevent any default browser behavior
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+    }
+    
+    // Handle both numeric IDs and prefixed IDs like 'task_27'
+    let actualTaskId = taskId;
+    let isTasksTable = false;
+    
+    if (typeof taskId === 'string' && taskId.startsWith('task_')) {
+        actualTaskId = taskId.replace('task_', '');
+        isTasksTable = true;
+    }
+    
+    console.log('Processed taskId:', actualTaskId, 'isTasksTable:', isTasksTable);
+    
     fetch('/ergon/api/update-task-status', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            task_id: taskId,
+            task_id: actualTaskId,
             status: status,
-            date: '<?= $selected_date ?>'
+            date: '<?= $selected_date ?>',
+            is_tasks_table: isTasksTable
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            throw new Error('Network response was not ok: ' + response.status);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('Response data:', data);
         if (data.success) {
-            location.reload();
+            console.log('Task status updated successfully, redirecting to evening-update...');
+            
+            // Redirect to evening-update to show Today's Task Updates
+            window.location.href = '/ergon/workflow/evening-update';
         } else {
-            alert('Failed to update task status');
+            alert('Failed to update task status: ' + (data.message || 'Unknown error'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error updating task status');
+        alert('Error updating task status: ' + error.message);
     });
 }
 
