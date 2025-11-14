@@ -5,21 +5,24 @@ $content = ob_start();
 <div class="page-header">
     <div class="page-title">
         <h1><i class="bi bi-calendar-day"></i> Daily Planner</h1>
-        <p>Plan and track your daily tasks - <?= date('l, F j, Y', strtotime($selected_date)) ?></p>
+        <p>Advanced Task Execution Workflow - <?= date('l, F j, Y', strtotime($selected_date)) ?></p>
     </div>
     <div class="page-actions">
         <input type="date" id="dateSelector" value="<?= $selected_date ?>" onchange="changeDate(this.value)" class="form-control" style="width: auto; display: inline-block;">
-        <a href="/ergon/tasks/create" class="btn btn--primary">
-            <i class="bi bi-plus-circle"></i> Add Task
+        <button onclick="openQuickTaskModal()" class="btn btn--primary">
+            <i class="bi bi-plus-circle"></i> Quick Add
+        </button>
+        <a href="/ergon/tasks/create" class="btn btn--secondary">
+            <i class="bi bi-plus"></i> Full Task
         </a>
     </div>
 </div>
 
 <div class="planner-grid">
-    <!-- Morning Planning Section -->
+    <!-- Task Execution Section -->
     <div class="card">
         <div class="card__header">
-            <h3 class="card__title"><i class="bi bi-sunrise"></i> Today's Plan</h3>
+            <h3 class="card__title"><i class="bi bi-play-circle"></i> Task Execution</h3>
             <span class="badge badge--info"><?= count($planned_tasks) ?> tasks</span>
         </div>
         <div class="card__body">
@@ -28,14 +31,21 @@ $content = ob_start();
                     <i class="bi bi-calendar-x"></i>
                     <h4>No tasks planned for today</h4>
                     <p>Start by adding tasks to your daily planner</p>
-                    <a href="/ergon/tasks/create?planned_date=<?= $selected_date ?>" class="btn btn--primary">
+                    <button onclick="openQuickTaskModal()" class="btn btn--primary">
                         <i class="bi bi-plus"></i> Plan First Task
-                    </a>
+                    </button>
                 </div>
             <?php else: ?>
                 <div class="task-timeline">
-                    <?php foreach ($planned_tasks as $task): ?>
-                        <div class="task-item" data-task-id="<?= $task['id'] ?>">
+                    <?php foreach ($planned_tasks as $task): 
+                        $status = $task['status'] ?? $task['completion_status'] ?? 'not_started';
+                        $taskId = $task['id'];
+                        $isActive = in_array($status, ['in_progress']);
+                        $isPaused = $status === 'paused';
+                        $isCompleted = $status === 'completed';
+                        $isPostponed = $status === 'postponed';
+                    ?>
+                        <div class="task-item <?= $isActive ? 'task-active' : '' ?> <?= $isCompleted ? 'task-completed' : '' ?>" data-task-id="<?= $taskId ?>">
                             <div class="task-time">
                                 <?= $task['planned_start_time'] ? date('H:i', strtotime($task['planned_start_time'])) : 'Flexible' ?>
                             </div>
@@ -46,24 +56,60 @@ $content = ob_start();
                                         <?php if ($task['priority']): ?>
                                             <span class="badge badge--<?= $task['priority'] ?>"><?= ucfirst($task['priority']) ?></span>
                                         <?php endif; ?>
-                                        <span class="badge badge--<?= $task['completion_status'] ?? 'not_started' ?>">
-                                            <?= ucfirst(str_replace('_', ' ', $task['completion_status'] ?? 'not_started')) ?>
+                                        <span class="badge badge--<?= $status ?>" id="status-badge-<?= $taskId ?>">
+                                            <?= ucfirst(str_replace('_', ' ', $status)) ?>
                                         </span>
+                                        <?php if ($isPostponed && !empty($task['postponed_from_date'])): ?>
+                                            <span class="badge badge--warning">Postponed</span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
+                                
                                 <?php if ($task['description']): ?>
                                     <p class="task-description"><?= htmlspecialchars($task['description']) ?></p>
                                 <?php endif; ?>
-                                <div class="task-actions">
-                                    <button class="btn btn--sm btn--success" onclick="event.preventDefault(); updateTaskStatus('<?= $task['id'] ?>', 'in_progress'); return false;">
-                                        <i class="bi bi-play"></i> Start
-                                    </button>
-                                    <button class="btn btn--sm btn--primary" onclick="event.preventDefault(); updateTaskStatus('<?= $task['id'] ?>', 'completed'); return false;">
-                                        <i class="bi bi-check"></i> Complete
-                                    </button>
-                                    <button class="btn btn--sm btn--warning" onclick="event.preventDefault(); updateTaskStatus('<?= $task['id'] ?>', 'postponed'); return false;">
-                                        <i class="bi bi-pause"></i> Postpone
-                                    </button>
+                                
+                                <!-- Timer Display -->
+                                <?php if ($isActive || $isPaused || $isCompleted): ?>
+                                    <div class="task-timer" id="timer-<?= $taskId ?>">
+                                        <i class="bi bi-stopwatch"></i>
+                                        <span class="timer-display" data-seconds="<?= $task['active_seconds'] ?? 0 ?>">
+                                            <?= gmdate('H:i:s', $task['active_seconds'] ?? 0) ?>
+                                        </span>
+                                        <?php if ($isCompleted): ?>
+                                            <span class="completion-percentage">(<?= $task['completed_percentage'] ?? 0 ?>%)</span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <!-- Action Buttons -->
+                                <div class="task-actions" id="actions-<?= $taskId ?>">
+                                    <?php if ($status === 'not_started'): ?>
+                                        <button class="btn btn--sm btn--success" onclick="startTask('<?= $taskId ?>')">
+                                            <i class="bi bi-play"></i> Start
+                                        </button>
+                                        <button class="btn btn--sm btn--warning" onclick="postponeTask('<?= $taskId ?>')">
+                                            <i class="bi bi-calendar-x"></i> Postpone
+                                        </button>
+                                    <?php elseif ($status === 'in_progress'): ?>
+                                        <button class="btn btn--sm btn--warning" onclick="pauseTask('<?= $taskId ?>')">
+                                            <i class="bi bi-pause"></i> Break
+                                        </button>
+                                        <button class="btn btn--sm btn--primary" onclick="completeTask('<?= $taskId ?>')">
+                                            <i class="bi bi-check"></i> Complete
+                                        </button>
+                                    <?php elseif ($status === 'paused'): ?>
+                                        <button class="btn btn--sm btn--success" onclick="resumeTask('<?= $taskId ?>')">
+                                            <i class="bi bi-play"></i> Resume
+                                        </button>
+                                        <button class="btn btn--sm btn--primary" onclick="completeTask('<?= $taskId ?>')">
+                                            <i class="bi bi-check"></i> Complete
+                                        </button>
+                                    <?php elseif ($status === 'completed'): ?>
+                                        <span class="text-success"><i class="bi bi-check-circle"></i> Task Completed</span>
+                                    <?php elseif ($status === 'postponed'): ?>
+                                        <span class="text-warning"><i class="bi bi-calendar-x"></i> Task Postponed</span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -73,40 +119,79 @@ $content = ob_start();
         </div>
     </div>
 
-    <!-- Quick Stats -->
+    <!-- Enhanced SLA Dashboard -->
     <div class="card">
         <div class="card__header">
-            <h3 class="card__title"><i class="bi bi-graph-up"></i> Today's Progress</h3>
+            <h3 class="card__title"><i class="bi bi-speedometer2"></i> SLA Dashboard</h3>
         </div>
         <div class="card__body">
             <?php
-            $totalTasks = count($planned_tasks);
-            $completedTasks = array_filter($planned_tasks, fn($task) => ($task['completion_status'] ?? '') === 'completed');
-            $inProgressTasks = array_filter($planned_tasks, fn($task) => ($task['completion_status'] ?? '') === 'in_progress');
-            $completionRate = $totalTasks > 0 ? (count($completedTasks) / $totalTasks) * 100 : 0;
+            $stats = $daily_stats ?? [];
+            $totalTasks = $stats['total_tasks'] ?? count($planned_tasks);
+            $completedTasks = $stats['completed_tasks'] ?? 0;
+            $inProgressTasks = $stats['in_progress_tasks'] ?? 0;
+            $postponedTasks = $stats['postponed_tasks'] ?? 0;
+            $totalPlannedMinutes = $stats['total_planned_minutes'] ?? 0;
+            $totalActiveSeconds = $stats['total_active_seconds'] ?? 0;
+            $totalActiveMinutes = round($totalActiveSeconds / 60, 1);
+            $completionRate = $totalTasks > 0 ? ($completedTasks / $totalTasks) * 100 : 0;
+            $slaAdherence = $totalPlannedMinutes > 0 ? ($totalActiveMinutes / $totalPlannedMinutes) * 100 : 0;
             ?>
             
             <div class="stats-grid">
                 <div class="stat-item">
-                    <div class="stat-value"><?= count($completedTasks) ?></div>
+                    <div class="stat-value text-success"><?= $completedTasks ?></div>
                     <div class="stat-label">Completed</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value"><?= count($inProgressTasks) ?></div>
+                    <div class="stat-value text-primary"><?= $inProgressTasks ?></div>
                     <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value text-warning"><?= $postponedTasks ?></div>
+                    <div class="stat-label">Postponed</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value"><?= $totalTasks ?></div>
                     <div class="stat-label">Total Tasks</div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-value"><?= round($completionRate) ?>%</div>
-                    <div class="stat-label">Completion</div>
+            </div>
+            
+            <div class="sla-metrics">
+                <div class="metric-row">
+                    <span class="metric-label">Completion Rate:</span>
+                    <span class="metric-value"><?= round($completionRate, 1) ?>%</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Planned Time:</span>
+                    <span class="metric-value"><?= $totalPlannedMinutes ?> min</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Active Time:</span>
+                    <span class="metric-value"><?= $totalActiveMinutes ?> min</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">SLA Adherence:</span>
+                    <span class="metric-value <?= $slaAdherence > 100 ? 'text-warning' : 'text-success' ?>">
+                        <?= round($slaAdherence, 1) ?>%
+                    </span>
                 </div>
             </div>
 
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: <?= $completionRate ?>%"></div>
+            <div class="progress-bars">
+                <div class="progress-item">
+                    <label>Task Completion</label>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: <?= $completionRate ?>%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <label>Time Utilization</label>
+                    <div class="progress-bar">
+                        <div class="progress-fill <?= $slaAdherence > 100 ? 'progress-over' : '' ?>" 
+                             style="width: <?= min($slaAdherence, 100) ?>%"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -126,8 +211,18 @@ $content = ob_start();
                     <input type="text" id="quickTitle" name="title" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label for="quickTime">Planned Time</label>
-                    <input type="time" id="quickTime" name="planned_time" class="form-control">
+                    <label for="quickDescription">Description</label>
+                    <textarea id="quickDescription" name="description" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="quickTime">Start Time</label>
+                        <input type="time" id="quickTime" name="planned_time" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="quickDuration">Duration (min)</label>
+                        <input type="number" id="quickDuration" name="duration" class="form-control" min="15" step="15" value="60">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="quickPriority">Priority</label>
@@ -146,127 +241,343 @@ $content = ob_start();
     </div>
 </div>
 
+<!-- Complete Task Modal -->
+<div id="completeTaskModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Complete Task</h3>
+            <button class="modal-close" onclick="closeCompleteTaskModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="completeTaskForm">
+                <input type="hidden" id="completeTaskId" name="task_id">
+                <div class="form-group">
+                    <label>Completion Percentage</label>
+                    <div class="percentage-options">
+                        <button type="button" class="percentage-btn" data-percentage="50">50%</button>
+                        <button type="button" class="percentage-btn" data-percentage="60">60%</button>
+                        <button type="button" class="percentage-btn" data-percentage="70">70%</button>
+                        <button type="button" class="percentage-btn" data-percentage="80">80%</button>
+                        <button type="button" class="percentage-btn" data-percentage="90">90%</button>
+                        <button type="button" class="percentage-btn active" data-percentage="100">100%</button>
+                    </div>
+                    <input type="hidden" id="selectedPercentage" name="percentage" value="100">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn--primary">Complete Task</button>
+                    <button type="button" class="btn btn--secondary" onclick="closeCompleteTaskModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Postpone Task Modal -->
+<div id="postponeTaskModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Postpone Task</h3>
+            <button class="modal-close" onclick="closePostponeTaskModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="postponeTaskForm">
+                <input type="hidden" id="postponeTaskId" name="task_id">
+                <div class="form-group">
+                    <label for="newDate">Reschedule to Date</label>
+                    <input type="date" id="newDate" name="new_date" class="form-control" required min="<?= date('Y-m-d', strtotime('+1 day')) ?>">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn--warning">Postpone Task</button>
+                    <button type="button" class="btn btn--secondary" onclick="closePostponeTaskModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
+let activeTimers = {};
+
 function changeDate(newDate) {
     window.location.href = `/ergon/workflow/daily-planner/${newDate}`;
 }
 
-function updateTaskUI(taskId, status) {
-    console.log('Updating UI for task:', taskId, 'with status:', status);
+// Task Action Functions
+function startTask(taskId) {
+    fetch('/ergon/workflow/start-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: taskId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTaskUI(taskId, 'in_progress');
+            startTimer(taskId);
+        } else {
+            alert('Failed to start task: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error starting task');
+    });
+}
+
+function pauseTask(taskId) {
+    fetch('/ergon/workflow/pause-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: taskId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTaskUI(taskId, 'paused');
+            stopTimer(taskId);
+        } else {
+            alert('Failed to pause task: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error pausing task');
+    });
+}
+
+function resumeTask(taskId) {
+    fetch('/ergon/workflow/resume-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: taskId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTaskUI(taskId, 'in_progress');
+            startTimer(taskId);
+        } else {
+            alert('Failed to resume task: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error resuming task');
+    });
+}
+
+function completeTask(taskId) {
+    document.getElementById('completeTaskId').value = taskId;
+    document.getElementById('completeTaskModal').style.display = 'flex';
+}
+
+function postponeTask(taskId) {
+    document.getElementById('postponeTaskId').value = taskId;
+    document.getElementById('postponeTaskModal').style.display = 'flex';
+}
+
+// Timer Functions
+function startTimer(taskId) {
+    if (activeTimers[taskId]) {
+        clearInterval(activeTimers[taskId]);
+    }
     
-    // Find the task item
+    activeTimers[taskId] = setInterval(() => {
+        updateTimerDisplay(taskId);
+    }, 1000);
+}
+
+function stopTimer(taskId) {
+    if (activeTimers[taskId]) {
+        clearInterval(activeTimers[taskId]);
+        delete activeTimers[taskId];
+    }
+}
+
+function updateTimerDisplay(taskId) {
+    const timerElement = document.querySelector(`#timer-${taskId} .timer-display`);
+    if (timerElement) {
+        let seconds = parseInt(timerElement.dataset.seconds) || 0;
+        seconds++;
+        timerElement.dataset.seconds = seconds;
+        timerElement.textContent = formatTime(seconds);
+    }
+}
+
+function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+// UI Update Functions
+function updateTaskUI(taskId, status) {
     const taskItem = document.querySelector(`[data-task-id="${taskId}"]`);
     if (!taskItem) {
-        console.log('Task item not found, reloading page...');
         location.reload();
         return;
     }
     
-    // Update the status badge
-    const statusBadge = taskItem.querySelector('.badge:last-child');
+    // Update status badge
+    const statusBadge = document.getElementById(`status-badge-${taskId}`);
     if (statusBadge) {
         statusBadge.className = `badge badge--${status}`;
         statusBadge.textContent = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
     
-    // Update button states
-    const buttons = taskItem.querySelectorAll('.task-actions button');
-    buttons.forEach(btn => {
-        btn.disabled = false;
-        if (status === 'completed') {
-            btn.disabled = btn.textContent.trim() !== 'Complete';
+    // Update action buttons
+    const actionsContainer = document.getElementById(`actions-${taskId}`);
+    if (actionsContainer) {
+        let buttonsHTML = '';
+        
+        switch (status) {
+            case 'in_progress':
+                buttonsHTML = `
+                    <button class="btn btn--sm btn--warning" onclick="pauseTask('${taskId}')">
+                        <i class="bi bi-pause"></i> Break
+                    </button>
+                    <button class="btn btn--sm btn--primary" onclick="completeTask('${taskId}')">
+                        <i class="bi bi-check"></i> Complete
+                    </button>
+                `;
+                break;
+            case 'paused':
+                buttonsHTML = `
+                    <button class="btn btn--sm btn--success" onclick="resumeTask('${taskId}')">
+                        <i class="bi bi-play"></i> Resume
+                    </button>
+                    <button class="btn btn--sm btn--primary" onclick="completeTask('${taskId}')">
+                        <i class="bi bi-check"></i> Complete
+                    </button>
+                `;
+                break;
+            case 'completed':
+                buttonsHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Task Completed</span>';
+                break;
+            case 'postponed':
+                buttonsHTML = '<span class="text-warning"><i class="bi bi-calendar-x"></i> Task Postponed</span>';
+                break;
         }
-    });
-    
-    console.log('UI updated successfully');
-}
-
-function updateTaskStatus(taskId, status) {
-    console.log('updateTaskStatus called with:', taskId, status);
-    
-    // Prevent any default browser behavior
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
+        
+        actionsContainer.innerHTML = buttonsHTML;
     }
     
-    // Handle both numeric IDs and prefixed IDs like 'task_27'
-    let actualTaskId = taskId;
-    let isTasksTable = false;
-    
-    if (typeof taskId === 'string' && taskId.startsWith('task_')) {
-        actualTaskId = taskId.replace('task_', '');
-        isTasksTable = true;
-    }
-    
-    console.log('Processed taskId:', actualTaskId, 'isTasksTable:', isTasksTable);
-    
-    fetch('/ergon/api/update-task-status', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            task_id: actualTaskId,
-            status: status,
-            date: '<?= $selected_date ?>',
-            is_tasks_table: isTasksTable
-        })
-    })
-    .then(response => {
-        console.log('Response status:', response.status);
-        if (!response.ok) {
-            throw new Error('Network response was not ok: ' + response.status);
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Response data:', data);
-        if (data.success) {
-            console.log('Task status updated successfully, redirecting to evening-update...');
-            
-            // Redirect to evening-update to show Today's Task Updates
-            window.location.href = '/ergon/workflow/evening-update';
-        } else {
-            alert('Failed to update task status: ' + (data.message || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error updating task status: ' + error.message);
-    });
+    // Add/remove visual classes
+    taskItem.classList.toggle('task-active', status === 'in_progress');
+    taskItem.classList.toggle('task-completed', status === 'completed');
 }
 
+// Modal Functions
 function openQuickTaskModal() {
     document.getElementById('quickTaskModal').style.display = 'flex';
 }
 
 function closeQuickTaskModal() {
     document.getElementById('quickTaskModal').style.display = 'none';
+    document.getElementById('quickTaskForm').reset();
 }
 
-document.getElementById('quickTaskForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+function closeCompleteTaskModal() {
+    document.getElementById('completeTaskModal').style.display = 'none';
+}
+
+function closePostponeTaskModal() {
+    document.getElementById('postponeTaskModal').style.display = 'none';
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize timers for active tasks
+    document.querySelectorAll('.task-item.task-active').forEach(item => {
+        const taskId = item.dataset.taskId;
+        startTimer(taskId);
+    });
     
-    const formData = new FormData(this);
-    formData.append('planned_date', '<?= $selected_date ?>');
+    // Percentage selection
+    document.querySelectorAll('.percentage-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.percentage-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('selectedPercentage').value = this.dataset.percentage;
+        });
+    });
     
-    fetch('/ergon/workflow/quick-add-task', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('Failed to add task');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error adding task');
+    // Form submissions
+    document.getElementById('quickTaskForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        formData.append('scheduled_date', '<?= $selected_date ?>');
+        
+        fetch('/ergon/workflow/quick-add-task', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to add task: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error adding task');
+        });
+    });
+    
+    document.getElementById('completeTaskForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const taskId = document.getElementById('completeTaskId').value;
+        const percentage = document.getElementById('selectedPercentage').value;
+        
+        fetch('/ergon/workflow/complete-task', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task_id: taskId, percentage: parseInt(percentage) })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTaskUI(taskId, 'completed');
+                stopTimer(taskId);
+                closeCompleteTaskModal();
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                alert('Failed to complete task: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error completing task');
+        });
+    });
+    
+    document.getElementById('postponeTaskForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const taskId = document.getElementById('postponeTaskId').value;
+        const newDate = document.getElementById('newDate').value;
+        
+        fetch('/ergon/workflow/postpone-task', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task_id: taskId, new_date: newDate })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTaskUI(taskId, 'postponed');
+                closePostponeTaskModal();
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                alert('Failed to postpone task: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error postponing task');
+        });
     });
 });
 </script>
@@ -293,11 +604,23 @@ document.getElementById('quickTaskForm').addEventListener('submit', function(e) 
     border-radius: var(--border-radius);
     background: var(--bg-primary);
     transition: all 0.2s ease;
+    position: relative;
 }
 
 .task-item:hover {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     transform: translateY(-1px);
+}
+
+.task-item.task-active {
+    border-left: 4px solid var(--success);
+    background: linear-gradient(90deg, rgba(40, 167, 69, 0.05), var(--bg-primary));
+}
+
+.task-item.task-completed {
+    border-left: 4px solid var(--primary);
+    background: linear-gradient(90deg, rgba(0, 123, 255, 0.05), var(--bg-primary));
+    opacity: 0.8;
 }
 
 .task-time {
@@ -331,6 +654,7 @@ document.getElementById('quickTaskForm').addEventListener('submit', function(e) 
 .task-badges {
     display: flex;
     gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .task-description {
@@ -339,17 +663,41 @@ document.getElementById('quickTaskForm').addEventListener('submit', function(e) 
     font-size: 0.9rem;
 }
 
+.task-timer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    font-family: 'Courier New', monospace;
+}
+
+.timer-display {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--primary);
+}
+
+.completion-percentage {
+    color: var(--success);
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
 .task-actions {
     display: flex;
     gap: 0.5rem;
     margin-top: 1rem;
+    flex-wrap: wrap;
 }
 
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
 }
 
 .stat-item {
@@ -360,15 +708,63 @@ document.getElementById('quickTaskForm').addEventListener('submit', function(e) 
 }
 
 .stat-value {
-    font-size: 2rem;
+    font-size: 1.8rem;
     font-weight: 700;
-    color: var(--primary);
+    margin-bottom: 0.25rem;
 }
 
+.stat-value.text-success { color: var(--success); }
+.stat-value.text-primary { color: var(--primary); }
+.stat-value.text-warning { color: var(--warning); }
+
 .stat-label {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
     margin-top: 0.25rem;
+}
+
+.sla-metrics {
+    margin: 1rem 0;
+}
+
+.metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.metric-row:last-child {
+    border-bottom: none;
+}
+
+.metric-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.metric-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.metric-value.text-success { color: var(--success); }
+.metric-value.text-warning { color: var(--warning); }
+
+.progress-bars {
+    margin-top: 1rem;
+}
+
+.progress-item {
+    margin-bottom: 1rem;
+}
+
+.progress-item label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
 }
 
 .progress-bar {
@@ -383,6 +779,10 @@ document.getElementById('quickTaskForm').addEventListener('submit', function(e) 
     height: 100%;
     background: linear-gradient(90deg, var(--success), var(--primary));
     transition: width 0.3s ease;
+}
+
+.progress-fill.progress-over {
+    background: linear-gradient(90deg, var(--warning), var(--danger));
 }
 
 .empty-state {
@@ -417,6 +817,7 @@ document.getElementById('quickTaskForm').addEventListener('submit', function(e) 
     max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
 .modal-header {
@@ -433,11 +834,67 @@ document.getElementById('quickTaskForm').addEventListener('submit', function(e) 
     font-size: 1.5rem;
     cursor: pointer;
     color: var(--text-secondary);
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.modal-close:hover {
+    background-color: var(--bg-secondary);
 }
 
 .modal-body {
     padding: 1.5rem;
 }
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.percentage-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.percentage-btn {
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.percentage-btn:hover {
+    border-color: var(--primary);
+    background: var(--bg-primary);
+}
+
+.percentage-btn.active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+}
+
+.badge--not_started { background-color: #6c757d; color: white; }
+.badge--in_progress { background-color: #28a745; color: white; }
+.badge--paused { background-color: #ffc107; color: #212529; }
+.badge--completed { background-color: #007bff; color: white; }
+.badge--postponed { background-color: #fd7e14; color: white; }
+
+.text-success { color: var(--success) !important; }
+.text-warning { color: var(--warning) !important; }
+.text-primary { color: var(--primary) !important; }
 
 @media (max-width: 768px) {
     .planner-grid {
@@ -460,6 +917,14 @@ document.getElementById('quickTaskForm').addEventListener('submit', function(e) 
     
     .task-actions {
         flex-wrap: wrap;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .percentage-options {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 </style>

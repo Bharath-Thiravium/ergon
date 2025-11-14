@@ -64,19 +64,6 @@ CREATE TABLE IF NOT EXISTS daily_planner (
 -- Step 3: Skip data migration - daily_plans table doesn't exist in current schema
 
 -- Step 4: Create other essential tables
-CREATE TABLE IF NOT EXISTS evening_updates (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    title VARCHAR(255) DEFAULT 'Daily Update',
-    accomplishments TEXT DEFAULT NULL,
-    challenges TEXT DEFAULT NULL,
-    tomorrow_plan TEXT DEFAULT NULL,
-    overall_productivity INT DEFAULT 0,
-    planner_date DATE DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS task_categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     department_name VARCHAR(100) NOT NULL,
