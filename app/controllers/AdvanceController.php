@@ -37,10 +37,10 @@ class AdvanceController extends Controller {
             }
             $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            $this->view('advances/index', ['advances' => $advances, 'active_page' => 'advances']);
+            $this->view('advances/index', ['advances' => $advances, 'user_role' => $role, 'active_page' => 'advances']);
         } catch (Exception $e) {
             error_log('Advance index error: ' . $e->getMessage());
-            $this->view('advances/index', ['advances' => [], 'error' => 'Unable to load advances', 'active_page' => 'advances']);
+            $this->view('advances/index', ['advances' => [], 'user_role' => $_SESSION['role'] ?? 'user', 'error' => 'Unable to load advances', 'active_page' => 'advances']);
         }
     }
     
@@ -179,8 +179,8 @@ class AdvanceController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("UPDATE advances SET status = 'approved' WHERE id = ? AND status = 'pending'");
-            $result = $stmt->execute([$id]);
+            $stmt = $db->prepare("UPDATE advances SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ? AND status = 'pending'");
+            $result = $stmt->execute([$_SESSION['user_id'], $id]);
             
             if ($result && $stmt->rowCount() > 0) {
                 header('Location: /ergon/advances?success=Advance approved successfully');
@@ -198,31 +198,27 @@ class AdvanceController extends Controller {
             session_start();
         }
         
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['rejection_reason'])) {
-            $reason = $_POST['rejection_reason'];
+        if (!$id) {
+            header('Location: /ergon/advances?error=Invalid advance ID');
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
             
-            if (!$id) {
-                header('Location: /ergon/advances?error=Invalid advance ID');
-                exit;
-            }
+            $reason = $_POST['rejection_reason'] ?? 'Rejected by administrator';
             
-            try {
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
-                
-                $stmt = $db->prepare("UPDATE advances SET status = 'rejected', rejection_reason = ? WHERE id = ? AND status = 'pending'");
-                $result = $stmt->execute([$reason, $id]);
-                
-                if ($result && $stmt->rowCount() > 0) {
-                    header('Location: /ergon/advances?success=Advance rejected successfully');
-                } else {
-                    header('Location: /ergon/advances?error=Advance not found or already processed');
-                }
-            } catch (Exception $e) {
-                header('Location: /ergon/advances?error=Database error: ' . $e->getMessage());
+            $stmt = $db->prepare("UPDATE advances SET status = 'rejected', rejection_reason = ? WHERE id = ? AND status = 'pending'");
+            $result = $stmt->execute([$reason, $id]);
+            
+            if ($result && $stmt->rowCount() > 0) {
+                header('Location: /ergon/advances?success=Advance rejected successfully');
+            } else {
+                header('Location: /ergon/advances?error=Advance not found or already processed');
             }
-        } else {
-            header('Location: /ergon/advances?error=Rejection reason is required');
+        } catch (Exception $e) {
+            header('Location: /ergon/advances?error=Database error: ' . $e->getMessage());
         }
         exit;
     }

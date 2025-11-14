@@ -4,52 +4,74 @@ $active_page = 'leaves';
 ob_start();
 ?>
 
-<div class="compact-header">
-    <h1>✏️ Edit Leave Request</h1>
-    <div class="header-actions">
-        <a href="/ergon/leaves" class="btn-back">← Back</a>
+<div class="page-header">
+    <div class="page-title">
+        <h1><span>🏦️</span> Edit Leave Request</h1>
+        <p>Update your leave application details</p>
+    </div>
+    <div class="page-actions">
+        <a href="/ergon/leaves" class="btn btn--secondary">
+            <span>←</span> Back to Leaves
+        </a>
     </div>
 </div>
 
-<div class="compact-form">
-    <form method="POST" action="/ergon/leaves/edit/<?= $leave['id'] ?>">
-        <div class="form-section">
-            <div class="form-grid">
+<div class="card">
+    <div class="card__header">
+        <h2 class="card__title">
+            <span>📝</span> Leave Application Form
+        </h2>
+    </div>
+    <div class="card__body">
+        <form method="POST" action="/ergon/leaves/edit/<?= $leave['id'] ?>" class="form">
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="type">📅 Leave Type</label>
-                    <select name="type" id="type" required>
+                    <label for="type" class="form-label">Leave Type *</label>
+                    <select class="form-control" id="type" name="type" required>
                         <?php $currentType = $leave['leave_type'] ?? $leave['type'] ?? ''; ?>
-                        <option value="sick" <?= $currentType === 'sick' ? 'selected' : '' ?>>Sick Leave</option>
                         <option value="casual" <?= $currentType === 'casual' ? 'selected' : '' ?>>Casual Leave</option>
+                        <option value="sick" <?= $currentType === 'sick' ? 'selected' : '' ?>>Sick Leave</option>
                         <option value="annual" <?= $currentType === 'annual' ? 'selected' : '' ?>>Annual Leave</option>
                         <option value="emergency" <?= $currentType === 'emergency' ? 'selected' : '' ?>>Emergency Leave</option>
                         <option value="maternity" <?= $currentType === 'maternity' ? 'selected' : '' ?>>Maternity Leave</option>
                         <option value="paternity" <?= $currentType === 'paternity' ? 'selected' : '' ?>>Paternity Leave</option>
                     </select>
                 </div>
+            </div>
+            
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="start_date">📅 Start Date</label>
-                    <input type="date" name="start_date" id="start_date" value="<?= htmlspecialchars($leave['start_date']) ?>" required>
+                    <label for="start_date" class="form-label">Start Date *</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" value="<?= htmlspecialchars($leave['start_date']) ?>" required>
                 </div>
                 <div class="form-group">
-                    <label for="end_date">📅 End Date</label>
-                    <input type="date" name="end_date" id="end_date" value="<?= htmlspecialchars($leave['end_date']) ?>" required>
+                    <label for="end_date" class="form-label">End Date *</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" value="<?= htmlspecialchars($leave['end_date']) ?>" required>
                 </div>
             </div>
             
             <div class="form-group">
-                <label for="reason">📝 Reason</label>
-                <textarea name="reason" id="reason" rows="4" placeholder="Please provide reason for leave" required><?= htmlspecialchars($leave['reason']) ?></textarea>
+                <label for="reason" class="form-label">Reason for Leave *</label>
+                <textarea class="form-control" id="reason" name="reason" rows="4" 
+                         placeholder="Please provide a detailed reason for your leave request..." required><?= htmlspecialchars($leave['reason']) ?></textarea>
+                <small class="form-text">Minimum 10 characters required</small>
             </div>
-        </div>
-        
-        <div class="form-actions">
-            <button type="submit" class="btn-primary">
-                ✨ Update Leave Request
-            </button>
-            <a href="/ergon/leaves" class="btn-secondary">❌ Cancel</a>
-        </div>
-    </form>
+            
+            <div class="form-group">
+                <label for="contact_during_leave" class="form-label">Emergency Contact During Leave</label>
+                <input type="tel" class="form-control" id="contact_during_leave" name="contact_during_leave" 
+                       value="<?= htmlspecialchars($leave['contact_during_leave'] ?? '') ?>"
+                       placeholder="Phone number for emergency contact">
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn--primary">
+                    📤 Update Leave Request
+                </button>
+                <a href="/ergon/leaves" class="btn btn--secondary">❌ Cancel</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <?php
