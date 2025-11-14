@@ -1,0 +1,50 @@
+/* Admin Header Fix CSS */
+/* This file contains specific fixes for admin header layout and positioning */
+
+/* Ensure main content has proper top margin to account for fixed header */
+.main-content {
+  margin-top: 120px; /* Adjust based on header height */
+  padding: var(--space-4, 1rem);
+  min-height: calc(100vh - 120px);
+}
+
+/* Header positioning fixes */
+.main-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  width: 100%;
+}
+
+/* Prevent content from hiding behind fixed header */
+body {
+  padding-top: 0;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .main-content {
+    margin-top: 100px;
+    padding: var(--space-3, 0.75rem);
+  }
+}
+
+/* Fix for dropdown positioning */
+.nav-dropdown-menu {
+  position: fixed;
+  z-index: 10000;
+}
+
+/* Profile menu positioning fix */
+.profile-menu {
+  position: absolute;
+  z-index: 10001;
+}
+
+/* Notification dropdown positioning */
+.notification-dropdown {
+  position: fixed;
+  z-index: 10000;
+}

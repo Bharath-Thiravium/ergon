@@ -382,6 +382,11 @@ class UnifiedWorkflowController extends Controller {
     }
     
     public function updateTaskStatus() {
+        // Set JSON header first
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
+        
         AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -391,12 +396,17 @@ class UnifiedWorkflowController extends Controller {
         }
         
         $input = json_decode(file_get_contents('php://input'), true);
+        
+        // Log the input for debugging
+        error_log('updateTaskStatus input: ' . print_r($input, true));
+        
         $taskId = $input['task_id'] ?? null;
         $status = $input['status'] ?? null;
         $date = $input['date'] ?? date('Y-m-d');
+        $isTasksTable = $input['is_tasks_table'] ?? false;
         
         if (!$taskId || !$status) {
-            echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
+            echo json_encode(['success' => false, 'message' => 'Missing required parameters', 'received' => $input]);
             return;
         }
         
@@ -404,19 +414,36 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Update daily planner status
-            $stmt = $db->prepare("UPDATE daily_planner SET completion_status = ? WHERE id = ? AND user_id = ?");
-            $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
+            if ($isTasksTable) {
+                // Update tasks table directly
+                $taskStatus = $status === 'completed' ? 'completed' : ($status === 'in_progress' ? 'in_progress' : 'assigned');
+                $progress = $status === 'completed' ? 100 : ($status === 'in_progress' ? 50 : 0);
+                
+                $stmt = $db->prepare("UPDATE tasks SET status = ?, progress = ? WHERE id = ? AND assigned_to = ?");
+                $result = $stmt->execute([$taskStatus, $progress, $taskId, $_SESSION['user_id']]);
+                
+                error_log("Updated tasks table: taskId=$taskId, status=$taskStatus, progress=$progress, result=" . ($result ? 'true' : 'false'));
+            } else {
+                // Update daily planner status
+                $stmt = $db->prepare("UPDATE daily_planner SET completion_status = ? WHERE id = ? AND user_id = ?");
+                $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
+                
+                error_log("Updated daily_planner table: taskId=$taskId, status=$status, result=" . ($result ? 'true' : 'false'));
+            }
             
             if ($result) {
-                echo json_encode(['success' => true]);
+                echo json_encode(['success' => true, 'message' => 'Status updated successfully']);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Failed to update status']);
+                echo json_encode(['success' => false, 'message' => 'No rows affected - check task ID and permissions']);
             }
         } catch (Exception $e) {
             error_log('Update task status error: ' . $e->getMessage());
-            echo json_encode(['success' => false, 'message' => 'Database error']);
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         }
+    }
+    
+    public function updateTaskStatusDirect() {
+        return $this->updateTaskStatus();
     }
     
     public function getTasksForDate() {
