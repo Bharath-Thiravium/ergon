@@ -78,16 +78,15 @@ $content = ob_start();
                     echo '<div class="day-tasks">';
                     $taskCount = 0;
                     foreach ($dayTasks as $task) {
-                        if ($taskCount >= 3) {
-                            $remaining = count($dayTasks) - 3;
+                        if ($taskCount >= 2) {
+                            $remaining = count($dayTasks) - 2;
                             echo '<div class="task-item more">+' . $remaining . ' more</div>';
                             break;
                         }
                         
                         $priorityClass = 'priority-' . ($task['priority'] ?? 'medium');
-                        $typeClass = 'type-' . ($task['type'] ?? 'task');
                         
-                        echo '<div class="task-item ' . $priorityClass . ' ' . $typeClass . '" title="' . htmlspecialchars($task['title']) . '">';
+                        echo '<div class="task-item ' . $priorityClass . '">';
                         echo '<span class="task-title">' . htmlspecialchars(substr($task['title'], 0, 20)) . '</span>';
                         echo '</div>';
                         $taskCount++;
@@ -135,11 +134,15 @@ $content = ob_start();
         </div>
         <div class="legend-item">
             <span class="legend-color type-task"></span>
-            <span>Task</span>
+            <span>📋 Task</span>
         </div>
         <div class="legend-item">
             <span class="legend-color type-planner"></span>
-            <span>Planner Entry</span>
+            <span>📅 Planner Entry</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color type-followup"></span>
+            <span>📞 Follow-up</span>
         </div>
     </div>
 </div>
@@ -181,64 +184,39 @@ function showTasksForDate(date) {
     sidebarDate.textContent = formatDate(date);
     sidebar.style.display = 'block';
     
-    // Load tasks for the selected date
-    fetch(`/ergon/api/tasks-for-date?date=${date}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.tasks && data.tasks.length > 0) {
-                let html = '<div class="date-tasks">';
-                data.tasks.forEach(task => {
-                    html += `
-                        <div class="sidebar-task priority-${task.priority} type-${task.type}">
-                            <div class="task-header">
-                                <h4>${task.title}</h4>
-                                <span class="task-type">${task.type}</span>
-                            </div>
-                            <div class="task-meta">
-                                <span class="priority">🔥 ${task.priority}</span>
-                                <span class="status">📊 ${task.status}</span>
-                                <span class="assignee">👤 ${task.assigned_to || 'Unassigned'}</span>
-                                <span class="due">📅 ${task.due_date || 'No due date'}</span>
-                            </div>
-                            <div class="task-actions">
-                                <a href="/ergon/workflow/daily-planner/${date}" class="btn btn--primary">📅 Day</a>
-                                <a href="/ergon/tasks/view/${task.id}" class="btn btn--secondary">👁️ View</a>
-                                <button onclick="markComplete(${task.id})" class="btn btn--success">✅ Done</button>
-                            </div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-                
-                html += `
-                    <div class="sidebar-actions">
-                        <a href="/ergon/workflow/create-task?planned_date=${date}" class="btn btn--primary">
-                            <i class="bi bi-plus"></i> Add Task for This Date
-                        </a>
-                        <a href="/ergon/workflow/daily-planner/${date}" class="btn btn--success">
-                            <i class="bi bi-calendar-day"></i> View Daily Planner
-                        </a>
+    // Get tasks from the calendar data already loaded
+    const calendarTasks = <?= json_encode($calendar_tasks) ?>;
+    const dateTasks = calendarTasks.filter(task => task.date === date);
+    
+    if (dateTasks.length > 0) {
+        let html = '<div class="date-tasks">';
+        dateTasks.forEach(task => {
+            html += `
+                <div class="sidebar-task">
+                    <h4>${task.title}</h4>
+                    <p><strong>Priority:</strong> ${task.priority}</p>
+                    <p><strong>Status:</strong> ${task.status}</p>
+                    ${task.description ? `<p><strong>Description:</strong> ${task.description}</p>` : ''}
+                    ${task.project_name ? `<p><strong>Project:</strong> ${task.project_name}</p>` : ''}
+                    ${task.company_name ? `<p><strong>Company:</strong> ${task.company_name}</p>` : ''}
+                    <div class="task-actions">
+                        <a href="/ergon/tasks/view/${task.id}" class="btn btn--secondary">View</a>
+                        <a href="/ergon/tasks/edit/${task.id}" class="btn btn--warning">Edit</a>
                     </div>
-                `;
-                
-                sidebarContent.innerHTML = html;
-            } else {
-                sidebarContent.innerHTML = `
-                    <div class="no-tasks">
-                        <i class="bi bi-calendar-x"></i>
-                        <h4>No tasks for this date</h4>
-                        <p>You don't have any tasks scheduled for ${formatDate(date)}</p>
-                        <a href="/ergon/workflow/create-task?planned_date=${date}" class="btn btn--primary">
-                            <i class="bi bi-plus"></i> Add Task
-                        </a>
-                    </div>
-                `;
-            }
-        })
-        .catch(error => {
-            console.error('Error loading tasks:', error);
-            sidebarContent.innerHTML = '<div class="error">Error loading tasks</div>';
+                </div>
+            `;
         });
+        html += '</div>';
+        sidebarContent.innerHTML = html;
+    } else {
+        sidebarContent.innerHTML = `
+            <div class="no-tasks">
+                <h4>No tasks for this date</h4>
+                <p>You don't have any tasks scheduled for ${formatDate(date)}</p>
+                <a href="/ergon/tasks/create" class="btn btn--primary">Add Task</a>
+            </div>
+        `;
+    }
 }
 
 function closeSidebar() {
@@ -288,7 +266,7 @@ function formatDate(dateString) {
     background: var(--bg-primary);
     border-left: 1px solid var(--border-color);
     overflow-y: auto;
-    box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-lg);
 }
 
 .calendar-nav {
@@ -344,28 +322,32 @@ function formatDate(dateString) {
 .calendar-day {
     background: var(--bg-primary);
     min-height: 120px;
-    padding: 0.5rem;
+    padding: var(--space-2);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: var(--transition);
     position: relative;
     box-sizing: border-box;
-    min-width: 0;
-    overflow: hidden;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
 }
 
 .calendar-day:hover {
     background: var(--bg-secondary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
 
 .calendar-day.today {
     background: var(--primary-light);
-    border: 2px solid var(--primary);
+    border-color: var(--primary);
+    color: var(--primary);
 }
 
 .calendar-day.has-tasks {
     background: var(--success-light);
+    border-color: var(--success);
 }
 
 .calendar-day.empty {
@@ -390,32 +372,88 @@ function formatDate(dateString) {
 }
 
 .task-item {
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-size: 0.75rem;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-xs);
     line-height: 1.2;
+    overflow: hidden;
+    margin-bottom: var(--space-1);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+
+.task-header-mini {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1px;
+}
+
+.task-icon, .task-status {
+    font-size: 0.6rem;
+}
+
+.task-title {
+    display: block;
+    font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
+.task-meta {
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-assignee {
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-progress {
+    font-size: 0.6rem;
+    color: var(--success);
+    font-weight: 600;
+}
+
 .task-item.priority-high {
+    border-left: 3px solid var(--danger);
     background: var(--danger-light);
     color: var(--danger);
 }
 
 .task-item.priority-medium {
+    border-left: 3px solid var(--warning);
     background: var(--warning-light);
     color: var(--warning);
 }
 
 .task-item.priority-low {
+    border-left: 3px solid var(--success);
     background: var(--success-light);
     color: var(--success);
 }
 
 .task-item.type-planner {
-    border-left: 3px solid var(--info);
+    border-left-color: var(--info);
+}
+
+.task-item.type-followup {
+    border-left-color: var(--primary);
+}
+
+.task-item.type-task {
+    border-left-color: var(--secondary);
 }
 
 .task-item.more {
@@ -436,10 +474,11 @@ function formatDate(dateString) {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 0.75rem;
+    padding: var(--space-4);
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-secondary);
-    font-size: 0.85rem;
+    font-size: var(--font-size-base);
+    font-weight: 600;
 }
 
 .sidebar-close {
@@ -448,6 +487,14 @@ function formatDate(dateString) {
     font-size: 1.5rem;
     cursor: pointer;
     color: var(--text-secondary);
+    padding: var(--space-1);
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+}
+
+.sidebar-close:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 .sidebar-content {
@@ -457,12 +504,19 @@ function formatDate(dateString) {
 }
 
 .sidebar-task {
-    padding: 0.5rem 0.75rem;
+    padding: var(--space-4);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
+    border-radius: var(--border-radius);
+    margin-bottom: var(--space-3);
     background: var(--bg-secondary);
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
+    transition: var(--transition);
+}
+
+.sidebar-task:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary);
 }
 
 .task-header {
@@ -505,6 +559,19 @@ function formatDate(dateString) {
     padding: 0.25rem 0.5rem;
     font-size: 0.7rem;
     border-radius: 4px;
+}
+
+.task-description {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    margin: 0.5rem 0;
+    line-height: 1.3;
+}
+
+.task-project, .task-company, .task-contact {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0.25rem 0;
 }
 
 .sidebar-actions {
@@ -577,6 +644,10 @@ function formatDate(dateString) {
 
 .legend-color.type-planner {
     background: var(--info-light);
+}
+
+.legend-color.type-followup {
+    background: var(--primary-light);
 }
 
 @media (max-width: 1200px) {

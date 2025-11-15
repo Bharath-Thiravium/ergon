@@ -104,7 +104,7 @@ ob_start();
                             <?php endif; ?>
                         </span>
                         <span><strong>SLA:</strong> ⏱️ <?= htmlspecialchars($task['sla_hours'] ?? '24') ?>h</span>
-                        <span><strong>Created:</strong> 📅 <?= ($task['created_at']) ? date('M d, Y', strtotime($task['created_at'])) : 'N/A' ?></span>
+                        <span><strong>Assigned for:</strong> 📅 <?= ($task['assigned_at'] ?? $task['created_at']) ? date('M d, Y', strtotime($task['assigned_at'] ?? $task['created_at'])) : 'N/A' ?></span>
                     </div>
                 </div>
                 

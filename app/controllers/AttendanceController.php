@@ -173,6 +173,13 @@ class AttendanceController extends Controller {
                 header('Content-Type: application/json');
                 
                 if ($type === 'in') {
+                    // Skip location validation for now
+                    // if (!$this->validateOfficeLocation($latitude, $longitude, $db)) {
+                    //     $distance = $this->calculateDistance($latitude, $longitude, $db);
+                    //     echo json_encode(['success' => false, 'error' => "You are {$distance}m away from office. Please move closer."]);
+                    //     exit;
+                    // }
+                    
                     // Check if user is on approved leave today
                     try {
                         $stmt = $db->prepare("SELECT id FROM leaves WHERE user_id = ? AND status = 'approved' AND CURDATE() BETWEEN start_date AND end_date");
@@ -518,6 +525,69 @@ class AttendanceController extends Controller {
             'total_minutes' => $remainingMinutes,
             'present_days' => $presentDays
         ];
+    }
+    
+    private function validateOfficeLocation($userLat, $userLng, $db) {
+        try {
+            // Skip validation if coordinates are invalid
+            if (!$userLat || !$userLng || $userLat == 0 || $userLng == 0) {
+                return true; // Allow if no valid GPS
+            }
+            
+            // Get office location from settings
+            $stmt = $db->query("SELECT base_location_lat, base_location_lng, attendance_radius FROM settings LIMIT 1");
+            $settings = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$settings || !$settings['base_location_lat'] || !$settings['base_location_lng']) {
+                return true; // Allow if no office location set
+            }
+            
+            $officeLat = floatval($settings['base_location_lat']);
+            $officeLng = floatval($settings['base_location_lng']);
+            $allowedRadius = max(50, intval($settings['attendance_radius'] ?? 200)); // Minimum 50m
+            
+            // Skip validation if office coordinates are default/invalid
+            if ($officeLat == 0 || $officeLng == 0) {
+                return true;
+            }
+            
+            $distance = $this->haversineDistance($userLat, $userLng, $officeLat, $officeLng);
+            
+            return $distance <= $allowedRadius;
+        } catch (Exception $e) {
+            error_log('Location validation error: ' . $e->getMessage());
+            return true; // Allow if validation fails
+        }
+    }
+    
+    private function calculateDistance($userLat, $userLng, $db) {
+        try {
+            $stmt = $db->query("SELECT base_location_lat, base_location_lng FROM settings LIMIT 1");
+            $settings = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$settings || !$settings['base_location_lat'] || !$settings['base_location_lng']) {
+                return 0;
+            }
+            
+            $officeLat = floatval($settings['base_location_lat']);
+            $officeLng = floatval($settings['base_location_lng']);
+            
+            return round($this->haversineDistance($userLat, $userLng, $officeLat, $officeLng));
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+    
+    private function haversineDistance($lat1, $lng1, $lat2, $lng2) {
+        $earthRadius = 6371000; // Earth radius in meters
+        
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        
+        $a = sin($dLat/2) * sin($dLat/2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng/2) * sin($dLng/2);
+        $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+        
+        return $earthRadius * $c;
     }
 }
 ?>

@@ -16,58 +16,214 @@ ob_start();
     </div>
 </div>
 
-<div class="card">
-    <div class="card__header">
-        <h2 class="card__title">
-            <span>📅</span> Leave Request
-        </h2>
-    </div>
-    <div class="card__body">
-        <div class="detail-grid">
-            <div class="detail-item">
-                <label>Employee</label>
-                <span><?= htmlspecialchars($leave['user_name'] ?? 'Unknown') ?></span>
-            </div>
-            <div class="detail-item">
-                <label>Leave Type</label>
-                <span><?= htmlspecialchars($leave['leave_type'] ?? 'Annual') ?></span>
-            </div>
-            <div class="detail-item">
-                <label>Start Date</label>
-                <span><?= date('M d, Y', strtotime($leave['start_date'] ?? 'now')) ?></span>
-            </div>
-            <div class="detail-item">
-                <label>End Date</label>
-                <span><?= date('M d, Y', strtotime($leave['end_date'] ?? 'now')) ?></span>
-            </div>
-            <div class="detail-item">
-                <label>Days</label>
-                <span><?php 
+<div class="leave-compact">
+    <div class="card">
+        <div class="card__header">
+            <div class="leave-title-row">
+                <h2 class="leave-title">📅 <?= htmlspecialchars($leave['leave_type'] ?? 'Leave Request') ?></h2>
+                <div class="leave-badges">
+                    <?php 
+                    $status = $leave['status'] ?? 'pending';
+                    $statusClass = match(strtolower($status)) {
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                        default => 'warning'
+                    };
+                    $statusIcon = match(strtolower($status)) {
+                        'approved' => '✅',
+                        'rejected' => '❌',
+                        default => '⏳'
+                    };
+                    $days = 0;
                     if (isset($leave['days_requested']) && $leave['days_requested'] > 0) {
-                        echo $leave['days_requested'];
+                        $days = $leave['days_requested'];
                     } else {
                         $start = new DateTime($leave['start_date']);
                         $end = new DateTime($leave['end_date']);
                         $days = $end->diff($start)->days + 1;
-                        echo $days;
                     }
-                ?></span>
+                    ?>
+                    <span class="badge badge--<?= $statusClass ?>"><?= $statusIcon ?> <?= ucfirst($status) ?></span>
+                    <div class="days-display">
+                        <span class="days-text"><?= $days ?> day<?= $days != 1 ? 's' : '' ?></span>
+                    </div>
+                </div>
             </div>
-            <div class="detail-item">
-                <label>Status</label>
-                <span class="badge badge--warning"><?= ucfirst($leave['status'] ?? 'pending') ?></span>
+        </div>
+        <div class="card__body">
+            <?php if ($leave['reason']): ?>
+            <div class="description-compact">
+                <strong>Reason:</strong> <?= nl2br(htmlspecialchars($leave['reason'])) ?>
             </div>
-            <div class="detail-item">
-                <label>Reason</label>
-                <span><?= htmlspecialchars($leave['reason'] ?? 'N/A') ?></span>
-            </div>
-            <div class="detail-item">
-                <label>Requested</label>
-                <span><?= date('M d, Y', strtotime($leave['created_at'] ?? 'now')) ?></span>
+            <?php endif; ?>
+            
+            <div class="details-compact">
+                <div class="detail-group">
+                    <h4>👤 Employee Details</h4>
+                    <div class="detail-items">
+                        <span><strong>Name:</strong> 👤 <?= htmlspecialchars($leave['user_name'] ?? 'Unknown') ?></span>
+                        <span><strong>Leave Type:</strong> 🏷️ <?= htmlspecialchars($leave['leave_type'] ?? 'Annual') ?></span>
+                        <span><strong>Duration:</strong> 📅 <?= $days ?> day<?= $days != 1 ? 's' : '' ?></span>
+                    </div>
+                </div>
+                
+                <div class="detail-group">
+                    <h4>📅 Leave Period</h4>
+                    <div class="detail-items">
+                        <span><strong>Start Date:</strong> 📅 <?= date('M d, Y', strtotime($leave['start_date'] ?? 'now')) ?></span>
+                        <span><strong>End Date:</strong> 📅 <?= date('M d, Y', strtotime($leave['end_date'] ?? 'now')) ?></span>
+                        <span><strong>Requested:</strong> 📅 <?= date('M d, Y', strtotime($leave['created_at'] ?? 'now')) ?></span>
+                    </div>
+                </div>
+                
+                <div class="detail-group">
+                    <h4>📋 Status</h4>
+                    <div class="detail-items">
+                        <span><strong>Current Status:</strong> 
+                            <span class="badge badge--<?= $statusClass ?>"><?= $statusIcon ?> <?= ucfirst($status) ?></span>
+                        </span>
+                        <?php if (isset($leave['approved_at']) && $leave['approved_at']): ?>
+                        <span><strong>Processed:</strong> 📅 <?= date('M d, Y', strtotime($leave['approved_at'])) ?></span>
+                        <?php endif; ?>
+                        <?php if (isset($leave['rejection_reason']) && $leave['rejection_reason']): ?>
+                        <span><strong>Rejection Reason:</strong> <?= htmlspecialchars($leave['rejection_reason']) ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.leave-compact {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.leave-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    gap: 1.5rem;
+    min-height: 2rem;
+}
+
+.leave-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 200px;
+    max-width: calc(100% - 200px);
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.3;
+}
+
+.leave-badges {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 0 0 auto;
+    min-width: 180px;
+    justify-content: flex-end;
+}
+
+.days-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.days-text {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--bg-secondary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.description-compact {
+    background: var(--bg-secondary);
+    padding: 0.75rem;
+    border-radius: 6px;
+    border-left: 3px solid var(--primary);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.details-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.detail-group {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.detail-group h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.9rem;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.detail-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detail-items span {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.detail-items strong {
+    color: var(--text-primary);
+    min-width: 80px;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+    .leave-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        min-height: auto;
+    }
+    
+    .leave-title {
+        max-width: 100%;
+        min-width: auto;
+    }
+    
+    .leave-badges {
+        width: 100%;
+        min-width: auto;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+    
+    .details-compact {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 
 <?php
 $content = ob_get_clean();

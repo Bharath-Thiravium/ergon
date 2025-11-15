@@ -34,7 +34,7 @@ class TasksController extends Controller {
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             if (empty($tasks)) {
-                $tasks = $this->getStaticTasks();
+                $tasks = [];
             }
         } catch (Exception $e) {
             error_log("Task fetch error: " . $e->getMessage());
@@ -45,13 +45,7 @@ class TasksController extends Controller {
         $this->view('tasks/index', $data);
     }
     
-    private function getStaticTasks() {
-        return [
-            ['id' => 1, 'title' => 'Database Setup', 'assigned_user' => 'John Doe', 'priority' => 'high', 'status' => 'in_progress', 'due_date' => '2024-01-25'],
-            ['id' => 2, 'title' => 'UI Design', 'assigned_user' => 'Jane Smith', 'priority' => 'medium', 'status' => 'pending', 'due_date' => '2024-01-30'],
-            ['id' => 3, 'title' => 'API Development', 'assigned_user' => 'Mike Johnson', 'priority' => 'high', 'status' => 'assigned', 'due_date' => '2024-02-05']
-        ];
-    }
+
     
     public function create() {
         AuthMiddleware::requireAuth();
@@ -97,17 +91,12 @@ class TasksController extends Controller {
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             if (empty($users)) {
-                return [
-                    ['id' => 1, 'name' => 'System Owner', 'email' => 'owner@ergon.com', 'role' => 'owner'],
-                    ['id' => 2, 'name' => 'Admin User', 'email' => 'admin@ergon.com', 'role' => 'admin']
-                ];
+                return [];
             }
             return $users;
         } catch (Exception $e) {
             error_log("Error fetching users: " . $e->getMessage());
-            return [
-                ['id' => 1, 'name' => 'System Owner', 'email' => 'owner@ergon.com', 'role' => 'owner']
-            ];
+            return [];
         }
     }
     
@@ -378,6 +367,10 @@ class TasksController extends Controller {
         header('Content-Type: application/json');
         $subtasks = $this->taskModel->getSubtasks($parentId);
         echo json_encode(['subtasks' => $subtasks]);
+    }
+    
+    public function viewDetails($id) {
+        return $this->viewTask($id);
     }
     
     public function viewTask($id) {

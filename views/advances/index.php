@@ -121,13 +121,21 @@ ob_start();
                             </td>
                             <td><?= date('M d, Y', strtotime($advance['created_at'] ?? 'now')) ?></td>
                             <td>
-                                <div class="btn-group">
-                                    <a href="/ergon/advances/view/<?= $advance['id'] ?>" class="btn-icon btn-icon--view" title="View Details">
-                                        👁️
+                                <div class="ab-container">
+                                    <a class="ab-btn ab-btn--view" data-action="view" data-module="advances" data-id="<?= $advance['id'] ?>" title="View Details">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                            <polyline points="14,2 14,8 20,8"/>
+                                            <line x1="16" y1="13" x2="8" y2="13"/>
+                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                        </svg>
                                     </a>
                                     <?php if (($advance['status'] ?? 'pending') === 'pending' && ($advance['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
-                                    <a href="/ergon/advances/edit/<?= $advance['id'] ?>" class="btn-icon btn-icon--edit" title="Edit Advance">
-                                        ✏️
+                                    <a class="ab-btn ab-btn--edit" data-action="edit" data-module="advances" data-id="<?= $advance['id'] ?>" title="Edit Advance">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                            <path d="M15 5l4 4"/>
+                                        </svg>
                                     </a>
                                     <?php endif; ?>
                                     <?php 
@@ -137,16 +145,27 @@ ob_start();
                                     $canApprove = $isPending && (($currentUserRole === 'owner') || ($currentUserRole === 'admin' && $isNotOwnAdvance));
                                     ?>
                                     <?php if ($canApprove): ?>
-                                    <a href="/ergon/advances/approve/<?= $advance['id'] ?>" class="btn-icon btn-icon--approve" title="Approve Advance" onclick="return confirm('Are you sure you want to approve this advance?')">
-                                        ✅
-                                    </a>
-                                    <button onclick="showRejectModal(<?= $advance['id'] ?>)" class="btn-icon btn-icon--edit" title="Reject Advance">
-                                        ❌
+                                    <button class="ab-btn ab-btn--approve" data-action="approve" data-module="advances" data-id="<?= $advance['id'] ?>" data-name="Advance Request" title="Approve Advance">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <polyline points="20,6 9,17 4,12"/>
+                                        </svg>
+                                    </button>
+                                    <button class="ab-btn ab-btn--reject" onclick="showRejectModal(<?= $advance['id'] ?>)" title="Reject Advance">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <line x1="18" y1="6" x2="6" y2="18"/>
+                                            <line x1="6" y1="6" x2="18" y2="18"/>
+                                        </svg>
                                     </button>
                                     <?php endif; ?>
                                     <?php if (in_array($user_role ?? '', ['admin', 'owner']) || (($user_role ?? '') === 'user' && ($advance['status'] ?? 'pending') === 'pending')): ?>
-                                    <button onclick="deleteRecord('advances', <?= $advance['id'] ?>, 'Advance Request')" class="btn-icon btn-icon--delete" title="Delete Request">
-                                        🗑️
+                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="advances" data-id="<?= $advance['id'] ?>" data-name="Advance Request" title="Delete Request">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M3 6h18"/>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                            <line x1="10" y1="11" x2="10" y2="17"/>
+                                            <line x1="14" y1="11" x2="14" y2="17"/>
+                                        </svg>
                                     </button>
                                     <?php endif; ?>
                                 </div>
@@ -254,6 +273,29 @@ window.onclick = function(event) {
 </script>
 
 <script src="/ergon/assets/js/table-utils.js"></script>
+
+<script>
+// Global action button handler
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.ab-btn');
+    if (!btn) return;
+    
+    const action = btn.dataset.action;
+    const module = btn.dataset.module;
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    
+    if (action === 'view' && module && id) {
+        window.location.href = `/ergon/${module}/view/${id}`;
+    } else if (action === 'edit' && module && id) {
+        window.location.href = `/ergon/${module}/edit/${id}`;
+    } else if (action === 'delete' && module && id && name) {
+        deleteRecord(module, id, name);
+    } else if (action === 'approve' && module && id) {
+        window.location.href = `/ergon/${module}/approve/${id}`;
+    }
+});
+</script>
 
 <?php
 $content = ob_get_clean();

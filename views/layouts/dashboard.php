@@ -55,10 +55,14 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <link href="/ergon/assets/css/instant-theme.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/hover-fix.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/force-dark-theme.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/action-button-clean.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/standardized-icons.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/global-tooltips.css?v=<?= time() ?>" rel="stylesheet">
     
     <!-- JavaScript -->
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
+    <script src="/ergon/assets/js/action-button-clean.js?v=<?= time() ?>" defer></script>
 </head>
 <body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
     <header class="main-header">
@@ -482,34 +486,53 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         var list = document.getElementById('notificationList');
         if (!list) return;
         
-        fetch('/ergon/api/notifications')
+        fetch('/ergon/api/notifications.php')
         .then(response => response.json())
         .then(data => {
-            if (data.notifications && data.notifications.length > 0) {
+            if (data.success && data.notifications && data.notifications.length > 0) {
                 list.innerHTML = data.notifications.map(function(notif) {
-                    var link = getNotificationLink(notif.type, notif.message);
+                    var link = getNotificationLink(notif.module_name, notif.message);
                     return '<a href="' + link + '" class="notification-item" onclick="closeNotificationDropdown()">' +
-                           '<div class="notification-title">' + (notif.title || 'Notification') + '</div>' +
+                           '<div class="notification-title">' + (notif.action_type || 'Notification') + '</div>' +
                            '<div class="notification-message">' + (notif.message || '') + '</div>' +
                            '<div class="notification-time">' + formatTime(notif.created_at) + '</div>' +
                            '</a>';
                 }).join('');
+                
+                // Update badge
+                updateNotificationBadge(data.unread_count || 0);
             } else {
                 list.innerHTML = '<div class="notification-loading">No notifications</div>';
+                updateNotificationBadge(0);
             }
         })
         .catch(error => {
+            console.error('Notification error:', error);
             list.innerHTML = '<div class="notification-loading">Failed to load notifications</div>';
         });
     }
     
-    function getNotificationLink(type, message) {
-        if (message.includes('task')) return '/ergon/tasks';
-        if (message.includes('leave')) return '/ergon/leaves';
-        if (message.includes('expense')) return '/ergon/expenses';
-        if (message.includes('advance')) return '/ergon/advances';
-        if (message.includes('approval')) return '/ergon/owner/approvals';
-        return '/ergon/notifications';
+    function updateNotificationBadge(count) {
+        var badge = document.getElementById('notificationBadge');
+        if (badge) {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'block' : 'none';
+        }
+    }
+    
+    // Load notification count on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadNotifications();
+    });
+    
+    function getNotificationLink(module, message) {
+        switch(module) {
+            case 'task': return '/ergon/tasks';
+            case 'leave': return '/ergon/leaves';
+            case 'expense': return '/ergon/expenses';
+            case 'advance': return '/ergon/advances';
+            default: return '/ergon/notifications';
+        }
     }
     
     function formatTime(dateStr) {
@@ -530,11 +553,12 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     }
     
     function markAllAsRead() {
-        fetch('/ergon/api/notifications/mark-all-read', {
+        fetch('/ergon/api/notifications.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-            }
+            },
+            body: 'action=mark-all-read'
         })
         .then(response => response.json())
         .then(data => {
@@ -679,40 +703,8 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 
     </script>
 
-    <!-- Custom Tooltip Implementation -->
     <script>
-    // Simple tooltip implementation to replace Bootstrap tooltips
-    function initTooltips() {
-        const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"], [title]');
-        
-        tooltipElements.forEach(element => {
-            const tooltipText = element.getAttribute('data-bs-original-title') || element.getAttribute('title');
-            if (!tooltipText) return;
-            
-            // Remove title to prevent default browser tooltip
-            element.removeAttribute('title');
-            
-            let tooltip = null;
-            
-            element.addEventListener('mouseenter', function() {
-                tooltip = document.createElement('div');
-                tooltip.className = 'custom-tooltip';
-                tooltip.textContent = tooltipText;
-                document.body.appendChild(tooltip);
-                
-                const rect = element.getBoundingClientRect();
-                tooltip.style.left = rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2) + 'px';
-                tooltip.style.top = rect.top - tooltip.offsetHeight - 8 + 'px';
-            });
-            
-            element.addEventListener('mouseleave', function() {
-                if (tooltip) {
-                    tooltip.remove();
-                    tooltip = null;
-                }
-            });
-        });
-    }
+    // Global tooltip conversion is handled by action-button-clean.js
     
     // Smart back navigation function
     function goBack() {
@@ -733,11 +725,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
     }
     
-    // Initialize tooltips when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initTooltips);
-    } else {
-        initTooltips();
+    
+    function initTooltips() {
+        // Non-action-button tooltips only
+        return;
     }
     </script>
     

@@ -322,7 +322,7 @@ class LeaveController extends Controller {
             $db = Database::connect();
             
             // Get leave details before approval
-            $stmt = $db->prepare("SELECT user_id, start_date, end_date FROM leaves WHERE id = ? AND status = 'pending'");
+            $stmt = $db->prepare("SELECT user_id, start_date, end_date FROM leaves WHERE id = ? AND status = 'Pending'");
             $stmt->execute([$id]);
             $leave = $stmt->fetch(PDO::FETCH_ASSOC);
             
@@ -332,7 +332,7 @@ class LeaveController extends Controller {
             }
             
             // Approve the leave
-            $stmt = $db->prepare("UPDATE leaves SET status = 'approved' WHERE id = ?");
+            $stmt = $db->prepare("UPDATE leaves SET status = 'Approved' WHERE id = ?");
             $result = $stmt->execute([$id]);
             
             if ($result) {
@@ -360,9 +360,13 @@ class LeaveController extends Controller {
             $stmt->execute([$userId, $currentDate]);
             
             if (!$stmt->fetch()) {
-                // Create new attendance record for leave
-                $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status, created_at) VALUES (?, ?, NULL, 'absent', NOW())");
-                $stmt->execute([$userId, $currentDate . ' 00:00:00']);
+                // Create attendance record for leave with proper leave marking
+                $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, status, location_name, created_at) VALUES (?, ?, 'present', 'On Approved Leave', NOW())");
+                $stmt->execute([$userId, $currentDate . ' 09:00:00']);
+            } else {
+                // Update existing record to mark as leave
+                $stmt = $db->prepare("UPDATE attendance SET status = 'present', location_name = 'On Approved Leave' WHERE user_id = ? AND DATE(check_in) = ?");
+                $stmt->execute([$userId, $currentDate]);
             }
             
             $start->add(new DateInterval('P1D'));
@@ -391,11 +395,11 @@ class LeaveController extends Controller {
                 $db = Database::connect();
                 
                 // Get leave details before rejection
-                $stmt = $db->prepare("SELECT user_id, start_date, end_date FROM leaves WHERE id = ? AND status = 'pending'");
+                $stmt = $db->prepare("SELECT user_id, start_date, end_date FROM leaves WHERE id = ? AND status = 'Pending'");
                 $stmt->execute([$id]);
                 $leave = $stmt->fetch(PDO::FETCH_ASSOC);
                 
-                $stmt = $db->prepare("UPDATE leaves SET status = 'rejected', rejection_reason = ? WHERE id = ? AND status = 'pending'");
+                $stmt = $db->prepare("UPDATE leaves SET status = 'Rejected', rejection_reason = ? WHERE id = ? AND status = 'Pending'");
                 $result = $stmt->execute([$reason, $id]);
                 
                 if ($result && $stmt->rowCount() > 0) {
@@ -418,16 +422,7 @@ class LeaveController extends Controller {
     
     private function removeLeaveAttendanceRecords($db, $userId, $startDate, $endDate) {
         try {
-            // Check if attendance table has the columns we need
-            $stmt = $db->query("SHOW COLUMNS FROM attendance");
-            $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            // Use appropriate column names based on what exists
-            if (in_array('location_name', $columns)) {
-                $stmt = $db->prepare("DELETE FROM attendance WHERE user_id = ? AND location_name = 'On Approved Leave' AND DATE(check_in) BETWEEN ? AND ?");
-            } else {
-                $stmt = $db->prepare("DELETE FROM attendance WHERE user_id = ? AND status = 'absent' AND DATE(check_in) BETWEEN ? AND ?");
-            }
+            $stmt = $db->prepare("DELETE FROM attendance WHERE user_id = ? AND location_name = 'On Approved Leave' AND DATE(check_in) BETWEEN ? AND ?");
             $stmt->execute([$userId, $startDate, $endDate]);
         } catch (Exception $e) {
             error_log('Remove leave attendance error: ' . $e->getMessage());

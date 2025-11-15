@@ -26,7 +26,9 @@ class AdvanceController extends Controller {
                 approved_by INT NULL,
                 approved_at DATETIME NULL,
                 rejection_reason TEXT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                rejected_by INT NULL,
+                rejected_at TIMESTAMP NULL
             )");
             
             if ($role === 'user') {

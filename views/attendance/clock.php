@@ -88,6 +88,13 @@ function getLocation() {
 }
 
 function clockAction(type) {
+    // Disable buttons to prevent double-clicking
+    const clockInBtn = document.getElementById('clockInBtn');
+    const clockOutBtn = document.getElementById('clockOutBtn');
+    
+    if (clockInBtn) clockInBtn.disabled = true;
+    if (clockOutBtn) clockOutBtn.disabled = true;
+    
     const formData = new FormData();
     formData.append('type', type);
     
@@ -112,11 +119,17 @@ function clockAction(type) {
             setTimeout(() => window.location.href = '/ergon/attendance', 1000);
         } else {
             alert(data.error || 'An error occurred');
+            // Re-enable buttons on error
+            if (clockInBtn) clockInBtn.disabled = false;
+            if (clockOutBtn) clockOutBtn.disabled = false;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Server error occurred');
+        alert('Server error occurred. Please try again.');
+        // Re-enable buttons on error
+        if (clockInBtn) clockInBtn.disabled = false;
+        if (clockOutBtn) clockOutBtn.disabled = false;
     });
 }
 

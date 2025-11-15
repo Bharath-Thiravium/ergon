@@ -80,7 +80,7 @@ $router->get('/tasks/create', 'TasksController', 'create');
 $router->post('/tasks/create', 'TasksController', 'store');
 $router->get('/tasks/edit/{id}', 'TasksController', 'edit');
 $router->post('/tasks/edit/{id}', 'TasksController', 'edit');
-$router->get('/tasks/view/{id}', 'TasksController', 'viewTask');
+$router->get('/tasks/view/{id}', 'TasksController', 'viewDetails');
 $router->post('/tasks/delete/{id}', 'TasksController', 'delete');
 $router->post('/tasks/update-status', 'TasksController', 'updateStatus');
 $router->get('/tasks/calendar', 'TasksController', 'calendar');
@@ -96,12 +96,13 @@ $router->get('/daily-planner/delayed-tasks-overview', 'DashboardController', 'de
 
 
 
-// Attendance
-$router->get('/attendance', 'AttendanceController', 'index');
-$router->get('/attendance/clock', 'AttendanceController', 'clock');
-$router->post('/attendance/clock', 'AttendanceController', 'clock');
-$router->post('/attendance/manual', 'AttendanceController', 'manual');
-$router->get('/attendance/status', 'AttendanceController', 'status');
+// Attendance - Using Unified Controller
+$router->get('/attendance', 'UnifiedAttendanceController', 'index');
+$router->get('/attendance/clock', 'UnifiedAttendanceController', 'clock');
+$router->post('/attendance/clock', 'UnifiedAttendanceController', 'clock');
+$router->post('/attendance/manual', 'UnifiedAttendanceController', 'manual');
+$router->get('/attendance/status', 'UnifiedAttendanceController', 'status');
+$router->get('/attendance/export', 'AttendanceController', 'exportAttendance');
 $router->get('/attendance/conflicts', 'AttendanceController', 'conflicts');
 $router->post('/attendance/resolve-conflict/{id}', 'AttendanceController', 'resolveConflict');
 

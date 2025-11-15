@@ -61,7 +61,6 @@ ob_start();
                         <th>Description</th>
                         <th>Department Head</th>
                         <th>Employees</th>
-                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -80,17 +79,30 @@ ob_start();
                         <td>
                             <strong><?= $dept['employee_count'] ?></strong> employees
                         </td>
-                        <td><span class="badge badge--<?= $dept['status'] === 'active' ? 'success' : 'warning' ?>"><?= ucfirst($dept['status']) ?></span></td>
                         <td>
-                            <div class="btn-group">
-                                <a href="/ergon/departments/view/<?= $dept['id'] ?>" class="btn-icon btn--primary" title="View Details">
-                                    👁️
+                            <div class="ab-container">
+                                <a class="ab-btn ab-btn--view" data-action="view" data-module="departments" data-id="<?= $dept['id'] ?>" title="View Details">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14,2 14,8 20,8"/>
+                                        <line x1="16" y1="13" x2="8" y2="13"/>
+                                        <line x1="16" y1="17" x2="8" y2="17"/>
+                                    </svg>
                                 </a>
-                                <a href="/ergon/departments/edit/<?= $dept['id'] ?>" class="btn-icon btn--secondary" title="Edit Department">
-                                    ✏️
+                                <a class="ab-btn ab-btn--edit" data-action="edit" data-module="departments" data-id="<?= $dept['id'] ?>" title="Edit Department">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                        <path d="M15 5l4 4"/>
+                                    </svg>
                                 </a>
-                                <button onclick="deleteRecord('departments', <?= $dept['id'] ?>, '<?= htmlspecialchars($dept['name']) ?>')" class="btn-icon btn--danger" title="Delete Department">
-                                    🗑️
+                                <button class="ab-btn ab-btn--delete" data-action="delete" data-module="departments" data-id="<?= $dept['id'] ?>" data-name="<?= htmlspecialchars($dept['name']) ?>" title="Delete Department">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M3 6h18"/>
+                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                        <line x1="10" y1="11" x2="10" y2="17"/>
+                                        <line x1="14" y1="11" x2="14" y2="17"/>
+                                    </svg>
                                 </button>
                             </div>
                         </td>
@@ -103,6 +115,27 @@ ob_start();
 </div>
 
 <script src="/ergon/assets/js/table-utils.js"></script>
+
+<script>
+// Global action button handler
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.ab-btn');
+    if (!btn) return;
+    
+    const action = btn.dataset.action;
+    const module = btn.dataset.module;
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    
+    if (action === 'view' && module && id) {
+        window.location.href = `/ergon/${module}/view/${id}`;
+    } else if (action === 'edit' && module && id) {
+        window.location.href = `/ergon/${module}/edit/${id}`;
+    } else if (action === 'delete' && module && id && name) {
+        deleteRecord(module, id, name);
+    }
+});
+</script>
 
 <?php
 $content = ob_get_clean();

@@ -270,44 +270,56 @@ class UsersController extends Controller {
     }
     
     public function resetPassword() {
+        header('Content-Type: application/json');
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
-            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
             exit;
         }
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $userId = $_POST['user_id'];
-            $tempPassword = 'RST' . rand(1000, 9999);
-            
-            $userModel = new User();
-            $user = $userModel->getById($userId);
-            
-            if ($user) {
-                // Direct database update to avoid any model complications
+            try {
+                $userId = $_POST['user_id'] ?? null;
+                if (!$userId) {
+                    echo json_encode(['success' => false, 'message' => 'User ID required']);
+                    exit;
+                }
+                
+                $tempPassword = 'RST' . rand(1000, 9999);
+                
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
-                $hashedPassword = password_hash($tempPassword, PASSWORD_BCRYPT);
-                $stmt = $db->prepare("UPDATE users SET password = ? WHERE id = ?");
-                $stmt->execute([$hashedPassword, $userId]);
                 
-                $_SESSION['reset_credentials'] = [
-                    'email' => $user['email'],
-                    'password' => $tempPassword
-                ];
+                $stmt = $db->prepare("SELECT name, email FROM users WHERE id = ?");
+                $stmt->execute([$userId]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
                 
-                error_log("Password reset for user {$userId}: {$tempPassword}");
-                
-                // Test the password immediately
-                if (password_verify($tempPassword, $hashedPassword)) {
-                    error_log("✅ Password verification successful for user {$userId}");
+                if ($user) {
+                    $hashedPassword = password_hash($tempPassword, PASSWORD_BCRYPT);
+                    $stmt = $db->prepare("UPDATE users SET password = ? WHERE id = ?");
+                    $result = $stmt->execute([$hashedPassword, $userId]);
+                    
+                    if ($result) {
+                        echo json_encode([
+                            'success' => true, 
+                            'message' => 'Password reset successfully',
+                            'credentials' => [
+                                'email' => $user['email'],
+                                'password' => $tempPassword
+                            ]
+                        ]);
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'Failed to reset password']);
+                    }
                 } else {
-                    error_log("❌ Password verification failed for user {$userId}");
+                    echo json_encode(['success' => false, 'message' => 'User not found']);
                 }
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => 'Reset failed: ' . $e->getMessage()]);
             }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
         }
-        
-        header('Location: /ergon/users');
         exit;
     }
     
@@ -344,13 +356,18 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Permanently delete the user record
-            $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
+            // Deactivate instead of delete to maintain data integrity
+            $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$id]);
             
-            echo json_encode(['success' => $result]);
+            if ($result) {
+                // Force logout of the deactivated user by clearing their sessions
+                $this->invalidateUserSessions($id);
+            }
+            
+            echo json_encode(['success' => $result, 'message' => $result ? 'User deactivated successfully' : 'Deactivation failed']);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Delete failed']);
+            echo json_encode(['success' => false, 'message' => 'Deactivation failed']);
         }
         exit;
     }
@@ -373,13 +390,18 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Permanently delete the user record
-            $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
+            // Deactivate instead of delete to maintain data integrity
+            $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$userId]);
             
-            echo json_encode(['success' => $result, 'message' => $result ? 'User deleted successfully' : 'Delete failed']);
+            if ($result) {
+                // Force logout of the deactivated user
+                $this->invalidateUserSessions($userId);
+            }
+            
+            echo json_encode(['success' => $result, 'message' => $result ? 'User deactivated successfully' : 'Deactivation failed']);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => 'Deactivation failed: ' . $e->getMessage()]);
         }
         exit;
     }
@@ -658,6 +680,28 @@ class UsersController extends Controller {
             return number_format($bytes / 1024, 2) . ' KB';
         } else {
             return $bytes . ' bytes';
+        }
+    }
+    
+    private function invalidateUserSessions($userId) {
+        try {
+            // Create user_sessions table if it doesn't exist
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $db->exec("CREATE TABLE IF NOT EXISTS user_sessions (
+                id VARCHAR(128) PRIMARY KEY,
+                user_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id)
+            )");
+            
+            // Remove all sessions for this user
+            $stmt = $db->prepare("DELETE FROM user_sessions WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            
+        } catch (Exception $e) {
+            error_log('Session invalidation error: ' . $e->getMessage());
         }
     }
     
