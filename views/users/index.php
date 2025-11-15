@@ -316,6 +316,10 @@ document.addEventListener('click', function(e) {
 
 console.log('SCRIPT LOADED');
 console.log('Total buttons:', document.querySelectorAll('.ab-btn').length);
+console.log('Delete buttons:', document.querySelectorAll('[data-action="delete"]').length);
+</script>
+
+<script src="/ergon/assets/js/test-remove-button-debug.js"></script>);
 console.log('Delete buttons:', document.querySelectorAll('[data-action="delete"]').length);ument.querySelectorAll('.ab-btn[data-action="delete"]');
     
     if (removeButtons.length === 0) {
