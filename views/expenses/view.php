@@ -64,12 +64,39 @@ ob_start();
                 <label>Submitted</label>
                 <span><?= date('M d, Y', strtotime($expense['created_at'] ?? 'now')) ?></span>
             </div>
+            <?php if (!empty($expense['attachment'])): ?>
+            <div class="detail-item">
+                <label>Receipt</label>
+                <div class="receipt-container">
+                    <img src="/ergon/storage/receipts/<?= htmlspecialchars($expense['attachment']) ?>" 
+                         alt="Receipt" 
+                         class="receipt-image" 
+                         onclick="openReceiptModal('/ergon/storage/receipts/<?= htmlspecialchars($expense['attachment']) ?>')">
+                    <a href="/ergon/storage/receipts/<?= htmlspecialchars($expense['attachment']) ?>" 
+                       target="_blank" 
+                       class="receipt-link">View Full Size</a>
+                </div>
+            </div>
+            <?php endif; ?>
             <?php if (!empty($expense['approved_at'])): ?>
             <div class="detail-item">
                 <label><?= ($expense['status'] ?? 'pending') === 'approved' ? 'Approved' : 'Processed' ?> Date</label>
                 <span><?= date('M d, Y', strtotime($expense['approved_at'])) ?></span>
             </div>
             <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<!-- Receipt Modal -->
+<div id="receiptModal" class="modal" style="display: none;">
+    <div class="modal-content modal-content--large">
+        <div class="modal-header">
+            <h3>📄 Receipt Image</h3>
+            <span class="close" onclick="closeReceiptModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <img id="receiptImage" src="" alt="Receipt" class="receipt-full">
         </div>
     </div>
 </div>
@@ -103,7 +130,93 @@ ob_start();
     color: #dc2626 !important;
     font-style: italic;
 }
+.receipt-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.receipt-image {
+    max-width: 200px;
+    max-height: 150px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.receipt-image:hover {
+    transform: scale(1.05);
+}
+.receipt-link {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 0.875rem;
+}
+.receipt-link:hover {
+    text-decoration: underline;
+}
+.modal {
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+.modal-content--large {
+    max-width: 90%;
+    max-height: 90vh;
+    margin: 2% auto;
+}
+.receipt-full {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+.close {
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+}
+.close:hover {
+    color: #374151;
+}
+.modal-body {
+    padding: 1rem;
+    text-align: center;
+}
 </style>
+
+<script>
+function openReceiptModal(imageSrc) {
+    document.getElementById('receiptImage').src = imageSrc;
+    document.getElementById('receiptModal').style.display = 'block';
+}
+
+function closeReceiptModal() {
+    document.getElementById('receiptModal').style.display = 'none';
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('receiptModal');
+    if (event.target === modal) {
+        closeReceiptModal();
+    }
+}
+</script>
 
 <?php
 $content = ob_get_clean();

@@ -195,6 +195,19 @@ $content = ob_start();
                         </select>
                     </div>
                     <div class="form-group">
+                        <label for="project_id">📁 Project</label>
+                        <select id="project_id" name="project_id">
+                            <option value="">Select Project</option>
+                            <?php if (!empty($projects)): ?>
+                                <?php foreach ($projects as $project): ?>
+                                    <option value="<?= $project['id'] ?>"><?= htmlspecialchars($project['name']) ?></option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
                         <label for="priority">🚨 Priority <span class="field-help" title="How urgent/important is this task?">ℹ️</span></label>
                         <select id="priority" name="priority">
                             <option value="low">🟢 Low (Routine, can wait)</option>
@@ -1062,12 +1075,26 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .btn-primary {
-    background: var(--primary);
-    color: white;
+    background: #3b82f6 !important;
+    color: white !important;
+    font-weight: 600;
 }
 
 .btn-primary:hover {
-    background: var(--primary-dark);
+    background: #2563eb !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+[data-theme="dark"] .btn-primary {
+    background: #2563eb !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .btn-primary:hover {
+    background: #1d4ed8 !important;
+    color: white !important;
 }
 
 .btn-secondary {

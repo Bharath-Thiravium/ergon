@@ -35,6 +35,13 @@ class ExpenseController extends Controller {
             
             $db->exec($sql);
             
+            // Check if attachment column exists in existing table
+            $stmt = $db->query("SHOW COLUMNS FROM expenses LIKE 'attachment'");
+            if ($stmt->rowCount() == 0) {
+                $db->exec("ALTER TABLE expenses ADD COLUMN attachment VARCHAR(255) NULL");
+                error_log('Added attachment column to existing expenses table');
+            }
+            
         } catch (Exception $e) {
             error_log('Error ensuring expense tables: ' . $e->getMessage());
         }
@@ -184,13 +191,14 @@ class ExpenseController extends Controller {
                     require_once __DIR__ . '/../config/database.php';
                     $db = Database::connect();
                     
-                    $stmt = $db->prepare("INSERT INTO expenses (user_id, category, amount, description, expense_date, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', NOW())");
+                    $stmt = $db->prepare("INSERT INTO expenses (user_id, category, amount, description, expense_date, attachment, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())");
                     $result = $stmt->execute([
                         $data['user_id'],
                         $data['category'],
                         $data['amount'],
                         $data['description'],
-                        $data['expense_date']
+                        $data['expense_date'],
+                        $data['attachment']
                     ]);
                     
                     if ($result) {
@@ -241,12 +249,31 @@ class ExpenseController extends Controller {
             }
             
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                $stmt = $db->prepare("UPDATE expenses SET category = ?, amount = ?, description = ?, expense_date = ? WHERE id = ?");
+                // Handle file upload
+                $attachment = $expense['attachment']; // Keep existing attachment by default
+                if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === 0) {
+                    $uploadDir = __DIR__ . '/../../storage/receipts/';
+                    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                    
+                    $filename = time() . '_' . $_FILES['receipt']['name'];
+                    $uploadPath = $uploadDir . $filename;
+                    
+                    if (move_uploaded_file($_FILES['receipt']['tmp_name'], $uploadPath)) {
+                        // Delete old file if exists
+                        if ($expense['attachment'] && file_exists($uploadDir . $expense['attachment'])) {
+                            unlink($uploadDir . $expense['attachment']);
+                        }
+                        $attachment = $filename;
+                    }
+                }
+                
+                $stmt = $db->prepare("UPDATE expenses SET category = ?, amount = ?, description = ?, expense_date = ?, attachment = ? WHERE id = ?");
                 $result = $stmt->execute([
                     $_POST['category'] ?? $expense['category'],
                     floatval($_POST['amount'] ?? $expense['amount']),
                     $_POST['description'] ?? $expense['description'],
                     $_POST['expense_date'] ?? $expense['expense_date'],
+                    $attachment,
                     $id
                 ]);
                 

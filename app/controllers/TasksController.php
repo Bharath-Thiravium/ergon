@@ -62,10 +62,12 @@ class TasksController extends Controller {
         
         $users = $this->getActiveUsers();
         $departments = $this->getDepartments();
+        $projects = $this->getProjects();
         
         $data = [
             'users' => $users,
             'departments' => $departments,
+            'projects' => $projects,
             'active_page' => 'tasks'
         ];
         $this->view('tasks/create', $data);
@@ -125,7 +127,8 @@ class TasksController extends Controller {
 
             'sla_hours' => intval($_POST['sla_hours'] ?? 24),
             'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
-            'task_category' => trim($_POST['task_category'] ?? '')
+            'task_category' => trim($_POST['task_category'] ?? ''),
+            'project_id' => !empty($_POST['project_id']) ? intval($_POST['project_id']) : null
         ];
         
         error_log('Task store data: ' . json_encode($taskData));
@@ -146,7 +149,7 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, status, progress, sla_hours, department_id, task_category, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, status, progress, sla_hours, department_id, task_category, project_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
             $result = $stmt->execute([
                 $taskData['title'], 
                 $taskData['description'], 
@@ -159,7 +162,8 @@ class TasksController extends Controller {
                 $taskData['progress'],
                 $taskData['sla_hours'],
                 $taskData['department_id'],
-                $taskData['task_category']
+                $taskData['task_category'],
+                $taskData['project_id']
             ]);
             
             if ($result) {
@@ -519,6 +523,22 @@ class TasksController extends Controller {
         }
     }
     
+    private function getProjects() {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("SELECT id, name, status FROM projects WHERE status = 'active' ORDER BY name");
+            $stmt->execute();
+            $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            return $projects;
+        } catch (Exception $e) {
+            error_log('Error fetching projects: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
     private function createAutoFollowup($db, $taskId, $taskData, $postData) {
         try {
             // Ensure followups table exists
@@ -656,6 +676,7 @@ class TasksController extends Controller {
                 sla_hours INT DEFAULT 24,
                 department_id INT DEFAULT NULL,
                 task_category VARCHAR(100) DEFAULT NULL,
+                project_id INT DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )");
@@ -674,6 +695,14 @@ class TasksController extends Controller {
             if ($stmt->rowCount() == 0) {
                 $db->exec("ALTER TABLE tasks ADD COLUMN task_category VARCHAR(100) DEFAULT NULL");
                 error_log('Added task_category column to tasks table');
+            }
+            
+            // Check if project_id column exists, if not add it
+            $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'project_id'");
+            $stmt->execute();
+            if ($stmt->rowCount() == 0) {
+                $db->exec("ALTER TABLE tasks ADD COLUMN project_id INT DEFAULT NULL");
+                error_log('Added project_id column to tasks table');
             }
         } catch (Exception $e) {
             error_log('ensureTasksTable error: ' . $e->getMessage());
