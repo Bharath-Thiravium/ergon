@@ -23,7 +23,7 @@ ob_start();
         </h2>
     </div>
     <div class="card__body">
-        <form method="POST" action="/ergon/expenses/edit/<?= $expense['id'] ?>" class="form">
+        <form method="POST" action="/ergon/expenses/edit/<?= $expense['id'] ?>" class="form" enctype="multipart/form-data">
             <div class="form-row">
                 <div class="form-group">
                     <label for="category" class="form-label">Category *</label>
