@@ -399,6 +399,8 @@ class UsersController extends Controller {
         }
         
         try {
+            error_log("🔴 DELETE ACTION RECEIVED for user ID: {$id}");
+            
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
@@ -408,21 +410,32 @@ class UsersController extends Controller {
             $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$user) {
+                error_log("🔴 DELETE FAILED: User {$id} not found");
                 echo json_encode(['success' => false, 'message' => 'User not found']);
                 exit;
             }
             
+            error_log("🔴 DELETE: User {$id} current status: '{$user['status']}'");
+            
             $stmt = $db->prepare("UPDATE users SET status = 'removed', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$id]);
             
+            error_log("🔴 DELETE: SQL UPDATE result: " . ($result ? 'SUCCESS' : 'FAILED'));
+            
             if ($result) {
+                // Verify the update actually happened
+                $verifyStmt = $db->prepare("SELECT status FROM users WHERE id = ?");
+                $verifyStmt->execute([$id]);
+                $newStatus = $verifyStmt->fetchColumn();
+                error_log("🔴 DELETE: User {$id} new status after update: '{$newStatus}'");
+                
                 $this->invalidateUserSessions($id);
-                error_log("User {$id} status changed from '{$user['status']}' to 'removed'");
+                error_log("🔴 DELETE: User {$id} status changed from '{$user['status']}' to '{$newStatus}'");
             }
             
             echo json_encode(['success' => $result, 'message' => $result ? 'User removed successfully' : 'Removal failed']);
         } catch (Exception $e) {
-            error_log('User delete error: ' . $e->getMessage());
+            error_log("🔴 DELETE ERROR: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Removal failed: ' . $e->getMessage()]);
         }
         exit;

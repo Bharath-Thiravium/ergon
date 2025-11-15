@@ -211,6 +211,13 @@ document.addEventListener('click', function(e) {
     // Debug logging
     console.log('Button clicked:', { action, module, id, name, buttonClass: btn.className });
     
+    // DIAGNOSTIC: Specific remove button tracking
+    if (btn.classList.contains('btn-remove')) {
+        console.log('🔴 REMOVE BUTTON TRIGGERED for user ID:', id);
+        console.log('🔴 Button element:', btn);
+        console.log('🔴 Data attributes:', btn.dataset);
+    }
+    
     if (action === 'view' && module && id) {
         window.location.href = `/ergon/${module}/view/${id}`;
     } else if (action === 'edit' && module && id) {
@@ -262,7 +269,9 @@ document.addEventListener('click', function(e) {
             });
         }
     } else if (action === 'delete' && module && id && name) {
+        console.log('🔴 DELETE ACTION CONFIRMED - calling endpoint:', `/ergon/${module}/delete/${id}`);
         if (confirm(`Remove user ${name}? This will permanently mark them as removed from the system.`)) {
+            console.log('🔴 User confirmed deletion, making API call...');
             fetch(`/ergon/${module}/delete/${id}`, { 
                 method: 'POST',
                 headers: {
