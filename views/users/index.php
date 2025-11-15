@@ -135,7 +135,7 @@ ob_start();
                                                 <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
                                             </svg>
                                         </button>
-                                        <button class="ab-btn ab-btn--delete btn-remove" data-action="delete" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Remove User">
+                                        <button class="ab-btn ab-btn--delete btn-remove" data-action="delete" data-module="users" data-id="<?= $user['id'] ?>" data-user-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Remove User">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                 <path d="M3 6h18"/>
                                                 <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -313,6 +313,29 @@ document.addEventListener('click', function(e) {
         }
     }
 });
+
+// AUDIT SCRIPT - Remove after debugging
+(function auditRemoveButton() {
+    const removeButtons = document.querySelectorAll('.ab-btn[data-action="delete"]');
+    
+    if (removeButtons.length === 0) {
+        console.warn('❌ No .ab-btn with data-action="delete" found.');
+        return;
+    }
+    
+    console.log(`✅ Found ${removeButtons.length} Remove button(s).`);
+    
+    removeButtons.forEach((btn, index) => {
+        const userId = btn.dataset.id || btn.dataset.userId || 'N/A';
+        console.log(`🔍 Button ${index + 1}:`, {
+            text: btn.title,
+            userId,
+            action: btn.dataset.action,
+            module: btn.dataset.module,
+            classes: btn.className,
+        });
+    });
+})();
 </script>
 
 <?php
