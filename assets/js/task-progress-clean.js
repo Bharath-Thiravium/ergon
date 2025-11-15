@@ -1,3 +1,4 @@
+// Modern action buttons are now handled by CSS tooltips
 var currentTaskId;
 function openProgressModal(taskId, progress, status) {
     currentTaskId = taskId;
