@@ -10,68 +10,82 @@ class DailyPlanner {
     public function getTasksForDate($userId, $date) {
         try {
             // First try to get tasks from daily_tasks table
-            $stmt = $this->db->prepare("
-                SELECT 
-                    dt.id, dt.title, dt.description, dt.priority, dt.status,
-                    0 as progress, NULL as deadline, dt.planned_duration as estimated_duration, NULL as sla_hours,
-                    'daily' as task_type, NULL as company_name, NULL as project_name, NULL as contact_person,
-                    dt.scheduled_date as planned_date, dt.created_at as assigned_at,
-                    dt.status as completion_status, dt.active_seconds,
-                    dt.completed_percentage, dt.start_time,
-                    dt.planned_start_time, dt.planned_duration,
-                    u.name as assigned_by_user
-                FROM daily_tasks dt
-                LEFT JOIN users u ON dt.user_id = u.id
-                WHERE dt.user_id = ? AND dt.scheduled_date = ?
-                ORDER BY 
-                    CASE dt.priority 
-                        WHEN 'high' THEN 3 
-                        WHEN 'medium' THEN 2 
-                        WHEN 'low' THEN 1 
-                        ELSE 0 
-                    END DESC, 
-                    dt.created_at DESC
-            ");
-            $stmt->execute([$userId, $date]);
-            $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            // If no daily tasks, get from regular tasks table
-            if (empty($dailyTasks)) {
+            try {
                 $stmt = $this->db->prepare("
                     SELECT 
-                        t.id, t.title, t.description, t.priority, t.status,
-                        t.progress, t.deadline, t.estimated_duration, t.sla_hours,
-                        t.task_type, t.company_name, t.project_name, t.contact_person,
-                        t.planned_date, t.assigned_at,
-                        CASE 
-                            WHEN t.status = 'completed' THEN 'completed'
-                            WHEN t.status = 'in_progress' THEN 'in_progress'
-                            ELSE 'not_started'
-                        END as completion_status, 
-                        0 as active_seconds,
-                        t.progress as completed_percentage, NULL as start_time,
-                        NULL as planned_start_time, t.estimated_duration as planned_duration,
+                        dt.id, dt.title, dt.description, dt.priority, dt.status,
+                        0 as progress, NULL as deadline, dt.planned_duration as estimated_duration, NULL as sla_hours,
+                        'daily' as task_type, NULL as company_name, NULL as project_name, NULL as contact_person,
+                        dt.scheduled_date as planned_date, dt.created_at as assigned_at,
+                        dt.status as completion_status, dt.active_seconds,
+                        dt.completed_percentage, dt.start_time,
+                        dt.planned_start_time, dt.planned_duration,
                         u.name as assigned_by_user
-                    FROM tasks t
-                    LEFT JOIN users u ON t.assigned_by = u.id
-                    WHERE t.assigned_to = ? 
-                    AND (
-                        (t.planned_date IS NOT NULL AND DATE(t.planned_date) = ?)
-                        OR (t.planned_date IS NULL AND DATE(COALESCE(t.assigned_at, t.created_at)) = ?)
-                        OR (t.status = 'in_progress')
-                        OR (t.deadline IS NOT NULL AND DATE(t.deadline) = ?)
-                    )
+                    FROM daily_tasks dt
+                    LEFT JOIN users u ON dt.user_id = u.id
+                    WHERE dt.user_id = ? AND dt.scheduled_date = ?
                     ORDER BY 
-                        CASE t.priority 
+                        CASE dt.priority 
                             WHEN 'high' THEN 3 
                             WHEN 'medium' THEN 2 
                             WHEN 'low' THEN 1 
                             ELSE 0 
                         END DESC, 
-                        t.created_at DESC
+                        dt.created_at DESC
                 ");
-                $stmt->execute([$userId, $date, $date, $date]);
-                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $stmt->execute([$userId, $date]);
+                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('Daily tasks complex query failed, using fallback: ' . $e->getMessage());
+                $stmt = $this->db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
+                $stmt->execute([$userId, $date]);
+                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            
+            // If no daily tasks, get from regular tasks table
+            if (empty($dailyTasks)) {
+                try {
+                    $stmt = $this->db->prepare("
+                        SELECT 
+                            t.id, t.title, t.description, t.priority, t.status,
+                            t.progress, t.deadline, t.estimated_duration, t.sla_hours,
+                            t.task_type, t.company_name, t.project_name, t.contact_person,
+                            t.planned_date, t.assigned_at,
+                            CASE 
+                                WHEN t.status = 'completed' THEN 'completed'
+                                WHEN t.status = 'in_progress' THEN 'in_progress'
+                                ELSE 'not_started'
+                            END as completion_status, 
+                            0 as active_seconds,
+                            t.progress as completed_percentage, NULL as start_time,
+                            NULL as planned_start_time, t.estimated_duration as planned_duration,
+                            u.name as assigned_by_user
+                        FROM tasks t
+                        LEFT JOIN users u ON t.assigned_by = u.id
+                        WHERE t.assigned_to = ? 
+                        AND (
+                            (t.planned_date IS NOT NULL AND DATE(t.planned_date) = ?)
+                            OR (t.planned_date IS NULL AND DATE(COALESCE(t.assigned_at, t.created_at)) = ?)
+                            OR (t.status = 'in_progress')
+                            OR (t.deadline IS NOT NULL AND DATE(t.deadline) = ?)
+                        )
+                        ORDER BY 
+                            CASE t.priority 
+                                WHEN 'high' THEN 3 
+                                WHEN 'medium' THEN 2 
+                                WHEN 'low' THEN 1 
+                                ELSE 0 
+                            END DESC, 
+                            t.created_at DESC
+                    ");
+                    $stmt->execute([$userId, $date, $date, $date]);
+                    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+                } catch (Exception $e) {
+                    error_log('Regular tasks complex query failed, using simple fallback: ' . $e->getMessage());
+                    $stmt = $this->db->prepare("SELECT * FROM tasks WHERE assigned_to = ? LIMIT 10");
+                    $stmt->execute([$userId]);
+                    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+                }
             }
             
             return $dailyTasks;
@@ -257,43 +271,57 @@ class DailyPlanner {
     public function getDailyStats($userId, $date) {
         try {
             // First try to get stats from daily_tasks
-            $stmt = $this->db->prepare("
-                SELECT 
-                    COUNT(*) as total_tasks,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
-                    SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
-                    SUM(CASE WHEN status = 'postponed' THEN 1 ELSE 0 END) as postponed_tasks,
-                    SUM(planned_duration) as total_planned_minutes,
-                    SUM(active_seconds) as total_active_seconds,
-                    AVG(completed_percentage) as avg_completion
-                FROM daily_tasks 
-                WHERE user_id = ? AND scheduled_date = ?
-            ");
-            $stmt->execute([$userId, $date]);
-            $dailyStats = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            // If no daily tasks stats, get from regular tasks
-            if (empty($dailyStats['total_tasks'])) {
+            try {
                 $stmt = $this->db->prepare("
                     SELECT 
                         COUNT(*) as total_tasks,
                         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
                         SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
-                        0 as postponed_tasks,
-                        SUM(COALESCE(sla_hours * 60, estimated_duration, 60)) as total_planned_minutes,
-                        0 as total_active_seconds,
-                        AVG(COALESCE(progress, 0)) as avg_completion
-                    FROM tasks 
-                    WHERE assigned_to = ? 
-                    AND (
-                        (planned_date IS NOT NULL AND DATE(planned_date) = ?)
-                        OR (planned_date IS NULL AND DATE(COALESCE(assigned_at, created_at)) = ?)
-                        OR (status = 'in_progress')
-                        OR (deadline IS NOT NULL AND DATE(deadline) = ?)
-                    )
+                        SUM(CASE WHEN status = 'postponed' THEN 1 ELSE 0 END) as postponed_tasks,
+                        SUM(planned_duration) as total_planned_minutes,
+                        SUM(active_seconds) as total_active_seconds,
+                        AVG(completed_percentage) as avg_completion
+                    FROM daily_tasks 
+                    WHERE user_id = ? AND scheduled_date = ?
                 ");
-                $stmt->execute([$userId, $date, $date, $date]);
-                return $stmt->fetch(PDO::FETCH_ASSOC);
+                $stmt->execute([$userId, $date]);
+                $dailyStats = $stmt->fetch(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('Daily stats complex query failed, using fallback: ' . $e->getMessage());
+                $stmt = $this->db->prepare("SELECT COUNT(*) as total_tasks FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
+                $stmt->execute([$userId, $date]);
+                $dailyStats = ['total_tasks' => $stmt->fetchColumn(), 'completed_tasks' => 0, 'in_progress_tasks' => 0, 'postponed_tasks' => 0, 'total_planned_minutes' => 0, 'total_active_seconds' => 0, 'avg_completion' => 0];
+            }
+            
+            // If no daily tasks stats, get from regular tasks
+            if (empty($dailyStats['total_tasks'])) {
+                try {
+                    $stmt = $this->db->prepare("
+                        SELECT 
+                            COUNT(*) as total_tasks,
+                            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
+                            SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
+                            0 as postponed_tasks,
+                            SUM(COALESCE(sla_hours * 60, estimated_duration, 60)) as total_planned_minutes,
+                            0 as total_active_seconds,
+                            AVG(COALESCE(progress, 0)) as avg_completion
+                        FROM tasks 
+                        WHERE assigned_to = ? 
+                        AND (
+                            (planned_date IS NOT NULL AND DATE(planned_date) = ?)
+                            OR (planned_date IS NULL AND DATE(COALESCE(assigned_at, created_at)) = ?)
+                            OR (status = 'in_progress')
+                            OR (deadline IS NOT NULL AND DATE(deadline) = ?)
+                        )
+                    ");
+                    $stmt->execute([$userId, $date, $date, $date]);
+                    return $stmt->fetch(PDO::FETCH_ASSOC);
+                } catch (Exception $e) {
+                    error_log('Regular tasks stats query failed, using simple fallback: ' . $e->getMessage());
+                    $stmt = $this->db->prepare("SELECT COUNT(*) as total_tasks FROM tasks WHERE assigned_to = ?");
+                    $stmt->execute([$userId]);
+                    return ['total_tasks' => $stmt->fetchColumn(), 'completed_tasks' => 0, 'in_progress_tasks' => 0, 'postponed_tasks' => 0, 'total_planned_minutes' => 0, 'total_active_seconds' => 0, 'avg_completion' => 0];
+                }
             }
             
             return $dailyStats;

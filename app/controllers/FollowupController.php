@@ -19,14 +19,26 @@ class FollowupController extends Controller {
             error_log('FollowupController: Fetching followups for user_id: ' . $_SESSION['user_id']);
             
             // Admin/Owner can see all follow-ups, regular users see only their own
-            if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                $stmt = $db->prepare("SELECT f.*, u.name as assigned_user FROM followups f LEFT JOIN users u ON f.user_id = u.id ORDER BY f.follow_up_date ASC");
-                $stmt->execute();
-            } else {
-                $stmt = $db->prepare("SELECT * FROM followups WHERE user_id = ? ORDER BY follow_up_date ASC");
-                $stmt->execute([$_SESSION['user_id']]);
+            try {
+                if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
+                    $stmt = $db->prepare("SELECT f.*, u.name as assigned_user FROM followups f LEFT JOIN users u ON f.user_id = u.id ORDER BY f.follow_up_date ASC");
+                    $stmt->execute();
+                } else {
+                    $stmt = $db->prepare("SELECT * FROM followups WHERE user_id = ? ORDER BY follow_up_date ASC");
+                    $stmt->execute([$_SESSION['user_id']]);
+                }
+                $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('Followups JOIN query failed, using fallback: ' . $e->getMessage());
+                if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
+                    $stmt = $db->prepare("SELECT * FROM followups ORDER BY follow_up_date ASC");
+                    $stmt->execute();
+                } else {
+                    $stmt = $db->prepare("SELECT * FROM followups WHERE user_id = ? ORDER BY follow_up_date ASC");
+                    $stmt->execute([$_SESSION['user_id']]);
+                }
+                $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
-            $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Debug: Log the number of followups found
             error_log('FollowupController: Found ' . count($followups) . ' followups');
@@ -467,8 +479,8 @@ class FollowupController extends Controller {
     
     private function ensureTables($db) {
         try {
-            // Create followups table
-            $db->exec("CREATE TABLE IF NOT EXISTS followups (
+            // Create followups table with simpler structure for Hostinger
+            $createFollowupsSQL = "CREATE TABLE IF NOT EXISTS followups (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
                 task_id INT NULL,
@@ -481,17 +493,24 @@ class FollowupController extends Controller {
                 original_date DATE,
                 reminder_time TIME NULL,
                 description TEXT,
-                status ENUM('pending','in_progress','completed','postponed','cancelled','rescheduled') DEFAULT 'pending',
+                status VARCHAR(20) DEFAULT 'pending',
                 completed_at TIMESTAMP NULL,
-                reminder_sent BOOLEAN DEFAULT FALSE,
+                reminder_sent TINYINT(1) DEFAULT 0,
                 next_reminder DATE NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_user_id (user_id),
-                INDEX idx_task_id (task_id),
-                INDEX idx_follow_date (follow_up_date),
-                INDEX idx_status (status)
-            )");
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )";
+            $db->exec($createFollowupsSQL);
+            
+            // Add indexes separately to avoid issues
+            try {
+                $db->exec("CREATE INDEX IF NOT EXISTS idx_user_id ON followups (user_id)");
+                $db->exec("CREATE INDEX IF NOT EXISTS idx_task_id ON followups (task_id)");
+                $db->exec("CREATE INDEX IF NOT EXISTS idx_follow_date ON followups (follow_up_date)");
+                $db->exec("CREATE INDEX IF NOT EXISTS idx_status ON followups (status)");
+            } catch (Exception $e) {
+                error_log('Index creation error (non-critical): ' . $e->getMessage());
+            }
             
             // Add task_id column if it doesn't exist
             try {
@@ -514,8 +533,8 @@ class FollowupController extends Controller {
                 error_log('Column addition error: ' . $e->getMessage());
             }
             
-            // Create history table
-            $db->exec("CREATE TABLE IF NOT EXISTS followup_history (
+            // Create history table with simpler structure
+            $createHistorySQL = "CREATE TABLE IF NOT EXISTS followup_history (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 followup_id INT NOT NULL,
                 action VARCHAR(50) NOT NULL,
@@ -523,9 +542,16 @@ class FollowupController extends Controller {
                 new_value TEXT,
                 notes TEXT,
                 created_by INT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_followup_id (followup_id)
-            )");
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )";
+            $db->exec($createHistorySQL);
+            
+            // Add index separately
+            try {
+                $db->exec("CREATE INDEX IF NOT EXISTS idx_followup_id ON followup_history (followup_id)");
+            } catch (Exception $e) {
+                error_log('History index creation error (non-critical): ' . $e->getMessage());
+            }
             
             // Fix column name if it exists as action_type
             try {

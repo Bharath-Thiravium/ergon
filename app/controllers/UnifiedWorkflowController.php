@@ -18,29 +18,41 @@ class UnifiedWorkflowController extends Controller {
             // Ensure daily_tasks table exists
             $this->ensureDailyTasksTable($db);
             
-            // Get daily tasks for the selected date
-            $stmt = $db->prepare("
-                SELECT dt.*, 
-                       COALESCE(dt.planned_duration, 60) as planned_duration_minutes
-                FROM daily_tasks dt 
-                WHERE dt.user_id = ? AND dt.scheduled_date = ? 
-                ORDER BY 
-                    CASE dt.status 
-                        WHEN 'in_progress' THEN 1 
-                        WHEN 'on_break' THEN 2 
-                        WHEN 'not_started' THEN 3 
-                        WHEN 'completed' THEN 4 
-                        ELSE 5 
-                    END, dt.created_at ASC
-            ");
-            $stmt->execute([$_SESSION['user_id'], $date]);
-            $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Get daily tasks for the selected date with fallback
+            try {
+                $stmt = $db->prepare("
+                    SELECT dt.*, 
+                           COALESCE(dt.planned_duration, 60) as planned_duration_minutes
+                    FROM daily_tasks dt 
+                    WHERE dt.user_id = ? AND dt.scheduled_date = ? 
+                    ORDER BY 
+                        CASE dt.status 
+                            WHEN 'in_progress' THEN 1 
+                            WHEN 'on_break' THEN 2 
+                            WHEN 'not_started' THEN 3 
+                            WHEN 'completed' THEN 4 
+                            ELSE 5 
+                        END, dt.created_at ASC
+                ");
+                $stmt->execute([$_SESSION['user_id'], $date]);
+                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('Daily tasks complex query failed, using fallback: ' . $e->getMessage());
+                $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
+                $stmt->execute([$_SESSION['user_id'], $date]);
+                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
             
             // If no daily tasks, create them from regular tasks
             if (empty($dailyTasks)) {
-                $stmt = $db->prepare("SELECT * FROM tasks WHERE assigned_to = ? AND status != 'completed' ORDER BY created_at DESC LIMIT 5");
-                $stmt->execute([$_SESSION['user_id']]);
-                $regularTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                try {
+                    $stmt = $db->prepare("SELECT * FROM tasks WHERE assigned_to = ? AND status != 'completed' ORDER BY created_at DESC LIMIT 5");
+                    $stmt->execute([$_SESSION['user_id']]);
+                    $regularTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                } catch (Exception $e) {
+                    error_log('Regular tasks query failed: ' . $e->getMessage());
+                    $regularTasks = [];
+                }
                 
                 // Create daily tasks from regular tasks
                 foreach ($regularTasks as $task) {
@@ -59,26 +71,34 @@ class UnifiedWorkflowController extends Controller {
                 }
                 
                 // Re-fetch daily tasks
-                $stmt = $db->prepare("
-                    SELECT dt.*, 
-                           COALESCE(dt.planned_duration, 60) as planned_duration_minutes
-                    FROM daily_tasks dt 
-                    WHERE dt.user_id = ? AND dt.scheduled_date = ?
-                ");
-                $stmt->execute([$_SESSION['user_id'], $date]);
-                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                try {
+                    $stmt = $db->prepare("
+                        SELECT dt.*, 
+                               COALESCE(dt.planned_duration, 60) as planned_duration_minutes
+                        FROM daily_tasks dt 
+                        WHERE dt.user_id = ? AND dt.scheduled_date = ?
+                    ");
+                    $stmt->execute([$_SESSION['user_id'], $date]);
+                    $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                } catch (Exception $e) {
+                    error_log('Re-fetch daily tasks failed: ' . $e->getMessage());
+                    $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
+                    $stmt->execute([$_SESSION['user_id'], $date]);
+                    $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                }
             }
             
             $plannedTasks = [];
             foreach ($dailyTasks as $task) {
+                $plannedDuration = $task['planned_duration_minutes'] ?? $task['planned_duration'] ?? 60;
                 $plannedTasks[] = [
                     'id' => $task['id'],
-                    'title' => $task['title'],
-                    'description' => $task['description'],
+                    'title' => $task['title'] ?? 'Untitled Task',
+                    'description' => $task['description'] ?? '',
                     'priority' => $task['priority'] ?? 'medium',
-                    'status' => $task['status'],
-                    'sla_hours' => ($task['planned_duration_minutes'] ?? 60) / 60,
-                    'start_time' => $task['start_time']
+                    'status' => $task['status'] ?? 'not_started',
+                    'sla_hours' => $plannedDuration / 60,
+                    'start_time' => $task['start_time'] ?? null
                 ];
             }
             
@@ -119,26 +139,38 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Get actual followups from followups table
-            if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                $stmt = $db->prepare("
-                    SELECT f.*, u.name as assigned_user 
-                    FROM followups f 
-                    LEFT JOIN users u ON f.user_id = u.id 
-                    ORDER BY f.follow_up_date ASC
-                ");
-                $stmt->execute();
-            } else {
-                $stmt = $db->prepare("
-                    SELECT f.*, u.name as assigned_user 
-                    FROM followups f 
-                    LEFT JOIN users u ON f.user_id = u.id 
-                    WHERE f.user_id = ? 
-                    ORDER BY f.follow_up_date ASC
-                ");
-                $stmt->execute([$_SESSION['user_id']]);
+            // Get actual followups from followups table with fallback
+            try {
+                if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
+                    $stmt = $db->prepare("
+                        SELECT f.*, u.name as assigned_user 
+                        FROM followups f 
+                        LEFT JOIN users u ON f.user_id = u.id 
+                        ORDER BY f.follow_up_date ASC
+                    ");
+                    $stmt->execute();
+                } else {
+                    $stmt = $db->prepare("
+                        SELECT f.*, u.name as assigned_user 
+                        FROM followups f 
+                        LEFT JOIN users u ON f.user_id = u.id 
+                        WHERE f.user_id = ? 
+                        ORDER BY f.follow_up_date ASC
+                    ");
+                    $stmt->execute([$_SESSION['user_id']]);
+                }
+                $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('Followups complex query failed, using fallback: ' . $e->getMessage());
+                if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
+                    $stmt = $db->prepare("SELECT * FROM followups ORDER BY follow_up_date ASC");
+                    $stmt->execute();
+                } else {
+                    $stmt = $db->prepare("SELECT * FROM followups WHERE user_id = ? ORDER BY follow_up_date ASC");
+                    $stmt->execute([$_SESSION['user_id']]);
+                }
+                $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
-            $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Calculate KPIs
             $today = date('Y-m-d');
@@ -179,19 +211,26 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Get all tasks for the user
-            $stmt = $db->prepare("SELECT * FROM tasks WHERE assigned_to = ? ORDER BY created_at DESC");
-            $stmt->execute([$_SESSION['user_id']]);
-            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Get all tasks for the user with fallback
+            try {
+                $stmt = $db->prepare("SELECT * FROM tasks WHERE assigned_to = ? ORDER BY created_at DESC");
+                $stmt->execute([$_SESSION['user_id']]);
+                $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('Calendar tasks query failed, using fallback: ' . $e->getMessage());
+                $stmt = $db->prepare("SELECT id, title, description, priority, status, progress, deadline, planned_date, created_at FROM tasks WHERE assigned_to = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
             
             // Transform tasks for calendar format - distribute all tasks across current month
             $calendarTasks = [];
             $dayCounter = 1;
             foreach ($tasks as $task) {
                 // If task has specific date, use it; otherwise distribute across month
-                if ($task['planned_date']) {
+                if (!empty($task['planned_date'])) {
                     $taskDate = $task['planned_date'];
-                } elseif ($task['deadline']) {
+                } elseif (!empty($task['deadline'])) {
                     $taskDate = $task['deadline'];
                 } else {
                     // Distribute tasks across the current month
@@ -200,22 +239,22 @@ class UnifiedWorkflowController extends Controller {
                 }
                 
                 $calendarTasks[] = [
-                    'id' => $task['id'],
-                    'title' => $task['title'],
+                    'id' => $task['id'] ?? 0,
+                    'title' => $task['title'] ?? 'Untitled Task',
                     'description' => $task['description'] ?? '',
-                    'priority' => $task['priority'] ?: 'medium',
-                    'status' => $task['status'],
+                    'priority' => $task['priority'] ?? 'medium',
+                    'status' => $task['status'] ?? 'assigned',
                     'progress' => $task['progress'] ?? 0,
                     'task_type' => $task['task_type'] ?? 'general',
                     'task_category' => $task['task_category'] ?? 'general',
                     'company_name' => $task['company_name'] ?? '',
                     'project_name' => $task['project_name'] ?? '',
-                    'deadline' => $task['deadline'],
-                    'planned_date' => $task['planned_date'],
+                    'deadline' => $task['deadline'] ?? null,
+                    'planned_date' => $task['planned_date'] ?? null,
                     'assigned_at' => $task['assigned_at'] ?? null,
-                    'created_at' => $task['created_at'],
+                    'created_at' => $task['created_at'] ?? date('Y-m-d H:i:s'),
                     'date' => $taskDate,
-                    'due_date' => $task['deadline'] ?: $task['planned_date'],
+                    'due_date' => $task['deadline'] ?? $task['planned_date'] ?? null,
                     'type' => 'task'
                 ];
             }
