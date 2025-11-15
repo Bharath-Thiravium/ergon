@@ -4,6 +4,18 @@ $active_page = 'settings';
 ob_start();
 ?>
 
+<?php if (isset($_GET['success'])): ?>
+<div class="alert alert--success">
+    ✅ <?= htmlspecialchars($_GET['success']) ?>
+</div>
+<?php endif; ?>
+
+<?php if (isset($_GET['error'])): ?>
+<div class="alert alert--error">
+    ❌ <?= htmlspecialchars($_GET['error']) ?>
+</div>
+<?php endif; ?>
+
 <div class="dashboard-grid">
     <div class="card">
         <div class="card__header">
@@ -15,11 +27,11 @@ ob_start();
             <form id="settingsForm" method="POST" action="/ergon/settings">
                 <div class="form-group">
                     <label class="form-label">Company Name</label>
-                    <input type="text" class="form-control" name="company_name" value="<?= htmlspecialchars($data['settings']['company_name'] ?? 'ERGON Company') ?>">
+                    <input type="text" class="form-control" name="company_name" value="<?= htmlspecialchars($settings['company_name'] ?? 'ERGON Company') ?>">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Attendance Radius (meters)</label>
-                    <input type="number" class="form-control" name="attendance_radius" value="<?= htmlspecialchars($data['settings']['attendance_radius'] ?? '5') ?>" min="5" step="1">
+                    <input type="number" class="form-control" name="attendance_radius" value="<?= htmlspecialchars($settings['attendance_radius'] ?? '5') ?>" min="5" step="1">
                     <small class="form-text">Minimum 5 meters required for attendance validation</small>
                 </div>
 
@@ -37,11 +49,11 @@ ob_start();
                     <div class="location-input-grid">
                         <div class="form-group">
                             <label class="form-label">Latitude</label>
-                            <input type="number" class="form-control" name="office_latitude" id="office_latitude" step="0.000001" placeholder="28.6139" value="<?= htmlspecialchars($data['settings']['base_location_lat'] ?? '') ?>">
+                            <input type="number" class="form-control" name="office_latitude" id="office_latitude" step="0.000001" placeholder="28.6139" value="<?= htmlspecialchars($settings['base_location_lat'] ?? '') ?>">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Longitude</label>
-                            <input type="number" class="form-control" name="office_longitude" id="office_longitude" step="0.000001" placeholder="77.2090" value="<?= htmlspecialchars($data['settings']['base_location_lng'] ?? '') ?>">
+                            <input type="number" class="form-control" name="office_longitude" id="office_longitude" step="0.000001" placeholder="77.2090" value="<?= htmlspecialchars($settings['base_location_lng'] ?? '') ?>">
                         </div>
                     </div>
                 </div>

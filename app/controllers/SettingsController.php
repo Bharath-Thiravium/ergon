@@ -27,7 +27,7 @@ class SettingsController extends Controller {
             'active_page' => 'settings'
         ];
         
-        include __DIR__ . '/../../views/settings/index.php';
+        $this->view('settings/index', $data);
     }
     
     public function update() {
@@ -41,34 +41,23 @@ class SettingsController extends Controller {
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
-                error_log('Settings POST received: ' . json_encode($_POST));
-                
                 $settings = [
                     'company_name' => trim($_POST['company_name'] ?? ''),
-                    'working_hours_start' => $_POST['working_hours_start'] ?? '09:00',
-                    'working_hours_end' => $_POST['working_hours_end'] ?? '18:00',
-                    'timezone' => trim($_POST['timezone'] ?? 'Asia/Kolkata'),
                     'office_latitude' => floatval($_POST['office_latitude'] ?? 0),
                     'office_longitude' => floatval($_POST['office_longitude'] ?? 0),
-                    'office_address' => trim($_POST['office_address'] ?? ''),
                     'attendance_radius' => max(5, intval($_POST['attendance_radius'] ?? 5))
                 ];
                 
-                error_log('Processed settings: ' . json_encode($settings));
-                
                 $result = $this->updateSettings($settings);
-                error_log('Update result: ' . ($result ? 'success' : 'failed'));
                 
                 if ($result) {
-                    $_SESSION['success'] = 'Settings updated successfully';
-                    header('Location: /ergon/settings');
+                    header('Location: /ergon/settings?success=Settings updated successfully');
                 } else {
-                    $_SESSION['error'] = 'Failed to update settings';
-                    header('Location: /ergon/settings');
+                    header('Location: /ergon/settings?error=Failed to update settings');
                 }
             } catch (Exception $e) {
                 error_log('Settings update error: ' . $e->getMessage());
-                header('Location: /ergon/settings?error=1');
+                header('Location: /ergon/settings?error=Database error');
             }
             exit;
         }
@@ -137,20 +126,38 @@ class SettingsController extends Controller {
     
     private function updateSettings($settings) {
         try {
-            $sql = "UPDATE settings SET 
-                    company_name = ?, 
-                    base_location_lat = ?, 
-                    base_location_lng = ?, 
-                    attendance_radius = ? 
-                    WHERE id = 1";
+            // Get the first settings record ID
+            $stmt = $this->db->query("SELECT id FROM settings LIMIT 1");
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            $stmt = $this->db->prepare($sql);
-            return $stmt->execute([
-                $settings['company_name'],
-                $settings['office_latitude'],
-                $settings['office_longitude'],
-                $settings['attendance_radius']
-            ]);
+            if ($result) {
+                // Update existing record
+                $sql = "UPDATE settings SET 
+                        company_name = ?, 
+                        base_location_lat = ?, 
+                        base_location_lng = ?, 
+                        attendance_radius = ? 
+                        WHERE id = ?";
+                
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([
+                    $settings['company_name'],
+                    $settings['office_latitude'],
+                    $settings['office_longitude'],
+                    $settings['attendance_radius'],
+                    $result['id']
+                ]);
+            } else {
+                // Insert new record
+                $sql = "INSERT INTO settings (company_name, base_location_lat, base_location_lng, attendance_radius) VALUES (?, ?, ?, ?)";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([
+                    $settings['company_name'],
+                    $settings['office_latitude'],
+                    $settings['office_longitude'],
+                    $settings['attendance_radius']
+                ]);
+            }
         } catch (Exception $e) {
             error_log('Settings update error: ' . $e->getMessage());
             return false;

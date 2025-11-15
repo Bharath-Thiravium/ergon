@@ -60,26 +60,7 @@ ob_start();
     </div>
 </div>
 
-<div class="card">
-    <div class="card__header">
-        <h2 class="card__title">
-            <span>📋</span> Expense Legends
-        </h2>
-    </div>
-    <div class="card__body">
-        <div class="legends-compact">
-            <span class="legend-label">Status:</span>
-            <span class="badge badge--warning">Pending</span>
-            <span class="badge badge--success">Approved</span>
-            <span class="badge badge--danger">Rejected</span>
-            <span class="legend-separator">|</span>
-            <span class="legend-label">Categories:</span>
-            <span class="category-tag">🚗 Travel</span>
-            <span class="category-tag">🍽️ Meals</span>
-            <span class="category-tag">🏨 Stay</span>
-        </div>
-    </div>
-</div>
+
 
 <div class="card">
     <div class="card__header">
