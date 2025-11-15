@@ -39,6 +39,7 @@ $router->get('/users/view/{id}', 'UsersController', 'viewUser');
 $router->get('/users/edit/{id}', 'UsersController', 'edit');
 $router->post('/users/edit/{id}', 'UsersController', 'edit');
 $router->post('/users/inactive/{id}', 'UsersController', 'inactive');
+$router->post('/users/activate/{id}', 'UsersController', 'activate');
 $router->post('/users/delete/{id}', 'UsersController', 'delete');
 $router->post('/admin/delete-user', 'UsersController', 'deleteUser');
 $router->post('/users/reset-password', 'UsersController', 'resetPassword');
