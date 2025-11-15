@@ -107,18 +107,35 @@ ob_start();
                             </td>
                             <td><?= isset($user['last_login']) ? date('M d, Y', strtotime($user['last_login'])) : 'Never' ?></td>
                             <td>
-                                <div class="modern-actions">
-                                    <a href="/ergon/users/view/<?= $user['id'] ?>" class="modern-btn modern-btn--primary modern-tooltip" data-tooltip="View Details">
-                                        👁️
-                                    </a>
-                                    <a href="/ergon/users/edit/<?= $user['id'] ?>" class="modern-btn modern-btn--success modern-tooltip" data-tooltip="Edit User">
-                                        ✏️
-                                    </a>
-                                    <button class="modern-btn modern-btn--warning modern-tooltip reset-password-btn" data-tooltip="Reset Password" data-user-id="<?= $user['id'] ?>" data-user-name="<?= htmlspecialchars($user['name']) ?>">
-                                        🔑
+                                <div class="ab-container">
+                                    <button class="ab-btn ab-btn--view" data-action="view" data-module="users" data-id="<?= $user['id'] ?>" title="View Details">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                            <polyline points="14,2 14,8 20,8"/>
+                                            <line x1="16" y1="13" x2="8" y2="13"/>
+                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                            <polyline points="10,9 9,9 8,9"/>
+                                        </svg>
                                     </button>
-                                    <button class="modern-btn modern-btn--danger modern-tooltip delete-user-btn" data-tooltip="Delete User" data-user-id="<?= $user['id'] ?>" data-user-name="<?= htmlspecialchars($user['name']) ?>">
-                                        🗑️
+                                    <button class="ab-btn ab-btn--edit" data-action="edit" data-module="users" data-id="<?= $user['id'] ?>" title="Edit User">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                            <path d="M15 5l4 4"/>
+                                        </svg>
+                                    </button>
+                                    <button class="ab-btn ab-btn--reset" data-action="reset" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Reset Password">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                                        </svg>
+                                    </button>
+                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Delete User">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M3 6h18"/>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                            <line x1="10" y1="11" x2="10" y2="17"/>
+                                            <line x1="14" y1="11" x2="14" y2="17"/>
+                                        </svg>
                                     </button>
                                 </div>
                             </td>
@@ -131,53 +148,13 @@ ob_start();
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('reset-password-btn')) {
-            const userId = e.target.dataset.userId;
-            const userName = e.target.dataset.userName;
-            if (confirm(`Reset password for ${userName}?\n\nThis will generate a new random password.`)) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/ergon/users/reset-password';
-                form.innerHTML = `<input type="hidden" name="user_id" value="${userId}">`;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-        
-        if (e.target.classList.contains('delete-user-btn')) {
-            const userId = e.target.dataset.userId;
-            const userName = e.target.dataset.userName;
-            if (confirm(`Delete ${userName}?\n\nThis action cannot be undone.`)) {
-                const formData = new FormData();
-                formData.append('user_id', userId);
-                
-                fetch('/ergon/admin/delete-user', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert(data.message);
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Failed to delete user. Please try again.');
-                });
-            }
-        }
-    });
-});
-</script>
+
 
 <script src="/ergon/assets/js/table-utils.js"></script>
+
+
+
+
 
 <?php
 $content = ob_get_clean();

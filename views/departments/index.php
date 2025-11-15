@@ -82,15 +82,26 @@ ob_start();
                         </td>
                         <td><span class="badge badge--<?= $dept['status'] === 'active' ? 'success' : 'warning' ?>"><?= ucfirst($dept['status']) ?></span></td>
                         <td>
-                            <div class="btn-group">
-                                <a href="/ergon/departments/view/<?= $dept['id'] ?>" class="btn-icon btn--primary" title="View Details">
-                                    👁️
+                            <div class="ab-container">
+                                <a class="ab-btn ab-btn--view" data-action="view" data-module="departments" data-id="<?= $dept['id'] ?>" title="View Details">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
                                 </a>
-                                <a href="/ergon/departments/edit/<?= $dept['id'] ?>" class="btn-icon btn--secondary" title="Edit Department">
-                                    ✏️
+                                <a class="ab-btn ab-btn--edit" data-action="edit" data-module="departments" data-id="<?= $dept['id'] ?>" title="Edit Department">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
                                 </a>
-                                <button onclick="deleteRecord('departments', <?= $dept['id'] ?>, '<?= htmlspecialchars($dept['name']) ?>')" class="btn-icon btn--danger" title="Delete Department">
-                                    🗑️
+                                <button class="ab-btn ab-btn--delete" data-action="delete" data-module="departments" data-id="<?= $dept['id'] ?>" data-name="<?= htmlspecialchars($dept['name']) ?>" title="Delete Department">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <polyline points="3,6 5,6 21,6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        <line x1="10" y1="11" x2="10" y2="17"/>
+                                        <line x1="14" y1="11" x2="14" y2="17"/>
+                                    </svg>
                                 </button>
                             </div>
                         </td>
@@ -103,6 +114,8 @@ ob_start();
 </div>
 
 <script src="/ergon/assets/js/table-utils.js"></script>
+
+
 
 <?php
 $content = ob_get_clean();

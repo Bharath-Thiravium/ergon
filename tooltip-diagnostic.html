@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>🔍 Tooltip Diagnostic Tool</title>
+    <link rel="stylesheet" href="assets/css/action-button-clean.css">
+    <style>
+        body { font-family: system-ui; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .result { margin: 10px 0; padding: 8px; border-radius: 4px; }
+        .pass { background: #d4edda; color: #155724; }
+        .fail { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Native Tooltip Diagnostic</h1>
+    
+    <div class="test-section">
+        <h3>Test 1: Basic HTML Button</h3>
+        <button title="Basic HTML tooltip">Hover me (basic)</button>
+        <div id="test1-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 2: Action Button</h3>
+        <div class="ab-container">
+            <button class="ab-btn" title="Action button tooltip">Hover me (ab-btn)</button>
+        </div>
+        <div id="test2-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 3: JS Interference Check</h3>
+        <button id="js-test" title="JS interference test">Hover me (JS test)</button>
+        <div id="test3-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Diagnostic Results</h3>
+        <div id="diagnostic-results"></div>
+        <button onclick="runDiagnostic()">🔍 Run Full Diagnostic</button>
+    </div>
+
+    <script>
+        function runDiagnostic() {
+            const results = [];
+            
+            // Check if title attributes exist
+            const buttons = document.querySelectorAll('button[title]');
+            results.push(`✅ Found ${buttons.length} buttons with title attributes`);
+            
+            // Check for JS tooltip libraries
+            const hasBootstrap = typeof $ !== 'undefined' && $.fn.tooltip;
+            const hasTippy = typeof tippy !== 'undefined';
+            
+            if (hasBootstrap) results.push('⚠️ Bootstrap tooltip detected');
+            if (hasTippy) results.push('⚠️ Tippy.js detected');
+            if (!hasBootstrap && !hasTippy) results.push('✅ No tooltip libraries detected');
+            
+            // Check CSS pointer-events
+            const abBtn = document.querySelector('.ab-btn');
+            if (abBtn) {
+                const style = getComputedStyle(abBtn);
+                const pointerEvents = style.pointerEvents;
+                results.push(`✅ pointer-events: ${pointerEvents}`);
+            }
+            
+            // Check for event listeners that might interfere
+            const testBtn = document.getElementById('js-test');
+            let hasInterference = false;
+            
+            // Add test listener to detect interference
+            testBtn.addEventListener('mouseenter', function(e) {
+                if (e.defaultPrevented) {
+                    hasInterference = true;
+                    results.push('❌ Event interference detected');
+                }
+            });
+            
+            if (!hasInterference) {
+                results.push('✅ No event interference detected');
+            }
+            
+            // Display results
+            document.getElementById('diagnostic-results').innerHTML = 
+                results.map(r => `<div>${r}</div>`).join('');
+        }
+        
+        // Auto-run diagnostic on load
+        document.addEventListener('DOMContentLoaded', runDiagnostic);
+        if (document.readyState === 'complete') runDiagnostic();
+    </script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 @import url('critical.css');
 @import url('components.css');
+@import url('task-components.css');
 @import url('utilities.css');
 
 /* Extended Variables */
@@ -1471,68 +1472,7 @@ html, body {
   margin: 0 0 var(--space-2) 0;
 }
 
-/* Button Icons */
-.btn-icon {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  border-radius: 6px;
-  border: 1px solid rgba(107, 114, 128, 0.2);
-  transition: all 0.15s ease;
-  text-decoration: none;
-  cursor: pointer;
-  background: transparent;
-  color: var(--gray-600);
-  position: relative;
-}
 
-.btn-icon[title]:hover::after {
-  content: attr(title);
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.9);
-  color: white;
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  white-space: nowrap;
-  z-index: 10000;
-  pointer-events: none;
-}
-
-.btn-icon:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.btn-icon--view:hover {
-  color: var(--primary);
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.3);
-}
-
-.btn-icon--edit:hover {
-  color: var(--warning);
-  background: rgba(217, 119, 6, 0.1);
-  border-color: rgba(217, 119, 6, 0.3);
-}
-
-.btn-icon--delete:hover {
-  color: var(--error);
-  background: rgba(220, 38, 38, 0.1);
-  border-color: rgba(220, 38, 38, 0.3);
-}
-
-.btn-icon--approve:hover {
-  color: var(--success);
-  background: rgba(5, 150, 105, 0.1);
-  border-color: rgba(5, 150, 105, 0.3);
-}
 
 .notification-item {
   padding: var(--space-4);

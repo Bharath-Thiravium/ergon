@@ -188,13 +188,19 @@ ob_start();
                             <span class="badge <?= $statusBadgeClass ?>"><?= ucfirst($leave['status'] ?? 'pending') ?></span>
                         </td>
                         <td>
-                            <div class="btn-group">
-                                <a href="/ergon/leaves/view/<?= $leave['id'] ?>" class="btn-icon btn-icon--view" title="View Details">
-                                    👁️
+                            <div class="ab-container">
+                                <a class="ab-btn ab-btn--view" data-action="view" data-module="leaves" data-id="<?= $leave['id'] ?>" title="View Details">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
                                 </a>
                                 <?php if (strtolower($leave['status'] ?? 'pending') === 'pending' && ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
-                                <a href="/ergon/leaves/edit/<?= $leave['id'] ?>" class="btn-icon btn-icon--edit" title="Edit Leave">
-                                    ✏️
+                                <a class="ab-btn ab-btn--edit" data-action="edit" data-module="leaves" data-id="<?= $leave['id'] ?>" title="Edit Leave">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
                                 </a>
                                 <?php endif; ?>
                                 <?php 
@@ -204,16 +210,26 @@ ob_start();
                                 $canApprove = $leaveStatus === 'pending' && (($userRole === 'owner') || ($userRole === 'admin' && $isNotOwnLeave));
                                 ?>
                                 <?php if ($canApprove): ?>
-                                <a href="/ergon/leaves/approve/<?= $leave['id'] ?>" class="btn-icon btn-icon--approve" title="Approve Leave" onclick="return confirm('Are you sure you want to approve this leave?')">
-                                    ✅
-                                </a>
-                                <button onclick="showRejectModal(<?= $leave['id'] ?>)" class="btn-icon btn-icon--delete" title="Reject Leave">
-                                    ❌
+                                <button class="ab-btn ab-btn--approve" data-action="approve" data-module="leaves" data-id="<?= $leave['id'] ?>" data-name="Leave Request" title="Approve Leave">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <polyline points="20,6 9,17 4,12"/>
+                                    </svg>
+                                </button>
+                                <button class="ab-btn ab-btn--reject" onclick="showRejectModal(<?= $leave['id'] ?>)" title="Reject Leave">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <line x1="18" y1="6" x2="6" y2="18"/>
+                                        <line x1="6" y1="6" x2="18" y2="18"/>
+                                    </svg>
                                 </button>
                                 <?php endif; ?>
                                 <?php if (strtolower($leave['status'] ?? 'pending') === 'pending' && ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
-                                <button onclick="deleteRecord('leaves', <?= $leave['id'] ?>, 'Leave Request')" class="btn-icon btn-icon--delete" title="Delete Request">
-                                    🗑️
+                                <button class="ab-btn ab-btn--delete" data-action="delete" data-module="leaves" data-id="<?= $leave['id'] ?>" data-name="Leave Request" title="Delete Request">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <polyline points="3,6 5,6 21,6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        <line x1="10" y1="11" x2="10" y2="17"/>
+                                        <line x1="14" y1="11" x2="14" y2="17"/>
+                                    </svg>
                                 </button>
                                 <?php endif; ?>
                             </div>

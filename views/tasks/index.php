@@ -147,20 +147,34 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                             </div>
                         </td>
                         <td>
-                            <div class="btn-group">
-                                <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="btn-icon btn-icon--view" title="View Task Details">
-                                    👁️
+                            <div class="ab-container">
+                                <a class="ab-btn ab-btn--view" data-action="view" data-module="tasks" data-id="<?= $task['id'] ?>" title="View Details">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
                                 </a>
                                 <?php if ($task['status'] !== 'completed'): ?>
-                                <button onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>, '<?= addslashes($task['status'] ?? 'assigned') ?>')" class="btn-icon btn-icon--status" title="Update Progress & Status">
-                                    📊
+                                <button class="ab-btn ab-btn--progress" onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>, '<?= addslashes($task['status'] ?? 'assigned') ?>')" title="Update Progress">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/>
+                                        <polyline points="16,7 22,7 22,13"/>
+                                    </svg>
                                 </button>
                                 <?php endif; ?>
-                                <a href="/ergon/tasks/edit/<?= $task['id'] ?>" class="btn-icon btn-icon--edit" title="Edit Task Details">
-                                    ✏️
+                                <a class="ab-btn ab-btn--edit" data-action="edit" data-module="tasks" data-id="<?= $task['id'] ?>" title="Edit Task">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
                                 </a>
-                                <button onclick="deleteRecord('tasks', <?= $task['id'] ?>, '<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>')" class="btn-icon btn-icon--delete" title="Delete Task Permanently">
-                                    🗑️
+                                <button class="ab-btn ab-btn--delete" data-action="delete" data-module="tasks" data-id="<?= $task['id'] ?>" data-name="<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>" title="Delete Task">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <polyline points="3,6 5,6 21,6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        <line x1="10" y1="11" x2="10" y2="17"/>
+                                        <line x1="14" y1="11" x2="14" y2="17"/>
+                                    </svg>
                                 </button>
                             </div>
                         </td>
@@ -188,30 +202,7 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
 <script src="/ergon/assets/js/table-utils.js"></script>
 
 <script>
-// Tooltip functionality for action buttons
-document.addEventListener('DOMContentLoaded', function() {
-    const tooltip = document.createElement('div');
-    tooltip.className = 'tooltip';
-    document.body.appendChild(tooltip);
-    
-    document.querySelectorAll('[title]').forEach(element => {
-        element.addEventListener('mouseenter', function(e) {
-            const title = this.getAttribute('title');
-            if (title) {
-                tooltip.textContent = title;
-                tooltip.style.display = 'block';
-                
-                const rect = this.getBoundingClientRect();
-                tooltip.style.left = rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2) + 'px';
-                tooltip.style.top = rect.top - tooltip.offsetHeight - 8 + 'px';
-            }
-        });
-        
-        element.addEventListener('mouseleave', function() {
-            tooltip.style.display = 'none';
-        });
-    });
-});
+// Modern action buttons are now handled by CSS tooltips
 
 var currentTaskId;
 
@@ -268,245 +259,7 @@ document.getElementById('progressSlider').oninput = function() {
 }
 </script>
 
-<style>
 
-
-.progress-container {
-    width: 140px;
-    padding: 0.5rem;
-    border-radius: 8px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-}
-
-.progress-bar {
-    width: 100%;
-    height: 8px;
-    background: #e5e7eb;
-    border-radius: 4px;
-    overflow: hidden;
-    margin-bottom: 0.25rem;
-}
-
-.progress-fill {
-    height: 100%;
-    border-radius: 4px;
-}
-
-.progress-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.progress-percentage {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.progress-status {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-}
-
-.dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
-.dialog-content {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    width: 300px;
-    text-align: center;
-}
-
-.dialog-content h4 {
-    margin: 0 0 1rem 0;
-}
-
-.dialog-content input[type="range"] {
-    width: 100%;
-    margin: 1rem 0;
-}
-
-.dialog-buttons {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    margin-top: 1rem;
-}
-
-.dialog-buttons button {
-    padding: 0.5rem 1rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background: white;
-    cursor: pointer;
-}
-
-.dialog-buttons button:last-child {
-    background: #3b82f6;
-    color: white;
-    border-color: #3b82f6;
-}
-
-.assignment-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.assigned-user {
-    font-weight: 500;
-    color: var(--text-primary);
-    font-size: 0.875rem;
-}
-
-.priority-badge {
-    display: flex;
-    align-items: center;
-}
-
-.priority-badge .badge {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-}
-
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
-.modal-overlay--hidden {
-    display: none;
-}
-
-.modal-content {
-    background: var(--bg-primary);
-    border-radius: 8px;
-    width: 400px;
-    max-width: 90vw;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.modal-header h4 {
-    margin: 0;
-    color: var(--primary);
-}
-
-.modal-body {
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    padding: 1rem;
-    border-top: 1px solid var(--border-color);
-}
-
-.progress-control label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-}
-
-.progress-slider {
-    width: 100%;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--bg-secondary);
-    outline: none;
-}
-
-.progress-slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--primary);
-    cursor: pointer;
-}
-
-.status-display {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.status-badge {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: 500;
-    font-size: 0.85rem;
-}
-
-.status-assigned { background: #fff3cd; color: #856404; }
-.status-in_progress { background: #d1ecf1; color: #0c5460; }
-.status-completed { background: #d4edda; color: #155724; }
-.status-blocked { background: #f8d7da; color: #721c24; }
-
-.block-btn {
-    padding: 6px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--bg-primary);
-    cursor: pointer;
-    font-size: 0.8rem;
-}
-
-.close-btn {
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    cursor: pointer;
-    color: var(--text-secondary);
-}
-
-.tooltip {
-    position: absolute;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 6px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    white-space: nowrap;
-    z-index: 10000;
-    pointer-events: none;
-    display: none;
-}
-</style>
 
 <?php
 $content = ob_get_clean();

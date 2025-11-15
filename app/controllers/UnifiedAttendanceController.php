@@ -5,49 +5,62 @@ class UnifiedAttendanceController extends Controller {
     private $db;
     
     public function __construct() {
-        require_once __DIR__ . '/../config/database.php';
-        $this->db = Database::connect();
-        $this->ensureAttendanceTable();
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $this->db = Database::connect();
+            $this->ensureAttendanceTable();
+        } catch (Exception $e) {
+            error_log('UnifiedAttendanceController constructor error: ' . $e->getMessage());
+            throw new Exception('Database connection failed: ' . $e->getMessage());
+        }
     }
     
     public function index() {
-        $this->requireAuth();
-        
-        $role = $_SESSION['role'] ?? 'user';
-        $userId = $_SESSION['user_id'];
-        
-        if ($role === 'user') {
-            // User view - show only their attendance
-            $filter = $_GET['filter'] ?? 'today';
-            $attendance = $this->getUserAttendance($userId, $filter);
-            $stats = $this->calculateUserStats($attendance);
+        try {
+            $this->requireAuth();
             
-            $this->view('attendance/index', [
-                'attendance' => $attendance,
-                'stats' => $stats,
-                'current_filter' => $filter,
-                'active_page' => 'attendance'
-            ]);
-        } else {
-            // Admin/Owner view
-            $filterDate = $_GET['date'] ?? date('Y-m-d');
-            $employeeAttendance = $this->getEmployeeAttendance($role, $filterDate, $userId);
-            $adminAttendance = $this->getTodayAttendance($userId);
+            $role = $_SESSION['role'] ?? 'user';
+            $userId = $_SESSION['user_id'];
             
-            // Handle AJAX requests
-            if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
-                $this->renderAttendanceTable($employeeAttendance);
-                exit;
+            if ($role === 'user') {
+                // User view - show only their attendance
+                $filter = $_GET['filter'] ?? 'today';
+                $attendance = $this->getUserAttendance($userId, $filter);
+                $stats = $this->calculateUserStats($attendance);
+                
+                $this->view('attendance/index', [
+                    'attendance' => $attendance,
+                    'stats' => $stats,
+                    'current_filter' => $filter,
+                    'active_page' => 'attendance'
+                ]);
+            } else {
+                // Admin/Owner view
+                $filterDate = $_GET['date'] ?? date('Y-m-d');
+                $employeeAttendance = $this->getEmployeeAttendance($role, $filterDate, $userId);
+                $adminAttendance = $this->getTodayAttendance($userId);
+                
+                // Handle AJAX requests
+                if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
+                    $this->renderAttendanceTable($employeeAttendance);
+                    exit;
+                }
+                
+                $viewName = ($role === 'owner') ? 'attendance/owner_index' : 'attendance/admin_index';
+                $this->view($viewName, [
+                    'employees' => $employeeAttendance,
+                    'admin_attendance' => $adminAttendance,
+                    'active_page' => 'attendance',
+                    'filter_date' => $filterDate,
+                    'user_role' => $role
+                ]);
             }
-            
-            $viewName = ($role === 'owner') ? 'attendance/owner_index' : 'attendance/admin_index';
-            $this->view($viewName, [
-                'employees' => $employeeAttendance,
-                'admin_attendance' => $adminAttendance,
-                'active_page' => 'attendance',
-                'filter_date' => $filterDate,
-                'user_role' => $role
-            ]);
+        } catch (Exception $e) {
+            error_log('Attendance index error: ' . $e->getMessage());
+            http_response_code(500);
+            echo "<h1>Attendance Error</h1><p>Unable to load attendance data. Please check the database connection.</p>";
+            echo "<p>Error: " . htmlspecialchars($e->getMessage()) . "</p>";
+            echo "<a href='/ergon/dashboard'>Return to Dashboard</a>";
         }
     }
     
@@ -273,46 +286,56 @@ class UnifiedAttendanceController extends Controller {
     }
     
     private function getUserAttendance($userId, $filter) {
-        $dateCondition = $this->getDateCondition($filter);
-        
-        $stmt = $this->db->prepare("
-            SELECT a.*, u.name as user_name, COALESCE(d.name, 'Not Assigned') as department 
-            FROM attendance a 
-            LEFT JOIN users u ON a.user_id = u.id 
-            LEFT JOIN departments d ON u.department_id = d.id 
-            WHERE a.user_id = ? AND $dateCondition 
-            ORDER BY a.check_in DESC
-        ");
-        $stmt->execute([$userId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $dateCondition = $this->getDateCondition($filter);
+            
+            $stmt = $this->db->prepare("
+                SELECT a.*, u.name as user_name, COALESCE(d.name, 'Not Assigned') as department 
+                FROM attendance a 
+                LEFT JOIN users u ON a.user_id = u.id 
+                LEFT JOIN departments d ON u.department_id = d.id 
+                WHERE a.user_id = ? AND $dateCondition 
+                ORDER BY a.check_in DESC
+            ");
+            $stmt->execute([$userId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('getUserAttendance error: ' . $e->getMessage());
+            return [];
+        }
     }
     
     private function getEmployeeAttendance($role, $filterDate, $currentUserId) {
-        $roleFilter = ($role === 'owner') ? "u.role IN ('admin', 'user')" : "u.role = 'user'";
-        
-        $stmt = $this->db->prepare("
-            SELECT 
-                u.id,
-                u.name,
-                u.email,
-                u.role,
-                COALESCE(d.name, 'Not Assigned') as department,
-                a.check_in,
-                a.check_out,
-                a.total_hours,
-                CASE 
-                    WHEN a.location_name = 'On Approved Leave' THEN 'On Leave'
-                    WHEN a.check_in IS NOT NULL THEN 'Present'
-                    ELSE 'Absent'
-                END as status
-            FROM users u
-            LEFT JOIN departments d ON u.department_id = d.id
-            LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
-            WHERE $roleFilter AND u.id != ?
-            ORDER BY u.role DESC, u.name
-        ");
-        $stmt->execute([$filterDate, $currentUserId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $roleFilter = ($role === 'owner') ? "u.role IN ('admin', 'user')" : "u.role = 'user'";
+            
+            $stmt = $this->db->prepare("
+                SELECT 
+                    u.id,
+                    u.name,
+                    u.email,
+                    u.role,
+                    COALESCE(d.name, 'Not Assigned') as department,
+                    a.check_in,
+                    a.check_out,
+                    a.total_hours,
+                    CASE 
+                        WHEN a.location_name = 'On Approved Leave' THEN 'On Leave'
+                        WHEN a.check_in IS NOT NULL THEN 'Present'
+                        ELSE 'Absent'
+                    END as status
+                FROM users u
+                LEFT JOIN departments d ON u.department_id = d.id
+                LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
+                WHERE $roleFilter AND u.id != ?
+                ORDER BY u.role DESC, u.name
+            ");
+            $stmt->execute([$filterDate, $currentUserId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('getEmployeeAttendance error: ' . $e->getMessage());
+            return [];
+        }
     }
     
     private function getTodayAttendance($userId) {
@@ -520,10 +543,16 @@ class UnifiedAttendanceController extends Controller {
     
     private function ensureAttendanceTable() {
         try {
+            // Check if users table exists first
+            $stmt = $this->db->query("SHOW TABLES LIKE 'users'");
+            if (!$stmt->fetch()) {
+                throw new Exception('Users table does not exist. Please run database migration first.');
+            }
+            
             // Check if attendance table exists with proper structure
             $stmt = $this->db->query("SHOW TABLES LIKE 'attendance'");
             if (!$stmt->fetch()) {
-                // Table doesn't exist, create it
+                // Table doesn't exist, create it without foreign key constraint for now
                 $this->db->exec("
                     CREATE TABLE attendance (
                         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -541,13 +570,13 @@ class UnifiedAttendanceController extends Controller {
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                         INDEX idx_user_id (user_id),
-                        INDEX idx_check_in_date (check_in),
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        INDEX idx_check_in_date (check_in)
                     )
                 ");
             }
         } catch (Exception $e) {
             error_log('ensureAttendanceTable error: ' . $e->getMessage());
+            throw new Exception('Failed to ensure attendance table: ' . $e->getMessage());
         }
     }
 }

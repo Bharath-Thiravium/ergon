@@ -55,10 +55,12 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <link href="/ergon/assets/css/instant-theme.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/hover-fix.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/force-dark-theme.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/action-button-clean.css?v=<?= time() ?>" rel="stylesheet">
     
     <!-- JavaScript -->
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
+    <script src="/ergon/assets/js/action-button-clean.js?v=<?= time() ?>" defer></script>
 </head>
 <body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
     <header class="main-header">
@@ -681,16 +683,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 
     <!-- Custom Tooltip Implementation -->
     <script>
-    // Simple tooltip implementation to replace Bootstrap tooltips
+    // Simple tooltip implementation - excludes .ab-btn elements
     function initTooltips() {
-        const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"], [title]');
+        const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]:not(.ab-btn)');
         
         tooltipElements.forEach(element => {
-            const tooltipText = element.getAttribute('data-bs-original-title') || element.getAttribute('title');
+            const tooltipText = element.getAttribute('data-bs-original-title');
             if (!tooltipText) return;
-            
-            // Remove title to prevent default browser tooltip
-            element.removeAttribute('title');
             
             let tooltip = null;
             

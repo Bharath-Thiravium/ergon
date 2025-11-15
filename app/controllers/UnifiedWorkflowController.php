@@ -18,10 +18,7 @@ class UnifiedWorkflowController extends Controller {
             $plannedTasks = $planner->getTasksForDate($_SESSION['user_id'], $date);
             $dailyStats = $planner->getDailyStats($_SESSION['user_id'], $date);
             
-            // Add dummy data if no tasks exist for today
-            if (empty($plannedTasks) && $date === date('Y-m-d')) {
-                $plannedTasks = $this->getDummyPlannerTasks($date);
-            }
+
             
             $data = [
                 'planned_tasks' => $plannedTasks,
@@ -64,10 +61,7 @@ class UnifiedWorkflowController extends Controller {
             $stmt->execute([$_SESSION['user_id']]);
             $followupTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Add dummy data if no followups exist
-            if (empty($followupTasks)) {
-                $followupTasks = $this->getDummyFollowupTasks();
-            }
+
             
             $data = [
                 'followup_tasks' => $followupTasks,
@@ -122,10 +116,7 @@ class UnifiedWorkflowController extends Controller {
             
             $calendarTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Add dummy data if no tasks exist
-            if (empty($calendarTasks)) {
-                $calendarTasks = $this->getDummyCalendarTasks($month, $year);
-            }
+
             
             $data = [
                 'calendar_tasks' => $calendarTasks,
@@ -542,120 +533,12 @@ class UnifiedWorkflowController extends Controller {
         }
     }
     
-    private function getDummyPlannerTasks($date) {
-        return [
-            [
-                'id' => 'dummy_1',
-                'title' => 'Morning Email Review',
-                'description' => 'Check and respond to overnight emails',
-                'planned_start_time' => '08:30:00',
-                'planned_duration' => 30,
-                'priority' => 'medium',
-                'completion_status' => 'not_started',
-                'task_progress' => 0
-            ],
-            [
-                'id' => 'dummy_2',
-                'title' => 'Daily Standup Meeting',
-                'description' => 'Team synchronization meeting',
-                'planned_start_time' => '09:30:00',
-                'planned_duration' => 30,
-                'priority' => 'high',
-                'completion_status' => 'not_started',
-                'task_progress' => 0
-            ],
-            [
-                'id' => 'dummy_3',
-                'title' => 'Feature Development',
-                'description' => 'Work on new dashboard features',
-                'planned_start_time' => '10:00:00',
-                'planned_duration' => 180,
-                'priority' => 'high',
-                'completion_status' => 'not_started',
-                'task_progress' => 0
-            ],
-            [
-                'id' => 'dummy_4',
-                'title' => 'Code Review Session',
-                'description' => 'Review team members pull requests',
-                'planned_start_time' => '14:00:00',
-                'planned_duration' => 90,
-                'priority' => 'medium',
-                'completion_status' => 'not_started',
-                'task_progress' => 0
-            ]
-        ];
-    }
+
     
 
     
-    private function getDummyFollowupTasks() {
-        return [
-            [
-                'id' => 'dummy_f1',
-                'title' => 'Follow-up: Client Project Status',
-                'description' => 'Check on project milestone completion and address any blockers',
-                'priority' => 'high',
-                'status' => 'assigned',
-                'task_category' => 'Follow-up',
-                'assigned_user' => $_SESSION['user_name'] ?? 'Current User',
-                'created_at' => date('Y-m-d H:i:s')
-            ],
-            [
-                'id' => 'dummy_f2',
-                'title' => 'Follow-up: Training Session Feedback',
-                'description' => 'Gather feedback on training effectiveness and areas for improvement',
-                'priority' => 'medium',
-                'status' => 'assigned',
-                'task_category' => 'Follow-up',
-                'assigned_user' => $_SESSION['user_name'] ?? 'Current User',
-                'created_at' => date('Y-m-d H:i:s')
-            ],
-            [
-                'id' => 'dummy_f3',
-                'title' => 'Follow-up: Vendor Contract Review',
-                'description' => 'Review and follow up on pending vendor contract negotiations',
-                'priority' => 'medium',
-                'status' => 'assigned',
-                'task_category' => 'Follow-up',
-                'assigned_user' => $_SESSION['user_name'] ?? 'Current User',
-                'created_at' => date('Y-m-d H:i:s')
-            ]
-        ];
-    }
+
     
-    private function getDummyCalendarTasks($month, $year) {
-        $tasks = [];
-        $currentDate = date('Y-m-d');
-        
-        // Generate some dummy tasks for the current month
-        for ($day = 1; $day <= 28; $day += 3) {
-            $taskDate = sprintf('%04d-%02d-%02d', $year, $month, $day);
-            
-            $tasks[] = [
-                'id' => 'cal_dummy_' . $day,
-                'title' => 'Team Meeting',
-                'priority' => 'medium',
-                'status' => 'assigned',
-                'date' => $taskDate,
-                'assigned_user' => $_SESSION['user_name'] ?? 'Current User',
-                'type' => 'task'
-            ];
-            
-            if ($day + 1 <= 28) {
-                $tasks[] = [
-                    'id' => 'cal_dummy_' . ($day + 1),
-                    'title' => 'Project Review',
-                    'priority' => 'high',
-                    'status' => 'in_progress',
-                    'date' => sprintf('%04d-%02d-%02d', $year, $month, $day + 1),
-                    'assigned_user' => $_SESSION['user_name'] ?? 'Current User',
-                    'type' => 'task'
-                ];
-            }
-        }
-        
-        return $tasks;
-    }
+
 }
 ?>

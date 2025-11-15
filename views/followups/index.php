@@ -252,21 +252,13 @@ ob_start();
                                     </span>
                                 </td>
                                 <td>
-                                    <div class="btn-group">
-                                        <button class="btn btn--sm btn--primary" onclick="viewFollowup(<?= $followup['id'] ?>)" title="View Details">
-                                            👁️ View
-                                        </button>
+                                    <div class="ab-container">
+                                        <button class="ab-btn" data-action="view" onclick="viewFollowup(<?= $followup['id'] ?>)" title="View Details">View</button>
                                         <?php if ($followup['status'] !== 'completed'): ?>
-                                            <button class="btn btn--sm btn--success" onclick="completeFollowup(<?= $followup['id'] ?>)" title="Mark Complete">
-                                                ✅ Complete
-                                            </button>
-                                            <button class="btn btn--sm btn--warning" onclick="rescheduleFollowup(<?= $followup['id'] ?>)" title="Reschedule">
-                                                📅 Reschedule
-                                            </button>
+                                            <button class="ab-btn" data-action="approve" onclick="completeFollowup(<?= $followup['id'] ?>)" title="Mark Complete">Complete</button>
+                                            <button class="ab-btn" data-action="edit" onclick="rescheduleFollowup(<?= $followup['id'] ?>)" title="Reschedule">Reschedule</button>
                                         <?php endif; ?>
-                                        <button class="btn btn--sm btn--info" onclick="showHistory(<?= $followup['id'] ?>)" title="View History">
-                                            📋 History
-                                        </button>
+                                        <button class="ab-btn" data-action="print" onclick="showHistory(<?= $followup['id'] ?>)" title="View History">History</button>
                                         <?php 
                                         $currentUserId = $_SESSION['user_id'] ?? 0;
                                         $currentUserRole = $_SESSION['role'] ?? '';
@@ -275,9 +267,7 @@ ob_start();
                                         $canDelete = $isOwner || $isAdmin;
                                         if ($canDelete): 
                                         ?>
-                                            <button class="btn btn--sm btn--danger" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')" title="Delete">
-                                                🗑️ Delete
-                                            </button>
+                                            <button class="ab-btn" data-action="delete" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')" title="Delete">Delete</button>
                                         <?php endif; ?>
                                     </div>
                                 </td>

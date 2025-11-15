@@ -1,0 +1,102 @@
+/* Clean Action Button System - Self-contained & Modular */
+
+.ab-container {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.ab-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    outline: none;
+    pointer-events: auto;
+}
+
+.ab-btn:hover {
+    transform: scale(1.1);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.ab-btn:active {
+    transform: translateY(0);
+}
+
+.ab-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.5;
+    pointer-events: none;
+}
+
+/* Button Variants */
+.ab-btn--view { color: #3b82f6; }
+.ab-btn--view:hover { background: #3b82f6; color: white; }
+
+.ab-btn--edit { color: #f59e0b; }
+.ab-btn--edit:hover { background: #f59e0b; color: white; }
+
+.ab-btn--delete { color: #ef4444; }
+.ab-btn--delete:hover { background: #ef4444; color: white; }
+
+.ab-btn--approve { color: #10b981; }
+.ab-btn--approve:hover { background: #10b981; color: white; }
+
+.ab-btn--reject { color: #f43f5e; }
+.ab-btn--reject:hover { background: #f43f5e; color: white; }
+
+.ab-btn--progress { color: #8b5cf6; }
+.ab-btn--progress:hover { background: #8b5cf6; color: white; }
+
+.ab-btn--reset { color: #6366f1; }
+.ab-btn--reset:hover { background: #6366f1; color: white; }
+
+/* Fast Custom Tooltips */
+.ab-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+    animation: tooltipFadeIn 0.15s ease;
+}
+
+.ab-btn[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 1px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 3px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.9);
+    z-index: 1000;
+}
+
+@keyframes tooltipFadeIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(2px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .ab-container { gap: 4px; }
+    .ab-btn { width: 28px; height: 28px; }
+    .ab-btn svg { width: 14px; height: 14px; }
+}
