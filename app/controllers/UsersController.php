@@ -15,6 +15,12 @@ class UsersController extends Controller {
             $userModel = new User();
             $users = $userModel->getAll();
             
+            // Debug logging
+            error_log('Users index: Retrieved ' . count($users) . ' users');
+            foreach ($users as $user) {
+                error_log("User {$user['id']}: {$user['name']} - Status: {$user['status']}");
+            }
+            
             $data = [
                 'users' => $users,
                 'active_page' => 'users'
@@ -22,6 +28,7 @@ class UsersController extends Controller {
             
             $this->view('users/index', $data);
         } catch (Exception $e) {
+            error_log('Users index error: ' . $e->getMessage());
             echo "Error: " . $e->getMessage();
         }
     }
@@ -357,16 +364,28 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
+            // First check if user exists and current status
+            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
+            $checkStmt->execute([$id]);
+            $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
+            }
+            
             $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$id]);
             
             if ($result) {
                 $this->invalidateUserSessions($id);
+                error_log("User {$id} status changed from '{$user['status']}' to 'inactive'");
             }
             
             echo json_encode(['success' => $result, 'message' => $result ? 'User deactivated successfully' : 'Deactivation failed']);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Deactivation failed']);
+            error_log('User inactive error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Deactivation failed: ' . $e->getMessage()]);
         }
         exit;
     }
@@ -383,16 +402,28 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
+            // First check if user exists and current status
+            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
+            $checkStmt->execute([$id]);
+            $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
+            }
+            
             $stmt = $db->prepare("UPDATE users SET status = 'removed', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$id]);
             
             if ($result) {
                 $this->invalidateUserSessions($id);
+                error_log("User {$id} status changed from '{$user['status']}' to 'removed'");
             }
             
             echo json_encode(['success' => $result, 'message' => $result ? 'User removed successfully' : 'Removal failed']);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Removal failed']);
+            error_log('User delete error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Removal failed: ' . $e->getMessage()]);
         }
         exit;
     }
@@ -409,12 +440,27 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
+            // First check if user exists and current status
+            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
+            $checkStmt->execute([$id]);
+            $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
+            }
+            
             $stmt = $db->prepare("UPDATE users SET status = 'active', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$id]);
             
+            if ($result) {
+                error_log("User {$id} status changed from '{$user['status']}' to 'active'");
+            }
+            
             echo json_encode(['success' => $result, 'message' => $result ? 'User activated successfully' : 'Activation failed']);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Activation failed']);
+            error_log('User activate error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Activation failed: ' . $e->getMessage()]);
         }
         exit;
     }

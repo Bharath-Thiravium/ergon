@@ -179,6 +179,25 @@ ob_start();
 <script src="/ergon/assets/js/table-utils.js"></script>
 
 <script>
+// Dropdown functions
+function showDropdown(element) {
+    // Simple tooltip-like functionality
+    const tooltip = element.getAttribute('title');
+    if (tooltip) {
+        element.setAttribute('data-original-title', tooltip);
+        element.removeAttribute('title');
+    }
+}
+
+function hideDropdown(element) {
+    // Restore tooltip
+    const originalTitle = element.getAttribute('data-original-title');
+    if (originalTitle) {
+        element.setAttribute('title', originalTitle);
+        element.removeAttribute('data-original-title');
+    }
+}
+
 // Global action button handler
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.ab-btn');
@@ -195,7 +214,13 @@ document.addEventListener('click', function(e) {
         window.location.href = `/ergon/${module}/edit/${id}`;
     } else if (action === 'inactive' && module && id && name) {
         if (confirm(`Deactivate user ${name}? They will not be able to login.`)) {
-            fetch(`/ergon/${module}/inactive/${id}`, { method: 'POST' })
+            fetch(`/ergon/${module}/inactive/${id}`, { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -205,11 +230,20 @@ document.addEventListener('click', function(e) {
                     alert('Error: ' + (data.message || 'Deactivation failed'));
                 }
             })
-            .catch(() => alert('Error deactivating user'));
+            .catch(error => {
+                console.error('Deactivate error:', error);
+                alert('Error deactivating user');
+            });
         }
     } else if (action === 'activate' && module && id && name) {
         if (confirm(`Activate user ${name}?`)) {
-            fetch(`/ergon/${module}/activate/${id}`, { method: 'POST' })
+            fetch(`/ergon/${module}/activate/${id}`, { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -219,11 +253,20 @@ document.addEventListener('click', function(e) {
                     alert('Error: ' + (data.message || 'Activation failed'));
                 }
             })
-            .catch(() => alert('Error activating user'));
+            .catch(error => {
+                console.error('Activate error:', error);
+                alert('Error activating user');
+            });
         }
     } else if (action === 'delete' && module && id && name) {
-        if (confirm(`Remove user ${name}? This will mark them as removed from the system.`)) {
-            fetch(`/ergon/${module}/delete/${id}`, { method: 'POST' })
+        if (confirm(`Remove user ${name}? This will permanently mark them as removed from the system.`)) {
+            fetch(`/ergon/${module}/delete/${id}`, { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -233,7 +276,10 @@ document.addEventListener('click', function(e) {
                     alert('Error: ' + (data.message || 'Removal failed'));
                 }
             })
-            .catch(() => alert('Error removing user'));
+            .catch(error => {
+                console.error('Delete error:', error);
+                alert('Error removing user');
+            });
         }
     } else if (action === 'reset' && module && id && name) {
         if (confirm(`Reset password for ${name}?`)) {

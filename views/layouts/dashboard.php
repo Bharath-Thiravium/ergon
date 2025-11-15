@@ -425,9 +425,62 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     </main>
 
     <script>
-
+    // Define dropdown functions first to prevent ReferenceError
+    var hideTimeout;
+    var currentDropdown = null;
     
-
+    function showDropdown(id) {
+        clearTimeout(hideTimeout);
+        currentDropdown = id;
+        
+        var dropdown = document.getElementById(id);
+        if (!dropdown) return;
+        
+        var btn = dropdown.previousElementSibling;
+        var btnRect = btn.getBoundingClientRect();
+        
+        // Position dropdown
+        dropdown.style.top = (btnRect.bottom + 8) + 'px';
+        dropdown.style.left = btnRect.left + 'px';
+        
+        // Close all other dropdowns with fade out
+        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
+            if (menu.id !== id && menu.classList.contains('show')) {
+                menu.classList.remove('show');
+                menu.previousElementSibling.classList.remove('active');
+            }
+        });
+        
+        // Show current dropdown with fade in
+        setTimeout(function() {
+            dropdown.classList.add('show');
+            btn.classList.add('active');
+        }, 50);
+    }
+    
+    function hideDropdown(id) {
+        hideTimeout = setTimeout(function() {
+            var dropdown = document.getElementById(id);
+            if (dropdown && currentDropdown === id) {
+                var btn = dropdown.previousElementSibling;
+                
+                dropdown.classList.remove('show');
+                btn.classList.remove('active');
+                currentDropdown = null;
+            }
+        }, 150);
+    }
+    
+    function toggleDropdown(id) {
+        var dropdown = document.getElementById(id);
+        var btn = dropdown.previousElementSibling;
+        
+        if (dropdown.classList.contains('show')) {
+            hideDropdown(id);
+        } else {
+            showDropdown(id);
+        }
+    }
     
     function toggleNotifications(event) {
         if (event) {
@@ -574,61 +627,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         });
     }
     
-    function showDropdown(id) {
-        clearTimeout(hideTimeout);
-        currentDropdown = id;
-        
-        var dropdown = document.getElementById(id);
-        if (!dropdown) return;
-        
-        var btn = dropdown.previousElementSibling;
-        var btnRect = btn.getBoundingClientRect();
-        
-        // Position dropdown
-        dropdown.style.top = (btnRect.bottom + 8) + 'px';
-        dropdown.style.left = btnRect.left + 'px';
-        
-        // Close all other dropdowns with fade out
-        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
-            if (menu.id !== id && menu.classList.contains('show')) {
-                menu.classList.remove('show');
-                menu.previousElementSibling.classList.remove('active');
-            }
-        });
-        
-        // Show current dropdown with fade in
-        setTimeout(function() {
-            dropdown.classList.add('show');
-            btn.classList.add('active');
-        }, 50);
-    }
-    
-    var hideTimeout;
-    var currentDropdown = null;
-    
-    function hideDropdown(id) {
-        hideTimeout = setTimeout(function() {
-            var dropdown = document.getElementById(id);
-            if (dropdown && currentDropdown === id) {
-                var btn = dropdown.previousElementSibling;
-                
-                dropdown.classList.remove('show');
-                btn.classList.remove('active');
-                currentDropdown = null;
-            }
-        }, 150);
-    }
-    
-    function toggleDropdown(id) {
-        var dropdown = document.getElementById(id);
-        var btn = dropdown.previousElementSibling;
-        
-        if (dropdown.classList.contains('show')) {
-            hideDropdown(id);
-        } else {
-            showDropdown(id);
-        }
-    }
+
     
     window.toggleProfile = function() {
         var menu = document.getElementById('profileMenu');

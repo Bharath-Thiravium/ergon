@@ -226,11 +226,19 @@ class User {
                 SELECT id, name, email, role, phone, department, status, created_at, employee_id, last_login 
                 FROM {$this->table} 
                 {$whereClause}
-                ORDER BY created_at DESC 
+                ORDER BY 
+                    CASE 
+                        WHEN status = 'active' THEN 1
+                        WHEN status = 'inactive' THEN 2
+                        ELSE 3
+                    END,
+                    created_at DESC 
                 LIMIT ? OFFSET ?
             ");
             $stmt->execute($params);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            error_log('Retrieved ' . count($users) . ' users (excluding removed)');
+            return $users;
         } catch (Exception $e) {
             error_log("Get users error: " . $e->getMessage());
             return [];
