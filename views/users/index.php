@@ -117,26 +117,52 @@ ob_start();
                                             <polyline points="10,9 9,9 8,9"/>
                                         </svg>
                                     </button>
-                                    <button class="ab-btn ab-btn--edit" data-action="edit" data-module="users" data-id="<?= $user['id'] ?>" title="Edit User">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                            <path d="M15 5l4 4"/>
-                                        </svg>
-                                    </button>
-                                    <button class="ab-btn ab-btn--reset" data-action="reset" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Reset Password">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-                                        </svg>
-                                    </button>
-                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Delete User">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M3 6h18"/>
-                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
-                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                                            <line x1="10" y1="11" x2="10" y2="17"/>
-                                            <line x1="14" y1="11" x2="14" y2="17"/>
-                                        </svg>
-                                    </button>
+                                    <?php if (($user['status'] ?? 'active') === 'active'): ?>
+                                        <button class="ab-btn ab-btn--edit" data-action="edit" data-module="users" data-id="<?= $user['id'] ?>" title="Edit User">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                                <path d="M15 5l4 4"/>
+                                            </svg>
+                                        </button>
+                                        <button class="ab-btn ab-btn--reset" data-action="reset" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Reset Password">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                                            </svg>
+                                        </button>
+                                        <button class="ab-btn ab-btn--warning" data-action="inactive" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Deactivate User">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                                            </svg>
+                                        </button>
+                                        <button class="ab-btn ab-btn--delete" data-action="delete" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Remove User">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M3 6h18"/>
+                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                                <line x1="14" y1="11" x2="14" y2="17"/>
+                                            </svg>
+                                        </button>
+                                    <?php elseif (($user['status'] ?? 'active') === 'inactive'): ?>
+                                        <button class="ab-btn ab-btn--success" data-action="activate" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Activate User">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M9 12l2 2 4-4"/>
+                                                <circle cx="12" cy="12" r="10"/>
+                                            </svg>
+                                        </button>
+                                        <button class="ab-btn ab-btn--delete" data-action="delete" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Remove User">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M3 6h18"/>
+                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                                <line x1="14" y1="11" x2="14" y2="17"/>
+                                            </svg>
+                                        </button>
+                                    <?php else: ?>
+                                        <span class="text-muted">Removed</span>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -167,8 +193,48 @@ document.addEventListener('click', function(e) {
         window.location.href = `/ergon/${module}/view/${id}`;
     } else if (action === 'edit' && module && id) {
         window.location.href = `/ergon/${module}/edit/${id}`;
+    } else if (action === 'inactive' && module && id && name) {
+        if (confirm(`Deactivate user ${name}? They will not be able to login.`)) {
+            fetch(`/ergon/${module}/inactive/${id}`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User deactivated successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Deactivation failed'));
+                }
+            })
+            .catch(() => alert('Error deactivating user'));
+        }
+    } else if (action === 'activate' && module && id && name) {
+        if (confirm(`Activate user ${name}?`)) {
+            fetch(`/ergon/${module}/activate/${id}`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User activated successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Activation failed'));
+                }
+            })
+            .catch(() => alert('Error activating user'));
+        }
     } else if (action === 'delete' && module && id && name) {
-        deleteRecord(module, id, name);
+        if (confirm(`Remove user ${name}? This will mark them as removed from the system.`)) {
+            fetch(`/ergon/${module}/delete/${id}`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User removed successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Removal failed'));
+                }
+            })
+            .catch(() => alert('Error removing user'));
+        }
     } else if (action === 'reset' && module && id && name) {
         if (confirm(`Reset password for ${name}?`)) {
             fetch(`/ergon/${module}/reset-password`, {

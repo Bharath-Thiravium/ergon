@@ -219,11 +219,11 @@ class User {
     public function getAll($page = 1, $limit = 20, $role = null) {
         try {
             $offset = ($page - 1) * $limit;
-            $whereClause = $role ? "WHERE role = ?" : "";
+            $whereClause = $role ? "WHERE role = ? AND status != 'removed'" : "WHERE status != 'removed'";
             $params = $role ? [$role, $limit, $offset] : [$limit, $offset];
             
             $stmt = $this->conn->prepare("
-                SELECT id, name, email, role, phone, department, status, created_at 
+                SELECT id, name, email, role, phone, department, status, created_at, employee_id, last_login 
                 FROM {$this->table} 
                 {$whereClause}
                 ORDER BY created_at DESC 
@@ -275,7 +275,7 @@ class User {
             $stmt = $this->conn->prepare("
                 SELECT id, name, email, role, department, status 
                 FROM {$this->table} 
-                WHERE status = 'active' 
+                WHERE status IN ('active', 'inactive') 
                 ORDER BY name
             ");
             $stmt->execute();
@@ -341,7 +341,7 @@ class User {
     
     public function delete($id) {
         try {
-            $stmt = $this->conn->prepare("UPDATE {$this->table} SET status = 'inactive' WHERE id = ?");
+            $stmt = $this->conn->prepare("UPDATE {$this->table} SET status = 'removed' WHERE id = ?");
             return $stmt->execute([$id]);
         } catch (Exception $e) {
             error_log("User delete error: " . $e->getMessage());

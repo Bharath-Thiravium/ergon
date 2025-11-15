@@ -345,7 +345,8 @@ class UsersController extends Controller {
         exit;
     }
     
-    public function delete($id) {
+    public function inactive($id) {
+        header('Content-Type: application/json');
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             echo json_encode(['success' => false, 'message' => 'Access denied']);
@@ -356,12 +357,10 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Deactivate instead of delete to maintain data integrity
             $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$id]);
             
             if ($result) {
-                // Force logout of the deactivated user by clearing their sessions
                 $this->invalidateUserSessions($id);
             }
             
@@ -372,7 +371,7 @@ class UsersController extends Controller {
         exit;
     }
     
-    public function deleteUser() {
+    public function delete($id) {
         header('Content-Type: application/json');
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
@@ -380,9 +379,29 @@ class UsersController extends Controller {
             exit;
         }
         
-        $userId = $_POST['user_id'] ?? null;
-        if (!$userId) {
-            echo json_encode(['success' => false, 'message' => 'User ID required']);
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("UPDATE users SET status = 'removed', updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
+            if ($result) {
+                $this->invalidateUserSessions($id);
+            }
+            
+            echo json_encode(['success' => $result, 'message' => $result ? 'User removed successfully' : 'Removal failed']);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Removal failed']);
+        }
+        exit;
+    }
+    
+    public function activate($id) {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
             exit;
         }
         
@@ -390,49 +409,17 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Deactivate instead of delete to maintain data integrity
-            $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
-            $result = $stmt->execute([$userId]);
+            $stmt = $db->prepare("UPDATE users SET status = 'active', updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$id]);
             
-            if ($result) {
-                // Force logout of the deactivated user
-                $this->invalidateUserSessions($userId);
-            }
-            
-            echo json_encode(['success' => $result, 'message' => $result ? 'User deactivated successfully' : 'Deactivation failed']);
+            echo json_encode(['success' => $result, 'message' => $result ? 'User activated successfully' : 'Activation failed']);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Deactivation failed: ' . $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => 'Activation failed']);
         }
         exit;
     }
     
-    public function inactive($id) {
-        
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
-            header('Location: /ergon/login');
-            exit;
-        }
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            try {
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
-                
-                $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
-                $result = $stmt->execute([$id]);
-                
-                if ($result) {
-                    header('Location: /ergon/users?success=User deactivated successfully');
-                } else {
-                    header('Location: /ergon/users?error=Failed to deactivate user');
-                }
-                exit;
-            } catch (Exception $e) {
-                header('Location: /ergon/users?error=Deactivation failed');
-                exit;
-            }
-        }
-    }
+
     
     public function export() {
         

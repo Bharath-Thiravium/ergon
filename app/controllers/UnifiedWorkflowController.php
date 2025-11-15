@@ -21,14 +21,13 @@ class UnifiedWorkflowController extends Controller {
             // Get daily tasks for the selected date
             $stmt = $db->prepare("
                 SELECT dt.*, 
-                       COALESCE(dt.planned_duration, 60) as sla_hours,
-                       UNIX_TIMESTAMP(dt.start_time) as start_timestamp
+                       COALESCE(dt.planned_duration, 60) as planned_duration_minutes
                 FROM daily_tasks dt 
                 WHERE dt.user_id = ? AND dt.scheduled_date = ? 
                 ORDER BY 
                     CASE dt.status 
                         WHEN 'in_progress' THEN 1 
-                        WHEN 'paused' THEN 2 
+                        WHEN 'on_break' THEN 2 
                         WHEN 'not_started' THEN 3 
                         WHEN 'completed' THEN 4 
                         ELSE 5 
@@ -37,37 +36,50 @@ class UnifiedWorkflowController extends Controller {
             $stmt->execute([$_SESSION['user_id'], $date]);
             $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // If no daily tasks, get regular tasks as fallback
+            // If no daily tasks, create them from regular tasks
             if (empty($dailyTasks)) {
-                $stmt = $db->prepare("SELECT * FROM tasks WHERE assigned_to = ? ORDER BY created_at DESC LIMIT 10");
+                $stmt = $db->prepare("SELECT * FROM tasks WHERE assigned_to = ? AND status != 'completed' ORDER BY created_at DESC LIMIT 5");
                 $stmt->execute([$_SESSION['user_id']]);
-                $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $regularTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
-                $plannedTasks = [];
-                foreach ($tasks as $task) {
-                    $plannedTasks[] = [
-                        'id' => $task['id'],
-                        'title' => $task['title'],
-                        'description' => $task['description'],
-                        'priority' => $task['priority'] ?? 'medium',
-                        'status' => $task['status'],
-                        'sla_hours' => 8,
-                        'start_time' => null
-                    ];
+                // Create daily tasks from regular tasks
+                foreach ($regularTasks as $task) {
+                    $stmt = $db->prepare("
+                        INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, created_at)
+                        VALUES (?, ?, ?, ?, ?, 60, ?, 'not_started', NOW())
+                    ");
+                    $stmt->execute([
+                        $_SESSION['user_id'], 
+                        $task['id'], 
+                        $date, 
+                        $task['title'], 
+                        $task['description'], 
+                        $task['priority'] ?? 'medium'
+                    ]);
                 }
-            } else {
-                $plannedTasks = [];
-                foreach ($dailyTasks as $task) {
-                    $plannedTasks[] = [
-                        'id' => $task['id'],
-                        'title' => $task['title'],
-                        'description' => $task['description'],
-                        'priority' => $task['priority'] ?? 'medium',
-                        'status' => $task['status'],
-                        'sla_hours' => ($task['planned_duration'] ?? 60) / 60, // Convert minutes to hours
-                        'start_time' => $task['start_time']
-                    ];
-                }
+                
+                // Re-fetch daily tasks
+                $stmt = $db->prepare("
+                    SELECT dt.*, 
+                           COALESCE(dt.planned_duration, 60) as planned_duration_minutes
+                    FROM daily_tasks dt 
+                    WHERE dt.user_id = ? AND dt.scheduled_date = ?
+                ");
+                $stmt->execute([$_SESSION['user_id'], $date]);
+                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            
+            $plannedTasks = [];
+            foreach ($dailyTasks as $task) {
+                $plannedTasks[] = [
+                    'id' => $task['id'],
+                    'title' => $task['title'],
+                    'description' => $task['description'],
+                    'priority' => $task['priority'] ?? 'medium',
+                    'status' => $task['status'],
+                    'sla_hours' => ($task['planned_duration_minutes'] ?? 60) / 60,
+                    'start_time' => $task['start_time']
+                ];
             }
             
             $dailyStats = [
@@ -319,17 +331,7 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Check if it's a daily_task or regular task
-            $stmt = $db->prepare("SELECT id FROM daily_tasks WHERE id = ? AND user_id = ?");
-            $stmt->execute([$taskId, $_SESSION['user_id']]);
-            $isDailyTask = $stmt->fetch();
-            
-            if ($isDailyTask) {
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', start_time = NOW(), resume_time = NULL WHERE id = ? AND user_id = ?");
-            } else {
-                $stmt = $db->prepare("UPDATE tasks SET status = 'in_progress' WHERE id = ? AND assigned_to = ?");
-            }
-            
+            $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', start_time = NOW(), resume_time = NULL WHERE id = ? AND user_id = ?");
             $result = $stmt->execute([$taskId, $_SESSION['user_id']]);
             
             if ($result) {
@@ -363,17 +365,7 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Check if it's a daily_task or regular task
-            $stmt = $db->prepare("SELECT id FROM daily_tasks WHERE id = ? AND user_id = ?");
-            $stmt->execute([$taskId, $_SESSION['user_id']]);
-            $isDailyTask = $stmt->fetch();
-            
-            if ($isDailyTask) {
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = 'on_break', pause_time = NOW() WHERE id = ? AND user_id = ?");
-            } else {
-                $stmt = $db->prepare("UPDATE tasks SET status = 'on_break' WHERE id = ? AND assigned_to = ?");
-            }
-            
+            $stmt = $db->prepare("UPDATE daily_tasks SET status = 'on_break', pause_time = NOW() WHERE id = ? AND user_id = ?");
             $result = $stmt->execute([$taskId, $_SESSION['user_id']]);
             
             if ($result) {
@@ -403,17 +395,7 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Check if it's a daily_task or regular task
-            $stmt = $db->prepare("SELECT id FROM daily_tasks WHERE id = ? AND user_id = ?");
-            $stmt->execute([$taskId, $_SESSION['user_id']]);
-            $isDailyTask = $stmt->fetch();
-            
-            if ($isDailyTask) {
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', resume_time = NOW() WHERE id = ? AND user_id = ?");
-            } else {
-                $stmt = $db->prepare("UPDATE tasks SET status = 'in_progress' WHERE id = ? AND assigned_to = ?");
-            }
-            
+            $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', resume_time = NOW() WHERE id = ? AND user_id = ?");
             $result = $stmt->execute([$taskId, $_SESSION['user_id']]);
             
             if ($result) {
@@ -448,18 +430,8 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Check if it's a daily_task or regular task
-            $stmt = $db->prepare("SELECT id FROM daily_tasks WHERE id = ? AND user_id = ?");
-            $stmt->execute([$taskId, $_SESSION['user_id']]);
-            $isDailyTask = $stmt->fetch();
-            
-            if ($isDailyTask) {
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = 'completed', completed_percentage = ?, completion_time = NOW() WHERE id = ? AND user_id = ?");
-                $result = $stmt->execute([$percentage, $taskId, $_SESSION['user_id']]);
-            } else {
-                $stmt = $db->prepare("UPDATE tasks SET status = 'completed', progress = ? WHERE id = ? AND assigned_to = ?");
-                $result = $stmt->execute([$percentage, $taskId, $_SESSION['user_id']]);
-            }
+            $stmt = $db->prepare("UPDATE daily_tasks SET status = 'completed', completed_percentage = ?, completion_time = NOW() WHERE id = ? AND user_id = ?");
+            $result = $stmt->execute([$percentage, $taskId, $_SESSION['user_id']]);
             
             if ($result) {
                 echo json_encode(['success' => true, 'message' => 'Task completed successfully']);
