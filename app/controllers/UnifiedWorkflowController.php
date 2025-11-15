@@ -482,6 +482,7 @@ class UnifiedWorkflowController extends Controller {
     }
     
     public function quickAddTask() {
+        header('Content-Type: application/json');
         AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -491,8 +492,10 @@ class UnifiedWorkflowController extends Controller {
         }
         
         $title = trim($_POST['title'] ?? '');
-        $plannedDate = $_POST['planned_date'] ?? date('Y-m-d');
+        $description = trim($_POST['description'] ?? '');
+        $scheduledDate = $_POST['scheduled_date'] ?? date('Y-m-d');
         $plannedTime = $_POST['planned_time'] ?? null;
+        $duration = intval($_POST['duration'] ?? 60);
         $priority = $_POST['priority'] ?? 'medium';
         
         if (empty($title)) {
@@ -504,32 +507,59 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Create task
+            // Ensure daily_tasks table exists
+            $this->ensureDailyTasksTable($db);
+            
+            // Create daily task entry
             $stmt = $db->prepare("
-                INSERT INTO tasks (title, assigned_by, assigned_to, assigned_for, priority, planned_date, status, created_at)
-                VALUES (?, ?, ?, 'self', ?, ?, 'assigned', NOW())
+                INSERT INTO daily_tasks 
+                (user_id, scheduled_date, title, description, planned_start_time, planned_duration, priority, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', NOW())
             ");
             
-            $result = $stmt->execute([$title, $_SESSION['user_id'], $_SESSION['user_id'], $priority, $plannedDate]);
+            $result = $stmt->execute([
+                $_SESSION['user_id'], $scheduledDate, $title, $description, 
+                $plannedTime, $duration, $priority
+            ]);
             
             if ($result) {
-                $taskId = $db->lastInsertId();
-                
-                // Create planner entry
-                $stmt = $db->prepare("
-                    INSERT INTO daily_planner (user_id, task_id, date, title, planned_start_time, priority_order, status, created_at)
-                    VALUES (?, ?, ?, ?, ?, 1, 'planned', NOW())
-                ");
-                
-                $stmt->execute([$_SESSION['user_id'], $taskId, $plannedDate, $title, $plannedTime]);
-                
-                echo json_encode(['success' => true]);
+                echo json_encode(['success' => true, 'message' => 'Task added successfully']);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Failed to create task']);
+                echo json_encode(['success' => false, 'message' => 'Failed to add task']);
             }
         } catch (Exception $e) {
             error_log('Quick add task error: ' . $e->getMessage());
-            echo json_encode(['success' => false, 'message' => 'Database error']);
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        }
+    }
+    
+    private function ensureDailyTasksTable($db) {
+        try {
+            $db->exec("CREATE TABLE IF NOT EXISTS daily_tasks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                task_id INT NULL,
+                scheduled_date DATE NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                planned_start_time TIME NULL,
+                planned_duration INT DEFAULT 60,
+                priority ENUM('low','medium','high') DEFAULT 'medium',
+                status ENUM('not_started','in_progress','paused','completed','postponed') DEFAULT 'not_started',
+                start_time TIMESTAMP NULL,
+                pause_time TIMESTAMP NULL,
+                resume_time TIMESTAMP NULL,
+                completion_time TIMESTAMP NULL,
+                active_seconds INT DEFAULT 0,
+                completed_percentage INT DEFAULT 0,
+                postponed_from_date DATE NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_user_date (user_id, scheduled_date),
+                INDEX idx_status (status)
+            )");
+        } catch (Exception $e) {
+            error_log('ensureDailyTasksTable error: ' . $e->getMessage());
         }
     }
     

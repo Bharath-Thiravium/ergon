@@ -9,9 +9,7 @@ $content = ob_start();
     </div>
     <div class="page-actions">
         <input type="date" id="dateSelector" value="<?= $selected_date ?>" onchange="changeDate(this.value)" class="form-control" style="width: auto; display: inline-block;">
-        <button onclick="openQuickTaskModal()" class="btn btn--primary">
-            <i class="bi bi-plus-circle"></i> Quick Add
-        </button>
+
         <a href="/ergon/tasks/create" class="btn btn--secondary">
             <i class="bi bi-plus"></i> Full Task
         </a>
@@ -31,9 +29,9 @@ $content = ob_start();
                     <i class="bi bi-calendar-x"></i>
                     <h4>No tasks planned for today</h4>
                     <p>Start by adding tasks to your daily planner</p>
-                    <button onclick="openQuickTaskModal()" class="btn btn--primary">
+                    <a href="/ergon/tasks/create" class="btn btn--primary">
                         <i class="bi bi-plus"></i> Plan First Task
-                    </button>
+                    </a>
                 </div>
             <?php else: ?>
                 <div class="task-timeline">
