@@ -129,13 +129,13 @@ ob_start();
                                                 <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
                                             </svg>
                                         </button>
-                                        <button class="ab-btn ab-btn--warning" data-action="inactive" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Deactivate User">
+                                        <button class="ab-btn ab-btn--warning btn-deactivate" data-action="inactive" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Deactivate User">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                 <circle cx="12" cy="12" r="10"/>
                                                 <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
                                             </svg>
                                         </button>
-                                        <button class="ab-btn ab-btn--delete" data-action="delete" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Remove User">
+                                        <button class="ab-btn ab-btn--delete btn-remove" data-action="delete" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Remove User">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                 <path d="M3 6h18"/>
                                                 <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -207,6 +207,9 @@ document.addEventListener('click', function(e) {
     const module = btn.dataset.module;
     const id = btn.dataset.id;
     const name = btn.dataset.name;
+    
+    // Debug logging
+    console.log('Button clicked:', { action, module, id, name, buttonClass: btn.className });
     
     if (action === 'view' && module && id) {
         window.location.href = `/ergon/${module}/view/${id}`;

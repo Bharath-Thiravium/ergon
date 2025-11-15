@@ -48,6 +48,12 @@
 .ab-btn--delete { color: #ef4444; }
 .ab-btn--delete:hover { background: #ef4444; color: white; }
 
+.ab-btn--warning { color: #f59e0b; }
+.ab-btn--warning:hover { background: #f59e0b; color: white; }
+
+.ab-btn--success { color: #10b981; }
+.ab-btn--success:hover { background: #10b981; color: white; }
+
 .ab-btn--approve { color: #10b981; }
 .ab-btn--approve:hover { background: #10b981; color: white; }
 
