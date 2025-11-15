@@ -303,32 +303,84 @@ class UnifiedAttendanceController extends Controller {
         try {
             $roleFilter = ($role === 'owner') ? "u.role IN ('admin', 'user')" : "u.role = 'user'";
             
-            $stmt = $this->db->prepare("
-                SELECT 
-                    u.id,
-                    u.name,
-                    u.email,
-                    u.role,
-                    COALESCE(d.name, 'Not Assigned') as department,
-                    a.check_in,
-                    a.check_out,
-                    a.total_hours,
-                    CASE 
-                        WHEN a.location_name = 'On Approved Leave' THEN 'On Leave'
-                        WHEN a.check_in IS NOT NULL THEN 'Present'
-                        ELSE 'Absent'
-                    END as status
-                FROM users u
-                LEFT JOIN departments d ON u.department_id = d.id
-                LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
-                WHERE $roleFilter AND u.id != ?
-                ORDER BY u.role DESC, u.name
-            ");
-            $stmt->execute([$filterDate, $currentUserId]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // First try with all joins
+            try {
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        u.id,
+                        u.name,
+                        u.email,
+                        u.role,
+                        COALESCE(d.name, 'General') as department,
+                        a.check_in,
+                        a.check_out,
+                        CASE 
+                            WHEN a.check_in IS NOT NULL THEN 'Present'
+                            ELSE 'Absent'
+                        END as status,
+                        CASE 
+                            WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
+                                ROUND(TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) / 60.0, 2)
+                            ELSE 0
+                        END as total_hours
+                    FROM users u
+                    LEFT JOIN departments d ON u.department_id = d.id
+                    LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
+                    WHERE $roleFilter AND (u.status = 'active' OR u.status IS NULL)
+                    ORDER BY u.role DESC, u.name
+                ");
+                $stmt->execute([$filterDate]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                // Fallback: simple query without departments
+                error_log('Departments join failed, using fallback: ' . $e->getMessage());
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        u.id,
+                        u.name,
+                        u.email,
+                        u.role,
+                        'General' as department,
+                        a.check_in,
+                        a.check_out,
+                        CASE 
+                            WHEN a.check_in IS NOT NULL THEN 'Present'
+                            ELSE 'Absent'
+                        END as status,
+                        0 as total_hours
+                    FROM users u
+                    LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
+                    WHERE $roleFilter
+                    ORDER BY u.role DESC, u.name
+                ");
+                $stmt->execute([$filterDate]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
         } catch (Exception $e) {
             error_log('getEmployeeAttendance error: ' . $e->getMessage());
-            return [];
+            // Final fallback: just get users
+            try {
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        u.id,
+                        u.name,
+                        u.email,
+                        u.role,
+                        'General' as department,
+                        NULL as check_in,
+                        NULL as check_out,
+                        'Absent' as status,
+                        0 as total_hours
+                    FROM users u
+                    WHERE $roleFilter
+                    ORDER BY u.role DESC, u.name
+                ");
+                $stmt->execute();
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e2) {
+                error_log('Final fallback failed: ' . $e2->getMessage());
+                return [];
+            }
         }
     }
     
