@@ -56,6 +56,8 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <link href="/ergon/assets/css/hover-fix.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/force-dark-theme.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/action-button-clean.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/standardized-icons.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/global-tooltips.css?v=<?= time() ?>" rel="stylesheet">
     
     <!-- JavaScript -->
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
@@ -681,37 +683,8 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 
     </script>
 
-    <!-- Custom Tooltip Implementation -->
     <script>
-    // Simple tooltip implementation - excludes .ab-btn elements
-    function initTooltips() {
-        const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]:not(.ab-btn)');
-        
-        tooltipElements.forEach(element => {
-            const tooltipText = element.getAttribute('data-bs-original-title');
-            if (!tooltipText) return;
-            
-            let tooltip = null;
-            
-            element.addEventListener('mouseenter', function() {
-                tooltip = document.createElement('div');
-                tooltip.className = 'custom-tooltip';
-                tooltip.textContent = tooltipText;
-                document.body.appendChild(tooltip);
-                
-                const rect = element.getBoundingClientRect();
-                tooltip.style.left = rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2) + 'px';
-                tooltip.style.top = rect.top - tooltip.offsetHeight - 8 + 'px';
-            });
-            
-            element.addEventListener('mouseleave', function() {
-                if (tooltip) {
-                    tooltip.remove();
-                    tooltip = null;
-                }
-            });
-        });
-    }
+    // Global tooltip conversion is handled by action-button-clean.js
     
     // Smart back navigation function
     function goBack() {
@@ -732,11 +705,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
     }
     
-    // Initialize tooltips when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initTooltips);
-    } else {
-        initTooltips();
+    
+    function initTooltips() {
+        // Non-action-button tooltips only
+        return;
     }
     </script>
     

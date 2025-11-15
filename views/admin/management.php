@@ -99,25 +99,43 @@ ob_start();
                             <td data-sort-value="<?= $user['role'] ?>"><span class="badge badge--<?= $user['role'] === 'admin' ? 'success' : 'info' ?>"><?= ucfirst($user['role']) ?></span></td>
                             <td data-sort-value="<?= $user['status'] ?>"><span class="badge badge--success"><?= ucfirst($user['status']) ?></span></td>
                             <td>
-                                <div class="btn-group">
+                                <div class="ab-container">
                                     <?php if ($user['role'] === 'user'): ?>
-                                    <button class="btn btn--sm btn--primary" onclick="assignAdmin(<?= $user['id'] ?>)" title="Make Admin">
-                                        ⬆️
+                                    <button class="ab-btn ab-btn--progress" onclick="assignAdmin(<?= $user['id'] ?>)" data-tooltip="Make Admin">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                        </svg>
                                     </button>
                                     <?php elseif ($user['role'] === 'admin'): ?>
-                                    <button class="btn btn--sm btn--warning" onclick="removeAdmin(<?= $user['id'] ?>)" title="Remove Admin">
-                                        ⬇️
+                                    <button class="ab-btn ab-btn--progress" onclick="removeAdmin(<?= $user['id'] ?>)" data-tooltip="Remove Admin">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="9" cy="7" r="4"/>
+                                            <line x1="22" y1="11" x2="16" y2="11"/>
+                                        </svg>
                                     </button>
                                     <?php endif; ?>
-                                    <button class="btn btn--sm btn--secondary" onclick="editUser(<?= $user['id'] ?>)" title="Edit User">
-                                        ✏️
+                                    <button class="ab-btn ab-btn--edit" onclick="editUser(<?= $user['id'] ?>)" data-tooltip="Edit User">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                            <path d="M15 5l4 4"/>
+                                        </svg>
                                     </button>
-                                    <button class="btn btn--sm btn--info" onclick="changePassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" title="Change Password">
-                                        🔑
+                                    <button class="ab-btn ab-btn--progress" onclick="changePassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Change Password">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                        </svg>
                                     </button>
                                     <?php if ($user['role'] !== 'owner'): ?>
-                                    <button class="btn btn--sm btn--danger" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" title="Delete User">
-                                        🗑️
+                                    <button class="ab-btn ab-btn--delete" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Delete User">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M3 6h18"/>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                            <line x1="10" y1="11" x2="10" y2="17"/>
+                                            <line x1="14" y1="11" x2="14" y2="17"/>
+                                        </svg>
                                     </button>
                                     <?php endif; ?>
                                 </div>
@@ -141,25 +159,43 @@ ob_start();
                     <h3 class="user-card__name"><?= htmlspecialchars($user['name']) ?></h3>
                     <p class="user-card__email"><?= htmlspecialchars($user['email']) ?></p>
                     <p class="user-card__role"><?= ucfirst($user['role']) ?></p>
-                    <div class="user-card__actions">
+                    <div class="ab-container">
                         <?php if ($user['role'] === 'user'): ?>
-                        <button class="btn btn--sm btn--primary" onclick="assignAdmin(<?= $user['id'] ?>)">
-                            ⬆️ Make Admin
+                        <button class="ab-btn ab-btn--progress" onclick="assignAdmin(<?= $user['id'] ?>)" data-tooltip="Make Admin">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
                         </button>
                         <?php elseif ($user['role'] === 'admin'): ?>
-                        <button class="btn btn--sm btn--warning" onclick="removeAdmin(<?= $user['id'] ?>)">
-                            ⬇️ Remove Admin
+                        <button class="ab-btn ab-btn--progress" onclick="removeAdmin(<?= $user['id'] ?>)" data-tooltip="Remove Admin">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <line x1="22" y1="11" x2="16" y2="11"/>
+                            </svg>
                         </button>
                         <?php endif; ?>
-                        <button class="btn btn--sm btn--secondary" onclick="editUser(<?= $user['id'] ?>)">
-                            ✏️ Edit
+                        <button class="ab-btn ab-btn--edit" onclick="editUser(<?= $user['id'] ?>)" data-tooltip="Edit User">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                <path d="M15 5l4 4"/>
+                            </svg>
                         </button>
-                        <button class="btn btn--sm btn--info" onclick="changePassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')">
-                            🔑 Password
+                        <button class="ab-btn ab-btn--progress" onclick="changePassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Change Password">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
                         </button>
                         <?php if ($user['role'] !== 'owner'): ?>
-                        <button class="btn btn--sm btn--danger" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')">
-                            🗑️ Delete
+                        <button class="ab-btn ab-btn--delete" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Delete User">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M3 6h18"/>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
                         </button>
                         <?php endif; ?>
                     </div>

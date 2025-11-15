@@ -60,38 +60,84 @@
 .ab-btn--reset { color: #6366f1; }
 .ab-btn--reset:hover { background: #6366f1; color: white; }
 
-/* Fast Custom Tooltips */
-.ab-btn[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    bottom: calc(100% + 6px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    z-index: 1000;
-    pointer-events: none;
-    animation: tooltipFadeIn 0.15s ease;
+/* Disable native tooltips for action buttons */
+.ab-btn {
+    position: relative;
 }
 
-.ab-btn[title]:hover::before {
+.ab-btn[title] {
+    /* Remove title attribute to prevent native tooltips */
+}
+
+/* Global native tooltip disabling */
+[title]:hover::before,
+[title]:hover::after {
+    display: none !important;
+}
+
+[data-tooltip]:hover::before,
+[data-tooltip]:hover::after {
+    display: block !important;
+}
+
+/* Override global tooltip position for action buttons only */
+.action-btn[data-tooltip]:hover::after,
+.ab-btn[data-tooltip]:hover::after {
+    top: auto !important;
+    bottom: calc(100% + 8px) !important;
+}
+
+.action-btn[data-tooltip]:hover::before,
+.ab-btn[data-tooltip]:hover::before {
+    top: auto !important;
+    bottom: calc(100% + 2px) !important;
+    border-bottom-color: transparent !important;
+    border-top-color: rgba(15, 23, 42, 0.95) !important;
+}
+
+/* Modern Glass Tooltip Design */
+.ab-btn:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 10000;
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    animation: tooltipSlideIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ab-btn:hover::before {
     content: '';
     position: absolute;
-    bottom: calc(100% + 1px);
+    bottom: calc(100% + 2px);
     left: 50%;
     transform: translateX(-50%);
-    border: 3px solid transparent;
-    border-top-color: rgba(0, 0, 0, 0.9);
-    z-index: 1000;
+    border: 4px solid transparent;
+    border-top-color: rgba(15, 23, 42, 0.95);
+    z-index: 10000;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
 }
 
-@keyframes tooltipFadeIn {
-    from { opacity: 0; transform: translateX(-50%) translateY(2px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+@keyframes tooltipSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(4px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+    }
 }
 
 /* Responsive */
