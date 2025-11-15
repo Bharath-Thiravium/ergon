@@ -1,0 +1,321 @@
+/* Daily Planner Styles */
+.planner-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--space-4);
+    margin-top: var(--space-3);
+}
+
+.task-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.task-item {
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-primary);
+    transition: var(--transition);
+}
+
+.task-item:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.task-item--active {
+    border-left: 4px solid var(--success);
+    background: rgba(34, 197, 94, 0.05);
+}
+
+.task-item--break {
+    border-left: 4px solid var(--warning);
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.task-item--completed {
+    border-left: 4px solid var(--primary);
+    background: rgba(59, 130, 246, 0.05);
+    opacity: 0.8;
+}
+
+.task-time {
+    flex-shrink: 0;
+    width: 80px;
+    text-align: center;
+    padding: var(--space-2);
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.sla-time {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.sla-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.countdown-timer {
+    padding: var(--space-1);
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.countdown-display {
+    font-family: monospace;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.countdown-display--warning {
+    color: var(--warning);
+    animation: pulse 1s infinite;
+}
+
+.countdown-display--expired {
+    color: var(--danger);
+    animation: pulse 0.5s infinite;
+}
+
+.countdown-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.task-content {
+    flex: 1;
+}
+
+.task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-2);
+}
+
+.task-title {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.task-badges {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.task-description {
+    margin: var(--space-2) 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.task-timer {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-2) 0;
+    padding: var(--space-2);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+}
+
+.task-timer--active {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    color: var(--success);
+}
+
+.task-timer--paused {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+}
+
+.task-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.stat-item {
+    text-align: center;
+    padding: var(--space-3);
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.stat-value {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    margin-bottom: var(--space-1);
+}
+
+.stat-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-top: var(--space-1);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius);
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.modal-close:hover {
+    background-color: var(--bg-secondary);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.percentage-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.percentage-btn {
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.percentage-btn:hover {
+    border-color: var(--primary);
+    background: var(--bg-primary);
+}
+
+.percentage-btn--active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@media (max-width: 768px) {
+    .planner-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .task-item {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .task-time {
+        width: auto;
+        text-align: left;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .percentage-options {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

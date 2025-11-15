@@ -12,6 +12,10 @@ PerformanceOptimizer::setCacheHeaders(3600);
 // Initialize session
 Session::init();
 
+// Validate session for security
+require_once __DIR__ . '/app/middlewares/SessionValidationMiddleware.php';
+SessionValidationMiddleware::validateSession();
+
 // Initialize router
 $router = new Router();
 

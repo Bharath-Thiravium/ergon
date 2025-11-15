@@ -253,12 +253,33 @@ ob_start();
                                 </td>
                                 <td>
                                     <div class="ab-container">
-                                        <button class="ab-btn" data-action="view" onclick="viewFollowup(<?= $followup['id'] ?>)" title="View Details">View</button>
+                                        <button class="ab-btn ab-btn--view" onclick="viewFollowup(<?= $followup['id'] ?>)" data-tooltip="View Details">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                <polyline points="14,2 14,8 20,8"/>
+                                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                            </svg>
+                                        </button>
                                         <?php if ($followup['status'] !== 'completed'): ?>
-                                            <button class="ab-btn" data-action="approve" onclick="completeFollowup(<?= $followup['id'] ?>)" title="Mark Complete">Complete</button>
-                                            <button class="ab-btn" data-action="edit" onclick="rescheduleFollowup(<?= $followup['id'] ?>)" title="Reschedule">Reschedule</button>
+                                            <button class="ab-btn ab-btn--approve" onclick="completeFollowup(<?= $followup['id'] ?>)" data-tooltip="Mark Complete">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <polyline points="20,6 9,17 4,12"/>
+                                                </svg>
+                                            </button>
+                                            <button class="ab-btn ab-btn--edit" onclick="rescheduleFollowup(<?= $followup['id'] ?>)" data-tooltip="Reschedule">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                                    <path d="M15 5l4 4"/>
+                                                </svg>
+                                            </button>
                                         <?php endif; ?>
-                                        <button class="ab-btn" data-action="print" onclick="showHistory(<?= $followup['id'] ?>)" title="View History">History</button>
+                                        <button class="ab-btn ab-btn--history" onclick="showHistory(<?= $followup['id'] ?>)" data-tooltip="View History">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <polyline points="12,6 12,12 16,14"/>
+                                            </svg>
+                                        </button>
                                         <?php 
                                         $currentUserId = $_SESSION['user_id'] ?? 0;
                                         $currentUserRole = $_SESSION['role'] ?? '';
@@ -267,7 +288,15 @@ ob_start();
                                         $canDelete = $isOwner || $isAdmin;
                                         if ($canDelete): 
                                         ?>
-                                            <button class="ab-btn" data-action="delete" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')" title="Delete">Delete</button>
+                                            <button class="ab-btn ab-btn--delete" onclick="deleteFollowup(<?= $followup['id'] ?>, '<?= htmlspecialchars($followup['title']) ?>')" data-tooltip="Delete">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <path d="M3 6h18"/>
+                                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                                    <line x1="10" y1="11" x2="10" y2="17"/>
+                                                    <line x1="14" y1="11" x2="14" y2="17"/>
+                                                </svg>
+                                            </button>
                                         <?php endif; ?>
                                     </div>
                                 </td>

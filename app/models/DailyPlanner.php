@@ -9,20 +9,69 @@ class DailyPlanner {
     
     public function getTasksForDate($userId, $date) {
         try {
-            // Get from daily_tasks table first
+            // First try to get tasks from daily_tasks table
             $stmt = $this->db->prepare("
-                SELECT dt.*, t.title as task_title, t.priority as task_priority
+                SELECT 
+                    dt.id, dt.title, dt.description, dt.priority, dt.status,
+                    0 as progress, NULL as deadline, dt.planned_duration as estimated_duration, NULL as sla_hours,
+                    'daily' as task_type, NULL as company_name, NULL as project_name, NULL as contact_person,
+                    dt.scheduled_date as planned_date, dt.created_at as assigned_at,
+                    dt.status as completion_status, dt.active_seconds,
+                    dt.completed_percentage, dt.start_time,
+                    dt.planned_start_time, dt.planned_duration,
+                    u.name as assigned_by_user
                 FROM daily_tasks dt
-                LEFT JOIN tasks t ON dt.task_id = t.id
+                LEFT JOIN users u ON dt.user_id = u.id
                 WHERE dt.user_id = ? AND dt.scheduled_date = ?
-                ORDER BY dt.priority DESC, dt.planned_start_time ASC
+                ORDER BY 
+                    CASE dt.priority 
+                        WHEN 'high' THEN 3 
+                        WHEN 'medium' THEN 2 
+                        WHEN 'low' THEN 1 
+                        ELSE 0 
+                    END DESC, 
+                    dt.created_at DESC
             ");
             $stmt->execute([$userId, $date]);
             $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // If no daily tasks, get relevant tasks from tasks table
+            // If no daily tasks, get from regular tasks table
             if (empty($dailyTasks)) {
-                return $this->getRelevantTasksForDate($userId, $date);
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        t.id, t.title, t.description, t.priority, t.status,
+                        t.progress, t.deadline, t.estimated_duration, t.sla_hours,
+                        t.task_type, t.company_name, t.project_name, t.contact_person,
+                        t.planned_date, t.assigned_at,
+                        CASE 
+                            WHEN t.status = 'completed' THEN 'completed'
+                            WHEN t.status = 'in_progress' THEN 'in_progress'
+                            ELSE 'not_started'
+                        END as completion_status, 
+                        0 as active_seconds,
+                        t.progress as completed_percentage, NULL as start_time,
+                        NULL as planned_start_time, t.estimated_duration as planned_duration,
+                        u.name as assigned_by_user
+                    FROM tasks t
+                    LEFT JOIN users u ON t.assigned_by = u.id
+                    WHERE t.assigned_to = ? 
+                    AND (
+                        (t.planned_date IS NOT NULL AND DATE(t.planned_date) = ?)
+                        OR (t.planned_date IS NULL AND DATE(COALESCE(t.assigned_at, t.created_at)) = ?)
+                        OR (t.status = 'in_progress')
+                        OR (t.deadline IS NOT NULL AND DATE(t.deadline) = ?)
+                    )
+                    ORDER BY 
+                        CASE t.priority 
+                            WHEN 'high' THEN 3 
+                            WHEN 'medium' THEN 2 
+                            WHEN 'low' THEN 1 
+                            ELSE 0 
+                        END DESC, 
+                        t.created_at DESC
+                ");
+                $stmt->execute([$userId, $date, $date, $date]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
             return $dailyTasks;
@@ -231,17 +280,17 @@ class DailyPlanner {
                         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
                         SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
                         0 as postponed_tasks,
-                        SUM(sla_hours * 60) as total_planned_minutes,
+                        SUM(COALESCE(sla_hours * 60, estimated_duration, 60)) as total_planned_minutes,
                         0 as total_active_seconds,
-                        AVG(progress) as avg_completion
+                        AVG(COALESCE(progress, 0)) as avg_completion
                     FROM tasks 
                     WHERE assigned_to = ? 
                     AND (
-                        DATE(deadline) = ? 
-                        OR (DATE(created_at) = ? AND status IN ('assigned', 'in_progress'))
-                        OR (status = 'in_progress' AND DATE(updated_at) <= ?)
+                        (planned_date IS NOT NULL AND DATE(planned_date) = ?)
+                        OR (planned_date IS NULL AND DATE(COALESCE(assigned_at, created_at)) = ?)
+                        OR (status = 'in_progress')
+                        OR (deadline IS NOT NULL AND DATE(deadline) = ?)
                     )
-                    AND status != 'completed'
                 ");
                 $stmt->execute([$userId, $date, $date, $date]);
                 return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -250,7 +299,15 @@ class DailyPlanner {
             return $dailyStats;
         } catch (Exception $e) {
             error_log("DailyPlanner getDailyStats error: " . $e->getMessage());
-            return [];
+            return [
+                'total_tasks' => 0,
+                'completed_tasks' => 0,
+                'in_progress_tasks' => 0,
+                'postponed_tasks' => 0,
+                'total_planned_minutes' => 0,
+                'total_active_seconds' => 0,
+                'avg_completion' => 0
+            ];
         }
     }
     

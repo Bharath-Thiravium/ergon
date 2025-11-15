@@ -141,8 +141,10 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                         <td>
                             <div class="cell-meta">
                                 <div class="cell-primary"><?= ($task['deadline'] ?? $task['due_date']) ? date('M d, Y', strtotime($task['deadline'] ?? $task['due_date'])) : 'No due date' ?></div>
-                                <?php if (isset($task['created_at']) && $task['created_at']): ?>
-                                    <div class="cell-secondary">Created <?= date('M d, Y', strtotime($task['created_at'])) ?></div>
+                                <?php if (isset($task['assigned_at']) && $task['assigned_at']): ?>
+                                    <div class="cell-secondary">Assigned for <?= date('M d, Y', strtotime($task['assigned_at'])) ?></div>
+                                <?php elseif (isset($task['created_at']) && $task['created_at']): ?>
+                                    <div class="cell-secondary">Assigned for <?= date('M d, Y', strtotime($task['created_at'])) ?></div>
                                 <?php endif; ?>
                             </div>
                         </td>
@@ -205,6 +207,21 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
 <script src="/ergon/assets/js/table-utils.js"></script>
 
 <script>
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.ab-btn');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const module = btn.dataset.module;
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    if (action === 'view' && module && id) {
+        window.location.href = `/ergon/${module}/view/${id}`;
+    } else if (action === 'edit' && module && id) {
+        window.location.href = `/ergon/${module}/edit/${id}`;
+    } else if (action === 'delete' && module && id && name) {
+        deleteRecord(module, id, name);
+    }
+});
 var currentTaskId;
 function openProgressModal(taskId, progress, status) {
     currentTaskId = taskId;

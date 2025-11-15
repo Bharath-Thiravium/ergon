@@ -373,6 +373,12 @@
                     <p>Employee Management System</p>
                 </div>
                 
+                <?php if (isset($_SESSION['logout_message'])): ?>
+                <div class="alert alert-error">
+                    ⚠ <?= htmlspecialchars($_SESSION['logout_message']) ?>
+                </div>
+                <?php unset($_SESSION['logout_message']); endif; ?>
+                
                 <form id="loginForm">
                     <div class="form-group">
                         <label for="email" class="form-label">Email Address</label>

@@ -356,13 +356,18 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Permanently delete the user record
-            $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
+            // Deactivate instead of delete to maintain data integrity
+            $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$id]);
             
-            echo json_encode(['success' => $result]);
+            if ($result) {
+                // Force logout of the deactivated user by clearing their sessions
+                $this->invalidateUserSessions($id);
+            }
+            
+            echo json_encode(['success' => $result, 'message' => $result ? 'User deactivated successfully' : 'Deactivation failed']);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Delete failed']);
+            echo json_encode(['success' => false, 'message' => 'Deactivation failed']);
         }
         exit;
     }
@@ -385,13 +390,18 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Permanently delete the user record
-            $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
+            // Deactivate instead of delete to maintain data integrity
+            $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$userId]);
             
-            echo json_encode(['success' => $result, 'message' => $result ? 'User deleted successfully' : 'Delete failed']);
+            if ($result) {
+                // Force logout of the deactivated user
+                $this->invalidateUserSessions($userId);
+            }
+            
+            echo json_encode(['success' => $result, 'message' => $result ? 'User deactivated successfully' : 'Deactivation failed']);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => 'Deactivation failed: ' . $e->getMessage()]);
         }
         exit;
     }
@@ -670,6 +680,28 @@ class UsersController extends Controller {
             return number_format($bytes / 1024, 2) . ' KB';
         } else {
             return $bytes . ' bytes';
+        }
+    }
+    
+    private function invalidateUserSessions($userId) {
+        try {
+            // Create user_sessions table if it doesn't exist
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $db->exec("CREATE TABLE IF NOT EXISTS user_sessions (
+                id VARCHAR(128) PRIMARY KEY,
+                user_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id)
+            )");
+            
+            // Remove all sessions for this user
+            $stmt = $db->prepare("DELETE FROM user_sessions WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            
+        } catch (Exception $e) {
+            error_log('Session invalidation error: ' . $e->getMessage());
         }
     }
     
