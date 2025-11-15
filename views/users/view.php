@@ -15,7 +15,7 @@ ob_start();
         <a href="/ergon/users/edit/<?= $user['id'] ?>" class="btn btn--primary">
             <span>✏️</span> Edit User
         </a>
-        <a href="/ergon/users" class="btn btn--secondary">
+        <a href="<?= in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users' ?>" class="btn btn--secondary">
             <span>←</span> Back to Users
         </a>
     </div>

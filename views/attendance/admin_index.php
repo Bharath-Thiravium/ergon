@@ -107,12 +107,29 @@ ob_start();
         </div>
     </div>
     <div class="card__body">
+        <?php 
+        // Debug output
+        echo "<!-- DEBUG: employees count = " . count($employees ?? []) . " -->";
+        if (isset($employees) && !empty($employees)) {
+            echo "<!-- DEBUG: employees data exists, count = " . count($employees) . " -->";
+        } else {
+            echo "<!-- DEBUG: employees is empty or not set -->";
+        }
+        ?>
         <?php if (empty($employees)): ?>
             <div class="empty-state">
                 <div class="empty-icon">👥</div>
                 <h3>No Employees Found</h3>
-                <p>No employees are registered in the system.</p>
-                <a href="/ergon/debug_attendance_users.php" class="btn btn--primary">Debug & Fix</a>
+                <p>No employees are registered in the system. This could mean:</p>
+                <ul style="text-align: left; margin: 1rem 0;">
+                    <li>No users with role 'user' exist in the database</li>
+                    <li>Database connection issues</li>
+                    <li>Users table is empty</li>
+                </ul>
+                <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
+                    <a href="/ergon/fix_no_employees.php" class="btn btn--primary">🔧 Fix & Create Users</a>
+                    <a href="/ergon/debug_attendance_users.php" class="btn btn--secondary">🔍 Debug</a>
+                </div>
             </div>
         <?php else: ?>
             <div class="table-responsive">
@@ -132,9 +149,9 @@ ob_start();
                         <?php 
                         // Debug output
                         if (empty($employees)) {
-                            error_log('No employees data passed to view');
+                            error_log('No employees data passed to view. Current user role: ' . ($_SESSION['role'] ?? 'unknown'));
                         } else {
-                            error_log('Displaying ' . count($employees) . ' employees in admin view');
+                            error_log('Displaying ' . count($employees) . ' employees in admin view. Current user role: ' . ($_SESSION['role'] ?? 'unknown'));
                         }
                         
                         foreach ($employees as $employee): ?>

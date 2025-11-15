@@ -219,7 +219,7 @@ class User {
     public function getAll($page = 1, $limit = 20, $role = null) {
         try {
             $offset = ($page - 1) * $limit;
-            $whereClause = $role ? "WHERE role = ? AND status != 'removed'" : "WHERE status != 'removed'";
+            $whereClause = $role ? "WHERE role = ? AND status IN ('active', 'inactive')" : "WHERE status IN ('active', 'inactive')";
             $params = $role ? [$role, $limit, $offset] : [$limit, $offset];
             
             $stmt = $this->conn->prepare("
@@ -237,7 +237,7 @@ class User {
             ");
             $stmt->execute($params);
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            error_log('Retrieved ' . count($users) . ' users (excluding removed)');
+            error_log('Retrieved ' . count($users) . ' users (active/inactive only)');
             return $users;
         } catch (Exception $e) {
             error_log("Get users error: " . $e->getMessage());

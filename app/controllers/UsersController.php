@@ -133,9 +133,11 @@ class UsersController extends Controller {
                 
                 if ($result) {
                     $this->handleDocumentUploads($id);
-                    header('Location: /ergon/users/view/' . $id . '?success=User updated successfully');
+                    $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users';
+                    header('Location: ' . $redirectUrl . '?success=User updated successfully');
                 } else {
-                    header('Location: /ergon/users/view/' . $id . '?error=Failed to update user');
+                    $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users';
+                    header('Location: ' . $redirectUrl . '?error=Failed to update user');
                 }
                 exit;
             } catch (Exception $e) {
@@ -231,7 +233,8 @@ class UsersController extends Controller {
                         'password' => $tempPassword,
                         'employee_id' => $employeeId
                     ];
-                    header('Location: /ergon/users?success=User created successfully');
+                    $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users';
+                    header('Location: ' . $redirectUrl . '?success=User created successfully');
                     exit;
                 } else {
                     $_SESSION['old_data'] = $_POST;
@@ -390,56 +393,7 @@ class UsersController extends Controller {
         exit;
     }
     
-    public function delete($id) {
-        header('Content-Type: application/json');
-        
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
-            echo json_encode(['success' => false, 'message' => 'Access denied']);
-            exit;
-        }
-        
-        try {
-            error_log("🔴 DELETE ACTION RECEIVED for user ID: {$id}");
-            
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            
-            // First check if user exists and current status
-            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
-            $checkStmt->execute([$id]);
-            $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$user) {
-                error_log("🔴 DELETE FAILED: User {$id} not found");
-                echo json_encode(['success' => false, 'message' => 'User not found']);
-                exit;
-            }
-            
-            error_log("🔴 DELETE: User {$id} current status: '{$user['status']}'");
-            
-            $stmt = $db->prepare("UPDATE users SET status = 'removed', updated_at = NOW() WHERE id = ?");
-            $result = $stmt->execute([$id]);
-            
-            error_log("🔴 DELETE: SQL UPDATE result: " . ($result ? 'SUCCESS' : 'FAILED'));
-            
-            if ($result) {
-                // Verify the update actually happened
-                $verifyStmt = $db->prepare("SELECT status FROM users WHERE id = ?");
-                $verifyStmt->execute([$id]);
-                $newStatus = $verifyStmt->fetchColumn();
-                error_log("🔴 DELETE: User {$id} new status after update: '{$newStatus}'");
-                
-                $this->invalidateUserSessions($id);
-                error_log("🔴 DELETE: User {$id} status changed from '{$user['status']}' to '{$newStatus}'");
-            }
-            
-            echo json_encode(['success' => $result, 'message' => $result ? 'User removed successfully' : 'Removal failed']);
-        } catch (Exception $e) {
-            error_log("🔴 DELETE ERROR: " . $e->getMessage());
-            echo json_encode(['success' => false, 'message' => 'Removal failed: ' . $e->getMessage()]);
-        }
-        exit;
-    }
+
     
     public function activate($id) {
         header('Content-Type: application/json');
@@ -637,6 +591,14 @@ class UsersController extends Controller {
                     $db->exec("ALTER TABLE users ADD COLUMN $column $type");
                     error_log("Added column $column to users table");
                 }
+            }
+            
+            // Update status column to support new values
+            try {
+                $db->exec("ALTER TABLE users MODIFY COLUMN status ENUM('active', 'inactive', 'suspended', 'terminated') DEFAULT 'active'");
+                error_log("Updated status column to support new values");
+            } catch (Exception $e) {
+                error_log('Status column update error: ' . $e->getMessage());
             }
             
             // Generate employee IDs for existing users without them
