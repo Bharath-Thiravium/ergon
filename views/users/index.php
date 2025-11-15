@@ -127,7 +127,7 @@ ob_start();
                                             <polyline points="10,9 9,9 8,9"/>
                                         </svg>
                                     </button>
-                                    <?php if (in_array($user['status'] ?? 'active', ['active', 'inactive'])): ?>
+                                    <?php if (($user['status'] ?? 'active') !== 'terminated'): ?>
                                         <button class="ab-btn ab-btn--edit" data-action="edit" data-module="users" data-id="<?= $user['id'] ?>" title="Edit User">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                 <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
@@ -146,7 +146,7 @@ ob_start();
                                                     <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
                                                 </svg>
                                             </button>
-                                        <?php else: ?>
+                                        <?php elseif (($user['status'] ?? 'active') === 'inactive'): ?>
                                             <button class="ab-btn ab-btn--success" data-action="activate" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Activate User">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                     <path d="M9 12l2 2 4-4"/>
@@ -155,7 +155,7 @@ ob_start();
                                             </button>
                                         <?php endif; ?>
                                     <?php else: ?>
-                                        <span class="text-muted"><?= ucfirst($user['status'] ?? 'Unknown') ?></span>
+                                        <span class="text-muted">Terminated</span>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -205,12 +205,7 @@ document.addEventListener('click', function(e) {
     // Debug logging
     console.log('Button clicked:', { action, module, id, name, buttonClass: btn.className });
     
-    // DIAGNOSTIC: Specific remove button tracking
-    if (btn.classList.contains('btn-remove')) {
-        console.log('🔴 REMOVE BUTTON TRIGGERED for user ID:', id);
-        console.log('🔴 Button element:', btn);
-        console.log('🔴 Data attributes:', btn.dataset);
-    }
+
     
     if (action === 'view' && module && id) {
         window.location.href = `/ergon/${module}/view/${id}`;
