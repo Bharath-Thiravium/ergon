@@ -486,34 +486,53 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         var list = document.getElementById('notificationList');
         if (!list) return;
         
-        fetch('/ergon/api/notifications')
+        fetch('/ergon/api/notifications.php')
         .then(response => response.json())
         .then(data => {
-            if (data.notifications && data.notifications.length > 0) {
+            if (data.success && data.notifications && data.notifications.length > 0) {
                 list.innerHTML = data.notifications.map(function(notif) {
-                    var link = getNotificationLink(notif.type, notif.message);
+                    var link = getNotificationLink(notif.module_name, notif.message);
                     return '<a href="' + link + '" class="notification-item" onclick="closeNotificationDropdown()">' +
-                           '<div class="notification-title">' + (notif.title || 'Notification') + '</div>' +
+                           '<div class="notification-title">' + (notif.action_type || 'Notification') + '</div>' +
                            '<div class="notification-message">' + (notif.message || '') + '</div>' +
                            '<div class="notification-time">' + formatTime(notif.created_at) + '</div>' +
                            '</a>';
                 }).join('');
+                
+                // Update badge
+                updateNotificationBadge(data.unread_count || 0);
             } else {
                 list.innerHTML = '<div class="notification-loading">No notifications</div>';
+                updateNotificationBadge(0);
             }
         })
         .catch(error => {
+            console.error('Notification error:', error);
             list.innerHTML = '<div class="notification-loading">Failed to load notifications</div>';
         });
     }
     
-    function getNotificationLink(type, message) {
-        if (message.includes('task')) return '/ergon/tasks';
-        if (message.includes('leave')) return '/ergon/leaves';
-        if (message.includes('expense')) return '/ergon/expenses';
-        if (message.includes('advance')) return '/ergon/advances';
-        if (message.includes('approval')) return '/ergon/owner/approvals';
-        return '/ergon/notifications';
+    function updateNotificationBadge(count) {
+        var badge = document.getElementById('notificationBadge');
+        if (badge) {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'block' : 'none';
+        }
+    }
+    
+    // Load notification count on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadNotifications();
+    });
+    
+    function getNotificationLink(module, message) {
+        switch(module) {
+            case 'task': return '/ergon/tasks';
+            case 'leave': return '/ergon/leaves';
+            case 'expense': return '/ergon/expenses';
+            case 'advance': return '/ergon/advances';
+            default: return '/ergon/notifications';
+        }
     }
     
     function formatTime(dateStr) {
@@ -534,11 +553,12 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     }
     
     function markAllAsRead() {
-        fetch('/ergon/api/notifications/mark-all-read', {
+        fetch('/ergon/api/notifications.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-            }
+            },
+            body: 'action=mark-all-read'
         })
         .then(response => response.json())
         .then(data => {

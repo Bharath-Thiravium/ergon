@@ -21,44 +21,69 @@ ob_start();
     </div>
 </div>
 
-<div class="user-profile">
+<div class="user-compact">
     <div class="card">
         <div class="card__header">
-            <h2>Personal Information</h2>
+            <div class="user-title-row">
+                <h2 class="user-title">👤 <?= htmlspecialchars($user['name'] ?? 'User Profile') ?></h2>
+                <div class="user-badges">
+                    <?php 
+                    $status = $user['status'] ?? 'active';
+                    $role = $user['role'] ?? 'user';
+                    $statusClass = $status === 'active' ? 'success' : 'danger';
+                    $roleClass = match($role) {
+                        'owner' => 'danger',
+                        'admin' => 'warning',
+                        default => 'info'
+                    };
+                    $statusIcon = $status === 'active' ? '✅' : '❌';
+                    $roleIcon = match($role) {
+                        'owner' => '👑',
+                        'admin' => '👔',
+                        default => '👤'
+                    };
+                    ?>
+                    <span class="badge badge--<?= $statusClass ?>"><?= $statusIcon ?> <?= ucfirst($status) ?></span>
+                    <span class="badge badge--<?= $roleClass ?>"><?= $roleIcon ?> <?= ucfirst($role) ?></span>
+                </div>
+            </div>
         </div>
         <div class="card__body">
-            <div class="profile-grid">
-                <div class="profile-item">
-                    <label>Full Name</label>
-                    <span><?= htmlspecialchars($user['name'] ?? 'N/A') ?></span>
+            <div class="details-compact">
+                <div class="detail-group">
+                    <h4>👤 Personal Information</h4>
+                    <div class="detail-items">
+                        <span><strong>Employee ID:</strong> 🆔 <?= htmlspecialchars($user['employee_id'] ?? 'N/A') ?></span>
+                        <span><strong>Email:</strong> 📧 <?= htmlspecialchars($user['email'] ?? 'N/A') ?></span>
+                        <span><strong>Phone:</strong> 📱 <?= htmlspecialchars($user['phone'] ?? 'N/A') ?></span>
+                        <span><strong>Date of Birth:</strong> 🎂 <?= $user['date_of_birth'] ? date('M d, Y', strtotime($user['date_of_birth'])) : 'N/A' ?></span>
+                        <span><strong>Gender:</strong> 👤 <?= ucfirst($user['gender'] ?? 'N/A') ?></span>
+                    </div>
                 </div>
-                <div class="profile-item">
-                    <label>Employee ID</label>
-                    <span><?= htmlspecialchars($user['employee_id'] ?? 'N/A') ?></span>
+                
+                <div class="detail-group">
+                    <h4>🏢 Employment Details</h4>
+                    <div class="detail-items">
+                        <span><strong>Designation:</strong> 💼 <?= htmlspecialchars($user['designation'] ?? 'N/A') ?></span>
+                        <span><strong>Department:</strong> 🏢 
+                            <?php if (!empty($user['department_name'])): ?>
+                                <span class="badge badge--info"><?= htmlspecialchars($user['department_name']) ?></span>
+                            <?php else: ?>
+                                N/A
+                            <?php endif; ?>
+                        </span>
+                        <span><strong>Joining Date:</strong> 📅 <?= $user['joining_date'] ? date('M d, Y', strtotime($user['joining_date'])) : 'N/A' ?></span>
+                        <span><strong>Salary:</strong> 💰 <?= $user['salary'] ? '₹' . number_format($user['salary'], 2) : 'N/A' ?></span>
+                    </div>
                 </div>
-                <div class="profile-item">
-                    <label>Email</label>
-                    <span><?= htmlspecialchars($user['email'] ?? 'N/A') ?></span>
-                </div>
-                <div class="profile-item">
-                    <label>Phone</label>
-                    <span><?= htmlspecialchars($user['phone'] ?? 'N/A') ?></span>
-                </div>
-                <div class="profile-item">
-                    <label>Date of Birth</label>
-                    <span><?= $user['date_of_birth'] ? date('M d, Y', strtotime($user['date_of_birth'])) : 'N/A' ?></span>
-                </div>
-                <div class="profile-item">
-                    <label>Gender</label>
-                    <span><?= ucfirst($user['gender'] ?? 'N/A') ?></span>
-                </div>
-                <div class="profile-item">
-                    <label>Address</label>
-                    <span><?= htmlspecialchars($user['address'] ?? 'N/A') ?></span>
-                </div>
-                <div class="profile-item">
-                    <label>Emergency Contact</label>
-                    <span><?= htmlspecialchars($user['emergency_contact'] ?? 'N/A') ?></span>
+                
+                <div class="detail-group">
+                    <h4>📞 Contact Information</h4>
+                    <div class="detail-items">
+                        <span><strong>Address:</strong> 🏠 <?= htmlspecialchars($user['address'] ?? 'N/A') ?></span>
+                        <span><strong>Emergency Contact:</strong> 🆘 <?= htmlspecialchars($user['emergency_contact'] ?? 'N/A') ?></span>
+                        <span><strong>Created:</strong> 📅 <?= isset($user['created_at']) ? date('M d, Y', strtotime($user['created_at'])) : 'N/A' ?></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -66,51 +91,9 @@ ob_start();
 
     <div class="card">
         <div class="card__header">
-            <h2>Employment Details</h2>
-        </div>
-        <div class="card__body">
-            <div class="profile-grid">
-                <div class="profile-item">
-                    <label>Designation</label>
-                    <span><?= htmlspecialchars($user['designation'] ?? 'N/A') ?></span>
-                </div>
-                <div class="profile-item">
-                    <label>Joining Date</label>
-                    <span><?= $user['joining_date'] ? date('M d, Y', strtotime($user['joining_date'])) : 'N/A' ?></span>
-                </div>
-                <div class="profile-item">
-                    <label>Salary</label>
-                    <span><?= $user['salary'] ? '₹' . number_format($user['salary'], 2) : 'N/A' ?></span>
-                </div>
-                <div class="profile-item">
-                    <label>Role</label>
-                    <span class="badge badge--<?= $user['role'] === 'admin' ? 'warning' : 'info' ?>">
-                        <?= ucfirst($user['role'] ?? 'N/A') ?>
-                    </span>
-                </div>
-                <div class="profile-item">
-                    <label>Status</label>
-                    <span class="badge badge--<?= $user['status'] === 'active' ? 'success' : 'error' ?>">
-                        <?= ucfirst($user['status'] ?? 'N/A') ?>
-                    </span>
-                </div>
-                <div class="profile-item">
-                    <label>Department</label>
-                    <span>
-                        <?php if (!empty($user['department_name'])): ?>
-                            <span class="badge badge--info"><?= htmlspecialchars($user['department_name']) ?></span>
-                        <?php else: ?>
-                            N/A
-                        <?php endif; ?>
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card__header">
-            <h2>Documents</h2>
+            <h2 class="card__title">
+                <span>📄</span> Documents
+            </h2>
         </div>
         <div class="card__body">
             <?php if (empty($documents)): ?>
@@ -199,6 +182,109 @@ ob_start();
 </div>
 
 
+
+<style>
+.user-compact {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.user-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    gap: 1.5rem;
+    min-height: 2rem;
+}
+
+.user-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 200px;
+    max-width: calc(100% - 200px);
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.3;
+}
+
+.user-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+    min-width: 180px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.details-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.detail-group {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.detail-group h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.9rem;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.detail-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detail-items span {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.detail-items strong {
+    color: var(--text-primary);
+    min-width: 100px;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+    .user-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        min-height: auto;
+    }
+    
+    .user-title {
+        max-width: 100%;
+        min-width: auto;
+    }
+    
+    .user-badges {
+        width: 100%;
+        min-width: auto;
+        justify-content: flex-start;
+    }
+    
+    .details-compact {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 
 <?php
 $content = ob_get_clean();
