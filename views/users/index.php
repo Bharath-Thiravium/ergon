@@ -315,31 +315,6 @@ document.addEventListener('click', function(e) {
 });
 
 console.log('SCRIPT LOADED');
-console.log('Total buttons:', document.querySelectorAll('.ab-btn').length);
-console.log('Delete buttons:', document.querySelectorAll('[data-action="delete"]').length);
-</script>
-
-<script src="/ergon/assets/js/test-remove-button-debug.js"></script>);
-console.log('Delete buttons:', document.querySelectorAll('[data-action="delete"]').length);ument.querySelectorAll('.ab-btn[data-action="delete"]');
-    
-    if (removeButtons.length === 0) {
-        console.warn('❌ No .ab-btn with data-action="delete" found.');
-        return;
-    }
-    
-    console.log(`✅ Found ${removeButtons.length} Remove button(s).`);
-    
-    removeButtons.forEach((btn, index) => {
-        const userId = btn.dataset.id || btn.dataset.userId || 'N/A';
-        console.log(`🔍 Button ${index + 1}:`, {
-            text: btn.title,
-            userId,
-            action: btn.dataset.action,
-            module: btn.dataset.module,
-            classes: btn.className,
-        });
-    });
-})();
 </script>
 
 <?php
