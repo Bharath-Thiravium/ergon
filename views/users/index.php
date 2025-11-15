@@ -314,9 +314,9 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// AUDIT SCRIPT - Remove after debugging
-(function auditRemoveButton() {
-    const removeButtons = document.querySelectorAll('.ab-btn[data-action="delete"]');
+console.log('SCRIPT LOADED');
+console.log('Total buttons:', document.querySelectorAll('.ab-btn').length);
+console.log('Delete buttons:', document.querySelectorAll('[data-action="delete"]').length);ument.querySelectorAll('.ab-btn[data-action="delete"]');
     
     if (removeButtons.length === 0) {
         console.warn('❌ No .ab-btn with data-action="delete" found.');
