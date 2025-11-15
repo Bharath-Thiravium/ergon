@@ -270,44 +270,56 @@ class UsersController extends Controller {
     }
     
     public function resetPassword() {
+        header('Content-Type: application/json');
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
-            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
             exit;
         }
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $userId = $_POST['user_id'];
-            $tempPassword = 'RST' . rand(1000, 9999);
-            
-            $userModel = new User();
-            $user = $userModel->getById($userId);
-            
-            if ($user) {
-                // Direct database update to avoid any model complications
+            try {
+                $userId = $_POST['user_id'] ?? null;
+                if (!$userId) {
+                    echo json_encode(['success' => false, 'message' => 'User ID required']);
+                    exit;
+                }
+                
+                $tempPassword = 'RST' . rand(1000, 9999);
+                
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
-                $hashedPassword = password_hash($tempPassword, PASSWORD_BCRYPT);
-                $stmt = $db->prepare("UPDATE users SET password = ? WHERE id = ?");
-                $stmt->execute([$hashedPassword, $userId]);
                 
-                $_SESSION['reset_credentials'] = [
-                    'email' => $user['email'],
-                    'password' => $tempPassword
-                ];
+                $stmt = $db->prepare("SELECT name, email FROM users WHERE id = ?");
+                $stmt->execute([$userId]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
                 
-                error_log("Password reset for user {$userId}: {$tempPassword}");
-                
-                // Test the password immediately
-                if (password_verify($tempPassword, $hashedPassword)) {
-                    error_log("✅ Password verification successful for user {$userId}");
+                if ($user) {
+                    $hashedPassword = password_hash($tempPassword, PASSWORD_BCRYPT);
+                    $stmt = $db->prepare("UPDATE users SET password = ? WHERE id = ?");
+                    $result = $stmt->execute([$hashedPassword, $userId]);
+                    
+                    if ($result) {
+                        echo json_encode([
+                            'success' => true, 
+                            'message' => 'Password reset successfully',
+                            'credentials' => [
+                                'email' => $user['email'],
+                                'password' => $tempPassword
+                            ]
+                        ]);
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'Failed to reset password']);
+                    }
                 } else {
-                    error_log("❌ Password verification failed for user {$userId}");
+                    echo json_encode(['success' => false, 'message' => 'User not found']);
                 }
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => 'Reset failed: ' . $e->getMessage()]);
             }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
         }
-        
-        header('Location: /ergon/users');
         exit;
     }
     

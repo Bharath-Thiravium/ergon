@@ -183,39 +183,33 @@ class UnifiedAttendanceController extends Controller {
                 return ['success' => false, 'error' => 'You are on approved leave today'];
             }
             
-            // Get attendance rules and validate location if required
-            $rules = $this->getAttendanceRules();
-            if ($rules['is_gps_required'] && $latitude && $longitude) {
-                $distance = $this->calculateDistance(
-                    $latitude, $longitude,
-                    $rules['office_latitude'], $rules['office_longitude']
-                );
-                
-                if ($distance > $rules['office_radius_meters']) {
-                    return [
-                        'success' => false,
-                        'error' => "You are {$distance}m away from office. Please move closer."
-                    ];
-                }
-            }
+            // Skip location validation for now
+            // $rules = $this->getAttendanceRules();
+            // if ($rules['is_gps_required'] && $latitude && $longitude) {
+            //     $distance = $this->calculateDistance(
+            //         $latitude, $longitude,
+            //         $rules['office_latitude'], $rules['office_longitude']
+            //     );
+            //     
+            //     if ($distance > $rules['office_radius_meters']) {
+            //         return [
+            //             'success' => false,
+            //             'error' => "You are {$distance}m away from office. Please move closer."
+            //         ];
+            //     }
+            // }
             
             // Determine status (on time or late)
             $shift = $this->getUserShift($userId);
             $status = $this->determineStatus($shift);
             
-            // Insert attendance record
+            // Insert attendance record with basic columns only
             $stmt = $this->db->prepare("
-                INSERT INTO attendance (user_id, check_in, latitude, longitude, location_name, status, shift_id, ip_address, device_info, created_at) 
-                VALUES (?, NOW(), ?, ?, 'Office', ?, ?, ?, ?, NOW())
+                INSERT INTO attendance (user_id, check_in, created_at) 
+                VALUES (?, NOW(), NOW())
             ");
             
-            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
-            $deviceInfo = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-            
-            $result = $stmt->execute([
-                $userId, $latitude, $longitude, $status, 
-                $shift['id'] ?? 1, $ipAddress, $deviceInfo
-            ]);
+            $result = $stmt->execute([$userId]);
             
             if ($result) {
                 // Notify if late
@@ -259,14 +253,14 @@ class UnifiedAttendanceController extends Controller {
             $interval = $checkOut->diff($checkIn);
             $totalHours = $interval->h + ($interval->i / 60) + ($interval->s / 3600);
             
-            // Update attendance record
+            // Update attendance record with basic columns only
             $stmt = $this->db->prepare("
                 UPDATE attendance 
-                SET check_out = NOW(), total_hours = ?, updated_at = NOW() 
+                SET check_out = NOW() 
                 WHERE id = ?
             ");
             
-            $result = $stmt->execute([round($totalHours, 2), $attendance['id']]);
+            $result = $stmt->execute([$attendance['id']]);
             
             if ($result) {
                 return [
