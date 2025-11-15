@@ -152,9 +152,44 @@ ob_start();
 
 <script src="/ergon/assets/js/table-utils.js"></script>
 
-
-
-
+<script>
+// Global action button handler
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.ab-btn');
+    if (!btn) return;
+    
+    const action = btn.dataset.action;
+    const module = btn.dataset.module;
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    
+    if (action === 'view' && module && id) {
+        window.location.href = `/ergon/${module}/view/${id}`;
+    } else if (action === 'edit' && module && id) {
+        window.location.href = `/ergon/${module}/edit/${id}`;
+    } else if (action === 'delete' && module && id && name) {
+        deleteRecord(module, id, name);
+    } else if (action === 'reset' && module && id && name) {
+        if (confirm(`Reset password for ${name}?`)) {
+            fetch(`/ergon/${module}/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Password reset successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Reset failed'));
+                }
+            })
+            .catch(() => alert('Error resetting password'));
+        }
+    }
+});
+</script>
 
 <?php
 $content = ob_get_clean();

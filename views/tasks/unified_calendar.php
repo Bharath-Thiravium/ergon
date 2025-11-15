@@ -78,17 +78,61 @@ $content = ob_start();
                     echo '<div class="day-tasks">';
                     $taskCount = 0;
                     foreach ($dayTasks as $task) {
-                        if ($taskCount >= 3) {
-                            $remaining = count($dayTasks) - 3;
+                        if ($taskCount >= 2) {
+                            $remaining = count($dayTasks) - 2;
                             echo '<div class="task-item more">+' . $remaining . ' more</div>';
                             break;
                         }
                         
                         $priorityClass = 'priority-' . ($task['priority'] ?? 'medium');
                         $typeClass = 'type-' . ($task['type'] ?? 'task');
+                        $statusIcon = $task['status'] === 'completed' ? '✅' : ($task['status'] === 'in_progress' ? '🔄' : '📋');
+                        $typeIcon = $task['task_type'] === 'milestone' ? '🏁' : ($task['task_type'] === 'checklist' ? '☑️' : '📋');
                         
-                        echo '<div class="task-item ' . $priorityClass . ' ' . $typeClass . '" title="' . htmlspecialchars($task['title']) . '">';
-                        echo '<span class="task-title">' . htmlspecialchars(substr($task['title'], 0, 20)) . '</span>';
+                        $tooltipText = $task['title'];
+                        if (!empty($task['description'])) {
+                            $tooltipText .= '\n' . $task['description'];
+                        }
+                        if (!empty($task['project_name'])) {
+                            $tooltipText .= '\nProject: ' . $task['project_name'];
+                        }
+                        if (!empty($task['company_name'])) {
+                            $tooltipText .= '\nCompany: ' . $task['company_name'];
+                        }
+                        if (!empty($task['assigned_by_user'])) {
+                            $tooltipText .= '\nAssigned by: ' . $task['assigned_by_user'];
+                        }
+                        if (!empty($task['department_name'])) {
+                            $tooltipText .= '\nDepartment: ' . $task['department_name'];
+                        }
+                        $tooltipText .= '\nStatus: ' . ucfirst($task['status']) . ' (' . ($task['progress'] ?? 0) . '%)';
+                        
+                        echo '<div class="task-item ' . $priorityClass . ' ' . $typeClass . '" title="' . htmlspecialchars($tooltipText) . '">';
+                        echo '<div class="task-header-mini">';
+                        echo '<span class="task-icon">' . $typeIcon . '</span>';
+                        echo '<span class="task-status">' . $statusIcon . '</span>';
+                        if ($task['progress'] > 0) {
+                            echo '<span class="task-progress">' . $task['progress'] . '%</span>';
+                        }
+                        echo '</div>';
+                        echo '<span class="task-title">' . htmlspecialchars(substr($task['title'], 0, 15)) . '</span>';
+                        
+                        // Show project, company, or category
+                        if (!empty($task['project_name'])) {
+                            echo '<div class="task-meta">📁 ' . htmlspecialchars(substr($task['project_name'], 0, 12)) . '</div>';
+                        } elseif (!empty($task['company_name'])) {
+                            echo '<div class="task-meta">🏢 ' . htmlspecialchars(substr($task['company_name'], 0, 12)) . '</div>';
+                        } elseif (!empty($task['task_category'])) {
+                            echo '<div class="task-meta">🏷️ ' . htmlspecialchars(substr($task['task_category'], 0, 12)) . '</div>';
+                        }
+                        
+                        // Show assigned by or department
+                        if (!empty($task['assigned_by_user'])) {
+                            echo '<div class="task-assignee">👤 ' . htmlspecialchars(substr($task['assigned_by_user'], 0, 10)) . '</div>';
+                        } elseif (!empty($task['department_name'])) {
+                            echo '<div class="task-assignee">🏢 ' . htmlspecialchars(substr($task['department_name'], 0, 10)) . '</div>';
+                        }
+                        
                         echo '</div>';
                         $taskCount++;
                     }
@@ -135,11 +179,15 @@ $content = ob_start();
         </div>
         <div class="legend-item">
             <span class="legend-color type-task"></span>
-            <span>Task</span>
+            <span>📋 Task</span>
         </div>
         <div class="legend-item">
             <span class="legend-color type-planner"></span>
-            <span>Planner Entry</span>
+            <span>📅 Planner Entry</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color type-followup"></span>
+            <span>📞 Follow-up</span>
         </div>
     </div>
 </div>
@@ -196,13 +244,20 @@ function showTasksForDate(date) {
                             </div>
                             <div class="task-meta">
                                 <span class="priority">🔥 ${task.priority}</span>
-                                <span class="status">📊 ${task.status}</span>
-                                <span class="assignee">👤 ${task.assigned_to || 'Unassigned'}</span>
-                                <span class="due">📅 ${task.due_date || 'No due date'}</span>
+                                <span class="status">📊 ${task.status} (${task.progress || 0}%)</span>
+                                <span class="assignee">👤 ${task.assigned_by_user || 'Self-assigned'}</span>
+                                <span class="department">🏢 ${task.department_name || 'No department'}</span>
+                                <span class="category">🏷️ ${task.task_category || 'General'}</span>
+                                <span class="due">📅 ${task.deadline || task.planned_date || 'No due date'}</span>
                             </div>
+                            ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
+                            ${task.project_name ? `<div class="task-project">📁 Project: ${task.project_name}</div>` : ''}
+                            ${task.company_name ? `<div class="task-company">🏢 Company: ${task.company_name}</div>` : ''}
+                            ${task.contact_person ? `<div class="task-contact">📞 Contact: ${task.contact_person}</div>` : ''}
                             <div class="task-actions">
                                 <a href="/ergon/workflow/daily-planner/${date}" class="btn btn--primary">📅 Day</a>
                                 <a href="/ergon/tasks/view/${task.id}" class="btn btn--secondary">👁️ View</a>
+                                <a href="/ergon/tasks/edit/${task.id}" class="btn btn--warning">✏️ Edit</a>
                                 <button onclick="markComplete(${task.id})" class="btn btn--success">✅ Done</button>
                             </div>
                         </div>
@@ -343,8 +398,8 @@ function formatDate(dateString) {
 
 .calendar-day {
     background: var(--bg-primary);
-    min-height: 120px;
-    padding: 0.5rem;
+    min-height: 130px;
+    padding: 0.4rem;
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
@@ -390,32 +445,86 @@ function formatDate(dateString) {
 }
 
 .task-item {
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-size: 0.75rem;
-    line-height: 1.2;
+    padding: 3px 4px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    line-height: 1.1;
+    overflow: hidden;
+    margin-bottom: 1px;
+    border-left: 2px solid transparent;
+}
+
+.task-header-mini {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1px;
+}
+
+.task-icon, .task-status {
+    font-size: 0.6rem;
+}
+
+.task-title {
+    display: block;
+    font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
+.task-meta {
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-assignee {
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-progress {
+    font-size: 0.6rem;
+    color: var(--success);
+    font-weight: 600;
+}
+
 .task-item.priority-high {
     background: var(--danger-light);
     color: var(--danger);
+    border-left-color: var(--danger);
 }
 
 .task-item.priority-medium {
     background: var(--warning-light);
     color: var(--warning);
+    border-left-color: var(--warning);
 }
 
 .task-item.priority-low {
     background: var(--success-light);
     color: var(--success);
+    border-left-color: var(--success);
 }
 
 .task-item.type-planner {
-    border-left: 3px solid var(--info);
+    border-left-color: var(--info);
+}
+
+.task-item.type-followup {
+    border-left-color: var(--primary);
+}
+
+.task-item.type-task {
+    border-left-color: var(--secondary);
 }
 
 .task-item.more {
@@ -507,6 +616,19 @@ function formatDate(dateString) {
     border-radius: 4px;
 }
 
+.task-description {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    margin: 0.5rem 0;
+    line-height: 1.3;
+}
+
+.task-project, .task-company, .task-contact {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0.25rem 0;
+}
+
 .sidebar-actions {
     margin-top: 1.5rem;
     padding-top: 1rem;
@@ -577,6 +699,10 @@ function formatDate(dateString) {
 
 .legend-color.type-planner {
     background: var(--info-light);
+}
+
+.legend-color.type-followup {
+    background: var(--primary-light);
 }
 
 @media (max-width: 1200px) {

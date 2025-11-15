@@ -157,7 +157,7 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                                     </svg>
                                 </a>
                                 <?php if ($task['status'] !== 'completed'): ?>
-                                <button class="ab-btn ab-btn--progress" onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>, '<?= addslashes($task['status'] ?? 'assigned') ?>')" title="Update Progress">
+                                <button class="ab-btn ab-btn--progress" onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>, 'assigned')" title="Update Progress">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/>
                                         <polyline points="16,7 22,7 22,13"/>
@@ -205,6 +205,67 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
 <script src="/ergon/assets/js/table-utils.js"></script>
 
 <script>
+// Global action button handler
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.ab-btn');
+    if (!btn) return;
+    
+    const action = btn.dataset.action;
+    const module = btn.dataset.module;
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    
+    if (action === 'view' && module && id) {
+        window.location.href = `/ergon/${module}/view/${id}`;
+    } else if (action === 'edit' && module && id) {
+        window.location.href = `/ergon/${module}/edit/${id}`;
+    } else if (action === 'delete' && module && id && name) {
+        deleteRecord(module, id, name);
+    }
+});
+
+var currentTaskId;
+
+function openProgressModal(taskId, progress, status) {
+    currentTaskId = taskId;
+    document.getElementById('progressSlider').value = progress;
+    document.getElementById('progressValue').textContent = progress;
+    document.getElementById('progressDialog').style.display = 'flex';
+}
+
+function closeDialog() {
+    document.getElementById('progressDialog').style.display = 'none';
+}
+
+function saveProgress() {
+    var progress = document.getElementById('progressSlider').value;
+    var status = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'assigned';
+    
+    fetch('/ergon/tasks/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: currentTaskId, progress: progress, status: status })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error updating task');
+        }
+    })
+    .catch(() => alert('Error updating task'));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var slider = document.getElementById('progressSlider');
+    if (slider) {
+        slider.oninput = function() {
+            document.getElementById('progressValue').textContent = this.value;
+        }
+    }
+});
+</script>
 // Modern action buttons are now handled by CSS tooltips
 
 var currentTaskId;

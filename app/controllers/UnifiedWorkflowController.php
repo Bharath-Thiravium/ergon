@@ -49,29 +49,53 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Get followup tasks
-            $stmt = $db->prepare("
-                SELECT t.*, u.name as assigned_user
-                FROM tasks t
-                LEFT JOIN users u ON t.assigned_to = u.id
-                WHERE (t.followup_required = 1 OR t.task_category LIKE '%follow%')
-                AND t.assigned_to = ?
-                ORDER BY t.created_at DESC
-            ");
-            $stmt->execute([$_SESSION['user_id']]);
-            $followupTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Get actual followups from followups table
+            if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
+                $stmt = $db->prepare("
+                    SELECT f.*, u.name as assigned_user 
+                    FROM followups f 
+                    LEFT JOIN users u ON f.user_id = u.id 
+                    ORDER BY f.follow_up_date ASC
+                ");
+                $stmt->execute();
+            } else {
+                $stmt = $db->prepare("
+                    SELECT f.*, u.name as assigned_user 
+                    FROM followups f 
+                    LEFT JOIN users u ON f.user_id = u.id 
+                    WHERE f.user_id = ? 
+                    ORDER BY f.follow_up_date ASC
+                ");
+                $stmt->execute([$_SESSION['user_id']]);
+            }
+            $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-
+            // Calculate KPIs
+            $today = date('Y-m-d');
+            $overdue = $today_count = $completed = 0;
+            
+            foreach ($followups as $followup) {
+                if ($followup['status'] === 'completed') {
+                    $completed++;
+                } elseif ($followup['follow_up_date'] < $today) {
+                    $overdue++;
+                } elseif ($followup['follow_up_date'] === $today) {
+                    $today_count++;
+                }
+            }
             
             $data = [
-                'followup_tasks' => $followupTasks,
+                'followups' => $followups,
+                'overdue' => $overdue,
+                'today_count' => $today_count,
+                'completed' => $completed,
                 'active_page' => 'followups'
             ];
             
             $this->view('followups/index', $data);
         } catch (Exception $e) {
             error_log('Followups error: ' . $e->getMessage());
-            $this->view('followups/index', ['followup_tasks' => []]);
+            $this->view('followups/index', ['followups' => [], 'active_page' => 'followups']);
         }
     }
     
@@ -85,50 +109,42 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Get tasks for the month
+            // Get all tasks with complete details for the month
             $stmt = $db->prepare("
                 SELECT 
-                    t.id, t.title, t.priority, t.status, t.planned_date as date,
-                    u.name as assigned_user, 'task' as type
+                    t.id, t.title, t.description, t.priority, t.status, t.progress, t.task_type, t.task_category,
+                    t.company_name, t.contact_person, t.contact_phone, t.project_name, t.sla_hours,
+                    t.deadline, t.planned_date, t.assigned_at, t.created_at,
+                    DATE(COALESCE(t.planned_date, t.deadline, t.assigned_at, t.created_at)) as date,
+                    u1.name as assigned_user, u2.name as assigned_by_user, d.name as department_name,
+                    'task' as type
                 FROM tasks t
-                LEFT JOIN users u ON t.assigned_to = u.id
-                WHERE (MONTH(t.planned_date) = ? AND YEAR(t.planned_date) = ?) 
-                   OR (t.planned_date IS NULL AND DATE(t.created_at) = CURDATE())
-                AND (t.assigned_to = ? OR t.assigned_by = ?)
-                
-                UNION ALL
-                
-                SELECT 
-                    dp.id, dp.title, dp.priority, 'planned' as status, dp.plan_date as date,
-                    u.name as assigned_user, 'planner' as type
-                FROM daily_planner dp
-                LEFT JOIN users u ON dp.user_id = u.id
-                WHERE MONTH(dp.plan_date) = ? AND YEAR(dp.plan_date) = ?
-                AND dp.user_id = ?
-                
-                ORDER BY date
+                LEFT JOIN users u1 ON t.assigned_to = u1.id
+                LEFT JOIN users u2 ON t.assigned_by = u2.id
+                LEFT JOIN departments d ON t.department_id = d.id
+                WHERE t.assigned_to = ?
+                AND MONTH(COALESCE(t.planned_date, t.deadline, t.assigned_at, t.created_at)) = ? 
+                AND YEAR(COALESCE(t.planned_date, t.deadline, t.assigned_at, t.created_at)) = ?
             ");
-            
-            $stmt->execute([
-                $month, $year, $_SESSION['user_id'], $_SESSION['user_id'],
-                $month, $year, $_SESSION['user_id']
-            ]);
-            
-            $calendarTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-
+            $stmt->execute([$_SESSION['user_id'], $month, $year]);
+            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $data = [
-                'calendar_tasks' => $calendarTasks,
-                'current_month' => $month,
-                'current_year' => $year,
+                'calendar_tasks' => $tasks,
+                'current_month' => intval($month),
+                'current_year' => intval($year),
                 'active_page' => 'calendar'
             ];
             
             $this->view('tasks/unified_calendar', $data);
         } catch (Exception $e) {
             error_log('Calendar error: ' . $e->getMessage());
-            $this->view('tasks/unified_calendar', ['calendar_tasks' => [], 'current_month' => $month, 'current_year' => $year]);
+            $this->view('tasks/unified_calendar', [
+                'calendar_tasks' => [], 
+                'current_month' => intval($month), 
+                'current_year' => intval($year), 
+                'active_page' => 'calendar'
+            ]);
         }
     }
     
@@ -447,6 +463,7 @@ class UnifiedWorkflowController extends Controller {
     }
     
     public function getTasksForDate() {
+        header('Content-Type: application/json');
         AuthMiddleware::requireAuth();
         
         $date = $_GET['date'] ?? date('Y-m-d');
@@ -455,23 +472,22 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
+            // Get complete task details for the date
             $stmt = $db->prepare("
                 SELECT 
-                    t.id, t.title, t.priority, t.status, 'task' as type
+                    t.id, t.title, t.description, t.priority, t.status, t.progress, t.task_type, t.task_category,
+                    t.company_name, t.contact_person, t.contact_phone, t.project_name, t.sla_hours,
+                    t.deadline, t.planned_date, t.assigned_at, t.created_at,
+                    u1.name as assigned_user, u2.name as assigned_by_user, d.name as department_name,
+                    'task' as type
                 FROM tasks t
-                WHERE t.planned_date = ? AND (t.assigned_to = ? OR t.assigned_by = ?)
-                
-                UNION ALL
-                
-                SELECT 
-                    dp.id, dp.title, dp.priority, 'planned' as status, 'planner' as type
-                FROM daily_planner dp
-                WHERE dp.plan_date = ? AND dp.user_id = ?
-                
-                ORDER BY title
+                LEFT JOIN users u1 ON t.assigned_to = u1.id
+                LEFT JOIN users u2 ON t.assigned_by = u2.id
+                LEFT JOIN departments d ON t.department_id = d.id
+                WHERE t.assigned_to = ?
+                AND DATE(COALESCE(t.planned_date, t.deadline, t.assigned_at, t.created_at)) = ?
             ");
-            
-            $stmt->execute([$date, $_SESSION['user_id'], $_SESSION['user_id'], $date, $_SESSION['user_id']]);
+            $stmt->execute([$_SESSION['user_id'], $date]);
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             echo json_encode(['tasks' => $tasks]);

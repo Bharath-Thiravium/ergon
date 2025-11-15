@@ -322,7 +322,7 @@ class LeaveController extends Controller {
             $db = Database::connect();
             
             // Get leave details before approval
-            $stmt = $db->prepare("SELECT user_id, start_date, end_date FROM leaves WHERE id = ? AND status = 'pending'");
+            $stmt = $db->prepare("SELECT user_id, start_date, end_date FROM leaves WHERE id = ? AND status = 'Pending'");
             $stmt->execute([$id]);
             $leave = $stmt->fetch(PDO::FETCH_ASSOC);
             
@@ -332,7 +332,7 @@ class LeaveController extends Controller {
             }
             
             // Approve the leave
-            $stmt = $db->prepare("UPDATE leaves SET status = 'approved' WHERE id = ?");
+            $stmt = $db->prepare("UPDATE leaves SET status = 'Approved' WHERE id = ?");
             $result = $stmt->execute([$id]);
             
             if ($result) {
@@ -395,11 +395,11 @@ class LeaveController extends Controller {
                 $db = Database::connect();
                 
                 // Get leave details before rejection
-                $stmt = $db->prepare("SELECT user_id, start_date, end_date FROM leaves WHERE id = ? AND status = 'pending'");
+                $stmt = $db->prepare("SELECT user_id, start_date, end_date FROM leaves WHERE id = ? AND status = 'Pending'");
                 $stmt->execute([$id]);
                 $leave = $stmt->fetch(PDO::FETCH_ASSOC);
                 
-                $stmt = $db->prepare("UPDATE leaves SET status = 'rejected', rejection_reason = ? WHERE id = ? AND status = 'pending'");
+                $stmt = $db->prepare("UPDATE leaves SET status = 'Rejected', rejection_reason = ? WHERE id = ? AND status = 'Pending'");
                 $result = $stmt->execute([$reason, $id]);
                 
                 if ($result && $stmt->rowCount() > 0) {

@@ -254,6 +254,29 @@ window.onclick = function(event) {
 
 <script src="/ergon/assets/js/table-utils.js"></script>
 
+<script>
+// Global action button handler
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.ab-btn');
+    if (!btn) return;
+    
+    const action = btn.dataset.action;
+    const module = btn.dataset.module;
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    
+    if (action === 'view' && module && id) {
+        window.location.href = `/ergon/${module}/view/${id}`;
+    } else if (action === 'edit' && module && id) {
+        window.location.href = `/ergon/${module}/edit/${id}`;
+    } else if (action === 'delete' && module && id && name) {
+        deleteRecord(module, id, name);
+    } else if (action === 'approve' && module && id) {
+        window.location.href = `/ergon/${module}/approve/${id}`;
+    }
+});
+</script>
+
 <?php
 $content = ob_get_clean();
 include __DIR__ . '/../layouts/dashboard.php';

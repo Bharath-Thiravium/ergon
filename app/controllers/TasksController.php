@@ -365,6 +365,10 @@ class TasksController extends Controller {
         echo json_encode(['subtasks' => $subtasks]);
     }
     
+    public function viewDetails($id) {
+        return $this->viewTask($id);
+    }
+    
     public function viewTask($id) {
         AuthMiddleware::requireAuth();
         

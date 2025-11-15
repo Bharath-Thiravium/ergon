@@ -80,7 +80,7 @@ $router->get('/tasks/create', 'TasksController', 'create');
 $router->post('/tasks/create', 'TasksController', 'store');
 $router->get('/tasks/edit/{id}', 'TasksController', 'edit');
 $router->post('/tasks/edit/{id}', 'TasksController', 'edit');
-$router->get('/tasks/view/{id}', 'TasksController', 'viewTask');
+$router->get('/tasks/view/{id}', 'TasksController', 'viewDetails');
 $router->post('/tasks/delete/{id}', 'TasksController', 'delete');
 $router->post('/tasks/update-status', 'TasksController', 'updateStatus');
 $router->get('/tasks/calendar', 'TasksController', 'calendar');
