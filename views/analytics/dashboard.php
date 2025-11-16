@@ -4,137 +4,114 @@ $active_page = 'analytics';
 ob_start();
 ?>
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <h2>📊 Advanced Analytics Dashboard</h2>
+<div class="analytics-dashboard">
+    <div class="page-header">
+        <div class="page-title">
+            <h1><span>📊</span> Advanced Analytics Dashboard</h1>
+            <p>Comprehensive analytics and performance metrics</p>
         </div>
     </div>
     
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 id="total-tasks">0</h4>
-                            <p>Total Tasks</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-tasks fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
+    <div class="dashboard-grid">
+        <div class="kpi-card">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">📋</div>
+                <div class="kpi-card__trend">Active</div>
             </div>
+            <div class="kpi-card__value" id="total-tasks">0</div>
+            <div class="kpi-card__label">Total Tasks</div>
+            <div class="kpi-card__status">Tracked</div>
         </div>
         
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 id="completion-rate">0%</h4>
-                            <p>Completion Rate</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-check-circle fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="kpi-card">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">✅</div>
+                <div class="kpi-card__trend">Rate</div>
             </div>
+            <div class="kpi-card__value" id="completion-rate">0%</div>
+            <div class="kpi-card__label">Completion Rate</div>
+            <div class="kpi-card__status">Performance</div>
         </div>
         
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 id="avg-productivity">0</h4>
-                            <p>Avg Productivity</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-chart-line fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="kpi-card">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">📈</div>
+                <div class="kpi-card__trend">Score</div>
             </div>
+            <div class="kpi-card__value" id="avg-productivity">0</div>
+            <div class="kpi-card__label">Avg Productivity</div>
+            <div class="kpi-card__status">Metric</div>
         </div>
         
-        <div class="col-md-3">
-            <div class="card bg-danger text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 id="sla-breaches">0</h4>
-                            <p>SLA Breaches</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-exclamation-triangle fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="kpi-card">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">⚠️</div>
+                <div class="kpi-card__trend">Issues</div>
             </div>
+            <div class="kpi-card__value" id="sla-breaches">0</div>
+            <div class="kpi-card__label">SLA Breaches</div>
+            <div class="kpi-card__status">Alerts</div>
         </div>
     </div>
     
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5>📈 Task Completion Trend</h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="completionTrendChart" height="300"></canvas>
-                </div>
+    <div class="dashboard-grid">
+        <div class="card card-standard">
+            <div class="card__header">
+                <h3 class="card__title">
+                    <span>📈</span> Task Completion Trend
+                </h3>
+            </div>
+            <div class="card__body">
+                <canvas id="completionTrendChart" height="300"></canvas>
             </div>
         </div>
         
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5>⚡ Productivity Heatmap</h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="productivityHeatmap" height="300"></canvas>
-                </div>
+        <div class="card card-standard">
+            <div class="card__header">
+                <h3 class="card__title">
+                    <span>⚡</span> Productivity Heatmap
+                </h3>
+            </div>
+            <div class="card__body">
+                <canvas id="productivityHeatmap" height="300"></canvas>
             </div>
         </div>
     </div>
     
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5>👥 Team Performance Matrix</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-striped" id="team-performance-table">
-                            <thead>
-                                <tr>
-                                    <th>Employee</th>
-                                    <th>Tasks Completed</th>
-                                    <th>Productivity Score</th>
-                                    <th>On-Time Rate</th>
-                                    <th>SLA Breaches</th>
-                                    <th>Trend</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+    <div class="dashboard-grid">
+        <div class="card task-completion-report">
+            <div class="card__header">
+                <h3 class="card__title">
+                    <span>✅</span> Task Completion Report
+                </h3>
+            </div>
+            <div class="card__body">
+                <div class="table-responsive">
+                    <table class="table" id="team-performance-table">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Tasks Completed</th>
+                                <th>Productivity Score</th>
+                                <th>On-Time Rate</th>
+                                <th>SLA Breaches</th>
+                                <th>Trend</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
         </div>
         
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5>🏆 Top Performers</h5>
-                </div>
-                <div class="card-body">
-                    <div id="leaderboard"></div>
-                </div>
+        <div class="card expense-summary">
+            <div class="card__header">
+                <h3 class="card__title">
+                    <span>💰</span> Expense Summary
+                </h3>
+            </div>
+            <div class="card__body">
+                <div id="leaderboard"></div>
             </div>
         </div>
     </div>
@@ -262,7 +239,7 @@ function updateTeamPerformance(teamData) {
             <td>${member.name}</td>
             <td>${member.completed_tasks}</td>
             <td>
-                <div class="progress" style="width: 60px; height: 8px; display: inline-block;">
+                <div class="progress progress-inline">
                     <div class="progress-bar bg-${member.productivity >= 80 ? 'success' : member.productivity >= 60 ? 'warning' : 'danger'}" 
                          style="width: ${member.productivity}%"></div>
                 </div>
@@ -289,7 +266,7 @@ function updateLeaderboard(leaderboardData) {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
         
         const item = document.createElement('div');
-        item.className = 'mb-3 p-2 border rounded';
+        item.className = 'leaderboard-item';
         item.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
                 <div>

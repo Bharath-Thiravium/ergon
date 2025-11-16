@@ -209,13 +209,19 @@ ob_start();
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <div style="display: flex; gap: 0.25rem;">
-                                    <button class="btn btn--sm btn--secondary" onclick="viewEmployeeDetails(<?= $employee['id'] ?>)" title="View Details">
-                                        <span>👁️</span>
+                                <div class="ab-container">
+                                    <button class="ab-btn ab-btn--view" onclick="viewEmployeeDetails(<?= $employee['id'] ?>)" title="View Details">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
+                                        </svg>
                                     </button>
                                     <?php if ($employee['status'] === 'Absent'): ?>
-                                        <button class="btn btn--sm btn--warning" onclick="markManualAttendance(<?= $employee['id'] ?>)" title="Manual Entry">
-                                            <span>✏️</span>
+                                        <button class="ab-btn ab-btn--edit" onclick="markManualAttendance(<?= $employee['id'] ?>)" title="Manual Entry">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                                <path d="M15 5l4 4"/>
+                                            </svg>
                                         </button>
                                     <?php endif; ?>
                                 </div>

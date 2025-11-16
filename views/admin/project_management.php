@@ -83,12 +83,20 @@ ob_start();
                         </td>
                         <td><?= date('M j, Y', strtotime($project['created_at'])) ?></td>
                         <td>
-                            <div class="btn-group">
-                                <button class="btn btn--sm btn--secondary" onclick="editProject(<?= $project['id'] ?>, '<?= htmlspecialchars($project['name']) ?>', '<?= htmlspecialchars($project['description']) ?>', <?= $project['department_id'] ?? 'null' ?>, '<?= $project['status'] ?>')">
-                                    ✏️ Edit
+                            <div class="ab-container">
+                                <button class="ab-btn ab-btn--edit" onclick="editProject(<?= $project['id'] ?>, '<?= htmlspecialchars($project['name']) ?>', '<?= htmlspecialchars($project['description']) ?>', <?= $project['department_id'] ?? 'null' ?>, '<?= $project['status'] ?>')" title="Edit Project">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                        <path d="M15 5l4 4"/>
+                                    </svg>
                                 </button>
-                                <button class="btn btn--sm btn--danger" onclick="deleteProject(<?= $project['id'] ?>, '<?= htmlspecialchars($project['name']) ?>')">
-                                    🗑️ Delete
+                                <button class="ab-btn ab-btn--danger" onclick="deleteProject(<?= $project['id'] ?>, '<?= htmlspecialchars($project['name']) ?>')" title="Delete Project">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <polyline points="3,6 5,6 21,6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        <line x1="10" y1="11" x2="10" y2="17"/>
+                                        <line x1="14" y1="11" x2="14" y2="17"/>
+                                    </svg>
                                 </button>
                             </div>
                         </td>

@@ -17,10 +17,10 @@ ob_start();
 </div>
 
 <?php if (!empty($delayed_tasks)): ?>
-<div class="card">
+<div class="card delayed-tasks">
     <div class="card__header">
         <h2 class="card__title">
-            <span>⚠️</span> Overdue Tasks (<?= count($delayed_tasks) ?>)
+            <span>⚠️</span> Delayed Tasks Overview
         </h2>
     </div>
     <div class="card__body">

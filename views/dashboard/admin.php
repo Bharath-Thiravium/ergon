@@ -72,11 +72,11 @@ ob_start();
                         </h3>
                     </div>
                     <div class="card__body">
-                        <div style="height: 300px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border-radius: 8px; color: #6b7280;">
-                            <div style="text-align: center;">
-                                <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                        <div class="chart-placeholder">
+                            <div class="chart-placeholder-content">
+                                <div class="chart-placeholder-icon">📊</div>
                                 <div>Team Performance Chart</div>
-                                <div style="font-size: 12px; margin-top: 8px;">Chart will be displayed here</div>
+                                <div class="chart-placeholder-text">Chart will be displayed here</div>
                             </div>
                         </div>
                     </div>
@@ -91,22 +91,22 @@ ob_start();
                         </h3>
                     </div>
                     <div class="card__body card__body--scrollable">
-                        <div style="margin-top: 1rem;">
-                            <div style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
-                                <div style="font-weight: 500; margin-bottom: 0.25rem;">New leave request submitted</div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">John Doe - 1 hour ago</div>
+                        <div class="m-md">
+                            <div class="activity-item">
+                                <div class="activity-title">New leave request submitted</div>
+                                <div class="activity-meta">John Doe - 1 hour ago</div>
                             </div>
-                            <div style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
-                                <div style="font-weight: 500; margin-bottom: 0.25rem;">Task completed</div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Jane Smith - 2 hours ago</div>
+                            <div class="activity-item">
+                                <div class="activity-title">Task completed</div>
+                                <div class="activity-meta">Jane Smith - 2 hours ago</div>
                             </div>
-                            <div style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
-                                <div style="font-weight: 500; margin-bottom: 0.25rem;">Expense claim submitted</div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Mike Johnson - 3 hours ago</div>
+                            <div class="activity-item">
+                                <div class="activity-title">Expense claim submitted</div>
+                                <div class="activity-meta">Mike Johnson - 3 hours ago</div>
                             </div>
-                            <div style="padding: 0.75rem 0;">
-                                <div style="font-weight: 500; margin-bottom: 0.25rem;">New team member added</div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Sarah Wilson - 4 hours ago</div>
+                            <div class="activity-item">
+                                <div class="activity-title">New team member added</div>
+                                <div class="activity-meta">Sarah Wilson - 4 hours ago</div>
                             </div>
                         </div>
                     </div>
@@ -140,7 +140,7 @@ ob_start();
                                     <td>John Doe</td>
                                     <td>Annual Leave - 3 days</td>
                                     <td>Dec 15-17, 2024</td>
-                                    <td><span class="alert alert--warning" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">High</span></td>
+                                    <td><span class="alert alert--warning alert--badge">High</span></td>
                                     <td>
                                         <div class="btn-group">
                                             <a href="/ergon/leaves/view/1" class="btn btn--sm btn--primary" title="View Details">
@@ -157,7 +157,7 @@ ob_start();
                                     <td>Jane Smith</td>
                                     <td>Travel Expense - $250</td>
                                     <td>Dec 10, 2024</td>
-                                    <td><span class="alert alert--success" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Medium</span></td>
+                                    <td><span class="alert alert--success alert--badge">Medium</span></td>
                                     <td>
                                         <div class="btn-group">
                                             <a href="/ergon/expenses/view/1" class="btn btn--sm btn--primary" title="View Details">

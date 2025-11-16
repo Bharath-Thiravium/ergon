@@ -66,25 +66,26 @@ $content = ob_start();
                         elseif ($status === 'on_break') $cssClass = 'task-item--break';
                         elseif ($status === 'completed') $cssClass = 'task-item--completed';
                     ?>
-                        <div class="task-item <?= $cssClass ?>" 
+                        <div class="task-card" 
                              data-task-id="<?= $taskId ?>" 
+                             data-original-task-id="<?= $task['task_id'] ?? '' ?>" 
                              data-sla-duration="<?= $slaDuration ?>" 
                              data-start-time="<?= $startTimestamp ?>" 
                              data-status="<?= $status ?>">
-                            <div class="task-time">
+                            <div class="task-card__sla">
                                 <div class="sla-time"><?= $slaHours ?>h</div>
                                 <div class="sla-label">SLA</div>
-                                <?php if ($status === 'in_progress' || $status === 'on_break'): ?>
+                                <?php if ($status === 'in_progress'): ?>
                                     <div class="countdown-timer" id="countdown-<?= $taskId ?>">
                                         <div class="countdown-display"><?= $timeDisplay ?></div>
                                         <div class="countdown-label">Left</div>
                                     </div>
                                 <?php endif; ?>
                             </div>
-                            <div class="task-content">
-                                <div class="task-header">
-                                    <h4 class="task-title"><?= htmlspecialchars($task['title']) ?></h4>
-                                    <div class="task-badges">
+                            <div class="task-card__content">
+                                <div class="task-card__header">
+                                    <h4 class="task-card__title"><?= htmlspecialchars($task['title']) ?></h4>
+                                    <div class="task-card__badges">
                                         <span class="badge badge--<?= $task['priority'] ?? 'medium' ?>"><?= ucfirst($task['priority'] ?? 'medium') ?></span>
                                         <span class="badge badge--<?= $status ?>" id="status-<?= $taskId ?>">
                                             <?= ucfirst(str_replace('_', ' ', $status)) ?>
@@ -92,19 +93,24 @@ $content = ob_start();
                                     </div>
                                 </div>
                                 
-                                <p class="task-description"><?= htmlspecialchars($task['description'] ?? 'No description') ?></p>
+                                <p class="task-card__description"><?= htmlspecialchars($task['description'] ?? 'No description') ?></p>
                                 
-                                <?php if ($status === 'in_progress'): ?>
-                                    <div class="task-timer task-timer--active">
-                                        <i class="bi bi-stopwatch"></i> Active
-                                    </div>
-                                <?php elseif ($status === 'on_break'): ?>
-                                    <div class="task-timer task-timer--paused">
-                                        <i class="bi bi-pause-circle"></i> On Break
+                                <?php 
+                                $completedPercentage = $task['completed_percentage'] ?? 0;
+                                if ($completedPercentage > 0 || $status === 'in_progress'): 
+                                ?>
+                                    <div class="task-card__progress">
+                                        <div class="progress-info">
+                                            <span class="progress-label">Progress</span>
+                                            <span class="progress-value"><?= $completedPercentage ?>%</span>
+                                        </div>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" style="width: <?= $completedPercentage ?>%"></div>
+                                        </div>
                                     </div>
                                 <?php endif; ?>
                                 
-                                <div class="task-actions" id="actions-<?= $taskId ?>">
+                                <div class="task-card__actions" id="actions-<?= $taskId ?>">
                                     <?php if ($status === 'not_started' || $status === 'assigned'): ?>
                                         <button class="btn btn--sm btn--success" onclick="startTask(<?= $taskId ?>)">
                                             <i class="bi bi-play"></i> Start
@@ -113,22 +119,24 @@ $content = ob_start();
                                         <button class="btn btn--sm btn--warning" onclick="pauseTask(<?= $taskId ?>)">
                                             <i class="bi bi-pause"></i> Break
                                         </button>
-                                        <button class="btn btn--sm btn--primary" onclick="completeTask(<?= $taskId ?>)">
-                                            <i class="bi bi-check"></i> Complete
+                                        <button class="btn btn--sm btn--primary" onclick="updateProgressTask(<?= $taskId ?>)">
+                                            <i class="bi bi-percent"></i> Update Progress
                                         </button>
                                     <?php elseif ($status === 'on_break'): ?>
                                         <button class="btn btn--sm btn--success" onclick="resumeTask(<?= $taskId ?>)">
                                             <i class="bi bi-play"></i> Resume
                                         </button>
-                                        <button class="btn btn--sm btn--primary" onclick="completeTask(<?= $taskId ?>)">
-                                            <i class="bi bi-check"></i> Complete
+                                        <button class="btn btn--sm btn--primary" onclick="updateProgressTask(<?= $taskId ?>)">
+                                            <i class="bi bi-percent"></i> Update Progress
                                         </button>
                                     <?php elseif ($status === 'completed'): ?>
                                         <span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>
                                     <?php endif; ?>
-                                    <a href="/ergon/tasks/view/<?= $taskId ?>" class="btn btn--sm btn--secondary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
+                                    <?php if ($status !== 'completed'): ?>
+                                        <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)">
+                                            <i class="bi bi-calendar-plus"></i> Postpone
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -260,31 +268,34 @@ $content = ob_start();
     </div>
 </div>
 
-<!-- Complete Task Modal -->
-<div id="completeTaskModal" class="modal" style="display: none;">
+<!-- Update Progress Modal -->
+<div id="updateProgressModal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Complete Task</h3>
-            <button class="modal-close" onclick="closeCompleteTaskModal()">&times;</button>
+            <h3>Update Progress</h3>
+            <button class="modal-close" onclick="closeUpdateProgressModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <form id="completeTaskForm">
-                <input type="hidden" id="completeTaskId" name="task_id">
+            <div id="postponeHistory" class="postpone-history" style="display: none;">
+                <h4>Postpone History</h4>
+                <div id="historyList" class="history-list"></div>
+                <hr>
+            </div>
+            <form id="updateProgressForm">
+                <input type="hidden" id="updateTaskId" name="task_id">
                 <div class="form-group">
                     <label>Completion Percentage</label>
                     <div class="percentage-options">
+                        <button type="button" class="percentage-btn" data-percentage="25">25%</button>
                         <button type="button" class="percentage-btn" data-percentage="50">50%</button>
-                        <button type="button" class="percentage-btn" data-percentage="60">60%</button>
-                        <button type="button" class="percentage-btn" data-percentage="70">70%</button>
-                        <button type="button" class="percentage-btn" data-percentage="80">80%</button>
-                        <button type="button" class="percentage-btn" data-percentage="90">90%</button>
+                        <button type="button" class="percentage-btn" data-percentage="75">75%</button>
                         <button type="button" class="percentage-btn active" data-percentage="100">100%</button>
                     </div>
-                    <input type="hidden" id="selectedPercentage" name="percentage" value="100">
+                    <input type="hidden" id="selectedProgressPercentage" name="percentage" value="100">
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn btn--primary">Complete Task</button>
-                    <button type="button" class="btn btn--secondary" onclick="closeCompleteTaskModal()">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Update Progress</button>
+                    <button type="button" class="btn btn--secondary" onclick="closeUpdateProgressModal()">Cancel</button>
                 </div>
             </form>
         </div>
@@ -322,27 +333,32 @@ function changeDate(date) {
 }
 
 function startTask(taskId) {
-    updateStatus(taskId, 'in_progress', '/ergon/workflow/start-task');
+    updateTaskStatus(taskId, 'start');
 }
 
 function pauseTask(taskId) {
-    updateStatus(taskId, 'on_break', '/ergon/workflow/pause-task');
+    updateTaskStatus(taskId, 'pause');
 }
 
 function resumeTask(taskId) {
-    updateStatus(taskId, 'in_progress', '/ergon/workflow/resume-task');
+    updateTaskStatus(taskId, 'resume');
 }
 
-function updateStatus(taskId, status, endpoint) {
-    fetch(endpoint, {
+function updateTaskStatus(taskId, action) {
+    fetch('/ergon/workflow/update-task-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task_id: taskId })
+        body: JSON.stringify({ task_id: taskId, action: action })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            location.reload();
+            updateTaskUI(taskId, action);
+            if (action === 'start' || action === 'resume') {
+                startSLACountdown(taskId);
+            } else if (action === 'pause') {
+                stopTimer(taskId);
+            }
         } else {
             alert('Error: ' + data.message);
         }
@@ -350,9 +366,40 @@ function updateStatus(taskId, status, endpoint) {
     .catch(() => alert('Network error'));
 }
 
+function updateProgressTask(taskId) {
+    document.getElementById('updateTaskId').value = taskId;
+    loadPostponeHistory(taskId);
+    document.getElementById('updateProgressModal').style.display = 'flex';
+}
+
+function loadPostponeHistory(taskId) {
+    fetch(`/ergon/workflow/task-history?task_id=${taskId}`)
+    .then(response => response.json())
+    .then(data => {
+        const historyDiv = document.getElementById('postponeHistory');
+        const historyList = document.getElementById('historyList');
+        
+        if (data.success && data.history && data.history.length > 0) {
+            historyList.innerHTML = data.history.map(item => 
+                `<div class="history-item">
+                    <span class="history-date">${item.date}</span>
+                    <span class="history-action">${item.action}</span>
+                    <span class="history-progress">${item.progress || 0}%</span>
+                </div>`
+            ).join('');
+            historyDiv.style.display = 'block';
+        } else {
+            historyDiv.style.display = 'none';
+        }
+    })
+    .catch(() => {
+        document.getElementById('postponeHistory').style.display = 'none';
+    });
+}
+
 function completeTask(taskId) {
-    document.getElementById('completeTaskId').value = taskId;
-    document.getElementById('completeTaskModal').style.display = 'flex';
+    // Legacy function - redirect to updateProgressTask
+    updateProgressTask(taskId);
 }
 
 function postponeTask(taskId) {
@@ -360,25 +407,26 @@ function postponeTask(taskId) {
     document.getElementById('postponeTaskModal').style.display = 'flex';
 }
 
-function startCountdown(taskId) {
+function startSLACountdown(taskId) {
     const taskItem = document.querySelector(`[data-task-id="${taskId}"]`);
     if (!taskItem) return;
     
     const slaDuration = parseInt(taskItem.dataset.slaDuration);
-    const startTime = parseInt(taskItem.dataset.startTime);
-    
-    if (!startTime || startTime === 0) return;
     
     if (timers[taskId]) clearInterval(timers[taskId]);
     
+    // Set start time to now
+    const startTime = Math.floor(Date.now() / 1000);
+    taskItem.dataset.startTime = startTime;
+    
     timers[taskId] = setInterval(() => {
-        updateCountdown(taskId, slaDuration, startTime);
+        updateSLACountdown(taskId, slaDuration, startTime);
     }, 1000);
     
-    updateCountdown(taskId, slaDuration, startTime);
+    updateSLACountdown(taskId, slaDuration, startTime);
 }
 
-function updateCountdown(taskId, slaDuration, startTime) {
+function updateSLACountdown(taskId, slaDuration, startTime) {
     const display = document.querySelector(`#countdown-${taskId} .countdown-display`);
     if (!display) return;
     
@@ -392,8 +440,97 @@ function updateCountdown(taskId, slaDuration, startTime) {
     
     display.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     
-    if (remaining <= 600) display.classList.add('countdown-display--warning');
+    // Visual warnings
+    display.classList.remove('countdown-display--warning', 'countdown-display--expired');
+    if (remaining <= 600 && remaining > 0) display.classList.add('countdown-display--warning');
     if (remaining <= 0) display.classList.add('countdown-display--expired');
+}
+
+function stopTimer(taskId) {
+    if (timers[taskId]) {
+        clearInterval(timers[taskId]);
+        delete timers[taskId];
+    }
+}
+
+function updateTaskUI(taskId, action, data = {}) {
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    const statusBadge = document.querySelector(`#status-${taskId}`);
+    const actionsDiv = document.querySelector(`#actions-${taskId}`);
+    
+    if (!taskCard || !statusBadge || !actionsDiv) return;
+    
+    let newStatus, newActions;
+    
+    switch(action) {
+        case 'start':
+        case 'resume':
+            newStatus = 'in_progress';
+            statusBadge.textContent = 'In Progress';
+            statusBadge.className = 'badge badge--in_progress';
+            taskCard.className = 'task-card task-card--active';
+            newActions = `
+                <button class="btn btn--sm btn--warning" onclick="pauseTask(${taskId})">
+                    <i class="bi bi-pause"></i> Break
+                </button>
+                <button class="btn btn--sm btn--primary" onclick="updateProgressTask(${taskId})">
+                    <i class="bi bi-percent"></i> Update Progress
+                </button>
+            `;
+            // Reset timer for resume
+            if (action === 'resume') {
+                taskCard.dataset.startTime = Math.floor(Date.now() / 1000);
+                startSLACountdown(taskId);
+            }
+            break;
+        case 'pause':
+            newStatus = 'on_break';
+            statusBadge.textContent = 'On Break';
+            statusBadge.className = 'badge badge--on_break';
+            taskCard.className = 'task-card task-card--break';
+            newActions = `
+                <button class="btn btn--sm btn--success" onclick="resumeTask(${taskId})">
+                    <i class="bi bi-restart"></i> Resume (Restart)
+                </button>
+                <button class="btn btn--sm btn--primary" onclick="updateProgressTask(${taskId})">
+                    <i class="bi bi-percent"></i> Update Progress
+                </button>
+            `;
+            break;
+        case 'completed':
+            const percentage = data.percentage || 100;
+            if (percentage < 100) {
+                newStatus = 'in_progress';
+                statusBadge.textContent = 'Deferred';
+                statusBadge.className = 'badge badge--warning';
+                taskCard.className = 'task-card task-card--deferred';
+                newActions = `<span class="badge badge--warning"><i class="bi bi-calendar-plus"></i> Deferred to Next Day</span>`;
+                updateProgressBar(taskId, percentage);
+            } else {
+                newStatus = 'completed';
+                statusBadge.textContent = 'Completed';
+                statusBadge.className = 'badge badge--success';
+                taskCard.className = 'task-card task-card--completed';
+                newActions = `<span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>`;
+                updateProgressBar(taskId, 100);
+            }
+            break;
+    }
+    
+    taskCard.dataset.status = newStatus;
+    const postponeBtn = newStatus !== 'completed' ? 
+        `<button class="btn btn--sm btn--secondary" onclick="postponeTask(${taskId})">
+            <i class="bi bi-calendar-plus"></i> Postpone
+        </button>` : '';
+    actionsDiv.innerHTML = newActions + postponeBtn;
+}
+
+function updateProgressBar(taskId, percentage) {
+    const progressBar = document.querySelector(`[data-task-id="${taskId}"] .progress-fill`);
+    const progressValue = document.querySelector(`[data-task-id="${taskId}"] .progress-value`);
+    
+    if (progressBar) progressBar.style.width = percentage + '%';
+    if (progressValue) progressValue.textContent = percentage + '%';
 }
 
 
@@ -408,8 +545,13 @@ function closeQuickTaskModal() {
     document.getElementById('quickTaskForm').reset();
 }
 
+function closeUpdateProgressModal() {
+    document.getElementById('updateProgressModal').style.display = 'none';
+}
+
 function closeCompleteTaskModal() {
-    document.getElementById('completeTaskModal').style.display = 'none';
+    // Legacy function
+    closeUpdateProgressModal();
 }
 
 function closePostponeTaskModal() {
@@ -423,8 +565,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const status = item.dataset.status;
         const startTime = parseInt(item.dataset.startTime);
         
-        if ((status === 'in_progress' || status === 'on_break') && startTime > 0) {
-            startCountdown(taskId);
+        if (status === 'in_progress' && startTime > 0) {
+            startSLACountdown(taskId);
         }
     });
     
@@ -433,7 +575,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.percentage-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            document.getElementById('selectedPercentage').value = this.dataset.percentage;
+            document.getElementById('selectedProgressPercentage').value = this.dataset.percentage;
         });
     });
     
@@ -461,25 +603,37 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    document.getElementById('completeTaskForm').addEventListener('submit', function(e) {
+    document.getElementById('updateProgressForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        const taskId = document.getElementById('completeTaskId').value;
-        const percentage = document.getElementById('selectedPercentage').value;
+        const taskId = document.getElementById('updateTaskId').value;
+        const percentage = document.getElementById('selectedProgressPercentage').value;
         
-        fetch('/ergon/workflow/complete-task', {
+        fetch('/ergon/workflow/update-task-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ task_id: taskId, percentage: parseInt(percentage) })
+            body: JSON.stringify({ task_id: taskId, action: 'complete', percentage: parseInt(percentage) })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                updateTaskUI(taskId, 'completed');
-                stopTimer(taskId);
-                closeCompleteTaskModal();
-                setTimeout(() => location.reload(), 1000);
+                updateTaskUI(taskId, 'completed', { percentage: data.percentage });
+                if (data.percentage < 100) {
+                    // Keep timer running for partial progress
+                } else {
+                    stopTimer(taskId);
+                }
+                closeUpdateProgressModal();
+                if (data.percentage < 100) {
+                    setTimeout(() => {
+                        alert('Progress updated to ' + data.percentage + '% - Task deferred to next working day');
+                    }, 500);
+                } else {
+                    setTimeout(() => {
+                        alert('Task completed successfully!');
+                    }, 500);
+                }
             } else {
-                alert('Failed to complete task: ' + data.message);
+                alert('Failed to update progress: ' + data.message);
             }
         })
         .catch(error => {
