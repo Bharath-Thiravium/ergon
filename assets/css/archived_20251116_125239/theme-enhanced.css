@@ -1,0 +1,272 @@
+/* Enhanced Theme System - Comprehensive Dark Mode */
+
+/* Instant theme application */
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"],
+.theme-dark {
+  color-scheme: dark;
+}
+
+/* Instant theme changes - no transitions */
+
+/* Dark theme overrides for comprehensive coverage */
+[data-theme="dark"],
+[data-theme="dark"] *,
+.theme-dark,
+.theme-dark * {
+  /* Text colors */
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .main-content,
+.theme-dark .main-content {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .card *,
+.theme-dark .card,
+.theme-dark .card * {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #374151 !important;
+}
+
+[data-theme="dark"] .form-control,
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select,
+.theme-dark .form-control,
+.theme-dark input,
+.theme-dark textarea,
+.theme-dark select {
+  background: #374151 !important;
+  color: #e2e8f0 !important;
+  border-color: #4b5563 !important;
+}
+
+[data-theme="dark"] .table,
+[data-theme="dark"] .table *,
+.theme-dark .table,
+.theme-dark .table * {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #374151 !important;
+}
+
+[data-theme="dark"] .btn--secondary,
+.theme-dark .btn--secondary {
+  background: #374151 !important;
+  color: #e2e8f0 !important;
+  border-color: #4b5563 !important;
+}
+
+[data-theme="dark"] .modal-content,
+.theme-dark .modal-content {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .alert,
+.theme-dark .alert {
+  background: #374151 !important;
+  color: #e2e8f0 !important;
+  border-color: #4b5563 !important;
+}
+
+/* Ensure all text is visible in dark mode */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6,
+[data-theme="dark"] p,
+[data-theme="dark"] span,
+[data-theme="dark"] div,
+[data-theme="dark"] label,
+.theme-dark h1,
+.theme-dark h2,
+.theme-dark h3,
+.theme-dark h4,
+.theme-dark h5,
+.theme-dark h6,
+.theme-dark p,
+.theme-dark span,
+.theme-dark div,
+.theme-dark label {
+  color: #e2e8f0 !important;
+}
+
+/* Header dark mode fix */
+[data-theme="dark"] .main-header,
+.theme-dark .main-header {
+  background: #0f172a !important;
+}
+
+/* Navigation dark mode */
+[data-theme="dark"] .nav-dropdown-menu,
+.theme-dark .nav-dropdown-menu {
+  background: #1e293b !important;
+  border-color: #374151 !important;
+}
+
+[data-theme="dark"] .nav-dropdown-item,
+.theme-dark .nav-dropdown-item {
+  color: #e2e8f0 !important;
+}
+
+/* Profile menu dark mode */
+[data-theme="dark"] .profile-menu,
+.theme-dark .profile-menu {
+  background: #1e293b !important;
+  border-color: #374151 !important;
+}
+
+[data-theme="dark"] .profile-menu-item,
+.theme-dark .profile-menu-item {
+  color: #e2e8f0 !important;
+}
+
+/* Notification dropdown dark mode */
+[data-theme="dark"] .notification-dropdown,
+.theme-dark .notification-dropdown {
+  background: #1e293b !important;
+  border-color: #374151 !important;
+}
+
+[data-theme="dark"] .notification-header,
+.theme-dark .notification-header {
+  background: #1e293b !important;
+  border-color: #374151 !important;
+}
+
+[data-theme="dark"] .notification-header h3,
+.theme-dark .notification-header h3 {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .view-all-link,
+.theme-dark .view-all-link {
+  color: #60a5fa !important;
+}
+
+[data-theme="dark"] .notification-list,
+.theme-dark .notification-list {
+  background: #1e293b !important;
+}
+
+[data-theme="dark"] .notification-loading,
+.theme-dark .notification-loading {
+  color: #9ca3af !important;
+}
+
+[data-theme="dark"] .notification-item,
+.theme-dark .notification-item {
+  background: #374151 !important;
+  color: #e2e8f0 !important;
+  border-color: #4b5563 !important;
+}
+
+[data-theme="dark"] .notification-title,
+.theme-dark .notification-title {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .notification-message,
+.theme-dark .notification-message {
+  color: #d1d5db !important;
+}
+
+[data-theme="dark"] .notification-time,
+.theme-dark .notification-time {
+  color: #9ca3af !important;
+}
+
+/* Dashboard cards dark mode */
+[data-theme="dark"] .kpi-card,
+[data-theme="dark"] .admin-card,
+[data-theme="dark"] .user-card,
+.theme-dark .kpi-card,
+.theme-dark .admin-card,
+.theme-dark .user-card {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #374151 !important;
+}
+
+/* Page title dark mode */
+[data-theme="dark"] .page-title h1,
+[data-theme="dark"] .page-title p,
+.theme-dark .page-title h1,
+.theme-dark .page-title p {
+  color: #e2e8f0 !important;
+}
+
+/* Empty state dark mode */
+[data-theme="dark"] .empty-state,
+.theme-dark .empty-state {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+/* Primary button dark mode */
+[data-theme="dark"] .btn--primary,
+.theme-dark .btn--primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #701dd8 100%) !important;
+  border-color: #3b82f6 !important;
+}
+
+/* Improved notification layout */
+.notification-item {
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid #e5e7eb !important;
+  background: #ffffff !important;
+  display: block !important;
+  text-decoration: none !important;
+  transition: none !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+
+
+.notification-item:last-child {
+  margin-bottom: 0 !important;
+}
+
+.notification-title {
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  margin-bottom: 6px !important;
+  color: #1f2937 !important;
+  line-height: 1.4 !important;
+}
+
+.notification-message {
+  font-size: 13px !important;
+  color: #6b7280 !important;
+  margin-bottom: 8px !important;
+  line-height: 1.5 !important;
+}
+
+.notification-time {
+  font-size: 11px !important;
+  color: #9ca3af !important;
+  margin: 0 !important;
+}
+
+/* Dark theme notification improvements */
+[data-theme="dark"] .notification-item,
+.theme-dark .notification-item {
+  background: #374151 !important;
+  border-color: #4b5563 !important;
+}
+

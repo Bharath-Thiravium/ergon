@@ -1,0 +1,72 @@
+/* Global Tooltip System - Disable Native & Enable Custom */
+
+/* Completely disable native tooltips */
+[title] {
+    position: relative !important;
+}
+
+[title]:hover::before,
+[title]:hover::after,
+[title]:focus::before,
+[title]:focus::after {
+    display: none !important;
+    content: none !important;
+    visibility: hidden !important;
+}
+
+/* Custom tooltip for all elements with data-tooltip */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 10000;
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    animation: tooltipFadeIn 0.2s ease;
+}
+
+[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: rgba(15, 23, 42, 0.95);
+    z-index: 10000;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Responsive tooltip positioning */
+@media (max-width: 768px) {
+    [data-tooltip]:hover::after {
+        font-size: 11px;
+        padding: 6px 10px;
+    }
+}
