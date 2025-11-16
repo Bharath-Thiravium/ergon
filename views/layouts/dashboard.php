@@ -48,15 +48,11 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <!-- Bootstrap Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
     
-    <!-- Main CSS -->
+    <!-- Main CSS - Optimized -->
     <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/admin-header-fix.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/theme-enhanced.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/utilities-new.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/instant-theme.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/hover-fix.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/force-dark-theme.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/action-button-clean.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/standardized-icons.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/global-tooltips.css?v=<?= time() ?>" rel="stylesheet">
 
     
