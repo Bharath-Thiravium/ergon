@@ -1,0 +1,1708 @@
+{
+  "removed": [
+    "[data-theme=\"dark\"] .admin-card, [data-theme=\"dark\"] .user-card",
+    "[data-theme=\"dark\"] .main-header",
+    "[data-theme=\"dark\"] .header__top",
+    "[data-theme=\"dark\"] .header__brand .brand-text",
+    "[data-theme=\"dark\"] .role-badge",
+    "[data-theme=\"dark\"] .control-btn, [data-theme=\"dark\"] .profile-btn",
+    "[data-theme=\"dark\"] .control-btn:hover, [data-theme=\"dark\"] .profile-btn:hover",
+    "[data-theme=\"dark\"] .nav-dropdown-btn",
+    "[data-theme=\"dark\"] .nav-dropdown-btn:hover",
+    "[data-theme=\"dark\"] .nav-dropdown-menu",
+    "[data-theme=\"dark\"] .nav-dropdown-item",
+    "[data-theme=\"dark\"] .nav-dropdown-item:hover",
+    "[data-theme=\"dark\"] .nav-dropdown-item--active",
+    "[data-theme=\"dark\"] .profile-menu",
+    "[data-theme=\"dark\"] .profile-menu-item",
+    "[data-theme=\"dark\"] .profile-menu-item:hover",
+    "[data-theme=\"dark\"] .profile-menu-item--danger",
+    "[data-theme=\"dark\"] .profile-menu-item--danger:hover",
+    "[data-theme=\"dark\"] .profile-menu-divider",
+    "[data-theme=\"dark\"] .page-title h1",
+    "[data-theme=\"dark\"] .page-title p",
+    "[data-theme=\"dark\"] .empty-state",
+    "[data-theme=\"dark\"] .empty-state h3",
+    "[data-theme=\"dark\"] .empty-state p",
+    "body",
+    ".sidebar__brand-section",
+    ".sidebar__header-controls .sidebar__control-btn:active",
+    ".sidebar__profile-section",
+    ".sidebar__profile-toggle .profile-avatar",
+    ".sidebar__profile-toggle .profile-info",
+    ".sidebar__profile-toggle .profile-name",
+    ".sidebar__profile-toggle .profile-role",
+    ".sidebar__profile-toggle .dropdown-arrow",
+    ".sidebar__profile-toggle.active .dropdown-arrow",
+    ".sidebar__header h3",
+    ".sidebar__menu::-webkit-scrollbar-thumb:hover",
+    ".main-content::-webkit-scrollbar-thumb:hover",
+    ".sidebar__controls",
+    ".sidebar__control-btn",
+    ".sidebar__control-btn:hover",
+    ".sidebar__profile-btn",
+    ".sidebar__profile-btn:hover",
+    ".profile-info",
+    ".profile-role",
+    ".sidebar__profile-dropdown",
+    ".sidebar__profile-section .profile-menu",
+    ".sidebar__profile-section .profile-menu.show",
+    ".card--elevated",
+    ".card--elevated:hover",
+    ".card__body--scrollable",
+    ".card__body--scrollable::-webkit-scrollbar",
+    ".card__body--scrollable::-webkit-scrollbar-track",
+    ".card__body--scrollable::-webkit-scrollbar-thumb",
+    ".card__body--scrollable::-webkit-scrollbar-thumb:hover",
+    ".kpi-card--warning",
+    ".kpi-card__icon",
+    ".kpi-card__trend",
+    ".kpi-card__trend--down",
+    ".header-actions",
+    ".auth-page",
+    ".auth-container",
+    ".auth-card",
+    ".auth-header h1",
+    ".auth-header p",
+    ".auth-form",
+    ".message .error",
+    ".mobile-menu-toggle",
+    ".admin-card",
+    ".admin-card:hover",
+    ".admin-card__header",
+    ".user-avatar--lg",
+    ".admin-card__name",
+    ".admin-card__email",
+    ".admin-card__role",
+    ".admin-card__date",
+    ".admin-card__actions",
+    ".user-card",
+    ".user-card:hover",
+    ".user-card__header",
+    ".user-card__badges",
+    ".user-card__name",
+    ".user-card__email",
+    ".user-card__role",
+    ".user-card__actions",
+    ".user-card__actions .btn",
+    ".card__actions .btn",
+    ".badge--cancelled",
+    ".table-header",
+    ".table-header__cell--active .table-header__controls",
+    ".filter-options",
+    ".filter-option",
+    ".filter-option:hover",
+    ".filter-option input[type=\"checkbox\"]",
+    ".sort-asc::after",
+    ".sort-desc::after",
+    ".table-header__cell--filtered .table-header__filter",
+    ".table-header__cell--sorted .table-header__sort",
+    ".empty-state h3",
+    ".empty-state p",
+    ".modal-content--large",
+    ".control-btn[title]:hover::after",
+    ".legends-compact",
+    ".legend-label",
+    ".legend-separator",
+    ".legends-compact .badge",
+    ".category-tag",
+    ".filter-form",
+    ".card--hidden",
+    ".grid--hidden",
+    ".table-row--hidden",
+    ".table-body--hidden",
+    ".cell-meta",
+    ".cell-primary",
+    ".cell-secondary",
+    ".user-card h3, .user-card p",
+    ".user-card__email, .user-card__role",
+    ".btn-icon",
+    ".btn-icon[title]:hover::after",
+    ".btn-icon:hover",
+    ".btn-icon--view:hover",
+    ".btn-icon--edit:hover",
+    ".btn-icon--delete:hover",
+    ".btn-icon--approve:hover",
+    ".notification-item--unread",
+    ".notification-item--read",
+    ".notification-actions",
+    ".project-overview .card__header",
+    ".project-overview .card__title",
+    ".card-icon",
+    ".card-actions",
+    ".progress-overview",
+    ".progress-main",
+    ".progress-circle",
+    ".progress-text",
+    ".progress-percentage",
+    ".progress-label",
+    ".progress-stats",
+    ".stat-row",
+    ".stat-item-inline",
+    ".stat-icon",
+    ".stat-value-sm",
+    ".stat-label-sm",
+    ".delayed-tasks .card__header",
+    ".delayed-tasks .card__title",
+    ".delayed-overview",
+    ".alert-stats",
+    ".alert-item",
+    ".alert-item--critical",
+    ".alert-item--warning",
+    ".alert-icon",
+    ".alert-content",
+    ".alert-value",
+    ".alert-label",
+    ".alert-detail",
+    ".completion-rate",
+    ".completion-rate:hover",
+    ".rate-header",
+    ".rate-label",
+    ".rate-value",
+    ".rate-bar",
+    ".rate-progress",
+    ".rate-progress--78",
+    ".rate-footer",
+    ".rate-trend",
+    ".project-summary",
+    ".summary-stat",
+    ".summary-stat:hover",
+    ".summary-number",
+    ".summary-label",
+    ".projects-grid",
+    ".project-card",
+    ".project-card:hover",
+    ".project-header",
+    ".project-header h3",
+    ".progress-badge",
+    ".progress-high",
+    ".progress-medium",
+    ".progress-low",
+    ".project-body",
+    ".project-stats",
+    ".project-stat",
+    ".project-stat:hover",
+    ".project-stat__header",
+    ".project-stat__icon",
+    ".project-stat__value",
+    ".project-stat__label",
+    ".projects-grid--hidden",
+    ".projects-list--hidden",
+    ".project-footer",
+    ".department-tag",
+    ".modal-header h3",
+    ".modal-close",
+    ".form-group--flex-2",
+    ".plan-row",
+    ".plan-row:hover",
+    ".sidebar.sidebar--open",
+    ".admin-grid, .user-grid",
+    ".projects-grid, .plans-grid",
+    ".plans-grid",
+    ".plan-card",
+    ".plan-card:hover",
+    ".plan-header",
+    ".plan-date",
+    ".plan-day",
+    ".plan-month",
+    ".plan-actions",
+    ".plan-title",
+    ".plan-description",
+    ".plan-footer",
+    ".plan-time",
+    ".plan-status",
+    ".status-past",
+    ".status-today",
+    ".status-future",
+    ".stat-item",
+    ".stat-item:last-child",
+    ".stat-value",
+    ".stat-label",
+    ".planner-layout",
+    ".planner-sidebar",
+    ".planner-main",
+    ".ergon-calendar",
+    ".ergon-calendar__header",
+    ".ergon-calendar__title",
+    ".ergon-calendar__body",
+    ".ergon-calendar__weekdays",
+    ".ergon-calendar__weekday",
+    ".ergon-calendar__days",
+    ".ergon-calendar__day",
+    ".ergon-calendar__day:hover",
+    ".ergon-calendar__day--empty",
+    ".ergon-calendar__day--today",
+    ".ergon-calendar__day--today .ergon-calendar__day-number",
+    ".ergon-calendar__day-number",
+    ".ergon-calendar__events",
+    ".calendar-event",
+    ".calendar-event:hover",
+    ".tab-nav",
+    ".tab-btn",
+    ".tab-btn:hover",
+    ".tab-btn--active",
+    ".tab-content",
+    ".tab-panel",
+    ".tab-panel--active",
+    ".quick-menu",
+    ".quick-menu__item",
+    ".quick-menu__item:hover",
+    ".quick-menu__icon",
+    ".quick-menu__text",
+    ".team-section",
+    ".section-label",
+    ".team-list",
+    ".team-member",
+    ".member-name",
+    ".member-role",
+    ".kpi-card--danger",
+    ".kpi-card__status--urgent",
+    ".stat-value--warning"
+  ],
+  "added": [
+    ".ab-container",
+    ".ab-btn",
+    ".ab-btn:hover",
+    ".ab-btn svg",
+    ".ab-btn--view",
+    ".ab-btn--view:hover",
+    ".ab-btn--edit",
+    ".ab-btn--edit:hover",
+    ".ab-btn--delete",
+    ".ab-btn--delete:hover",
+    ".ab-btn--progress",
+    ".ab-btn--progress:hover",
+    ".view--active"
+  ],
+  "modified": [
+    {
+      "selector": ":root",
+      "changes": [
+        {
+          "type": "added",
+          "property": "--bg-hover",
+          "newValue": "#f1f5f9"
+        }
+      ]
+    },
+    {
+      "selector": "[data-theme=\"dark\"] .main-content",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "background",
+          "oldValue": "var(--gray-900) !important",
+          "newValue": "var(--gray-900)"
+        }
+      ]
+    },
+    {
+      "selector": "html, body",
+      "changes": [
+        {
+          "type": "added",
+          "property": "font-family",
+          "newValue": "var(--font-family)"
+        },
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "var(--bg-secondary)"
+        },
+        {
+          "type": "added",
+          "property": "color",
+          "newValue": "var(--text-primary)"
+        },
+        {
+          "type": "added",
+          "property": "line-height",
+          "newValue": "1.6"
+        },
+        {
+          "type": "modified",
+          "property": "width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        },
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        },
+        {
+          "type": "modified",
+          "property": "overflow-x",
+          "oldValue": "hidden !important",
+          "newValue": "hidden"
+        }
+      ]
+    },
+    {
+      "selector": ".container, .container-fluid, .row, .col",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        },
+        {
+          "type": "modified",
+          "property": "overflow-x",
+          "oldValue": "hidden !important",
+          "newValue": "hidden"
+        },
+        {
+          "type": "modified",
+          "property": "word-wrap",
+          "oldValue": "break-word !important",
+          "newValue": "break-word"
+        }
+      ]
+    },
+    {
+      "selector": ".table-responsive",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "-webkit-overflow-scrolling",
+          "oldValue": "touch !important"
+        },
+        {
+          "type": "added",
+          "property": "border-radius",
+          "newValue": "var(--border-radius)"
+        },
+        {
+          "type": "added",
+          "property": "box-shadow",
+          "newValue": "var(--shadow-sm)"
+        },
+        {
+          "type": "modified",
+          "property": "overflow-x",
+          "oldValue": "auto !important",
+          "newValue": "auto"
+        }
+      ]
+    },
+    {
+      "selector": "table",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        },
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        },
+        {
+          "type": "modified",
+          "property": "table-layout",
+          "oldValue": "fixed !important",
+          "newValue": "fixed"
+        }
+      ]
+    },
+    {
+      "selector": "table td, table th",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "word-wrap",
+          "oldValue": "break-word !important",
+          "newValue": "break-word"
+        },
+        {
+          "type": "modified",
+          "property": "overflow-wrap",
+          "oldValue": "break-word !important",
+          "newValue": "break-word"
+        },
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "0 !important",
+          "newValue": "0"
+        }
+      ]
+    },
+    {
+      "selector": ".form-control, input, select, textarea",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        },
+        {
+          "type": "modified",
+          "property": "box-sizing",
+          "oldValue": "border-box !important",
+          "newValue": "border-box"
+        }
+      ]
+    },
+    {
+      "selector": ".card, .card-body",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        },
+        {
+          "type": "modified",
+          "property": "overflow-x",
+          "oldValue": "auto !important",
+          "newValue": "auto"
+        }
+      ]
+    },
+    {
+      "selector": "pre, code",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "white-space",
+          "oldValue": "pre-wrap !important",
+          "newValue": "pre-wrap"
+        },
+        {
+          "type": "modified",
+          "property": "word-wrap",
+          "oldValue": "break-word !important",
+          "newValue": "break-word"
+        },
+        {
+          "type": "modified",
+          "property": "overflow-wrap",
+          "oldValue": "break-word !important",
+          "newValue": "break-word"
+        }
+      ]
+    },
+    {
+      "selector": ".sidebar",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "transform",
+          "oldValue": "translateX(-100%)"
+        },
+        {
+          "type": "removed",
+          "property": "transition",
+          "oldValue": "transform 0.2s ease"
+        },
+        {
+          "type": "added",
+          "property": "position",
+          "newValue": "fixed"
+        },
+        {
+          "type": "added",
+          "property": "top",
+          "newValue": "0"
+        },
+        {
+          "type": "added",
+          "property": "left",
+          "newValue": "0"
+        },
+        {
+          "type": "added",
+          "property": "width",
+          "newValue": "260px"
+        },
+        {
+          "type": "added",
+          "property": "height",
+          "newValue": "100vh"
+        },
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "linear-gradient(145deg, #0f172a 0%, #1e293b 100%)"
+        },
+        {
+          "type": "added",
+          "property": "color",
+          "newValue": "white"
+        },
+        {
+          "type": "added",
+          "property": "z-index",
+          "newValue": "999"
+        },
+        {
+          "type": "added",
+          "property": "display",
+          "newValue": "flex"
+        },
+        {
+          "type": "added",
+          "property": "flex-direction",
+          "newValue": "column"
+        },
+        {
+          "type": "added",
+          "property": "font-family",
+          "newValue": "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        },
+        {
+          "type": "added",
+          "property": "overflow",
+          "newValue": "hidden"
+        }
+      ]
+    },
+    {
+      "selector": ".sidebar__header-controls",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "padding",
+          "oldValue": "0.2rem 0.2rem",
+          "newValue": "0.2rem"
+        }
+      ]
+    },
+    {
+      "selector": ".sidebar__header-controls .sidebar__control-btn",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "position",
+          "oldValue": "relative"
+        }
+      ]
+    },
+    {
+      "selector": ".sidebar__menu",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "margin-bottom",
+          "oldValue": "0"
+        },
+        {
+          "type": "removed",
+          "property": "scroll-behavior",
+          "oldValue": "auto"
+        }
+      ]
+    },
+    {
+      "selector": ".main-content",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "margin-left",
+          "oldValue": "0 !important"
+        },
+        {
+          "type": "removed",
+          "property": "width",
+          "oldValue": "100vw !important"
+        },
+        {
+          "type": "removed",
+          "property": "max-width",
+          "oldValue": "100vw !important"
+        },
+        {
+          "type": "removed",
+          "property": "overflow-x",
+          "oldValue": "auto !important"
+        },
+        {
+          "type": "modified",
+          "property": "padding",
+          "oldValue": "var(--space-4) !important",
+          "newValue": "12px"
+        }
+      ]
+    },
+    {
+      "selector": ".notification-header",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "margin-bottom",
+          "oldValue": "var(--space-2)"
+        },
+        {
+          "type": "added",
+          "property": "padding",
+          "newValue": "16px"
+        },
+        {
+          "type": "added",
+          "property": "border-bottom",
+          "newValue": "1px solid #e5e7eb"
+        },
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "white"
+        },
+        {
+          "type": "added",
+          "property": "position",
+          "newValue": "relative"
+        },
+        {
+          "type": "added",
+          "property": "z-index",
+          "newValue": "10001"
+        },
+        {
+          "type": "modified",
+          "property": "align-items",
+          "oldValue": "flex-start",
+          "newValue": "center"
+        }
+      ]
+    },
+    {
+      "selector": ".card",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "margin",
+          "oldValue": "0 !important"
+        },
+        {
+          "type": "removed",
+          "property": "width",
+          "oldValue": "100% !important"
+        },
+        {
+          "type": "removed",
+          "property": "max-width",
+          "oldValue": "100% !important"
+        },
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "rgba(255, 255, 255, 0.95)"
+        },
+        {
+          "type": "added",
+          "property": "border",
+          "newValue": "1px solid rgba(255, 255, 255, 0.3)"
+        },
+        {
+          "type": "added",
+          "property": "border-radius",
+          "newValue": "var(--border-radius)"
+        },
+        {
+          "type": "added",
+          "property": "box-shadow",
+          "newValue": "var(--shadow-sm)"
+        },
+        {
+          "type": "added",
+          "property": "overflow",
+          "newValue": "hidden"
+        },
+        {
+          "type": "added",
+          "property": "transition",
+          "newValue": "var(--transition)"
+        }
+      ]
+    },
+    {
+      "selector": ".btn--primary",
+      "changes": [
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)"
+        },
+        {
+          "type": "added",
+          "property": "color",
+          "newValue": "white"
+        }
+      ]
+    },
+    {
+      "selector": ".dashboard-grid",
+      "changes": [
+        {
+          "type": "added",
+          "property": "display",
+          "newValue": "grid"
+        },
+        {
+          "type": "added",
+          "property": "gap",
+          "newValue": "var(--space-3)"
+        },
+        {
+          "type": "added",
+          "property": "margin-bottom",
+          "newValue": "var(--space-6)"
+        },
+        {
+          "type": "modified",
+          "property": "grid-template-columns",
+          "oldValue": "1fr",
+          "newValue": "repeat(auto-fit, minmax(200px, 1fr))"
+        }
+      ]
+    },
+    {
+      "selector": ".page-actions",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "justify-content",
+          "oldValue": "stretch"
+        },
+        {
+          "type": "added",
+          "property": "display",
+          "newValue": "flex"
+        },
+        {
+          "type": "added",
+          "property": "gap",
+          "newValue": "var(--space-3)"
+        },
+        {
+          "type": "added",
+          "property": "flex-shrink",
+          "newValue": "0"
+        }
+      ]
+    },
+    {
+      "selector": ".badge--warning",
+      "changes": [
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "#fef3c7"
+        }
+      ]
+    },
+    {
+      "selector": ".badge--danger",
+      "changes": [
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "#fee2e2"
+        }
+      ]
+    },
+    {
+      "selector": ".badge--info",
+      "changes": [
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "#dbeafe"
+        }
+      ]
+    },
+    {
+      "selector": ".btn-group",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "flex-wrap",
+          "oldValue": "wrap !important"
+        },
+        {
+          "type": "added",
+          "property": "flex-direction",
+          "newValue": "column"
+        },
+        {
+          "type": "added",
+          "property": "width",
+          "newValue": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".btn--danger",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "background",
+          "oldValue": "#f3f4f6 !important",
+          "newValue": "#f3f4f6"
+        },
+        {
+          "type": "modified",
+          "property": "color",
+          "oldValue": "#dc2626 !important",
+          "newValue": "#dc2626"
+        },
+        {
+          "type": "modified",
+          "property": "border-color",
+          "oldValue": "#e5e7eb !important",
+          "newValue": "#e5e7eb"
+        }
+      ]
+    },
+    {
+      "selector": ".btn--danger:hover",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "background",
+          "oldValue": "#fef2f2 !important",
+          "newValue": "#fef2f2"
+        },
+        {
+          "type": "modified",
+          "property": "border-color",
+          "oldValue": "#fecaca !important",
+          "newValue": "#fecaca"
+        },
+        {
+          "type": "modified",
+          "property": "color",
+          "oldValue": "#b91c1c !important",
+          "newValue": "#b91c1c"
+        }
+      ]
+    },
+    {
+      "selector": ".btn--warning",
+      "changes": [
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "var(--warning)"
+        },
+        {
+          "type": "added",
+          "property": "color",
+          "newValue": "white"
+        },
+        {
+          "type": "added",
+          "property": "border-color",
+          "newValue": "var(--warning)"
+        }
+      ]
+    },
+    {
+      "selector": "from",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "transform",
+          "oldValue": "translateY(-10px)",
+          "newValue": "translateY(-5px)"
+        }
+      ]
+    },
+    {
+      "selector": ".form-row",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "grid-template-columns",
+          "oldValue": "1fr !important",
+          "newValue": "1fr"
+        }
+      ]
+    },
+    {
+      "selector": ".dashboard-grid, .admin-grid, .user-grid",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "grid-template-columns",
+          "oldValue": "1fr !important",
+          "newValue": "1fr"
+        }
+      ]
+    },
+    {
+      "selector": ".nav-dropdown-menu.show",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "display",
+          "oldValue": "block !important",
+          "newValue": "block"
+        }
+      ]
+    },
+    {
+      "selector": ".profile-menu.show",
+      "changes": [
+        {
+          "type": "modified",
+          "property": "display",
+          "oldValue": "block !important",
+          "newValue": "block"
+        }
+      ]
+    },
+    {
+      "selector": ".notification-item",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "border",
+          "oldValue": "1px solid var(--border-color)"
+        },
+        {
+          "type": "removed",
+          "property": "border-radius",
+          "oldValue": "var(--border-radius)"
+        },
+        {
+          "type": "removed",
+          "property": "background",
+          "oldValue": "var(--bg-primary)"
+        },
+        {
+          "type": "removed",
+          "property": "transition",
+          "oldValue": "var(--transition)"
+        },
+        {
+          "type": "added",
+          "property": "display",
+          "newValue": "block"
+        },
+        {
+          "type": "added",
+          "property": "border-bottom",
+          "newValue": "1px solid #f3f4f6"
+        },
+        {
+          "type": "added",
+          "property": "text-decoration",
+          "newValue": "none"
+        },
+        {
+          "type": "added",
+          "property": "color",
+          "newValue": "inherit"
+        },
+        {
+          "type": "modified",
+          "property": "padding",
+          "oldValue": "var(--space-4)",
+          "newValue": "12px 16px"
+        }
+      ]
+    },
+    {
+      "selector": ".notification-title",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "margin",
+          "oldValue": "0"
+        },
+        {
+          "type": "added",
+          "property": "margin-bottom",
+          "newValue": "4px"
+        },
+        {
+          "type": "modified",
+          "property": "font-size",
+          "oldValue": "var(--font-size-base)",
+          "newValue": "14px"
+        },
+        {
+          "type": "modified",
+          "property": "font-weight",
+          "oldValue": "600",
+          "newValue": "500"
+        },
+        {
+          "type": "modified",
+          "property": "color",
+          "oldValue": "var(--text-primary)",
+          "newValue": "#1f2937"
+        }
+      ]
+    },
+    {
+      "selector": ".notification-message",
+      "changes": [
+        {
+          "type": "removed",
+          "property": "margin",
+          "oldValue": "0 0 var(--space-3) 0"
+        },
+        {
+          "type": "removed",
+          "property": "line-height",
+          "oldValue": "1.5"
+        },
+        {
+          "type": "modified",
+          "property": "color",
+          "oldValue": "var(--text-secondary)",
+          "newValue": "#6b7280"
+        },
+        {
+          "type": "modified",
+          "property": "font-size",
+          "oldValue": "var(--font-size-sm)",
+          "newValue": "12px"
+        }
+      ]
+    },
+    {
+      "selector": ".notification-time",
+      "changes": [
+        {
+          "type": "added",
+          "property": "margin-top",
+          "newValue": "4px"
+        },
+        {
+          "type": "modified",
+          "property": "font-size",
+          "oldValue": "var(--font-size-xs)",
+          "newValue": "11px"
+        },
+        {
+          "type": "modified",
+          "property": "color",
+          "oldValue": "var(--text-muted)",
+          "newValue": "#9ca3af"
+        }
+      ]
+    }
+  ],
+  "criticalChanges": [
+    {
+      "selector": "[data-theme=\"dark\"] .main-content",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "background",
+          "oldValue": "var(--gray-900) !important",
+          "newValue": "var(--gray-900)"
+        }
+      ]
+    },
+    {
+      "selector": "html, body",
+      "criticalChanges": [
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "var(--bg-secondary)"
+        },
+        {
+          "type": "added",
+          "property": "color",
+          "newValue": "var(--text-primary)"
+        },
+        {
+          "type": "added",
+          "property": "line-height",
+          "newValue": "1.6"
+        },
+        {
+          "type": "modified",
+          "property": "width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        },
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".container, .container-fluid, .row, .col",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".table-responsive",
+      "criticalChanges": [
+        {
+          "type": "added",
+          "property": "border-radius",
+          "newValue": "var(--border-radius)"
+        },
+        {
+          "type": "added",
+          "property": "box-shadow",
+          "newValue": "var(--shadow-sm)"
+        }
+      ]
+    },
+    {
+      "selector": "table",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        },
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        }
+      ]
+    },
+    {
+      "selector": "table td, table th",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "0 !important",
+          "newValue": "0"
+        }
+      ]
+    },
+    {
+      "selector": ".form-control, input, select, textarea",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".card, .card-body",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "max-width",
+          "oldValue": "100% !important",
+          "newValue": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".sidebar",
+      "criticalChanges": [
+        {
+          "type": "removed",
+          "property": "transform",
+          "oldValue": "translateX(-100%)"
+        },
+        {
+          "type": "added",
+          "property": "position",
+          "newValue": "fixed"
+        },
+        {
+          "type": "added",
+          "property": "top",
+          "newValue": "0"
+        },
+        {
+          "type": "added",
+          "property": "left",
+          "newValue": "0"
+        },
+        {
+          "type": "added",
+          "property": "width",
+          "newValue": "260px"
+        },
+        {
+          "type": "added",
+          "property": "height",
+          "newValue": "100vh"
+        },
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "linear-gradient(145deg, #0f172a 0%, #1e293b 100%)"
+        },
+        {
+          "type": "added",
+          "property": "color",
+          "newValue": "white"
+        },
+        {
+          "type": "added",
+          "property": "z-index",
+          "newValue": "999"
+        },
+        {
+          "type": "added",
+          "property": "display",
+          "newValue": "flex"
+        }
+      ]
+    },
+    {
+      "selector": ".sidebar__header-controls",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "padding",
+          "oldValue": "0.2rem 0.2rem",
+          "newValue": "0.2rem"
+        }
+      ]
+    },
+    {
+      "selector": ".sidebar__header-controls .sidebar__control-btn",
+      "criticalChanges": [
+        {
+          "type": "removed",
+          "property": "position",
+          "oldValue": "relative"
+        }
+      ]
+    },
+    {
+      "selector": ".sidebar__menu",
+      "criticalChanges": [
+        {
+          "type": "removed",
+          "property": "margin-bottom",
+          "oldValue": "0"
+        }
+      ]
+    },
+    {
+      "selector": ".main-content",
+      "criticalChanges": [
+        {
+          "type": "removed",
+          "property": "margin-left",
+          "oldValue": "0 !important"
+        },
+        {
+          "type": "removed",
+          "property": "width",
+          "oldValue": "100vw !important"
+        },
+        {
+          "type": "removed",
+          "property": "max-width",
+          "oldValue": "100vw !important"
+        },
+        {
+          "type": "modified",
+          "property": "padding",
+          "oldValue": "var(--space-4) !important",
+          "newValue": "12px"
+        }
+      ]
+    },
+    {
+      "selector": ".notification-header",
+      "criticalChanges": [
+        {
+          "type": "removed",
+          "property": "margin-bottom",
+          "oldValue": "var(--space-2)"
+        },
+        {
+          "type": "added",
+          "property": "padding",
+          "newValue": "16px"
+        },
+        {
+          "type": "added",
+          "property": "border-bottom",
+          "newValue": "1px solid #e5e7eb"
+        },
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "white"
+        },
+        {
+          "type": "added",
+          "property": "position",
+          "newValue": "relative"
+        },
+        {
+          "type": "added",
+          "property": "z-index",
+          "newValue": "10001"
+        }
+      ]
+    },
+    {
+      "selector": ".card",
+      "criticalChanges": [
+        {
+          "type": "removed",
+          "property": "margin",
+          "oldValue": "0 !important"
+        },
+        {
+          "type": "removed",
+          "property": "width",
+          "oldValue": "100% !important"
+        },
+        {
+          "type": "removed",
+          "property": "max-width",
+          "oldValue": "100% !important"
+        },
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "rgba(255, 255, 255, 0.95)"
+        },
+        {
+          "type": "added",
+          "property": "border",
+          "newValue": "1px solid rgba(255, 255, 255, 0.3)"
+        },
+        {
+          "type": "added",
+          "property": "border-radius",
+          "newValue": "var(--border-radius)"
+        },
+        {
+          "type": "added",
+          "property": "box-shadow",
+          "newValue": "var(--shadow-sm)"
+        }
+      ]
+    },
+    {
+      "selector": ".btn--primary",
+      "criticalChanges": [
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)"
+        },
+        {
+          "type": "added",
+          "property": "color",
+          "newValue": "white"
+        }
+      ]
+    },
+    {
+      "selector": ".dashboard-grid",
+      "criticalChanges": [
+        {
+          "type": "added",
+          "property": "display",
+          "newValue": "grid"
+        },
+        {
+          "type": "added",
+          "property": "margin-bottom",
+          "newValue": "var(--space-6)"
+        }
+      ]
+    },
+    {
+      "selector": ".page-actions",
+      "criticalChanges": [
+        {
+          "type": "added",
+          "property": "display",
+          "newValue": "flex"
+        }
+      ]
+    },
+    {
+      "selector": ".badge--warning",
+      "criticalChanges": [
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "#fef3c7"
+        }
+      ]
+    },
+    {
+      "selector": ".badge--danger",
+      "criticalChanges": [
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "#fee2e2"
+        }
+      ]
+    },
+    {
+      "selector": ".badge--info",
+      "criticalChanges": [
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "#dbeafe"
+        }
+      ]
+    },
+    {
+      "selector": ".btn-group",
+      "criticalChanges": [
+        {
+          "type": "added",
+          "property": "width",
+          "newValue": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".btn--danger",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "background",
+          "oldValue": "#f3f4f6 !important",
+          "newValue": "#f3f4f6"
+        },
+        {
+          "type": "modified",
+          "property": "color",
+          "oldValue": "#dc2626 !important",
+          "newValue": "#dc2626"
+        },
+        {
+          "type": "modified",
+          "property": "border-color",
+          "oldValue": "#e5e7eb !important",
+          "newValue": "#e5e7eb"
+        }
+      ]
+    },
+    {
+      "selector": ".btn--danger:hover",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "background",
+          "oldValue": "#fef2f2 !important",
+          "newValue": "#fef2f2"
+        },
+        {
+          "type": "modified",
+          "property": "border-color",
+          "oldValue": "#fecaca !important",
+          "newValue": "#fecaca"
+        },
+        {
+          "type": "modified",
+          "property": "color",
+          "oldValue": "#b91c1c !important",
+          "newValue": "#b91c1c"
+        }
+      ]
+    },
+    {
+      "selector": ".btn--warning",
+      "criticalChanges": [
+        {
+          "type": "added",
+          "property": "background",
+          "newValue": "var(--warning)"
+        },
+        {
+          "type": "added",
+          "property": "color",
+          "newValue": "white"
+        },
+        {
+          "type": "added",
+          "property": "border-color",
+          "newValue": "var(--warning)"
+        }
+      ]
+    },
+    {
+      "selector": "from",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "transform",
+          "oldValue": "translateY(-10px)",
+          "newValue": "translateY(-5px)"
+        }
+      ]
+    },
+    {
+      "selector": ".nav-dropdown-menu.show",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "display",
+          "oldValue": "block !important",
+          "newValue": "block"
+        }
+      ]
+    },
+    {
+      "selector": ".profile-menu.show",
+      "criticalChanges": [
+        {
+          "type": "modified",
+          "property": "display",
+          "oldValue": "block !important",
+          "newValue": "block"
+        }
+      ]
+    },
+    {
+      "selector": ".notification-item",
+      "criticalChanges": [
+        {
+          "type": "removed",
+          "property": "border",
+          "oldValue": "1px solid var(--border-color)"
+        },
+        {
+          "type": "removed",
+          "property": "border-radius",
+          "oldValue": "var(--border-radius)"
+        },
+        {
+          "type": "removed",
+          "property": "background",
+          "oldValue": "var(--bg-primary)"
+        },
+        {
+          "type": "added",
+          "property": "display",
+          "newValue": "block"
+        },
+        {
+          "type": "added",
+          "property": "border-bottom",
+          "newValue": "1px solid #f3f4f6"
+        },
+        {
+          "type": "added",
+          "property": "color",
+          "newValue": "inherit"
+        },
+        {
+          "type": "modified",
+          "property": "padding",
+          "oldValue": "var(--space-4)",
+          "newValue": "12px 16px"
+        }
+      ]
+    },
+    {
+      "selector": ".notification-title",
+      "criticalChanges": [
+        {
+          "type": "removed",
+          "property": "margin",
+          "oldValue": "0"
+        },
+        {
+          "type": "added",
+          "property": "margin-bottom",
+          "newValue": "4px"
+        },
+        {
+          "type": "modified",
+          "property": "font-size",
+          "oldValue": "var(--font-size-base)",
+          "newValue": "14px"
+        },
+        {
+          "type": "modified",
+          "property": "font-weight",
+          "oldValue": "600",
+          "newValue": "500"
+        },
+        {
+          "type": "modified",
+          "property": "color",
+          "oldValue": "var(--text-primary)",
+          "newValue": "#1f2937"
+        }
+      ]
+    },
+    {
+      "selector": ".notification-message",
+      "criticalChanges": [
+        {
+          "type": "removed",
+          "property": "margin",
+          "oldValue": "0 0 var(--space-3) 0"
+        },
+        {
+          "type": "removed",
+          "property": "line-height",
+          "oldValue": "1.5"
+        },
+        {
+          "type": "modified",
+          "property": "color",
+          "oldValue": "var(--text-secondary)",
+          "newValue": "#6b7280"
+        },
+        {
+          "type": "modified",
+          "property": "font-size",
+          "oldValue": "var(--font-size-sm)",
+          "newValue": "12px"
+        }
+      ]
+    },
+    {
+      "selector": ".notification-time",
+      "criticalChanges": [
+        {
+          "type": "added",
+          "property": "margin-top",
+          "newValue": "4px"
+        },
+        {
+          "type": "modified",
+          "property": "font-size",
+          "oldValue": "var(--font-size-xs)",
+          "newValue": "11px"
+        },
+        {
+          "type": "modified",
+          "property": "color",
+          "oldValue": "var(--text-muted)",
+          "newValue": "#9ca3af"
+        }
+      ]
+    }
+  ]
+}

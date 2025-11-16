@@ -1,0 +1,28 @@
+{
+  "name": "ergon",
+  "version": "1.0.0",
+  "description": "Ergon Task Management System",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:visual": "playwright test tests/visual/",
+    "test:baseline": "playwright test --update-snapshots",
+    "qa:full": "node tests/visual/run-qa.js",
+    "css:analyze": "node tests/visual/css-diff-analyzer.js",
+    "report": "playwright show-report tests/visual/playwright-report"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bharath-Thiravium/ergon.git"
+  },
+  "keywords": ["task-management", "php", "css", "optimization"],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Bharath-Thiravium/ergon/issues"
+  },
+  "homepage": "https://github.com/Bharath-Thiravium/ergon#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}
