@@ -54,6 +54,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <link href="/ergon/assets/css/utilities-new.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/instant-theme.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/global-tooltips.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/action-button-clean.css?v=<?= time() ?>" rel="stylesheet">
 
     
     <!-- JavaScript -->
