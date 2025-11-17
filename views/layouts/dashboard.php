@@ -68,7 +68,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                     <i class="bi bi-bell-fill"></i>
                     <span class="notification-badge" id="notificationBadge">0</span>
                 </button>
-                <button class="profile-btn" onclick="document.getElementById('profileMenu').classList.toggle('show')">
+                <button class="profile-btn" id="profileButton" type="button">
                     <span class="profile-avatar"><?= htmlspecialchars(strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="profile-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="dropdown-arrow">▼</span>
@@ -538,6 +538,16 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
     document.addEventListener('DOMContentLoaded', function() {
         loadNotifications();
+        
+        // Ensure profile button is clickable
+        var profileBtn = document.getElementById('profileButton');
+        if (profileBtn) {
+            profileBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleProfile();
+            });
+        }
     });
     
     function getNotificationLink(module, message) {
@@ -589,9 +599,16 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         });
     }
 
-    window.toggleProfile = function() {
+    function toggleProfile() {
+        console.log('toggleProfile called'); // Debug log
         var menu = document.getElementById('profileMenu');
         
+        if (!menu) {
+            console.error('Profile menu not found');
+            return;
+        }
+        
+        // Close other dropdowns
         document.querySelectorAll('.nav-dropdown-menu').forEach(function(dropdown) {
             dropdown.classList.remove('show');
         });
@@ -599,8 +616,18 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             btn.classList.remove('active');
         });
         
+        // Close notification dropdown
+        var notificationDropdown = document.getElementById('notificationDropdown');
+        if (notificationDropdown) {
+            notificationDropdown.style.display = 'none';
+        }
+        
         menu.classList.toggle('show');
+        console.log('Profile menu toggled, show class:', menu.classList.contains('show'));
     }
+    
+    // Make function globally accessible
+    window.toggleProfile = toggleProfile;
     
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.header__controls')) {
