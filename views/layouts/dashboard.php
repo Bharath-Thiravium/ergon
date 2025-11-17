@@ -9,14 +9,10 @@ if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) {
     exit;
 }
 
-// Initialize content variable to prevent undefined variable warning
 if (!isset($content)) {
     $content = '';
 }
 
-// Removed aggressive cache headers
-
-// Extend session timeout to 8 hours for better user experience
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) {
     session_unset();
     session_destroy();
@@ -38,17 +34,12 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     
-    <!-- Instant theme application - prevents flashing -->
     <script src="/ergon/assets/js/theme-preload.js"></script>
-
-    <!-- Bootstrap Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
     
-    <!-- Main CSS - Optimized -->
     <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/theme-enhanced.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/utilities-new.css?v=<?= time() ?>" rel="stylesheet">
@@ -56,8 +47,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <link href="/ergon/assets/css/global-tooltips.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/action-button-clean.css?v=<?= time() ?>" rel="stylesheet">
 
-    
-    <!-- JavaScript -->
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/action-button-clean.js?v=<?= time() ?>" defer></script>
@@ -170,13 +159,9 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">✅</span>
                                 Tasks
                             </a>
-                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
-                            </a>
-                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">📆</span>
-                                Calendar
                             </a>
                         </div>
                     </div>
@@ -272,13 +257,9 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">🌅</span>
                                 Planner
                             </a>
-                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
-                            </a>
-                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">📆</span>
-                                Calendar
                             </a>
                         </div>
                     </div>
@@ -344,19 +325,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">✅</span>
                                 Tasks
                             </a>
-
                             <a href="/ergon/workflow/daily-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📅</span>
                                 Daily Planner
                             </a>
-
-                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
-                            </a>
-                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">📆</span>
-                                Calendar
                             </a>
                         </div>
                     </div>
@@ -405,25 +380,24 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     </div>
 
     <main class="main-content">
-            <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports', 'Notifications'])): ?>
-            <div class="page-header">
-                <div class="page-title">
-                    <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
-                </div>
-                <?php if ($title === 'Notifications'): ?>
-                <div class="page-actions">
-                    <button class="btn btn--primary" onclick="markAllAsRead()">
-                        Mark All Read
-                    </button>
-                </div>
-                <?php endif; ?>
+        <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports', 'Notifications'])): ?>
+        <div class="page-header">
+            <div class="page-title">
+                <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
+            </div>
+            <?php if ($title === 'Notifications'): ?>
+            <div class="page-actions">
+                <button class="btn btn--primary" onclick="markAllAsRead()">
+                    Mark All Read
+                </button>
             </div>
             <?php endif; ?>
-            <?= $content ?>
+        </div>
+        <?php endif; ?>
+        <?= $content ?>
     </main>
 
     <script>
-    // Define dropdown functions first to prevent ReferenceError
     var hideTimeout;
     var currentDropdown = null;
     
@@ -437,11 +411,9 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         var btn = dropdown.previousElementSibling;
         var btnRect = btn.getBoundingClientRect();
         
-        // Position dropdown
         dropdown.style.top = (btnRect.bottom + 8) + 'px';
         dropdown.style.left = btnRect.left + 'px';
         
-        // Close all other dropdowns with fade out
         document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
             if (menu.id !== id && menu.classList.contains('show')) {
                 menu.classList.remove('show');
@@ -449,7 +421,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             }
         });
         
-        // Show current dropdown with fade in
         setTimeout(function() {
             dropdown.classList.add('show');
             btn.classList.add('active');
@@ -491,7 +462,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         if (dropdown && button) {
             var isVisible = dropdown.style.display === 'block';
             
-            // Close other dropdowns first
             document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
                 menu.classList.remove('show');
             });
@@ -501,7 +471,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             if (isVisible) {
                 dropdown.style.display = 'none';
             } else {
-                // Position dropdown relative to notification button
                 var rect = button.getBoundingClientRect();
                 dropdown.style.position = 'fixed';
                 dropdown.style.top = (rect.bottom + 8) + 'px';
@@ -510,7 +479,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                 dropdown.style.zIndex = '10000';
                 dropdown.style.display = 'block';
                 
-                // Load notifications
                 loadNotifications();
             }
         }
@@ -520,13 +488,11 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         event.preventDefault();
         event.stopPropagation();
         
-        // Close the dropdown first
         var dropdown = document.getElementById('notificationDropdown');
         if (dropdown) {
             dropdown.style.display = 'none';
         }
         
-        // Navigate to notifications page in the main window
         setTimeout(function() {
             window.location.href = '/ergon/notifications';
         }, 100);
@@ -550,7 +516,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                            '</a>';
                 }).join('');
                 
-                // Update badge
                 updateNotificationBadge(data.unread_count || 0);
             } else {
                 list.innerHTML = '<div class="notification-loading">No notifications</div>';
@@ -571,7 +536,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
     }
     
-    // Load notification count on page load
     document.addEventListener('DOMContentLoaded', function() {
         loadNotifications();
     });
@@ -624,13 +588,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             alert('Network error occurred');
         });
     }
-    
 
-    
     window.toggleProfile = function() {
         var menu = document.getElementById('profileMenu');
         
-        // Close all nav dropdowns
         document.querySelectorAll('.nav-dropdown-menu').forEach(function(dropdown) {
             dropdown.classList.remove('show');
         });
@@ -652,7 +613,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             dropdown.style.display = 'none';
         }
         
-        // Close nav dropdowns when clicking outside
         if (!e.target.closest('.nav-dropdown')) {
             document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
                 menu.classList.remove('show');
@@ -662,17 +622,11 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             });
         }
     });
-    
 
-    
-    // Removed aggressive page show redirect
-    
-    // Disable scroll restoration to prevent data duplication
     if ('scrollRestoration' in history) {
         history.scrollRestoration = 'auto';
     }
     
-    // Standardized delete function
     function deleteRecord(module, id, name) {
         if (confirm('Are you sure you want to delete "' + name + '"? This action cannot be undone.')) {
             fetch('/ergon/' + module + '/delete/' + id, {
@@ -696,25 +650,15 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             });
         }
     }
-    
 
-    </script>
-
-    <script>
-    // Global tooltip conversion is handled by action-button-clean.js
-    
-    // Smart back navigation function
     function goBack() {
-        // Check if there's a previous page in history
         if (document.referrer && document.referrer.includes('/ergon/')) {
             window.history.back();
         } else {
-            // Fallback to tasks list
             window.location.href = '/ergon/tasks';
         }
     }
     
-    // Toggle filters function
     function toggleLeaveFilters() {
         const panel = document.getElementById('leaveFiltersPanel');
         if (panel) {
@@ -722,14 +666,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
     }
     
-    
     function initTooltips() {
-        // Non-action-button tooltips only
         return;
     }
     </script>
-    
-
 
 </body>
 </html>

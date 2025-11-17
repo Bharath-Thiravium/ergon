@@ -1,6 +1,7 @@
 <?php
 $title = 'Advance Requests';
 $active_page = 'advances';
+include __DIR__ . '/../shared/modal_component.php';
 ob_start();
 ?>
 
@@ -27,6 +28,8 @@ ob_start();
     ❌ <?= htmlspecialchars($_GET['error']) ?>
 </div>
 <?php endif; ?>
+
+<?php renderModalCSS(); ?>
 
 <div class="dashboard-grid">
     <div class="kpi-card">
@@ -179,96 +182,28 @@ ob_start();
     </div>
 </div>
 
-<!-- Rejection Modal -->
-<div id="rejectModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Reject Advance Request</h3>
-            <span class="close" onclick="closeRejectModal()">&times;</span>
-        </div>
-        <form id="rejectForm" method="POST">
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="rejection_reason">Reason for Rejection:</label>
-                    <textarea id="rejection_reason" name="rejection_reason" class="form-control" rows="4" placeholder="Please provide a reason for rejecting this advance request..." required></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn--secondary" onclick="closeRejectModal()">Cancel</button>
-                <button type="submit" class="btn btn--danger">Reject Advance</button>
-            </div>
-        </form>
+<?php
+// Rejection Modal Content
+$rejectContent = '
+<form id="rejectForm" method="POST">
+    <div class="form-group">
+        <label for="rejection_reason">Reason for Rejection:</label>
+        <textarea id="rejection_reason" name="rejection_reason" class="form-control" rows="4" placeholder="Please provide a reason for rejecting this advance request..." required></textarea>
     </div>
-</div>
+</form>';
 
-<style>
-.modal {
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-}
-.modal-content {
-    background-color: #fefefe;
-    margin: 15% auto;
-    padding: 0;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-.modal-header {
-    padding: 20px;
-    border-bottom: 1px solid #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.modal-header h3 {
-    margin: 0;
-    color: #333;
-}
-.close {
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-    color: #aaa;
-}
-.close:hover {
-    color: #000;
-}
-.modal-body {
-    padding: 20px;
-}
-.modal-footer {
-    padding: 20px;
-    border-top: 1px solid #eee;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-</style>
+$rejectFooter = createFormModalFooter('Cancel', 'Reject Advance', 'rejectModal', 'danger');
+
+// Render Modal
+renderModal('rejectModal', 'Reject Advance Request', $rejectContent, $rejectFooter, ['icon' => '❌']);
+?>
+
+
 
 <script>
 function showRejectModal(advanceId) {
     document.getElementById('rejectForm').action = '/ergon/advances/reject/' + advanceId;
-    document.getElementById('rejectModal').style.display = 'block';
-}
-
-function closeRejectModal() {
-    document.getElementById('rejectModal').style.display = 'none';
-    document.getElementById('rejection_reason').value = '';
-}
-
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const modal = document.getElementById('rejectModal');
-    if (event.target === modal) {
-        closeRejectModal();
-    }
+    showModal('rejectModal');
 }
 </script>
 
@@ -296,6 +231,8 @@ document.addEventListener('click', function(e) {
     }
 });
 </script>
+
+<?php renderModalJS(); ?>
 
 <?php
 $content = ob_get_clean();

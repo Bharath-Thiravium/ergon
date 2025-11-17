@@ -1,4 +1,7 @@
 <?php
+// ARCHIVED: Standalone calendar component - replaced with task visualization layer
+// Archive Date: <?= date('Y-m-d H:i:s') ?>
+
 // Calendar component for displaying events
 $currentMonth = date('n');
 $currentYear = date('Y');

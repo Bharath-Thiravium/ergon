@@ -64,11 +64,15 @@ class OwnerController extends Controller {
             // Get system alerts
             $alerts = $this->getSystemAlerts($db);
             
+            // Debug: Log the stats to see what's being fetched
+            error_log('Owner Dashboard Stats: ' . json_encode($stats));
+            
             $this->view('owner/dashboard', [
                 'data' => [
                     'stats' => $stats,
                     'final_approvals' => $finalApprovals,
-                    'alerts' => $alerts
+                    'alerts' => $alerts,
+                    'recent_activities' => [] // Add empty activities for now
                 ],
                 'active_page' => 'dashboard'
             ]);
@@ -465,6 +469,13 @@ class OwnerController extends Controller {
     }
     
     private function getActiveProjectsCount($db) {
+        // First try projects table, then fall back to tasks
+        try {
+            $stmt = $db->query("SELECT COUNT(*) FROM projects WHERE status = 'active'");
+            $count = $stmt->fetchColumn();
+            if ($count > 0) return $count;
+        } catch (Exception $e) {}
+        
         $stmt = $db->query("SELECT COUNT(DISTINCT project_name) FROM tasks WHERE project_name IS NOT NULL AND project_name != '' AND status != 'completed'");
         return $stmt->fetchColumn() ?: 12;
     }
@@ -506,17 +517,17 @@ class OwnerController extends Controller {
     }
     
     private function getOverdueTasksCount($db) {
-        $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE due_date < CURDATE() AND status != 'completed'");
+        $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (due_date < CURDATE() OR deadline < CURDATE()) AND status NOT IN ('completed', 'cancelled')");
         return $stmt->fetchColumn() ?: 5;
     }
     
     private function getDueThisWeekCount($db) {
-        $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) AND status != 'completed'");
+        $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) OR deadline BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AND status NOT IN ('completed', 'cancelled')");
         return $stmt->fetchColumn() ?: 8;
     }
     
     private function getDueTomorrowCount($db) {
-        $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE DATE(due_date) = DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND status != 'completed'");
+        $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (DATE(due_date) = DATE_ADD(CURDATE(), INTERVAL 1 DAY) OR DATE(deadline) = DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AND status NOT IN ('completed', 'cancelled')");
         return $stmt->fetchColumn() ?: 3;
     }
     

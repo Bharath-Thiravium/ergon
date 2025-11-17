@@ -1,7 +1,10 @@
 <?php
+include __DIR__ . '/../shared/modal_component.php';
 $content = ob_start();
 ?>
 <link rel="stylesheet" href="/ergon/assets/css/daily-planner.css">
+
+<?php renderModalCSS(); ?>
 
 <div class="page-header">
     <div class="page-title">
@@ -37,7 +40,7 @@ $content = ob_start();
                 <div class="task-timeline" id="taskTimeline">
                     <?php 
                     usort($planned_tasks, function($a, $b) {
-                        $statusOrder = ['in_progress' => 1, 'on_break' => 2, 'assigned' => 3, 'not_started' => 3, 'completed' => 4];
+                        $statusOrder = ['in_progress' => 1, 'on_break' => 2, 'assigned' => 3, 'not_started' => 3, 'completed' => 4, 'cancelled' => 5, 'suspended' => 5];
                         return ($statusOrder[$a['status']] ?? 3) - ($statusOrder[$b['status']] ?? 3);
                     });
                     
@@ -131,8 +134,12 @@ $content = ob_start();
                                         </button>
                                     <?php elseif ($status === 'completed'): ?>
                                         <span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>
+                                    <?php elseif ($status === 'cancelled'): ?>
+                                        <span class="badge badge--danger"><i class="bi bi-x-circle"></i> Cancelled</span>
+                                    <?php elseif ($status === 'suspended'): ?>
+                                        <span class="badge badge--warning"><i class="bi bi-pause-circle"></i> Suspended</span>
                                     <?php endif; ?>
-                                    <?php if ($status !== 'completed'): ?>
+                                    <?php if (!in_array($status, ['completed', 'cancelled', 'suspended'])): ?>
                                         <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)">
                                             <i class="bi bi-calendar-plus"></i> Postpone
                                         </button>
@@ -224,106 +231,85 @@ $content = ob_start();
     </div>
 </div>
 
-<!-- Quick Task Modal -->
-<div id="quickTaskModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Quick Add Task</h3>
-            <button class="modal-close" onclick="closeQuickTaskModal()">&times;</button>
+<?php
+// Quick Task Modal Content
+$quickTaskContent = '
+<form id="quickTaskForm">
+    <div class="form-group">
+        <label for="quickTitle">Task Title</label>
+        <input type="text" id="quickTitle" name="title" class="form-control" required>
+    </div>
+    <div class="form-group">
+        <label for="quickDescription">Description</label>
+        <textarea id="quickDescription" name="description" class="form-control" rows="2"></textarea>
+    </div>
+    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+            <label for="quickTime">Start Time</label>
+            <input type="time" id="quickTime" name="planned_time" class="form-control">
         </div>
-        <div class="modal-body">
-            <form id="quickTaskForm">
-                <div class="form-group">
-                    <label for="quickTitle">Task Title</label>
-                    <input type="text" id="quickTitle" name="title" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="quickDescription">Description</label>
-                    <textarea id="quickDescription" name="description" class="form-control" rows="2"></textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="quickTime">Start Time</label>
-                        <input type="time" id="quickTime" name="planned_time" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="quickDuration">Duration (min)</label>
-                        <input type="number" id="quickDuration" name="duration" class="form-control" min="15" step="15" value="60">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="quickPriority">Priority</label>
-                    <select id="quickPriority" name="priority" class="form-control">
-                        <option value="low">Low</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="high">High</option>
-                    </select>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn btn--primary">Add Task</button>
-                    <button type="button" class="btn btn--secondary" onclick="closeQuickTaskModal()">Cancel</button>
-                </div>
-            </form>
+        <div class="form-group">
+            <label for="quickDuration">Duration (min)</label>
+            <input type="number" id="quickDuration" name="duration" class="form-control" min="15" step="15" value="60">
         </div>
     </div>
-</div>
+    <div class="form-group">
+        <label for="quickPriority">Priority</label>
+        <select id="quickPriority" name="priority" class="form-control">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+        </select>
+    </div>
+</form>';
 
-<!-- Update Progress Modal -->
-<div id="updateProgressModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Update Progress</h3>
-            <button class="modal-close" onclick="closeUpdateProgressModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div id="postponeHistory" class="postpone-history" style="display: none;">
-                <h4>Postpone History</h4>
-                <div id="historyList" class="history-list"></div>
-                <hr>
-            </div>
-            <form id="updateProgressForm">
-                <input type="hidden" id="updateTaskId" name="task_id">
-                <div class="form-group">
-                    <label>Completion Percentage</label>
-                    <div class="percentage-options">
-                        <button type="button" class="percentage-btn" data-percentage="25">25%</button>
-                        <button type="button" class="percentage-btn" data-percentage="50">50%</button>
-                        <button type="button" class="percentage-btn" data-percentage="75">75%</button>
-                        <button type="button" class="percentage-btn active" data-percentage="100">100%</button>
-                    </div>
-                    <input type="hidden" id="selectedProgressPercentage" name="percentage" value="100">
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn btn--primary">Update Progress</button>
-                    <button type="button" class="btn btn--secondary" onclick="closeUpdateProgressModal()">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+$quickTaskFooter = createFormModalFooter('Cancel', 'Add Task', 'quickTaskModal');
 
-<!-- Postpone Task Modal -->
-<div id="postponeTaskModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Postpone Task</h3>
-            <button class="modal-close" onclick="closePostponeTaskModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="postponeTaskForm">
-                <input type="hidden" id="postponeTaskId" name="task_id">
-                <div class="form-group">
-                    <label for="newDate">Reschedule to Date</label>
-                    <input type="date" id="newDate" name="new_date" class="form-control" required min="<?= date('Y-m-d', strtotime('+1 day')) ?>">
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn btn--warning">Postpone Task</button>
-                    <button type="button" class="btn btn--secondary" onclick="closePostponeTaskModal()">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
+renderModal('quickTaskModal', 'Quick Add Task', $quickTaskContent, $quickTaskFooter, ['icon' => '➕']);
+?>
+
+<?php
+// Update Progress Modal Content
+$updateProgressContent = '
+<div id="postponeHistory" class="postpone-history" style="display: none;">
+    <h4>Postpone History</h4>
+    <div id="historyList" class="history-list"></div>
+    <hr>
 </div>
+<form id="updateProgressForm">
+    <input type="hidden" id="updateTaskId" name="task_id">
+    <div class="form-group">
+        <label>Completion Percentage</label>
+        <div class="percentage-options" style="display: flex; gap: 0.5rem; margin: 0.5rem 0;">
+            <button type="button" class="percentage-btn btn btn--secondary" data-percentage="25">25%</button>
+            <button type="button" class="percentage-btn btn btn--secondary" data-percentage="50">50%</button>
+            <button type="button" class="percentage-btn btn btn--secondary" data-percentage="75">75%</button>
+            <button type="button" class="percentage-btn btn btn--primary active" data-percentage="100">100%</button>
+        </div>
+        <input type="hidden" id="selectedProgressPercentage" name="percentage" value="100">
+    </div>
+</form>';
+
+$updateProgressFooter = createFormModalFooter('Cancel', 'Update Progress', 'updateProgressModal');
+
+renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $updateProgressFooter, ['icon' => '📊']);
+?>
+
+<?php
+// Postpone Task Modal Content
+$postponeTaskContent = '
+<form id="postponeTaskForm">
+    <input type="hidden" id="postponeTaskId" name="task_id">
+    <div class="form-group">
+        <label for="newDate">Reschedule to Date</label>
+        <input type="date" id="newDate" name="new_date" class="form-control" required min="' . date('Y-m-d', strtotime('+1 day')) . '">
+    </div>
+</form>';
+
+$postponeTaskFooter = createFormModalFooter('Cancel', 'Postpone Task', 'postponeTaskModal', 'warning');
+
+renderModal('postponeTaskModal', 'Postpone Task', $postponeTaskContent, $postponeTaskFooter, ['icon' => '📅']);
+?>
 
 <script>
 let timers = {};
@@ -369,7 +355,7 @@ function updateTaskStatus(taskId, action) {
 function updateProgressTask(taskId) {
     document.getElementById('updateTaskId').value = taskId;
     loadPostponeHistory(taskId);
-    document.getElementById('updateProgressModal').style.display = 'flex';
+    showModal('updateProgressModal');
 }
 
 function loadPostponeHistory(taskId) {
@@ -404,7 +390,7 @@ function completeTask(taskId) {
 
 function postponeTask(taskId) {
     document.getElementById('postponeTaskId').value = taskId;
-    document.getElementById('postponeTaskModal').style.display = 'flex';
+    showModal('postponeTaskModal');
 }
 
 function startSLACountdown(taskId) {
@@ -537,16 +523,16 @@ function updateProgressBar(taskId, percentage) {
 
 // Modal Functions
 function openQuickTaskModal() {
-    document.getElementById('quickTaskModal').style.display = 'flex';
+    showModal('quickTaskModal');
 }
 
 function closeQuickTaskModal() {
-    document.getElementById('quickTaskModal').style.display = 'none';
+    closeModal('quickTaskModal');
     document.getElementById('quickTaskForm').reset();
 }
 
 function closeUpdateProgressModal() {
-    document.getElementById('updateProgressModal').style.display = 'none';
+    closeModal('updateProgressModal');
 }
 
 function closeCompleteTaskModal() {
@@ -555,7 +541,7 @@ function closeCompleteTaskModal() {
 }
 
 function closePostponeTaskModal() {
-    document.getElementById('postponeTaskModal').style.display = 'none';
+    closeModal('postponeTaskModal');
 }
 
 // Event Listeners
@@ -670,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-
+<?php renderModalJS(); ?>
 
 <?php
 $content = ob_get_clean();

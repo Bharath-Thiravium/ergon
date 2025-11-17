@@ -2,22 +2,61 @@
 $active_page = 'followups';
 ob_start();
 
-// Group followups by contact person for phone call consolidation
+// Enhanced contact grouping with priority sorting and statistics
 $contactGroups = [];
+$totalTasks = 0;
+$urgentTasks = 0;
+$completedTasks = 0;
+
 foreach ($followups as $followup) {
-    $contact = $followup['contact_person'] ?: 'Unknown Contact';
+    $contact = trim($followup['contact_person'] ?: 'Unknown Contact');
+    $phone = trim($followup['contact_phone'] ?: '');
+    $company = trim($followup['company_name'] ?: '');
+    
     if (!isset($contactGroups[$contact])) {
         $contactGroups[$contact] = [
             'contact_info' => [
                 'name' => $contact,
-                'phone' => $followup['contact_phone'] ?: '',
-                'company' => $followup['company_name'] ?: ''
+                'phone' => $phone,
+                'company' => $company
             ],
-            'tasks' => []
+            'tasks' => [],
+            'stats' => ['total' => 0, 'urgent' => 0, 'completed' => 0, 'pending' => 0]
         ];
     }
+    
+    // Update contact info if current task has better data
+    if (empty($contactGroups[$contact]['contact_info']['phone']) && !empty($phone)) {
+        $contactGroups[$contact]['contact_info']['phone'] = $phone;
+    }
+    if (empty($contactGroups[$contact]['contact_info']['company']) && !empty($company)) {
+        $contactGroups[$contact]['contact_info']['company'] = $company;
+    }
+    
     $contactGroups[$contact]['tasks'][] = $followup;
+    $contactGroups[$contact]['stats']['total']++;
+    
+    // Calculate statistics
+    $totalTasks++;
+    if ($followup['status'] === 'completed') {
+        $completedTasks++;
+        $contactGroups[$contact]['stats']['completed']++;
+    } else {
+        $contactGroups[$contact]['stats']['pending']++;
+        if (!empty($followup['follow_up_date']) && strtotime($followup['follow_up_date']) < time()) {
+            $urgentTasks++;
+            $contactGroups[$contact]['stats']['urgent']++;
+        }
+    }
 }
+
+// Sort contacts by priority (urgent tasks first, then by total tasks)
+uasort($contactGroups, function($a, $b) {
+    if ($a['stats']['urgent'] !== $b['stats']['urgent']) {
+        return $b['stats']['urgent'] - $a['stats']['urgent'];
+    }
+    return $b['stats']['total'] - $a['stats']['total'];
+});
 ?>
 
 <div class="page-header">
@@ -67,46 +106,46 @@ foreach ($followups as $followup) {
     </div>
 </div>
 
-<!-- Phone Call Dashboard -->
+<!-- Enhanced Dashboard -->
 <div class="dashboard-grid">
-    <div class="kpi-card kpi-card--info">
+    <div class="kpi-card">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">👥</div>
-            <div class="kpi-card__trend">Contacts</div>
+            <div class="kpi-card__icon"><i class="bi bi-people-fill"></i></div>
+            <div class="kpi-card__trend">Active</div>
         </div>
         <div class="kpi-card__value"><?= count($contactGroups) ?></div>
-        <div class="kpi-card__label">People to Call</div>
+        <div class="kpi-card__label">Contacts to Call</div>
         <div class="kpi-card__status">Ready</div>
     </div>
     
-    <div class="kpi-card kpi-card--warning">
+    <div class="kpi-card">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">📞</div>
-            <div class="kpi-card__trend">Calls</div>
+            <div class="kpi-card__icon"><i class="bi bi-telephone-fill"></i></div>
+            <div class="kpi-card__trend">Total</div>
         </div>
-        <div class="kpi-card__value"><?= array_sum(array_map(fn($g) => count($g['tasks']), $contactGroups)) ?></div>
-        <div class="kpi-card__label">Total Follow-ups</div>
+        <div class="kpi-card__value"><?= $totalTasks ?></div>
+        <div class="kpi-card__label">Follow-up Tasks</div>
         <div class="kpi-card__status">Pending</div>
     </div>
     
     <div class="kpi-card kpi-card--danger">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">⚠️</div>
+            <div class="kpi-card__icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
             <div class="kpi-card__trend">Urgent</div>
         </div>
-        <div class="kpi-card__value"><?php
-            $urgentCount = 0;
-            foreach ($contactGroups as $group) {
-                foreach ($group['tasks'] as $task) {
-                    if (!empty($task['follow_up_date']) && strtotime($task['follow_up_date']) < time() && $task['status'] !== 'completed') {
-                        $urgentCount++;
-                    }
-                }
-            }
-            echo $urgentCount;
-        ?></div>
+        <div class="kpi-card__value"><?= $urgentTasks ?></div>
         <div class="kpi-card__label">Overdue Tasks</div>
         <div class="kpi-card__status">Action Needed</div>
+    </div>
+    
+    <div class="kpi-card kpi-card--success">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon"><i class="bi bi-check-circle-fill"></i></div>
+            <div class="kpi-card__trend">Done</div>
+        </div>
+        <div class="kpi-card__value"><?= $completedTasks ?></div>
+        <div class="kpi-card__label">Completed</div>
+        <div class="kpi-card__status">Success</div>
     </div>
 </div>
 
@@ -194,34 +233,70 @@ foreach ($followups as $followup) {
                     </div>
                 <?php else: ?>
                     <?php foreach ($contactGroups as $contact => $group): ?>
-                        <div class="card" style="margin-bottom: 1.5rem;">
-                            <div class="card__header">
-                                <div class="card__title">
-                                    <h3><span>👤</span> <?= htmlspecialchars($group['contact_info']['name']) ?></h3>
-                                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                        <div class="contact-card" data-contact="<?= htmlspecialchars($contact) ?>">
+                            <div class="contact-header">
+                                <div class="contact-info">
+                                    <div class="contact-name">
+                                        <i class="bi bi-person-circle"></i>
+                                        <h3><?= htmlspecialchars($group['contact_info']['name']) ?></h3>
+                                        <?php if ($group['stats']['urgent'] > 0): ?>
+                                            <span class="urgent-badge"><i class="bi bi-exclamation-triangle-fill"></i> <?= $group['stats']['urgent'] ?> Urgent</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="contact-details">
                                         <?php if (!empty($group['contact_info']['phone'])): ?>
-                                            <a href="tel:<?= $group['contact_info']['phone'] ?>" style="color: var(--success); text-decoration: none; margin-right: 1rem;">
-                                                📞 <?= htmlspecialchars($group['contact_info']['phone']) ?>
-                                            </a>
+                                            <div class="contact-phone">
+                                                <i class="bi bi-telephone-fill"></i>
+                                                <a href="tel:<?= $group['contact_info']['phone'] ?>"><?= htmlspecialchars($group['contact_info']['phone']) ?></a>
+                                            </div>
                                         <?php endif; ?>
                                         <?php if (!empty($group['contact_info']['company'])): ?>
-                                            <span>🏢 <?= htmlspecialchars($group['contact_info']['company']) ?></span>
+                                            <div class="contact-company">
+                                                <i class="bi bi-building"></i>
+                                                <span><?= htmlspecialchars($group['contact_info']['company']) ?></span>
+                                            </div>
                                         <?php endif; ?>
                                     </div>
                                 </div>
-                                <div class="card__actions">
+                                <div class="contact-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-value"><?= $group['stats']['total'] ?></span>
+                                        <span class="stat-label">Total</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-value"><?= $group['stats']['pending'] ?></span>
+                                        <span class="stat-label">Pending</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-value"><?= $group['stats']['completed'] ?></span>
+                                        <span class="stat-label">Done</span>
+                                    </div>
+                                </div>
+                                <div class="contact-actions">
                                     <?php if (!empty($group['contact_info']['phone'])): ?>
-                                        <a href="tel:<?= $group['contact_info']['phone'] ?>" class="btn btn--success">
-                                            📞 Call Now
-                                        </a>
+                                        <button onclick="initiateCall('<?= htmlspecialchars($group['contact_info']['phone']) ?>', '<?= htmlspecialchars($contact) ?>')" class="btn btn--success">
+                                            <i class="bi bi-telephone-fill"></i> Call Now
+                                        </button>
                                     <?php endif; ?>
-                                    <button onclick="markAllComplete('<?= htmlspecialchars($contact) ?>')" class="btn btn--primary btn--sm">
-                                        ✅ Mark All Done
-                                    </button>
+                                    <?php if ($group['stats']['pending'] > 0): ?>
+                                        <button onclick="markAllComplete('<?= htmlspecialchars($contact) ?>')" class="btn btn--primary">
+                                            <i class="bi bi-check-all"></i> Complete All
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
-                            <div class="card__body">
-                                <h4 style="margin: 0 0 1rem 0; font-size: 1rem;">Follow-up Items (<?= count($group['tasks']) ?>)</h4>
+                            <div class="contact-tasks">
+                                <div class="tasks-header">
+                                    <h4>Follow-up Items (<?= count($group['tasks']) ?>)</h4>
+                                    <div class="task-summary">
+                                        <?php if ($group['stats']['urgent'] > 0): ?>
+                                            <span class="summary-urgent"><?= $group['stats']['urgent'] ?> overdue</span>
+                                        <?php endif; ?>
+                                        <?php if ($group['stats']['pending'] > 0): ?>
+                                            <span class="summary-pending"><?= $group['stats']['pending'] ?> pending</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                                 
                                 <div class="table-responsive">
                                     <table class="table">
@@ -425,21 +500,53 @@ function postponeTask(taskId) {
     }
 }
 
+function initiateCall(phone, contactName) {
+    // Track call initiation
+    const callTime = new Date().toISOString();
+    localStorage.setItem(`call_${contactName}`, callTime);
+    
+    // Open call notes modal after a short delay
+    setTimeout(() => {
+        openCallNotesModal(contactName);
+    }, 2000);
+    
+    // Initiate the call
+    window.location.href = `tel:${phone}`;
+}
+
 function markAllComplete(contactName) {
-    if (confirm(`Mark all follow-up tasks for ${contactName} as completed?`)) {
+    if (confirm(`Mark all pending follow-up tasks for ${contactName} as completed?`)) {
         const contactCard = document.querySelector(`[data-contact="${contactName}"]`);
         if (contactCard) {
-            const taskIds = Array.from(contactCard.querySelectorAll('[data-task-id]')).map(el => el.dataset.taskId);
+            const taskRows = contactCard.querySelectorAll('tr[data-task-id]');
+            const pendingTaskIds = [];
             
-            Promise.all(taskIds.map(taskId => 
+            taskRows.forEach(row => {
+                const statusBadge = row.querySelector('.badge');
+                if (statusBadge && !statusBadge.textContent.toLowerCase().includes('completed')) {
+                    pendingTaskIds.push(row.dataset.taskId);
+                }
+            });
+            
+            if (pendingTaskIds.length === 0) {
+                alert('No pending tasks to complete.');
+                return;
+            }
+            
+            Promise.all(pendingTaskIds.map(taskId => 
                 fetch('/ergon/tasks/update-status', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ task_id: taskId, progress: 100, status: 'completed' })
                 })
             ))
-            .then(() => {
-                openCallNotesModal(contactName);
+            .then(responses => {
+                const allSuccessful = responses.every(r => r.ok);
+                if (allSuccessful) {
+                    openCallNotesModal(contactName);
+                } else {
+                    alert('Some tasks could not be updated. Please try again.');
+                }
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -515,6 +622,179 @@ document.getElementById('callNotesForm').addEventListener('submit', function(e) 
     display: none !important;
 }
 
+/* Contact Cards */
+.contact-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+}
+
+.contact-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.contact-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1.5rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+}
+
+.contact-info {
+    flex: 1;
+}
+
+.contact-name {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.contact-name i {
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+.contact-name h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.urgent-badge {
+    background: var(--danger-light);
+    color: var(--danger);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.contact-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.contact-phone, .contact-company {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.contact-phone i {
+    color: var(--success);
+}
+
+.contact-company i {
+    color: var(--info);
+}
+
+.contact-phone a {
+    color: var(--success);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.contact-phone a:hover {
+    text-decoration: underline;
+}
+
+.contact-stats {
+    display: flex;
+    gap: 1rem;
+    margin: 0 1rem;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-primary);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    min-width: 60px;
+}
+
+.stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.contact-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.contact-tasks {
+    padding: 1.5rem;
+}
+
+.tasks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tasks-header h4 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.task-summary {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.summary-urgent, .summary-pending {
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.summary-urgent {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
+.summary-pending {
+    background: var(--warning-light);
+    color: var(--warning);
+}
+
+/* Assignment Info */
 .assignment-info {
     display: flex;
     flex-direction: column;
@@ -535,6 +815,53 @@ document.getElementById('callNotesForm').addEventListener('submit', function(e) 
 .priority-badge .badge {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .contact-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .contact-stats {
+        margin: 0;
+        justify-content: center;
+    }
+    
+    .contact-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .tasks-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .contact-card {
+        margin-bottom: 1rem;
+    }
+    
+    .contact-header {
+        padding: 1rem;
+    }
+    
+    .contact-tasks {
+        padding: 1rem;
+    }
+    
+    .contact-stats {
+        gap: 0.5rem;
+    }
+    
+    .stat-item {
+        min-width: 50px;
+        padding: 0.5rem;
+    }
 }
 </style>
 

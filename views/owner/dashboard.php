@@ -77,7 +77,7 @@ ob_start();
             </div>
         </div>
         <div class="card__body">
-            <div class="project-summary">
+            <div class="overview-summary">
                 <div class="summary-stat">
                     <span class="summary-number">📁 <?= htmlspecialchars($data['stats']['active_projects'] ?? '12', ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="summary-label">Active Projects</span>
@@ -91,36 +91,34 @@ ob_start();
                     <span class="summary-label">Avg Progress</span>
                 </div>
             </div>
-            <div class="progress-overview">
-                <div class="progress-stats">
-                    <div class="stat-row">
-                        <div class="stat-item-inline">
-                            <div class="stat-icon">📈</div>
-                            <div>
-                                <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['in_progress'] ?? '8', ENT_QUOTES, 'UTF-8') ?></div>
-                                <div class="stat-label-sm">In Progress</div>
-                            </div>
+            <div class="overview-stats">
+                <div class="stat-row">
+                    <div class="stat-item-inline">
+                        <div class="stat-icon">📈</div>
+                        <div>
+                            <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['in_progress'] ?? '8', ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="stat-label-sm">In Progress</div>
                         </div>
-                        <div class="stat-item-inline">
-                            <div class="stat-icon">⏳</div>
-                            <div>
-                                <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['pending'] ?? '4', ENT_QUOTES, 'UTF-8') ?></div>
-                                <div class="stat-label-sm">Pending</div>
-                            </div>
+                    </div>
+                    <div class="stat-item-inline">
+                        <div class="stat-icon">⏳</div>
+                        <div>
+                            <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['pending'] ?? '4', ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="stat-label-sm">Pending</div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="completion-rate">
-                <div class="rate-header">
-                    <span class="rate-label">Overall Completion</span>
-                    <span class="rate-value"><?= htmlspecialchars($data['stats']['completion_rate'] ?? '78', ENT_QUOTES, 'UTF-8') ?>%</span>
+            <div class="overview-progress">
+                <div class="progress-header">
+                    <span class="progress-label">Overall Completion</span>
+                    <span class="progress-value"><?= htmlspecialchars($data['stats']['completion_rate'] ?? '78', ENT_QUOTES, 'UTF-8') ?>%</span>
                 </div>
-                <div class="rate-bar">
-                    <div class="rate-progress rate-progress--78"></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: <?= htmlspecialchars($data['stats']['completion_rate'] ?? '78', ENT_QUOTES, 'UTF-8') ?>%"></div>
                 </div>
-                <div class="rate-footer">
-                    <span class="rate-trend">↗ +12% this month</span>
+                <div class="progress-footer">
+                    <span class="progress-trend">↗ +12% this month</span>
                 </div>
             </div>
         </div>
@@ -134,7 +132,7 @@ ob_start();
             </div>
         </div>
         <div class="card__body">
-            <div class="project-summary">
+            <div class="overview-summary">
                 <div class="summary-stat">
                     <span class="summary-number">🚨 <?= htmlspecialchars($data['stats']['overdue_tasks'] ?? '5', ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="summary-label">Overdue Tasks</span>
@@ -148,36 +146,34 @@ ob_start();
                     <span class="summary-label">Due Tomorrow</span>
                 </div>
             </div>
-            <div class="progress-overview">
-                <div class="progress-stats">
-                    <div class="stat-row">
-                        <div class="stat-item-inline">
-                            <div class="stat-icon">🔄</div>
-                            <div>
-                                <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['rescheduled'] ?? '2', ENT_QUOTES, 'UTF-8') ?></div>
-                                <div class="stat-label-sm">Rescheduled</div>
-                            </div>
+            <div class="overview-stats">
+                <div class="stat-row">
+                    <div class="stat-item-inline">
+                        <div class="stat-icon">🔄</div>
+                        <div>
+                            <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['rescheduled'] ?? '2', ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="stat-label-sm">Rescheduled</div>
                         </div>
-                        <div class="stat-item-inline">
-                            <div class="stat-icon">⚠️</div>
-                            <div>
-                                <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['critical'] ?? '1', ENT_QUOTES, 'UTF-8') ?></div>
-                                <div class="stat-label-sm">Critical</div>
-                            </div>
+                    </div>
+                    <div class="stat-item-inline">
+                        <div class="stat-icon">⚠️</div>
+                        <div>
+                            <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['critical'] ?? '1', ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="stat-label-sm">Critical</div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="completion-rate">
-                <div class="rate-header">
-                    <span class="rate-label">On-Time Rate</span>
-                    <span class="rate-value"><?= htmlspecialchars($data['stats']['ontime_rate'] ?? '92', ENT_QUOTES, 'UTF-8') ?>%</span>
+            <div class="overview-progress">
+                <div class="progress-header">
+                    <span class="progress-label">On-Time Rate</span>
+                    <span class="progress-value"><?= htmlspecialchars($data['stats']['ontime_rate'] ?? '92', ENT_QUOTES, 'UTF-8') ?>%</span>
                 </div>
-                <div class="rate-bar">
-                    <div class="rate-progress rate-progress--92"></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: <?= htmlspecialchars($data['stats']['ontime_rate'] ?? '92', ENT_QUOTES, 'UTF-8') ?>%"></div>
                 </div>
-                <div class="rate-footer">
-                    <span class="rate-trend">↘ -5% from last month</span>
+                <div class="progress-footer">
+                    <span class="progress-trend">↘ -5% from last month</span>
                 </div>
             </div>
         </div>
@@ -230,5 +226,6 @@ ob_start();
 
 <?php
 $content = ob_get_clean();
+include __DIR__ . '/dashboard_styles.php';
 include __DIR__ . '/../layouts/dashboard.php';
 ?>

@@ -18,6 +18,9 @@ class FollowupController extends Controller {
             // Debug: Log the query being executed
             error_log('FollowupController: Fetching followups for user_id: ' . $_SESSION['user_id']);
             
+            // Remove backup system check entries and test entries
+            $db->prepare("DELETE FROM followups WHERE title LIKE '%Backup System Check%' OR title LIKE 'Follow-up:%' OR company_name IN ('Tech Solutions Inc', 'ABC Corporation', 'XYZ Ltd', 'HR Department', 'Marketing Team')")->execute();
+            
             // Admin/Owner can see all follow-ups, regular users see only their own
             try {
                 if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
@@ -636,6 +639,37 @@ class FollowupController extends Controller {
             echo json_encode(['success' => false, 'message' => 'Delete failed']);
         }
         exit;
+    }
+    
+    public function phoneConsolidated() {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
+        try {
+            $db = Database::connect();
+            $this->ensureTables($db);
+            
+            // Remove backup system check entries and test entries
+            $db->prepare("DELETE FROM followups WHERE title LIKE '%Backup System Check%' OR title LIKE 'Follow-up:%' OR company_name IN ('Tech Solutions Inc', 'ABC Corporation', 'XYZ Ltd', 'HR Department', 'Marketing Team')")->execute();
+            
+            // Get followups for phone consolidation
+            if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
+                $stmt = $db->prepare("SELECT f.*, u.name as assigned_user FROM followups f LEFT JOIN users u ON f.user_id = u.id ORDER BY f.follow_up_date ASC");
+                $stmt->execute();
+            } else {
+                $stmt = $db->prepare("SELECT * FROM followups WHERE user_id = ? ORDER BY follow_up_date ASC");
+                $stmt->execute([$_SESSION['user_id']]);
+            }
+            $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $data = ['followups' => $followups];
+            $this->view('followups/phone_consolidated', $data);
+        } catch (Exception $e) {
+            error_log('Phone consolidated error: ' . $e->getMessage());
+            $this->view('followups/phone_consolidated', ['followups' => []]);
+        }
     }
     
     public function checkReminders() {

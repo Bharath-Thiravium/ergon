@@ -204,79 +204,11 @@ class UnifiedWorkflowController extends Controller {
         }
     }
     
+    // Calendar functionality moved to TasksController::getTaskSchedule()
+    // This method redirects to the new task visualization layer
     public function calendar() {
-        AuthMiddleware::requireAuth();
-        
-        $month = $_GET['month'] ?? date('m');
-        $year = $_GET['year'] ?? date('Y');
-        
-        try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            
-            // Get all tasks for the user with fallback
-            try {
-                $stmt = $db->prepare("SELECT * FROM tasks WHERE assigned_to = ? ORDER BY created_at DESC");
-                $stmt->execute([$_SESSION['user_id']]);
-                $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (Exception $e) {
-                error_log('Calendar tasks query failed, using fallback: ' . $e->getMessage());
-                $stmt = $db->prepare("SELECT id, title, description, priority, status, progress, deadline, planned_date, created_at FROM tasks WHERE assigned_to = ?");
-                $stmt->execute([$_SESSION['user_id']]);
-                $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            }
-            
-            // Transform tasks for calendar format - distribute all tasks across current month
-            $calendarTasks = [];
-            $dayCounter = 1;
-            foreach ($tasks as $task) {
-                // If task has specific date, use it; otherwise distribute across month
-                if (!empty($task['planned_date'])) {
-                    $taskDate = $task['planned_date'];
-                } elseif (!empty($task['deadline'])) {
-                    $taskDate = $task['deadline'];
-                } else {
-                    // Distribute tasks across the current month
-                    $taskDate = sprintf('%04d-%02d-%02d', $year, $month, min($dayCounter, 28));
-                    $dayCounter = ($dayCounter % 28) + 1;
-                }
-                
-                $calendarTasks[] = [
-                    'id' => $task['id'] ?? 0,
-                    'title' => $task['title'] ?? 'Untitled Task',
-                    'description' => $task['description'] ?? '',
-                    'priority' => $task['priority'] ?? 'medium',
-                    'status' => $task['status'] ?? 'assigned',
-                    'progress' => $task['progress'] ?? 0,
-                    'task_type' => $task['task_type'] ?? 'general',
-                    'task_category' => $task['task_category'] ?? 'general',
-                    'company_name' => $task['company_name'] ?? '',
-                    'project_name' => $task['project_name'] ?? '',
-                    'deadline' => $task['deadline'] ?? null,
-                    'planned_date' => $task['planned_date'] ?? null,
-                    'assigned_at' => $task['assigned_at'] ?? null,
-                    'created_at' => $task['created_at'] ?? date('Y-m-d H:i:s'),
-                    'date' => $taskDate,
-                    'due_date' => $task['deadline'] ?? $task['planned_date'] ?? null,
-                    'type' => 'task'
-                ];
-            }
-            
-            $this->view('tasks/unified_calendar', [
-                'calendar_tasks' => $calendarTasks,
-                'current_month' => intval($month),
-                'current_year' => intval($year),
-                'active_page' => 'calendar'
-            ]);
-        } catch (Exception $e) {
-            error_log('Calendar error: ' . $e->getMessage());
-            $this->view('tasks/unified_calendar', [
-                'calendar_tasks' => [], 
-                'current_month' => intval($month), 
-                'current_year' => intval($year), 
-                'active_page' => 'calendar'
-            ]);
-        }
+        header('Location: /ergon/tasks/schedule');
+        exit;
     }
     
     private function createPlannerEntry($db, $taskId, $taskData) {
