@@ -828,28 +828,7 @@ INSERT INTO `task_categories` (`id`, `department_name`, `category_name`, `descri
 
 -- --------------------------------------------------------
 
---
--- Stand-in structure for view `unified_dashboard_view`
--- (See below for the actual view)
---
-CREATE TABLE `unified_dashboard_view` (
-`assigned_user` varchar(100)
-,`category` varchar(100)
-,`created_at` timestamp
-,`department_id` int
-,`department_name` varchar(100)
-,`description` mediumtext
-,`due_date` datetime
-,`entry_type` varchar(8)
-,`id` int
-,`priority` varchar(6)
-,`progress` bigint
-,`sla_hours` bigint
-,`status` varchar(11)
-,`title` varchar(255)
-,`updated_at` timestamp
-,`user_id` int
-);
+
 
 -- --------------------------------------------------------
 
