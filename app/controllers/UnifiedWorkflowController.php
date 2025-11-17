@@ -142,36 +142,21 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Get actual followups from followups table with fallback
+            // Get actual followups from followups table with fallback - always filter by current user
             try {
-                if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                    $stmt = $db->prepare("
-                        SELECT f.*, u.name as assigned_user 
-                        FROM followups f 
-                        LEFT JOIN users u ON f.user_id = u.id 
-                        ORDER BY f.follow_up_date ASC
-                    ");
-                    $stmt->execute();
-                } else {
-                    $stmt = $db->prepare("
-                        SELECT f.*, u.name as assigned_user 
-                        FROM followups f 
-                        LEFT JOIN users u ON f.user_id = u.id 
-                        WHERE f.user_id = ? 
-                        ORDER BY f.follow_up_date ASC
-                    ");
-                    $stmt->execute([$_SESSION['user_id']]);
-                }
+                $stmt = $db->prepare("
+                    SELECT f.*, u.name as assigned_user 
+                    FROM followups f 
+                    LEFT JOIN users u ON f.user_id = u.id 
+                    WHERE f.user_id = ? 
+                    ORDER BY f.follow_up_date ASC
+                ");
+                $stmt->execute([$_SESSION['user_id']]);
                 $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } catch (Exception $e) {
                 error_log('Followups complex query failed, using fallback: ' . $e->getMessage());
-                if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                    $stmt = $db->prepare("SELECT * FROM followups ORDER BY follow_up_date ASC");
-                    $stmt->execute();
-                } else {
-                    $stmt = $db->prepare("SELECT * FROM followups WHERE user_id = ? ORDER BY follow_up_date ASC");
-                    $stmt->execute([$_SESSION['user_id']]);
-                }
+                $stmt = $db->prepare("SELECT * FROM followups WHERE user_id = ? ORDER BY follow_up_date ASC");
+                $stmt->execute([$_SESSION['user_id']]);
                 $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             

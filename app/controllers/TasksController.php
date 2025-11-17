@@ -343,15 +343,15 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id ORDER BY t.created_at DESC");
-            $stmt->execute();
+            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.assigned_to = ? ORDER BY t.created_at DESC");
+            $stmt->execute([$_SESSION['user_id']]);
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Get followups data including postponed/rescheduled
             $followups = [];
             try {
-                $stmt = $db->prepare("SELECT f.*, u.name as assigned_user FROM followups f LEFT JOIN users u ON f.user_id = u.id WHERE f.status IN ('pending', 'in_progress', 'postponed', 'rescheduled') ORDER BY f.follow_up_date ASC");
-                $stmt->execute();
+                $stmt = $db->prepare("SELECT f.*, u.name as assigned_user FROM followups f LEFT JOIN users u ON f.user_id = u.id WHERE f.user_id = ? AND f.status IN ('pending', 'in_progress', 'postponed', 'rescheduled') ORDER BY f.follow_up_date ASC");
+                $stmt->execute([$_SESSION['user_id']]);
                 $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } catch (Exception $e) {
                 error_log("Followups fetch error: " . $e->getMessage());
@@ -378,8 +378,8 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.deadline IS NOT NULL OR t.due_date IS NOT NULL ORDER BY COALESCE(t.deadline, t.due_date) ASC");
-            $stmt->execute();
+            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.assigned_to = ? AND (t.deadline IS NOT NULL OR t.due_date IS NOT NULL) ORDER BY COALESCE(t.deadline, t.due_date) ASC");
+            $stmt->execute([$_SESSION['user_id']]);
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             if (empty($tasks)) {
