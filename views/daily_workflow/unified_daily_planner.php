@@ -4,6 +4,7 @@ $content = ob_start();
 ?>
 <link rel="stylesheet" href="/ergon/assets/css/daily-planner.css">
 <link rel="stylesheet" href="/ergon/assets/css/daily-planner-modern.css">
+<link rel="stylesheet" href="/ergon/assets/css/planner-access-control.css">
 
 <?php renderModalCSS(); ?>
 
@@ -1174,6 +1175,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <?php renderModalJS(); ?>
 <script src="/ergon/assets/js/task-progress-clean.js"></script>
+<script src="/ergon/assets/js/planner-access-control.js"></script>
 
 <?php
 $content = ob_get_clean();

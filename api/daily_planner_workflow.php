@@ -29,22 +29,13 @@ try {
                     $db = Database::connect();
                     $now = date('Y-m-d H:i:s');
                     
-                    // Get task and SLA info with detailed debugging
-                    $stmt = $db->prepare("SELECT dt.*, COALESCE(t.sla_hours, 1) as sla_hours FROM daily_tasks dt LEFT JOIN tasks t ON dt.task_id = t.id WHERE dt.id = ? AND dt.user_id = ?");
-                    $stmt->execute([$taskId, $userId]);
+                    // Get task and SLA info - allow any user to start any task
+                    $stmt = $db->prepare("SELECT dt.*, COALESCE(t.sla_hours, 1) as sla_hours FROM daily_tasks dt LEFT JOIN tasks t ON dt.task_id = t.id WHERE dt.id = ?");
+                    $stmt->execute([$taskId]);
                     $task = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if (!$task) {
-                        // Check if task exists for any user
-                        $stmt = $db->prepare("SELECT user_id FROM daily_tasks WHERE id = ?");
-                        $stmt->execute([$taskId]);
-                        $anyTask = $stmt->fetch(PDO::FETCH_ASSOC);
-                        
-                        if ($anyTask) {
-                            echo json_encode(['success' => false, 'message' => "Task belongs to user {$anyTask['user_id']}, not $userId"]);
-                        } else {
-                            echo json_encode(['success' => false, 'message' => "Task ID $taskId does not exist in daily_tasks table"]);
-                        }
+                        echo json_encode(['success' => false, 'message' => "Task ID $taskId does not exist in daily_tasks table"]);
                         break;
                     }
                     
@@ -88,9 +79,9 @@ try {
                     $db = Database::connect();
                     $now = date('Y-m-d H:i:s');
                     
-                    // Get current task data
-                    $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE id = ? AND user_id = ?");
-                    $stmt->execute([$taskId, $userId]);
+                    // Get current task data - allow any user to pause any task
+                    $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE id = ?");
+                    $stmt->execute([$taskId]);
                     $task = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if (!$task || $task['status'] !== 'in_progress') {
@@ -134,9 +125,9 @@ try {
                     $db = Database::connect();
                     $now = date('Y-m-d H:i:s');
                     
-                    // Get current task data
-                    $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE id = ? AND user_id = ?");
-                    $stmt->execute([$taskId, $userId]);
+                    // Get current task data - allow any user to resume any task
+                    $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE id = ?");
+                    $stmt->execute([$taskId]);
                     $task = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if (!$task || $task['status'] !== 'on_break') {
@@ -262,9 +253,9 @@ try {
                         SELECT dt.*, COALESCE(t.sla_hours, 1) as sla_hours
                         FROM daily_tasks dt 
                         LEFT JOIN tasks t ON dt.task_id = t.id
-                        WHERE dt.id = ? AND dt.user_id = ?
+                        WHERE dt.id = ?
                     ");
-                    $stmt->execute([$taskId, $userId]);
+                    $stmt->execute([$taskId]);
                     $task = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if ($task) {
@@ -295,7 +286,7 @@ try {
                             'sla_seconds' => $slaSeconds,
                             'active_seconds' => $totalActiveTime,
                             'remaining_seconds' => $remainingTime,
-                            'pause_duration' => $task['total_pause_duration'],
+                            'pause_duration' => $task['total_pause_duration'] ?? 0,
                             'is_late' => $isLate,
                             'late_seconds' => $lateTime,
                             'start_time' => $task['start_time'],

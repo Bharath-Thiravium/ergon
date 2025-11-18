@@ -240,29 +240,52 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Ensure table exists
+            // Ensure table exists with all required columns
             $this->ensureDailyTasksTable($db);
             
-            $status = $this->validateStatus('in_progress');
+            $now = date('Y-m-d H:i:s');
             
-            // Try with all columns first, fallback to basic update
-            try {
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, start_time = NOW(), resume_time = NULL WHERE id = ? AND user_id = ?");
-                $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
-            } catch (Exception $e) {
-                // Fallback for missing columns
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ? WHERE id = ? AND user_id = ?");
-                $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
+            // Get task and SLA info
+            $stmt = $db->prepare("SELECT dt.*, COALESCE(t.sla_hours, 1) as sla_hours FROM daily_tasks dt LEFT JOIN tasks t ON dt.task_id = t.id WHERE dt.id = ?");
+            $stmt->execute([$taskId]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$task) {
+                echo json_encode(['success' => false, 'message' => 'Task not found']);
+                return;
             }
             
+            if ($task['status'] !== 'not_started') {
+                echo json_encode(['success' => false, 'message' => 'Task already started']);
+                return;
+            }
+            
+            // Calculate SLA end time
+            $slaEndTime = date('Y-m-d H:i:s', strtotime($now . ' +' . $task['sla_hours'] . ' hours'));
+            
+            // Start the task with full SLA support
+            $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', start_time = ?, sla_end_time = ?, resume_time = NULL WHERE id = ?");
+            $result = $stmt->execute([$now, $slaEndTime, $taskId]);
+            
             if ($result && $stmt->rowCount() > 0) {
+                // Log SLA history
+                try {
+                    $stmt = $db->prepare("INSERT INTO sla_history (daily_task_id, action, timestamp, notes) VALUES (?, 'start', ?, 'Task started')");
+                    $stmt->execute([$taskId, $now]);
+                } catch (Exception $e) {
+                    error_log('SLA history log error: ' . $e->getMessage());
+                }
+                
                 echo json_encode([
-                    'success' => true, 
+                    'success' => true,
                     'message' => 'Task started successfully',
-                    'start_time' => date('Y-m-d H:i:s')
+                    'task_id' => $taskId,
+                    'status' => 'in_progress',
+                    'start_time' => $now,
+                    'sla_end_time' => $slaEndTime
                 ]);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Task not found or already started']);
+                echo json_encode(['success' => false, 'message' => 'Failed to start task']);
             }
         } catch (Exception $e) {
             error_log('Start task error: ' . $e->getMessage());
@@ -292,12 +315,12 @@ class UnifiedWorkflowController extends Controller {
             $status = $this->validateStatus('on_break');
             
             try {
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, pause_time = NOW() WHERE id = ? AND user_id = ?");
-                $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
+                $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, pause_time = NOW() WHERE id = ?");
+                $result = $stmt->execute([$status, $taskId]);
             } catch (Exception $e) {
                 // Fallback for missing columns
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ? WHERE id = ? AND user_id = ?");
-                $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
+                $stmt = $db->prepare("UPDATE daily_tasks SET status = ? WHERE id = ?");
+                $result = $stmt->execute([$status, $taskId]);
             }
             
             if ($result && $stmt->rowCount() > 0) {
@@ -331,12 +354,12 @@ class UnifiedWorkflowController extends Controller {
             $status = $this->validateStatus('in_progress');
             
             try {
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, resume_time = NOW() WHERE id = ? AND user_id = ?");
-                $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
+                $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, resume_time = NOW() WHERE id = ?");
+                $result = $stmt->execute([$status, $taskId]);
             } catch (Exception $e) {
                 // Fallback for missing columns
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ? WHERE id = ? AND user_id = ?");
-                $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
+                $stmt = $db->prepare("UPDATE daily_tasks SET status = ? WHERE id = ?");
+                $result = $stmt->execute([$status, $taskId]);
             }
             
             if ($result && $stmt->rowCount() > 0) {
@@ -621,7 +644,7 @@ class UnifiedWorkflowController extends Controller {
     
     private function ensureDailyTasksTable($db) {
         try {
-            // Create table with VARCHAR for better compatibility
+            // Create table with all required columns for SLA functionality
             $createSQL = "CREATE TABLE IF NOT EXISTS daily_tasks (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
@@ -637,7 +660,9 @@ class UnifiedWorkflowController extends Controller {
                 pause_time TIMESTAMP NULL,
                 resume_time TIMESTAMP NULL,
                 completion_time TIMESTAMP NULL,
+                sla_end_time TIMESTAMP NULL,
                 active_seconds INT DEFAULT 0,
+                total_pause_duration INT DEFAULT 0,
                 completed_percentage INT DEFAULT 0,
                 postponed_from_date DATE NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -645,6 +670,9 @@ class UnifiedWorkflowController extends Controller {
             )";
             
             $db->exec($createSQL);
+            
+            // Add missing columns if table already exists
+            $this->addMissingColumns($db);
             
             // Check if status column needs to be modified
             try {
@@ -662,6 +690,9 @@ class UnifiedWorkflowController extends Controller {
             
             // Normalize existing status values
             $this->normalizeStatusValues($db);
+            
+            // Ensure SLA history table exists
+            $this->ensureSLAHistoryTable($db);
             
             // Add indexes separately
             try {
@@ -840,6 +871,50 @@ class UnifiedWorkflowController extends Controller {
             'total_active_seconds' => 0,
             'avg_completion' => 0
         ];
+    }
+    
+    private function addMissingColumns($db) {
+        try {
+            // Check and add missing columns
+            $columnsToAdd = [
+                'sla_end_time' => 'TIMESTAMP NULL',
+                'total_pause_duration' => 'INT DEFAULT 0'
+            ];
+            
+            foreach ($columnsToAdd as $column => $definition) {
+                try {
+                    $stmt = $db->prepare("SHOW COLUMNS FROM daily_tasks LIKE ?");
+                    $stmt->execute([$column]);
+                    if (!$stmt->fetch()) {
+                        $db->exec("ALTER TABLE daily_tasks ADD COLUMN {$column} {$definition}");
+                        error_log("Added missing column: {$column}");
+                    }
+                } catch (Exception $e) {
+                    error_log("Error adding column {$column}: " . $e->getMessage());
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Add missing columns error: ' . $e->getMessage());
+        }
+    }
+    
+    private function ensureSLAHistoryTable($db) {
+        try {
+            $db->exec("
+                CREATE TABLE IF NOT EXISTS sla_history (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    daily_task_id INT NOT NULL,
+                    action VARCHAR(50) NOT NULL,
+                    timestamp TIMESTAMP NOT NULL,
+                    duration_seconds INT DEFAULT 0,
+                    notes TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_daily_task_id (daily_task_id)
+                )
+            ");
+        } catch (Exception $e) {
+            error_log('SLA history table creation error: ' . $e->getMessage());
+        }
     }
     
     private function getNextWorkingDay() {
