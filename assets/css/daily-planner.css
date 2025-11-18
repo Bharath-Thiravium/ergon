@@ -34,7 +34,7 @@
 
 .task-card--break {
     background: var(--bg-primary);
-    border-left: 3px solid var(--warning);
+    border-left: 4px solid var(--warning);
 }
 
 .task-card--completed {

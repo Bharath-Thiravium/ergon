@@ -348,14 +348,14 @@ $postponeTaskContent = '
 <form id="postponeTaskForm">
     <input type="hidden" id="postponeTaskId" name="task_id">
     <div class="form-group">
-        <label for="newDate">Reschedule to Date</label>
+        <label for="newDate" class="form-label">Reschedule to Date</label>
         <input type="date" id="newDate" name="new_date" class="form-control" required min="' . date('Y-m-d', strtotime('+1 day')) . '">
     </div>
 </form>';
 
 $postponeTaskFooter = createFormModalFooter('Cancel', 'Postpone Task', 'postponeTaskModal', 'warning');
 
-renderModal('postponeTaskModal', 'Postpone Task', $postponeTaskContent, $postponeTaskFooter, ['icon' => '📅']);
+renderModal('postponeTaskModal', 'Postpone Task', $postponeTaskContent, $postponeTaskFooter, ['icon' => '📅', 'zIndex' => 100000]);
 ?>
 
 <div id="progressDialog" class="dialog" style="display: none;">
@@ -472,7 +472,7 @@ renderModal('postponeTaskModal', 'Postpone Task', $postponeTaskContent, $postpon
     left: 0;
     top: 0;
     bottom: 0;
-    width: 4px;
+    width: 2px;
     background: #e67e22;
     border-radius: 2px 0 0 2px;
 }
@@ -483,7 +483,7 @@ renderModal('postponeTaskModal', 'Postpone Task', $postponeTaskContent, $postpon
     left: 0;
     top: 0;
     bottom: 0;
-    width: 4px;
+    width: 2px;
     background: #3498db;
     border-radius: 2px 0 0 2px;
 }
@@ -548,7 +548,7 @@ renderModal('postponeTaskModal', 'Postpone Task', $postponeTaskContent, $postpon
     justify-content: center;
     padding: 0.5rem;
     background: rgba(59, 130, 246, 0.05);
-    border-radius: 6px;
+    border-radius: 10px;
     border: 1px solid rgba(59, 130, 246, 0.1);
 }
 
@@ -1057,66 +1057,8 @@ function completeTask(taskId) {
 }
 
 function postponeTask(taskId) {
-    // Create modal if it doesn't exist
-    let modal = document.getElementById('postponeTaskModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'postponeTaskModal';
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>📅 Postpone Task</h3>
-                    <button class="modal-close" onclick="closeModal('postponeTaskModal')">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <form id="postponeTaskForm">
-                        <input type="hidden" id="postponeTaskId" name="task_id">
-                        <div class="form-group">
-                            <label for="newDate">Reschedule to Date</label>
-                            <input type="date" id="newDate" name="new_date" class="form-control" required min="${new Date(Date.now() + 86400000).toISOString().split('T')[0]}">
-                        </div>
-                        <div class="modal-actions">
-                            <button type="button" onclick="closeModal('postponeTaskModal')" class="btn btn--secondary">Cancel</button>
-                            <button type="submit" class="btn btn--warning">📅 Postpone Task</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        
-        // Add form submit handler
-        document.getElementById('postponeTaskForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const taskId = document.getElementById('postponeTaskId').value;
-            const newDate = document.getElementById('newDate').value;
-            
-            fetch('/ergon/api/daily_planner_workflow.php?action=postpone', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ task_id: taskId, new_date: newDate })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    updateTaskUI(taskId, 'postponed');
-                    closeModal('postponeTaskModal');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    alert('Failed to postpone task: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error postponing task');
-            });
-        });
-    }
-    
-    // Set task ID and show modal
     document.getElementById('postponeTaskId').value = taskId;
-    modal.style.display = 'block';
+    showModal('postponeTaskModal');
 }
 
 
@@ -1333,24 +1275,33 @@ document.addEventListener('DOMContentLoaded', function() {
         const taskId = document.getElementById('postponeTaskId').value;
         const newDate = document.getElementById('newDate').value;
         
+        if (!newDate) {
+            alert('Please select a date');
+            return;
+        }
+        
         fetch('/ergon/api/daily_planner_workflow.php?action=postpone', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ task_id: taskId, new_date: newDate })
+            body: JSON.stringify({ 
+                task_id: parseInt(taskId), 
+                new_date: newDate 
+            })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 updateTaskUI(taskId, 'postponed');
-                closePostponeTaskModal();
-                setTimeout(() => location.reload(), 1000);
+                closeModal('postponeTaskModal');
+                showNotification('Task postponed to ' + newDate, 'success');
+                setTimeout(() => location.reload(), 1500);
             } else {
                 alert('Failed to postpone task: ' + data.message);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error postponing task');
+            alert('Error postponing task: ' + error.message);
         });
     });
 });
