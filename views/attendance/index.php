@@ -123,7 +123,7 @@ ob_start();
                                     </div>
                                     <div class="progress-info">
                                         <span class="progress-percentage"><?= $record['check_out'] ? $hrs . 'h ' . $mins . 'm' : '-' ?></span>
-                                        <span class="progress-status"><?= $record['check_out'] ? number_format($totalMins/60, 1) . ' hours' : 'Active' ?></span>
+                                        <span class="progress-status"><?= $record['check_out'] ? sprintf('%.1f', $totalMins/60) . ' hours' : 'Active' ?></span>
                                     </div>
                                 </div>
                             </td>
@@ -306,9 +306,9 @@ document.addEventListener('click', function(e) {
         gap: var(--space-2);
     }
     
-    .page-actions .form-input {
-        margin-right: 0;
-        width: 100%;
+    .page-actions .form-input,
+    .page-actions select {
+        display: none !important;
     }
     
     .priority-badge {

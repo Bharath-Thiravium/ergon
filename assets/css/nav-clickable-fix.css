@@ -1,0 +1,198 @@
+/* 🔧 Navigation Clickable Fix - Critical CSS */
+
+/* Fix z-index hierarchy for navigation */
+.main-header {
+  z-index: 10000 !important;
+  position: fixed !important;
+  pointer-events: auto !important;
+}
+
+.header__top {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 10001 !important;
+}
+
+.header__nav-container {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 10002 !important;
+}
+
+.header__nav {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 10003 !important;
+}
+
+/* Fix navigation dropdown buttons */
+.nav-dropdown {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 10004 !important;
+}
+
+.nav-dropdown-btn {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative !important;
+  z-index: 10005 !important;
+  user-select: none !important;
+}
+
+/* Disable hover events that conflict with click */
+.nav-dropdown {
+  onmouseenter: none !important;
+  onmouseleave: none !important;
+}
+
+.nav-dropdown[onmouseenter],
+.nav-dropdown[onmouseleave] {
+  pointer-events: auto !important;
+}
+
+/* Fix navigation dropdown menus */
+.nav-dropdown-menu {
+  pointer-events: auto !important;
+  z-index: 99999 !important;
+  position: fixed !important;
+  display: none !important;
+}
+
+.nav-dropdown-menu.show {
+  display: block !important;
+  pointer-events: auto !important;
+}
+
+/* Fix navigation dropdown items */
+.nav-dropdown-item {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  display: flex !important;
+  position: relative !important;
+  z-index: 100000 !important;
+  text-decoration: none !important;
+}
+
+.nav-dropdown-item:hover {
+  pointer-events: auto !important;
+}
+
+/* Fix header controls */
+.header__controls {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 10006 !important;
+}
+
+.control-btn,
+.profile-btn {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative !important;
+  z-index: 10007 !important;
+}
+
+/* Fix profile menu */
+.profile-menu {
+  pointer-events: auto !important;
+  z-index: 10008 !important;
+  position: absolute !important;
+}
+
+.profile-menu.show {
+  display: block !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.profile-menu-item {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+}
+
+/* Ensure no overlay blocking clicks */
+.main-content {
+  z-index: 1 !important;
+  position: relative !important;
+}
+
+/* Fix any potential overlay issues */
+.mobile-overlay {
+  pointer-events: auto !important;
+}
+
+.mobile-overlay:not(.active) {
+  pointer-events: none !important;
+}
+
+/* Notification dropdown fixes */
+.notification-dropdown {
+  pointer-events: auto !important;
+  z-index: 10009 !important;
+}
+
+/* Mobile specific fixes */
+@media (max-width: 768px) {
+  .nav-dropdown-menu {
+    position: fixed !important;
+    top: auto !important;
+    left: 16px !important;
+    right: 16px !important;
+    width: auto !important;
+    z-index: 99999 !important;
+    pointer-events: auto !important;
+  }
+  
+  .nav-dropdown-item {
+    min-height: 44px !important;
+    padding: 12px 16px !important;
+    touch-action: manipulation !important;
+  }
+}
+
+/* Debug helper - remove after testing */
+.nav-dropdown-btn:after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+/* Ensure dropdown positioning works */
+.nav-dropdown-menu {
+  min-width: 200px;
+  max-width: 300px;
+  white-space: nowrap;
+}
+
+.nav-dropdown-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Force clickable state */
+.nav-dropdown-btn,
+.nav-dropdown-item,
+.profile-btn,
+.profile-menu-item {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure proper stacking context */
+.header__nav .nav-dropdown:nth-child(1) { z-index: 10010; }
+.header__nav .nav-dropdown:nth-child(2) { z-index: 10011; }
+.header__nav .nav-dropdown:nth-child(3) { z-index: 10012; }
+.header__nav .nav-dropdown:nth-child(4) { z-index: 10013; }
+.header__nav .nav-dropdown:nth-child(5) { z-index: 10014; }

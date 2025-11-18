@@ -173,6 +173,49 @@ body {
     display: none;
   }
   
+  .table-responsive .table-header,
+  .table-responsive .sort-controls,
+  .table-responsive .filter-controls,
+  .table-responsive thead,
+  .table-responsive .table thead,
+  .card__header .card__actions,
+
+  .page-actions input[type="date"],
+  .page-actions select,
+  .page-actions .form-input,
+  .page-actions .form-control,
+  .table th .sort-indicator,
+  .table th .sort-controls,
+  .table th .filter-controls,
+  .table th .table-sort,
+  .table th .table-filter,
+  .table th .btn-group,
+  .table th .dropdown,
+  .table th .btn--sm,
+  .table-header__controls,
+  .table-header__sort,
+  .table-header__filter,
+  .table-filter-dropdown {
+    display: none !important;
+  }
+  
+  .table-header__content {
+    display: block !important;
+  }
+  
+  .table-header__text {
+    display: block !important;
+  }
+  
+  .page-actions {
+    justify-content: center;
+  }
+  
+  .page-actions .btn {
+    width: 100%;
+    max-width: 200px;
+  }
+  
   .mobile-card-list {
     display: block;
     padding: 0;
@@ -241,6 +284,20 @@ body {
   .view-btn[data-view="kanban"],
   .sidebar__link[href*="requests"] {
     display: none;
+  }
+  
+  /* Show view options on mobile but hide kanban */
+  .page-actions .view-options {
+    display: flex !important;
+  }
+  
+  .view-btn[data-view="kanban"] {
+    display: none !important;
+  }
+  
+  .view-btn[data-view="calendar"],
+  .view-btn[data-view="list"] {
+    display: flex !important;
   }
   
   /* Fix page actions alignment */
@@ -389,64 +446,53 @@ body {
   }
 }
 
-/* Mobile Attendance Controls - Floating Design */
+/* Mobile Attendance Controls - Header Integration */
 @media (max-width: 768px) {
-  .header__controls .attendance-controls {
-    display: none;
-  }
-  
   .attendance-controls {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
     display: flex;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(15px);
-    padding: 8px;
-    border-radius: 30px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    margin-right: 8px;
+    position: relative;
   }
   
   .btn--attendance-toggle {
     position: relative;
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
+    height: 44px;
+    padding: 0 12px;
+    border-radius: 22px;
     border: 2px solid transparent;
     cursor: pointer;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    gap: 6px;
     font-weight: 700;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s ease;
     overflow: hidden;
+    min-width: 80px;
   }
   
   .btn--attendance-toggle .btn-text {
-    font-size: 9px;
-    margin-top: 2px;
+    font-size: 11px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
   }
   
   .btn--attendance-toggle .attendance-icon i {
-    font-size: 20px;
+    font-size: 14px;
+    flex-shrink: 0;
   }
   
   .btn--attendance-toggle.state-out {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: white;
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
   }
   
   .btn--attendance-toggle.state-in {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: white;
-    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
   }
   
   .btn--attendance-toggle:active {
@@ -458,13 +504,22 @@ body {
     pointer-events: none;
   }
   
+  .btn--attendance-toggle.loading .attendance-icon {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
   .attendance-pulse {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
+    width: 100%;
+    height: 44px;
+    border-radius: 22px;
     transform: translate(-50%, -50%);
     opacity: 0;
     pointer-events: none;
@@ -481,15 +536,15 @@ body {
   }
   
   @keyframes pulse-mobile-green {
-    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-    70% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
-    100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+    70% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+    100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
   }
   
   @keyframes pulse-mobile-red {
-    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-    70% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
-    100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+    70% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+    100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
   }
 }
 
@@ -890,17 +945,84 @@ img, video, iframe, embed, object {
   flex-shrink: 0;
 }
 
+/* Mobile Dialog Styles */
+.attendance-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.attendance-dialog-overlay.show {
+  opacity: 1;
+}
+
+.attendance-dialog {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin: 20px;
+  max-width: 300px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  transform: scale(0.8);
+  transition: transform 0.3s ease;
+}
+
+.attendance-dialog-overlay.show .attendance-dialog {
+  transform: scale(1);
+}
+
+.dialog-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.attendance-dialog.success .dialog-icon {
+  color: #10b981;
+}
+
+.attendance-dialog.error .dialog-icon {
+  color: #ef4444;
+}
+
+.dialog-message {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.dialog-close {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 80px;
+  transition: background 0.2s ease;
+}
+
+.dialog-close:hover {
+  background: #2563eb;
+}
+
 @media (max-width: 768px) {
   .attendance-notification {
-    top: 10px;
-    left: 10px;
-    right: 10px;
-    transform: translateY(-100px);
-    min-width: auto;
-  }
-  
-  .attendance-notification.show {
-    transform: translateY(0);
+    display: none;
   }
 }
 

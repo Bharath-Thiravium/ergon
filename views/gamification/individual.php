@@ -1,6 +1,14 @@
 <?php
+$title = 'My Performance';
 $content = ob_start();
 ?>
+
+<div class="page-header">
+    <div class="page-title">
+        <h1>🏅 My Performance</h1>
+        <p>Track your achievements and compare with teammates</p>
+    </div>
+</div>
 
 <div class="dashboard-grid">
     <div class="kpi-card">
