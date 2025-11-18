@@ -48,7 +48,8 @@ class DailyPlanner {
                     $stmt = $this->db->prepare("
                         SELECT 
                             t.id, t.title, t.description, t.priority, t.status,
-                            t.progress, t.deadline, t.estimated_duration, t.sla_hours,
+                            t.progress, t.deadline, t.estimated_duration, 
+                            COALESCE(t.sla_hours, 1) as sla_hours,
                             t.task_type, t.company_name, t.project_name, t.contact_person,
                             t.planned_date, t.assigned_at,
                             CASE 
@@ -58,27 +59,35 @@ class DailyPlanner {
                             END as completion_status, 
                             0 as active_seconds,
                             t.progress as completed_percentage, NULL as start_time,
-                            NULL as planned_start_time, t.estimated_duration as planned_duration,
+                            NULL as planned_start_time, 
+                            COALESCE(t.sla_hours * 60, t.estimated_duration, 60) as planned_duration,
                             u.name as assigned_by_user
                         FROM tasks t
                         LEFT JOIN users u ON t.assigned_by = u.id
                         WHERE t.assigned_to = ? 
                         AND (
-                            (t.planned_date IS NOT NULL AND DATE(t.planned_date) = ?)
-                            OR (t.planned_date IS NULL AND DATE(COALESCE(t.assigned_at, t.created_at)) = ?)
-                            OR (t.status = 'in_progress')
-                            OR (t.deadline IS NOT NULL AND DATE(t.deadline) = ?)
+                            DATE(t.created_at) = ? OR
+                            DATE(t.deadline) = ? OR
+                            DATE(t.planned_date) = ? OR
+                            t.status = 'in_progress' OR
+                            (t.assigned_by != t.assigned_to AND DATE(COALESCE(t.assigned_at, t.created_at)) = ?)
                         )
+                        AND t.status != 'completed'
                         ORDER BY 
+                            CASE 
+                                WHEN t.assigned_by != t.assigned_to THEN 1
+                                ELSE 2
+                            END,
                             CASE t.priority 
-                                WHEN 'high' THEN 3 
+                                WHEN 'high' THEN 1 
                                 WHEN 'medium' THEN 2 
-                                WHEN 'low' THEN 1 
-                                ELSE 0 
-                            END DESC, 
+                                WHEN 'low' THEN 3 
+                                ELSE 4 
+                            END, 
                             t.created_at DESC
+                        LIMIT 15
                     ");
-                    $stmt->execute([$userId, $date, $date, $date]);
+                    $stmt->execute([$userId, $date, $date, $date, $date]);
                     return $stmt->fetchAll(PDO::FETCH_ASSOC);
                 } catch (Exception $e) {
                     error_log('Regular tasks complex query failed, using simple fallback: ' . $e->getMessage());
@@ -308,13 +317,15 @@ class DailyPlanner {
                         FROM tasks 
                         WHERE assigned_to = ? 
                         AND (
-                            (planned_date IS NOT NULL AND DATE(planned_date) = ?)
-                            OR (planned_date IS NULL AND DATE(COALESCE(assigned_at, created_at)) = ?)
-                            OR (status = 'in_progress')
-                            OR (deadline IS NOT NULL AND DATE(deadline) = ?)
+                            DATE(created_at) = ? OR
+                            DATE(deadline) = ? OR
+                            DATE(planned_date) = ? OR
+                            status = 'in_progress' OR
+                            (assigned_by != assigned_to AND DATE(COALESCE(assigned_at, created_at)) = ?)
                         )
+                        AND status != 'completed'
                     ");
-                    $stmt->execute([$userId, $date, $date, $date]);
+                    $stmt->execute([$userId, $date, $date, $date, $date]);
                     return $stmt->fetch(PDO::FETCH_ASSOC);
                 } catch (Exception $e) {
                     error_log('Regular tasks stats query failed, using simple fallback: ' . $e->getMessage());

@@ -57,7 +57,7 @@ ob_start();
                     <span class="badge badge--<?= $statusClass ?>"><?= $statusIcon ?> <?= ucfirst(str_replace('_', ' ', $status)) ?></span>
                     <div class="progress-mini">
                         <div class="progress-bar-mini">
-                            <div class="progress-fill-mini" style="width: <?= $progress ?>% !important; background: <?= match(true) { $progress >= 100 => 'linear-gradient(90deg, #10b981, #059669)', $progress >= 75 => 'linear-gradient(90deg, #8b5cf6, #7c3aed)', $progress >= 50 => 'linear-gradient(90deg, #3b82f6, #2563eb)', $progress >= 25 => 'linear-gradient(90deg, #fbbf24, #f59e0b)', default => 'linear-gradient(90deg, #e2e8f0, #cbd5e1)' } ?> !important; transition: none !important; height: 100% !important; border-radius: 2px !important;"></div>
+                            <div class="progress-fill-mini" style="width: <?= $progress ?>% !important; transition: none !important; height: 100% !important;" data-progress="<?= match(true) { $progress == 0 => '0', $progress >= 100 => '100', $progress >= 75 => '75-99', $progress >= 50 => '50-74', $progress >= 25 => '25-49', default => '1-24' } ?>"></div>
                         </div>
                         <span class="progress-text"><?= $progress ?>%</span>
                     </div>
@@ -360,16 +360,63 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .progress-bar-mini {
-    width: 60px;
-    height: 4px;
-    background: darkorange;
-    border-radius: 2px;
+    width: 80px;
+    height: 6px;
+    background: linear-gradient(90deg, #f1f5f9, #e2e8f0);
+    border-radius: 10px;
     overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+[data-theme="dark"] .progress-bar-mini {
+    background: linear-gradient(90deg, #1e293b, #334155);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
 }
 
 .progress-fill-mini {
     height: 100%;
-    border-radius: 2px;
+    border-radius: 10px;
+    position: relative;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Progress colors based on percentage */
+.progress-fill-mini[data-progress="0"] { background: linear-gradient(90deg, #e2e8f0, #cbd5e1) !important; }
+.progress-fill-mini[data-progress="1-24"] { background: linear-gradient(90deg, #fbbf24, #f59e0b) !important; }
+.progress-fill-mini[data-progress="25-49"] { background: linear-gradient(90deg, #fb923c, #ea580c) !important; }
+.progress-fill-mini[data-progress="50-74"] { background: linear-gradient(90deg, #3b82f6, #2563eb) !important; }
+.progress-fill-mini[data-progress="75-99"] { background: linear-gradient(90deg, #8b5cf6, #7c3aed) !important; }
+.progress-fill-mini[data-progress="100"] { background: linear-gradient(90deg, #10b981, #059669) !important; }
+
+/* Dark theme colors */
+[data-theme="dark"] .progress-fill-mini[data-progress="0"] { background: linear-gradient(90deg, #475569, #64748b) !important; }
+[data-theme="dark"] .progress-fill-mini[data-progress="1-24"] { background: linear-gradient(90deg, #fcd34d, #f59e0b) !important; }
+[data-theme="dark"] .progress-fill-mini[data-progress="25-49"] { background: linear-gradient(90deg, #fb7185, #e11d48) !important; }
+[data-theme="dark"] .progress-fill-mini[data-progress="50-74"] { background: linear-gradient(90deg, #60a5fa, #3b82f6) !important; }
+[data-theme="dark"] .progress-fill-mini[data-progress="75-99"] { background: linear-gradient(90deg, #a78bfa, #8b5cf6) !important; }
+[data-theme="dark"] .progress-fill-mini[data-progress="100"] { background: linear-gradient(90deg, #34d399, #10b981) !important; }
+
+.progress-fill-mini::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(255,255,255,0.3) 100%);
+    border-radius: 10px;
+    animation: progressGlow 2s ease-in-out infinite alternate;
+}
+
+[data-theme="dark"] .progress-fill-mini {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+@keyframes progressGlow {
+    0% { opacity: 0.4; }
+    100% { opacity: 0.8; }
 }
 
 .progress-text {
@@ -644,45 +691,133 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .history-timeline {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
+    position: relative;
+    padding-left: 2rem;
 }
 
-.history-item {
-    padding: var(--space-3);
-    border-left: 3px solid var(--primary);
+.history-timeline::before {
+    content: '';
+    position: absolute;
+    left: 1rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--primary-light), var(--border-color));
+}
+
+.history-entry {
+    position: relative;
+    margin-bottom: 1.5rem;
     background: var(--bg-secondary);
-    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    border-radius: 8px;
+    padding: 1rem;
+    border-left: 4px solid var(--primary);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
 }
 
-.history-date {
-    font-size: var(--font-size-xs);
-    color: var(--text-muted);
-    margin-bottom: var(--space-1);
+.history-entry:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.history-icon {
+    position: absolute;
+    left: -2.25rem;
+    top: 1rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    color: white;
+    border: 3px solid var(--bg-primary);
+    z-index: 1;
+}
+
+.history-content {
+    margin-left: 0.5rem;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
 }
 
 .history-action {
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: var(--space-1);
+    font-size: 0.9rem;
+}
+
+.history-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
 }
 
 .history-change {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.change-from {
     color: var(--text-secondary);
-    font-size: var(--font-size-sm);
-    margin-bottom: var(--space-1);
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+.change-arrow {
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.change-to {
+    color: var(--success);
+    font-weight: 500;
 }
 
 .history-notes {
-    color: var(--text-secondary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
     font-style: italic;
-    margin-bottom: var(--space-1);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
 }
 
 .history-user {
-    font-size: var(--font-size-xs);
+    font-size: 0.75rem;
     color: var(--text-muted);
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.no-history {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+}
+
+.no-history p {
+    margin: 0;
+    font-size: 0.9rem;
 }
 </style>
 

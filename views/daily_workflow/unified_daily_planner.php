@@ -3,6 +3,7 @@ include __DIR__ . '/../shared/modal_component.php';
 $content = ob_start();
 ?>
 <link rel="stylesheet" href="/ergon/assets/css/daily-planner.css">
+<link rel="stylesheet" href="/ergon/assets/css/daily-planner-modern.css">
 
 <?php renderModalCSS(); ?>
 
@@ -31,10 +32,19 @@ $content = ob_start();
                 <div class="empty-state">
                     <i class="bi bi-calendar-x"></i>
                     <h4>No tasks planned for today</h4>
-                    <p>Start by adding tasks to your daily planner</p>
-                    <a href="/ergon/tasks/create" class="btn btn--primary">
-                        <i class="bi bi-plus"></i> Plan First Task
-                    </a>
+                    <p>No tasks found for today. Tasks can be:</p>
+                    <ul style="text-align: left; display: inline-block; margin: 10px 0;">
+                        <li><strong>Assigned by others</strong> - Tasks given to you</li>
+                        <li><strong>Self-assigned</strong> - Tasks you create for yourself</li>
+                    </ul>
+                    <div style="margin-top: 15px;">
+                        <a href="/ergon/tasks/create" class="btn btn--primary" style="margin-right: 10px;">
+                            <i class="bi bi-plus"></i> Create Task
+                        </a>
+                        <a href="/ergon/debug_daily_planner.php" class="btn btn--secondary">
+                            <i class="bi bi-bug"></i> Debug Info
+                        </a>
+                    </div>
                 </div>
             <?php else: ?>
                 <div class="task-timeline" id="taskTimeline">
@@ -69,25 +79,52 @@ $content = ob_start();
                         elseif ($status === 'on_break') $cssClass = 'task-item--break';
                         elseif ($status === 'completed') $cssClass = 'task-item--completed';
                     ?>
-                        <div class="task-card" 
+                        <?php 
+                        $taskSource = 'unknown';
+                        if (strpos($task['title'], '[From Others]') === 0) {
+                            $taskSource = 'from_others';
+                        } elseif (strpos($task['title'], '[Self]') === 0) {
+                            $taskSource = 'self_assigned';
+                        }
+                        ?>
+                        <div class="task-card <?= $cssClass ?>" 
                              data-task-id="<?= $taskId ?>" 
                              data-original-task-id="<?= $task['task_id'] ?? '' ?>" 
                              data-sla-duration="<?= $slaDuration ?>" 
                              data-start-time="<?= $startTimestamp ?>" 
-                             data-status="<?= $status ?>">
-                            <div class="task-card__sla">
-                                <div class="sla-time"><?= $slaHours ?>h</div>
-                                <div class="sla-label">SLA</div>
-                                <?php if ($status === 'in_progress'): ?>
-                                    <div class="countdown-timer" id="countdown-<?= $taskId ?>">
-                                        <div class="countdown-display"><?= $timeDisplay ?></div>
-                                        <div class="countdown-label">Left</div>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
+                             data-status="<?= $status ?>"
+                             data-task-source="<?= $taskSource ?>">
+                            
                             <div class="task-card__content">
+                                <div class="task-card__sla">
+                                    <div class="sla-time" title="Service Level Agreement: <?= $slaHours ?> hours"><?= $slaHours ?>h</div>
+                                    <div class="sla-label">SLA</div>
+                                    <?php if ($status === 'in_progress'): ?>
+                                        <div class="countdown-timer" id="countdown-<?= $taskId ?>">
+                                            <div class="countdown-display"><?= $timeDisplay ?></div>
+                                            <div class="countdown-label">Left</div>
+                                        </div>
+                                    <?php elseif ($status === 'not_started' || $status === 'assigned'): ?>
+                                        <div class="sla-info">
+                                            <div class="sla-total"><?= sprintf('%02d:%02d:%02d', floor($slaHours), floor(($slaHours * 60) % 60), 0) ?></div>
+                                            <div class="sla-total-label">Total</div>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
                                 <div class="task-card__header">
-                                    <h4 class="task-card__title"><?= htmlspecialchars($task['title']) ?></h4>
+                                    <h4 class="task-card__title">
+                                    <?php 
+                                    $title = htmlspecialchars($task['title']);
+                                    // Add visual indicators for task source
+                                    if (strpos($title, '[From Others]') === 0) {
+                                        echo '<span class="task-source task-source--others">👥</span> ' . substr($title, 13);
+                                    } elseif (strpos($title, '[Self]') === 0) {
+                                        echo '<span class="task-source task-source--self">👤</span> ' . substr($title, 6);
+                                    } else {
+                                        echo $title;
+                                    }
+                                    ?>
+                                </h4>
                                     <div class="task-card__badges">
                                         <span class="badge badge--<?= $task['priority'] ?? 'medium' ?>"><?= ucfirst($task['priority'] ?? 'medium') ?></span>
                                         <span class="badge badge--<?= $status ?>" id="status-<?= $taskId ?>">
@@ -122,14 +159,14 @@ $content = ob_start();
                                         <button class="btn btn--sm btn--warning" onclick="pauseTask(<?= $taskId ?>)">
                                             <i class="bi bi-pause"></i> Break
                                         </button>
-                                        <button class="btn btn--sm btn--primary" onclick="updateProgressTask(<?= $taskId ?>)">
+                                        <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')">
                                             <i class="bi bi-percent"></i> Update Progress
                                         </button>
                                     <?php elseif ($status === 'on_break'): ?>
                                         <button class="btn btn--sm btn--success" onclick="resumeTask(<?= $taskId ?>)">
                                             <i class="bi bi-play"></i> Resume
                                         </button>
-                                        <button class="btn btn--sm btn--primary" onclick="updateProgressTask(<?= $taskId ?>)">
+                                        <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')">
                                             <i class="bi bi-percent"></i> Update Progress
                                         </button>
                                     <?php elseif ($status === 'completed'): ?>
@@ -311,8 +348,280 @@ $postponeTaskFooter = createFormModalFooter('Cancel', 'Postpone Task', 'postpone
 renderModal('postponeTaskModal', 'Postpone Task', $postponeTaskContent, $postponeTaskFooter, ['icon' => '📅']);
 ?>
 
+<div id="progressDialog" class="dialog" style="display: none;">
+    <div class="dialog-content">
+        <h4>Update Progress</h4>
+        <p>Progress: <span id="progressValue">0</span>%</p>
+        <input type="range" id="progressSlider" min="0" max="100" value="0">
+        <div class="dialog-buttons">
+            <button onclick="closeDialog()">Cancel</button>
+            <button onclick="saveProgress()">Save</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.task-source {
+    display: inline-block;
+    font-size: 0.9em;
+    margin-right: 5px;
+}
+
+.task-source--others {
+    color: #e67e22;
+    font-weight: bold;
+}
+
+.task-source--self {
+    color: #3498db;
+    font-weight: bold;
+}
+
+.empty-state ul {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.empty-state ul li {
+    margin: 5px 0;
+}
+
+.dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.dialog-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    min-width: 300px;
+    max-width: 400px;
+}
+
+.dialog-content h4 {
+    margin: 0 0 1rem 0;
+    color: #1f2937;
+}
+
+.dialog-content p {
+    margin: 0 0 1rem 0;
+    font-weight: 500;
+}
+
+#progressSlider {
+    width: 100%;
+    margin: 1rem 0;
+}
+
+.dialog-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+.dialog-buttons button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.dialog-buttons button:first-child {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.dialog-buttons button:last-child {
+    background: #3b82f6;
+    color: white;
+}
+
+.dialog-buttons button:hover {
+    opacity: 0.9;
+}
+
+/* Task card enhancements */
+.task-card {
+    position: relative;
+}
+
+.task-card[data-task-source="from_others"]:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #e67e22;
+    border-radius: 2px 0 0 2px;
+}
+
+.task-card[data-task-source="self_assigned"]:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #3498db;
+    border-radius: 2px 0 0 2px;
+}
+
+/* SLA Display Enhancements */
+.sla-info {
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+.sla-total {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #2563eb;
+    font-family: 'Courier New', monospace;
+}
+
+.sla-total-label {
+    font-size: 0.7rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sla-time {
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.sla-time:hover {
+    transform: scale(1.1);
+    color: #2563eb;
+}
+
+/* Countdown timer enhancements */
+.countdown-display--warning {
+    color: #f59e0b !important;
+    animation: pulse-warning 2s infinite;
+}
+
+.countdown-display--expired {
+    color: #dc2626 !important;
+    animation: pulse-danger 1s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes pulse-danger {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Task card SLA section improvements */
+.task-card__sla {
+    min-width: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background: rgba(59, 130, 246, 0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.task-card--active .task-card__sla {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.2);
+}
+
+.task-card--break .task-card__sla {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.task-card--completed .task-card__sla {
+    background: rgba(107, 114, 128, 0.1);
+    border-color: rgba(107, 114, 128, 0.2);
+    opacity: 0.7;
+}
+
+/* SLA tooltip enhancement */
+.sla-time[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.task-card__sla {
+    position: relative;
+}
+</style>
+
 <script>
 let timers = {};
+var currentTaskId;
+
+function openProgressModal(taskId, progress, status) {
+    currentTaskId = taskId;
+    document.getElementById('progressSlider').value = progress;
+    document.getElementById('progressValue').textContent = progress;
+    document.getElementById('progressDialog').style.display = 'flex';
+}
+
+function closeDialog() {
+    document.getElementById('progressDialog').style.display = 'none';
+}
+
+function saveProgress() {
+    var progress = document.getElementById('progressSlider').value;
+    var status = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'assigned';
+    
+    fetch('/ergon/workflow/update-task-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: currentTaskId, action: 'complete', percentage: parseInt(progress) })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTaskUI(currentTaskId, 'completed', { percentage: data.percentage || progress });
+            updateProgressBar(currentTaskId, progress);
+            closeDialog();
+            if (progress < 100) {
+                alert('Progress updated to ' + progress + '% - Task deferred to next working day');
+            } else {
+                alert('Task completed successfully!');
+                stopTimer(currentTaskId);
+            }
+        } else {
+            alert('Error updating progress: ' + (data.message || 'Failed to update'));
+        }
+    })
+    .catch(() => alert('Network error occurred'));
+}
 
 function changeDate(date) {
     window.location.href = `/ergon/workflow/daily-planner/${date}`;
@@ -546,6 +855,13 @@ function closePostponeTaskModal() {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
+    // Progress slider event listener
+    var slider = document.getElementById('progressSlider');
+    if (slider) {
+        slider.oninput = function() {
+            document.getElementById('progressValue').textContent = this.value;
+        }
+    }
     document.querySelectorAll('.task-item').forEach(item => {
         const taskId = item.dataset.taskId;
         const status = item.dataset.status;

@@ -138,7 +138,9 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, status, progress, sla_hours, department_id, task_category, project_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $followupRequired = !empty($_POST['followup_required']) ? 1 : 0;
+            
+            $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, status, progress, sla_hours, department_id, task_category, project_id, followup_required, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
             $result = $stmt->execute([
                 $taskData['title'], 
                 $taskData['description'], 
@@ -152,11 +154,15 @@ class TasksController extends Controller {
                 $taskData['sla_hours'],
                 $taskData['department_id'],
                 $taskData['task_category'],
-                $taskData['project_id']
+                $taskData['project_id'],
+                $followupRequired
             ]);
             
             if ($result) {
                 $taskId = $db->lastInsertId();
+                
+                // Log task creation history
+                $this->logTaskHistory($db, $taskId, 'created', '', 'Task created', 'Task was created with initial details');
                 
                 // Create notifications for task assignment
                 require_once __DIR__ . '/../helpers/NotificationHelper.php';
@@ -185,12 +191,13 @@ class TasksController extends Controller {
                     );
                 }
                 
-                // Auto-create followup if task category contains "follow-up"
-                if (!empty($taskData['task_category']) && (stripos($taskData['task_category'], 'follow') !== false || stripos($taskData['task_category'], 'Follow') !== false)) {
-                    error_log('Creating auto-followup for task category: ' . $taskData['task_category']);
+                // Create followup if followup_required is checked
+                if (!empty($_POST['followup_required'])) {
+                    error_log('Creating followup for task ID: ' . $taskId . ' (followup_required checked)');
+                    error_log('POST data for followup: ' . json_encode($_POST));
                     $this->createAutoFollowup($db, $taskId, $taskData, $_POST);
                 } else {
-                    error_log('No auto-followup created. Category: ' . ($taskData['task_category'] ?? 'empty'));
+                    error_log('No followup created - followup_required not checked. POST followup_required value: ' . ($_POST['followup_required'] ?? 'not set'));
                 }
                 
                 error_log('Task created with ID: ' . $taskId . ', type: ' . $taskData['task_type'] . ', progress: ' . $taskData['progress'] . '%');
@@ -221,7 +228,10 @@ class TasksController extends Controller {
                 'progress' => intval($_POST['progress'] ?? 0),
                 'sla_hours' => intval($_POST['sla_hours'] ?? 24),
                 'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
-                'task_category' => trim($_POST['task_category'] ?? '')
+                'task_category' => trim($_POST['task_category'] ?? ''),
+                'project_id' => !empty($_POST['project_id']) ? intval($_POST['project_id']) : null,
+                'planned_date' => !empty($_POST['planned_date']) ? $_POST['planned_date'] : null,
+                'followup_required' => !empty($_POST['followup_required']) ? 1 : 0
             ];
             
             if (empty($taskData['title']) || $taskData['assigned_to'] <= 0) {
@@ -240,7 +250,7 @@ class TasksController extends Controller {
                 $db = Database::connect();
                 $this->ensureTasksTable($db);
                 
-                $stmt = $db->prepare("UPDATE tasks SET title=?, description=?, assigned_to=?, task_type=?, priority=?, deadline=?, status=?, progress=?, sla_hours=?, department_id=?, task_category=?, updated_at=NOW() WHERE id=?");
+                $stmt = $db->prepare("UPDATE tasks SET title=?, description=?, assigned_to=?, task_type=?, priority=?, deadline=?, status=?, progress=?, sla_hours=?, department_id=?, task_category=?, project_id=?, planned_date=?, followup_required=?, updated_at=NOW() WHERE id=?");
                 $result = $stmt->execute([
                     $taskData['title'], 
                     $taskData['description'], 
@@ -253,10 +263,21 @@ class TasksController extends Controller {
                     $taskData['sla_hours'],
                     $taskData['department_id'],
                     $taskData['task_category'],
+                    $taskData['project_id'],
+                    $taskData['planned_date'],
+                    $taskData['followup_required'],
                     $id
                 ]);
                 
+                // Update follow-up if followup_required is checked
+                if ($taskData['followup_required']) {
+                    $this->updateTaskFollowup($db, $id, $_POST);
+                }
+                
                 if ($result) {
+                    // Log task update history
+                    $this->logTaskHistory($db, $id, 'updated', 'Task details', 'Task updated', 'Task details were modified');
+                    
                     error_log('Task updated with ID: ' . $id . ', progress: ' . $taskData['progress'] . '%');
                     header('Location: /ergon/tasks?success=Task updated successfully');
                 } else {
@@ -276,10 +297,43 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            // Get task with department name
+            // Get task with department name and follow-up details
             $stmt = $db->prepare("SELECT t.*, d.name as department_name FROM tasks t LEFT JOIN departments d ON t.department_id = d.id WHERE t.id = ?");
             $stmt->execute([$id]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Get follow-up details if task has follow-up enabled
+            if ($task && $task['followup_required']) {
+                try {
+                    $followupStmt = $db->prepare("SELECT * FROM followups WHERE task_id = ? ORDER BY created_at DESC LIMIT 1");
+                    $followupStmt->execute([$id]);
+                    $followup = $followupStmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($followup) {
+                        // Merge follow-up data into task array
+                        $task['followup_type'] = $followup['followup_type'];
+                        $task['followup_title'] = $followup['title'];
+                        $task['followup_description'] = $followup['description'];
+                        $task['follow_up_date'] = $followup['follow_up_date'];
+                        $task['contact_id'] = $followup['contact_id'];
+                        
+                        // Get contact details if contact_id exists
+                        if ($followup['contact_id']) {
+                            $contactStmt = $db->prepare("SELECT * FROM contacts WHERE id = ?");
+                            $contactStmt->execute([$followup['contact_id']]);
+                            $contact = $contactStmt->fetch(PDO::FETCH_ASSOC);
+                            
+                            if ($contact) {
+                                $task['contact_company'] = $contact['company'];
+                                $task['contact_name'] = $contact['name'];
+                                $task['contact_phone'] = $contact['phone'];
+                            }
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log('Follow-up fetch error: ' . $e->getMessage());
+                }
+            }
             
             if (!$task) {
                 header('Location: /ergon/tasks?error=Task not found');
@@ -288,11 +342,13 @@ class TasksController extends Controller {
             
             $users = $this->getActiveUsers();
             $departments = $this->getDepartments();
+            $projects = $this->getProjects();
             
             $data = [
                 'task' => $task,
                 'users' => $users,
                 'departments' => $departments,
+                'projects' => $projects,
                 'active_page' => 'tasks'
             ];
             
@@ -499,6 +555,7 @@ class TasksController extends Controller {
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
+            $this->ensureTaskHistoryTable($db);
             
             // Always use direct database query with proper JOINs
             $stmt = $db->prepare("SELECT t.*, u.name as assigned_user, d.name as department_name, ub.name as assigned_by_name FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id LEFT JOIN departments d ON t.department_id = d.id LEFT JOIN users ub ON t.assigned_by = ub.id WHERE t.id = ?");
@@ -539,10 +596,17 @@ class TasksController extends Controller {
         $input = json_decode(file_get_contents('php://input'), true);
         $taskId = intval($input['task_id'] ?? 0);
         $status = $input['status'] ?? 'assigned';
+        $progress = intval($input['progress'] ?? 0);
         $reason = trim($input['reason'] ?? '');
         
         if (!$taskId) {
             echo json_encode(['success' => false, 'message' => 'Invalid task ID']);
+            exit;
+        }
+        
+        // Validate progress range
+        if ($progress < 0 || $progress > 100) {
+            echo json_encode(['success' => false, 'message' => 'Progress must be between 0 and 100']);
             exit;
         }
         
@@ -551,23 +615,35 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            // Get current task status for history
-            $stmt = $db->prepare("SELECT status FROM tasks WHERE id = ?");
+            // Get current task data for history
+            $stmt = $db->prepare("SELECT status, progress FROM tasks WHERE id = ?");
             $stmt->execute([$taskId]);
-            $oldStatus = $stmt->fetchColumn();
+            $currentData = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            $stmt = $db->prepare("UPDATE tasks SET status = ?, updated_at = NOW() WHERE id = ?");
-            $result = $stmt->execute([$status, $taskId]);
+            if (!$currentData) {
+                echo json_encode(['success' => false, 'message' => 'Task not found']);
+                exit;
+            }
+            
+            $oldStatus = $currentData['status'];
+            $oldProgress = $currentData['progress'];
+            
+            // Update both status and progress
+            $stmt = $db->prepare("UPDATE tasks SET status = ?, progress = ?, updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$status, $progress, $taskId]);
             
             if ($result) {
-                // Log to task history if status changed
+                // Log to task history if status or progress changed
                 if ($oldStatus !== $status) {
                     $this->logTaskHistory($db, $taskId, 'status_changed', $oldStatus, $status, $reason);
                 }
+                if ($oldProgress != $progress) {
+                    $this->logTaskHistory($db, $taskId, 'progress_updated', $oldProgress . '%', $progress . '%', $reason);
+                }
                 
-                echo json_encode(['success' => true, 'message' => 'Task status updated successfully']);
+                echo json_encode(['success' => true, 'message' => 'Task updated successfully']);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Failed to update task status']);
+                echo json_encode(['success' => false, 'message' => 'Failed to update task']);
             }
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'message' => 'Update failed: ' . $e->getMessage()]);
@@ -598,22 +674,93 @@ class TasksController extends Controller {
     }
     
     private function renderTaskHistory($history) {
+        if (empty($history)) {
+            return '<div class="no-history"><p>📝 No history available for this task.</p></div>';
+        }
+        
         $html = '<div class="history-timeline">';
         foreach ($history as $entry) {
-            $html .= '<div class="history-item">';
-            $html .= '<div class="history-date">' . date('M d, Y H:i', strtotime($entry['created_at'])) . '</div>';
-            $html .= '<div class="history-action">' . ucfirst(str_replace('_', ' ', $entry['action'])) . '</div>';
-            if ($entry['old_value'] && $entry['new_value']) {
-                $html .= '<div class="history-change">Changed from "' . htmlspecialchars($entry['old_value']) . '" to "' . htmlspecialchars($entry['new_value']) . '"</div>';
-            }
-            if ($entry['notes']) {
-                $html .= '<div class="history-notes">' . htmlspecialchars($entry['notes']) . '</div>';
-            }
-            $html .= '<div class="history-user">By: ' . htmlspecialchars($entry['user_name'] ?? 'Unknown') . '</div>';
+            $actionIcon = $this->getActionIcon($entry['action']);
+            $actionColor = $this->getActionColor($entry['action']);
+            
+            $html .= '<div class="history-entry" style="border-left-color: ' . $actionColor . ';">';
+            $html .= '<div class="history-icon" style="background-color: ' . $actionColor . ';">' . $actionIcon . '</div>';
+            $html .= '<div class="history-content">';
+            $html .= '<div class="history-header">';
+            $html .= '<span class="history-action">' . $this->formatActionText($entry['action']) . '</span>';
+            $html .= '<span class="history-time">' . $this->formatTimeAgo($entry['created_at']) . '</span>';
             $html .= '</div>';
+            
+            if ($entry['old_value'] && $entry['new_value']) {
+                $html .= '<div class="history-change">';
+                $html .= '<span class="change-from">From: ' . htmlspecialchars($entry['old_value']) . '</span>';
+                $html .= '<span class="change-arrow">→</span>';
+                $html .= '<span class="change-to">To: ' . htmlspecialchars($entry['new_value']) . '</span>';
+                $html .= '</div>';
+            }
+            
+            if ($entry['notes']) {
+                $html .= '<div class="history-notes">💬 ' . htmlspecialchars($entry['notes']) . '</div>';
+            }
+            
+            $html .= '<div class="history-user">👤 ' . htmlspecialchars($entry['user_name'] ?? 'System') . '</div>';
+            $html .= '</div></div>';
         }
         $html .= '</div>';
         return $html;
+    }
+    
+    private function getActionIcon($action) {
+        return match($action) {
+            'created' => '✨',
+            'status_changed' => '🔄',
+            'progress_updated' => '📊',
+            'assigned' => '👤',
+            'completed' => '✅',
+            'cancelled' => '❌',
+            'updated' => '✏️',
+            'commented' => '💬',
+            default => '📝'
+        };
+    }
+    
+    private function getActionColor($action) {
+        return match($action) {
+            'created' => '#10b981',
+            'status_changed' => '#3b82f6',
+            'progress_updated' => '#8b5cf6',
+            'assigned' => '#f59e0b',
+            'completed' => '#059669',
+            'cancelled' => '#ef4444',
+            'updated' => '#6b7280',
+            'commented' => '#06b6d4',
+            default => '#9ca3af'
+        };
+    }
+    
+    private function formatActionText($action) {
+        return match($action) {
+            'created' => 'Task Created',
+            'status_changed' => 'Status Changed',
+            'progress_updated' => 'Progress Updated',
+            'assigned' => 'Task Assigned',
+            'completed' => 'Task Completed',
+            'cancelled' => 'Task Cancelled',
+            'updated' => 'Task Updated',
+            'commented' => 'Comment Added',
+            default => ucfirst(str_replace('_', ' ', $action))
+        };
+    }
+    
+    private function formatTimeAgo($datetime) {
+        $time = time() - strtotime($datetime);
+        
+        if ($time < 60) return 'Just now';
+        if ($time < 3600) return floor($time/60) . 'm ago';
+        if ($time < 86400) return floor($time/3600) . 'h ago';
+        if ($time < 2592000) return floor($time/86400) . 'd ago';
+        
+        return date('M d, Y', strtotime($datetime));
     }
     
     public function delete($id) {
@@ -709,69 +856,56 @@ class TasksController extends Controller {
             $this->ensureFollowupsTable($db);
             
             // Use follow-up specific data if provided, otherwise use task data
-            $followupDate = !empty($postData['followup_date']) ? $postData['followup_date'] : 
+            $followupDate = !empty($postData['follow_up_date']) ? $postData['follow_up_date'] : 
                           (!empty($taskData['deadline']) ? date('Y-m-d', strtotime($taskData['deadline'])) : date('Y-m-d', strtotime('+1 day')));
             
-            $followupTime = !empty($postData['followup_time']) ? $postData['followup_time'] : '09:00:00';
+            $followupTime = '09:00:00'; // Default time
             
-            // Create followup title
-            $followupTitle = 'Follow-up: ' . $taskData['title'];
-            if (!empty($postData['company_name'])) {
-                $followupTitle = 'Follow-up: ' . $postData['company_name'] . ' - ' . $taskData['title'];
+            // Use custom title if provided, otherwise generate one
+            $followupTitle = !empty($postData['followup_title']) ? $postData['followup_title'] : 'Follow-up: ' . $taskData['title'];
+            if (!empty($postData['contact_company']) && empty($postData['followup_title'])) {
+                $followupTitle = 'Follow-up: ' . $postData['contact_company'] . ' - ' . $taskData['title'];
             }
             
-            // Create followup description
-            $followupDesc = 'Auto-created follow-up for task: ' . $taskData['title'];
-            if (!empty($taskData['description'])) {
+            // Use custom description if provided, otherwise generate one
+            $followupDesc = !empty($postData['followup_description']) ? $postData['followup_description'] : 'Auto-created follow-up for task: ' . $taskData['title'];
+            if (!empty($taskData['description']) && empty($postData['followup_description'])) {
                 $followupDesc .= "\n\nTask Description: " . $taskData['description'];
             }
-            if (!empty($postData['description'])) {
-                $followupDesc = $postData['description'];
-            }
             
-            // Create followup with extended fields
+            // Create followup record in followups table with correct structure
             $stmt = $db->prepare("
                 INSERT INTO followups (
-                    user_id, task_id, title, description, company_name, contact_person, 
-                    contact_phone, project_name, follow_up_date, reminder_time, 
-                    original_date, status, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
+                    title, description, followup_type, task_id, contact_id, 
+                    follow_up_date, status, created_at, updated_at
+                ) VALUES (?, ?, 'task', ?, ?, ?, 'pending', NOW(), NOW())
             ");
             
+            $contactId = !empty($postData['contact_id']) ? intval($postData['contact_id']) : null;
+            
             $result = $stmt->execute([
-                $taskData['assigned_to'],
-                $taskId,
                 $followupTitle,
                 $followupDesc,
-                $postData['company_name'] ?? '',
-                $postData['contact_person'] ?? '',
-                $postData['contact_phone'] ?? '',
-                $postData['project_name'] ?? '',
-                $followupDate,
-                $followupTime,
+                $taskId,
+                $contactId,
                 $followupDate
             ]);
             
-            error_log('Follow-up creation attempt - User ID: ' . $taskData['assigned_to'] . ', Title: ' . $followupTitle);
+            error_log('Follow-up creation attempt - Title: ' . $followupTitle . ', Task ID: ' . $taskId);
+            error_log('Follow-up SQL parameters: ' . json_encode([$followupTitle, $followupDesc, $taskId, $contactId, $followupDate]));
             
             if ($result) {
                 $followupId = $db->lastInsertId();
-                error_log('Enhanced follow-up created successfully with ID: ' . $followupId . ' for task ID: ' . $taskId . ' assigned to user: ' . $taskData['assigned_to']);
+                error_log('SUCCESS: Follow-up created with ID: ' . $followupId . ' for task ID: ' . $taskId);
                 
-                // Log to followup history
-                try {
-                    $historyStmt = $db->prepare("INSERT INTO followup_history (followup_id, action, old_value, new_value, notes, created_by) VALUES (?, 'created', NULL, ?, ?, ?)");
-                    $historyStmt->execute([
-                        $followupId,
-                        'Auto-created from task',
-                        'Follow-up automatically created from task: ' . $taskData['title'],
-                        $taskData['assigned_by'] ?? $taskData['assigned_to']
-                    ]);
-                } catch (Exception $historyError) {
-                    error_log('Failed to log followup history: ' . $historyError->getMessage());
-                }
+                // Verify the record was actually inserted
+                $verifyStmt = $db->prepare("SELECT * FROM followups WHERE id = ?");
+                $verifyStmt->execute([$followupId]);
+                $insertedRecord = $verifyStmt->fetch(PDO::FETCH_ASSOC);
+                error_log('Inserted followup record: ' . json_encode($insertedRecord));
             } else {
-                error_log('Failed to create follow-up: ' . implode(', ', $stmt->errorInfo()));
+                error_log('FAILED to create follow-up. SQL Error: ' . implode(', ', $stmt->errorInfo()));
+                error_log('SQL Query: INSERT INTO followups (title, description, followup_type, task_id, contact_id, follow_up_date, status, created_at, updated_at) VALUES (?, ?, "task", ?, ?, ?, "pending", NOW(), NOW())');
             }
         } catch (Exception $e) {
             error_log('Auto-followup creation failed: ' . $e->getMessage());
@@ -779,42 +913,123 @@ class TasksController extends Controller {
         }
     }
     
+    private function updateTaskFollowup($db, $taskId, $postData) {
+        try {
+            $this->ensureFollowupsTable($db);
+            
+            // Check if follow-up already exists for this task
+            $stmt = $db->prepare("SELECT id FROM followups WHERE task_id = ?");
+            $stmt->execute([$taskId]);
+            $existingFollowup = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $followupTitle = !empty($postData['followup_title']) ? $postData['followup_title'] : 'Follow-up: ' . ($postData['title'] ?? 'Task');
+            $followupDesc = !empty($postData['followup_description']) ? $postData['followup_description'] : 'Follow-up for task';
+            $followupDate = !empty($postData['follow_up_date']) ? $postData['follow_up_date'] : date('Y-m-d', strtotime('+1 day'));
+            $contactId = !empty($postData['contact_id']) ? intval($postData['contact_id']) : null;
+            $followupType = $postData['followup_type'] ?? 'task';
+            
+            if ($existingFollowup) {
+                // Update existing follow-up
+                $stmt = $db->prepare("UPDATE followups SET title=?, description=?, followup_type=?, contact_id=?, follow_up_date=?, updated_at=NOW() WHERE task_id=?");
+                $stmt->execute([$followupTitle, $followupDesc, $followupType, $contactId, $followupDate, $taskId]);
+            } else {
+                // Create new follow-up
+                $stmt = $db->prepare("INSERT INTO followups (title, description, followup_type, task_id, contact_id, follow_up_date, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())");
+                $stmt->execute([$followupTitle, $followupDesc, $followupType, $taskId, $contactId, $followupDate]);
+            }
+            
+            // Update or create contact if manual entry provided
+            if (!empty($postData['contact_company']) || !empty($postData['contact_name'])) {
+                $this->updateOrCreateContact($db, $postData, $taskId);
+            }
+        } catch (Exception $e) {
+            error_log('Update task follow-up error: ' . $e->getMessage());
+        }
+    }
+    
+    private function updateOrCreateContact($db, $postData, $taskId) {
+        try {
+            $contactName = trim($postData['contact_name'] ?? '');
+            $contactCompany = trim($postData['contact_company'] ?? '');
+            $contactPhone = trim($postData['contact_phone'] ?? '');
+            
+            if ($contactName || $contactCompany) {
+                // Check if contact exists
+                $stmt = $db->prepare("SELECT id FROM contacts WHERE name = ? OR company = ?");
+                $stmt->execute([$contactName, $contactCompany]);
+                $existingContact = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($existingContact) {
+                    // Update existing contact
+                    $stmt = $db->prepare("UPDATE contacts SET name=?, company=?, phone=?, updated_at=NOW() WHERE id=?");
+                    $stmt->execute([$contactName, $contactCompany, $contactPhone, $existingContact['id']]);
+                    $contactId = $existingContact['id'];
+                } else {
+                    // Create new contact
+                    $stmt = $db->prepare("INSERT INTO contacts (name, company, phone, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())");
+                    $stmt->execute([$contactName, $contactCompany, $contactPhone]);
+                    $contactId = $db->lastInsertId();
+                }
+                
+                // Update follow-up with contact_id
+                $stmt = $db->prepare("UPDATE followups SET contact_id=? WHERE task_id=?");
+                $stmt->execute([$contactId, $taskId]);
+            }
+        } catch (Exception $e) {
+            error_log('Update or create contact error: ' . $e->getMessage());
+        }
+    }
+    
     private function ensureFollowupsTable($db) {
         try {
+            // Create followups table with exact structure matching followup module
             $db->exec("CREATE TABLE IF NOT EXISTS followups (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL,
-                task_id INT NULL,
                 title VARCHAR(255) NOT NULL,
-                company_name VARCHAR(255),
-                contact_person VARCHAR(255),
-                contact_phone VARCHAR(20),
-                project_name VARCHAR(255),
-                follow_up_date DATE NOT NULL,
-                original_date DATE,
-                reminder_time TIME NULL,
                 description TEXT,
-                status ENUM('pending','in_progress','completed','postponed','cancelled','rescheduled') DEFAULT 'pending',
-                completed_at TIMESTAMP NULL,
-                reminder_sent BOOLEAN DEFAULT FALSE,
-                next_reminder DATE NULL,
+                followup_type ENUM('standalone','task') DEFAULT 'standalone',
+                task_id INT NULL,
+                contact_id INT NULL,
+                follow_up_date DATE NOT NULL,
+                status ENUM('pending','in_progress','completed','postponed','cancelled') DEFAULT 'pending',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_user_id (user_id),
                 INDEX idx_task_id (task_id),
+                INDEX idx_contact_id (contact_id),
                 INDEX idx_follow_date (follow_up_date),
                 INDEX idx_status (status)
             )");
             
-            // Add task_id column if it doesn't exist
+            // Ensure contacts table exists
+            $db->exec("CREATE TABLE IF NOT EXISTS contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                phone VARCHAR(20),
+                email VARCHAR(255),
+                company VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            
+            // Add missing columns if they don't exist
             try {
                 $columns = $db->query("SHOW COLUMNS FROM followups")->fetchAll(PDO::FETCH_COLUMN);
+                
+                if (!in_array('followup_type', $columns)) {
+                    $db->exec("ALTER TABLE followups ADD COLUMN followup_type ENUM('standalone','task') DEFAULT 'standalone' AFTER description");
+                }
+                
                 if (!in_array('task_id', $columns)) {
-                    $db->exec("ALTER TABLE followups ADD COLUMN task_id INT NULL AFTER user_id");
+                    $db->exec("ALTER TABLE followups ADD COLUMN task_id INT NULL AFTER followup_type");
                     $db->exec("ALTER TABLE followups ADD INDEX idx_task_id (task_id)");
                 }
+                
+                if (!in_array('contact_id', $columns)) {
+                    $db->exec("ALTER TABLE followups ADD COLUMN contact_id INT NULL AFTER task_id");
+                    $db->exec("ALTER TABLE followups ADD INDEX idx_contact_id (contact_id)");
+                }
             } catch (Exception $e) {
-                error_log('Task ID column addition error: ' . $e->getMessage());
+                error_log('Column addition error: ' . $e->getMessage());
             }
         } catch (Exception $e) {
             error_log('ensureFollowupsTable error: ' . $e->getMessage());
@@ -845,6 +1060,61 @@ class TasksController extends Controller {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_task_id (task_id)
             )");
+            
+            // Check if we need to populate initial history for existing tasks
+            $stmt = $db->prepare("SELECT COUNT(*) as count FROM task_history");
+            $stmt->execute();
+            $historyCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+            
+            if ($historyCount == 0) {
+                // Create initial history entries for existing tasks
+                $stmt = $db->prepare("SELECT id, title, status, progress, assigned_to, created_at FROM tasks ORDER BY created_at DESC LIMIT 50");
+                $stmt->execute();
+                $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                $insertStmt = $db->prepare("INSERT INTO task_history (task_id, action, old_value, new_value, notes, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                
+                foreach ($tasks as $task) {
+                    // Add creation history
+                    $insertStmt->execute([
+                        $task['id'],
+                        'created',
+                        '',
+                        'Task created',
+                        'Initial task creation: ' . $task['title'],
+                        $task['assigned_to'] ?? 1,
+                        $task['created_at']
+                    ]);
+                    
+                    // Add status history if not default
+                    if ($task['status'] !== 'assigned') {
+                        $insertStmt->execute([
+                            $task['id'],
+                            'status_changed',
+                            'assigned',
+                            $task['status'],
+                            'Status updated to ' . $task['status'],
+                            $task['assigned_to'] ?? 1,
+                            date('Y-m-d H:i:s', strtotime($task['created_at'] . ' +1 hour'))
+                        ]);
+                    }
+                    
+                    // Add progress history if not 0
+                    if ($task['progress'] > 0) {
+                        $insertStmt->execute([
+                            $task['id'],
+                            'progress_updated',
+                            '0%',
+                            $task['progress'] . '%',
+                            'Progress updated to ' . $task['progress'] . '%',
+                            $task['assigned_to'] ?? 1,
+                            date('Y-m-d H:i:s', strtotime($task['created_at'] . ' +2 hours'))
+                        ]);
+                    }
+                }
+                
+                error_log('Created initial task history entries for ' . count($tasks) . ' tasks');
+            }
         } catch (Exception $e) {
             error_log('ensureTaskHistoryTable error: ' . $e->getMessage());
         }
@@ -896,6 +1166,22 @@ class TasksController extends Controller {
             if ($stmt->rowCount() == 0) {
                 $db->exec("ALTER TABLE tasks ADD COLUMN project_id INT DEFAULT NULL");
                 error_log('Added project_id column to tasks table');
+            }
+            
+            // Check if followup_required column exists, if not add it
+            $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'followup_required'");
+            $stmt->execute();
+            if ($stmt->rowCount() == 0) {
+                $db->exec("ALTER TABLE tasks ADD COLUMN followup_required TINYINT(1) DEFAULT 0");
+                error_log('Added followup_required column to tasks table');
+            }
+            
+            // Check if planned_date column exists, if not add it
+            $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'planned_date'");
+            $stmt->execute();
+            if ($stmt->rowCount() == 0) {
+                $db->exec("ALTER TABLE tasks ADD COLUMN planned_date DATE DEFAULT NULL");
+                error_log('Added planned_date column to tasks table');
             }
         } catch (Exception $e) {
             error_log('ensureTasksTable error: ' . $e->getMessage());

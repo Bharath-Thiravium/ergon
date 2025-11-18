@@ -88,6 +88,7 @@ $router->post('/tasks/create', 'TasksController', 'store');
 $router->get('/tasks/edit/{id}', 'TasksController', 'edit');
 $router->post('/tasks/edit/{id}', 'TasksController', 'edit');
 $router->get('/tasks/view/{id}', 'TasksController', 'viewDetails');
+$router->get('/tasks/history/{id}', 'TasksController', 'getTaskHistory');
 $router->post('/tasks/delete/{id}', 'TasksController', 'delete');
 $router->post('/tasks/update-status', 'TasksController', 'updateStatus');
 $router->get('/tasks/kanban', 'TasksController', 'kanban');
@@ -254,6 +255,8 @@ $router->post('/api/activity-log', 'ApiController', 'activityLog');
 $router->post('/api/session_from_jwt', 'ApiController', 'sessionFromJWT');
 $router->post('/api/test', 'ApiController', 'test');
 $router->post('/api/contacts/create', 'ContactFollowupController', 'createContact');
+$router->get('/api/contact-persons', 'ApiController', 'contactPersons');
+$router->get('/api/companies', 'ApiController', 'companies');
 
 // Unified Workflow API Routes
 $router->post('/api/update-task-status', 'UnifiedWorkflowController', 'updateTaskStatus');
@@ -343,13 +346,22 @@ $router->get('/daily-planner/{date}', 'UnifiedWorkflowController', 'dailyPlanner
 // Contact-Centric Follow-up Routes (New Module)
 $router->get('/contacts/followups', 'ContactFollowupController', 'index');
 $router->get('/contacts/followups/view/{contact_id}', 'ContactFollowupController', 'viewContactFollowups');
+$router->get('/contacts/followups/view', 'ContactFollowupController', 'viewGeneric');
 $router->get('/contacts/followups/create', 'ContactFollowupController', 'createStandaloneFollowup');
 $router->post('/contacts/followups/create', 'ContactFollowupController', 'createStandaloneFollowup');
 $router->post('/contacts/followups/create-task', 'ContactFollowupController', 'createTaskFollowup');
 $router->post('/contacts/followups/complete/{id}', 'ContactFollowupController', 'completeFollowup');
 $router->post('/contacts/followups/reschedule/{id}', 'ContactFollowupController', 'rescheduleFollowup');
+$router->post('/contacts/followups/cancel/{id}', 'ContactFollowupController', 'cancelFollowup');
 $router->get('/contacts/followups/history/{id}', 'ContactFollowupController', 'getFollowupHistory');
 $router->get('/api/reminders/check', 'ContactFollowupController', 'checkReminders');
+
+// Followup Routes
+$router->get('/followups', 'FollowupController', 'index');
+$router->get('/followups/create', 'FollowupController', 'create');
+$router->post('/followups/create', 'FollowupController', 'create');
+$router->get('/followups/view/{id}', 'FollowupController', 'viewFollowup');
+$router->post('/followups/delete/{id}', 'FollowupController', 'delete');
 
 // Legacy followup routes removed - use /contacts/followups instead
 

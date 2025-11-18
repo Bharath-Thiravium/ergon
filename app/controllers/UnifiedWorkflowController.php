@@ -43,11 +43,39 @@ class UnifiedWorkflowController extends Controller {
                 $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
-            // If no daily tasks, create them from regular tasks
-            if (empty($dailyTasks)) {
+            // Always clear and regenerate daily tasks to ensure fresh data
+            $stmt = $db->prepare("DELETE FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
+            $stmt->execute([$_SESSION['user_id'], $date]);
+            
+            // Create daily tasks from regular tasks
                 try {
-                    $stmt = $db->prepare("SELECT * FROM tasks WHERE assigned_to = ? AND status != 'completed' ORDER BY created_at DESC LIMIT 5");
-                    $stmt->execute([$_SESSION['user_id']]);
+                    // Get tasks for today: assigned TO user, created today, deadline today, or in progress
+                    $stmt = $db->prepare("
+                        SELECT *, COALESCE(sla_hours, 1) as sla_hours FROM tasks 
+                        WHERE assigned_to = ? 
+                        AND (
+                            DATE(created_at) = ? OR
+                            DATE(deadline) = ? OR
+                            DATE(planned_date) = ? OR
+                            status = 'in_progress' OR
+                            (assigned_by != assigned_to AND DATE(assigned_at) = ?)
+                        )
+                        AND status != 'completed' 
+                        ORDER BY 
+                            CASE 
+                                WHEN assigned_by != assigned_to THEN 1  -- Tasks from others (higher priority)
+                                ELSE 2                                   -- Self-assigned tasks
+                            END,
+                            CASE priority
+                                WHEN 'high' THEN 1
+                                WHEN 'medium' THEN 2
+                                WHEN 'low' THEN 3
+                                ELSE 4
+                            END,
+                            created_at DESC 
+                        LIMIT 15
+                    ");
+                    $stmt->execute([$_SESSION['user_id'], $date, $date, $date, $date]);
                     $regularTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 } catch (Exception $e) {
                     error_log('Regular tasks query failed: ' . $e->getMessage());
@@ -56,41 +84,71 @@ class UnifiedWorkflowController extends Controller {
                 
                 // Create daily tasks from regular tasks
                 foreach ($regularTasks as $task) {
+                    $taskSource = ($task['assigned_by'] != $task['assigned_to']) ? 'assigned_by_others' : 'self_assigned';
+                    $taskTitle = $task['title'];
+                    
+                    // Add source indicator to title for clarity
+                    if ($taskSource === 'assigned_by_others') {
+                        $taskTitle = "[From Others] " . $taskTitle;
+                    } else {
+                        $taskTitle = "[Self] " . $taskTitle;
+                    }
+                    
+                    // Use actual SLA hours from task, convert to minutes for planned_duration
+                    $slaHours = !empty($task['sla_hours']) ? (float)$task['sla_hours'] : 1;
+                    $plannedDurationMinutes = $slaHours * 60;
+                    
                     $stmt = $db->prepare("
                         INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, created_at)
-                        VALUES (?, ?, ?, ?, ?, 60, ?, 'not_started', NOW())
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', NOW())
                     ");
                     $stmt->execute([
                         $_SESSION['user_id'], 
                         $task['id'], 
                         $date, 
-                        $task['title'], 
+                        $taskTitle, 
                         $task['description'], 
+                        $plannedDurationMinutes,
                         $task['priority'] ?? 'medium'
                     ]);
                 }
                 
-                // Re-fetch daily tasks
-                try {
-                    $stmt = $db->prepare("
-                        SELECT dt.*, 
-                               COALESCE(dt.planned_duration, 60) as planned_duration_minutes
-                        FROM daily_tasks dt 
-                        WHERE dt.user_id = ? AND dt.scheduled_date = ?
-                    ");
-                    $stmt->execute([$_SESSION['user_id'], $date]);
-                    $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                } catch (Exception $e) {
-                    error_log('Re-fetch daily tasks failed: ' . $e->getMessage());
-                    $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
-                    $stmt->execute([$_SESSION['user_id'], $date]);
-                    $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                }
+            // Re-fetch daily tasks
+            try {
+                $stmt = $db->prepare("
+                    SELECT dt.*, 
+                           COALESCE(dt.planned_duration, 60) as planned_duration_minutes
+                    FROM daily_tasks dt 
+                    WHERE dt.user_id = ? AND dt.scheduled_date = ?
+                ");
+                $stmt->execute([$_SESSION['user_id'], $date]);
+                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('Re-fetch daily tasks failed: ' . $e->getMessage());
+                $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
+                $stmt->execute([$_SESSION['user_id'], $date]);
+                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
             $plannedTasks = [];
             foreach ($dailyTasks as $task) {
                 $plannedDuration = $task['planned_duration_minutes'] ?? $task['planned_duration'] ?? 60;
+                
+                // Get actual SLA from linked task if available
+                $actualSlaHours = 1; // Default fallback
+                if (!empty($task['task_id'])) {
+                    try {
+                        $slaStmt = $db->prepare("SELECT sla_hours FROM tasks WHERE id = ?");
+                        $slaStmt->execute([$task['task_id']]);
+                        $slaResult = $slaStmt->fetch(PDO::FETCH_ASSOC);
+                        if ($slaResult && !empty($slaResult['sla_hours'])) {
+                            $actualSlaHours = (float)$slaResult['sla_hours'];
+                        }
+                    } catch (Exception $e) {
+                        error_log('SLA fetch error: ' . $e->getMessage());
+                    }
+                }
+                
                 $plannedTasks[] = [
                     'id' => $task['id'],
                     'task_id' => $task['task_id'] ?? null,
@@ -98,7 +156,7 @@ class UnifiedWorkflowController extends Controller {
                     'description' => $task['description'] ?? '',
                     'priority' => $task['priority'] ?? 'medium',
                     'status' => $task['status'] ?? 'not_started',
-                    'sla_hours' => max(1, $plannedDuration / 60),
+                    'sla_hours' => $actualSlaHours,
                     'start_time' => $task['start_time'] ?? null,
                     'planned_duration' => $plannedDuration,
                     'completed_percentage' => $task['completed_percentage'] ?? 0
@@ -142,22 +200,37 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Get actual followups from followups table with fallback - always filter by current user
+            // Get followups from followups table including task-linked ones
             try {
                 $stmt = $db->prepare("
-                    SELECT f.*, u.name as assigned_user 
+                    SELECT f.*, 
+                           t.title as task_title, 
+                           t.assigned_to,
+                           u.name as assigned_user,
+                           c.name as contact_name,
+                           c.company as contact_company
                     FROM followups f 
-                    LEFT JOIN users u ON f.user_id = u.id 
-                    WHERE f.user_id = ? 
+                    LEFT JOIN tasks t ON f.task_id = t.id 
+                    LEFT JOIN users u ON t.assigned_to = u.id 
+                    LEFT JOIN contacts c ON f.contact_id = c.id
+                    WHERE (f.followup_type = 'standalone' OR (f.followup_type = 'task' AND t.assigned_to = ?) OR f.task_id IS NOT NULL)
                     ORDER BY f.follow_up_date ASC
                 ");
                 $stmt->execute([$_SESSION['user_id']]);
                 $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Debug logging
+                error_log('Followups query executed for user: ' . $_SESSION['user_id']);
+                error_log('Found followups: ' . count($followups));
+                if (!empty($followups)) {
+                    error_log('First followup: ' . json_encode($followups[0]));
+                }
             } catch (Exception $e) {
                 error_log('Followups complex query failed, using fallback: ' . $e->getMessage());
-                $stmt = $db->prepare("SELECT * FROM followups WHERE user_id = ? ORDER BY follow_up_date ASC");
-                $stmt->execute([$_SESSION['user_id']]);
+                $stmt = $db->prepare("SELECT * FROM followups ORDER BY follow_up_date ASC");
+                $stmt->execute();
                 $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                error_log('Fallback query found: ' . count($followups) . ' followups');
             }
             
             // Calculate KPIs

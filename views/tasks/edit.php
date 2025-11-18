@@ -142,14 +142,24 @@ $content = ob_start();
             <h3>👥 Assignment & Schedule</h3>
             <div class="form-grid">
                 <div class="form-group">
+                    <label for="assigned_for">👤 Assignment Type <span class="field-help" title="Who will be responsible for this task?">ℹ️</span></label>
+                    <select id="assigned_for" name="assigned_for" onchange="handleAssignmentTypeChange()" required>
+                        <option value="self" <?= ($task['assigned_to'] ?? '') == $_SESSION['user_id'] ? 'selected' : '' ?>>For Myself (I will do this)</option>
+                        <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
+                            <option value="other" <?= ($task['assigned_to'] ?? '') != $_SESSION['user_id'] ? 'selected' : '' ?>>For Others (Delegate to team member)</option>
+                        <?php endif; ?>
+                    </select>
+                    <small class="field-hint">Choose "For Myself" for personal tasks, "For Others" to delegate (admin only)</small>
+                </div>
+                <div class="form-group">
                     <label for="assigned_to">🎯 Assign To *</label>
                     <select id="assigned_to" name="assigned_to" required>
-                        <option value="">Select User</option>
-                        <?php if (!empty($users)): ?>
+                        <option value="<?= $_SESSION['user_id'] ?>" <?= ($task['assigned_to'] ?? '') == $_SESSION['user_id'] ? 'selected' : '' ?>><?= htmlspecialchars($_SESSION['user_name'] ?? 'You') ?></option>
+                        <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner']) && !empty($users)): ?>
                             <?php foreach ($users as $user): ?>
-                                <option value="<?= $user['id'] ?>" <?= ($task['assigned_to'] ?? '') == $user['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($user['name']) ?> (<?= htmlspecialchars($user['role']) ?>)
-                                </option>
+                                <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                                    <option value="<?= $user['id'] ?>" <?= ($task['assigned_to'] ?? '') == $user['id'] ? 'selected' : '' ?> style="<?= ($task['assigned_to'] ?? '') == $_SESSION['user_id'] ? 'display: none;' : '' ?>"><?= htmlspecialchars($user['name']) ?></option>
+                                <?php endif; ?>
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </select>
@@ -186,6 +196,19 @@ $content = ob_start();
                     </select>
                 </div>
                 <div class="form-group">
+                    <label for="project_id">📁 Project</label>
+                    <select id="project_id" name="project_id">
+                        <option value="">Select Project</option>
+                        <?php if (!empty($projects)): ?>
+                            <?php foreach ($projects as $project): ?>
+                                <option value="<?= $project['id'] ?>" <?= ($task['project_id'] ?? '') == $project['id'] ? 'selected' : '' ?>><?= htmlspecialchars($project['name']) ?></option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
                     <label for="priority">🚨 Priority <span class="field-help" title="How urgent/important is this task?">ℹ️</span></label>
                     <select id="priority" name="priority">
                         <option value="low" <?= ($task['priority'] ?? '') === 'low' ? 'selected' : '' ?>>🟢 Low (Routine, can wait)</option>
@@ -207,9 +230,20 @@ $content = ob_start();
                     <small class="field-hint">Hard deadline when task must be completed. Leave empty if no specific deadline.</small>
                 </div>
                 <div class="form-group">
-                    <label for="sla_hours">⏱️ SLA Hours <span class="field-help" title="Expected completion time in hours">ℹ️</span></label>
-                    <input type="number" id="sla_hours" name="sla_hours" value="<?= $task['sla_hours'] ?? '24' ?>" min="1" max="720" placeholder="24">
-                    <small class="field-hint">Service Level Agreement: Expected hours to complete (24h = 1 day, 168h = 1 week)</small>
+                    <label for="sla_hours">⏱️ SLA Time <span class="field-help" title="Expected completion time">ℹ️</span></label>
+                    <div class="sla-time-inputs">
+                        <?php 
+                        $slaHours = floatval($task['sla_hours'] ?? 24);
+                        $hours = floor($slaHours);
+                        $minutes = round(($slaHours - $hours) * 60);
+                        ?>
+                        <input type="number" id="sla_hours_part" min="0" max="720" value="<?= $hours ?>" placeholder="24">
+                        <span class="sla-separator">h</span>
+                        <input type="number" id="sla_minutes_part" min="0" max="59" value="<?= $minutes ?>" placeholder="0">
+                        <span class="sla-separator">m</span>
+                    </div>
+                    <input type="hidden" id="sla_hours" name="sla_hours" value="<?= $task['sla_hours'] ?? '24' ?>">
+                    <small class="field-hint">Service Level Agreement: Expected time to complete (e.g., 2h 30m = 2.5 hours)</small>
                 </div>
                 <div class="form-group">
                     <label for="status">📈 Status</label>
@@ -286,41 +320,73 @@ $content = ob_start();
         <!-- Follow-up Fields (Hidden by default) -->
         <div id="followupFields" class="form-section followup-section" style="display: <?= !empty($task['followup_required']) ? 'block' : 'none' ?>;">
             <h3>📞 Follow-up Details</h3>
-            <div class="form-grid">
+            
+            <div class="form-group">
+                <label class="form-label" for="followup_type">Follow-up Type *</label>
+                <select name="followup_type" id="followup_type" class="form-control">
+                    <option value="standalone" <?= ($task['followup_type'] ?? '') === 'standalone' ? 'selected' : '' ?>>Standalone Follow-up</option>
+                    <option value="task" <?= ($task['followup_type'] ?? 'task') === 'task' ? 'selected' : '' ?>>Task-linked Follow-up</option>
+                </select>
+                <small class="form-help">This follow-up is linked to the current task</small>
+            </div>
+            
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="company_name">🏢 Company</label>
-                    <div class="search-input-container">
-                        <input type="text" id="company_name" name="company_name" value="<?= htmlspecialchars($task['company_name'] ?? '') ?>" class="search-input" placeholder="Type to search companies..." autocomplete="off">
-                        <div class="search-suggestions" id="company_suggestions"></div>
-                    </div>
+                    <label class="form-label" for="contact_id">Contact</label>
+                    <select name="contact_id" id="contact_id" class="form-control">
+                        <option value="">Select a contact</option>
+                    </select>
+                    <small class="form-help">Select existing contact or leave empty for manual entry</small>
                 </div>
+                
                 <div class="form-group">
-                    <label for="contact_person">👤 Contact Person</label>
-                    <div class="search-input-container">
-                        <input type="text" id="contact_person" name="contact_person" value="<?= htmlspecialchars($task['contact_person'] ?? '') ?>" class="search-input" placeholder="Type to search contacts..." autocomplete="off">
-                        <div class="search-suggestions" id="contact_suggestions"></div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="contact_phone">📱 Phone</label>
-                    <input type="tel" id="contact_phone" name="contact_phone" value="<?= htmlspecialchars($task['contact_phone'] ?? '') ?>" placeholder="Contact phone number">
+                    <label class="form-label" for="follow_up_date">Follow-up Date *</label>
+                    <input type="date" name="follow_up_date" id="follow_up_date" class="form-control" value="<?= $task['follow_up_date'] ?? $task['followup_date'] ?? '' ?>">
+                    <small class="form-help">When should this follow-up be done?</small>
                 </div>
             </div>
-            <div class="form-grid">
+            
+            <div class="form-group">
+                <label class="form-label" for="followup_title">Follow-up Title *</label>
+                <input type="text" name="followup_title" id="followup_title" class="form-control" value="<?= htmlspecialchars($task['followup_title'] ?? '') ?>" placeholder="e.g., Follow up on proposal discussion">
+                <small class="form-help">Brief description of what this follow-up is about</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="followup_description">Follow-up Description</label>
+                <textarea name="followup_description" id="followup_description" class="form-control" rows="3" placeholder="Additional details about this follow-up..."><?= htmlspecialchars($task['followup_description'] ?? '') ?></textarea>
+                <small class="form-help">Optional: Add more context or notes about this follow-up</small>
+            </div>
+            
+            <!-- Manual Contact Entry -->
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="project_name">📁 Project</label>
+                    <label class="form-label" for="contact_company">Company</label>
                     <div class="search-input-container">
-                        <input type="text" id="project_name" name="project_name" value="<?= htmlspecialchars($task['project_name'] ?? '') ?>" class="search-input" placeholder="Type to search projects..." autocomplete="off">
-                        <div class="search-suggestions" id="project_suggestions"></div>
+                        <input type="text" id="contact_company" name="contact_company" class="form-control search-input" value="<?= htmlspecialchars($task['contact_company'] ?? $task['company_name'] ?? '') ?>" placeholder="Company name">
+                        <div id="company_suggestions" class="search-suggestions"></div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="followup_date">📅 Follow-up Date</label>
-                    <input type="date" id="followup_date" name="followup_date" value="<?= $task['followup_date'] ?? '' ?>">
+                    <label class="form-label" for="contact_name">Contact Person</label>
+                    <div class="search-input-container">
+                        <input type="text" id="contact_name" name="contact_name" class="form-control search-input" value="<?= htmlspecialchars($task['contact_name'] ?? $task['contact_person'] ?? '') ?>" placeholder="Contact person name">
+                        <div id="contact_suggestions" class="search-suggestions"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="contact_phone">Phone</label>
+                    <input type="tel" id="contact_phone" name="contact_phone" class="form-control" value="<?= htmlspecialchars($task['contact_phone'] ?? '') ?>" placeholder="Phone number">
                 </div>
                 <div class="form-group">
-                    <label for="followup_time">⏰ Follow-up Time</label>
-                    <input type="time" id="followup_time" name="followup_time" value="<?= $task['followup_time'] ?? '09:00' ?>">
+                    <label class="form-label" for="project_name">Project</label>
+                    <div class="search-input-container">
+                        <input type="text" id="project_name" name="project_name" class="form-control search-input" value="<?= htmlspecialchars($task['project_name'] ?? '') ?>" placeholder="Project name">
+                        <div id="project_suggestions" class="search-suggestions"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -401,24 +467,66 @@ function toggleFollowupFields() {
     const checkbox = document.getElementById('followup_required');
     const followupFields = document.getElementById('followupFields');
     
+    // Get follow-up form elements that need required validation
+    const followupRequiredFields = [
+        document.getElementById('follow_up_date'),
+        document.getElementById('followup_title'),
+        document.getElementById('followup_type')
+    ];
+    
     if (checkbox.checked) {
         followupFields.style.display = 'block';
         followupFields.style.animation = 'slideDown 0.3s ease';
         
+        // Add required attribute to follow-up fields
+        followupRequiredFields.forEach(field => {
+            if (field) field.setAttribute('required', 'required');
+        });
+        
         // Set default follow-up date to tomorrow if empty
-        const followupDateInput = document.getElementById('followup_date');
+        const followupDateInput = document.getElementById('follow_up_date');
         if (!followupDateInput.value) {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             followupDateInput.value = tomorrow.toISOString().split('T')[0];
         }
         
-        // Load data and setup search inputs
-        setTimeout(() => {
-            loadFollowupDetails();
-        }, 100);
+        // Set default title based on task title
+        const taskTitle = document.getElementById('title').value;
+        if (taskTitle && !document.getElementById('followup_title').value) {
+            document.getElementById('followup_title').value = 'Follow-up: ' + taskTitle;
+        }
+        
+        // Load contacts for dropdown
+        loadContacts();
     } else {
         followupFields.style.display = 'none';
+        
+        // Remove required attribute from follow-up fields
+        followupRequiredFields.forEach(field => {
+            if (field) field.removeAttribute('required');
+        });
+        
+        // Clear follow-up field values to prevent submission of hidden data
+        followupRequiredFields.forEach(field => {
+            if (field && field.tagName === 'INPUT') field.value = '';
+        });
+        
+        // Clear other follow-up related fields
+        const otherFields = [
+            'followup_description', 'contact_company', 'contact_name', 
+            'contact_phone', 'project_name', 'contact_id'
+        ];
+        otherFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                if (field.tagName === 'SELECT') {
+                    field.selectedIndex = 0;
+                } else {
+                    field.value = '';
+                }
+            }
+        });
     }
 }
 
@@ -433,37 +541,54 @@ function handleCategoryChange() {
     }
 }
 
-// Load follow-up details for auto-population
+
+
+// Handle assignment type change
+function handleAssignmentTypeChange() {
+    const assignmentType = document.getElementById('assigned_for').value;
+    const assignedToSelect = document.getElementById('assigned_to');
+    const options = assignedToSelect.querySelectorAll('option');
+    
+    if (assignmentType === 'self') {
+        // Show only current user
+        options.forEach(option => {
+            if (option.value === '<?= $_SESSION['user_id'] ?>') {
+                option.style.display = 'block';
+                option.selected = true;
+            } else {
+                option.style.display = 'none';
+                option.selected = false;
+            }
+        });
+    } else {
+        // Show all users
+        options.forEach(option => {
+            option.style.display = 'block';
+        });
+        assignedToSelect.value = '';
+    }
+}
+
+// Global variables
 let followupData = [];
 
-function loadFollowupDetails() {
-    const API_ENDPOINT = '/ergon/direct_followup_test.php';
-
-    fetch(API_ENDPOINT)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json().catch(jsonError => {
-                console.error('JSON parsing failed:', jsonError);
-                throw new Error('Invalid JSON response from server');
-            });
-        })
+// Load contacts for the dropdown
+function loadContacts() {
+    fetch('/ergon/api/contact-persons')
+        .then(response => response.json())
         .then(data => {
-            console.log('API Response received successfully:', data);
-            followupData = Array.isArray(data.followups) ? data.followups : [];
-            if (followupData.length === 0) {
-                console.log('No real data available, using dummy data');
-                followupData = getDummyFollowupData();
+            const contactSelect = document.getElementById('contact_id');
+            if (data.success && data.contacts) {
+                data.contacts.forEach(contact => {
+                    const option = document.createElement('option');
+                    option.value = contact.id || '';
+                    option.textContent = contact.name + (contact.company ? ' - ' + contact.company : '');
+                    contactSelect.appendChild(option);
+                });
             }
-            console.log(`Followup data loaded: ${followupData.length} items`);
-            setupFollowupSearchInputs();
         })
         .catch(error => {
-            console.error('Failed to load follow-up details:', error.message || error);
-            followupData = getDummyFollowupData();
-            console.log('Using fallback dummy data due to API error');
-            setupFollowupSearchInputs();
+            console.error('Failed to load contacts:', error);
         });
 }
 
@@ -478,12 +603,11 @@ function getDummyFollowupData() {
 }
 
 function setupFollowupSearchInputs() {
-    console.log('Setting up followup search inputs with data:', followupData);
     if (followupData.length === 0) {
         followupData = getDummyFollowupData();
     }
-    setupFollowupSearchInput('company_name', 'company_suggestions', 'company_name');
-    setupFollowupSearchInput('contact_person', 'contact_suggestions', 'contact_person');
+    setupFollowupSearchInput('contact_company', 'company_suggestions', 'company_name');
+    setupFollowupSearchInput('contact_name', 'contact_suggestions', 'contact_person');
     setupFollowupSearchInput('project_name', 'project_suggestions', 'project_name');
 }
 
@@ -496,9 +620,12 @@ function setupFollowupSearchInput(inputId, suggestionsId, field) {
         return;
     }
 
-    input.addEventListener('input', function() {
+    // Remove existing listeners to prevent duplicates
+    const newInput = input.cloneNode(true);
+    input.parentNode.replaceChild(newInput, input);
+    
+    newInput.addEventListener('input', function() {
         const query = this.value.toLowerCase().trim();
-        console.log('Search query:', query, 'for field:', field, 'data length:', followupData.length);
 
         if (query.length < 2) {
             suggestions.style.display = 'none';
@@ -512,8 +639,6 @@ function setupFollowupSearchInput(inputId, suggestionsId, field) {
                 .slice(0, 5)
         )];
 
-        console.log('Found matches:', matches);
-
         if (matches.length > 0) {
             suggestions.innerHTML = matches
                 .map(match => `<div class="suggestion-item" onclick="selectFollowupSuggestion('${inputId}', '${match.replace(/'/g, "\\'")}')"><strong>${match}</strong></div>`)
@@ -525,39 +650,37 @@ function setupFollowupSearchInput(inputId, suggestionsId, field) {
         }
     });
 
-    if (inputId === 'contact_person') {
-        input.addEventListener('blur', function() {
-            const contactName = this.value.trim();
-            if (contactName) {
-                const contactData = followupData.find(item =>
-                    item.contact_person && item.contact_person.toLowerCase() === contactName.toLowerCase()
-                );
-                if (contactData && contactData.contact_phone) {
-                    document.getElementById('contact_phone').value = contactData.contact_phone;
+    // Auto-fill phone for contact person
+    if (inputId === 'contact_name') {
+        newInput.addEventListener('blur', function() {
+            setTimeout(() => {
+                const contactName = this.value.trim();
+                if (contactName) {
+                    const contactData = followupData.find(item =>
+                        item.contact_person && item.contact_person.toLowerCase() === contactName.toLowerCase()
+                    );
+                    if (contactData && contactData.contact_phone) {
+                        document.getElementById('contact_phone').value = contactData.contact_phone;
+                    }
                 }
-            }
+            }, 200);
         });
     }
-
-    document.addEventListener('click', function(e) {
-        if (!input.contains(e.target) && !suggestions.contains(e.target)) {
-            suggestions.style.display = 'none';
-        }
-    });
 }
 
 function selectFollowupSuggestion(inputId, value) {
     const input = document.getElementById(inputId);
-    const suggestions = document.getElementById(inputId.replace('_name', '_suggestions').replace('_person', '_suggestions'));
+    const suggestions = document.getElementById(inputId.replace('contact_company', 'company_suggestions').replace('contact_name', 'contact_suggestions').replace('project_name', 'project_suggestions'));
     
-    input.value = value;
-    suggestions.style.display = 'none';
+    if (input) input.value = value;
+    if (suggestions) suggestions.style.display = 'none';
     
-    if (inputId === 'company_name') {
+    // Auto-fill related fields
+    if (inputId === 'contact_company') {
         const companyData = followupData.find(item => item.company_name === value);
         if (companyData) {
-            if (companyData.contact_person && !document.getElementById('contact_person').value) {
-                document.getElementById('contact_person').value = companyData.contact_person;
+            if (companyData.contact_person && !document.getElementById('contact_name').value) {
+                document.getElementById('contact_name').value = companyData.contact_person;
             }
             if (companyData.contact_phone && !document.getElementById('contact_phone').value) {
                 document.getElementById('contact_phone').value = companyData.contact_phone;
@@ -568,11 +691,11 @@ function selectFollowupSuggestion(inputId, value) {
         }
     }
     
-    if (inputId === 'contact_person') {
+    if (inputId === 'contact_name') {
         const contactData = followupData.find(item => item.contact_person === value);
         if (contactData) {
-            if (contactData.company_name && !document.getElementById('company_name').value) {
-                document.getElementById('company_name').value = contactData.company_name;
+            if (contactData.company_name && !document.getElementById('contact_company').value) {
+                document.getElementById('contact_company').value = contactData.company_name;
             }
             if (contactData.contact_phone) {
                 document.getElementById('contact_phone').value = contactData.contact_phone;
@@ -597,8 +720,19 @@ function toggleHelpPanel() {
     }
 }
 
+// SLA Time calculation
+function updateSLAHours() {
+    const hours = parseInt(document.getElementById('sla_hours_part').value) || 0;
+    const minutes = parseInt(document.getElementById('sla_minutes_part').value) || 0;
+    const totalHours = hours + (minutes / 60);
+    document.getElementById('sla_hours').value = totalHours.toFixed(2);
+}
+
 // Form initialization
 document.addEventListener('DOMContentLoaded', function() {
+    // SLA time inputs event listeners
+    document.getElementById('sla_hours_part').addEventListener('input', updateSLAHours);
+    document.getElementById('sla_minutes_part').addEventListener('input', updateSLAHours);
     const currentDeptId = '<?= $task['department_id'] ?? '' ?>';
     const currentCategory = '<?= htmlspecialchars($task['task_category'] ?? '') ?>';
     
@@ -618,13 +752,55 @@ document.addEventListener('DOMContentLoaded', function() {
     const followupCheckbox = document.getElementById('followup_required');
     if (followupCheckbox && followupCheckbox.checked) {
         setTimeout(() => {
-            loadFollowupDetails();
+            loadContacts();
+            setupFollowupSearchInputs();
         }, 100);
     }
+    
+    // Initialize follow-up search functionality
+    followupData = getDummyFollowupData();
+    setupFollowupSearchInputs();
+    
+    // Handle contact selection to auto-fill fields
+    const contactSelect = document.getElementById('contact_id');
+    if (contactSelect) {
+        contactSelect.addEventListener('change', function() {
+            if (this.value) {
+                fetch('/ergon/api/contact-persons')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.contacts) {
+                            const selectedContact = data.contacts.find(c => c.id == this.value);
+                            if (selectedContact) {
+                                document.getElementById('contact_company').value = selectedContact.company || '';
+                                document.getElementById('contact_name').value = selectedContact.name || '';
+                                document.getElementById('contact_phone').value = selectedContact.phone || '';
+                            }
+                        }
+                    })
+                    .catch(error => console.error('Error loading contact details:', error));
+            }
+        });
+    }
+    
+    // Close suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-input-container')) {
+            document.querySelectorAll('.search-suggestions').forEach(suggestions => {
+                suggestions.style.display = 'none';
+            });
+        }
+    });
     
     const deadlineInput = document.getElementById('deadline');
     const today = new Date().toISOString().split('T')[0];
     deadlineInput.min = today;
+    
+    // Set minimum date for follow-up date field
+    const followupDateInput = document.getElementById('follow_up_date');
+    if (followupDateInput) {
+        followupDateInput.min = today;
+    }
     
     // Status/Progress sync
     const statusSelect = document.getElementById('status');
@@ -640,20 +816,61 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Initialize follow-up fields state based on current checkbox state
+    const followupRequiredFields = [
+        document.getElementById('follow_up_date'),
+        document.getElementById('followup_title'),
+        document.getElementById('followup_type')
+    ];
+    
+    if (!followupCheckbox || !followupCheckbox.checked) {
+        followupRequiredFields.forEach(field => {
+            if (field) field.removeAttribute('required');
+        });
+    } else {
+        followupRequiredFields.forEach(field => {
+            if (field) field.setAttribute('required', 'required');
+        });
+    }
+    
     document.getElementById('editTaskForm').addEventListener('submit', function(e) {
         const title = document.getElementById('title').value.trim();
         const assignedTo = document.getElementById('assigned_to').value;
+        const followupCheckbox = document.getElementById('followup_required');
+        const followupRequired = followupCheckbox ? followupCheckbox.checked : false;
         
         if (!title) {
             e.preventDefault();
             alert('Please enter a task title');
+            document.getElementById('title').focus();
             return;
         }
         
         if (!assignedTo) {
             e.preventDefault();
             alert('Please select a user to assign the task to');
+            document.getElementById('assigned_to').focus();
             return;
+        }
+        
+        // Validate follow-up fields only if follow-up is enabled
+        if (followupRequired) {
+            const followupDate = document.getElementById('follow_up_date');
+            const followupTitle = document.getElementById('followup_title');
+            
+            if (!followupDate || !followupDate.value.trim()) {
+                e.preventDefault();
+                alert('Please select a follow-up date');
+                if (followupDate) followupDate.focus();
+                return;
+            }
+            
+            if (!followupTitle || !followupTitle.value.trim()) {
+                e.preventDefault();
+                alert('Please enter a follow-up title');
+                if (followupTitle) followupTitle.focus();
+                return;
+            }
         }
     });
 });
@@ -1012,11 +1229,27 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .search-input {
-    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    border-radius: var(--border-radius);
 }
 
 .search-input:focus + .search-suggestions {
     border-color: var(--primary);
+}
+
+.search-input-container {
+    position: relative;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 .header-actions {
@@ -1170,6 +1403,24 @@ document.addEventListener('DOMContentLoaded', function() {
     font-weight: 500;
     margin-bottom: 0.25rem;
     color: var(--text-primary);
+}
+
+/* SLA Time Inputs */
+.sla-time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sla-time-inputs input {
+    width: 60px;
+    text-align: center;
+}
+
+.sla-separator {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
 }
 
 @media (max-width: 768px) {
