@@ -179,7 +179,7 @@ body {
   .table-responsive thead,
   .table-responsive .table thead,
   .card__header .card__actions,
-  .page-actions .view-options,
+
   .page-actions input[type="date"],
   .page-actions select,
   .page-actions .form-input,
@@ -284,6 +284,20 @@ body {
   .view-btn[data-view="kanban"],
   .sidebar__link[href*="requests"] {
     display: none;
+  }
+  
+  /* Show view options on mobile but hide kanban */
+  .page-actions .view-options {
+    display: flex !important;
+  }
+  
+  .view-btn[data-view="kanban"] {
+    display: none !important;
+  }
+  
+  .view-btn[data-view="calendar"],
+  .view-btn[data-view="list"] {
+    display: flex !important;
   }
   
   /* Fix page actions alignment */
