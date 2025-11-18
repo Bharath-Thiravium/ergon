@@ -57,8 +57,8 @@ try {
                     $slaEndTime = date('Y-m-d H:i:s', strtotime($now . ' +' . $task['sla_hours'] . ' hours'));
                     
                     // Start the task
-                    $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', start_time = ?, sla_end_time = ? WHERE id = ?");
-                    $result = $stmt->execute([$now, $slaEndTime, $taskId]);
+                    $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', start_time = ? WHERE id = ?");
+                    $result = $stmt->execute([$now, $taskId]);
                     
                     if ($result) {
                         // Log SLA history
