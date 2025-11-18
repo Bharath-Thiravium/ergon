@@ -21,14 +21,16 @@ class DailyPlanner {
                     scheduled_date DATE NOT NULL,
                     planned_start_time TIME NULL,
                     planned_duration INT DEFAULT 60,
-                    priority ENUM('low','medium','high') DEFAULT 'medium',
-                    status ENUM('not_started','in_progress','paused','completed','postponed','cancelled') DEFAULT 'not_started',
+                    priority VARCHAR(20) DEFAULT 'medium',
+                    status VARCHAR(50) DEFAULT 'not_started',
                     completed_percentage INT DEFAULT 0,
                     start_time TIMESTAMP NULL,
                     pause_time TIMESTAMP NULL,
                     resume_time TIMESTAMP NULL,
                     completion_time TIMESTAMP NULL,
+                    sla_end_time TIMESTAMP NULL,
                     active_seconds INT DEFAULT 0,
+                    total_pause_duration INT DEFAULT 0,
                     postponed_from_date DATE NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -174,13 +176,13 @@ class DailyPlanner {
                 throw new Exception("Task ID and User ID are required");
             }
             
-            // Check if task exists and belongs to user
+            // Check if task exists - allow any user to resume any task
             $stmt = $this->db->prepare("
                 SELECT id, status, title 
                 FROM daily_tasks 
-                WHERE id = ? AND user_id = ?
+                WHERE id = ?
             ");
-            $stmt->execute([$taskId, $userId]);
+            $stmt->execute([$taskId]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$task) {
@@ -194,13 +196,13 @@ class DailyPlanner {
             
             $now = date('Y-m-d H:i:s');
             
-            // Update task status
+            // Update task status - allow any user to resume any task
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
                 SET status = 'in_progress', resume_time = ?, updated_at = NOW()
-                WHERE id = ? AND user_id = ?
+                WHERE id = ?
             ");
-            $result = $stmt->execute([$now, $taskId, $userId]);
+            $result = $stmt->execute([$now, $taskId]);
             
             if (!$result) {
                 throw new Exception("Failed to update task status");
@@ -220,6 +222,7 @@ class DailyPlanner {
             }
             
             return true;
+            
             
         } catch (Exception $e) {
             error_log("DailyPlanner resumeTask error: " . $e->getMessage());

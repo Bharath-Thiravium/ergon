@@ -1,0 +1,38 @@
+/* Planner Access Control Styles */
+.access-denied {
+    text-align: center;
+    padding: 60px 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+    margin: 20px;
+}
+
+.access-denied h3 {
+    color: #dc3545;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+.access-denied p {
+    color: #6c757d;
+    margin-bottom: 25px;
+    font-size: 1.1rem;
+}
+
+.access-denied .btn {
+    padding: 12px 24px;
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* Hide planner elements for Owner */
+body.owner-role .timer-start-btn,
+body.owner-role .timer-pause-btn, 
+body.owner-role .timer-resume-btn,
+body.owner-role .planner-action-btn {
+    display: none !important;
+}
