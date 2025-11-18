@@ -708,7 +708,7 @@ function stopSLATimer(taskId) {
 }
 
 function updateSLADisplay(taskId) {
-    fetch(`./api/daily_planner_workflow.php?action=timer&task_id=${taskId}`)
+    fetch(`/ergon/api/daily_planner_workflow.php?action=timer&task_id=${taskId}`)
     .then(response => response.json())
     .then(data => {
         if (data.success) {
@@ -786,7 +786,7 @@ function saveProgress() {
     var progress = document.getElementById('progressSlider').value;
     var status = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'assigned';
     
-    fetch('./api/daily_planner_workflow.php?action=update-progress', {
+    fetch('/ergon/api/daily_planner_workflow.php?action=update-progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -825,7 +825,7 @@ function startTask(taskId) {
         return;
     }
     
-    fetch('./api/daily_planner_workflow.php?action=start', {
+    fetch('/ergon/api/daily_planner_workflow.php?action=start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task_id: parseInt(taskId) })
@@ -847,7 +847,7 @@ function startTask(taskId) {
 }
 
 function pauseTask(taskId) {
-    fetch('./api/daily_planner_workflow.php?action=pause', {
+    fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task_id: parseInt(taskId) })
@@ -869,7 +869,7 @@ function pauseTask(taskId) {
 }
 
 function resumeTask(taskId) {
-    fetch('./api/daily_planner_workflow.php?action=resume', {
+    fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task_id: parseInt(taskId) })
@@ -919,7 +919,7 @@ function updateProgressTask(taskId) {
 }
 
 function loadPostponeHistory(taskId) {
-    fetch(`./api/daily_planner_workflow.php?action=task-history&task_id=${taskId}`)
+    fetch(`/ergon/api/daily_planner_workflow.php?action=task-history&task_id=${taskId}`)
     .then(response => response.json())
     .then(data => {
         const historyDiv = document.getElementById('postponeHistory');
@@ -1087,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData(this);
         formData.append('scheduled_date', '<?= $selected_date ?>');
         
-        fetch('./api/daily_planner_workflow.php?action=quick-add', {
+        fetch('/ergon/api/daily_planner_workflow.php?action=quick-add', {
             method: 'POST',
             body: formData
         })
@@ -1111,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const percentage = document.getElementById('selectedProgressPercentage').value;
         const status = percentage >= 100 ? 'completed' : 'in_progress';
         
-        fetch('./api/daily_planner_workflow.php?action=update-progress', {
+        fetch('/ergon/api/daily_planner_workflow.php?action=update-progress', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -1155,7 +1155,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const taskId = document.getElementById('postponeTaskId').value;
         const newDate = document.getElementById('newDate').value;
         
-        fetch('./api/daily_planner_workflow.php?action=postpone', {
+        fetch('/ergon/api/daily_planner_workflow.php?action=postpone', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ task_id: taskId, new_date: newDate })
