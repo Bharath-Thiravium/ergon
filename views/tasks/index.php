@@ -215,6 +215,73 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
     </div>
 </div>
 
+<style>
+.dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.dialog-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    min-width: 300px;
+    max-width: 400px;
+}
+
+.dialog-content h4 {
+    margin: 0 0 1rem 0;
+    color: #1f2937;
+}
+
+.dialog-content p {
+    margin: 0 0 1rem 0;
+    font-weight: 500;
+}
+
+#progressSlider {
+    width: 100%;
+    margin: 1rem 0;
+}
+
+.dialog-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+.dialog-buttons button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.dialog-buttons button:first-child {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.dialog-buttons button:last-child {
+    background: #3b82f6;
+    color: white;
+}
+
+.dialog-buttons button:hover {
+    opacity: 0.9;
+}
+</style>
+
 <script src="/ergon/assets/js/table-utils.js"></script>
 
 <script>

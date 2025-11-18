@@ -764,8 +764,10 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         console.log('Profile menu toggled, show class:', menu.classList.contains('show'));
     }
     
-    // Make function globally accessible
+    // Make functions globally accessible
     window.toggleProfile = toggleProfile;
+    window.showDropdown = showDropdown;
+    window.hideDropdown = hideDropdown;
     
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.header__controls')) {

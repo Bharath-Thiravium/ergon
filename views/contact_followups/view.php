@@ -182,8 +182,6 @@ ob_start();
     </div>
 </div>
 
-
-
 <?php renderModalCSS(); ?>
 
 <style>
@@ -273,6 +271,205 @@ ob_start();
     font-size: 0.8rem;
 }
 
+/* Enhanced button styles for better visibility */
+.btn--danger {
+    background: #ef4444 !important;
+    color: white !important;
+    border: 1px solid #dc2626 !important;
+}
+
+.btn--danger:hover {
+    background: #dc2626 !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+}
+
+.btn--info {
+    background: #3b82f6 !important;
+    color: white !important;
+    border: 1px solid #2563eb !important;
+}
+
+.btn--info:hover {
+    background: #2563eb !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+.btn--info.btn--outline {
+    background: transparent !important;
+    color: #3b82f6 !important;
+    border: 2px solid #3b82f6 !important;
+}
+
+.btn--info.btn--outline:hover {
+    background: #3b82f6 !important;
+    color: white !important;
+    border-color: #3b82f6 !important;
+}
+
+/* Form validation styles */
+.form-text {
+    font-size: 0.75rem;
+    color: var(--text-muted, #6b7280);
+    margin-top: 0.25rem;
+}
+
+.text-muted {
+    color: var(--text-muted, #6b7280) !important;
+}
+
+.form-control:invalid {
+    border-color: var(--danger, #ef4444);
+}
+
+.form-control:valid {
+    border-color: var(--success, #10b981);
+}
+
+/* Loading state for buttons */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Better modal form spacing */
+.ergon-modal .form-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Modern History Timeline Styles */
+.modern-history-timeline {
+    position: relative;
+    padding: 0;
+    margin: 0;
+}
+
+.history-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    position: relative;
+}
+
+.history-entry:last-child {
+    border-bottom: none;
+}
+
+.history-entry:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 1.25rem;
+    top: 3rem;
+    bottom: -1rem;
+    width: 2px;
+    background: linear-gradient(to bottom, #e2e8f0, transparent);
+    z-index: 1;
+}
+
+.history-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+}
+
+.history-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    gap: 1rem;
+}
+
+.history-action {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #1e293b;
+    text-transform: capitalize;
+}
+
+.history-date {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.history-notes {
+    font-size: 0.875rem;
+    color: #475569;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+    background: #f8fafc;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border-left: 3px solid #e2e8f0;
+}
+
+.history-user {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Empty state for history */
+.history-empty {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+}
+
+.history-empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+    .history-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .history-entry {
+        gap: 0.75rem;
+    }
+    
+    .history-icon {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.875rem;
+    }
+    
+    .history-entry:not(:last-child)::after {
+        left: 1rem;
+    }
+}
+
 @media (max-width: 768px) {
     .contact-title-row {
         flex-direction: column;
@@ -298,6 +495,8 @@ ob_start();
     }
 }
 </style>
+
+<?php renderModalJS(); ?>
 
 <script>
 function completeFollowup(id) {
@@ -327,48 +526,27 @@ function completeFollowup(id) {
 function rescheduleFollowup(id) {
     showModal('rescheduleModal');
     document.getElementById('rescheduleFollowupId').value = id;
-    document.getElementById('rescheduleForm').action = `/ergon/contacts/followups/reschedule/${id}`;
     
-    // Add form submit handler
+    const dateInput = document.querySelector('#rescheduleForm input[name="new_date"]');
+    if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
+        dateInput.value = today;
+    }
+    
     const form = document.getElementById('rescheduleForm');
     form.onsubmit = function(e) {
         e.preventDefault();
-        const formData = new FormData(form);
         
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            if (response.ok) {
-                closeModal('rescheduleModal');
-                location.reload();
-            } else {
-                alert('Error: Failed to reschedule follow-up');
-            }
-        })
-        .catch(error => {
-            console.error('Reschedule error:', error);
-            alert('An error occurred while rescheduling the follow-up.');
-        });
-    };
-}
-
-function cancelFollowup(id) {
-    showModal('cancelModal');
-    document.getElementById('cancelFollowupId').value = id;
-    document.getElementById('cancelForm').action = `/ergon/contacts/followups/cancel/${id}`;
-    
-    // Add form submit handler
-    const form = document.getElementById('cancelForm');
-    form.onsubmit = function(e) {
-        e.preventDefault();
         const formData = new FormData(form);
+        const submitBtn = document.querySelector('button[form="rescheduleForm"]');
         
-        fetch(form.action, {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Rescheduling...';
+        }
+        
+        fetch(`/ergon/contacts/followups/reschedule/${id}`, {
             method: 'POST',
             body: formData,
             headers: {
@@ -378,15 +556,93 @@ function cancelFollowup(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                closeModal('cancelModal');
+                closeModal('rescheduleModal');
                 location.reload();
             } else {
-                alert('Error: ' + (data.error || 'Failed to cancel follow-up'));
+                alert('Error: ' + (data.error || 'Failed to reschedule'));
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '📅 Reschedule';
+                }
             }
         })
         .catch(error => {
-            console.error('Cancel error:', error);
-            alert('An error occurred while cancelling the follow-up.');
+            console.error('Error:', error);
+            alert('Network error occurred');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📅 Reschedule';
+            }
+        });
+    };
+}
+
+function cancelFollowup(id) {
+    console.log('Cancel function called with ID:', id);
+    
+    if (!id || isNaN(id)) {
+        alert('Invalid follow-up ID');
+        return;
+    }
+    
+    showModal('cancelModal');
+    document.getElementById('cancelFollowupId').value = id;
+    document.getElementById('cancelForm').action = `/ergon/contacts/followups/cancel/${id}`;
+    
+    // Add form submit handler
+    const form = document.getElementById('cancelForm');
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const reason = formData.get('reason');
+        const submitBtn = document.querySelector('button[form="cancelForm"]');
+        
+        // Validate reason
+        if (!reason || reason.trim().length === 0) {
+            alert('Please provide a reason for cancellation');
+            return;
+        }
+        
+        console.log('Submitting cancel request for ID:', id, 'Reason:', reason);
+        
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Cancelling...';
+        }
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            console.log('Cancel response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Cancel response data:', data);
+            
+            if (data.success) {
+                closeModal('cancelModal');
+                alert('Follow-up cancelled successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to cancel follow-up'));
+                console.error('Cancel error:', data);
+            }
+        })
+        .catch(error => {
+            console.error('Cancel network error:', error);
+            alert('Network error occurred. Please try again.');
+        })
+        .finally(() => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '❌ Cancel Follow-up';
+            }
         });
     };
 }
@@ -404,9 +660,10 @@ function showHistory(id) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            document.getElementById('historyContent').innerHTML = data.html || 'No history available';
+            const content = data.html || '<div class="history-empty"><div class="history-empty-icon">📋</div><h4>No History Available</h4><p>This follow-up has no recorded history yet.</p></div>';
+            document.getElementById('historyContent').innerHTML = content;
         } else {
-            document.getElementById('historyContent').innerHTML = 'Error: ' + (data.error || 'Failed to load history');
+            document.getElementById('historyContent').innerHTML = '<div class="history-empty"><div class="history-empty-icon">⚠️</div><h4>Error Loading History</h4><p>' + (data.error || 'Failed to load history') + '</p></div>';
         }
     })
     .catch(error => {
@@ -432,31 +689,43 @@ $cancelContent = '
     </div>
 </form>';
 
-$cancelFooter = createFormModalFooter('Cancel', '❌ Cancel Follow-up', 'cancelModal', 'danger');
+$cancelFooter = '
+<button type="button" onclick="closeModal(\'cancelModal\')" class="btn btn--secondary">
+    Cancel
+</button>
+<button type="submit" form="cancelForm" class="btn btn--danger">
+    ❌ Cancel Follow-up
+</button>';
 
 // Reschedule Modal Content
 $rescheduleContent = '
 <form method="POST" id="rescheduleForm" action="">
     <input type="hidden" name="followup_id" id="rescheduleFollowupId">
-    <div class="form-group">
-        <label class="form-label">New Date *</label>
-        <input type="date" name="new_date" class="form-control" required>
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">New Date *</label>
+        <input type="date" name="new_date" required min="' . date('Y-m-d') . '" 
+               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
     </div>
-    <div class="form-group">
-        <label class="form-label">Reason for Rescheduling</label>
-        <textarea name="reason" class="form-control" rows="3" placeholder="Why is this being rescheduled?"></textarea>
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Reason for Rescheduling</label>
+        <textarea name="reason" rows="3" placeholder="Why is this being rescheduled?"
+                  style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
     </div>
 </form>';
 
-$rescheduleFooter = createFormModalFooter('Cancel', '📅 Reschedule', 'rescheduleModal', 'warning');
+$rescheduleFooter = '
+<button type="button" onclick="closeModal(\'rescheduleModal\')" class="btn btn--secondary">
+    Cancel
+</button>
+<button type="submit" form="rescheduleForm" class="btn btn--warning">
+    📅 Reschedule
+</button>';
 
 // History Modal Content
-$historyContent = '<div id="historyContent">Loading...</div>';
+$historyContent = '<div id="historyContent" style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: #64748b;">📋 Loading history...</div>';
 
 // Render Modals
 renderModal('cancelModal', 'Cancel Follow-up', $cancelContent, $cancelFooter, ['icon' => '❌']);
 renderModal('rescheduleModal', 'Reschedule Follow-up', $rescheduleContent, $rescheduleFooter, ['icon' => '📅']);
-renderModal('historyModal', 'Follow-up History', $historyContent, '', ['icon' => '📋']);
+renderModal('historyModal', 'Follow-up History', $historyContent, '', ['icon' => '📋', 'size' => 'large']);
 ?>
-
-<?php renderModalJS(); ?>

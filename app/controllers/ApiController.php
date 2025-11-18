@@ -360,5 +360,119 @@ class ApiController extends Controller {
     public function syncOfflineData() {
         $this->json(['error' => 'Offline sync not implemented'], 501);
     }
+    
+    public function contactPersons() {
+        try {
+            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]);
+            
+            // Ensure contacts table exists
+            $pdo->exec("CREATE TABLE IF NOT EXISTS contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                phone VARCHAR(20),
+                email VARCHAR(255),
+                company VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            
+            // Get contacts from multiple sources
+            $contacts = [];
+            
+            // 1. From contacts table
+            try {
+                $contactsFromTable = $pdo->query("
+                    SELECT DISTINCT id, name, phone, email, company 
+                    FROM contacts 
+                    WHERE name IS NOT NULL AND name != '' 
+                    ORDER BY name
+                ")->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                $contactsFromTable = [];
+            }
+            
+            // 2. From tasks table (existing followup data)
+            try {
+                $contactsFromTasks = $pdo->query("
+                    SELECT DISTINCT 
+                        0 as id,
+                        contact_person as name, 
+                        contact_phone as phone, 
+                        '' as email, 
+                        company_name as company 
+                    FROM tasks 
+                    WHERE contact_person IS NOT NULL AND contact_person != '' 
+                    ORDER BY contact_person
+                ")->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                $contactsFromTasks = [];
+            }
+            
+            // Merge and deduplicate contacts
+            $allContacts = array_merge($contactsFromTable, $contactsFromTasks);
+            $uniqueContacts = [];
+            $seen = [];
+            
+            foreach ($allContacts as $contact) {
+                $key = strtolower(trim($contact['name']));
+                if (!isset($seen[$key]) && !empty($contact['name'])) {
+                    $seen[$key] = true;
+                    $uniqueContacts[] = $contact;
+                }
+            }
+            
+            $this->json(['success' => true, 'contacts' => $uniqueContacts]);
+            
+        } catch (Exception $e) {
+            $this->json(['success' => false, 'error' => $e->getMessage(), 'contacts' => []]);
+        }
+    }
+    
+    public function companies() {
+        try {
+            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]);
+            
+            // Get companies from multiple sources
+            $companies = [];
+            
+            // 1. From contacts table
+            $companiesFromContacts = $pdo->query("
+                SELECT DISTINCT company as name 
+                FROM contacts 
+                WHERE company IS NOT NULL AND company != '' 
+                ORDER BY company
+            ")->fetchAll(PDO::FETCH_ASSOC);
+            
+            // 2. From tasks table (existing followup data)
+            $companiesFromTasks = $pdo->query("
+                SELECT DISTINCT company_name as name 
+                FROM tasks 
+                WHERE company_name IS NOT NULL AND company_name != '' 
+                ORDER BY company_name
+            ")->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Merge and deduplicate companies
+            $allCompanies = array_merge($companiesFromContacts, $companiesFromTasks);
+            $uniqueCompanies = [];
+            $seen = [];
+            
+            foreach ($allCompanies as $company) {
+                $key = strtolower(trim($company['name']));
+                if (!isset($seen[$key]) && !empty($company['name'])) {
+                    $seen[$key] = true;
+                    $uniqueCompanies[] = $company;
+                }
+            }
+            
+            $this->json(['success' => true, 'companies' => $uniqueCompanies]);
+            
+        } catch (Exception $e) {
+            $this->json(['success' => false, 'error' => $e->getMessage(), 'companies' => []]);
+        }
+    }
 }
 ?>

@@ -229,9 +229,15 @@ $content = ob_start();
                         <small class="field-hint">Hard deadline when task must be completed. Leave empty if no specific deadline.</small>
                     </div>
                     <div class="form-group">
-                        <label for="sla_hours">⏱️ SLA Hours <span class="field-help" title="Expected completion time in hours">ℹ️</span></label>
-                        <input type="number" id="sla_hours" name="sla_hours" value="24" min="1" max="720" placeholder="24">
-                        <small class="field-hint">Service Level Agreement: Expected hours to complete (24h = 1 day, 168h = 1 week)</small>
+                        <label for="sla_hours">⏱️ SLA Time <span class="field-help" title="Expected completion time">ℹ️</span></label>
+                        <div class="sla-time-inputs">
+                            <input type="number" id="sla_hours_part" min="0" max="720" value="24" placeholder="24">
+                            <span class="sla-separator">h</span>
+                            <input type="number" id="sla_minutes_part" min="0" max="59" value="0" placeholder="0">
+                            <span class="sla-separator">m</span>
+                        </div>
+                        <input type="hidden" id="sla_hours" name="sla_hours" value="24">
+                        <small class="field-hint">Service Level Agreement: Expected time to complete (e.g., 2h 30m = 2.5 hours)</small>
                     </div>
                     <div class="form-group">
                         <label for="status">📈 Initial Status</label>
@@ -307,41 +313,64 @@ $content = ob_start();
             <!-- Follow-up Fields (Hidden by default) -->
             <div id="followupFields" class="form-section followup-section" style="display: none;">
                 <h3>📞 Follow-up Details</h3>
-                <div class="form-grid">
+                
+                <div class="form-group">
+                    <label class="form-label" for="followup_type">Follow-up Type *</label>
+                    <select name="followup_type" id="followup_type" class="form-control">
+                        <option value="standalone">Standalone Follow-up</option>
+                        <option value="task" selected>Task-linked Follow-up</option>
+                    </select>
+                    <small class="form-help">This follow-up is linked to the current task</small>
+                </div>
+                
+                <div class="form-row">
                     <div class="form-group">
-                        <label for="company_name">🏢 Company</label>
-                        <div class="search-input-container">
-                            <input type="text" id="company_name" name="company_name" class="search-input" placeholder="Type to search companies..." autocomplete="off">
-                            <div class="search-suggestions" id="company_suggestions"></div>
-                        </div>
+                        <label class="form-label" for="contact_id">Contact</label>
+                        <select name="contact_id" id="contact_id" class="form-control">
+                            <option value="">Select a contact</option>
+                        </select>
+                        <small class="form-help">Select existing contact or leave empty for manual entry</small>
                     </div>
+                    
                     <div class="form-group">
-                        <label for="contact_person">👤 Contact Person</label>
-                        <div class="search-input-container">
-                            <input type="text" id="contact_person" name="contact_person" class="search-input" placeholder="Type to search contacts..." autocomplete="off">
-                            <div class="search-suggestions" id="contact_suggestions"></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="contact_phone">📱 Phone</label>
-                        <input type="tel" id="contact_phone" name="contact_phone" placeholder="Contact phone number">
+                        <label class="form-label" for="follow_up_date">Follow-up Date *</label>
+                        <input type="date" name="follow_up_date" id="follow_up_date" class="form-control">
+                        <small class="form-help">When should this follow-up be done?</small>
                     </div>
                 </div>
-                <div class="form-grid">
+                
+                <div class="form-group">
+                    <label class="form-label" for="followup_title">Follow-up Title *</label>
+                    <input type="text" name="followup_title" id="followup_title" class="form-control" placeholder="e.g., Follow up on proposal discussion">
+                    <small class="form-help">Brief description of what this follow-up is about</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="followup_description">Follow-up Description</label>
+                    <textarea name="followup_description" id="followup_description" class="form-control" rows="3" placeholder="Additional details about this follow-up..."></textarea>
+                    <small class="form-help">Optional: Add more context or notes about this follow-up</small>
+                </div>
+                
+                <!-- Manual Contact Entry -->
+                <div class="form-row">
                     <div class="form-group">
-                        <label for="project_name">📁 Project</label>
-                        <div class="search-input-container">
-                            <input type="text" id="project_name" name="project_name" class="search-input" placeholder="Type to search projects..." autocomplete="off">
-                            <div class="search-suggestions" id="project_suggestions"></div>
-                        </div>
+                        <label class="form-label" for="contact_company">Company</label>
+                        <input type="text" id="contact_company" name="contact_company" class="form-control" placeholder="Company name">
                     </div>
                     <div class="form-group">
-                        <label for="followup_date">📅 Follow-up Date</label>
-                        <input type="date" id="followup_date" name="followup_date">
+                        <label class="form-label" for="contact_name">Contact Person</label>
+                        <input type="text" id="contact_name" name="contact_name" class="form-control" placeholder="Contact person name">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="contact_phone">Phone</label>
+                        <input type="tel" id="contact_phone" name="contact_phone" class="form-control" placeholder="Phone number">
                     </div>
                     <div class="form-group">
-                        <label for="followup_time">⏰ Follow-up Time</label>
-                        <input type="time" id="followup_time" name="followup_time" value="09:00">
+                        <label class="form-label" for="project_name">Project</label>
+                        <input type="text" id="project_name" name="project_name" class="form-control" placeholder="Project name">
                     </div>
                 </div>
             </div>
@@ -435,21 +464,63 @@ function toggleFollowupFields() {
     const checkbox = document.getElementById('followup_required');
     const followupFields = document.getElementById('followupFields');
     
+    // Get follow-up form elements that need required validation
+    const followupRequiredFields = [
+        document.getElementById('follow_up_date'),
+        document.getElementById('followup_title'),
+        document.getElementById('followup_type')
+    ];
+    
     if (checkbox.checked) {
         followupFields.style.display = 'block';
         followupFields.style.animation = 'slideDown 0.3s ease';
         
+        // Add required attribute to follow-up fields
+        followupRequiredFields.forEach(field => {
+            if (field) field.setAttribute('required', 'required');
+        });
+        
         // Set default follow-up date to tomorrow
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        document.getElementById('followup_date').value = tomorrow.toISOString().split('T')[0];
+        document.getElementById('follow_up_date').value = tomorrow.toISOString().split('T')[0];
         
-        // Load data and setup search inputs
-        setTimeout(() => {
-            loadFollowupDetails();
-        }, 100);
+        // Set default title based on task title
+        const taskTitle = document.getElementById('title').value;
+        if (taskTitle && !document.getElementById('followup_title').value) {
+            document.getElementById('followup_title').value = 'Follow-up: ' + taskTitle;
+        }
+        
+        // Load contacts for dropdown
+        loadContacts();
     } else {
         followupFields.style.display = 'none';
+        
+        // Remove required attribute from follow-up fields
+        followupRequiredFields.forEach(field => {
+            if (field) field.removeAttribute('required');
+        });
+        
+        // Clear follow-up field values to prevent submission of hidden data
+        followupRequiredFields.forEach(field => {
+            if (field && field.tagName === 'INPUT') field.value = '';
+        });
+        
+        // Clear other follow-up related fields
+        const otherFields = [
+            'followup_description', 'contact_company', 'contact_name', 
+            'contact_phone', 'project_name', 'contact_id'
+        ];
+        otherFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                if (field.tagName === 'SELECT') {
+                    field.selectedIndex = 0;
+                } else {
+                    field.value = '';
+                }
+            }
+        });
     }
 }
 
@@ -467,237 +538,50 @@ function handleCategoryChange() {
 // Load follow-up details for auto-population
 let followupData = [];
 
-/**
- * Loads follow-up details from API for auto-population of search fields.
- * Implements comprehensive error handling and falls back to dummy data if API is unavailable.
- *
- * Error Handling Strategy:
- * - HTTP status code validation
- * - JSON parsing error handling
- * - DOM element null checks
- * - Graceful fallback to dummy data
- * - Informative error logging
- */
-function loadFollowupDetails() {
-    const API_ENDPOINT = '/ergon/direct_followup_test.php';
-
-    fetch(API_ENDPOINT)
-        .then(response => {
-            // Check HTTP response status
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            // Parse JSON with error handling
-            return response.json().catch(jsonError => {
-                console.error('JSON parsing failed:', jsonError);
-                throw new Error('Invalid JSON response from server');
-            });
-        })
+// Load contacts for the dropdown
+function loadContacts() {
+    fetch('/ergon/api/contact-persons')
+        .then(response => response.json())
         .then(data => {
-            console.log('API Response received successfully:', data);
-
-            // Extract followups data with fallback
-            followupData = Array.isArray(data.followups) ? data.followups : [];
-
-            // Use dummy data if no real data exists
-            if (followupData.length === 0) {
-                console.log('No real data available, using dummy data');
-                followupData = getDummyFollowupData();
+            const contactSelect = document.getElementById('contact_id');
+            if (data.success && data.contacts) {
+                data.contacts.forEach(contact => {
+                    const option = document.createElement('option');
+                    option.value = contact.id || '';
+                    option.textContent = contact.name + (contact.company ? ' - ' + contact.company : '');
+                    contactSelect.appendChild(option);
+                });
             }
-
-            console.log(`Followup data loaded: ${followupData.length} items`);
-
-            // Setup search inputs
-            setupFollowupSearchInputs();
-
-            // Auto-populate form fields for follow-up tasks
-            autoPopulateFollowupFields();
         })
         .catch(error => {
-            console.error('Failed to load follow-up details:', error.message || error);
-
-            // Use dummy data as fallback
-            followupData = getDummyFollowupData();
-            console.log('Using fallback dummy data due to API error');
-
-            // Setup search inputs with fallback data
-            setupFollowupSearchInputs();
+            console.error('Failed to load contacts:', error);
         });
 }
 
-/**
- * Returns dummy follow-up data for fallback scenarios
- * @returns {Array} Array of dummy follow-up objects
- */
-function getDummyFollowupData() {
-    return [
-        {company_name: 'Tech Solutions Inc', contact_person: 'John Smith', project_name: 'Website Redesign', contact_phone: '+1-555-0123'},
-        {company_name: 'Digital Marketing Co', contact_person: 'Sarah Johnson', project_name: 'SEO Campaign', contact_phone: '+1-555-0124'},
-        {company_name: 'Global Enterprises', contact_person: 'Mike Wilson', project_name: 'Mobile App', contact_phone: '+1-555-0125'},
-        {company_name: 'StartUp Ventures', contact_person: 'Emily Davis', project_name: 'Brand Identity', contact_phone: '+1-555-0126'},
-        {company_name: 'Corporate Systems', contact_person: 'David Brown', project_name: 'Database Migration', contact_phone: '+1-555-0127'}
-    ];
-}
-
-/**
- * Auto-populates title and description fields for follow-up tasks
- * Includes null checks to prevent runtime errors
- */
-function autoPopulateFollowupFields() {
-    try {
-        const titleField = document.getElementById('title');
-        const descField = document.getElementById('description');
-
-        // Null checks before accessing DOM elements
-        if (titleField && !titleField.value.trim()) {
-            titleField.value = 'Follow-up Call';
-            console.log('Auto-populated title field');
-        }
-
-        if (descField && !descField.value.trim()) {
-            descField.value = 'Follow up with client regarding project status and next steps';
-            console.log('Auto-populated description field');
-        }
-    } catch (error) {
-        console.error('Error during auto-population:', error);
-        // Continue execution - auto-population is not critical
-    }
-}
-
-function setupFollowupSearchInputs() {
-    console.log('Setting up followup search inputs with data:', followupData);
-    
-    // Ensure we have data before setting up inputs
-    if (followupData.length === 0) {
-        followupData = [
-            {company_name: 'Tech Solutions Inc', contact_person: 'John Smith', project_name: 'Website Redesign', contact_phone: '+1-555-0123'},
-            {company_name: 'Digital Marketing Co', contact_person: 'Sarah Johnson', project_name: 'SEO Campaign', contact_phone: '+1-555-0124'},
-            {company_name: 'Global Enterprises', contact_person: 'Mike Wilson', project_name: 'Mobile App', contact_phone: '+1-555-0125'},
-            {company_name: 'StartUp Ventures', contact_person: 'Emily Davis', project_name: 'Brand Identity', contact_phone: '+1-555-0126'},
-            {company_name: 'Corporate Systems', contact_person: 'David Brown', project_name: 'Database Migration', contact_phone: '+1-555-0127'}
-        ];
-    }
-    
-    setupFollowupSearchInput('company_name', 'company_suggestions', 'company_name');
-    setupFollowupSearchInput('contact_person', 'contact_suggestions', 'contact_person');
-    setupFollowupSearchInput('project_name', 'project_suggestions', 'project_name');
-}
-
-/**
- * Sets up search input functionality with autocomplete suggestions
- * @param {string} inputId - ID of the input element
- * @param {string} suggestionsId - ID of the suggestions container
- * @param {string} field - Field name in followupData to search
- */
-function setupFollowupSearchInput(inputId, suggestionsId, field) {
-    const input = document.getElementById(inputId);
-    const suggestions = document.getElementById(suggestionsId);
-
-    // Validate DOM elements exist
-    if (!input || !suggestions) {
-        console.log('Missing elements:', inputId, suggestionsId);
-        return;
-    }
-
-    // Main search input handler
-    input.addEventListener('input', function() {
-        const query = this.value.toLowerCase().trim();
-        console.log('Search query:', query, 'for field:', field, 'data length:', followupData.length);
-
-        // Hide suggestions for short queries
-        if (query.length < 2) {
-            suggestions.style.display = 'none';
-            return;
-        }
-
-        // Optimized search: extract field values, filter matches, remove duplicates, limit results
-        const matches = [...new Set(
-            followupData
-                .map(item => item[field])  // Extract field values
-                .filter(value => value && value.toLowerCase().includes(query))  // Filter matches
-                .slice(0, 5)  // Limit to 5 results for performance
-        )];
-
-        console.log('Found matches:', matches);
-
-        // Render suggestions or no-results message
-        if (matches.length > 0) {
-            suggestions.innerHTML = matches
-                .map(match => `<div class="suggestion-item" onclick="selectFollowupSuggestion('${inputId}', '${match.replace(/'/g, "\\'")}')"><strong>${match}</strong></div>`)
-                .join('');
-            suggestions.style.display = 'block';
-        } else {
-            suggestions.innerHTML = '<div class="suggestion-item">No matches found</div>';
-            suggestions.style.display = 'block';
-        }
-    });
-
-    // Special handling for contact person field to auto-update phone
-    if (inputId === 'contact_person') {
-        input.addEventListener('blur', function() {
-            const contactName = this.value.trim();
-            if (contactName) {
-                // Find exact contact match (case-insensitive)
-                const contactData = followupData.find(item =>
-                    item.contact_person && item.contact_person.toLowerCase() === contactName.toLowerCase()
-                );
-                // Auto-populate phone if found
-                if (contactData && contactData.contact_phone) {
-                    document.getElementById('contact_phone').value = contactData.contact_phone;
-                }
+// Handle contact selection to auto-fill fields
+document.addEventListener('DOMContentLoaded', function() {
+    const contactSelect = document.getElementById('contact_id');
+    if (contactSelect) {
+        contactSelect.addEventListener('change', function() {
+            if (this.value) {
+                // Find selected contact and auto-fill fields
+                fetch('/ergon/api/contact-persons')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.contacts) {
+                            const selectedContact = data.contacts.find(c => c.id == this.value);
+                            if (selectedContact) {
+                                document.getElementById('contact_company').value = selectedContact.company || '';
+                                document.getElementById('contact_name').value = selectedContact.name || '';
+                                document.getElementById('contact_phone').value = selectedContact.phone || '';
+                            }
+                        }
+                    })
+                    .catch(error => console.error('Error loading contact details:', error));
             }
         });
     }
-
-    // Global click handler to hide suggestions when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!input.contains(e.target) && !suggestions.contains(e.target)) {
-            suggestions.style.display = 'none';
-        }
-    });
-}
-
-function selectFollowupSuggestion(inputId, value) {
-    const input = document.getElementById(inputId);
-    const suggestions = document.getElementById(inputId.replace('_name', '_suggestions').replace('_person', '_suggestions'));
-    
-    input.value = value;
-    suggestions.style.display = 'none';
-    
-    // Auto-fill related fields when selecting company
-    if (inputId === 'company_name') {
-        const companyData = followupData.find(item => item.company_name === value);
-        if (companyData) {
-            if (companyData.contact_person && !document.getElementById('contact_person').value) {
-                document.getElementById('contact_person').value = companyData.contact_person;
-            }
-            if (companyData.contact_phone && !document.getElementById('contact_phone').value) {
-                document.getElementById('contact_phone').value = companyData.contact_phone;
-            }
-            if (companyData.project_name && !document.getElementById('project_name').value) {
-                document.getElementById('project_name').value = companyData.project_name;
-            }
-        }
-    }
-    
-    // Auto-fill related fields when selecting contact
-    if (inputId === 'contact_person') {
-        const contactData = followupData.find(item => item.contact_person === value);
-        if (contactData) {
-            if (contactData.company_name && !document.getElementById('company_name').value) {
-                document.getElementById('company_name').value = contactData.company_name;
-            }
-            // Always update phone number when contact person changes
-            if (contactData.contact_phone) {
-                document.getElementById('contact_phone').value = contactData.contact_phone;
-            }
-            if (contactData.project_name && !document.getElementById('project_name').value) {
-                document.getElementById('project_name').value = contactData.project_name;
-            }
-        }
-    }
-}
+});
 
 // Initialize tooltips
 var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -718,13 +602,40 @@ function toggleHelpPanel() {
     }
 }
 
+// SLA Time calculation
+function updateSLAHours() {
+    const hours = parseInt(document.getElementById('sla_hours_part').value) || 0;
+    const minutes = parseInt(document.getElementById('sla_minutes_part').value) || 0;
+    const totalHours = hours + (minutes / 60);
+    document.getElementById('sla_hours').value = totalHours.toFixed(2);
+}
+
 // Form initialization
 document.addEventListener('DOMContentLoaded', function() {
+    // SLA time inputs event listeners
+    document.getElementById('sla_hours_part').addEventListener('input', updateSLAHours);
+    document.getElementById('sla_minutes_part').addEventListener('input', updateSLAHours);
     
     // Set minimum date to today
     const deadlineInput = document.getElementById('deadline');
     const today = new Date().toISOString().split('T')[0];
     deadlineInput.min = today;
+    
+    // Initialize follow-up fields state (ensure they start without required attribute)
+    const followupRequiredFields = [
+        document.getElementById('follow_up_date'),
+        document.getElementById('followup_title'),
+        document.getElementById('followup_type')
+    ];
+    followupRequiredFields.forEach(field => {
+        if (field) field.removeAttribute('required');
+    });
+    
+    // Set minimum date for follow-up date field
+    const followupDateInput = document.getElementById('follow_up_date');
+    if (followupDateInput) {
+        followupDateInput.min = today;
+    }
     
     // Status/Progress sync
     const statusSelect = document.getElementById('status');
@@ -744,6 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('createTaskForm').addEventListener('submit', function(e) {
         const title = document.getElementById('title').value.trim();
         const assignedTo = document.getElementById('assigned_to').value;
+        const followupRequired = document.getElementById('followup_required').checked;
         
         if (!title) {
             e.preventDefault();
@@ -755,6 +667,26 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             alert('Please select a user to assign the task to');
             return;
+        }
+        
+        // Validate follow-up fields only if follow-up is enabled
+        if (followupRequired) {
+            const followupDate = document.getElementById('follow_up_date').value.trim();
+            const followupTitle = document.getElementById('followup_title').value.trim();
+            
+            if (!followupDate) {
+                e.preventDefault();
+                alert('Please select a follow-up date');
+                document.getElementById('follow_up_date').focus();
+                return;
+            }
+            
+            if (!followupTitle) {
+                e.preventDefault();
+                alert('Please enter a follow-up title');
+                document.getElementById('followup_title').focus();
+                return;
+            }
         }
     });
 });
@@ -1114,6 +1046,45 @@ document.addEventListener('DOMContentLoaded', function() {
     animation: slideDown 0.3s ease;
 }
 
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: border-color 0.2s ease;
+    background: var(--bg-primary);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-help {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
 @keyframes slideDown {
     from {
         opacity: 0;
@@ -1322,6 +1293,24 @@ document.addEventListener('DOMContentLoaded', function() {
     font-weight: 500;
     margin-bottom: 0.25rem;
     color: var(--text-primary);
+}
+
+/* SLA Time Inputs */
+.sla-time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sla-time-inputs input {
+    width: 60px;
+    text-align: center;
+}
+
+.sla-separator {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
 }
 
 /* Responsive adjustments */

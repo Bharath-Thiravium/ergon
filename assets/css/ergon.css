@@ -2456,6 +2456,70 @@ pre, code {
   color: white;
 }
 
+.btn--danger {
+  background: #ef4444 !important;
+  color: white !important;
+  border: 1px solid #dc2626 !important;
+}
+
+.btn--danger:hover {
+  background: #dc2626 !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+}
+
+.btn--info {
+  background: #3b82f6 !important;
+  color: white !important;
+  border: 1px solid #2563eb !important;
+}
+
+.btn--info:hover {
+  background: #2563eb !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
+}
+
+.btn--info.btn--outline {
+  background: transparent !important;
+  color: #3b82f6 !important;
+  border: 2px solid #3b82f6 !important;
+}
+
+.btn--info.btn--outline:hover {
+  background: #3b82f6 !important;
+  color: white !important;
+  border-color: #3b82f6 !important;
+}
+
+.btn--success {
+  background: #10b981 !important;
+  color: white !important;
+  border: 1px solid #059669 !important;
+}
+
+.btn--success:hover {
+  background: #059669 !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
+}
+
+.btn--warning {
+  background: #f59e0b !important;
+  color: white !important;
+  border: 1px solid #d97706 !important;
+}
+
+.btn--warning:hover {
+  background: #d97706 !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4) !important;
+}
+
 .followup-card:nth-child(1)::after {
   content: '⭐ Priority';
   position: initial;
