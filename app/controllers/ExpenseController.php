@@ -374,18 +374,47 @@ class ExpenseController extends Controller {
         
         try {
             require_once __DIR__ . '/../config/database.php';
+            require_once __DIR__ . '/../helpers/AccountingHelper.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("UPDATE expenses SET status = 'approved' WHERE id = ? AND status = 'pending'");
-            $result = $stmt->execute([$id]);
+            // Get expense details first
+            $stmt = $db->prepare("SELECT * FROM expenses WHERE id = ? AND status = 'pending'");
+            $stmt->execute([$id]);
+            $expense = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$expense) {
+                header('Location: /ergon/expenses?error=Expense not found or already processed');
+                exit;
+            }
+            
+            $db->beginTransaction();
+            
+            // Update expense status with approval details
+            $stmt = $db->prepare("UPDATE expenses SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$_SESSION['user_id'], $id]);
             
             if ($result && $stmt->rowCount() > 0) {
-                header('Location: /ergon/expenses?success=Expense approved successfully');
+                // Record in accounting system
+                AccountingHelper::recordExpenseApproval(
+                    $id,
+                    $expense['amount'],
+                    $expense['category'],
+                    $expense['description'],
+                    $_SESSION['user_id']
+                );
+                
+                $db->commit();
+                header('Location: /ergon/expenses?success=Expense approved and recorded in accounts successfully');
             } else {
-                header('Location: /ergon/expenses?error=Expense not found or already processed');
+                $db->rollback();
+                header('Location: /ergon/expenses?error=Failed to approve expense');
             }
         } catch (Exception $e) {
-            header('Location: /ergon/expenses?error=Database error: ' . $e->getMessage());
+            if ($db->inTransaction()) {
+                $db->rollback();
+            }
+            error_log('Expense approval error: ' . $e->getMessage());
+            header('Location: /ergon/expenses?error=Approval failed: ' . $e->getMessage());
         }
         exit;
     }
@@ -413,18 +442,37 @@ class ExpenseController extends Controller {
             
             try {
                 require_once __DIR__ . '/../config/database.php';
+                require_once __DIR__ . '/../helpers/AccountingHelper.php';
                 $db = Database::connect();
                 
-                $stmt = $db->prepare("UPDATE expenses SET status = 'rejected', rejection_reason = ? WHERE id = ? AND status = 'pending'");
+                $db->beginTransaction();
+                
+                // Check if expense was already approved and has accounting entries
+                $stmt = $db->prepare("SELECT status, journal_entry_id FROM expenses WHERE id = ?");
+                $stmt->execute([$id]);
+                $expense = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($expense && $expense['status'] === 'approved' && $expense['journal_entry_id']) {
+                    // Reverse accounting entries
+                    AccountingHelper::reverseExpenseEntry($id);
+                }
+                
+                $stmt = $db->prepare("UPDATE expenses SET status = 'rejected', rejection_reason = ? WHERE id = ?");
                 $result = $stmt->execute([$reason, $id]);
                 
                 if ($result && $stmt->rowCount() > 0) {
+                    $db->commit();
                     header('Location: /ergon/expenses?success=Expense rejected successfully');
                 } else {
-                    header('Location: /ergon/expenses?error=Expense not found or already processed');
+                    $db->rollback();
+                    header('Location: /ergon/expenses?error=Expense not found');
                 }
             } catch (Exception $e) {
-                header('Location: /ergon/expenses?error=Database error: ' . $e->getMessage());
+                if ($db->inTransaction()) {
+                    $db->rollback();
+                }
+                error_log('Expense rejection error: ' . $e->getMessage());
+                header('Location: /ergon/expenses?error=Rejection failed: ' . $e->getMessage());
             }
         } else {
             header('Location: /ergon/expenses?error=Rejection reason is required');

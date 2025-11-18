@@ -197,8 +197,7 @@ function viewStaffDetails(staffId) {
 }
 
 function viewAttendanceHistory(staffId) {
-    alert('Attendance history view - Staff ID: ' + staffId);
-    // TODO: Implement attendance history modal or page
+    window.location.href = '/ergon/attendance/history/' + staffId;
 }
 
 function markManualAttendance(employeeId) {

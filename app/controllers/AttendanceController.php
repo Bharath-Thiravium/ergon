@@ -610,5 +610,66 @@ class AttendanceController extends Controller {
         
         return $earthRadius * $c;
     }
+    
+    public function history($employeeId = null) {
+        $this->requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('HTTP/1.1 403 Forbidden');
+            exit('Access denied');
+        }
+        
+        if (!$employeeId) {
+            header('Location: /ergon/attendance?error=Employee ID required');
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Get employee details
+            $stmt = $db->prepare("SELECT id, name, email FROM users WHERE id = ?");
+            $stmt->execute([$employeeId]);
+            $employee = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$employee) {
+                header('Location: /ergon/attendance?error=Employee not found');
+                exit;
+            }
+            
+            // Get period filter
+            $period = intval($_GET['period'] ?? 30);
+            
+            // Get attendance history
+            $stmt = $db->prepare("
+                SELECT 
+                    check_in,
+                    check_out,
+                    status,
+                    location_name,
+                    created_at
+                FROM attendance 
+                WHERE user_id = ? 
+                AND check_in >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                ORDER BY check_in DESC
+            ");
+            $stmt->execute([$employeeId, $period]);
+            $attendanceHistory = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->view('attendance/history', [
+                'employee' => $employee,
+                'employee_id' => $employeeId,
+                'attendance_history' => $attendanceHistory,
+                'period' => $period,
+                'active_page' => 'attendance'
+            ]);
+            
+        } catch (Exception $e) {
+            error_log('Attendance history error: ' . $e->getMessage());
+            header('Location: /ergon/attendance?error=Failed to load attendance history');
+            exit;
+        }
+    }
 }
 ?>

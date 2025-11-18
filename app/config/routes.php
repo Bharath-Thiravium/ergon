@@ -110,6 +110,7 @@ $router->get('/attendance/clock', 'UnifiedAttendanceController', 'clock');
 $router->post('/attendance/clock', 'UnifiedAttendanceController', 'clock');
 $router->post('/attendance/manual', 'UnifiedAttendanceController', 'manual');
 $router->get('/attendance/status', 'UnifiedAttendanceController', 'status');
+$router->get('/attendance/history/{id}', 'AttendanceController', 'history');
 $router->get('/attendance/export', 'AttendanceController', 'exportAttendance');
 $router->get('/attendance/conflicts', 'AttendanceController', 'conflicts');
 $router->post('/attendance/resolve-conflict/{id}', 'AttendanceController', 'resolveConflict');
