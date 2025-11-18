@@ -557,6 +557,9 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     </main>
 
     <script>
+    // Global variables - Initialize first
+    let attendanceState = 'out'; // 'in' or 'out'
+    
     // Simple dropdown system
     function toggleDropdown(id) {
         var dropdown = document.getElementById(id);
@@ -766,6 +769,20 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
     // Make functions globally accessible
     window.toggleProfile = toggleProfile;
+    
+    // Define missing dropdown functions
+    function showDropdown(element) {
+        if (element && element.nextElementSibling) {
+            element.nextElementSibling.classList.add('show');
+        }
+    }
+    
+    function hideDropdown(element) {
+        if (element && element.nextElementSibling) {
+            element.nextElementSibling.classList.remove('show');
+        }
+    }
+    
     window.showDropdown = showDropdown;
     window.hideDropdown = hideDropdown;
     
@@ -838,8 +855,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     }
     
     // Attendance Toggle Function
-    let attendanceState = 'out'; // 'in' or 'out'
-    
     function toggleAttendance() {
         const button = document.getElementById('attendanceToggle');
         const icon = document.getElementById('attendanceIcon');
@@ -949,6 +964,11 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
     // Check attendance status on page load
     function checkAttendanceStatus() {
+        // Ensure attendanceState is initialized before use
+        if (typeof attendanceState === 'undefined') {
+            attendanceState = 'out';
+        }
+        
         fetch('/ergon/attendance/status')
         .then(response => response.json())
         .then(data => {
