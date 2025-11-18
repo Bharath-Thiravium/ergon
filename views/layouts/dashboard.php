@@ -46,21 +46,40 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <link href="/ergon/assets/css/instant-theme.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/global-tooltips.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/action-button-clean.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/responsive-mobile.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/mobile-critical-fixes.css?v=<?= time() ?>" rel="stylesheet">
 
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/action-button-clean.js?v=<?= time() ?>" defer></script>
+    <script src="/ergon/assets/js/mobile-enhanced.js?v=<?= time() ?>" defer></script>
+    <script src="/ergon/assets/js/mobile-table-cards.js?v=<?= time() ?>" defer></script>
+    <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
+    <script src="/ergon/assets/js/mobile-validation.js?v=<?= time() ?>" defer></script>
+    <?php endif; ?>
 </head>
 <body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
     <header class="main-header">
         <div class="header__top">
             <div class="header__brand">
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
+                    <i class="bi bi-list"></i>
+                </button>
                 <span class="brand-icon"><i class="bi bi-compass-fill"></i></span>
                 <span class="brand-text">Ergon</span>
                 <span class="role-badge"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             
             <div class="header__controls">
+                <div class="attendance-controls">
+                    <button class="btn btn--attendance-toggle" id="attendanceToggle" onclick="toggleAttendance()" title="Toggle Attendance">
+                        <div class="attendance-icon">
+                            <i class="bi bi-play-fill" id="attendanceIcon"></i>
+                        </div>
+                        <span class="btn-text" id="attendanceText">Clock In</span>
+                        <div class="attendance-pulse"></div>
+                    </button>
+                </div>
                 <button class="control-btn" id="theme-toggle" title="Toggle Theme">
                     <i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i>
                 </button>
@@ -369,6 +388,143 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         </div>
     </header>
     
+    <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileMenu()"></div>
+    
+    <aside class="sidebar" id="mobileSidebar">
+        <div class="sidebar__header">
+            <div class="sidebar__brand">
+                <span class="brand-icon"><i class="bi bi-compass-fill"></i></span>
+                <span>Ergon</span>
+            </div>
+        </div>
+        <nav class="sidebar__menu">
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
+                <div class="sidebar__divider">Overview</div>
+                <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon"><i class="bi bi-speedometer2"></i></span>
+                    Dashboard
+                </a>
+                <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon"><i class="bi bi-trophy-fill"></i></span>
+                    Competition
+                </a>
+                
+                <div class="sidebar__divider">Management</div>
+                <a href="/ergon/system-admin" class="sidebar__link <?= ($active_page ?? '') === 'system-admin' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🔧</span>
+                    System
+                </a>
+                <a href="/ergon/admin/management" class="sidebar__link <?= ($active_page ?? '') === 'admin' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">👥</span>
+                    Users
+                </a>
+                <a href="/ergon/departments" class="sidebar__link <?= ($active_page ?? '') === 'departments' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🏢</span>
+                    Departments
+                </a>
+                <a href="/ergon/project-management" class="sidebar__link <?= ($active_page ?? '') === 'project-management' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📁</span>
+                    Projects
+                </a>
+                
+                <div class="sidebar__divider">Operations</div>
+                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">✅</span>
+                    Tasks
+                </a>
+                <a href="/ergon/contacts/followups" class="sidebar__link <?= ($active_page ?? '') === 'contact_followups' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📞</span>
+                    Follow-ups
+                </a>
+                
+                <div class="sidebar__divider">HR & Finance</div>
+                <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📅</span>
+                    Leaves
+                </a>
+                <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💰</span>
+                    Expenses
+                </a>
+                <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💳</span>
+                    Advances
+                </a>
+                <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📍</span>
+                    Attendance
+                </a>
+            <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📊</span>
+                    Dashboard
+                </a>
+                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">✅</span>
+                    Tasks
+                </a>
+                <a href="/ergon/users" class="sidebar__link <?= ($active_page ?? '') === 'users' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">👥</span>
+                    Users
+                </a>
+                <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📅</span>
+                    Leaves
+                </a>
+                <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💰</span>
+                    Expenses
+                </a>
+            <?php else: ?>
+                <div class="sidebar__divider">Overview</div>
+                <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🏠</span>
+                    Dashboard
+                </a>
+                <a href="/ergon/gamification/individual" class="sidebar__link <?= ($active_page ?? '') === 'individual-gamification' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🏅</span>
+                    My Performance
+                </a>
+                <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🏆</span>
+                    Team Competition
+                </a>
+                
+                <div class="sidebar__divider">Work</div>
+                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">✅</span>
+                    Tasks
+                </a>
+                <a href="/ergon/workflow/daily-planner" class="sidebar__link <?= ($active_page ?? '') === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📅</span>
+                    Daily Planner
+                </a>
+                <a href="/ergon/contacts/followups" class="sidebar__link <?= ($active_page ?? '') === 'contact_followups' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📞</span>
+                    Follow-ups
+                </a>
+                
+                <div class="sidebar__divider">Personal</div>
+                <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📅</span>
+                    Leaves
+                </a>
+                <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💰</span>
+                    Expenses
+                </a>
+                <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💳</span>
+                    Advances
+                </a>
+                <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📍</span>
+                    Attendance
+                </a>
+            <?php endif; ?>
+        </nav>
+    </aside>
+    
     <div class="notification-dropdown" id="notificationDropdown">
         <div class="notification-header">
             <h3>Notifications</h3>
@@ -538,6 +694,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     
     document.addEventListener('DOMContentLoaded', function() {
         loadNotifications();
+        checkAttendanceStatus();
         
         // Ensure profile button is clickable
         var profileBtn = document.getElementById('profileButton');
@@ -696,6 +853,152 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     function initTooltips() {
         return;
     }
+    
+    // Attendance Toggle Function
+    let attendanceState = 'out'; // 'in' or 'out'
+    
+    function toggleAttendance() {
+        const button = document.getElementById('attendanceToggle');
+        const icon = document.getElementById('attendanceIcon');
+        const text = document.getElementById('attendanceText');
+        
+        button.disabled = true;
+        button.classList.add('loading');
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const action = attendanceState === 'out' ? 'in' : 'out';
+                
+                fetch('/ergon/attendance/clock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `type=${action}&latitude=${position.coords.latitude}&longitude=${position.coords.longitude}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        attendanceState = action;
+                        updateAttendanceButton();
+                        showAttendanceNotification(action === 'in' ? 'Clocked in successfully!' : 'Clocked out successfully!', 'success');
+                    } else {
+                        showAttendanceNotification(data.error || 'Failed to update attendance', 'error');
+                    }
+                })
+                .catch(error => {
+                    showAttendanceNotification('Network error occurred', 'error');
+                })
+                .finally(() => {
+                    button.disabled = false;
+                    button.classList.remove('loading');
+                });
+            }, function(error) {
+                showAttendanceNotification('Location access required', 'error');
+                button.disabled = false;
+                button.classList.remove('loading');
+            });
+        } else {
+            showAttendanceNotification('Geolocation not supported', 'error');
+            button.disabled = false;
+            button.classList.remove('loading');
+        }
+    }
+    
+    function updateAttendanceButton() {
+        const button = document.getElementById('attendanceToggle');
+        const icon = document.getElementById('attendanceIcon');
+        const text = document.getElementById('attendanceText');
+        
+        if (attendanceState === 'in') {
+            button.classList.remove('state-out');
+            button.classList.add('state-in');
+            icon.className = 'bi bi-stop-fill';
+            text.textContent = 'Clock Out';
+        } else {
+            button.classList.remove('state-in');
+            button.classList.add('state-out');
+            icon.className = 'bi bi-play-fill';
+            text.textContent = 'Clock In';
+        }
+    }
+    
+    function showAttendanceNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `attendance-notification ${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => notification.classList.add('show'), 100);
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => document.body.removeChild(notification), 300);
+        }, 3000);
+    }
+    
+    // Check attendance status on page load
+    function checkAttendanceStatus() {
+        fetch('/ergon/attendance/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.attendance) {
+                attendanceState = data.attendance.check_out ? 'out' : 'in';
+                updateAttendanceButton();
+            }
+        })
+        .catch(error => console.log('Status check failed:', error));
+    }
+    
+    // Mobile Menu Functions
+    function toggleMobileMenu() {
+        var sidebar = document.querySelector('.sidebar');
+        var overlay = document.getElementById('mobileOverlay');
+        
+        if (sidebar && overlay) {
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+            document.body.style.overflow = sidebar.classList.contains('mobile-open') ? 'hidden' : '';
+        }
+    }
+    
+    function closeMobileMenu() {
+        var sidebar = document.querySelector('.sidebar');
+        var overlay = document.getElementById('mobileOverlay');
+        
+        if (sidebar && overlay) {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+    
+    // Close mobile menu when clicking on navigation links
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.nav-dropdown-item') || e.target.closest('.sidebar__link')) {
+            closeMobileMenu();
+        }
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 1024) {
+            closeMobileMenu();
+        }
+    });
+    
+    // Add scroll indicator for tables on mobile
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.innerWidth <= 768) {
+            var tables = document.querySelectorAll('.table-responsive');
+            tables.forEach(function(table) {
+                table.classList.add('table-mobile-scroll');
+            });
+        }
+    });
     </script>
 
 </body>

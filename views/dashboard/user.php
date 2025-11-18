@@ -9,10 +9,10 @@ ob_start();
             <!-- Header Actions -->
             <div class="header-actions">
                 <button class="btn btn--primary" onclick="clockIn()">
-                    <span>▶️</span> Clock In
+                    <span>▶️</span> <span class="btn-text">Clock In</span>
                 </button>
                 <button class="btn btn--secondary" onclick="clockOut()">
-                    <span>⏹️</span> Clock Out
+                    <span>⏹️</span> <span class="btn-text">Clock Out</span>
                 </button>
             </div>
             
@@ -81,17 +81,17 @@ ob_start();
                         </h3>
                     </div>
                     <div class="card__body">
-                        <div class="card__body">
-                            <button class="btn btn--primary" onclick="clockIn()">
+                        <div class="quick-actions-grid">
+                            <button class="btn btn--primary btn--block" onclick="clockIn()">
                                 <span>▶️</span> Clock In
                             </button>
-                            <button class="btn btn--secondary" onclick="clockOut()">
+                            <button class="btn btn--secondary btn--block" onclick="clockOut()">
                                 <span>⏹️</span> Clock Out
                             </button>
-                            <a href="/ergon/leaves/create" class="btn btn--secondary">
+                            <a href="/ergon/leaves/create" class="btn btn--secondary btn--block">
                                 <span>📅</span> Request Leave
                             </a>
-                            <a href="/ergon/expenses/create" class="btn btn--secondary">
+                            <a href="/ergon/expenses/create" class="btn btn--secondary btn--block">
                                 <span>💰</span> Submit Expense
                             </a>
                         </div>

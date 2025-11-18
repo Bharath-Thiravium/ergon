@@ -85,11 +85,11 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
             <table class="table">
                 <thead>
                     <tr>
-                        <th style="width: 35%;">Title</th>
-                        <th>Assigned To & Priority</th>
-                        <th>Progress</th>
-                        <th>Due Date</th>
-                        <th>Actions</th>
+                        <th class="col-title">Title</th>
+                        <th class="col-assignment">Assigned To & Priority</th>
+                        <th class="col-progress">Progress</th>
+                        <th class="col-date">Due Date</th>
+                        <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
