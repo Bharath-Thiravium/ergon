@@ -1,6 +1,14 @@
 <?php
+$title = '🏆 Team Competition Dashboard';
 $content = ob_start();
 ?>
+
+<div class="page-header">
+    <div class="page-title">
+        <h1>🏆 Team Competition Dashboard</h1>
+        <p>Monitor team performance and celebrate achievements</p>
+    </div>
+</div>
 
 <div class="team-competition-dashboard">
 <div class="dashboard-grid">

@@ -49,12 +49,14 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <link href="/ergon/assets/css/action-button-clean.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/responsive-mobile.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/mobile-critical-fixes.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/nav-simple-fix.css?v=<?= time() ?>" rel="stylesheet">
 
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/action-button-clean.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/mobile-enhanced.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/mobile-table-cards.js?v=<?= time() ?>" defer></script>
+
     <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
     <script src="/ergon/assets/js/mobile-validation.js?v=<?= time() ?>" defer></script>
     <?php endif; ?>
@@ -143,7 +145,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown" onmouseenter="showDropdown('management')" onmouseleave="hideDropdown('management')">
+                    <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('management')">
                             <span class="nav-icon">🔧</span>
                             Management
@@ -168,7 +170,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown" onmouseenter="showDropdown('operations')" onmouseleave="hideDropdown('operations')">
+                    <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('operations')">
                             <span class="nav-icon">✅</span>
                             Operations
@@ -185,7 +187,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown" onmouseenter="showDropdown('hrfinance')" onmouseleave="hideDropdown('hrfinance')">
+                    <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('hrfinance')">
                             <span class="nav-icon">💰</span>
                             HR & Finance
@@ -210,7 +212,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown" onmouseenter="showDropdown('analytics')" onmouseleave="hideDropdown('analytics')">
+                    <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('analytics')">
                             <span class="nav-icon">📈</span>
                             Analytics
@@ -245,7 +247,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown" onmouseenter="showDropdown('team')" onmouseleave="hideDropdown('team')">
+                    <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('team')">
                             <span class="nav-icon">👥</span>
                             Team
@@ -262,7 +264,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown" onmouseenter="showDropdown('tasks')" onmouseleave="hideDropdown('tasks')">
+                    <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('tasks')">
                             <span class="nav-icon">✅</span>
                             Tasks
@@ -283,7 +285,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown" onmouseenter="showDropdown('approvals')" onmouseleave="hideDropdown('approvals')">
+                    <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('approvals')">
                             <span class="nav-icon">📅</span>
                             Approvals
@@ -334,13 +336,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown" onmouseenter="showDropdown('work')" onmouseleave="hideDropdown('work')">
+                    <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('work')">
                             <span class="nav-icon">✅</span>
                             Work
                             <span class="dropdown-arrow">▼</span>
                         </button>
-                        <div class="nav-dropdown-menu" id="work" onmouseenter="showDropdown('work')" onmouseleave="hideDropdown('work')">
+                        <div class="nav-dropdown-menu" id="work">
                             <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">✅</span>
                                 Tasks
@@ -355,13 +357,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown" onmouseenter="showDropdown('personal')" onmouseleave="hideDropdown('personal')">
+                    <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('personal')">
                             <span class="nav-icon">📋</span>
                             Personal
                             <span class="dropdown-arrow">▼</span>
                         </button>
-                        <div class="nav-dropdown-menu" id="personal" onmouseenter="showDropdown('personal')" onmouseleave="hideDropdown('personal')">
+                        <div class="nav-dropdown-menu" id="personal">
                             <a href="/ergon/user/requests" class="nav-dropdown-item <?= ($active_page ?? '') === 'requests' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📋</span>
                                 Requests
@@ -555,67 +557,36 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     </main>
 
     <script>
-    var hideTimeout;
-    var currentDropdown = null;
-    
-    // Fix for missing dropdown functions
-    window.showDropdown = function(id) {
-        showDropdown(id);
-    };
-    
-    window.hideDropdown = function(id) {
-        hideDropdown(id);
-    };
-    
-    function showDropdown(id) {
-        clearTimeout(hideTimeout);
-        currentDropdown = id;
-        
+    // Simple dropdown system
+    function toggleDropdown(id) {
         var dropdown = document.getElementById(id);
         if (!dropdown) return;
         
-        var btn = dropdown.previousElementSibling;
-        var btnRect = btn.getBoundingClientRect();
+        var isOpen = dropdown.classList.contains('show');
         
-        dropdown.style.top = (btnRect.bottom + 8) + 'px';
-        dropdown.style.left = btnRect.left + 'px';
-        
+        // Close all dropdowns
         document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
-            if (menu.id !== id && menu.classList.contains('show')) {
-                menu.classList.remove('show');
-                menu.previousElementSibling.classList.remove('active');
-            }
+            menu.classList.remove('show');
+            var btn = menu.previousElementSibling;
+            if (btn) btn.classList.remove('active');
         });
         
-        setTimeout(function() {
+        // Open this dropdown if it was closed
+        if (!isOpen) {
+            var btn = dropdown.previousElementSibling;
+            var rect = btn.getBoundingClientRect();
+            
+            dropdown.style.position = 'fixed';
+            dropdown.style.top = (rect.bottom + 8) + 'px';
+            dropdown.style.left = rect.left + 'px';
+            dropdown.style.zIndex = '99999';
+            
             dropdown.classList.add('show');
             btn.classList.add('active');
-        }, 50);
-    }
-    
-    function hideDropdown(id) {
-        hideTimeout = setTimeout(function() {
-            var dropdown = document.getElementById(id);
-            if (dropdown && currentDropdown === id) {
-                var btn = dropdown.previousElementSibling;
-                
-                dropdown.classList.remove('show');
-                btn.classList.remove('active');
-                currentDropdown = null;
-            }
-        }, 150);
-    }
-    
-    function toggleDropdown(id) {
-        var dropdown = document.getElementById(id);
-        var btn = dropdown.previousElementSibling;
-        
-        if (dropdown.classList.contains('show')) {
-            hideDropdown(id);
-        } else {
-            showDropdown(id);
         }
     }
+    
+    window.toggleDropdown = toggleDropdown;
     
     function toggleNotifications(event) {
         if (event) {
