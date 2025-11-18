@@ -349,6 +349,11 @@ class TableUtils {
 
 // Auto-initialize for tables with .table class or inside .table-responsive
 document.addEventListener('DOMContentLoaded', function() {
+    // Skip initialization on mobile devices
+    if (window.innerWidth <= 768) {
+        return;
+    }
+    
     document.querySelectorAll('.table, .table-responsive table').forEach((table, index) => {
         if (!table.dataset.tableUtils) {
             const selector = table.classList.contains('table') ? 

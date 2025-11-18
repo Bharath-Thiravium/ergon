@@ -33,6 +33,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
@@ -557,6 +558,15 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     var hideTimeout;
     var currentDropdown = null;
     
+    // Fix for missing dropdown functions
+    window.showDropdown = function(id) {
+        showDropdown(id);
+    };
+    
+    window.hideDropdown = function(id) {
+        hideDropdown(id);
+    };
+    
     function showDropdown(id) {
         clearTimeout(hideTimeout);
         currentDropdown = id;
@@ -862,45 +872,36 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         const icon = document.getElementById('attendanceIcon');
         const text = document.getElementById('attendanceText');
         
+        // Immediate visual feedback
         button.disabled = true;
         button.classList.add('loading');
+        text.textContent = 'Processing...';
         
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                const action = attendanceState === 'out' ? 'in' : 'out';
-                
-                fetch('/ergon/attendance/clock', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `type=${action}&latitude=${position.coords.latitude}&longitude=${position.coords.longitude}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        attendanceState = action;
-                        updateAttendanceButton();
-                        showAttendanceNotification(action === 'in' ? 'Clocked in successfully!' : 'Clocked out successfully!', 'success');
-                    } else {
-                        showAttendanceNotification(data.error || 'Failed to update attendance', 'error');
-                    }
-                })
-                .catch(error => {
-                    showAttendanceNotification('Network error occurred', 'error');
-                })
-                .finally(() => {
-                    button.disabled = false;
-                    button.classList.remove('loading');
-                });
-            }, function(error) {
-                showAttendanceNotification('Location access required', 'error');
-                button.disabled = false;
-                button.classList.remove('loading');
-            });
-        } else {
-            showAttendanceNotification('Geolocation not supported', 'error');
+        const action = attendanceState === 'out' ? 'in' : 'out';
+        
+        // Skip geolocation for faster response
+        fetch('/ergon/attendance/clock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `type=${action}&latitude=0&longitude=0`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                attendanceState = action;
+                updateAttendanceButton();
+                showAttendanceNotification(action === 'in' ? 'Clocked in successfully!' : 'Clocked out successfully!', 'success');
+            } else {
+                showAttendanceNotification(data.error || 'Failed to update attendance', 'error');
+            }
+        })
+        .catch(error => {
+            showAttendanceNotification('Network error occurred', 'error');
+        })
+        .finally(() => {
             button.disabled = false;
             button.classList.remove('loading');
-        }
+        });
     }
     
     function updateAttendanceButton() {
@@ -922,6 +923,39 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     }
     
     function showAttendanceNotification(message, type) {
+        // Check if mobile view
+        if (window.innerWidth <= 768) {
+            showMobileDialog(message, type);
+        } else {
+            showDesktopNotification(message, type);
+        }
+    }
+    
+    function showMobileDialog(message, type) {
+        const dialog = document.createElement('div');
+        dialog.className = 'attendance-dialog-overlay';
+        dialog.innerHTML = `
+            <div class="attendance-dialog ${type}">
+                <div class="dialog-icon">
+                    <i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill'}"></i>
+                </div>
+                <div class="dialog-message">${message}</div>
+                <button class="dialog-close" onclick="this.parentElement.parentElement.remove()">OK</button>
+            </div>
+        `;
+        
+        document.body.appendChild(dialog);
+        setTimeout(() => dialog.classList.add('show'), 50);
+        
+        // Auto close after 3 seconds
+        setTimeout(() => {
+            if (document.body.contains(dialog)) {
+                dialog.remove();
+            }
+        }, 3000);
+    }
+    
+    function showDesktopNotification(message, type) {
         const notification = document.createElement('div');
         notification.className = `attendance-notification ${type}`;
         notification.innerHTML = `

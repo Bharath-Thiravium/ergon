@@ -251,7 +251,7 @@ class UnifiedAttendanceController extends Controller {
             $checkIn = new DateTime($attendance['check_in']);
             $checkOut = new DateTime();
             $interval = $checkOut->diff($checkIn);
-            $totalHours = $interval->h + ($interval->i / 60) + ($interval->s / 3600);
+            $totalHours = (float)($interval->h + ($interval->i / 60.0) + ($interval->s / 3600.0));
             
             // Update attendance record with basic columns only
             $stmt = $this->db->prepare("
@@ -266,7 +266,7 @@ class UnifiedAttendanceController extends Controller {
                 return [
                     'success' => true,
                     'message' => 'Clocked out successfully',
-                    'total_hours' => round($totalHours, 2),
+                    'total_hours' => number_format($totalHours, 2, '.', ''),
                     'time' => date('H:i:s')
                 ];
             }
@@ -320,8 +320,8 @@ class UnifiedAttendanceController extends Controller {
                         END as status,
                         CASE 
                             WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
-                                ROUND(TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) / 60.0, 2)
-                            ELSE 0
+                                CAST(ROUND(TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) / 60.0, 2) AS DECIMAL(5,2))
+                            ELSE 0.00
                         END as total_hours
                     FROM users u
                     LEFT JOIN departments d ON u.department_id = d.id
@@ -498,7 +498,7 @@ class UnifiedAttendanceController extends Controller {
         
         foreach ($attendance as $record) {
             if ($record['check_in'] && $record['check_out']) {
-                $minutes = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 60;
+                $minutes = (float)((strtotime($record['check_out']) - strtotime($record['check_in'])) / 60.0);
                 $totalMinutes += $minutes;
                 $presentDays++;
             } elseif ($record['check_in']) {
@@ -507,7 +507,7 @@ class UnifiedAttendanceController extends Controller {
         }
         
         $totalHours = (int)floor($totalMinutes / 60);
-        $remainingMinutes = (int)($totalMinutes % 60);
+        $remainingMinutes = (int)($totalMinutes - ($totalHours * 60));
         
         return [
             'total_hours' => $totalHours,
@@ -573,8 +573,8 @@ class UnifiedAttendanceController extends Controller {
                     echo "<td><span style='color: #6b7280;'>-</span></td>";
                 }
                 
-                $totalHours = floatval($employee['total_hours'] ?? 0);
-                echo "<td>" . ($totalHours > 0 ? "<span style='color: #1f2937; font-weight: 500;'>" . number_format($totalHours, 2) . "h</span>" : "<span style='color: #6b7280;'>0h</span>") . "</td>";
+                $totalHours = (float)($employee['total_hours'] ?? 0);
+                echo "<td>" . ($totalHours > 0 ? "<span style='color: #1f2937; font-weight: 500;'>" . number_format($totalHours, 2, '.', '') . "h</span>" : "<span style='color: #6b7280;'>0h</span>") . "</td>";
                 
                 echo "<td><div style='display: flex; gap: 0.25rem;'>";
                 echo "<button class='btn btn--sm btn--secondary' onclick='viewEmployeeDetails({$employee['id']})' title='View Details'><span>👁️</span></button>";
