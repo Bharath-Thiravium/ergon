@@ -18,160 +18,37 @@ class UnifiedWorkflowController extends Controller {
             // Ensure daily_tasks table exists
             $this->ensureDailyTasksTable($db);
             
-            // Get daily tasks for the selected date with fallback
-            try {
-                $stmt = $db->prepare("
-                    SELECT dt.*, 
-                           COALESCE(dt.planned_duration, 60) as planned_duration_minutes
-                    FROM daily_tasks dt 
-                    WHERE dt.user_id = ? AND dt.scheduled_date = ? 
-                    ORDER BY 
-                        CASE dt.status 
-                            WHEN 'in_progress' THEN 1 
-                            WHEN 'on_break' THEN 2 
-                            WHEN 'not_started' THEN 3 
-                            WHEN 'completed' THEN 4 
-                            ELSE 5 
-                        END, dt.created_at ASC
-                ");
-                $stmt->execute([$_SESSION['user_id'], $date]);
-                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (Exception $e) {
-                error_log('Daily tasks complex query failed, using fallback: ' . $e->getMessage());
-                $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
-                $stmt->execute([$_SESSION['user_id'], $date]);
-                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            }
-            
-            // Always clear and regenerate daily tasks to ensure fresh data
-            $stmt = $db->prepare("DELETE FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
+            // Get existing daily tasks for the date
+            $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
             $stmt->execute([$_SESSION['user_id'], $date]);
+            $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Create daily tasks from regular tasks
-                try {
-                    // Get tasks for today: assigned TO user, created today, deadline today, or in progress
-                    $stmt = $db->prepare("
-                        SELECT *, COALESCE(sla_hours, 1) as sla_hours FROM tasks 
-                        WHERE assigned_to = ? 
-                        AND (
-                            DATE(created_at) = ? OR
-                            DATE(deadline) = ? OR
-                            DATE(planned_date) = ? OR
-                            status = 'in_progress' OR
-                            (assigned_by != assigned_to AND DATE(assigned_at) = ?)
-                        )
-                        AND status != 'completed' 
-                        ORDER BY 
-                            CASE 
-                                WHEN assigned_by != assigned_to THEN 1  -- Tasks from others (higher priority)
-                                ELSE 2                                   -- Self-assigned tasks
-                            END,
-                            CASE priority
-                                WHEN 'high' THEN 1
-                                WHEN 'medium' THEN 2
-                                WHEN 'low' THEN 3
-                                ELSE 4
-                            END,
-                            created_at DESC 
-                        LIMIT 15
-                    ");
-                    $stmt->execute([$_SESSION['user_id'], $date, $date, $date, $date]);
-                    $regularTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                } catch (Exception $e) {
-                    error_log('Regular tasks query failed: ' . $e->getMessage());
-                    $regularTasks = [];
-                }
+            // Always refresh daily tasks to ensure sync with Tasks module
+            if (empty($dailyTasks)) {
+                $this->createDailyTasksFromRegular($db, $_SESSION['user_id'], $date);
                 
-                // Create daily tasks from regular tasks
-                foreach ($regularTasks as $task) {
-                    $taskSource = ($task['assigned_by'] != $task['assigned_to']) ? 'assigned_by_others' : 'self_assigned';
-                    $taskTitle = $task['title'];
-                    
-                    // Add source indicator to title for clarity
-                    if ($taskSource === 'assigned_by_others') {
-                        $taskTitle = "[From Others] " . $taskTitle;
-                    } else {
-                        $taskTitle = "[Self] " . $taskTitle;
-                    }
-                    
-                    // Use actual SLA hours from task, convert to minutes for planned_duration
-                    $slaHours = !empty($task['sla_hours']) ? (float)$task['sla_hours'] : 1;
-                    $plannedDurationMinutes = $slaHours * 60;
-                    
-                    $stmt = $db->prepare("
-                        INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', NOW())
-                    ");
-                    $stmt->execute([
-                        $_SESSION['user_id'], 
-                        $task['id'], 
-                        $date, 
-                        $taskTitle, 
-                        $task['description'], 
-                        $plannedDurationMinutes,
-                        $task['priority'] ?? 'medium'
-                    ]);
-                }
-                
-            // Re-fetch daily tasks
-            try {
-                $stmt = $db->prepare("
-                    SELECT dt.*, 
-                           COALESCE(dt.planned_duration, 60) as planned_duration_minutes
-                    FROM daily_tasks dt 
-                    WHERE dt.user_id = ? AND dt.scheduled_date = ?
-                ");
-                $stmt->execute([$_SESSION['user_id'], $date]);
-                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (Exception $e) {
-                error_log('Re-fetch daily tasks failed: ' . $e->getMessage());
+                // Re-fetch after creation
                 $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
                 $stmt->execute([$_SESSION['user_id'], $date]);
                 $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
-            $plannedTasks = [];
-            foreach ($dailyTasks as $task) {
-                $plannedDuration = $task['planned_duration_minutes'] ?? $task['planned_duration'] ?? 60;
+            // Force refresh if requested
+            if (isset($_GET['refresh']) && $_GET['refresh'] === '1') {
+                $stmt = $db->prepare("DELETE FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
+                $stmt->execute([$_SESSION['user_id'], $date]);
                 
-                // Get actual SLA from linked task if available
-                $actualSlaHours = 1; // Default fallback
-                if (!empty($task['task_id'])) {
-                    try {
-                        $slaStmt = $db->prepare("SELECT sla_hours FROM tasks WHERE id = ?");
-                        $slaStmt->execute([$task['task_id']]);
-                        $slaResult = $slaStmt->fetch(PDO::FETCH_ASSOC);
-                        if ($slaResult && !empty($slaResult['sla_hours'])) {
-                            $actualSlaHours = (float)$slaResult['sla_hours'];
-                        }
-                    } catch (Exception $e) {
-                        error_log('SLA fetch error: ' . $e->getMessage());
-                    }
-                }
+                $this->createDailyTasksFromRegular($db, $_SESSION['user_id'], $date);
                 
-                $plannedTasks[] = [
-                    'id' => $task['id'],
-                    'task_id' => $task['task_id'] ?? null,
-                    'title' => $task['title'] ?? 'Untitled Task',
-                    'description' => $task['description'] ?? '',
-                    'priority' => $task['priority'] ?? 'medium',
-                    'status' => $task['status'] ?? 'not_started',
-                    'sla_hours' => $actualSlaHours,
-                    'start_time' => $task['start_time'] ?? null,
-                    'planned_duration' => $plannedDuration,
-                    'completed_percentage' => $task['completed_percentage'] ?? 0
-                ];
+                $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
+                $stmt->execute([$_SESSION['user_id'], $date]);
+                $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
-            $dailyStats = [
-                'total_tasks' => count($plannedTasks),
-                'completed_tasks' => count(array_filter($plannedTasks, fn($t) => $t['status'] === 'completed')),
-                'in_progress_tasks' => count(array_filter($plannedTasks, fn($t) => $t['status'] === 'in_progress')),
-                'postponed_tasks' => count(array_filter($plannedTasks, fn($t) => $t['status'] === 'postponed')),
-                'total_planned_minutes' => array_sum(array_map(fn($t) => ($t['sla_hours'] ?? 1) * 60, $plannedTasks)),
-                'total_active_seconds' => 0,
-                'avg_completion' => 0
-            ];
+            // Process daily tasks for display
+            $plannedTasks = $this->processDailyTasks($db, $dailyTasks);
+            
+            $dailyStats = $this->calculateDailyStats($plannedTasks);
             
             $this->view('daily_workflow/unified_daily_planner', [
                 'planned_tasks' => $plannedTasks,
@@ -368,12 +245,12 @@ class UnifiedWorkflowController extends Controller {
             
             $status = $this->validateStatus('in_progress');
             
-            // Try complex update first, fallback to simple update
+            // Try with all columns first, fallback to basic update
             try {
                 $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, start_time = NOW(), resume_time = NULL WHERE id = ? AND user_id = ?");
                 $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
             } catch (Exception $e) {
-                error_log('Complex start task query failed, using fallback: ' . $e->getMessage());
+                // Fallback for missing columns
                 $stmt = $db->prepare("UPDATE daily_tasks SET status = ? WHERE id = ? AND user_id = ?");
                 $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
             }
@@ -414,12 +291,11 @@ class UnifiedWorkflowController extends Controller {
             
             $status = $this->validateStatus('on_break');
             
-            // Try complex update first, fallback to simple update
             try {
                 $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, pause_time = NOW() WHERE id = ? AND user_id = ?");
                 $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
             } catch (Exception $e) {
-                error_log('Complex pause task query failed, using fallback: ' . $e->getMessage());
+                // Fallback for missing columns
                 $stmt = $db->prepare("UPDATE daily_tasks SET status = ? WHERE id = ? AND user_id = ?");
                 $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
             }
@@ -454,13 +330,12 @@ class UnifiedWorkflowController extends Controller {
             $this->ensureDailyTasksTable($db);
             $status = $this->validateStatus('in_progress');
             
-            // Resume restarts timer from zero - reset start_time to NOW
             try {
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, start_time = NOW(), resume_time = NULL, active_seconds = 0 WHERE id = ? AND user_id = ?");
+                $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, resume_time = NOW() WHERE id = ? AND user_id = ?");
                 $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
             } catch (Exception $e) {
-                error_log('Complex resume task query failed, using fallback: ' . $e->getMessage());
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, start_time = NOW() WHERE id = ? AND user_id = ?");
+                // Fallback for missing columns
+                $stmt = $db->prepare("UPDATE daily_tasks SET status = ? WHERE id = ? AND user_id = ?");
                 $result = $stmt->execute([$status, $taskId, $_SESSION['user_id']]);
             }
             
@@ -883,6 +758,88 @@ class UnifiedWorkflowController extends Controller {
         
         // Default fallback
         return 'not_started';
+    }
+    
+    private function createDailyTasksFromRegular($db, $userId, $date) {
+        try {
+            // Get ALL active tasks for this user (no date restrictions)
+            $stmt = $db->prepare("
+                SELECT *, COALESCE(sla_hours, 1) as sla_hours FROM tasks 
+                WHERE assigned_to = ? AND status != 'completed'
+                ORDER BY 
+                    CASE WHEN assigned_by != assigned_to THEN 1 ELSE 2 END,
+                    CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+                    created_at DESC
+            ");
+            $stmt->execute([$userId]);
+            $regularTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($regularTasks as $task) {
+                $taskTitle = ($task['assigned_by'] != $task['assigned_to']) 
+                    ? "[From Others] " . $task['title']
+                    : "[Self] " . $task['title'];
+                
+                $plannedDuration = ((float)$task['sla_hours']) * 60;
+                
+                $stmt = $db->prepare("
+                    INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', NOW())
+                ");
+                $stmt->execute([
+                    $userId, $task['id'], $date, $taskTitle, 
+                    $task['description'], $plannedDuration, $task['priority'] ?? 'medium'
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log('Create daily tasks error: ' . $e->getMessage());
+        }
+    }
+    
+    private function processDailyTasks($db, $dailyTasks) {
+        $plannedTasks = [];
+        
+        foreach ($dailyTasks as $task) {
+            $slaHours = 1;
+            if (!empty($task['task_id'])) {
+                try {
+                    $stmt = $db->prepare("SELECT sla_hours FROM tasks WHERE id = ?");
+                    $stmt->execute([$task['task_id']]);
+                    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($result && !empty($result['sla_hours'])) {
+                        $slaHours = (float)$result['sla_hours'];
+                    }
+                } catch (Exception $e) {
+                    error_log('SLA fetch error: ' . $e->getMessage());
+                }
+            }
+            
+            $plannedTasks[] = [
+                'id' => $task['id'],
+                'task_id' => $task['task_id'] ?? null,
+                'title' => $task['title'] ?? 'Untitled Task',
+                'description' => $task['description'] ?? '',
+                'priority' => $task['priority'] ?? 'medium',
+                'status' => $task['status'] ?? 'not_started',
+                'sla_hours' => $slaHours,
+                'start_time' => $task['start_time'] ?? null,
+                'planned_duration' => $task['planned_duration'] ?? 60,
+                'completed_percentage' => $task['completed_percentage'] ?? 0
+            ];
+        }
+        
+        return $plannedTasks;
+    }
+    
+    private function calculateDailyStats($plannedTasks) {
+        return [
+            'total_tasks' => count($plannedTasks),
+            'completed_tasks' => count(array_filter($plannedTasks, fn($t) => $t['status'] === 'completed')),
+            'in_progress_tasks' => count(array_filter($plannedTasks, fn($t) => $t['status'] === 'in_progress')),
+            'postponed_tasks' => count(array_filter($plannedTasks, fn($t) => $t['status'] === 'postponed')),
+            'total_planned_minutes' => array_sum(array_map(fn($t) => ($t['sla_hours'] ?? 1) * 60, $plannedTasks)),
+            'total_active_seconds' => 0,
+            'avg_completion' => 0
+        ];
     }
     
     private function getNextWorkingDay() {

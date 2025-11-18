@@ -14,6 +14,9 @@ $content = ob_start();
     </div>
     <div class="page-actions">
         <input type="date" id="dateSelector" value="<?= $selected_date ?>" onchange="changeDate(this.value)" class="form-control">
+        <a href="/ergon/workflow/daily-planner/<?= $selected_date ?>?refresh=1" class="btn btn--info" title="Refresh tasks from Tasks module">
+            <i class="bi bi-arrow-clockwise"></i> Sync Tasks
+        </a>
         <a href="/ergon/tasks/create" class="btn btn--secondary">
             <i class="bi bi-plus"></i> Add Task
         </a>
@@ -234,18 +237,24 @@ $content = ob_start();
                     <span class="metric-value"><?= round($completionRate, 1) ?>%</span>
                 </div>
                 <div class="metric-row">
-                    <span class="metric-label">Planned Time:</span>
-                    <span class="metric-value"><?= $totalPlannedMinutes ?> min</span>
+                    <span class="metric-label">SLA Total Time:</span>
+                    <span class="metric-value sla-total-time"><?= floor($totalPlannedMinutes / 60) ?>h <?= $totalPlannedMinutes % 60 ?>m</span>
                 </div>
                 <div class="metric-row">
-                    <span class="metric-label">Active Time:</span>
-                    <span class="metric-value"><?= $totalActiveMinutes ?> min</span>
+                    <span class="metric-label">Time Used:</span>
+                    <span class="metric-value sla-used-time"><?= floor($totalActiveMinutes / 60) ?>h <?= round($totalActiveMinutes % 60) ?>m</span>
                 </div>
                 <div class="metric-row">
-                    <span class="metric-label">SLA Adherence:</span>
-                    <span class="metric-value <?= $slaAdherence > 100 ? 'text-warning' : 'text-success' ?>">
-                        <?= round($slaAdherence, 1) ?>%
-                    </span>
+                    <span class="metric-label">Remaining Time:</span>
+                    <span class="metric-value sla-remaining-time">--</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Pause Duration:</span>
+                    <span class="metric-value sla-pause-time">--</span>
+                </div>
+                <div class="metric-row" style="display:none;">
+                    <span class="metric-label">Late Time:</span>
+                    <span class="metric-value sla-late-time text-danger">--</span>
                 </div>
             </div>
 
@@ -578,11 +587,189 @@ renderModal('postponeTaskModal', 'Postpone Task', $postponeTaskContent, $postpon
 .task-card__sla {
     position: relative;
 }
+
+/* History display styles */
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.history-date {
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.history-action {
+    color: #374151;
+    font-weight: 600;
+}
+
+.history-progress {
+    color: #059669;
+    font-weight: 700;
+}
+
+.history-notes {
+    color: #6b7280;
+    font-style: italic;
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    display: block;
+    width: 100%;
+}
+
+.postpone-history {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+}
+
+.postpone-history h4 {
+    margin: 0 0 0.75rem 0;
+    color: #374151;
+    font-size: 1rem;
+}
+
+.history-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Enhanced progress update modal */
+.percentage-options {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+    flex-wrap: wrap;
+}
+
+.percentage-btn {
+    flex: 1;
+    min-width: 60px;
+    padding: 0.5rem;
+    border: 2px solid #e5e7eb;
+    background: #f9fafb;
+    color: #374151;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+}
+
+.percentage-btn:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.percentage-btn.active {
+    border-color: #3b82f6;
+    background: #3b82f6;
+    color: white;
+}
+
+.percentage-btn.active:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+}
 </style>
 
 <script>
 let timers = {};
+let slaTimers = {};
 var currentTaskId;
+
+// SLA Timer Functions
+function startSLATimer(taskId) {
+    if (slaTimers[taskId]) {
+        clearInterval(slaTimers[taskId]);
+    }
+    
+    slaTimers[taskId] = setInterval(() => {
+        updateSLADisplay(taskId);
+    }, 1000);
+    
+    updateSLADisplay(taskId);
+}
+
+function stopSLATimer(taskId) {
+    if (slaTimers[taskId]) {
+        clearInterval(slaTimers[taskId]);
+        delete slaTimers[taskId];
+    }
+}
+
+function updateSLADisplay(taskId) {
+    fetch(`/ergon/api/daily_planner_workflow.php?action=timer&task_id=${taskId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const display = document.querySelector(`#countdown-${taskId} .countdown-display`);
+            if (display) {
+                const remaining = data.remaining_seconds;
+                const hours = Math.floor(remaining / 3600);
+                const minutes = Math.floor((remaining % 3600) / 60);
+                const seconds = remaining % 60;
+                
+                display.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Visual warnings
+                display.classList.remove('countdown-display--warning', 'countdown-display--expired');
+                if (data.is_late) {
+                    display.classList.add('countdown-display--expired');
+                    display.textContent = 'LATE: ' + formatTime(data.late_seconds);
+                } else if (remaining <= 600) {
+                    display.classList.add('countdown-display--warning');
+                }
+            }
+            
+            // Update SLA dashboard if visible
+            updateSLADashboard(data);
+        }
+    })
+    .catch(error => console.error('SLA update error:', error));
+}
+
+function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function updateSLADashboard(data) {
+    // Update SLA metrics in dashboard
+    const slaTotal = document.querySelector('.sla-total-time');
+    const slaUsed = document.querySelector('.sla-used-time');
+    const slaRemaining = document.querySelector('.sla-remaining-time');
+    const slaPause = document.querySelector('.sla-pause-time');
+    const slaLate = document.querySelector('.sla-late-time');
+    
+    if (slaTotal) slaTotal.textContent = formatTime(data.sla_seconds);
+    if (slaUsed) slaUsed.textContent = formatTime(data.active_seconds);
+    if (slaRemaining) slaRemaining.textContent = formatTime(data.remaining_seconds);
+    if (slaPause) slaPause.textContent = formatTime(data.pause_duration);
+    if (slaLate && data.is_late) {
+        slaLate.textContent = formatTime(data.late_seconds);
+        slaLate.parentElement.style.display = 'block';
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    const bgColor = type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8';
+    notification.innerHTML = `<div style="position:fixed;top:20px;right:20px;background:${bgColor};color:white;padding:10px 20px;border-radius:5px;z-index:9999;">${message}</div>`;
+    document.body.appendChild(notification);
+    setTimeout(() => document.body.removeChild(notification), 3000);
+}
 
 function openProgressModal(taskId, progress, status) {
     currentTaskId = taskId;
@@ -599,19 +786,24 @@ function saveProgress() {
     var progress = document.getElementById('progressSlider').value;
     var status = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'assigned';
     
-    fetch('/ergon/workflow/update-task-status', {
+    fetch('/ergon/api/daily_planner_workflow.php?action=update-progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task_id: currentTaskId, action: 'complete', percentage: parseInt(progress) })
+        body: JSON.stringify({ 
+            task_id: currentTaskId, 
+            progress: parseInt(progress),
+            status: status,
+            reason: 'Progress updated via daily planner'
+        })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            updateTaskUI(currentTaskId, 'completed', { percentage: data.percentage || progress });
+            updateTaskUI(currentTaskId, 'completed', { percentage: data.progress || progress });
             updateProgressBar(currentTaskId, progress);
             closeDialog();
             if (progress < 100) {
-                alert('Progress updated to ' + progress + '% - Task deferred to next working day');
+                alert('Progress updated to ' + progress + '% - Task will continue in progress');
             } else {
                 alert('Task completed successfully!');
                 stopTimer(currentTaskId);
@@ -628,22 +820,75 @@ function changeDate(date) {
 }
 
 function startTask(taskId) {
-    updateTaskStatus(taskId, 'start');
+    if (!taskId) {
+        alert('Error: Task ID is missing');
+        return;
+    }
+    
+    fetch('/ergon/api/daily_planner_workflow.php?action=start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: parseInt(taskId) })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTaskUI(taskId, 'start');
+            startSLATimer(taskId);
+            showNotification('Task started - SLA timer running', 'success');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Start task error:', error);
+        alert('Network error occurred');
+    });
 }
 
 function pauseTask(taskId) {
-    updateTaskStatus(taskId, 'pause');
+    fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: parseInt(taskId) })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTaskUI(taskId, 'pause');
+            stopSLATimer(taskId);
+            showNotification('Task paused - SLA timer stopped', 'info');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => alert('Network error occurred'));
 }
 
 function resumeTask(taskId) {
-    updateTaskStatus(taskId, 'resume');
+    fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: parseInt(taskId) })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTaskUI(taskId, 'resume');
+            startSLATimer(taskId);
+            showNotification('Task resumed - SLA timer running', 'success');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => alert('Network error occurred'));
 }
 
 function updateTaskStatus(taskId, action) {
-    fetch('/ergon/workflow/update-task-status', {
+    fetch(`/ergon/api/daily_planner_workflow.php?action=${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task_id: taskId, action: action })
+        body: JSON.stringify({ task_id: taskId })
     })
     .then(response => response.json())
     .then(data => {
@@ -668,7 +913,7 @@ function updateProgressTask(taskId) {
 }
 
 function loadPostponeHistory(taskId) {
-    fetch(`/ergon/workflow/task-history?task_id=${taskId}`)
+    fetch(`/ergon/api/daily_planner_workflow.php?action=task-history&task_id=${taskId}`)
     .then(response => response.json())
     .then(data => {
         const historyDiv = document.getElementById('postponeHistory');
@@ -680,6 +925,7 @@ function loadPostponeHistory(taskId) {
                     <span class="history-date">${item.date}</span>
                     <span class="history-action">${item.action}</span>
                     <span class="history-progress">${item.progress || 0}%</span>
+                    ${item.notes ? `<span class="history-notes">${item.notes}</span>` : ''}
                 </div>`
             ).join('');
             historyDiv.style.display = 'block';
@@ -702,44 +948,7 @@ function postponeTask(taskId) {
     showModal('postponeTaskModal');
 }
 
-function startSLACountdown(taskId) {
-    const taskItem = document.querySelector(`[data-task-id="${taskId}"]`);
-    if (!taskItem) return;
-    
-    const slaDuration = parseInt(taskItem.dataset.slaDuration);
-    
-    if (timers[taskId]) clearInterval(timers[taskId]);
-    
-    // Set start time to now
-    const startTime = Math.floor(Date.now() / 1000);
-    taskItem.dataset.startTime = startTime;
-    
-    timers[taskId] = setInterval(() => {
-        updateSLACountdown(taskId, slaDuration, startTime);
-    }, 1000);
-    
-    updateSLACountdown(taskId, slaDuration, startTime);
-}
 
-function updateSLACountdown(taskId, slaDuration, startTime) {
-    const display = document.querySelector(`#countdown-${taskId} .countdown-display`);
-    if (!display) return;
-    
-    const now = Math.floor(Date.now() / 1000);
-    const elapsed = now - startTime;
-    const remaining = Math.max(0, slaDuration - elapsed);
-    
-    const hours = Math.floor(remaining / 3600);
-    const minutes = Math.floor((remaining % 3600) / 60);
-    const seconds = remaining % 60;
-    
-    display.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    
-    // Visual warnings
-    display.classList.remove('countdown-display--warning', 'countdown-display--expired');
-    if (remaining <= 600 && remaining > 0) display.classList.add('countdown-display--warning');
-    if (remaining <= 0) display.classList.add('countdown-display--expired');
-}
 
 function stopTimer(taskId) {
     if (timers[taskId]) {
@@ -768,15 +977,10 @@ function updateTaskUI(taskId, action, data = {}) {
                 <button class="btn btn--sm btn--warning" onclick="pauseTask(${taskId})">
                     <i class="bi bi-pause"></i> Break
                 </button>
-                <button class="btn btn--sm btn--primary" onclick="updateProgressTask(${taskId})">
+                <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, 0, 'in_progress')">
                     <i class="bi bi-percent"></i> Update Progress
                 </button>
             `;
-            // Reset timer for resume
-            if (action === 'resume') {
-                taskCard.dataset.startTime = Math.floor(Date.now() / 1000);
-                startSLACountdown(taskId);
-            }
             break;
         case 'pause':
             newStatus = 'on_break';
@@ -785,30 +989,20 @@ function updateTaskUI(taskId, action, data = {}) {
             taskCard.className = 'task-card task-card--break';
             newActions = `
                 <button class="btn btn--sm btn--success" onclick="resumeTask(${taskId})">
-                    <i class="bi bi-restart"></i> Resume (Restart)
+                    <i class="bi bi-play"></i> Resume
                 </button>
-                <button class="btn btn--sm btn--primary" onclick="updateProgressTask(${taskId})">
+                <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, 0, 'on_break')">
                     <i class="bi bi-percent"></i> Update Progress
                 </button>
             `;
             break;
         case 'completed':
-            const percentage = data.percentage || 100;
-            if (percentage < 100) {
-                newStatus = 'in_progress';
-                statusBadge.textContent = 'Deferred';
-                statusBadge.className = 'badge badge--warning';
-                taskCard.className = 'task-card task-card--deferred';
-                newActions = `<span class="badge badge--warning"><i class="bi bi-calendar-plus"></i> Deferred to Next Day</span>`;
-                updateProgressBar(taskId, percentage);
-            } else {
-                newStatus = 'completed';
-                statusBadge.textContent = 'Completed';
-                statusBadge.className = 'badge badge--success';
-                taskCard.className = 'task-card task-card--completed';
-                newActions = `<span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>`;
-                updateProgressBar(taskId, 100);
-            }
+            newStatus = 'completed';
+            statusBadge.textContent = 'Completed';
+            statusBadge.className = 'badge badge--success';
+            taskCard.className = 'task-card task-card--completed';
+            newActions = `<span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>`;
+            stopSLATimer(taskId);
             break;
     }
     
@@ -862,13 +1056,13 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('progressValue').textContent = this.value;
         }
     }
-    document.querySelectorAll('.task-item').forEach(item => {
+    // Initialize SLA timers for active tasks
+    document.querySelectorAll('.task-card').forEach(item => {
         const taskId = item.dataset.taskId;
         const status = item.dataset.status;
-        const startTime = parseInt(item.dataset.startTime);
         
-        if (status === 'in_progress' && startTime > 0) {
-            startSLACountdown(taskId);
+        if (status === 'in_progress') {
+            startSLATimer(taskId);
         }
     });
     
@@ -887,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData(this);
         formData.append('scheduled_date', '<?= $selected_date ?>');
         
-        fetch('/ergon/workflow/quick-add-task', {
+        fetch('/ergon/api/daily_planner_workflow.php?action=quick-add', {
             method: 'POST',
             body: formData
         })
@@ -909,25 +1103,31 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const taskId = document.getElementById('updateTaskId').value;
         const percentage = document.getElementById('selectedProgressPercentage').value;
+        const status = percentage >= 100 ? 'completed' : 'in_progress';
         
-        fetch('/ergon/workflow/update-task-status', {
+        fetch('/ergon/api/daily_planner_workflow.php?action=update-progress', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ task_id: taskId, action: 'complete', percentage: parseInt(percentage) })
+            body: JSON.stringify({ 
+                task_id: taskId, 
+                progress: parseInt(percentage),
+                status: status,
+                reason: 'Progress updated via modal'
+            })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                updateTaskUI(taskId, 'completed', { percentage: data.percentage });
-                if (data.percentage < 100) {
+                updateTaskUI(taskId, 'completed', { percentage: data.progress });
+                if (data.progress < 100) {
                     // Keep timer running for partial progress
                 } else {
                     stopTimer(taskId);
                 }
                 closeUpdateProgressModal();
-                if (data.percentage < 100) {
+                if (data.progress < 100) {
                     setTimeout(() => {
-                        alert('Progress updated to ' + data.percentage + '% - Task deferred to next working day');
+                        alert('Progress updated to ' + data.progress + '% - Task continues in progress');
                     }, 500);
                 } else {
                     setTimeout(() => {
@@ -940,7 +1140,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error completing task');
+            alert('Error updating progress');
         });
     });
     
@@ -949,7 +1149,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const taskId = document.getElementById('postponeTaskId').value;
         const newDate = document.getElementById('newDate').value;
         
-        fetch('/ergon/workflow/postpone-task', {
+        fetch('/ergon/api/daily_planner_workflow.php?action=postpone', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ task_id: taskId, new_date: newDate })
@@ -973,6 +1173,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <?php renderModalJS(); ?>
+<script src="/ergon/assets/js/task-progress-clean.js"></script>
 
 <?php
 $content = ob_get_clean();
