@@ -335,10 +335,130 @@ class TasksController extends Controller {
         $this->view('tasks/update', $data);
     }
     
+    public function kanban() {
+        AuthMiddleware::requireAuth();
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureTasksTable($db);
+            
+            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.assigned_to = ? ORDER BY t.created_at DESC");
+            $stmt->execute([$_SESSION['user_id']]);
+            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Get followups data including postponed/rescheduled
+            $followups = [];
+            try {
+                $stmt = $db->prepare("SELECT f.*, u.name as assigned_user FROM followups f LEFT JOIN users u ON f.user_id = u.id WHERE f.user_id = ? AND f.status IN ('pending', 'in_progress', 'postponed', 'rescheduled') ORDER BY f.follow_up_date ASC");
+                $stmt->execute([$_SESSION['user_id']]);
+                $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log("Followups fetch error: " . $e->getMessage());
+            }
+            
+            if (empty($tasks)) {
+                $tasks = [];
+            }
+        } catch (Exception $e) {
+            error_log("Kanban task fetch error: " . $e->getMessage());
+            $tasks = [];
+            $followups = [];
+        }
+        
+        $data = ['tasks' => $tasks, 'followups' => $followups, 'active_page' => 'tasks'];
+        $this->view('tasks/kanban', $data);
+    }
+    
     public function calendar() {
-        $tasks = $this->taskModel->getTasksForCalendar();
+        AuthMiddleware::requireAuth();
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureTasksTable($db);
+            
+            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.assigned_to = ? AND (t.deadline IS NOT NULL OR t.due_date IS NOT NULL) ORDER BY COALESCE(t.deadline, t.due_date) ASC");
+            $stmt->execute([$_SESSION['user_id']]);
+            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (empty($tasks)) {
+                $tasks = [];
+            }
+        } catch (Exception $e) {
+            error_log("Calendar task fetch error: " . $e->getMessage());
+            $tasks = [];
+        }
+        
         $data = ['tasks' => $tasks, 'active_page' => 'tasks'];
         $this->view('tasks/calendar', $data);
+    }
+    
+    public function getTaskSchedule() {
+        AuthMiddleware::requireAuth();
+        
+        $month = $_GET['month'] ?? date('m');
+        $year = $_GET['year'] ?? date('Y');
+        $view = $_GET['view'] ?? 'calendar';
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureTasksTable($db);
+            
+            // Get tasks with date fields for visualization
+            $stmt = $db->prepare("
+                SELECT t.*, u.name as assigned_user, d.name as department_name, p.name as project_name
+                FROM tasks t 
+                LEFT JOIN users u ON t.assigned_to = u.id 
+                LEFT JOIN departments d ON t.department_id = d.id
+                LEFT JOIN projects p ON t.project_id = p.id
+                WHERE t.assigned_to = ? 
+                AND (t.deadline IS NOT NULL OR t.created_at >= ?)
+                ORDER BY COALESCE(t.deadline, t.created_at) ASC
+            ");
+            $stmt->execute([$_SESSION['user_id'], date('Y-m-01', mktime(0, 0, 0, $month, 1, $year))]);
+            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Transform tasks for visualization
+            $visualizationData = [];
+            foreach ($tasks as $task) {
+                $taskDate = $task['deadline'] ? date('Y-m-d', strtotime($task['deadline'])) : date('Y-m-d', strtotime($task['created_at']));
+                
+                $visualizationData[] = [
+                    'id' => $task['id'],
+                    'title' => $task['title'],
+                    'description' => $task['description'],
+                    'priority' => $task['priority'],
+                    'status' => $task['status'],
+                    'progress' => $task['progress'],
+                    'assigned_user' => $task['assigned_user'],
+                    'department_name' => $task['department_name'],
+                    'project_name' => $task['project_name'],
+                    'date' => $taskDate,
+                    'type' => 'task'
+                ];
+            }
+            
+            $data = [
+                'tasks' => $visualizationData,
+                'current_month' => intval($month),
+                'current_year' => intval($year),
+                'view_type' => $view,
+                'active_page' => 'tasks'
+            ];
+            
+            $this->view('tasks/visualizer', $data);
+        } catch (Exception $e) {
+            error_log('Task schedule error: ' . $e->getMessage());
+            $this->view('tasks/visualizer', [
+                'tasks' => [],
+                'current_month' => intval($month),
+                'current_year' => intval($year),
+                'view_type' => $view,
+                'active_page' => 'tasks'
+            ]);
+        }
     }
     
     public function overdue() {
@@ -418,11 +538,11 @@ class TasksController extends Controller {
         
         $input = json_decode(file_get_contents('php://input'), true);
         $taskId = intval($input['task_id'] ?? 0);
-        $progress = intval($input['progress'] ?? 0);
         $status = $input['status'] ?? 'assigned';
+        $reason = trim($input['reason'] ?? '');
         
-        if (!$taskId || $progress < 0 || $progress > 100) {
-            echo json_encode(['success' => false, 'message' => 'Invalid parameters']);
+        if (!$taskId) {
+            echo json_encode(['success' => false, 'message' => 'Invalid task ID']);
             exit;
         }
         
@@ -431,10 +551,20 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            $stmt = $db->prepare("UPDATE tasks SET progress = ?, status = ?, updated_at = NOW() WHERE id = ?");
-            $result = $stmt->execute([$progress, $status, $taskId]);
+            // Get current task status for history
+            $stmt = $db->prepare("SELECT status FROM tasks WHERE id = ?");
+            $stmt->execute([$taskId]);
+            $oldStatus = $stmt->fetchColumn();
+            
+            $stmt = $db->prepare("UPDATE tasks SET status = ?, updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$status, $taskId]);
             
             if ($result) {
+                // Log to task history if status changed
+                if ($oldStatus !== $status) {
+                    $this->logTaskHistory($db, $taskId, 'status_changed', $oldStatus, $status, $reason);
+                }
+                
                 echo json_encode(['success' => true, 'message' => 'Task status updated successfully']);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Failed to update task status']);
@@ -443,6 +573,47 @@ class TasksController extends Controller {
             echo json_encode(['success' => false, 'message' => 'Update failed: ' . $e->getMessage()]);
         }
         exit;
+    }
+    
+    public function getTaskHistory($id) {
+        header('Content-Type: application/json');
+        AuthMiddleware::requireAuth();
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->ensureTaskHistoryTable($db);
+            
+            $stmt = $db->prepare("SELECT h.*, u.name as user_name FROM task_history h LEFT JOIN users u ON h.created_by = u.id WHERE h.task_id = ? ORDER BY h.created_at DESC");
+            $stmt->execute([$id]);
+            $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $html = empty($history) ? '<p>No history available for this task.</p>' : $this->renderTaskHistory($history);
+            echo json_encode(['success' => true, 'html' => $html]);
+        } catch (Exception $e) {
+            error_log('Task history error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    private function renderTaskHistory($history) {
+        $html = '<div class="history-timeline">';
+        foreach ($history as $entry) {
+            $html .= '<div class="history-item">';
+            $html .= '<div class="history-date">' . date('M d, Y H:i', strtotime($entry['created_at'])) . '</div>';
+            $html .= '<div class="history-action">' . ucfirst(str_replace('_', ' ', $entry['action'])) . '</div>';
+            if ($entry['old_value'] && $entry['new_value']) {
+                $html .= '<div class="history-change">Changed from "' . htmlspecialchars($entry['old_value']) . '" to "' . htmlspecialchars($entry['new_value']) . '"</div>';
+            }
+            if ($entry['notes']) {
+                $html .= '<div class="history-notes">' . htmlspecialchars($entry['notes']) . '</div>';
+            }
+            $html .= '<div class="history-user">By: ' . htmlspecialchars($entry['user_name'] ?? 'Unknown') . '</div>';
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+        return $html;
     }
     
     public function delete($id) {
@@ -650,6 +821,35 @@ class TasksController extends Controller {
         }
     }
     
+    private function logTaskHistory($db, $taskId, $action, $oldValue = null, $newValue = null, $notes = null) {
+        try {
+            $this->ensureTaskHistoryTable($db);
+            $stmt = $db->prepare("INSERT INTO task_history (task_id, action, old_value, new_value, notes, created_by) VALUES (?, ?, ?, ?, ?, ?)");
+            return $stmt->execute([$taskId, $action, $oldValue, $newValue, $notes, $_SESSION['user_id']]);
+        } catch (Exception $e) {
+            error_log('Task history log error: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    private function ensureTaskHistoryTable($db) {
+        try {
+            $db->exec("CREATE TABLE IF NOT EXISTS task_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                task_id INT NOT NULL,
+                action VARCHAR(50) NOT NULL,
+                old_value TEXT,
+                new_value TEXT,
+                notes TEXT,
+                created_by INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_task_id (task_id)
+            )");
+        } catch (Exception $e) {
+            error_log('ensureTaskHistoryTable error: ' . $e->getMessage());
+        }
+    }
+    
     private function ensureTasksTable($db) {
         try {
             // Create tasks table with all required columns
@@ -663,7 +863,7 @@ class TasksController extends Controller {
                 priority ENUM('low','medium','high') DEFAULT 'medium',
                 deadline DATETIME DEFAULT NULL,
                 progress INT DEFAULT 0,
-                status ENUM('assigned','in_progress','completed','blocked') DEFAULT 'assigned',
+                status ENUM('assigned','in_progress','completed','cancelled','suspended') DEFAULT 'assigned',
                 due_date DATE DEFAULT NULL,
                 depends_on_task_id INT DEFAULT NULL,
                 sla_hours INT DEFAULT 24,

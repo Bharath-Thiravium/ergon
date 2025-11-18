@@ -6,7 +6,7 @@ ob_start();
 
 <div class="page-header">
     <h1>Create New User</h1>
-    <a href="/ergon/users" class="btn btn--secondary">Back to Users</a>
+    <a href="<?= in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users' ?>" class="btn btn--secondary">Back to Users</a>
 </div>
 
 <div class="card">
@@ -61,6 +61,8 @@ ob_start();
                     <select name="status" class="form-control">
                         <option value="active" <?= ($old_data['status'] ?? 'active') === 'active' ? 'selected' : '' ?>>Active</option>
                         <option value="inactive" <?= ($old_data['status'] ?? '') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                        <option value="suspended" <?= ($old_data['status'] ?? '') === 'suspended' ? 'selected' : '' ?>>Suspended</option>
+                        <option value="terminated" <?= ($old_data['status'] ?? '') === 'terminated' ? 'selected' : '' ?>>Terminated</option>
                     </select>
                 </div>
             </div>
@@ -140,7 +142,7 @@ ob_start();
             
             <div class="form-actions">
                 <button type="submit" class="btn btn--primary">✨ Create User</button>
-                <a href="/ergon/users" class="btn btn--secondary">❌ Cancel</a>
+                <a href="<?= in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users' ?>" class="btn btn--secondary">❌ Cancel</a>
             </div>
         </form>
     </div>

@@ -25,6 +25,17 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
         <p>Manage and track all project tasks and assignments</p>
     </div>
     <div class="page-actions">
+        <div class="view-options">
+            <a href="/ergon/tasks" class="view-btn view-btn--active" data-view="list">
+                <span>📋</span> List
+            </a>
+            <a href="/ergon/tasks/kanban" class="view-btn" data-view="kanban">
+                <span>📏</span> Kanban
+            </a>
+            <a href="/ergon/tasks/calendar" class="view-btn" data-view="calendar">
+                <span>📆</span> Calendar
+            </a>
+        </div>
         <a href="/ergon/tasks/create" class="btn btn--primary">
             <span>➕</span> Create Task
         </a>
@@ -66,7 +77,7 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
 <div class="card">
     <div class="card__header">
         <h2 class="card__title">
-            <span>✅</span> Tasks
+            <span>✅</span> Tasks - List View
         </h2>
     </div>
     <div class="card__body">
@@ -74,11 +85,11 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
             <table class="table">
                 <thead>
                     <tr>
-                        <th style="width: 35%;">Title</th>
-                        <th>Assigned To & Priority</th>
-                        <th>Progress</th>
-                        <th>Due Date</th>
-                        <th>Actions</th>
+                        <th class="col-title">Title</th>
+                        <th class="col-assignment">Assigned To & Priority</th>
+                        <th class="col-progress">Progress</th>
+                        <th class="col-date">Due Date</th>
+                        <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>

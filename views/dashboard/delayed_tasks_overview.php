@@ -20,7 +20,7 @@ ob_start();
 <div class="card">
     <div class="card__header">
         <h2 class="card__title">
-            <span>⚠️</span> Overdue Tasks (<?= count($delayed_tasks) ?>)
+            <span>⚠️</span> Delayed Tasks Overview
         </h2>
     </div>
     <div class="card__body">
@@ -55,8 +55,15 @@ ob_start();
                         </td>
                         <td>
                             <div class="date-info">
-                                <strong class="text-danger"><?= date('M d, Y', strtotime($task['due_date'])) ?></strong>
-                                <br><small><?= date('l', strtotime($task['due_date'])) ?></small>
+                                <?php 
+                                $dueDate = $task['due_date'] ?: $task['deadline'] ?: null;
+                                if ($dueDate): 
+                                ?>
+                                <strong class="text-danger"><?= date('M d, Y', strtotime($dueDate)) ?></strong>
+                                <br><small><?= date('l', strtotime($dueDate)) ?></small>
+                                <?php else: ?>
+                                <strong class="text-muted">No due date</strong>
+                                <?php endif; ?>
                             </div>
                         </td>
                         <td>
@@ -91,12 +98,18 @@ ob_start();
                             </span>
                         </td>
                         <td>
-                            <div class="btn-group">
-                                <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="btn-icon btn-icon--view" title="View Task">
-                                    👁️
+                            <div class="ab-container">
+                                <a href="/ergon/tasks/view/<?= $task['id'] ?>" class="ab-btn ab-btn--view" title="View Task">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
                                 </a>
-                                <a href="/ergon/tasks/edit/<?= $task['id'] ?>" class="btn-icon btn-icon--edit" title="Edit Task">
-                                    ✏️
+                                <a href="/ergon/tasks/edit/<?= $task['id'] ?>" class="ab-btn ab-btn--edit" title="Edit Task">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                        <path d="M15 5l4 4"/>
+                                    </svg>
                                 </a>
                             </div>
                         </td>
@@ -153,7 +166,7 @@ ob_start();
 }
 
 .empty-state h3 {
-    color: #059669;
+    color: #374151;
     margin-bottom: 0.5rem;
 }
 

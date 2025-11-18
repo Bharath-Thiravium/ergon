@@ -1,6 +1,7 @@
 <?php
 $title = 'Project Management';
 $active_page = 'project-management';
+include __DIR__ . '/../shared/modal_component.php';
 ob_start();
 ?>
 
@@ -15,6 +16,8 @@ ob_start();
         </button>
     </div>
 </div>
+
+<?php renderModalCSS(); ?>
 
 <div class="dashboard-grid">
     <div class="kpi-card">
@@ -83,12 +86,20 @@ ob_start();
                         </td>
                         <td><?= date('M j, Y', strtotime($project['created_at'])) ?></td>
                         <td>
-                            <div class="btn-group">
-                                <button class="btn btn--sm btn--secondary" onclick="editProject(<?= $project['id'] ?>, '<?= htmlspecialchars($project['name']) ?>', '<?= htmlspecialchars($project['description']) ?>', <?= $project['department_id'] ?? 'null' ?>, '<?= $project['status'] ?>')">
-                                    ✏️ Edit
+                            <div class="ab-container">
+                                <button class="ab-btn ab-btn--edit" onclick="editProject(<?= $project['id'] ?>, '<?= htmlspecialchars($project['name']) ?>', '<?= htmlspecialchars($project['description']) ?>', <?= $project['department_id'] ?? 'null' ?>, '<?= $project['status'] ?>')" title="Edit Project">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                        <path d="M15 5l4 4"/>
+                                    </svg>
                                 </button>
-                                <button class="btn btn--sm btn--danger" onclick="deleteProject(<?= $project['id'] ?>, '<?= htmlspecialchars($project['name']) ?>')">
-                                    🗑️ Delete
+                                <button class="ab-btn ab-btn--danger" onclick="deleteProject(<?= $project['id'] ?>, '<?= htmlspecialchars($project['name']) ?>')" title="Delete Project">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <polyline points="3,6 5,6 21,6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        <line x1="10" y1="11" x2="10" y2="17"/>
+                                        <line x1="14" y1="11" x2="14" y2="17"/>
+                                    </svg>
                                 </button>
                             </div>
                         </td>
@@ -100,58 +111,55 @@ ob_start();
     </div>
 </div>
 
-<!-- Add/Edit Project Modal -->
-<div class="modal" id="projectModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><span>📁</span> <span id="modalTitle">Add New Project</span></h3>
-            <button class="modal-close" onclick="closeProjectModal()">&times;</button>
-        </div>
-        <form id="projectForm">
-            <div class="modal-body">
-                <input type="hidden" id="projectId" name="project_id">
-                
-                <div class="form-group">
-                    <label class="form-label">Project Name *</label>
-                    <input type="text" id="projectName" name="name" class="form-control" required placeholder="Enter project name">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Department</label>
-                    <select id="projectDepartment" name="department_id" class="form-control">
-                        <option value="">Select Department</option>
-                        <?php foreach ($data['departments'] as $dept): ?>
-                            <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea id="projectDescription" name="description" class="form-control" rows="3" placeholder="Project description"></textarea>
-                </div>
-                
-                <div class="form-group" id="statusGroup" style="display: none;">
-                    <label class="form-label">Status</label>
-                    <select id="projectStatus" name="status" class="form-control">
-                        <option value="active">Active</option>
-                        <option value="completed">Completed</option>
-                        <option value="on_hold">On Hold</option>
-                        <option value="cancelled">Cancelled</option>
-                        <option value="withheld">Withheld</option>
-                        <option value="rejected">Rejected</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn--secondary" onclick="closeProjectModal()">Cancel</button>
-                <button type="submit" class="btn btn--primary">
-                    <span id="submitText">Add Project</span>
-                </button>
-            </div>
-        </form>
+<?php
+// Project Modal Content
+$projectContent = '
+<form id="projectForm">
+    <input type="hidden" id="projectId" name="project_id">
+    
+    <div class="form-group">
+        <label class="form-label">Project Name *</label>
+        <input type="text" id="projectName" name="name" class="form-control" required placeholder="Enter project name">
     </div>
-</div>
+    
+    <div class="form-group">
+        <label class="form-label">Department</label>
+        <select id="projectDepartment" name="department_id" class="form-control">
+            <option value="">Select Department</option>';
+            foreach ($data['departments'] as $dept) {
+                $projectContent .= '<option value="' . $dept['id'] . '">' . htmlspecialchars($dept['name']) . '</option>';
+            }
+$projectContent .= '
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="projectDescription" name="description" class="form-control" rows="3" placeholder="Project description"></textarea>
+    </div>
+    
+    <div class="form-group" id="statusGroup" style="display: none;">
+        <label class="form-label">Status</label>
+        <select id="projectStatus" name="status" class="form-control">
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="on_hold">On Hold</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="withheld">Withheld</option>
+            <option value="rejected">Rejected</option>
+        </select>
+    </div>
+</form>';
+
+$projectFooter = '
+<button type="button" class="btn btn--secondary" onclick="closeModal(\'projectModal\')">Cancel</button>
+<button type="submit" class="btn btn--primary" form="projectForm">
+    <span id="submitText">Add Project</span>
+</button>';
+
+// Render Modal with dynamic title
+renderModal('projectModal', '<span id="modalTitle">Add New Project</span>', $projectContent, $projectFooter, ['icon' => '📁']);
+?>
 
 <script>
 let isEditing = false;
@@ -163,7 +171,7 @@ function showAddProjectModal() {
     document.getElementById('projectForm').reset();
     document.getElementById('projectId').value = '';
     document.getElementById('statusGroup').style.display = 'none';
-    document.getElementById('projectModal').style.display = 'block';
+    showModal('projectModal');
 }
 
 function editProject(id, name, description, deptId, status) {
@@ -176,11 +184,7 @@ function editProject(id, name, description, deptId, status) {
     document.getElementById('projectDepartment').value = deptId || '';
     document.getElementById('projectStatus').value = status;
     document.getElementById('statusGroup').style.display = 'block';
-    document.getElementById('projectModal').style.display = 'block';
-}
-
-function closeProjectModal() {
-    document.getElementById('projectModal').style.display = 'none';
+    showModal('projectModal');
 }
 
 function deleteProject(id, name) {
@@ -213,25 +217,51 @@ document.getElementById('projectForm').addEventListener('submit', function(e) {
     const formData = new FormData(this);
     const url = isEditing ? '/ergon/project-management/update' : '/ergon/project-management/create';
     
+    console.log('Submitting to URL:', url);
+    console.log('Form data:', Object.fromEntries(formData));
+    
     fetch(url, {
         method: 'POST',
-        body: formData
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response URL:', response.url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return response.json();
+        } else {
+            return response.text().then(text => {
+                console.log('Non-JSON response:', text);
+                throw new Error('Expected JSON response but got: ' + text.substring(0, 100));
+            });
+        }
+    })
     .then(data => {
+        console.log('Response data:', data);
         if (data.success) {
-            closeProjectModal();
+            closeModal('projectModal');
             location.reload();
         } else {
             alert('Failed to save project: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to save project');
+        console.error('Error details:', error);
+        alert('Failed to save project. Error: ' + error.message + '. Check console for details.');
     });
 });
 </script>
+
+<?php renderModalJS(); ?>
 
 <?php
 $content = ob_get_clean();

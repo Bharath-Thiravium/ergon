@@ -73,12 +73,12 @@ ob_start();
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Employee</th>
-                        <th>Description</th>
-                        <th>Amount</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th class="col-employee">Employee</th>
+                        <th class="col-description">Description</th>
+                        <th class="col-amount">Amount</th>
+                        <th class="col-date">Date</th>
+                        <th class="col-status">Status</th>
+                        <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>

@@ -50,7 +50,7 @@ $content = ob_start();
                 <ul>
                     <li><strong>Due Date:</strong> Hard deadline for task completion</li>
                     <li><strong>SLA Hours:</strong> Service Level Agreement - expected completion time (default: 24 hours)</li>
-                    <li><strong>Status:</strong> Current status - Assigned, In Progress, Completed, or Blocked</li>
+                    <li><strong>Status:</strong> Current status - Assigned, In Progress, Completed, Cancelled, or Suspended</li>
                     <li><strong>Progress:</strong> Current completion percentage</li>
                 </ul>
             </div>
@@ -217,7 +217,8 @@ $content = ob_start();
                         <option value="assigned" <?= ($task['status'] ?? '') === 'assigned' ? 'selected' : '' ?>>📋 Assigned</option>
                         <option value="in_progress" <?= ($task['status'] ?? '') === 'in_progress' ? 'selected' : '' ?>>⚡ In Progress</option>
                         <option value="completed" <?= ($task['status'] ?? '') === 'completed' ? 'selected' : '' ?>>✅ Completed</option>
-                        <option value="blocked" <?= ($task['status'] ?? '') === 'blocked' ? 'selected' : '' ?>>🚫 Blocked</option>
+                        <option value="cancelled" <?= ($task['status'] ?? '') === 'cancelled' ? 'selected' : '' ?>>❌ Cancelled</option>
+                        <option value="suspended" <?= ($task['status'] ?? '') === 'suspended' ? 'selected' : '' ?>>⏸️ Suspended</option>
                     </select>
                 </div>
             </div>

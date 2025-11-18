@@ -14,6 +14,11 @@ class Router {
         $method = $_SERVER['REQUEST_METHOD'];
         $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         
+        // Log for debugging
+        error_log("Router Debug - Original URI: " . $_SERVER['REQUEST_URI']);
+        error_log("Router Debug - Method: " . $method);
+        error_log("Router Debug - Parsed Path: " . $path);
+        
         // Determine base path based on environment
         $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
         $basePath = '/ergon';
@@ -37,18 +42,25 @@ class Router {
             $path = rtrim($path, '/');
         }
         
+        error_log("Router Debug - Final Path: " . $path);
+        
+        // Check for exact match first
         if (isset($this->routes[$method][$path])) {
+            error_log("Router Debug - Exact match found for: " . $path);
             $this->executeRoute($this->routes[$method][$path]);
             return;
         }
         
+        // Check for pattern matches
         foreach ($this->routes[$method] ?? [] as $route => $handler) {
             if ($this->matchRoute($route, $path)) {
+                error_log("Router Debug - Pattern match found: " . $route . " for path: " . $path);
                 $this->executeRoute($handler, $this->extractParams($route, $path));
                 return;
             }
         }
         
+        error_log("Router Debug - No route found for: " . $path);
         $this->notFound();
     }
     

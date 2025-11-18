@@ -20,6 +20,9 @@ ob_start();
             <span>📊</span> Update Progress
         </button>
         <?php endif; ?>
+        <button onclick="showTaskHistory(<?= $task['id'] ?>)" class="btn btn--info">
+            <span>📋</span> History
+        </button>
         <a href="/ergon/tasks/edit/<?= $task['id'] ?? '' ?>" class="btn btn--secondary">
             <span>✏️</span> Edit Task
         </a>
@@ -252,6 +255,63 @@ document.addEventListener('DOMContentLoaded', function() {
         var progressEl = document.getElementById('progressUpdate');
         if (progressEl) progressEl.classList.remove('progress-update--hidden');
     }
+    
+    window.showTaskHistory = function(taskId) {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('historyModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'historyModal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📋 Task History</h3>
+                        <button class="modal-close" onclick="closeModal('historyModal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="historyContent">Loading...</div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        // Show modal
+        modal.style.display = 'block';
+        document.getElementById('historyContent').innerHTML = 'Loading...';
+        
+        // Load history
+        fetch(`/ergon/tasks/history/${taskId}`, {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('historyContent').innerHTML = data.html || 'No history available';
+            } else {
+                document.getElementById('historyContent').innerHTML = 'Error: ' + (data.error || 'Failed to load history');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading history:', error);
+            document.getElementById('historyContent').innerHTML = 'Error loading history';
+        });
+    };
+    
+    window.closeModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.style.display = 'none';
+    };
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('historyModal');
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    };
 });
 </script>
 
@@ -515,6 +575,114 @@ document.addEventListener('DOMContentLoaded', function() {
     .task-badges {
         min-width: 200px;
     }
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 99999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(2px);
+}
+
+.modal-content {
+    background-color: var(--bg-primary);
+    margin: 5% auto;
+    border-radius: var(--border-radius);
+    width: 90%;
+    max-width: 600px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.modal-body {
+    padding: var(--space-4);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.history-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.history-item {
+    padding: var(--space-3);
+    border-left: 3px solid var(--primary);
+    background: var(--bg-secondary);
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+}
+
+.history-date {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-bottom: var(--space-1);
+}
+
+.history-action {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+}
+
+.history-change {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-1);
+}
+
+.history-notes {
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-bottom: var(--space-1);
+}
+
+.history-user {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
 }
 </style>
 

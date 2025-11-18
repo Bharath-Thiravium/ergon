@@ -58,7 +58,14 @@ class ProjectManagementController extends Controller {
     public function create() {
         $this->requireAuth();
         
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Access denied']);
+            return;
+        }
+        
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => 'Invalid request method']);
             return;
         }
@@ -66,16 +73,30 @@ class ProjectManagementController extends Controller {
         try {
             $db = Database::connect();
             
+            // Ensure projects table exists
+            $db->exec("CREATE TABLE IF NOT EXISTS projects (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                department_id INT,
+                status VARCHAR(50) DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            
             $stmt = $db->prepare("INSERT INTO projects (name, description, department_id, status) VALUES (?, ?, ?, 'active')");
             $result = $stmt->execute([
                 $_POST['name'],
                 $_POST['description'] ?? '',
-                $_POST['department_id'] ?? null
+                !empty($_POST['department_id']) ? $_POST['department_id'] : null
             ]);
             
+            header('Content-Type: application/json');
             echo json_encode(['success' => $result]);
             
         } catch (Exception $e) {
+            error_log('Project creation error: ' . $e->getMessage());
+            header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
@@ -83,7 +104,14 @@ class ProjectManagementController extends Controller {
     public function update() {
         $this->requireAuth();
         
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Access denied']);
+            return;
+        }
+        
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => 'Invalid request method']);
             return;
         }
@@ -95,14 +123,17 @@ class ProjectManagementController extends Controller {
             $result = $stmt->execute([
                 $_POST['name'],
                 $_POST['description'] ?? '',
-                $_POST['department_id'] ?? null,
+                !empty($_POST['department_id']) ? $_POST['department_id'] : null,
                 $_POST['status'],
                 $_POST['project_id']
             ]);
             
+            header('Content-Type: application/json');
             echo json_encode(['success' => $result]);
             
         } catch (Exception $e) {
+            error_log('Project update error: ' . $e->getMessage());
+            header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
@@ -110,7 +141,14 @@ class ProjectManagementController extends Controller {
     public function delete() {
         $this->requireAuth();
         
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Access denied']);
+            return;
+        }
+        
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => 'Invalid request method']);
             return;
         }
@@ -121,9 +159,12 @@ class ProjectManagementController extends Controller {
             $stmt = $db->prepare("DELETE FROM projects WHERE id = ?");
             $result = $stmt->execute([$_POST['project_id']]);
             
+            header('Content-Type: application/json');
             echo json_encode(['success' => $result]);
             
         } catch (Exception $e) {
+            error_log('Project deletion error: ' . $e->getMessage());
+            header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }

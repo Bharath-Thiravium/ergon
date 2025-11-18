@@ -573,7 +573,7 @@ class UnifiedAttendanceController extends Controller {
                     echo "<td><span style='color: #6b7280;'>-</span></td>";
                 }
                 
-                $totalHours = $employee['total_hours'] ?? 0;
+                $totalHours = floatval($employee['total_hours'] ?? 0);
                 echo "<td>" . ($totalHours > 0 ? "<span style='color: #1f2937; font-weight: 500;'>" . number_format($totalHours, 2) . "h</span>" : "<span style='color: #6b7280;'>0h</span>") . "</td>";
                 
                 echo "<td><div style='display: flex; gap: 0.25rem;'>";

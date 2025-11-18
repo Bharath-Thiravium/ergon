@@ -9,14 +9,10 @@ if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) {
     exit;
 }
 
-// Initialize content variable to prevent undefined variable warning
 if (!isset($content)) {
     $content = '';
 }
 
-// Removed aggressive cache headers
-
-// Extend session timeout to 8 hours for better user experience
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) {
     session_unset();
     session_destroy();
@@ -38,42 +34,52 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     
-    <!-- Instant theme application - prevents flashing -->
     <script src="/ergon/assets/js/theme-preload.js"></script>
-
-    <!-- Bootstrap Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
     
-    <!-- Main CSS -->
     <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/admin-header-fix.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/theme-enhanced.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/utilities-new.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/instant-theme.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/hover-fix.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/force-dark-theme.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/action-button-clean.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/standardized-icons.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/global-tooltips.css?v=<?= time() ?>" rel="stylesheet">
-    
-    <!-- JavaScript -->
+    <link href="/ergon/assets/css/action-button-clean.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/responsive-mobile.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/mobile-critical-fixes.css?v=<?= time() ?>" rel="stylesheet">
+
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/action-button-clean.js?v=<?= time() ?>" defer></script>
+    <script src="/ergon/assets/js/mobile-enhanced.js?v=<?= time() ?>" defer></script>
+    <script src="/ergon/assets/js/mobile-table-cards.js?v=<?= time() ?>" defer></script>
+    <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
+    <script src="/ergon/assets/js/mobile-validation.js?v=<?= time() ?>" defer></script>
+    <?php endif; ?>
 </head>
 <body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
     <header class="main-header">
         <div class="header__top">
             <div class="header__brand">
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
+                    <i class="bi bi-list"></i>
+                </button>
                 <span class="brand-icon"><i class="bi bi-compass-fill"></i></span>
                 <span class="brand-text">Ergon</span>
                 <span class="role-badge"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'User'), ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             
             <div class="header__controls">
+                <div class="attendance-controls">
+                    <button class="btn btn--attendance-toggle" id="attendanceToggle" onclick="toggleAttendance()" title="Toggle Attendance">
+                        <div class="attendance-icon">
+                            <i class="bi bi-play-fill" id="attendanceIcon"></i>
+                        </div>
+                        <span class="btn-text" id="attendanceText">Clock In</span>
+                        <div class="attendance-pulse"></div>
+                    </button>
+                </div>
                 <button class="control-btn" id="theme-toggle" title="Toggle Theme">
                     <i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i>
                 </button>
@@ -81,7 +87,7 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                     <i class="bi bi-bell-fill"></i>
                     <span class="notification-badge" id="notificationBadge">0</span>
                 </button>
-                <button class="profile-btn" onclick="document.getElementById('profileMenu').classList.toggle('show')">
+                <button class="profile-btn" id="profileButton" type="button">
                     <span class="profile-avatar"><?= htmlspecialchars(strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="profile-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="dropdown-arrow">▼</span>
@@ -172,13 +178,9 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">✅</span>
                                 Tasks
                             </a>
-                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
-                            </a>
-                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">📆</span>
-                                Calendar
                             </a>
                         </div>
                     </div>
@@ -274,13 +276,9 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">🌅</span>
                                 Planner
                             </a>
-                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
-                            </a>
-                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">📆</span>
-                                Calendar
                             </a>
                         </div>
                     </div>
@@ -346,19 +344,13 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                                 <span class="nav-icon">✅</span>
                                 Tasks
                             </a>
-
                             <a href="/ergon/workflow/daily-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📅</span>
                                 Daily Planner
                             </a>
-
-                            <a href="/ergon/workflow/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
-                            </a>
-                            <a href="/ergon/workflow/calendar" class="nav-dropdown-item <?= ($active_page ?? '') === 'calendar' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">📆</span>
-                                Calendar
                             </a>
                         </div>
                     </div>
@@ -396,6 +388,143 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         </div>
     </header>
     
+    <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileMenu()"></div>
+    
+    <aside class="sidebar" id="mobileSidebar">
+        <div class="sidebar__header">
+            <div class="sidebar__brand">
+                <span class="brand-icon"><i class="bi bi-compass-fill"></i></span>
+                <span>Ergon</span>
+            </div>
+        </div>
+        <nav class="sidebar__menu">
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
+                <div class="sidebar__divider">Overview</div>
+                <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon"><i class="bi bi-speedometer2"></i></span>
+                    Dashboard
+                </a>
+                <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon"><i class="bi bi-trophy-fill"></i></span>
+                    Competition
+                </a>
+                
+                <div class="sidebar__divider">Management</div>
+                <a href="/ergon/system-admin" class="sidebar__link <?= ($active_page ?? '') === 'system-admin' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🔧</span>
+                    System
+                </a>
+                <a href="/ergon/admin/management" class="sidebar__link <?= ($active_page ?? '') === 'admin' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">👥</span>
+                    Users
+                </a>
+                <a href="/ergon/departments" class="sidebar__link <?= ($active_page ?? '') === 'departments' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🏢</span>
+                    Departments
+                </a>
+                <a href="/ergon/project-management" class="sidebar__link <?= ($active_page ?? '') === 'project-management' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📁</span>
+                    Projects
+                </a>
+                
+                <div class="sidebar__divider">Operations</div>
+                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">✅</span>
+                    Tasks
+                </a>
+                <a href="/ergon/contacts/followups" class="sidebar__link <?= ($active_page ?? '') === 'contact_followups' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📞</span>
+                    Follow-ups
+                </a>
+                
+                <div class="sidebar__divider">HR & Finance</div>
+                <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📅</span>
+                    Leaves
+                </a>
+                <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💰</span>
+                    Expenses
+                </a>
+                <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💳</span>
+                    Advances
+                </a>
+                <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📍</span>
+                    Attendance
+                </a>
+            <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📊</span>
+                    Dashboard
+                </a>
+                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">✅</span>
+                    Tasks
+                </a>
+                <a href="/ergon/users" class="sidebar__link <?= ($active_page ?? '') === 'users' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">👥</span>
+                    Users
+                </a>
+                <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📅</span>
+                    Leaves
+                </a>
+                <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💰</span>
+                    Expenses
+                </a>
+            <?php else: ?>
+                <div class="sidebar__divider">Overview</div>
+                <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🏠</span>
+                    Dashboard
+                </a>
+                <a href="/ergon/gamification/individual" class="sidebar__link <?= ($active_page ?? '') === 'individual-gamification' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🏅</span>
+                    My Performance
+                </a>
+                <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🏆</span>
+                    Team Competition
+                </a>
+                
+                <div class="sidebar__divider">Work</div>
+                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">✅</span>
+                    Tasks
+                </a>
+                <a href="/ergon/workflow/daily-planner" class="sidebar__link <?= ($active_page ?? '') === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📅</span>
+                    Daily Planner
+                </a>
+                <a href="/ergon/contacts/followups" class="sidebar__link <?= ($active_page ?? '') === 'contact_followups' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📞</span>
+                    Follow-ups
+                </a>
+                
+                <div class="sidebar__divider">Personal</div>
+                <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📅</span>
+                    Leaves
+                </a>
+                <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💰</span>
+                    Expenses
+                </a>
+                <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💳</span>
+                    Advances
+                </a>
+                <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📍</span>
+                    Attendance
+                </a>
+            <?php endif; ?>
+        </nav>
+    </aside>
+    
     <div class="notification-dropdown" id="notificationDropdown">
         <div class="notification-header">
             <h3>Notifications</h3>
@@ -407,27 +536,76 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     </div>
 
     <main class="main-content">
-            <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports', 'Notifications'])): ?>
-            <div class="page-header">
-                <div class="page-title">
-                    <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
-                </div>
-                <?php if ($title === 'Notifications'): ?>
-                <div class="page-actions">
-                    <button class="btn btn--primary" onclick="markAllAsRead()">
-                        Mark All Read
-                    </button>
-                </div>
-                <?php endif; ?>
+        <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports', 'Notifications'])): ?>
+        <div class="page-header">
+            <div class="page-title">
+                <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
+            </div>
+            <?php if ($title === 'Notifications'): ?>
+            <div class="page-actions">
+                <button class="btn btn--primary" onclick="markAllAsRead()">
+                    Mark All Read
+                </button>
             </div>
             <?php endif; ?>
-            <?= $content ?>
+        </div>
+        <?php endif; ?>
+        <?= $content ?>
     </main>
 
     <script>
-
+    var hideTimeout;
+    var currentDropdown = null;
     
-
+    function showDropdown(id) {
+        clearTimeout(hideTimeout);
+        currentDropdown = id;
+        
+        var dropdown = document.getElementById(id);
+        if (!dropdown) return;
+        
+        var btn = dropdown.previousElementSibling;
+        var btnRect = btn.getBoundingClientRect();
+        
+        dropdown.style.top = (btnRect.bottom + 8) + 'px';
+        dropdown.style.left = btnRect.left + 'px';
+        
+        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
+            if (menu.id !== id && menu.classList.contains('show')) {
+                menu.classList.remove('show');
+                menu.previousElementSibling.classList.remove('active');
+            }
+        });
+        
+        setTimeout(function() {
+            dropdown.classList.add('show');
+            btn.classList.add('active');
+        }, 50);
+    }
+    
+    function hideDropdown(id) {
+        hideTimeout = setTimeout(function() {
+            var dropdown = document.getElementById(id);
+            if (dropdown && currentDropdown === id) {
+                var btn = dropdown.previousElementSibling;
+                
+                dropdown.classList.remove('show');
+                btn.classList.remove('active');
+                currentDropdown = null;
+            }
+        }, 150);
+    }
+    
+    function toggleDropdown(id) {
+        var dropdown = document.getElementById(id);
+        var btn = dropdown.previousElementSibling;
+        
+        if (dropdown.classList.contains('show')) {
+            hideDropdown(id);
+        } else {
+            showDropdown(id);
+        }
+    }
     
     function toggleNotifications(event) {
         if (event) {
@@ -440,7 +618,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         if (dropdown && button) {
             var isVisible = dropdown.style.display === 'block';
             
-            // Close other dropdowns first
             document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
                 menu.classList.remove('show');
             });
@@ -450,7 +627,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             if (isVisible) {
                 dropdown.style.display = 'none';
             } else {
-                // Position dropdown relative to notification button
                 var rect = button.getBoundingClientRect();
                 dropdown.style.position = 'fixed';
                 dropdown.style.top = (rect.bottom + 8) + 'px';
@@ -459,7 +635,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                 dropdown.style.zIndex = '10000';
                 dropdown.style.display = 'block';
                 
-                // Load notifications
                 loadNotifications();
             }
         }
@@ -469,13 +644,11 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         event.preventDefault();
         event.stopPropagation();
         
-        // Close the dropdown first
         var dropdown = document.getElementById('notificationDropdown');
         if (dropdown) {
             dropdown.style.display = 'none';
         }
         
-        // Navigate to notifications page in the main window
         setTimeout(function() {
             window.location.href = '/ergon/notifications';
         }, 100);
@@ -499,7 +672,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                            '</a>';
                 }).join('');
                 
-                // Update badge
                 updateNotificationBadge(data.unread_count || 0);
             } else {
                 list.innerHTML = '<div class="notification-loading">No notifications</div>';
@@ -520,9 +692,19 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
     }
     
-    // Load notification count on page load
     document.addEventListener('DOMContentLoaded', function() {
         loadNotifications();
+        checkAttendanceStatus();
+        
+        // Ensure profile button is clickable
+        var profileBtn = document.getElementById('profileButton');
+        if (profileBtn) {
+            profileBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleProfile();
+            });
+        }
     });
     
     function getNotificationLink(module, message) {
@@ -573,67 +755,17 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             alert('Network error occurred');
         });
     }
-    
-    function showDropdown(id) {
-        clearTimeout(hideTimeout);
-        currentDropdown = id;
-        
-        var dropdown = document.getElementById(id);
-        if (!dropdown) return;
-        
-        var btn = dropdown.previousElementSibling;
-        var btnRect = btn.getBoundingClientRect();
-        
-        // Position dropdown
-        dropdown.style.top = (btnRect.bottom + 8) + 'px';
-        dropdown.style.left = btnRect.left + 'px';
-        
-        // Close all other dropdowns with fade out
-        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
-            if (menu.id !== id && menu.classList.contains('show')) {
-                menu.classList.remove('show');
-                menu.previousElementSibling.classList.remove('active');
-            }
-        });
-        
-        // Show current dropdown with fade in
-        setTimeout(function() {
-            dropdown.classList.add('show');
-            btn.classList.add('active');
-        }, 50);
-    }
-    
-    var hideTimeout;
-    var currentDropdown = null;
-    
-    function hideDropdown(id) {
-        hideTimeout = setTimeout(function() {
-            var dropdown = document.getElementById(id);
-            if (dropdown && currentDropdown === id) {
-                var btn = dropdown.previousElementSibling;
-                
-                dropdown.classList.remove('show');
-                btn.classList.remove('active');
-                currentDropdown = null;
-            }
-        }, 150);
-    }
-    
-    function toggleDropdown(id) {
-        var dropdown = document.getElementById(id);
-        var btn = dropdown.previousElementSibling;
-        
-        if (dropdown.classList.contains('show')) {
-            hideDropdown(id);
-        } else {
-            showDropdown(id);
-        }
-    }
-    
-    window.toggleProfile = function() {
+
+    function toggleProfile() {
+        console.log('toggleProfile called'); // Debug log
         var menu = document.getElementById('profileMenu');
         
-        // Close all nav dropdowns
+        if (!menu) {
+            console.error('Profile menu not found');
+            return;
+        }
+        
+        // Close other dropdowns
         document.querySelectorAll('.nav-dropdown-menu').forEach(function(dropdown) {
             dropdown.classList.remove('show');
         });
@@ -641,8 +773,18 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             btn.classList.remove('active');
         });
         
+        // Close notification dropdown
+        var notificationDropdown = document.getElementById('notificationDropdown');
+        if (notificationDropdown) {
+            notificationDropdown.style.display = 'none';
+        }
+        
         menu.classList.toggle('show');
+        console.log('Profile menu toggled, show class:', menu.classList.contains('show'));
     }
+    
+    // Make function globally accessible
+    window.toggleProfile = toggleProfile;
     
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.header__controls')) {
@@ -655,7 +797,6 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             dropdown.style.display = 'none';
         }
         
-        // Close nav dropdowns when clicking outside
         if (!e.target.closest('.nav-dropdown')) {
             document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
                 menu.classList.remove('show');
@@ -665,17 +806,11 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             });
         }
     });
-    
 
-    
-    // Removed aggressive page show redirect
-    
-    // Disable scroll restoration to prevent data duplication
     if ('scrollRestoration' in history) {
         history.scrollRestoration = 'auto';
     }
     
-    // Standardized delete function
     function deleteRecord(module, id, name) {
         if (confirm('Are you sure you want to delete "' + name + '"? This action cannot be undone.')) {
             fetch('/ergon/' + module + '/delete/' + id, {
@@ -699,25 +834,15 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
             });
         }
     }
-    
 
-    </script>
-
-    <script>
-    // Global tooltip conversion is handled by action-button-clean.js
-    
-    // Smart back navigation function
     function goBack() {
-        // Check if there's a previous page in history
         if (document.referrer && document.referrer.includes('/ergon/')) {
             window.history.back();
         } else {
-            // Fallback to tasks list
             window.location.href = '/ergon/tasks';
         }
     }
     
-    // Toggle filters function
     function toggleLeaveFilters() {
         const panel = document.getElementById('leaveFiltersPanel');
         if (panel) {
@@ -725,14 +850,156 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
         }
     }
     
-    
     function initTooltips() {
-        // Non-action-button tooltips only
         return;
     }
-    </script>
     
-
+    // Attendance Toggle Function
+    let attendanceState = 'out'; // 'in' or 'out'
+    
+    function toggleAttendance() {
+        const button = document.getElementById('attendanceToggle');
+        const icon = document.getElementById('attendanceIcon');
+        const text = document.getElementById('attendanceText');
+        
+        button.disabled = true;
+        button.classList.add('loading');
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const action = attendanceState === 'out' ? 'in' : 'out';
+                
+                fetch('/ergon/attendance/clock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `type=${action}&latitude=${position.coords.latitude}&longitude=${position.coords.longitude}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        attendanceState = action;
+                        updateAttendanceButton();
+                        showAttendanceNotification(action === 'in' ? 'Clocked in successfully!' : 'Clocked out successfully!', 'success');
+                    } else {
+                        showAttendanceNotification(data.error || 'Failed to update attendance', 'error');
+                    }
+                })
+                .catch(error => {
+                    showAttendanceNotification('Network error occurred', 'error');
+                })
+                .finally(() => {
+                    button.disabled = false;
+                    button.classList.remove('loading');
+                });
+            }, function(error) {
+                showAttendanceNotification('Location access required', 'error');
+                button.disabled = false;
+                button.classList.remove('loading');
+            });
+        } else {
+            showAttendanceNotification('Geolocation not supported', 'error');
+            button.disabled = false;
+            button.classList.remove('loading');
+        }
+    }
+    
+    function updateAttendanceButton() {
+        const button = document.getElementById('attendanceToggle');
+        const icon = document.getElementById('attendanceIcon');
+        const text = document.getElementById('attendanceText');
+        
+        if (attendanceState === 'in') {
+            button.classList.remove('state-out');
+            button.classList.add('state-in');
+            icon.className = 'bi bi-stop-fill';
+            text.textContent = 'Clock Out';
+        } else {
+            button.classList.remove('state-in');
+            button.classList.add('state-out');
+            icon.className = 'bi bi-play-fill';
+            text.textContent = 'Clock In';
+        }
+    }
+    
+    function showAttendanceNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `attendance-notification ${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => notification.classList.add('show'), 100);
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => document.body.removeChild(notification), 300);
+        }, 3000);
+    }
+    
+    // Check attendance status on page load
+    function checkAttendanceStatus() {
+        fetch('/ergon/attendance/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.attendance) {
+                attendanceState = data.attendance.check_out ? 'out' : 'in';
+                updateAttendanceButton();
+            }
+        })
+        .catch(error => console.log('Status check failed:', error));
+    }
+    
+    // Mobile Menu Functions
+    function toggleMobileMenu() {
+        var sidebar = document.querySelector('.sidebar');
+        var overlay = document.getElementById('mobileOverlay');
+        
+        if (sidebar && overlay) {
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+            document.body.style.overflow = sidebar.classList.contains('mobile-open') ? 'hidden' : '';
+        }
+    }
+    
+    function closeMobileMenu() {
+        var sidebar = document.querySelector('.sidebar');
+        var overlay = document.getElementById('mobileOverlay');
+        
+        if (sidebar && overlay) {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+    
+    // Close mobile menu when clicking on navigation links
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.nav-dropdown-item') || e.target.closest('.sidebar__link')) {
+            closeMobileMenu();
+        }
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 1024) {
+            closeMobileMenu();
+        }
+    });
+    
+    // Add scroll indicator for tables on mobile
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.innerWidth <= 768) {
+            var tables = document.querySelectorAll('.table-responsive');
+            tables.forEach(function(table) {
+                table.classList.add('table-mobile-scroll');
+            });
+        }
+    });
+    </script>
 
 </body>
 </html>

@@ -4,6 +4,12 @@
  * ergon - Employee Tracker & Task Manager
  */
 
+// Project Management Routes (Priority - placed first to avoid conflicts)
+$router->get('/project-management', 'ProjectManagementController', 'index');
+$router->post('/project-management/create', 'ProjectManagementController', 'create');
+$router->post('/project-management/update', 'ProjectManagementController', 'update');
+$router->post('/project-management/delete', 'ProjectManagementController', 'delete');
+
 // Favicon route
 $router->get('/favicon.ico', 'StaticController', 'favicon');
 
@@ -39,6 +45,7 @@ $router->get('/users/view/{id}', 'UsersController', 'viewUser');
 $router->get('/users/edit/{id}', 'UsersController', 'edit');
 $router->post('/users/edit/{id}', 'UsersController', 'edit');
 $router->post('/users/inactive/{id}', 'UsersController', 'inactive');
+$router->post('/users/activate/{id}', 'UsersController', 'activate');
 $router->post('/users/delete/{id}', 'UsersController', 'delete');
 $router->post('/admin/delete-user', 'UsersController', 'deleteUser');
 $router->post('/users/reset-password', 'UsersController', 'resetPassword');
@@ -83,7 +90,9 @@ $router->post('/tasks/edit/{id}', 'TasksController', 'edit');
 $router->get('/tasks/view/{id}', 'TasksController', 'viewDetails');
 $router->post('/tasks/delete/{id}', 'TasksController', 'delete');
 $router->post('/tasks/update-status', 'TasksController', 'updateStatus');
+$router->get('/tasks/kanban', 'TasksController', 'kanban');
 $router->get('/tasks/calendar', 'TasksController', 'calendar');
+$router->get('/tasks/schedule', 'TasksController', 'calendar');
 $router->get('/tasks/overdue', 'TasksController', 'overdue');
 $router->post('/tasks/bulk-create', 'TasksController', 'bulkCreate');
 
@@ -244,6 +253,7 @@ $router->post('/api/update-preference', 'ApiController', 'updatePreference');
 $router->post('/api/activity-log', 'ApiController', 'activityLog');
 $router->post('/api/session_from_jwt', 'ApiController', 'sessionFromJWT');
 $router->post('/api/test', 'ApiController', 'test');
+$router->post('/api/contacts/create', 'ContactFollowupController', 'createContact');
 
 // Unified Workflow API Routes
 $router->post('/api/update-task-status', 'UnifiedWorkflowController', 'updateTaskStatus');
@@ -257,7 +267,9 @@ $router->post('/workflow/pause-task', 'UnifiedWorkflowController', 'pauseTask');
 $router->post('/workflow/resume-task', 'UnifiedWorkflowController', 'resumeTask');
 $router->post('/workflow/complete-task', 'UnifiedWorkflowController', 'completeTask');
 $router->post('/workflow/postpone-task', 'UnifiedWorkflowController', 'postponeTask');
+$router->post('/workflow/update-task-status', 'UnifiedWorkflowController', 'updateTaskStatus');
 $router->get('/workflow/task-timer', 'UnifiedWorkflowController', 'getTaskTimer');
+$router->get('/workflow/task-history', 'UnifiedWorkflowController', 'getTaskHistory');
 $router->post('/workflow/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
 
 // Mobile API Routes
@@ -311,11 +323,7 @@ $router->post('/system-admin/delete', 'SystemAdminController', 'delete');
 $router->post('/system-admin/toggle-status', 'SystemAdminController', 'toggleStatus');
 $router->get('/system-admin/export', 'SystemAdminController', 'export');
 
-// Project Management Routes (Admin/Owner)
-$router->get('/project-management', 'ProjectManagementController', 'index');
-$router->post('/project-management/create', 'ProjectManagementController', 'create');
-$router->post('/project-management/update', 'ProjectManagementController', 'update');
-$router->post('/project-management/delete', 'ProjectManagementController', 'delete');
+// Project Management Routes moved to top of file for priority
 
 // Unified Workflow Routes
 
@@ -323,7 +331,8 @@ $router->get('/workflow/daily-planner', 'UnifiedWorkflowController', 'dailyPlann
 $router->get('/workflow/daily-planner/{date}', 'UnifiedWorkflowController', 'dailyPlanner');
 
 $router->get('/workflow/followups', 'UnifiedWorkflowController', 'followups');
-$router->get('/workflow/calendar', 'UnifiedWorkflowController', 'calendar');
+// Redirect calendar to task visualization
+$router->get('/workflow/calendar', 'TasksController', 'getTaskSchedule');
 $router->get('/workflow/create-task', 'TasksController', 'create');
 $router->post('/workflow/create-task', 'TasksController', 'store');
 
@@ -331,19 +340,18 @@ $router->post('/workflow/create-task', 'TasksController', 'store');
 $router->get('/daily-planner', 'UnifiedWorkflowController', 'dailyPlanner');
 $router->get('/daily-planner/{date}', 'UnifiedWorkflowController', 'dailyPlanner');
 
-// Follow-up Routes (Legacy - now filtered from tasks)
-$router->get('/followups', 'UnifiedWorkflowController', 'followups');
-$router->get('/followups/create', 'FollowupController', 'create');
-$router->post('/followups', 'FollowupController', 'handlePost');
-$router->post('/followups/create', 'FollowupController', 'store');
-$router->get('/followups/view/{id}', 'FollowupController', 'viewFollowup');
-$router->post('/followups/update', 'FollowupController', 'update');
-$router->post('/followups/reschedule', 'FollowupController', 'reschedule');
-$router->post('/followups/complete', 'FollowupController', 'complete');
-$router->post('/followups/update-item', 'FollowupController', 'updateItem');
-$router->post('/followups/delete/{id}', 'FollowupController', 'delete');
-$router->post('/followups/create-from-task', 'FollowupController', 'createFromTask');
-$router->get('/followups/history/{id}', 'FollowupController', 'getHistory');
+// Contact-Centric Follow-up Routes (New Module)
+$router->get('/contacts/followups', 'ContactFollowupController', 'index');
+$router->get('/contacts/followups/view/{contact_id}', 'ContactFollowupController', 'viewContactFollowups');
+$router->get('/contacts/followups/create', 'ContactFollowupController', 'createStandaloneFollowup');
+$router->post('/contacts/followups/create', 'ContactFollowupController', 'createStandaloneFollowup');
+$router->post('/contacts/followups/create-task', 'ContactFollowupController', 'createTaskFollowup');
+$router->post('/contacts/followups/complete/{id}', 'ContactFollowupController', 'completeFollowup');
+$router->post('/contacts/followups/reschedule/{id}', 'ContactFollowupController', 'rescheduleFollowup');
+$router->get('/contacts/followups/history/{id}', 'ContactFollowupController', 'getFollowupHistory');
+$router->get('/api/reminders/check', 'ContactFollowupController', 'checkReminders');
+
+// Legacy followup routes removed - use /contacts/followups instead
 
 // Gamification Routes
 $router->get('/gamification/team-competition', 'GamificationController', 'teamCompetition');

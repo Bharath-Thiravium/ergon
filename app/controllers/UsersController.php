@@ -15,6 +15,12 @@ class UsersController extends Controller {
             $userModel = new User();
             $users = $userModel->getAll();
             
+            // Debug logging
+            error_log('Users index: Retrieved ' . count($users) . ' users');
+            foreach ($users as $user) {
+                error_log("User {$user['id']}: {$user['name']} - Status: {$user['status']}");
+            }
+            
             $data = [
                 'users' => $users,
                 'active_page' => 'users'
@@ -22,6 +28,7 @@ class UsersController extends Controller {
             
             $this->view('users/index', $data);
         } catch (Exception $e) {
+            error_log('Users index error: ' . $e->getMessage());
             echo "Error: " . $e->getMessage();
         }
     }
@@ -126,9 +133,11 @@ class UsersController extends Controller {
                 
                 if ($result) {
                     $this->handleDocumentUploads($id);
-                    header('Location: /ergon/users/view/' . $id . '?success=User updated successfully');
+                    $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users';
+                    header('Location: ' . $redirectUrl . '?success=User updated successfully');
                 } else {
-                    header('Location: /ergon/users/view/' . $id . '?error=Failed to update user');
+                    $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users';
+                    header('Location: ' . $redirectUrl . '?error=Failed to update user');
                 }
                 exit;
             } catch (Exception $e) {
@@ -224,7 +233,8 @@ class UsersController extends Controller {
                         'password' => $tempPassword,
                         'employee_id' => $employeeId
                     ];
-                    header('Location: /ergon/users?success=User created successfully');
+                    $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users';
+                    header('Location: ' . $redirectUrl . '?success=User created successfully');
                     exit;
                 } else {
                     $_SESSION['old_data'] = $_POST;
@@ -345,34 +355,7 @@ class UsersController extends Controller {
         exit;
     }
     
-    public function delete($id) {
-        
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
-            echo json_encode(['success' => false, 'message' => 'Access denied']);
-            exit;
-        }
-        
-        try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            
-            // Deactivate instead of delete to maintain data integrity
-            $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
-            $result = $stmt->execute([$id]);
-            
-            if ($result) {
-                // Force logout of the deactivated user by clearing their sessions
-                $this->invalidateUserSessions($id);
-            }
-            
-            echo json_encode(['success' => $result, 'message' => $result ? 'User deactivated successfully' : 'Deactivation failed']);
-        } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Deactivation failed']);
-        }
-        exit;
-    }
-    
-    public function deleteUser() {
+    public function inactive($id) {
         header('Content-Type: application/json');
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
@@ -380,9 +363,43 @@ class UsersController extends Controller {
             exit;
         }
         
-        $userId = $_POST['user_id'] ?? null;
-        if (!$userId) {
-            echo json_encode(['success' => false, 'message' => 'User ID required']);
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // First check if user exists and current status
+            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
+            $checkStmt->execute([$id]);
+            $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
+            }
+            
+            $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
+            if ($result) {
+                $this->invalidateUserSessions($id);
+                error_log("User {$id} status changed from '{$user['status']}' to 'inactive'");
+            }
+            
+            echo json_encode(['success' => $result, 'message' => $result ? 'User deactivated successfully' : 'Deactivation failed']);
+        } catch (Exception $e) {
+            error_log('User inactive error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Deactivation failed: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+    
+
+    
+    public function activate($id) {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
             exit;
         }
         
@@ -390,49 +407,32 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Deactivate instead of delete to maintain data integrity
-            $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
-            $result = $stmt->execute([$userId]);
+            // First check if user exists and current status
+            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
+            $checkStmt->execute([$id]);
+            $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($result) {
-                // Force logout of the deactivated user
-                $this->invalidateUserSessions($userId);
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
             }
             
-            echo json_encode(['success' => $result, 'message' => $result ? 'User deactivated successfully' : 'Deactivation failed']);
+            $stmt = $db->prepare("UPDATE users SET status = 'active', updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
+            if ($result) {
+                error_log("User {$id} status changed from '{$user['status']}' to 'active'");
+            }
+            
+            echo json_encode(['success' => $result, 'message' => $result ? 'User activated successfully' : 'Activation failed']);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Deactivation failed: ' . $e->getMessage()]);
+            error_log('User activate error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Activation failed: ' . $e->getMessage()]);
         }
         exit;
     }
     
-    public function inactive($id) {
-        
-        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
-            header('Location: /ergon/login');
-            exit;
-        }
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            try {
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
-                
-                $stmt = $db->prepare("UPDATE users SET status = 'inactive', updated_at = NOW() WHERE id = ?");
-                $result = $stmt->execute([$id]);
-                
-                if ($result) {
-                    header('Location: /ergon/users?success=User deactivated successfully');
-                } else {
-                    header('Location: /ergon/users?error=Failed to deactivate user');
-                }
-                exit;
-            } catch (Exception $e) {
-                header('Location: /ergon/users?error=Deactivation failed');
-                exit;
-            }
-        }
-    }
+
     
     public function export() {
         
@@ -591,6 +591,14 @@ class UsersController extends Controller {
                     $db->exec("ALTER TABLE users ADD COLUMN $column $type");
                     error_log("Added column $column to users table");
                 }
+            }
+            
+            // Update status column to support new values
+            try {
+                $db->exec("ALTER TABLE users MODIFY COLUMN status ENUM('active', 'inactive', 'suspended', 'terminated') DEFAULT 'active'");
+                error_log("Updated status column to support new values");
+            } catch (Exception $e) {
+                error_log('Status column update error: ' . $e->getMessage());
             }
             
             // Generate employee IDs for existing users without them

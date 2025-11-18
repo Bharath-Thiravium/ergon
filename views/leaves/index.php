@@ -120,13 +120,13 @@ ob_start();
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Employee</th>
-                        <th>Leave Type</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Days</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th class="col-employee">Employee</th>
+                        <th class="col-type">Leave Type</th>
+                        <th class="col-start-date">Start Date</th>
+                        <th class="col-end-date">End Date</th>
+                        <th class="col-days">Days</th>
+                        <th class="col-status">Status</th>
+                        <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>

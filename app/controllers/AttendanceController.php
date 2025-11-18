@@ -77,11 +77,32 @@ class AttendanceController extends Controller {
                     FROM users u
                     LEFT JOIN departments d ON u.department_id = d.id
                     LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
-                    WHERE $roleFilter AND u.id != ?
+                    WHERE $roleFilter
                     ORDER BY u.role DESC, u.name
                 ");
-                $stmt->execute([$filterDate, $_SESSION['user_id']]);
+                $stmt->execute([$filterDate]);
                 $employeeAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Debug output
+                error_log("AttendanceController Debug:");
+                error_log("- Role: $role");
+                error_log("- Role Filter: $roleFilter");
+                error_log("- Filter Date: $filterDate");
+                error_log("- Query Result Count: " . count($employeeAttendance));
+                error_log("- Current User ID: " . ($_SESSION['user_id'] ?? 'not set'));
+                
+                if (empty($employeeAttendance)) {
+                    // Check if users exist at all
+                    $stmt = $db->query("SELECT COUNT(*) as count FROM users");
+                    $totalUsers = $stmt->fetch()['count'];
+                    error_log("- Total users in database: $totalUsers");
+                    
+                    $stmt = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role");
+                    $roleStats = $stmt->fetchAll();
+                    foreach ($roleStats as $stat) {
+                        error_log("- Role {$stat['role']}: {$stat['count']} users");
+                    }
+                }
                 
                 // Get admin's own attendance for today
                 $adminAttendance = null;

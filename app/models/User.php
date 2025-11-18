@@ -219,18 +219,26 @@ class User {
     public function getAll($page = 1, $limit = 20, $role = null) {
         try {
             $offset = ($page - 1) * $limit;
-            $whereClause = $role ? "WHERE role = ?" : "";
+            $whereClause = $role ? "WHERE role = ? AND status IN ('active', 'inactive')" : "WHERE status IN ('active', 'inactive')";
             $params = $role ? [$role, $limit, $offset] : [$limit, $offset];
             
             $stmt = $this->conn->prepare("
-                SELECT id, name, email, role, phone, department, status, created_at 
+                SELECT id, name, email, role, phone, department, status, created_at, employee_id, last_login 
                 FROM {$this->table} 
                 {$whereClause}
-                ORDER BY created_at DESC 
+                ORDER BY 
+                    CASE 
+                        WHEN status = 'active' THEN 1
+                        WHEN status = 'inactive' THEN 2
+                        ELSE 3
+                    END,
+                    created_at DESC 
                 LIMIT ? OFFSET ?
             ");
             $stmt->execute($params);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            error_log('Retrieved ' . count($users) . ' users (active/inactive only)');
+            return $users;
         } catch (Exception $e) {
             error_log("Get users error: " . $e->getMessage());
             return [];
@@ -275,7 +283,7 @@ class User {
             $stmt = $this->conn->prepare("
                 SELECT id, name, email, role, department, status 
                 FROM {$this->table} 
-                WHERE status = 'active' 
+                WHERE status IN ('active', 'inactive') 
                 ORDER BY name
             ");
             $stmt->execute();
@@ -341,7 +349,7 @@ class User {
     
     public function delete($id) {
         try {
-            $stmt = $this->conn->prepare("UPDATE {$this->table} SET status = 'inactive' WHERE id = ?");
+            $stmt = $this->conn->prepare("UPDATE {$this->table} SET status = 'removed' WHERE id = ?");
             return $stmt->execute([$id]);
         } catch (Exception $e) {
             error_log("User delete error: " . $e->getMessage());

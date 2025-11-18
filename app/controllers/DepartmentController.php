@@ -64,11 +64,13 @@ class DepartmentController extends Controller {
                     $_SESSION['error'] = 'Failed to create department';
                 }
                 
-                $this->redirect('/ergon/departments');
+                $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/departments';
+                $this->redirect($redirectUrl);
             } catch (Exception $e) {
                 error_log('Department create error: ' . $e->getMessage());
                 $_SESSION['error'] = 'Failed to create department';
-                $this->redirect('/ergon/departments');
+                $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/departments';
+                $this->redirect($redirectUrl);
             }
         }
         
@@ -90,7 +92,8 @@ class DepartmentController extends Controller {
         $department = $this->departmentModel->findById($id);
         if (!$department) {
             $_SESSION['error'] = 'Department not found';
-            $this->redirect('/ergon/departments');
+            $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/departments';
+            $this->redirect($redirectUrl);
             return;
         }
         
@@ -111,11 +114,13 @@ class DepartmentController extends Controller {
                     $_SESSION['error'] = 'Failed to update department';
                 }
                 
-                $this->redirect('/ergon/departments');
+                $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/departments';
+                $this->redirect($redirectUrl);
             } catch (Exception $e) {
                 error_log('Department update error: ' . $e->getMessage());
                 $_SESSION['error'] = 'Failed to update department';
-                $this->redirect('/ergon/departments');
+                $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/departments';
+                $this->redirect($redirectUrl);
             }
         }
         
@@ -175,7 +180,8 @@ class DepartmentController extends Controller {
             
             if (!$department) {
                 $_SESSION['error'] = 'Department not found';
-                $this->redirect('/ergon/departments');
+                $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/departments';
+                $this->redirect($redirectUrl);
                 return;
             }
             
@@ -212,7 +218,8 @@ class DepartmentController extends Controller {
         } catch (Exception $e) {
             error_log('Department view error: ' . $e->getMessage());
             $_SESSION['error'] = 'Failed to load department details';
-            $this->redirect('/ergon/departments');
+            $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/departments';
+            $this->redirect($redirectUrl);
         }
     }
     

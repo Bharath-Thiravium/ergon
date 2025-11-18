@@ -9,12 +9,10 @@ ob_start();
             <!-- Header Actions -->
             <div class="header-actions">
                 <button class="btn btn--primary" onclick="clockIn()">
-                    <i class="fas fa-play"></i>
-                    Clock In
+                    <span>▶️</span> <span class="btn-text">Clock In</span>
                 </button>
                 <button class="btn btn--secondary" onclick="clockOut()">
-                    <i class="fas fa-stop"></i>
-                    Clock Out
+                    <span>⏹️</span> <span class="btn-text">Clock Out</span>
                 </button>
             </div>
             
@@ -22,85 +20,79 @@ ob_start();
             <div class="dashboard-grid">
                 <div class="kpi-card">
                     <div class="kpi-card__header">
-                        <i class="kpi-card__icon fas fa-user-check text-success"></i>
-                        <span class="kpi-card__trend kpi-card__trend--up">Active</span>
+                        <div class="kpi-card__icon">👤</div>
+                        <div class="kpi-card__trend">Active</div>
                     </div>
                     <div class="kpi-card__value"><?= $stats['today_status'] ?? 'Not Clocked In' ?></div>
                     <div class="kpi-card__label">Today's Status</div>
-                    <div class="kpi-card__status kpi-card__status--active">Current</div>
+                    <div class="kpi-card__status">Current</div>
                 </div>
                 
                 <div class="kpi-card">
                     <div class="kpi-card__header">
-                        <i class="kpi-card__icon fas fa-tasks text-primary"></i>
-                        <span class="kpi-card__trend kpi-card__trend--up">+2</span>
+                        <div class="kpi-card__icon">📋</div>
+                        <div class="kpi-card__trend">+2</div>
                     </div>
                     <div class="kpi-card__value"><?= $stats['active_tasks'] ?? 0 ?></div>
                     <div class="kpi-card__label">Active Tasks</div>
-                    <div class="kpi-card__status kpi-card__status--active">In Progress</div>
-                </div>
-                
-                <div class="kpi-card kpi-card--warning">
-                    <div class="kpi-card__header">
-                        <i class="kpi-card__icon fas fa-clock text-warning"></i>
-                        <span class="kpi-card__trend kpi-card__trend--down">0</span>
-                    </div>
-                    <div class="kpi-card__value">0</div>
-                    <div class="kpi-card__label">Pending Requests</div>
-                    <div class="kpi-card__status kpi-card__status--pending">None</div>
+                    <div class="kpi-card__status">In Progress</div>
                 </div>
                 
                 <div class="kpi-card">
                     <div class="kpi-card__header">
-                        <i class="kpi-card__icon fas fa-calendar-check text-info"></i>
-                        <span class="kpi-card__trend kpi-card__trend--up">95%</span>
+                        <div class="kpi-card__icon">⏰</div>
+                        <div class="kpi-card__trend">0</div>
+                    </div>
+                    <div class="kpi-card__value">0</div>
+                    <div class="kpi-card__label">Pending Requests</div>
+                    <div class="kpi-card__status">None</div>
+                </div>
+                
+                <div class="kpi-card">
+                    <div class="kpi-card__header">
+                        <div class="kpi-card__icon">📅</div>
+                        <div class="kpi-card__trend">95%</div>
                     </div>
                     <div class="kpi-card__value">22</div>
                     <div class="kpi-card__label">Days This Month</div>
-                    <div class="kpi-card__status kpi-card__status--active">Present</div>
+                    <div class="kpi-card__status">Present</div>
                 </div>
             </div>
             
             <!-- Content Cards -->
             <div class="dashboard-grid">
                 <!-- Performance Chart -->
-                <div class="card">
+                <div class="card card-standard">
                     <div class="card__header">
                         <h3 class="card__title">
-                            <i class="fas fa-chart-line"></i>
-                            My Performance
+                            <span>📈</span> My Performance
                         </h3>
                     </div>
                     <div class="card__body">
-                        <canvas id="userChart" style="height: 300px;"></canvas>
+                        <canvas id="userChart"></canvas>
                     </div>
                 </div>
                 
                 <!-- Quick Actions -->
-                <div class="card">
+                <div class="card card-standard">
                     <div class="card__header">
                         <h3 class="card__title">
-                            <i class="fas fa-bolt"></i>
-                            Quick Actions
+                            <span>⚡</span> Quick Actions
                         </h3>
                     </div>
                     <div class="card__body">
-                        <div class="card__body">
-                            <button class="btn btn--primary" onclick="clockIn()">
-                                <i class="fas fa-play"></i>
-                                Clock In
+                        <div class="quick-actions-grid">
+                            <button class="btn btn--primary btn--block" onclick="clockIn()">
+                                <span>▶️</span> Clock In
                             </button>
-                            <button class="btn btn--secondary" onclick="clockOut()">
-                                <i class="fas fa-stop"></i>
-                                Clock Out
+                            <button class="btn btn--secondary btn--block" onclick="clockOut()">
+                                <span>⏹️</span> Clock Out
                             </button>
-                            <a href="/ergon/leaves/create" class="btn btn--secondary">
-                                <i class="fas fa-calendar-alt"></i>
-                                Request Leave
+                            <a href="/ergon/leaves/create" class="btn btn--secondary btn--block">
+                                <span>📅</span> Request Leave
                             </a>
-                            <a href="/ergon/expenses/create" class="btn btn--secondary">
-                                <i class="fas fa-receipt"></i>
-                                Submit Expense
+                            <a href="/ergon/expenses/create" class="btn btn--secondary btn--block">
+                                <span>💰</span> Submit Expense
                             </a>
                         </div>
                     </div>
@@ -108,11 +100,10 @@ ob_start();
             </div>
             
             <!-- Recent Tasks -->
-            <div class="card">
+            <div class="card recent-activities">
                 <div class="card__header">
                     <h3 class="card__title">
-                        <i class="fas fa-tasks"></i>
-                        Recent Tasks
+                        <span>⚡</span> Recent Activities
                     </h3>
                 </div>
                 <div class="card__body">
@@ -130,16 +121,16 @@ ob_start();
                             <tbody>
                                 <tr>
                                     <td>Complete project documentation</td>
-                                    <td><span class="alert alert--warning" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">High</span></td>
+                                    <td><span class="alert alert--warning alert--badge">High</span></td>
                                     <td>Today</td>
-                                    <td><span class="alert alert--info" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">In Progress</span></td>
+                                    <td><span class="alert alert--info alert--badge">In Progress</span></td>
                                     <td>75%</td>
                                 </tr>
                                 <tr>
                                     <td>Review client feedback</td>
-                                    <td><span class="alert alert--success" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Medium</span></td>
+                                    <td><span class="alert alert--success alert--badge">Medium</span></td>
                                     <td>Tomorrow</td>
-                                    <td><span class="alert alert--warning" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Pending</span></td>
+                                    <td><span class="alert alert--warning alert--badge">Pending</span></td>
                                     <td>0%</td>
                                 </tr>
                             </tbody>

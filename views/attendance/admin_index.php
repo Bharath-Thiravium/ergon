@@ -107,12 +107,29 @@ ob_start();
         </div>
     </div>
     <div class="card__body">
+        <?php 
+        // Debug output
+        echo "<!-- DEBUG: employees count = " . count($employees ?? []) . " -->";
+        if (isset($employees) && !empty($employees)) {
+            echo "<!-- DEBUG: employees data exists, count = " . count($employees) . " -->";
+        } else {
+            echo "<!-- DEBUG: employees is empty or not set -->";
+        }
+        ?>
         <?php if (empty($employees)): ?>
             <div class="empty-state">
                 <div class="empty-icon">👥</div>
                 <h3>No Employees Found</h3>
-                <p>No employees are registered in the system.</p>
-                <a href="/ergon/debug_attendance_users.php" class="btn btn--primary">Debug & Fix</a>
+                <p>No employees are registered in the system. This could mean:</p>
+                <ul style="text-align: left; margin: 1rem 0;">
+                    <li>No users with role 'user' exist in the database</li>
+                    <li>Database connection issues</li>
+                    <li>Users table is empty</li>
+                </ul>
+                <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
+                    <a href="/ergon/fix_no_employees.php" class="btn btn--primary">🔧 Fix & Create Users</a>
+                    <a href="/ergon/debug_attendance_users.php" class="btn btn--secondary">🔍 Debug</a>
+                </div>
             </div>
         <?php else: ?>
             <div class="table-responsive">
@@ -132,9 +149,9 @@ ob_start();
                         <?php 
                         // Debug output
                         if (empty($employees)) {
-                            error_log('No employees data passed to view');
+                            error_log('No employees data passed to view. Current user role: ' . ($_SESSION['role'] ?? 'unknown'));
                         } else {
-                            error_log('Displaying ' . count($employees) . ' employees in admin view');
+                            error_log('Displaying ' . count($employees) . ' employees in admin view. Current user role: ' . ($_SESSION['role'] ?? 'unknown'));
                         }
                         
                         foreach ($employees as $employee): ?>
@@ -192,13 +209,19 @@ ob_start();
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <div style="display: flex; gap: 0.25rem;">
-                                    <button class="btn btn--sm btn--secondary" onclick="viewEmployeeDetails(<?= $employee['id'] ?>)" title="View Details">
-                                        <span>👁️</span>
+                                <div class="ab-container">
+                                    <button class="ab-btn ab-btn--view" onclick="viewEmployeeDetails(<?= $employee['id'] ?>)" title="View Details">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
+                                        </svg>
                                     </button>
                                     <?php if ($employee['status'] === 'Absent'): ?>
-                                        <button class="btn btn--sm btn--warning" onclick="markManualAttendance(<?= $employee['id'] ?>)" title="Manual Entry">
-                                            <span>✏️</span>
+                                        <button class="ab-btn ab-btn--edit" onclick="markManualAttendance(<?= $employee['id'] ?>)" title="Manual Entry">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                                <path d="M15 5l4 4"/>
+                                            </svg>
                                         </button>
                                     <?php endif; ?>
                                 </div>

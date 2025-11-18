@@ -238,7 +238,8 @@ $content = ob_start();
                         <select id="status" name="status">
                             <option value="assigned" selected>📋 Assigned</option>
                             <option value="in_progress">⚡ In Progress</option>
-                            <option value="blocked">🚫 Blocked</option>
+                            <option value="cancelled">❌ Cancelled</option>
+                            <option value="suspended">⏸️ Suspended</option>
                         </select>
                     </div>
                 </div>

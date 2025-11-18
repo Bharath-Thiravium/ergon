@@ -68,7 +68,16 @@ ob_start();
             <div class="empty-state">
                 <div class="empty-icon">👥</div>
                 <h3>No Staff Members Found</h3>
-                <p>No staff members are registered in the system.</p>
+                <p>No staff members are registered in the system. This could mean:</p>
+                <ul style="text-align: left; margin: 1rem 0;">
+                    <li>No users exist in the database</li>
+                    <li>Database connection issues</li>
+                    <li>Users table is empty</li>
+                </ul>
+                <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
+                    <a href="/ergon/fix_no_employees.php" class="btn btn--primary">🔧 Fix & Create Users</a>
+                    <a href="/ergon/debug_attendance_users.php" class="btn btn--secondary">🔍 Debug</a>
+                </div>
             </div>
         <?php else: ?>
             <div class="table-responsive">

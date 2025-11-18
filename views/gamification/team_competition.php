@@ -2,6 +2,7 @@
 $content = ob_start();
 ?>
 
+<div class="team-competition-dashboard">
 <div class="dashboard-grid">
     <div class="kpi-card">
         <div class="kpi-card__header">
@@ -37,7 +38,7 @@ $content = ob_start();
 </div>
 
 <div class="dashboard-grid">
-    <div class="card">
+    <div class="card card-standard">
         <div class="card__header">
             <h2 class="card__title">🏆 Top Performers</h2>
         </div>
@@ -92,7 +93,7 @@ $content = ob_start();
         </div>
     </div>
     
-    <div class="card">
+    <div class="card team-statistics">
         <div class="card__header">
             <h2 class="card__title">📊 Team Statistics</h2>
         </div>
@@ -113,7 +114,7 @@ $content = ob_start();
     </div>
 </div>
 
-<div class="card">
+<div class="card card-standard">
     <div class="card__header">
         <h2 class="card__title">👥 Team Member Performance</h2>
     </div>
@@ -139,10 +140,10 @@ $content = ob_start();
                     <div class="user-card__role"><?= ucfirst($user['role']) ?></div>
                     
                     <?php if (!empty($user['tasks'])): ?>
-                        <div style="margin-top: 10px;">
+                        <div class="task-list-item">
                             <strong>Recent Tasks:</strong>
                             <?php foreach (array_slice($user['tasks'], 0, 2) as $task): ?>
-                                <div style="font-size: 0.8rem; margin: 2px 0;">
+                                <div class="task-item">
                                     <?php 
                                     $status_icon = '📋';
                                     if (isset($task['status'])) {
@@ -166,6 +167,7 @@ $content = ob_start();
             <?php endforeach; ?>
         </div>
     </div>
+</div>
 </div>
 
 <?php
