@@ -1,1 +1,41 @@
-git_setup.bat
+# Environment files
+.env
+
+# Cache and temporary files
+storage/cache/*
+!storage/cache/.gitkeep
+storage/logs/*
+!storage/logs/.gitkeep
+storage/sessions/*
+
+# Uploads (keep structure but ignore content)
+public/uploads/*
+!public/uploads/.htaccess
+
+# Receipts
+storage/receipts/*
+!storage/receipts/.htaccess
+
+# Archive folder - unused/legacy files
+/_archive_unused_files/*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Composer
+/vendor/
+composer.lock
+
+# Node modules (if any)
+node_modules/
+
+# Build files
+*.min.css.map
+*.min.js.map

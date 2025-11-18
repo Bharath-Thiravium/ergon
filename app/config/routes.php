@@ -14,9 +14,7 @@ $router->post('/project-management/delete', 'ProjectManagementController', 'dele
 $router->get('/favicon.ico', 'StaticController', 'favicon');
 
 // Test routes
-$router->get('/test', 'TestController', 'index');
-$router->get('/status', 'TestController', 'status');
-$router->get('/test-notifications', 'TestController', 'testNotifications');
+// TestController routes removed - controller archived
 
 // Authentication Routes
 $router->get('/', 'AuthController', 'index');
