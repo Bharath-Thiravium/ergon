@@ -187,12 +187,75 @@ try {
                         throw new Exception('Progress must be between 0 and 100');
                     }
                     
-                    $result = $planner->updateTaskProgress($taskId, $userId, $progress, $status, $reason);
+                    $db = Database::connect();
+                    
+                    // Ensure task_history table exists
+                    $db->exec("CREATE TABLE IF NOT EXISTS task_history (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        task_id INT NOT NULL,
+                        action VARCHAR(50) NOT NULL,
+                        old_value TEXT,
+                        new_value TEXT,
+                        notes TEXT,
+                        created_by INT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_task_id (task_id)
+                    )");
+                    
+                    // Get current task data from daily_tasks
+                    $stmt = $db->prepare("SELECT dt.*, t.id as original_task_id FROM daily_tasks dt LEFT JOIN tasks t ON dt.task_id = t.id WHERE dt.id = ?");
+                    $stmt->execute([$taskId]);
+                    $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$dailyTask) {
+                        throw new Exception('Task not found');
+                    }
+                    
+                    $oldProgress = $dailyTask['completed_percentage'] ?? 0;
+                    $oldStatus = $dailyTask['status'];
+                    
+                    // Determine final status based on progress
+                    if ($progress >= 100) {
+                        $finalStatus = 'completed';
+                    } elseif ($progress > 0) {
+                        $finalStatus = 'in_progress';
+                    } else {
+                        $finalStatus = 'assigned';
+                    }
+                    
+                    // Update daily_tasks table
+                    $stmt = $db->prepare("UPDATE daily_tasks SET completed_percentage = ?, status = ?, updated_at = NOW() WHERE id = ?");
+                    $result1 = $stmt->execute([$progress, $finalStatus, $taskId]);
+                    
+                    // Update original tasks table if linked
+                    $result2 = true;
+                    if ($dailyTask['original_task_id']) {
+                        $stmt = $db->prepare("UPDATE tasks SET progress = ?, status = ?, updated_at = NOW() WHERE id = ?");
+                        $result2 = $stmt->execute([$progress, $finalStatus, $dailyTask['original_task_id']]);
+                        
+                        // Log to task history
+                        if ($oldProgress != $progress) {
+                            $stmt = $db->prepare("INSERT INTO task_history (task_id, action, old_value, new_value, notes, created_by) VALUES (?, 'progress_updated', ?, ?, ?, ?)");
+                            $stmt->execute([$dailyTask['original_task_id'], $oldProgress . '%', $progress . '%', $reason ?: 'Progress updated via daily planner', $userId]);
+                        }
+                        if ($oldStatus !== $finalStatus) {
+                            $stmt = $db->prepare("INSERT INTO task_history (task_id, action, old_value, new_value, notes, created_by) VALUES (?, 'status_changed', ?, ?, ?, ?)");
+                            $stmt->execute([$dailyTask['original_task_id'], $oldStatus, $finalStatus, $reason ?: 'Status updated via daily planner', $userId]);
+                        }
+                    }
+                    
+                    // Log to daily planner history
+                    $stmt = $db->prepare("INSERT INTO sla_history (daily_task_id, action, timestamp, notes) VALUES (?, 'progress_updated', NOW(), ?)");
+                    $stmt->execute([$taskId, "Progress updated from {$oldProgress}% to {$progress}%. {$reason}"]);
+                    
+                    $success = $result1 && $result2;
                     echo json_encode([
-                        'success' => $result, 
-                        'message' => $result ? 'Progress updated successfully' : 'Failed to update progress',
+                        'success' => $success, 
+                        'message' => $success ? 'Progress updated successfully' : 'Failed to update progress',
                         'progress' => $progress,
-                        'status' => $status
+                        'status' => $finalStatus,
+                        'old_progress' => $oldProgress,
+                        'synced_to_tasks' => (bool)$dailyTask['original_task_id']
                     ]);
                     break;
                     

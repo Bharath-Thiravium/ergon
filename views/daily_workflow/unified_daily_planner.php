@@ -681,6 +681,112 @@ renderModal('postponeTaskModal', 'Postpone Task', $postponeTaskContent, $postpon
     background: #2563eb;
     border-color: #2563eb;
 }
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 999999 !important;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(2px);
+}
+
+.modal-content {
+    background-color: var(--bg-primary, #ffffff);
+    margin: 5% auto;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border-color, #f3f4f6);
+    background: var(--bg-secondary, #f8fafc);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #1f2937);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted, #6b7280);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    color: var(--text-primary, #1f2937);
+    background: var(--bg-hover, #f3f4f6);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--text-primary, #1f2937);
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color, #d1d5db);
+    border-radius: 6px;
+    font-size: 14px;
+    background: var(--bg-primary, #ffffff);
+    color: var(--text-primary, #1f2937);
+    box-sizing: border-box;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary, #2563eb);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.style.display = 'none';
+};
 </style>
 
 <script>
@@ -945,8 +1051,66 @@ function completeTask(taskId) {
 }
 
 function postponeTask(taskId) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('postponeTaskModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'postponeTaskModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>📅 Postpone Task</h3>
+                    <button class="modal-close" onclick="closeModal('postponeTaskModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="postponeTaskForm">
+                        <input type="hidden" id="postponeTaskId" name="task_id">
+                        <div class="form-group">
+                            <label for="newDate">Reschedule to Date</label>
+                            <input type="date" id="newDate" name="new_date" class="form-control" required min="${new Date(Date.now() + 86400000).toISOString().split('T')[0]}">
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" onclick="closeModal('postponeTaskModal')" class="btn btn--secondary">Cancel</button>
+                            <button type="submit" class="btn btn--warning">📅 Postpone Task</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Add form submit handler
+        document.getElementById('postponeTaskForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const taskId = document.getElementById('postponeTaskId').value;
+            const newDate = document.getElementById('newDate').value;
+            
+            fetch('/ergon/api/daily_planner_workflow.php?action=postpone', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task_id: taskId, new_date: newDate })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateTaskUI(taskId, 'postponed');
+                    closeModal('postponeTaskModal');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    alert('Failed to postpone task: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error postponing task');
+            });
+        });
+    }
+    
+    // Set task ID and show modal
     document.getElementById('postponeTaskId').value = taskId;
-    showModal('postponeTaskModal');
+    modal.style.display = 'block';
 }
 
 
@@ -1113,28 +1277,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 task_id: taskId, 
                 progress: parseInt(percentage),
                 status: status,
-                reason: 'Progress updated via modal'
+                reason: 'Progress updated via daily planner modal'
             })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                updateTaskUI(taskId, 'completed', { percentage: data.progress });
-                if (data.progress < 100) {
+                // Update task UI with new status
+                const newStatus = data.status === 'completed' ? 'completed' : 
+                                data.status === 'in_progress' ? 'in_progress' : 'assigned';
+                updateTaskUI(taskId, newStatus, { percentage: data.progress });
+                updateProgressBar(taskId, data.progress);
+                
+                // Handle timer based on status
+                if (data.progress >= 100) {
+                    stopSLATimer(taskId);
+                } else if (newStatus === 'in_progress') {
                     // Keep timer running for partial progress
-                } else {
-                    stopTimer(taskId);
                 }
+                
                 closeUpdateProgressModal();
-                if (data.progress < 100) {
-                    setTimeout(() => {
-                        alert('Progress updated to ' + data.progress + '% - Task continues in progress');
-                    }, 500);
-                } else {
-                    setTimeout(() => {
-                        alert('Task completed successfully!');
-                    }, 500);
+                
+                // Show success message with sync info
+                let message = `Progress updated to ${data.progress}%`;
+                if (data.synced_to_tasks) {
+                    message += ' (synced to Tasks module)';
                 }
+                if (data.progress >= 100) {
+                    message += ' - Task completed!';
+                } else {
+                    message += ' - Task continues in progress';
+                }
+                
+                setTimeout(() => {
+                    showNotification(message, 'success');
+                }, 500);
             } else {
                 alert('Failed to update progress: ' + data.message);
             }
