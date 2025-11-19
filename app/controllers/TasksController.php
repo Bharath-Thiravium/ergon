@@ -73,25 +73,14 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            // If user role is 'user', only return themselves
-            if (($_SESSION['role'] ?? '') === 'user') {
-                $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE id = ?");
-                $stmt->execute([$_SESSION['user_id']]);
-                $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                if (empty($users)) {
-                    return [['id' => $_SESSION['user_id'], 'name' => $_SESSION['user_name'] ?? 'Current User', 'email' => '', 'role' => 'user']];
-                }
-                return $users;
-            }
-            
-            // For admin/owner, return all users
+            // Return all users for task assignment (allow any user to assign tasks to others)
             $stmt = $db->prepare("SELECT id, name, email, role FROM users ORDER BY name");
             $stmt->execute();
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             if (empty($users)) {
-                return [];
+                // Fallback to current user if no users found
+                return [['id' => $_SESSION['user_id'], 'name' => $_SESSION['user_name'] ?? 'Current User', 'email' => '', 'role' => 'user']];
             }
             return $users;
         } catch (Exception $e) {
@@ -114,7 +103,7 @@ class TasksController extends Controller {
             'status' => $_POST['status'] ?? 'assigned',
             'progress' => intval($_POST['progress'] ?? 0),
 
-            'sla_hours' => intval($_POST['sla_hours'] ?? 24),
+            'sla_hours' => floatval($_POST['sla_hours'] ?? 0.25),
             'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
             'task_category' => trim($_POST['task_category'] ?? ''),
             'project_id' => !empty($_POST['project_id']) ? intval($_POST['project_id']) : null
@@ -226,7 +215,7 @@ class TasksController extends Controller {
                 'deadline' => !empty($_POST['deadline']) ? $_POST['deadline'] : null,
                 'status' => $_POST['status'] ?? 'assigned',
                 'progress' => intval($_POST['progress'] ?? 0),
-                'sla_hours' => intval($_POST['sla_hours'] ?? 24),
+                'sla_hours' => floatval($_POST['sla_hours'] ?? 0.25),
                 'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
                 'task_category' => trim($_POST['task_category'] ?? ''),
                 'project_id' => !empty($_POST['project_id']) ? intval($_POST['project_id']) : null,
@@ -1174,7 +1163,7 @@ class TasksController extends Controller {
                 status ENUM('assigned','in_progress','completed','cancelled','suspended') DEFAULT 'assigned',
                 due_date DATE DEFAULT NULL,
                 depends_on_task_id INT DEFAULT NULL,
-                sla_hours INT DEFAULT 24,
+                sla_hours DECIMAL(8,4) DEFAULT 0.25,
                 department_id INT DEFAULT NULL,
                 task_category VARCHAR(100) DEFAULT NULL,
                 project_id INT DEFAULT NULL,
@@ -1220,6 +1209,15 @@ class TasksController extends Controller {
             if ($stmt->rowCount() == 0) {
                 $db->exec("ALTER TABLE tasks ADD COLUMN planned_date DATE DEFAULT NULL");
                 error_log('Added planned_date column to tasks table');
+            }
+            
+            // Update sla_hours column to DECIMAL if it's still INT
+            $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'sla_hours'");
+            $stmt->execute();
+            $column = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($column && strpos(strtolower($column['Type']), 'int') !== false) {
+                $db->exec("ALTER TABLE tasks MODIFY COLUMN sla_hours DECIMAL(8,4) DEFAULT 0.25");
+                error_log('Updated sla_hours column to DECIMAL type');
             }
         } catch (Exception $e) {
             error_log('ensureTasksTable error: ' . $e->getMessage());

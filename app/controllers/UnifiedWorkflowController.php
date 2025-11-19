@@ -34,12 +34,22 @@ class UnifiedWorkflowController extends Controller {
                 $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
-            // Force refresh if requested
+            // Force refresh if requested - preserve existing statuses
             if (isset($_GET['refresh']) && $_GET['refresh'] === '1') {
+                // Store existing statuses before refresh
+                $stmt = $db->prepare("SELECT task_id, status, start_time, active_seconds, completed_percentage FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
+                $stmt->execute([$currentUserId, $date]);
+                $existingStatuses = [];
+                foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    if ($row['task_id']) {
+                        $existingStatuses[$row['task_id']] = $row;
+                    }
+                }
+                
                 $stmt = $db->prepare("DELETE FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
                 $stmt->execute([$currentUserId, $date]);
                 
-                $this->createDailyTasksFromRegular($db, $currentUserId, $date);
+                $this->createDailyTasksFromRegular($db, $currentUserId, $date, $existingStatuses);
                 
                 $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
                 $stmt->execute([$currentUserId, $date]);
@@ -796,7 +806,7 @@ class UnifiedWorkflowController extends Controller {
         return 'not_started';
     }
     
-    private function createDailyTasksFromRegular($db, $userId, $date) {
+    private function createDailyTasksFromRegular($db, $userId, $date, $existingStatuses = []) {
         try {
             // Ensure tasks have SLA hours
             $db->exec("UPDATE tasks SET sla_hours = 1.0 WHERE sla_hours IS NULL OR sla_hours = 0");
@@ -820,13 +830,21 @@ class UnifiedWorkflowController extends Controller {
                 
                 $plannedDuration = floatval($task['sla_hours']) * 60;
                 
+                // Check if we have existing status for this task
+                $existingStatus = $existingStatuses[$task['id']] ?? null;
+                $status = $existingStatus ? $existingStatus['status'] : 'not_started';
+                $startTime = $existingStatus ? $existingStatus['start_time'] : null;
+                $activeSeconds = $existingStatus ? $existingStatus['active_seconds'] : 0;
+                $completedPercentage = $existingStatus ? $existingStatus['completed_percentage'] : 0;
+                
                 $stmt = $db->prepare("
-                    INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, active_seconds, total_pause_duration, completed_percentage, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', 0, 0, 0, NOW())
+                    INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, start_time, active_seconds, total_pause_duration, completed_percentage, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, NOW())
                 ");
                 $stmt->execute([
                     $userId, $task['id'], $date, $taskTitle, 
-                    $task['description'], $plannedDuration, $task['priority'] ?? 'medium'
+                    $task['description'], $plannedDuration, $task['priority'] ?? 'medium',
+                    $status, $startTime, $activeSeconds, $completedPercentage
                 ]);
             }
         } catch (Exception $e) {
@@ -861,6 +879,10 @@ class UnifiedWorkflowController extends Controller {
                 'status' => $task['status'] ?? 'not_started',
                 'sla_hours' => $slaHours,
                 'start_time' => $task['start_time'] ?? null,
+                'pause_time' => $task['pause_time'] ?? null,
+                'resume_time' => $task['resume_time'] ?? null,
+                'active_seconds' => $task['active_seconds'] ?? 0,
+                'pause_duration' => $task['total_pause_duration'] ?? 0,
                 'planned_duration' => $task['planned_duration'] ?? 60,
                 'completed_percentage' => $task['completed_percentage'] ?? 0
             ];

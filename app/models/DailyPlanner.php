@@ -39,8 +39,23 @@ class DailyPlanner {
                     INDEX idx_status (status)
                 )
             ");
+            
+            // Add pause_duration column if missing
+            $this->addMissingColumns();
         } catch (Exception $e) {
             error_log('ensureDailyTasksTable error: ' . $e->getMessage());
+        }
+    }
+    
+    private function addMissingColumns() {
+        try {
+            $stmt = $this->db->prepare("SHOW COLUMNS FROM daily_tasks LIKE 'pause_duration'");
+            $stmt->execute();
+            if (!$stmt->fetch()) {
+                $this->db->exec("ALTER TABLE daily_tasks ADD COLUMN pause_duration INT DEFAULT 0 AFTER active_seconds");
+            }
+        } catch (Exception $e) {
+            error_log('addMissingColumns error: ' . $e->getMessage());
         }
     }
     
