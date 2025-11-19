@@ -100,6 +100,12 @@ ob_start();
                             <td data-sort-value="<?= $user['status'] ?>"><span class="badge badge--success"><?= ucfirst($user['status']) ?></span></td>
                             <td>
                                 <div class="ab-container">
+                                    <button class="ab-btn ab-btn--view" onclick="viewUser(<?= $user['id'] ?>)" data-tooltip="View Details">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
+                                        </svg>
+                                    </button>
                                     <?php if ($user['role'] === 'user'): ?>
                                     <button class="ab-btn ab-btn--progress" onclick="assignAdmin(<?= $user['id'] ?>)" data-tooltip="Make Admin">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -160,6 +166,12 @@ ob_start();
                     <p class="user-card__email"><?= htmlspecialchars($user['email']) ?></p>
                     <p class="user-card__role"><?= ucfirst($user['role']) ?></p>
                     <div class="ab-container">
+                        <button class="ab-btn ab-btn--view" onclick="viewUser(<?= $user['id'] ?>)" data-tooltip="View Details">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
                         <?php if ($user['role'] === 'user'): ?>
                         <button class="ab-btn ab-btn--progress" onclick="assignAdmin(<?= $user['id'] ?>)" data-tooltip="Make Admin">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -272,6 +284,10 @@ function removeAdmin(adminId) {
         document.body.appendChild(form);
         form.submit();
     }
+}
+
+function viewUser(userId) {
+    window.location.href = '/ergon/users/view/' + userId;
 }
 
 function editUser(userId) {

@@ -601,5 +601,46 @@ class ContactFollowupController extends Controller {
             default => 'secondary'
         };
     }
+    
+    /**
+     * Update followup status when linked task status changes (called from TasksController)
+     */
+    public static function updateLinkedFollowupStatus($taskId, $status) {
+        try {
+            $db = Database::connect();
+            
+            // Find followups linked to this task
+            $stmt = $db->prepare("SELECT id, status FROM followups WHERE task_id = ?");
+            $stmt->execute([$taskId]);
+            $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($followups as $followup) {
+                $oldStatus = $followup['status'];
+                $newStatus = ($status === 'completed') ? 'completed' : 'pending';
+                
+                if ($oldStatus !== $newStatus) {
+                    // Update followup status
+                    $stmt = $db->prepare("UPDATE followups SET status = ?, updated_at = NOW() WHERE id = ?");
+                    $result = $stmt->execute([$newStatus, $followup['id']]);
+                    
+                    if ($result) {
+                        // Log followup history
+                        $stmt = $db->prepare("INSERT INTO followup_history (followup_id, action, old_value, notes, created_by) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->execute([
+                            $followup['id'], 
+                            'status_changed', 
+                            $oldStatus, 
+                            "Status updated from linked task completion", 
+                            $_SESSION['user_id'] ?? null
+                        ]);
+                        
+                        error_log("Successfully updated linked followup {$followup['id']} status from {$oldStatus} to {$newStatus}");
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Update linked followup status error: ' . $e->getMessage());
+        }
+    }
 }
 ?>

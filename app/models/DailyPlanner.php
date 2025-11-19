@@ -46,12 +46,13 @@ class DailyPlanner {
     
     public function getTasksForDate($userId, $date) {
         try {
-            // Get tasks from daily_tasks table with proper SLA data
+            // Get tasks from daily_tasks table with proper SLA data and timing info
             $stmt = $this->db->prepare("
                 SELECT 
                     dt.id, dt.title, dt.description, dt.priority, dt.status,
                     dt.completed_percentage, dt.start_time, dt.active_seconds,
-                    dt.planned_duration, dt.task_id,
+                    dt.planned_duration, dt.task_id, dt.total_pause_duration,
+                    dt.completion_time,
                     COALESCE(t.sla_hours, 1) as sla_hours
                 FROM daily_tasks dt
                 LEFT JOIN tasks t ON dt.task_id = t.id
@@ -115,25 +116,18 @@ class DailyPlanner {
     
     public function startTask($taskId, $userId) {
         try {
-            $this->db->beginTransaction();
-            
             $now = date('Y-m-d H:i:s');
             
-            // Update daily_tasks
+            // Simple update without transaction for debugging
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
-                SET status = 'in_progress', start_time = ?, updated_at = NOW()
-                WHERE id = ? AND user_id = ?
+                SET status = 'in_progress', start_time = ?
+                WHERE id = ?
             ");
-            $stmt->execute([$now, $taskId, $userId]);
+            $result = $stmt->execute([$now, $taskId]);
             
-            // Log time action
-            $this->logTimeAction($taskId, $userId, 'start', $now);
-            
-            $this->db->commit();
-            return true;
+            return $result && $stmt->rowCount() > 0;
         } catch (Exception $e) {
-            $this->db->rollback();
             error_log("DailyPlanner startTask error: " . $e->getMessage());
             return false;
         }
@@ -163,7 +157,9 @@ class DailyPlanner {
             $this->db->commit();
             return true;
         } catch (Exception $e) {
-            $this->db->rollback();
+            if ($this->db->inTransaction()) {
+                $this->db->rollback();
+            }
             error_log("DailyPlanner pauseTask error: " . $e->getMessage());
             return false;
         }
@@ -262,7 +258,9 @@ class DailyPlanner {
             $this->db->commit();
             return true;
         } catch (Exception $e) {
-            $this->db->rollback();
+            if ($this->db->inTransaction()) {
+                $this->db->rollback();
+            }
             error_log("DailyPlanner completeTask error: " . $e->getMessage());
             return false;
         }
@@ -333,7 +331,9 @@ class DailyPlanner {
             $this->db->commit();
             return true;
         } catch (Exception $e) {
-            $this->db->rollback();
+            if ($this->db->inTransaction()) {
+                $this->db->rollback();
+            }
             error_log("DailyPlanner updateTaskProgress error: " . $e->getMessage());
             return false;
         }
@@ -382,28 +382,41 @@ class DailyPlanner {
     
     public function getDailyStats($userId, $date) {
         try {
-            // Get stats from daily_tasks with proper postponed counting
+            // Get stats from today's assigned tasks only
             try {
                 $stmt = $this->db->prepare("
                     SELECT 
                         COUNT(*) as total_tasks,
                         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
                         SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
-                        SUM(CASE WHEN status = 'postponed' AND postponed_from_date = ? THEN 1 ELSE 0 END) as postponed_tasks,
+                        SUM(CASE WHEN status = 'postponed' THEN 1 ELSE 0 END) as postponed_tasks,
                         SUM(CASE WHEN status = 'on_break' THEN 1 ELSE 0 END) as paused_tasks,
                         SUM(planned_duration) as total_planned_minutes,
                         SUM(active_seconds) as total_active_seconds,
+                        SUM(total_pause_duration) as total_pause_seconds,
                         AVG(completed_percentage) as avg_completion
                     FROM daily_tasks 
-                    WHERE user_id = ? AND scheduled_date = ?
+                    WHERE user_id = ? AND scheduled_date = ? AND DATE(created_at) = ?
                 ");
-                $stmt->execute([$date, $userId, $date]);
+                $stmt->execute([$userId, $date, $date]);
                 $dailyStats = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                // Calculate SLA totals from today's assigned tasks only
+                $stmt = $this->db->prepare("
+                    SELECT SUM(COALESCE(t.sla_hours, 1) * 3600) as total_sla_seconds
+                    FROM daily_tasks dt
+                    LEFT JOIN tasks t ON dt.task_id = t.id
+                    WHERE dt.user_id = ? AND dt.scheduled_date = ? AND DATE(dt.created_at) = ?
+                ");
+                $stmt->execute([$userId, $date, $date]);
+                $slaData = $stmt->fetch(PDO::FETCH_ASSOC);
+                $dailyStats['total_sla_seconds'] = $slaData['total_sla_seconds'] ?? 0;
+                
             } catch (Exception $e) {
                 error_log('Daily stats complex query failed, using fallback: ' . $e->getMessage());
                 $stmt = $this->db->prepare("SELECT COUNT(*) as total_tasks FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
                 $stmt->execute([$userId, $date]);
-                $dailyStats = ['total_tasks' => $stmt->fetchColumn(), 'completed_tasks' => 0, 'in_progress_tasks' => 0, 'postponed_tasks' => 0, 'total_planned_minutes' => 0, 'total_active_seconds' => 0, 'avg_completion' => 0];
+                $dailyStats = ['total_tasks' => $stmt->fetchColumn(), 'completed_tasks' => 0, 'in_progress_tasks' => 0, 'postponed_tasks' => 0, 'total_planned_minutes' => 0, 'total_active_seconds' => 0, 'total_pause_seconds' => 0, 'total_sla_seconds' => 0, 'avg_completion' => 0];
             }
             
             // Add postponed tasks count from other dates
@@ -497,7 +510,8 @@ class DailyPlanner {
                 INSERT INTO time_logs (daily_task_id, user_id, action, timestamp, active_duration)
                 VALUES (?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$taskId, $userId, $action, $timestamp, $duration]);
+            $result = $stmt->execute([$taskId, $userId, $action, $timestamp, $duration]);
+            error_log("DEBUG: logTimeAction result: " . ($result ? 'success' : 'failed'));
         } catch (Exception $e) {
             error_log("logTimeAction error: " . $e->getMessage());
             // Don't throw exception to avoid breaking the main operation
