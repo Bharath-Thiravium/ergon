@@ -245,21 +245,55 @@ try {
                     // Determine final status based on progress
                     if ($progress >= 100) {
                         $finalStatus = 'completed';
+                        
+                        // Calculate final active time for completion
+                        $now = date('Y-m-d H:i:s');
+                        $currentActiveTime = 0;
+                        
+                        if (in_array($dailyTask['status'], ['in_progress', 'on_break'])) {
+                            if ($dailyTask['status'] === 'in_progress' && $dailyTask['start_time']) {
+                                $lastActiveTime = $dailyTask['resume_time'] ?: $dailyTask['start_time'];
+                                $currentActiveTime = time() - strtotime($lastActiveTime);
+                            }
+                            
+                            // Calculate final pause duration if task was on break
+                            $finalPauseDuration = intval($dailyTask['pause_duration'] ?? 0);
+                            if ($dailyTask['status'] === 'on_break' && $dailyTask['pause_time']) {
+                                $currentPauseDuration = time() - strtotime($dailyTask['pause_time']);
+                                $finalPauseDuration += $currentPauseDuration;
+                            }
+                            
+                            $finalActiveSeconds = intval($dailyTask['active_seconds'] ?? 0) + $currentActiveTime;
+                            
+                            // Update with completion time and final calculations
+                            $stmt = $db->prepare("UPDATE daily_tasks SET completed_percentage = ?, status = ?, completion_time = ?, active_seconds = ?, pause_duration = ?, updated_at = NOW() WHERE id = ?");
+                            $result1 = $stmt->execute([$progress, $finalStatus, $now, $finalActiveSeconds, $finalPauseDuration, $taskId]);
+                        } else {
+                            // Task wasn't started, just mark as completed
+                            $stmt = $db->prepare("UPDATE daily_tasks SET completed_percentage = ?, status = ?, completion_time = ?, updated_at = NOW() WHERE id = ?");
+                            $result1 = $stmt->execute([$progress, $finalStatus, $now, $taskId]);
+                        }
                     } elseif ($progress > 0) {
                         $finalStatus = 'in_progress';
+                        $stmt = $db->prepare("UPDATE daily_tasks SET completed_percentage = ?, status = ?, updated_at = NOW() WHERE id = ?");
+                        $result1 = $stmt->execute([$progress, $finalStatus, $taskId]);
                     } else {
                         $finalStatus = 'assigned';
+                        $stmt = $db->prepare("UPDATE daily_tasks SET completed_percentage = ?, status = ?, updated_at = NOW() WHERE id = ?");
+                        $result1 = $stmt->execute([$progress, $finalStatus, $taskId]);
                     }
-                    
-                    // Update daily_tasks table
-                    $stmt = $db->prepare("UPDATE daily_tasks SET completed_percentage = ?, status = ?, updated_at = NOW() WHERE id = ?");
-                    $result1 = $stmt->execute([$progress, $finalStatus, $taskId]);
                     
                     // Update original tasks table if linked
                     $result2 = true;
                     if ($dailyTask['original_task_id']) {
-                        $stmt = $db->prepare("UPDATE tasks SET progress = ?, status = ?, updated_at = NOW() WHERE id = ?");
-                        $result2 = $stmt->execute([$progress, $finalStatus, $dailyTask['original_task_id']]);
+                        if ($progress >= 100) {
+                            // Update with actual time for completed tasks
+                            $stmt = $db->prepare("UPDATE tasks SET progress = ?, status = ?, actual_time_seconds = (SELECT active_seconds FROM daily_tasks WHERE id = ?), updated_at = NOW() WHERE id = ?");
+                            $result2 = $stmt->execute([$progress, $finalStatus, $taskId, $dailyTask['original_task_id']]);
+                        } else {
+                            $stmt = $db->prepare("UPDATE tasks SET progress = ?, status = ?, updated_at = NOW() WHERE id = ?");
+                            $result2 = $stmt->execute([$progress, $finalStatus, $dailyTask['original_task_id']]);
+                        }
                         
                         // Log to task history
                         if ($oldProgress != $progress) {
@@ -273,8 +307,13 @@ try {
                     }
                     
                     // Log to daily planner history
-                    $stmt = $db->prepare("INSERT INTO sla_history (daily_task_id, action, timestamp, notes) VALUES (?, 'progress_updated', NOW(), ?)");
-                    $stmt->execute([$taskId, "Progress updated from {$oldProgress}% to {$progress}%. {$reason}"]);
+                    if ($progress >= 100) {
+                        $stmt = $db->prepare("INSERT INTO sla_history (daily_task_id, action, timestamp, notes) VALUES (?, 'completed', NOW(), ?)");
+                        $stmt->execute([$taskId, "Task completed with {$progress}% progress. {$reason}"]);
+                    } else {
+                        $stmt = $db->prepare("INSERT INTO sla_history (daily_task_id, action, timestamp, notes) VALUES (?, 'progress_updated', NOW(), ?)");
+                        $stmt->execute([$taskId, "Progress updated from {$oldProgress}% to {$progress}%. {$reason}"]);
+                    }
                     
                     $success = $result1 && $result2;
                     echo json_encode([
