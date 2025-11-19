@@ -10,6 +10,11 @@ require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 class DashboardController extends Controller {
     
     public function index() {
+        // Debug session info
+        error_log('Dashboard access - Session ID: ' . session_id());
+        error_log('Dashboard access - User ID: ' . ($_SESSION['user_id'] ?? 'none'));
+        error_log('Dashboard access - Role: ' . ($_SESSION['role'] ?? 'none'));
+        
         AuthMiddleware::requireAuth();
         
         $role = $_SESSION['role'] ?? 'user';
