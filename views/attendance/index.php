@@ -63,11 +63,11 @@ ob_start();
             <table class="table">
                 <thead>
                     <tr>
-                        <th style="width: 35%;">Employee</th>
-                        <th>Date & Status</th>
-                        <th>Working Hours</th>
-                        <th>Check Times</th>
-                        <th>Actions</th>
+                        <th class="col-employee">Employee</th>
+                        <th class="col-assignment">Date & Status</th>
+                        <th class="col-progress">Working Hours</th>
+                        <th class="col-date">Check Times</th>
+                        <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -229,75 +229,10 @@ document.addEventListener('click', function(e) {
     margin-right: var(--space-3);
 }
 
-.assignment-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.assigned-user {
-    font-weight: 500;
-    color: var(--text-primary);
-}
-
-.priority-badge {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.cell-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.cell-primary {
-    font-weight: 500;
-    color: var(--text-primary);
-}
-
-.cell-secondary {
-    font-size: var(--font-size-xs);
-    color: var(--text-muted);
-}
-
-.progress-container {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 120px;
-}
-
-.progress-bar {
-    width: 100%;
-    height: 6px;
-    background: #e2e8f0;
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.progress-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.3s ease;
-}
-
-.progress-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: var(--font-size-xs);
-}
-
-.progress-percentage {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.progress-status {
-    color: var(--text-muted);
-    font-size: 11px;
+/* Attendance specific column widths */
+.col-employee {
+    width: 25%;
+    min-width: 150px;
 }
 
 @media (max-width: 768px) {
@@ -309,11 +244,6 @@ document.addEventListener('click', function(e) {
     .page-actions .form-input,
     .page-actions select {
         display: none !important;
-    }
-    
-    .priority-badge {
-        flex-direction: column;
-        gap: 4px;
     }
 }
 </style>
