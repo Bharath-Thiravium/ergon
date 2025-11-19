@@ -37,6 +37,7 @@ body {
   .dashboard-grid {
     gap: 24px;
     margin-bottom: 32px;
+    margin-top: 10px;
   }
 
   .card {
