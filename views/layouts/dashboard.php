@@ -37,15 +37,20 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
     
     <script src="/ergon/assets/js/theme-preload.js"></script>
     
     <style>
-    /* Critical inline CSS to prevent FOUC */
-    .main-content{margin-top:110px;padding:24px;background:#f8fafc;min-height:calc(100vh - 110px);width:100vw;max-width:100vw;overflow-x:hidden}
-    .main-header{background:#000080;position:fixed;top:0;left:0;right:0;z-index:9999;width:100%}
-    .header__top{display:flex;align-items:center;justify-content:space-between;padding:12px 24px}
-    body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0}
+    /* Critical inline CSS to prevent FOUC and layout forcing */
+    html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}
+    body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;background:#f8fafc;overflow-x:hidden}
+    .main-header{background:#000080;position:fixed;top:0;left:0;right:0;z-index:9999;width:100%;height:110px}
+    .header__top{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;height:60px}
+    .header__nav-container{height:50px;border-top:1px solid rgba(255,255,255,0.1)}
+    .main-content{margin-top:110px;padding:24px;background:#f8fafc;min-height:calc(100vh - 110px);width:100%;max-width:100vw;overflow-x:hidden;position:relative}
+    .sidebar{position:fixed;left:-280px;top:0;width:280px;height:100vh;background:#fff;z-index:9998;transition:left 0.3s ease}
+    .mobile-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9997;display:none}
     </style>
     
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
