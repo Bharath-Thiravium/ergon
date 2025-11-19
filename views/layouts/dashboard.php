@@ -1,35 +1,26 @@
 <?php
-ob_start();
 require_once __DIR__ . '/../../app/core/Session.php';
-Session::init();
+require_once __DIR__ . '/../../app/helpers/Security.php';
 
-if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) {
-    if (!headers_sent()) {
-        header('Location: /ergon/login');
-    }
-    exit;
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-if (!isset($content)) {
-    $content = '';
+if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) {
+    header('Location: /ergon/login');
+    exit;
 }
 
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) {
     session_unset();
     session_destroy();
-    $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
-    $loginUrl = $isProduction ? '/ergon/login?timeout=1' : '/ergon/login?timeout=1';
-    if (!headers_sent()) {
-        header('Location: ' . $loginUrl);
-    }
+    header('Location: /ergon/login?timeout=1');
     exit;
 }
 
 $_SESSION['last_activity'] = time();
-
-require_once __DIR__ . '/../../app/helpers/Security.php';
+$content = $content ?? '';
 $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' => 'en'];
-ob_end_clean();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -55,7 +46,7 @@ ob_end_clean();
     .mobile-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9997;display:none}
     </style>
     
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="/ergon/assets/css/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/ergon/assets/css/ergon.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/theme-enhanced.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/utilities-new.css?v=1.0" rel="stylesheet">
