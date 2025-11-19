@@ -1,4 +1,5 @@
 <?php
+ob_start();
 require_once __DIR__ . '/../../app/core/Session.php';
 Session::init();
 
@@ -28,6 +29,7 @@ $_SESSION['last_activity'] = time();
 
 require_once __DIR__ . '/../../app/helpers/Security.php';
 $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' => 'en'];
+ob_end_clean();
 ?>
 <!DOCTYPE html>
 <html lang="en">
