@@ -51,6 +51,7 @@ ob_end_clean();
     <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
     <?php endif; ?>
 
+    <script src="/ergon/assets/js/error-fixes.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/action-button-clean.js?v=<?= time() ?>" defer></script>

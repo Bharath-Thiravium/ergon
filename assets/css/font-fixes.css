@@ -4,9 +4,19 @@
   src: url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/fonts/bootstrap-icons.woff2") format("woff2"),
        url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/fonts/bootstrap-icons.woff") format("woff");
   font-display: swap;
+  font-weight: normal;
+  font-style: normal;
 }
 
-/* Fallback for failed icon loads */
-.bi::before {
-  font-family: "bootstrap-icons", sans-serif !important;
+/* Force Bootstrap Icons to use local font */
+.bi, [class^="bi-"], [class*=" bi-"] {
+  font-family: "bootstrap-icons" !important;
+  font-style: normal !important;
+  font-weight: normal !important;
+  font-variant: normal !important;
+  text-transform: none !important;
+  line-height: 1 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
 }
+
