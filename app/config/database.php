@@ -16,22 +16,11 @@ class Database {
     
     public function __construct() {
         try {
-            // Load .env file
-            $envFile = __DIR__ . '/../../.env';
-            if (file_exists($envFile)) {
-                $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-                foreach ($lines as $line) {
-                    if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
-                        list($key, $value) = explode('=', $line, 2);
-                        $_ENV[trim($key)] = trim($value);
-                    }
-                }
-            }
-            
-            $this->host = $_ENV['DB_HOST'] ?? 'localhost';
-            $this->db_name = $_ENV['DB_NAME'] ?? 'ergon_db';
-            $this->username = $_ENV['DB_USER'] ?? 'root';
-            $this->password = $_ENV['DB_PASS'] ?? null;
+            // Force production credentials for Hostinger
+            $this->host = 'localhost';
+            $this->db_name = 'u494785662_ergon';
+            $this->username = 'u494785662_ergon';
+            $this->password = '@Admin@2025@';
         } catch (Exception $e) {
             error_log('Database configuration error: ' . $e->getMessage());
             throw new Exception('Database configuration failed');
