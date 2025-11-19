@@ -62,8 +62,8 @@ $content = ob_start();
                     foreach ($planned_tasks as $task): 
                         $status = $task['status'] ?? 'not_started';
                         $taskId = $task['id'];
-                        $slaHours = $task['sla_hours'] ?? 1;
-                        $slaDuration = $slaHours * 3600;
+                        $slaHours = (float)($task['sla_hours'] ?? 1);
+                        $slaDuration = (int)($slaHours * 3600);
                         $startTime = $task['start_time'] ?? null;
                         $startTimestamp = $startTime ? strtotime($startTime) : 0;
                         
@@ -74,9 +74,9 @@ $content = ob_start();
                         }
                         
                         $timeDisplay = sprintf('%02d:%02d:%02d', 
-                            floor($remainingTime / 3600), 
-                            floor(($remainingTime % 3600) / 60), 
-                            $remainingTime % 60
+                            (int)floor($remainingTime / 3600), 
+                            (int)floor(($remainingTime % 3600) / 60), 
+                            (int)floor($remainingTime % 60)
                         );
                         
                         $cssClass = '';
@@ -105,7 +105,7 @@ $content = ob_start();
                             
                             <div class="task-card__content">
                                 <div class="task-card__sla">
-                                    <div class="sla-time" title="Service Level Agreement: <?= $slaHours ?> hours"><?= $slaHours ?>h</div>
+                                    <div class="sla-time" title="Service Level Agreement: <?= number_format($slaHours, 2) ?> hours"><?= number_format($slaHours, 2) ?>h</div>
                                     <div class="sla-label">SLA</div>
                                     <?php if ($status === 'in_progress'): ?>
                                         <div class="countdown-timer" id="countdown-<?= $taskId ?>">
@@ -114,7 +114,7 @@ $content = ob_start();
                                         </div>
                                     <?php elseif ($status === 'not_started' || $status === 'assigned'): ?>
                                         <div class="sla-info">
-                                            <div class="sla-total"><?= sprintf('%02d:%02d:%02d', floor($slaHours), floor(($slaHours * 60) % 60), 0) ?></div>
+                                            <div class="sla-total"><?= sprintf('%02d:%02d:%02d', (int)floor($slaHours), (int)floor((($slaHours - floor($slaHours)) * 60)), 0) ?></div>
                                             <div class="sla-total-label">Total</div>
                                         </div>
                                     <?php endif; ?>
@@ -166,15 +166,15 @@ $content = ob_start();
                                 <div class="task-card__timing" id="timing-<?= $taskId ?>">
                                     <div class="timing-info">
                                         <span class="timing-label">Time Used:</span>
-                                        <span class="timing-value time-used"><?= floor($activeSeconds/3600) ?>h <?= floor(($activeSeconds%3600)/60) ?>m</span>
+                                        <span class="timing-value time-used"><?= (int)floor($activeSeconds/3600) ?>h <?= (int)floor(($activeSeconds%3600)/60) ?>m</span>
                                     </div>
                                     <div class="timing-info">
                                         <span class="timing-label">Remaining Time:</span>
-                                        <span class="timing-value time-remaining"><?= floor($remainingSeconds/3600) ?>h <?= floor(($remainingSeconds%3600)/60) ?>m</span>
+                                        <span class="timing-value time-remaining"><?= (int)floor($remainingSeconds/3600) ?>h <?= (int)floor(($remainingSeconds%3600)/60) ?>m</span>
                                     </div>
                                     <div class="timing-info">
                                         <span class="timing-label">Pause Duration:</span>
-                                        <span class="timing-value time-paused"><?= floor($pauseSeconds/3600) ?>h <?= floor(($pauseSeconds%3600)/60) ?>m</span>
+                                        <span class="timing-value time-paused"><?= (int)floor($pauseSeconds/3600) ?>h <?= (int)floor(($pauseSeconds%3600)/60) ?>m</span>
                                     </div>
                                 </div>
                                 
@@ -764,6 +764,8 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
 
 
 
+
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -886,20 +888,29 @@ function updateSLADisplay(taskId) {
         if (data.success) {
             const display = document.querySelector(`#countdown-${taskId} .countdown-display`);
             if (display) {
-                const remaining = data.remaining_seconds;
-                const hours = Math.floor(remaining / 3600);
-                const minutes = Math.floor((remaining % 3600) / 60);
-                const seconds = remaining % 60;
-                
-                display.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                
                 // Visual warnings and overdue handling
                 display.classList.remove('countdown-display--warning', 'countdown-display--expired');
-                if (data.is_late) {
+                
+                if (data.is_late && data.late_seconds > 0) {
+                    // Show overdue time in HH:MM:SS format
                     display.classList.add('countdown-display--expired');
-                    display.textContent = 'OVERDUE: ' + formatTime(data.late_seconds);
-                } else if (remaining <= 600) {
-                    display.classList.add('countdown-display--warning');
+                    const lateSeconds = Math.floor(data.late_seconds);
+                    const lateHours = Math.floor(lateSeconds / 3600);
+                    const lateMinutes = Math.floor((lateSeconds % 3600) / 60);
+                    const lateSecs = lateSeconds % 60;
+                    display.textContent = `OVERDUE: ${lateHours.toString().padStart(2, '0')}:${lateMinutes.toString().padStart(2, '0')}:${lateSecs.toString().padStart(2, '0')}`;
+                } else {
+                    // Show remaining time in HH:MM:SS format
+                    const remainingSeconds = Math.floor(Math.max(0, data.remaining_seconds));
+                    const hours = Math.floor(remainingSeconds / 3600);
+                    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+                    const seconds = remainingSeconds % 60;
+                    
+                    display.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    if (remainingSeconds <= 600 && remainingSeconds > 0) {
+                        display.classList.add('countdown-display--warning');
+                    }
                 }
             }
             
@@ -941,9 +952,10 @@ function updateTaskTiming(taskId, data) {
 }
 
 function formatTime(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+    const totalSeconds = Math.floor(Math.abs(seconds || 0));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 

@@ -233,7 +233,7 @@ $content = ob_start();
                     <label for="sla_hours">⏱️ SLA Time <span class="field-help" title="Expected completion time">ℹ️</span></label>
                     <div class="sla-time-inputs">
                         <?php 
-                        $slaHours = floatval($task['sla_hours'] ?? 24);
+                        $slaHours = floatval($task['sla_hours'] ?? 0.25);
                         $hours = floor($slaHours);
                         $minutes = round(($slaHours - $hours) * 60);
                         ?>
@@ -242,7 +242,7 @@ $content = ob_start();
                         <input type="number" id="sla_minutes_part" min="0" max="59" value="<?= $minutes ?>" placeholder="0">
                         <span class="sla-separator">m</span>
                     </div>
-                    <input type="hidden" id="sla_hours" name="sla_hours" value="<?= $task['sla_hours'] ?? '24' ?>">
+                    <input type="hidden" id="sla_hours" name="sla_hours" value="<?= $task['sla_hours'] ?? '0.25' ?>">
                     <small class="field-hint">Service Level Agreement: Expected time to complete (e.g., 2h 30m = 2.5 hours)</small>
                 </div>
                 <div class="form-group">
@@ -725,7 +725,7 @@ function updateSLAHours() {
     const hours = parseInt(document.getElementById('sla_hours_part').value) || 0;
     const minutes = parseInt(document.getElementById('sla_minutes_part').value) || 0;
     const totalHours = hours + (minutes / 60);
-    document.getElementById('sla_hours').value = totalHours.toFixed(2);
+    document.getElementById('sla_hours').value = totalHours.toFixed(4);
 }
 
 // Form initialization
@@ -733,6 +733,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // SLA time inputs event listeners
     document.getElementById('sla_hours_part').addEventListener('input', updateSLAHours);
     document.getElementById('sla_minutes_part').addEventListener('input', updateSLAHours);
+    
+    // Initialize SLA time calculation
+    updateSLAHours();
     const currentDeptId = '<?= $task['department_id'] ?? '' ?>';
     const currentCategory = '<?= htmlspecialchars($task['task_category'] ?? '') ?>';
     

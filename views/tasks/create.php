@@ -146,17 +146,15 @@ $content = ob_start();
                         <label for="assigned_for">👤 Assignment Type <span class="field-help" title="Who will be responsible for this task?">ℹ️</span></label>
                         <select id="assigned_for" name="assigned_for" onchange="handleAssignmentTypeChange()" required>
                             <option value="self">For Myself (I will do this)</option>
-                            <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
-                                <option value="other">For Others (Delegate to team member)</option>
-                            <?php endif; ?>
+                            <option value="other">For Others (Delegate to team member)</option>
                         </select>
-                        <small class="field-hint">Choose "For Myself" for personal tasks, "For Others" to delegate (admin only)</small>
+                        <small class="field-hint">Choose "For Myself" for personal tasks, "For Others" to delegate to team members</small>
                     </div>
                     <div class="form-group">
                         <label for="assigned_to">🎯 Assign To *</label>
                         <select id="assigned_to" name="assigned_to" required>
                             <option value="<?= $_SESSION['user_id'] ?>" selected><?= htmlspecialchars($_SESSION['user_name'] ?? 'You') ?></option>
-                            <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner']) && !empty($users)): ?>
+                            <?php if (!empty($users)): ?>
                                 <?php foreach ($users as $user): ?>
                                     <?php if ($user['id'] != $_SESSION['user_id']): ?>
                                         <option value="<?= $user['id'] ?>" style="display: none;"><?= htmlspecialchars($user['name']) ?></option>
@@ -231,12 +229,12 @@ $content = ob_start();
                     <div class="form-group">
                         <label for="sla_hours">⏱️ SLA Time <span class="field-help" title="Expected completion time">ℹ️</span></label>
                         <div class="sla-time-inputs">
-                            <input type="number" id="sla_hours_part" min="0" max="720" value="24" placeholder="24">
+                            <input type="number" id="sla_hours_part" min="0" max="720" value="0" placeholder="0">
                             <span class="sla-separator">h</span>
-                            <input type="number" id="sla_minutes_part" min="0" max="59" value="0" placeholder="0">
+                            <input type="number" id="sla_minutes_part" min="0" max="59" value="15" placeholder="15">
                             <span class="sla-separator">m</span>
                         </div>
-                        <input type="hidden" id="sla_hours" name="sla_hours" value="24">
+                        <input type="hidden" id="sla_hours" name="sla_hours" value="0.25">
                         <small class="field-hint">Service Level Agreement: Expected time to complete (e.g., 2h 30m = 2.5 hours)</small>
                     </div>
                     <div class="form-group">
@@ -451,10 +449,11 @@ function handleAssignmentTypeChange() {
             }
         });
     } else {
-        // Show all users
+        // Show all users for delegation
         options.forEach(option => {
             option.style.display = 'block';
         });
+        // Don't auto-select current user when delegating
         assignedToSelect.value = '';
     }
 }
@@ -607,7 +606,7 @@ function updateSLAHours() {
     const hours = parseInt(document.getElementById('sla_hours_part').value) || 0;
     const minutes = parseInt(document.getElementById('sla_minutes_part').value) || 0;
     const totalHours = hours + (minutes / 60);
-    document.getElementById('sla_hours').value = totalHours.toFixed(2);
+    document.getElementById('sla_hours').value = totalHours.toFixed(4);
 }
 
 // Form initialization
@@ -615,6 +614,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // SLA time inputs event listeners
     document.getElementById('sla_hours_part').addEventListener('input', updateSLAHours);
     document.getElementById('sla_minutes_part').addEventListener('input', updateSLAHours);
+    
+    // Initialize SLA time calculation
+    updateSLAHours();
     
     // Set minimum date to today
     const deadlineInput = document.getElementById('deadline');
