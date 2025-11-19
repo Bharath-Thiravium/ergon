@@ -1,20 +1,24 @@
 <?php
-// ERGON Employee Tracker - Main Entry Point
+/**
+ * Ergon - Employee Tracker & Task Manager
+ * Main Application Entry Point
+ */
+
+// Error reporting for development
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Start session
+session_start();
+
+// Set timezone
+date_default_timezone_set('Asia/Kolkata');
+
+// Include autoloader and core files
 require_once __DIR__ . '/app/config/environment.php';
-require_once __DIR__ . '/app/helpers/PerformanceOptimizer.php';
+require_once __DIR__ . '/app/config/database.php';
 require_once __DIR__ . '/app/core/Router.php';
-require_once __DIR__ . '/app/core/Session.php';
-
-// Performance optimizations
-PerformanceOptimizer::enableGzipCompression();
-PerformanceOptimizer::setCacheHeaders(3600);
-
-// Initialize session
-Session::init();
-
-// Validate session for security
-require_once __DIR__ . '/app/middlewares/SessionValidationMiddleware.php';
-SessionValidationMiddleware::validateSession();
+require_once __DIR__ . '/app/core/Controller.php';
 
 // Initialize router
 $router = new Router();
