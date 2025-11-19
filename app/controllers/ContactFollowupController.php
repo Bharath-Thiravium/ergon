@@ -12,21 +12,8 @@ class ContactFollowupController extends Controller {
         }
         
         try {
-            $pdo = Database::connect();
-            
-            $contacts = $pdo->query("
-                SELECT c.*, 
-                       COUNT(f.id) as total_followups,
-                       SUM(CASE WHEN f.status = 'pending' AND f.follow_up_date < CURDATE() THEN 1 ELSE 0 END) as overdue_count,
-                       SUM(CASE WHEN f.status = 'pending' AND f.follow_up_date = CURDATE() THEN 1 ELSE 0 END) as today_count,
-                       MAX(f.follow_up_date) as next_followup_date
-                FROM contacts c
-                LEFT JOIN followups f ON c.id = f.contact_id
-                GROUP BY c.id
-                HAVING total_followups > 0
-                ORDER BY next_followup_date ASC
-            ")->fetchAll(PDO::FETCH_ASSOC);
-            
+            $db = Database::connect();
+            $contacts = $this->getContactsWithFollowups($db);
             $this->view('contact_followups/index', ['contacts' => $contacts]);
         } catch (Exception $e) {
             error_log('Contact followups error: ' . $e->getMessage());
@@ -46,16 +33,18 @@ class ContactFollowupController extends Controller {
             // Get all followups for the current user or all if admin/owner
             $sql = "
                 SELECT f.*, c.name as contact_name, c.phone as contact_phone, c.email as contact_email, c.company as contact_company,
-                       'standalone' as followup_type, NULL as task_title
+                       CASE WHEN f.task_id IS NOT NULL THEN 'task' ELSE 'standalone' END as followup_type,
+                       t.title as task_title
                 FROM followups f 
                 LEFT JOIN contacts c ON f.contact_id = c.id 
+                LEFT JOIN tasks t ON f.task_id = t.id
                 WHERE 1=1
             ";
             
             if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                $sql .= " AND f.user_id = ?";
+                $sql .= " AND (f.user_id = ? OR t.assigned_to = ?)";
                 $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC LIMIT 50");
-                $stmt->execute([$_SESSION['user_id']]);
+                $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
             } else {
                 $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC LIMIT 50");
                 $stmt->execute();
@@ -136,31 +125,77 @@ class ContactFollowupController extends Controller {
     
     private function storeStandaloneFollowup() {
         try {
-            $pdo = Database::connect();
+            $db = Database::connect();
             
             $title = trim($_POST['title'] ?? '');
-            $contact_id = $_POST['contact_id'] ?? null;
             $follow_up_date = $_POST['follow_up_date'] ?? date('Y-m-d');
             $description = trim($_POST['description'] ?? '');
+            $task_id = !empty($_POST['task_id']) ? intval($_POST['task_id']) : null;
             
-            if (empty($title) || !$contact_id) {
-                header('Location: /ergon/contacts/followups/create?error=Title and contact required');
+            if (empty($title)) {
+                $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=Title required" : '/ergon/contacts/followups/create?error=Title required';
+                header("Location: $redirectUrl");
                 exit;
             }
             
-            $stmt = $pdo->prepare("INSERT INTO followups (contact_id, user_id, title, description, follow_up_date) VALUES (?, ?, ?, ?, ?)");
-            $result = $stmt->execute([$contact_id, $_SESSION['user_id'], $title, $description, $follow_up_date]);
+            // Handle contact creation/selection
+            $contact_id = null;
+            if (!empty($_POST['contact_name']) || !empty($_POST['contact_company'])) {
+                $contact_id = $this->createOrFindContact($db, $_POST);
+            }
+            
+            // Create follow-up
+            $followup_type = $task_id ? 'task' : 'standalone';
+            $user_id = $task_id ? $this->getTaskAssignedUser($db, $task_id) : $_SESSION['user_id'];
+            
+            $stmt = $db->prepare("INSERT INTO followups (contact_id, user_id, task_id, followup_type, title, description, follow_up_date, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())");
+            $result = $stmt->execute([$contact_id, $user_id, $task_id, $followup_type, $title, $description, $follow_up_date]);
             
             if ($result) {
-                header('Location: /ergon/contacts/followups?success=Follow-up created');
+                $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?success=Follow-up added" : '/ergon/contacts/followups?success=Follow-up created';
+                header("Location: $redirectUrl");
             } else {
-                header('Location: /ergon/contacts/followups/create?error=Failed to create');
+                $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=Failed to add follow-up" : '/ergon/contacts/followups/create?error=Failed to create';
+                header("Location: $redirectUrl");
             }
         } catch (Exception $e) {
             error_log('Store followup error: ' . $e->getMessage());
-            header('Location: /ergon/contacts/followups/create?error=' . urlencode($e->getMessage()));
+            $task_id = !empty($_POST['task_id']) ? intval($_POST['task_id']) : null;
+            $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=" . urlencode($e->getMessage()) : '/ergon/contacts/followups/create?error=' . urlencode($e->getMessage());
+            header("Location: $redirectUrl");
         }
         exit;
+    }
+    
+    private function createOrFindContact($db, $postData) {
+        $contactName = trim($postData['contact_name'] ?? '');
+        $contactCompany = trim($postData['contact_company'] ?? '');
+        $contactPhone = trim($postData['contact_phone'] ?? '');
+        
+        if (empty($contactName) && empty($contactCompany)) {
+            return null;
+        }
+        
+        // Check if contact exists
+        $stmt = $db->prepare("SELECT id FROM contacts WHERE name = ? OR company = ?");
+        $stmt->execute([$contactName, $contactCompany]);
+        $existingContact = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($existingContact) {
+            return $existingContact['id'];
+        }
+        
+        // Create new contact
+        $stmt = $db->prepare("INSERT INTO contacts (name, company, phone, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())");
+        $stmt->execute([$contactName, $contactCompany, $contactPhone]);
+        return $db->lastInsertId();
+    }
+    
+    private function getTaskAssignedUser($db, $task_id) {
+        $stmt = $db->prepare("SELECT assigned_to FROM tasks WHERE id = ?");
+        $stmt->execute([$task_id]);
+        $task = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $task ? $task['assigned_to'] : $_SESSION['user_id'];
     }
     
     public function completeFollowup($id) {
@@ -172,40 +207,30 @@ class ContactFollowupController extends Controller {
         try {
             $db = Database::connect();
             
-            // Check if it's a standalone followup
-            $stmt = $db->prepare("SELECT contact_id FROM followups WHERE id = ?");
+            // Get followup details including task_id
+            $stmt = $db->prepare("SELECT id, contact_id, task_id, status FROM followups WHERE id = ?");
             $stmt->execute([$id]);
             $followup = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($followup) {
-                // Complete standalone followup
+                // Complete the followup
                 $stmt = $db->prepare("UPDATE followups SET status = 'completed', completed_at = NOW() WHERE id = ?");
                 $result = $stmt->execute([$id]);
                 
                 if ($result) {
-                    $this->logHistory($id, 'completed', 'pending', 'Follow-up completed');
+                    $this->logHistory($id, 'completed', $followup['status'], 'Follow-up completed');
+                    
+                    // If this followup is linked to a task, update the task status as well
+                    if ($followup['task_id']) {
+                        $this->updateLinkedTaskStatus($db, $followup['task_id'], 'completed');
+                    }
+                    
                     echo json_encode(['success' => true]);
                 } else {
                     echo json_encode(['success' => false, 'error' => 'Failed to complete']);
                 }
             } else {
-                // Check if it's a task-linked followup
-                $stmt = $db->prepare("SELECT * FROM tasks WHERE id = ? AND type = 'followup'");
-                $stmt->execute([$id]);
-                $task = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($task) {
-                    $stmt = $db->prepare("UPDATE tasks SET status = 'completed' WHERE id = ?");
-                    $result = $stmt->execute([$id]);
-                    
-                    if ($result) {
-                        echo json_encode(['success' => true]);
-                    } else {
-                        echo json_encode(['success' => false, 'error' => 'Failed to complete task']);
-                    }
-                } else {
-                    echo json_encode(['success' => false, 'error' => 'Follow-up not found']);
-                }
+                echo json_encode(['success' => false, 'error' => 'Follow-up not found']);
             }
         } catch (Exception $e) {
             error_log('Complete followup error: ' . $e->getMessage());
@@ -217,12 +242,8 @@ class ContactFollowupController extends Controller {
     public function cancelFollowup($id) {
         header('Content-Type: application/json');
         
-        // Enhanced debugging and validation
-        error_log("Cancel request received - ID: $id, Method: {$_SERVER['REQUEST_METHOD']}, Session User: " . ($_SESSION['user_id'] ?? 'none'));
-        
         if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
-            error_log('Cancel failed: Unauthorized access');
-            echo json_encode(['success' => false, 'error' => 'Unauthorized', 'debug' => 'Session or method check failed']);
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
             exit;
         }
         
@@ -230,96 +251,43 @@ class ContactFollowupController extends Controller {
             $db = Database::connect();
             $reason = trim($_POST['reason'] ?? 'No reason provided');
             
-            error_log("Cancel data - Reason: $reason");
-            
-            // Validate input
             if (empty($reason)) {
-                error_log('Cancel failed: Reason required');
-                echo json_encode(['success' => false, 'error' => 'Reason required', 'debug' => 'Missing reason parameter']);
+                echo json_encode(['success' => false, 'error' => 'Reason required']);
                 exit;
             }
             
-            // Validate ID
             if (!is_numeric($id) || $id <= 0) {
-                error_log('Cancel failed: Invalid ID');
-                echo json_encode(['success' => false, 'error' => 'Invalid follow-up ID', 'debug' => "ID: $id is not valid"]);
+                echo json_encode(['success' => false, 'error' => 'Invalid follow-up ID']);
                 exit;
             }
             
-            // Check if followup exists and get current data
             $stmt = $db->prepare("SELECT id, status, contact_id FROM followups WHERE id = ?");
             $stmt->execute([$id]);
             $followup = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$followup) {
-                error_log("Cancel failed: Follow-up not found with ID: $id");
-                echo json_encode(['success' => false, 'error' => 'Follow-up not found', 'debug' => "No followup found with ID: $id"]);
+                echo json_encode(['success' => false, 'error' => 'Follow-up not found']);
                 exit;
             }
             
-            error_log("Found followup - ID: {$followup['id']}, Status: {$followup['status']}");
-            
-            // Check if followup can be cancelled
             if ($followup['status'] === 'cancelled') {
-                error_log('Cancel failed: Follow-up already cancelled');
-                echo json_encode(['success' => false, 'error' => 'Follow-up is already cancelled', 'debug' => "Status: {$followup['status']}"]);
+                echo json_encode(['success' => false, 'error' => 'Follow-up is already cancelled']);
                 exit;
             }
             
-            // Perform the update
-            error_log("Executing UPDATE query - Setting status to cancelled for ID: $id");
             $stmt = $db->prepare("UPDATE followups SET status = 'cancelled', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$id]);
-            $rowsAffected = $stmt->rowCount();
             
-            error_log("Update result - Success: " . ($result ? 'true' : 'false') . ", Rows affected: $rowsAffected");
-            
-            if ($result && $rowsAffected > 0) {
-                // Verify the update
-                $stmt = $db->prepare("SELECT status FROM followups WHERE id = ?");
-                $stmt->execute([$id]);
-                $updated = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                error_log("Verification - New Status: {$updated['status']}");
-                
-                // Log history
-                $historyLogged = $this->logHistory($id, 'cancelled', $followup['status'], "Follow-up cancelled. Reason: {$reason}");
-                error_log('History logged: ' . ($historyLogged ? 'success' : 'failed'));
-                
-                echo json_encode([
-                    'success' => true, 
-                    'message' => 'Follow-up cancelled successfully',
-                    'debug' => [
-                        'old_status' => $followup['status'],
-                        'new_status' => $updated['status'],
-                        'reason' => $reason,
-                        'history_logged' => $historyLogged
-                    ]
-                ]);
+            if ($result && $stmt->rowCount() > 0) {
+                $this->logHistory($id, 'cancelled', $followup['status'], "Follow-up cancelled. Reason: {$reason}");
+                echo json_encode(['success' => true, 'message' => 'Follow-up cancelled successfully']);
             } else {
-                error_log('Cancel failed: No rows affected by UPDATE query');
-                echo json_encode([
-                    'success' => false, 
-                    'error' => 'Follow-up not found or no changes made',
-                    'debug' => [
-                        'query_result' => $result,
-                        'rows_affected' => $rowsAffected,
-                        'followup_id' => $id
-                    ]
-                ]);
+                echo json_encode(['success' => false, 'error' => 'Follow-up not found or no changes made']);
             }
             
         } catch (Exception $e) {
-            error_log('Cancel error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
-            echo json_encode([
-                'success' => false, 
-                'error' => 'Database error occurred',
-                'debug' => [
-                    'exception' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ]
-            ]);
+            error_log('Cancel error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Database error occurred']);
         }
         exit;
     }
@@ -327,12 +295,8 @@ class ContactFollowupController extends Controller {
     public function rescheduleFollowup($id) {
         header('Content-Type: application/json');
         
-        // Enhanced debugging and validation
-        error_log("Reschedule request received - ID: $id, Method: {$_SERVER['REQUEST_METHOD']}, Session User: " . ($_SESSION['user_id'] ?? 'none'));
-        
         if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
-            error_log('Reschedule failed: Unauthorized access');
-            echo json_encode(['success' => false, 'error' => 'Unauthorized', 'debug' => 'Session or method check failed']);
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
             exit;
         }
         
@@ -341,113 +305,55 @@ class ContactFollowupController extends Controller {
             $newDate = $_POST['new_date'] ?? null;
             $reason = trim($_POST['reason'] ?? 'No reason provided');
             
-            error_log("Reschedule data - New Date: $newDate, Reason: $reason");
-            
-            // Validate input
             if (!$newDate) {
-                error_log('Reschedule failed: New date required');
-                echo json_encode(['success' => false, 'error' => 'New date required', 'debug' => 'Missing new_date parameter']);
+                echo json_encode(['success' => false, 'error' => 'New date required']);
                 exit;
             }
             
-            // Validate date format
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $newDate)) {
-                error_log('Reschedule failed: Invalid date format');
-                echo json_encode(['success' => false, 'error' => 'Invalid date format', 'debug' => 'Date must be YYYY-MM-DD']);
+                echo json_encode(['success' => false, 'error' => 'Invalid date format']);
                 exit;
             }
             
-            // Validate ID
             if (!is_numeric($id) || $id <= 0) {
-                error_log('Reschedule failed: Invalid ID');
-                echo json_encode(['success' => false, 'error' => 'Invalid follow-up ID', 'debug' => "ID: $id is not valid"]);
+                echo json_encode(['success' => false, 'error' => 'Invalid follow-up ID']);
                 exit;
             }
             
-            // Check if followup exists and get current data
             $stmt = $db->prepare("SELECT id, follow_up_date, status, contact_id FROM followups WHERE id = ?");
             $stmt->execute([$id]);
             $followup = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$followup) {
-                error_log("Reschedule failed: Follow-up not found with ID: $id");
-                echo json_encode(['success' => false, 'error' => 'Follow-up not found', 'debug' => "No followup found with ID: $id"]);
+                echo json_encode(['success' => false, 'error' => 'Follow-up not found']);
                 exit;
             }
             
-            error_log("Found followup - ID: {$followup['id']}, Current Date: {$followup['follow_up_date']}, Status: {$followup['status']}");
-            
-            // Check if followup can be rescheduled
             if (in_array($followup['status'], ['completed', 'cancelled'])) {
-                error_log("Reschedule failed: Cannot reschedule {$followup['status']} follow-up");
-                echo json_encode(['success' => false, 'error' => "Cannot reschedule {$followup['status']} follow-up", 'debug' => "Status: {$followup['status']}"]);
+                echo json_encode(['success' => false, 'error' => "Cannot reschedule {$followup['status']} follow-up"]);
                 exit;
             }
             
             $oldDate = $followup['follow_up_date'];
             
-            // Check if the new date is different from current date
             if ($oldDate === $newDate) {
-                error_log('Reschedule failed: New date same as current date');
-                echo json_encode(['success' => false, 'error' => 'New date must be different from current date', 'debug' => "Both dates are: $newDate"]);
+                echo json_encode(['success' => false, 'error' => 'New date must be different from current date']);
                 exit;
             }
             
-            // Perform the update
-            error_log("Executing UPDATE query - Setting date to: $newDate for ID: $id");
             $stmt = $db->prepare("UPDATE followups SET follow_up_date = ?, status = 'postponed', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$newDate, $id]);
-            $rowsAffected = $stmt->rowCount();
             
-            error_log("Update result - Success: " . ($result ? 'true' : 'false') . ", Rows affected: $rowsAffected");
-            
-            if ($result && $rowsAffected > 0) {
-                // Verify the update
-                $stmt = $db->prepare("SELECT follow_up_date, status FROM followups WHERE id = ?");
-                $stmt->execute([$id]);
-                $updated = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                error_log("Verification - New Date: {$updated['follow_up_date']}, New Status: {$updated['status']}");
-                
-                // Log history
-                $historyLogged = $this->logHistory($id, 'rescheduled', $oldDate, "Rescheduled from {$oldDate} to {$newDate}. Reason: {$reason}");
-                error_log('History logged: ' . ($historyLogged ? 'success' : 'failed'));
-                
-                echo json_encode([
-                    'success' => true, 
-                    'message' => 'Follow-up rescheduled successfully',
-                    'debug' => [
-                        'old_date' => $oldDate,
-                        'new_date' => $newDate,
-                        'new_status' => $updated['status'],
-                        'history_logged' => $historyLogged
-                    ]
-                ]);
+            if ($result && $stmt->rowCount() > 0) {
+                $this->logHistory($id, 'rescheduled', $oldDate, "Rescheduled from {$oldDate} to {$newDate}. Reason: {$reason}");
+                echo json_encode(['success' => true, 'message' => 'Follow-up rescheduled successfully']);
             } else {
-                error_log('Reschedule failed: No rows affected by UPDATE query');
-                echo json_encode([
-                    'success' => false, 
-                    'error' => 'Follow-up not found or no changes made',
-                    'debug' => [
-                        'query_result' => $result,
-                        'rows_affected' => $rowsAffected,
-                        'followup_id' => $id,
-                        'new_date' => $newDate
-                    ]
-                ]);
+                echo json_encode(['success' => false, 'error' => 'Follow-up not found or no changes made']);
             }
             
         } catch (Exception $e) {
-            error_log('Reschedule error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
-            echo json_encode([
-                'success' => false, 
-                'error' => 'Database error occurred',
-                'debug' => [
-                    'exception' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ]
-            ]);
+            error_log('Reschedule error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Database error occurred']);
         }
         exit;
     }
@@ -461,13 +367,11 @@ class ContactFollowupController extends Controller {
         try {
             $db = Database::connect();
             
-            // Check if it's a standalone followup first
             $stmt = $db->prepare("SELECT id FROM followups WHERE id = ?");
             $stmt->execute([$id]);
             $followup = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($followup) {
-                // Get standalone followup history
                 $stmt = $db->prepare("SELECT h.*, u.name as user_name FROM followup_history h LEFT JOIN users u ON h.created_by = u.id WHERE h.followup_id = ? ORDER BY h.created_at DESC");
                 $stmt->execute([$id]);
                 $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -475,30 +379,7 @@ class ContactFollowupController extends Controller {
                 $html = empty($history) ? '<p>No history available for this follow-up.</p>' : $this->renderHistory($history);
                 echo json_encode(['success' => true, 'html' => $html]);
             } else {
-                // Check if it's a task-linked followup
-                $stmt = $db->prepare("SELECT * FROM tasks WHERE id = ? AND type = 'followup'");
-                $stmt->execute([$id]);
-                $task = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($task) {
-                    $html = '<div class="task-history">';
-                    $html .= '<div class="history-item">';
-                    $html .= '<div class="history-date">' . date('M d, Y H:i', strtotime($task['created_at'])) . '</div>';
-                    $html .= '<div class="history-action">Task Created</div>';
-                    $html .= '<div class="history-notes">Follow-up task created</div>';
-                    $html .= '</div>';
-                    if ($task['status'] === 'completed') {
-                        $html .= '<div class="history-item">';
-                        $html .= '<div class="history-date">' . date('M d, Y H:i', strtotime($task['updated_at'])) . '</div>';
-                        $html .= '<div class="history-action">Completed</div>';
-                        $html .= '<div class="history-notes">Task marked as completed</div>';
-                        $html .= '</div>';
-                    }
-                    $html .= '</div>';
-                    echo json_encode(['success' => true, 'html' => $html]);
-                } else {
-                    echo json_encode(['success' => false, 'error' => 'Follow-up not found']);
-                }
+                echo json_encode(['success' => false, 'error' => 'Follow-up not found']);
             }
         } catch (Exception $e) {
             error_log('History error: ' . $e->getMessage());
@@ -569,202 +450,50 @@ class ContactFollowupController extends Controller {
         exit;
     }
     
-    public function createTaskFollowup() {
-        if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /ergon/contacts/followups');
-            exit;
-        }
-        
-        try {
-            $db = Database::connect();
-            
-            $title = trim($_POST['title'] ?? '');
-            $contact_id = $_POST['contact_id'] ?? null;
-            $deadline = $_POST['deadline'] ?? date('Y-m-d');
-            $description = trim($_POST['description'] ?? '');
-            
-            if (empty($title) || !$contact_id) {
-                header('Location: /ergon/contacts/followups?error=Title and contact required');
-                exit;
-            }
-            
-            // Get contact info to include in task
-            $stmt = $db->prepare("SELECT * FROM contacts WHERE id = ?");
-            $stmt->execute([$contact_id]);
-            $contact = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$contact) {
-                header('Location: /ergon/contacts/followups?error=Contact not found');
-                exit;
-            }
-            
-            // Create follow-up task
-            $taskDescription = "Follow-up with {$contact['name']}";
-            if ($contact['company']) $taskDescription .= " from {$contact['company']}";
-            if ($description) $taskDescription .= "\n\n" . $description;
-            
-            $stmt = $db->prepare("
-                INSERT INTO tasks (title, description, assigned_by, assigned_to, type, priority, deadline, status) 
-                VALUES (?, ?, ?, ?, 'followup', 'medium', ?, 'assigned')
-            ");
-            
-            $result = $stmt->execute([
-                $title,
-                $taskDescription,
-                $_SESSION['user_id'],
-                $_SESSION['user_id'],
-                $deadline
-            ]);
-            
-            if ($result) {
-                $taskId = $db->lastInsertId();
-                
-                NotificationHelper::notifyOwners(
-                    $_SESSION['user_id'],
-                    'task',
-                    'created',
-                    "New follow-up task created: {$title}",
-                    $taskId
-                );
-                
-                header('Location: /ergon/contacts/followups?success=Follow-up task created');
-            } else {
-                header('Location: /ergon/contacts/followups?error=Failed to create task');
-            }
-        } catch (Exception $e) {
-            error_log('Create task followup error: ' . $e->getMessage());
-            header('Location: /ergon/contacts/followups?error=Failed to create task');
-        }
-        exit;
-    }
-    
     private function getContactsWithFollowups($db) {
-        // Get contacts with standalone followups
         $sql = "
             SELECT c.*, 
-                   COUNT(f.id) as standalone_followups,
+                   COUNT(f.id) as total_followups,
                    SUM(CASE WHEN f.status = 'pending' AND f.follow_up_date < CURDATE() THEN 1 ELSE 0 END) as overdue_count,
                    SUM(CASE WHEN f.status = 'pending' AND f.follow_up_date = CURDATE() THEN 1 ELSE 0 END) as today_count,
                    MAX(f.follow_up_date) as next_followup_date
             FROM contacts c
             LEFT JOIN followups f ON c.id = f.contact_id
+            LEFT JOIN tasks t ON f.task_id = t.id
         ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-            $sql .= " WHERE f.user_id = ? OR f.user_id IS NULL";
-            $stmt = $db->prepare($sql . " GROUP BY c.id");
-            $stmt->execute([$_SESSION['user_id']]);
+            $sql .= " WHERE (f.user_id = ? OR t.assigned_to = ? OR f.id IS NULL)";
+            $stmt = $db->prepare($sql . " GROUP BY c.id HAVING total_followups > 0 ORDER BY next_followup_date ASC");
+            $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
         } else {
-            $stmt = $db->prepare($sql . " GROUP BY c.id");
+            $stmt = $db->prepare($sql . " GROUP BY c.id HAVING total_followups > 0 ORDER BY next_followup_date ASC");
             $stmt->execute();
         }
         
-        $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Add task-linked followup counts
-        foreach ($contacts as &$contact) {
-            $taskSql = "
-                SELECT COUNT(*) as task_followups,
-                       SUM(CASE WHEN t.status != 'completed' AND t.deadline < CURDATE() THEN 1 ELSE 0 END) as task_overdue,
-                       SUM(CASE WHEN t.status != 'completed' AND t.deadline = CURDATE() THEN 1 ELSE 0 END) as task_today
-                FROM tasks t 
-                WHERE t.type = 'followup'
-                  AND (t.title LIKE ? OR t.description LIKE ? OR t.description LIKE ?)
-            ";
-            
-            $searchTerms = [
-                '%' . $contact['name'] . '%',
-                '%' . $contact['name'] . '%', 
-                '%' . $contact['phone'] . '%'
-            ];
-            
-            if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                $taskSql .= " AND t.assigned_to = ?";
-                $searchTerms[] = $_SESSION['user_id'];
-            }
-            
-            $taskStmt = $db->prepare($taskSql);
-            $taskStmt->execute($searchTerms);
-            $taskData = $taskStmt->fetch(PDO::FETCH_ASSOC);
-            
-            $contact['total_followups'] = ($contact['standalone_followups'] ?? 0) + ($taskData['task_followups'] ?? 0);
-            $contact['overdue_count'] += ($taskData['task_overdue'] ?? 0);
-            $contact['today_count'] += ($taskData['task_today'] ?? 0);
-        }
-        
-        // Filter out contacts with no followups
-        $contacts = array_filter($contacts, function($contact) {
-            return $contact['total_followups'] > 0;
-        });
-        
-        // Sort by next followup date
-        usort($contacts, function($a, $b) {
-            $dateA = $a['next_followup_date'] ?? '9999-12-31';
-            $dateB = $b['next_followup_date'] ?? '9999-12-31';
-            return strcmp($dateA, $dateB);
-        });
-        
-        return $contacts;
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     private function getContactFollowups($db, $contact_id) {
-        // Get standalone followups
-        $sql = "SELECT f.*, 'standalone' as followup_type, NULL as task_title FROM followups f WHERE f.contact_id = ?";
+        $sql = "
+            SELECT f.*, 
+                   CASE WHEN f.task_id IS NOT NULL THEN 'task' ELSE 'standalone' END as followup_type,
+                   t.title as task_title
+            FROM followups f 
+            LEFT JOIN tasks t ON f.task_id = t.id
+            WHERE f.contact_id = ?
+        ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-            $sql .= " AND f.user_id = ?";
+            $sql .= " AND (f.user_id = ? OR t.assigned_to = ?)";
             $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC");
-            $stmt->execute([$contact_id, $_SESSION['user_id']]);
+            $stmt->execute([$contact_id, $_SESSION['user_id'], $_SESSION['user_id']]);
         } else {
             $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC");
             $stmt->execute([$contact_id]);
         }
         
-        $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Get task-linked followups - tasks with type='followup' that match contact info
-        $contact = $this->getContactById($db, $contact_id);
-        if ($contact) {
-            $taskSql = "
-                SELECT t.id, t.title, t.description, t.deadline as follow_up_date, t.status, 
-                       t.created_at, t.updated_at, 
-                       CASE WHEN t.status = 'completed' THEN t.updated_at ELSE NULL END as completed_at,
-                       'task-linked' as followup_type, t.title as task_title
-                FROM tasks t 
-                WHERE t.type = 'followup'
-                  AND (t.title LIKE ? OR t.description LIKE ? OR t.description LIKE ?)
-            ";
-            
-            $searchTerms = [
-                '%' . $contact['name'] . '%',
-                '%' . $contact['name'] . '%', 
-                '%' . $contact['phone'] . '%'
-            ];
-            
-            if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                $taskSql .= " AND t.assigned_to = ?";
-                $searchTerms[] = $_SESSION['user_id'];
-            }
-            
-            $taskStmt = $db->prepare($taskSql . " ORDER BY t.deadline DESC");
-            $taskStmt->execute($searchTerms);
-            $taskFollowups = $taskStmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $followups = array_merge($followups, $taskFollowups);
-        }
-        
-        // Sort by date
-        usort($followups, function($a, $b) {
-            return strtotime($b['follow_up_date']) - strtotime($a['follow_up_date']);
-        });
-        
-        return $followups;
-    }
-    
-    private function getContactById($db, $contact_id) {
-        $stmt = $db->prepare("SELECT * FROM contacts WHERE id = ?");
-        $stmt->execute([$contact_id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     private function renderHistory($history) {
@@ -811,13 +540,12 @@ class ContactFollowupController extends Controller {
             $db = Database::connect();
             $this->ensureFollowupHistoryTable($db);
             
-            // Check if table exists before inserting
             $stmt = $db->query("SHOW TABLES LIKE 'followup_history'");
             if ($stmt->rowCount() > 0) {
                 $stmt = $db->prepare("INSERT INTO followup_history (followup_id, action, old_value, notes, created_by) VALUES (?, ?, ?, ?, ?)");
                 return $stmt->execute([$followupId, $action, $oldValue, $notes, $_SESSION['user_id'] ?? null]);
             }
-            return true; // Skip logging if table doesn't exist
+            return true;
         } catch (Exception $e) {
             error_log('History log error: ' . $e->getMessage());
             return false;
@@ -838,6 +566,28 @@ class ContactFollowupController extends Controller {
             )");
         } catch (Exception $e) {
             error_log('ensureFollowupHistoryTable error: ' . $e->getMessage());
+        }
+    }
+    
+    private function updateLinkedTaskStatus($db, $taskId, $status) {
+        try {
+            $stmt = $db->prepare("SELECT status, progress FROM tasks WHERE id = ?");
+            $stmt->execute([$taskId]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($task) {
+                $oldStatus = $task['status'];
+                $newProgress = ($status === 'completed') ? 100 : $task['progress'];
+                
+                $stmt = $db->prepare("UPDATE tasks SET status = ?, progress = ?, updated_at = NOW() WHERE id = ?");
+                $result = $stmt->execute([$status, $newProgress, $taskId]);
+                
+                if ($result) {
+                    error_log("Successfully updated linked task {$taskId} status from {$oldStatus} to {$status}");
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Update linked task status error: ' . $e->getMessage());
         }
     }
     
