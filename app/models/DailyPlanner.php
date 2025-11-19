@@ -30,7 +30,7 @@ class DailyPlanner {
                     completion_time TIMESTAMP NULL,
                     sla_end_time TIMESTAMP NULL,
                     active_seconds INT DEFAULT 0,
-                    total_pause_duration INT DEFAULT 0,
+                    pause_duration INT DEFAULT 0,
                     postponed_from_date DATE NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -51,7 +51,7 @@ class DailyPlanner {
                 SELECT 
                     dt.id, dt.title, dt.description, dt.priority, dt.status,
                     dt.completed_percentage, dt.start_time, dt.active_seconds,
-                    dt.planned_duration, dt.task_id, dt.total_pause_duration,
+                    dt.planned_duration, dt.task_id, dt.pause_duration,
                     dt.completion_time,
                     COALESCE(t.sla_hours, 1) as sla_hours
                 FROM daily_tasks dt
@@ -393,7 +393,7 @@ class DailyPlanner {
                         SUM(CASE WHEN status = 'on_break' THEN 1 ELSE 0 END) as paused_tasks,
                         SUM(planned_duration) as total_planned_minutes,
                         SUM(active_seconds) as total_active_seconds,
-                        SUM(total_pause_duration) as total_pause_seconds,
+                        SUM(pause_duration) as total_pause_seconds,
                         AVG(completed_percentage) as avg_completion
                     FROM daily_tasks 
                     WHERE user_id = ? AND scheduled_date = ? AND DATE(created_at) = ?

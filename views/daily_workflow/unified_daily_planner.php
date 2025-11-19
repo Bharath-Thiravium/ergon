@@ -98,7 +98,10 @@ $content = ob_start();
                              data-sla-duration="<?= $slaDuration ?>" 
                              data-start-time="<?= $startTimestamp ?>" 
                              data-status="<?= $status ?>"
-                             data-task-source="<?= $taskSource ?>">
+                             data-task-source="<?= $taskSource ?>"
+                             data-pause-time="<?= $task['pause_time'] ?? '' ?>"
+                             data-active-seconds="<?= $task['active_seconds'] ?? 0 ?>"
+                             data-pause-duration="<?= $task['pause_duration'] ?? 0 ?>">
                             
                             <div class="task-card__content">
                                 <div class="task-card__sla">
@@ -157,7 +160,7 @@ $content = ob_start();
                                 
                                 <?php
                                 $activeSeconds = $task['active_seconds'] ?? 0;
-                                $pauseSeconds = $task['total_pause_duration'] ?? 0;
+                                $pauseSeconds = $task['pause_duration'] ?? 0;
                                 $remainingSeconds = max(0, $slaDuration - $activeSeconds);
                                 ?>
                                 <div class="task-card__timing" id="timing-<?= $taskId ?>">
@@ -219,7 +222,7 @@ $content = ob_start();
     <div class="card">
         <div class="card__header">
             <h3 class="card__title"><i class="bi bi-speedometer2"></i> SLA Dashboard</h3>
-            <button class="btn btn--sm btn--secondary" onclick="refreshSLADashboard()" title="Refresh SLA Data">
+            <button class="btn btn--sm btn--secondary" onclick="forceSLARefresh()" title="Refresh SLA Data">
                 <i class="bi bi-arrow-clockwise"></i> Refresh
             </button>
         </div>
@@ -890,11 +893,11 @@ function updateSLADisplay(taskId) {
                 
                 display.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 
-                // Visual warnings
+                // Visual warnings and overdue handling
                 display.classList.remove('countdown-display--warning', 'countdown-display--expired');
                 if (data.is_late) {
                     display.classList.add('countdown-display--expired');
-                    display.textContent = 'LATE: ' + formatTime(data.late_seconds);
+                    display.textContent = 'OVERDUE: ' + formatTime(data.late_seconds);
                 } else if (remaining <= 600) {
                     display.classList.add('countdown-display--warning');
                 }
@@ -918,7 +921,22 @@ function updateTaskTiming(taskId, data) {
         
         if (timeUsed) timeUsed.textContent = formatTimeHours(data.active_seconds);
         if (timeRemaining) timeRemaining.textContent = formatTimeHours(data.remaining_seconds);
-        if (timePaused) timePaused.textContent = formatTimeHours(data.pause_duration);
+        if (timePaused) {
+            // Calculate current pause duration for on_break tasks
+            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+            if (taskCard && taskCard.dataset.status === 'on_break') {
+                const pauseStart = taskCard.dataset.pauseStart;
+                if (pauseStart) {
+                    const currentPause = Math.floor((Date.now() - parseInt(pauseStart)) / 1000);
+                    const totalPause = (data.pause_duration || 0) + currentPause;
+                    timePaused.textContent = formatTimeHours(totalPause);
+                } else {
+                    timePaused.textContent = formatTimeHours(data.pause_duration || 0);
+                }
+            } else {
+                timePaused.textContent = formatTimeHours(data.pause_duration || 0);
+            }
+        }
     }
 }
 
@@ -1038,8 +1056,37 @@ window.checkSLAStatus = function() {
 
 window.forceSLARefresh = function() {
     console.log('Forcing SLA Dashboard refresh...');
-    refreshSLADashboard();
+    
+    // Show loading state
+    const refreshBtn = document.querySelector('.card__header button');
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i> Refreshing...';
+    }
+    
+    // Force refresh both SLA and task statuses
+    Promise.all([
+        refreshSLADashboard(),
+        refreshTaskStatuses()
+    ]).finally(() => {
+        // Reset button state
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
+        }
+        showNotification('SLA Dashboard refreshed', 'success');
+    });
 };
+
+// Add CSS for spin animation
+const style = document.createElement('style');
+style.textContent = `
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+`;
+document.head.appendChild(style);
 
 // Log available debug commands
 console.log('SLA Dashboard Debug Commands Available:');
@@ -1048,18 +1095,63 @@ console.log('- disableSLADebug() - Disable detailed logging');
 console.log('- checkSLAStatus() - Show current SLA status');
 console.log('- forceSLARefresh() - Force refresh SLA data');
 
+function refreshTaskStatuses() {
+    const currentDate = '<?= $selected_date ?>';
+    const currentUserId = <?= $current_user_id ?? $_SESSION['user_id'] ?? 1 ?>;
+    
+    // Return promise for better handling
+    return fetch(`/ergon/api/daily_planner_workflow.php?action=task-statuses&date=${currentDate}&user_id=${currentUserId}&t=${Date.now()}`, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Cache-Control': 'no-cache'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.tasks) {
+            data.tasks.forEach(task => {
+                const taskCard = document.querySelector(`[data-task-id="${task.id}"]`);
+                if (taskCard && task.status === 'postponed') {
+                    // Update postponed task UI if not already updated
+                    if (!taskCard.dataset.postponed) {
+                        taskCard.dataset.status = 'postponed';
+                        taskCard.dataset.postponed = 'true';
+                        taskCard.style.opacity = '0.6';
+                        taskCard.style.pointerEvents = 'none';
+                        
+                        const statusBadge = taskCard.querySelector('.badge');
+                        if (statusBadge) {
+                            statusBadge.textContent = 'Postponed';
+                            statusBadge.className = 'badge badge--warning';
+                        }
+                        
+                        const actionsDiv = taskCard.querySelector('.task-card__actions');
+                        if (actionsDiv) {
+                            actionsDiv.innerHTML = `<span class="badge badge--warning"><i class="bi bi-calendar-plus"></i> Postponed</span>`;
+                        }
+                    }
+                }
+            });
+        }
+    })
+    .catch(error => {
+        console.log('Task status refresh failed:', error.message);
+    });
+}
+
 function refreshSLADashboard() {
     const currentDate = '<?= $selected_date ?>';
     const currentUserId = <?= $current_user_id ?? $_SESSION['user_id'] ?? 1 ?>;
     
-    console.log(`Fetching SLA data for User ${currentUserId} on ${currentDate}`);
-    
-    // Fetch user-specific SLA data
-    fetch(`/ergon/api/daily_planner_workflow.php?action=sla-dashboard&date=${currentDate}&user_id=${currentUserId}`, {
+    // Return promise for better handling
+    return fetch(`/ergon/api/daily_planner_workflow.php?action=sla-dashboard&date=${currentDate}&user_id=${currentUserId}&t=${Date.now()}`, {
         method: 'GET',
         credentials: 'same-origin',
         headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Cache-Control': 'no-cache'
         }
     })
     .then(response => {
@@ -1269,6 +1361,9 @@ function startTask(taskId) {
     .then(data => {
         if (data.success) {
             updateTaskUI(taskId, 'start');
+            startSLATimer(taskId);
+            refreshSLADashboard();
+            refreshTaskStatuses();
             showNotification('Task started', 'success');
         } else {
             alert('Error: ' + data.message);
@@ -1294,6 +1389,9 @@ function pauseTask(taskId) {
     .then(data => {
         if (data.success) {
             updateTaskUI(taskId, 'pause');
+            stopSLATimer(taskId);
+            refreshSLADashboard();
+            refreshTaskStatuses();
             showNotification('Task paused', 'info');
         } else {
             alert('Error: ' + data.message);
@@ -1319,6 +1417,9 @@ function resumeTask(taskId) {
     .then(data => {
         if (data.success) {
             updateTaskUI(taskId, 'resume');
+            startSLATimer(taskId);
+            refreshSLADashboard();
+            refreshTaskStatuses();
             showNotification('Task resumed', 'success');
         } else {
             alert('Error: ' + data.message);
@@ -1454,6 +1555,11 @@ function submitPostpone() {
             
             showNotification(`Task postponed to ${newDate}`, 'success');
             
+            // Immediately refresh SLA Dashboard to reflect postponed task
+            setTimeout(() => {
+                refreshSLADashboard();
+            }, 500);
+            
             // Prevent any auto-refresh by marking as processed
             window.postponedTasks = window.postponedTasks || new Set();
             window.postponedTasks.add(taskId);
@@ -1493,6 +1599,7 @@ function updateTaskUI(taskId, action, data = {}) {
             statusBadge.textContent = 'In Progress';
             statusBadge.className = 'badge badge--in_progress';
             taskCard.className = 'task-card task-card--active';
+            delete taskCard.dataset.pauseStart; // Clear pause start time
             newActions = `
                 <button class="btn btn--sm btn--warning" onclick="pauseTask(${taskId})">
                     <i class="bi bi-pause"></i> Break
@@ -1508,6 +1615,8 @@ function updateTaskUI(taskId, action, data = {}) {
             statusBadge.textContent = 'On Break';
             statusBadge.className = 'badge badge--on_break';
             taskCard.className = 'task-card task-card--break';
+            taskCard.dataset.pauseStart = Date.now();
+            taskCard.dataset.pauseTime = new Date().toISOString(); // Store pause timestamp
             newActions = `
                 <button class="btn btn--sm btn--success" onclick="resumeTask(${taskId})">
                     <i class="bi bi-play"></i> Resume
@@ -1578,7 +1687,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('progressValue').textContent = this.value;
         }
     }
-    // Initialize SLA timers for active tasks
+    // Initialize SLA timers for active tasks immediately
     document.querySelectorAll('.task-card').forEach(item => {
         const taskId = item.dataset.taskId;
         const status = item.dataset.status;
@@ -1586,31 +1695,47 @@ document.addEventListener('DOMContentLoaded', function() {
         if (status === 'in_progress') {
             startSLATimer(taskId);
         }
+        
+        // Set pause start time for tasks on break from pause_time
+        if (status === 'on_break') {
+            const pauseTime = item.dataset.pauseTime;
+            if (pauseTime) {
+                item.dataset.pauseStart = new Date(pauseTime).getTime();
+            } else {
+                item.dataset.pauseStart = Date.now();
+            }
+        }
     });
     
-    // Initialize SLA Dashboard immediately
+    // Initialize SLA Dashboard and force refresh all task data immediately
     refreshSLADashboard();
     
-    // Set up periodic refresh with stability check
-    let refreshAttempts = 0;
-    const maxRefreshAttempts = 3;
-    
-    const stableRefresh = setInterval(() => {
-        // Only refresh if we have valid data or haven't exceeded attempts
-        if (lastValidSLAData || refreshAttempts < maxRefreshAttempts) {
-            refreshSLADashboard();
-            refreshAttempts++;
-        } else {
-            console.log('SLA Dashboard refresh paused due to repeated failures');
-            clearInterval(stableRefresh);
-            // Try to restart after 2 minutes
-            setTimeout(() => {
-                refreshAttempts = 0;
-                refreshSLADashboard();
-                setInterval(refreshSLADashboard, 30000);
-            }, 120000);
+    // Force update all task timings on page load
+    document.querySelectorAll('.task-card').forEach(item => {
+        const taskId = item.dataset.taskId;
+        if (taskId) {
+            updateSLADisplay(taskId);
         }
-    }, 30000);
+    });
+    
+    // Auto-refresh every 1 second for real-time updates
+    setInterval(() => {
+        refreshSLADashboard();
+        refreshTaskStatuses();
+        // Update all active task timers
+        document.querySelectorAll('.task-card[data-status="in_progress"], .task-card[data-status="on_break"]').forEach(item => {
+            const taskId = item.dataset.taskId;
+            if (taskId) updateSLADisplay(taskId);
+        });
+    }, 1000);
+    
+    // Page visibility API to refresh when user returns to tab
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            refreshSLADashboard();
+            refreshTaskStatuses();
+        }
+    });
     
     // Percentage selection
     document.querySelectorAll('.percentage-btn').forEach(btn => {
@@ -1690,9 +1815,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     message += ' - Task continues in progress';
                 }
                 
-                setTimeout(() => {
-                    showNotification(message, 'success');
-                }, 500);
+                // Immediate refresh after progress update
+                refreshSLADashboard();
+                refreshTaskStatuses();
+                showNotification(message, 'success');
             } else {
                 alert('Failed to update progress: ' + data.message);
             }

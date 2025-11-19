@@ -20,7 +20,7 @@ class Database {
             if (Environment::isDevelopment()) {
                 // Local development settings
                 $this->host = 'localhost';
-                $this->db_name = 'ergon';
+                $this->db_name = 'ergon_db';
                 $this->username = 'root';
                 $this->password = '';
             } else {

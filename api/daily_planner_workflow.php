@@ -161,10 +161,10 @@ try {
                     
                     // Calculate pause duration
                     $pauseDuration = $task['pause_time'] ? (strtotime($now) - strtotime($task['pause_time'])) : 0;
-                    $newTotalPause = intval($task['total_pause_duration'] ?? 0) + $pauseDuration;
+                    $newTotalPause = intval($task['pause_duration'] ?? 0) + $pauseDuration;
                     
                     // Resume the task
-                    $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', resume_time = ?, total_pause_duration = ?, pause_time = NULL WHERE id = ?");
+                    $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', resume_time = ?, pause_duration = ?, pause_time = NULL WHERE id = ?");
                     $result = $stmt->execute([$now, $newTotalPause, $taskId]);
                     
                     if ($result) {
@@ -181,7 +181,7 @@ try {
                             'message' => 'Task resumed successfully',
                             'task_id' => $taskId,
                             'status' => 'in_progress',
-                            'total_pause_duration' => $newTotalPause
+                            'pause_duration' => $newTotalPause
                         ]);
                     } else {
                         echo json_encode(['success' => false, 'message' => 'Failed to resume task']);
@@ -394,7 +394,7 @@ try {
                             'sla_seconds' => $slaSeconds,
                             'active_seconds' => $totalActiveTime,
                             'remaining_seconds' => $remainingTime,
-                            'pause_duration' => $task['total_pause_duration'] ?? 0,
+                            'pause_duration' => $task['pause_duration'] ?? 0,
                             'is_late' => $isLate,
                             'late_seconds' => $lateTime,
                             'start_time' => $task['start_time'],
@@ -458,7 +458,7 @@ try {
                         $totalActive += $activeTime;
                         
                         // Pause time
-                        $totalPause += intval($task['total_pause_duration'] ?? 0);
+                        $totalPause += intval($task['pause_duration'] ?? 0);
                         
                         // Count by status
                         switch ($task['status']) {
