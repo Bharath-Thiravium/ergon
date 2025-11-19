@@ -45,6 +45,7 @@ ob_end_clean();
     <link href="/ergon/assets/css/mobile-critical-fixes.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/nav-simple-fix.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/browser-fixes.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/production-fixes.css?v=1.0" rel="stylesheet">
     <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
     <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
     <?php endif; ?>
