@@ -44,6 +44,10 @@ ob_end_clean();
     <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/mobile-critical-fixes.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/nav-simple-fix.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/browser-fixes.css?v=1.0" rel="stylesheet">
+    <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
+    <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
+    <?php endif; ?>
 
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
@@ -638,7 +642,12 @@ ob_end_clean();
         if (!list) return;
         
         fetch('/ergon/api/notifications.php')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success && data.notifications && data.notifications.length > 0) {
                 list.innerHTML = data.notifications.map(function(notif) {
@@ -657,8 +666,9 @@ ob_end_clean();
             }
         })
         .catch(error => {
-            console.error('Notification error:', error);
-            list.innerHTML = '<div class="notification-loading">Failed to load notifications</div>';
+            console.warn('Notification loading failed:', error.message);
+            list.innerHTML = '<div class="notification-loading">Unable to load notifications</div>';
+            updateNotificationBadge(0);
         });
     }
     
@@ -964,14 +974,22 @@ ob_end_clean();
         }
         
         fetch('/ergon/attendance/status')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success && data.attendance) {
                 attendanceState = data.attendance.check_out ? 'out' : 'in';
                 updateAttendanceButton();
             }
         })
-        .catch(error => console.log('Status check failed:', error));
+        .catch(error => {
+            console.warn('Attendance status check failed:', error.message);
+            // Keep default state on error
+        });
     }
     
     // Mobile Menu Functions

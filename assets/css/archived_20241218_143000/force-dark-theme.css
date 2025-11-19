@@ -1,16 +1,16 @@
 /* Force Dark Theme - Override Everything */
 
 /* Apply to ALL elements universally */
-[data-theme="dark"] *,
+[data-theme='dark'] *,
 .theme-dark * {
   color: #e2e8f0 !important;
   background-color: transparent !important;
 }
 
 /* Force dark backgrounds on containers */
-[data-theme="dark"] body,
-[data-theme="dark"] html,
-[data-theme="dark"] .main-content,
+[data-theme='dark'] body,
+[data-theme='dark'] html,
+[data-theme='dark'] .main-content,
 .theme-dark body,
 .theme-dark html,
 .theme-dark .main-content {
@@ -19,10 +19,10 @@
 }
 
 /* All container elements */
-[data-theme="dark"] div,
-[data-theme="dark"] section,
-[data-theme="dark"] form,
-[data-theme="dark"] fieldset,
+[data-theme='dark'] div,
+[data-theme='dark'] section,
+[data-theme='dark'] form,
+[data-theme='dark'] fieldset,
 .theme-dark div,
 .theme-dark section,
 .theme-dark form,
@@ -33,9 +33,9 @@
 }
 
 /* All input elements */
-[data-theme="dark"] input,
-[data-theme="dark"] textarea,
-[data-theme="dark"] select,
+[data-theme='dark'] input,
+[data-theme='dark'] textarea,
+[data-theme='dark'] select,
 .theme-dark input,
 .theme-dark textarea,
 .theme-dark select {
@@ -46,8 +46,8 @@
 }
 
 /* All button elements */
-[data-theme="dark"] button,
-[data-theme="dark"] .btn,
+[data-theme='dark'] button,
+[data-theme='dark'] .btn,
 .theme-dark button,
 .theme-dark .btn {
   background: #374151 !important;
@@ -57,38 +57,38 @@
 }
 
 /* Primary button dark mode */
-[data-theme="dark"] .btn--primary,
+[data-theme='dark'] .btn--primary,
 .theme-dark .btn--primary {
   background: linear-gradient(135deg, #3b82f6 0%, #701dd8 100%) !important;
   border-color: #3b82f6 !important;
 }
 
 /* Override any white or light backgrounds */
-[data-theme="dark"] [class*="white"],
-[data-theme="dark"] [class*="light"],
-[data-theme="dark"] [class*="bg-"],
-.theme-dark [class*="white"],
-.theme-dark [class*="light"],
-.theme-dark [class*="bg-"] {
+[data-theme='dark'] [class*='white'],
+[data-theme='dark'] [class*='light'],
+[data-theme='dark'] [class*='bg-'],
+.theme-dark [class*='white'],
+.theme-dark [class*='light'],
+.theme-dark [class*='bg-'] {
   background: #1e293b !important;
   background-color: #1e293b !important;
 }
 
 /* Force all text to be light */
-[data-theme="dark"] h1,
-[data-theme="dark"] h2,
-[data-theme="dark"] h3,
-[data-theme="dark"] h4,
-[data-theme="dark"] h5,
-[data-theme="dark"] h6,
-[data-theme="dark"] p,
-[data-theme="dark"] span,
-[data-theme="dark"] label,
-[data-theme="dark"] div,
-[data-theme="dark"] td,
-[data-theme="dark"] th,
-[data-theme="dark"] li,
-[data-theme="dark"] a,
+[data-theme='dark'] h1,
+[data-theme='dark'] h2,
+[data-theme='dark'] h3,
+[data-theme='dark'] h4,
+[data-theme='dark'] h5,
+[data-theme='dark'] h6,
+[data-theme='dark'] p,
+[data-theme='dark'] span,
+[data-theme='dark'] label,
+[data-theme='dark'] div,
+[data-theme='dark'] td,
+[data-theme='dark'] th,
+[data-theme='dark'] li,
+[data-theme='dark'] a,
 .theme-dark h1,
 .theme-dark h2,
 .theme-dark h3,
@@ -107,9 +107,9 @@
 }
 
 /* Specific form elements */
-[data-theme="dark"] .preference-form,
-[data-theme="dark"] .password-form,
-[data-theme="dark"] .profile-form,
+[data-theme='dark'] .preference-form,
+[data-theme='dark'] .password-form,
+[data-theme='dark'] .profile-form,
 .theme-dark .preference-form,
 .theme-dark .password-form,
 .theme-dark .profile-form {
@@ -119,11 +119,11 @@
 }
 
 /* Override Bootstrap and other framework styles */
-[data-theme="dark"] .card,
-[data-theme="dark"] .card-body,
-[data-theme="dark"] .card-header,
-[data-theme="dark"] .form-group,
-[data-theme="dark"] .form-control,
+[data-theme='dark'] .card,
+[data-theme='dark'] .card-body,
+[data-theme='dark'] .card-header,
+[data-theme='dark'] .form-group,
+[data-theme='dark'] .form-control,
 .theme-dark .card,
 .theme-dark .card-body,
 .theme-dark .card-header,

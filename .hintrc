@@ -1,0 +1,11 @@
+{
+  "extends": ["web-recommended"],
+  "hints": {
+    "meta-viewport": "error",
+    "button-type": "warning",
+    "css-prefix-order": "off",
+    "detect-css-reflows/paint": "off",
+    "compat-api/css": "off",
+    "detect-css-reflows/composite": "off"
+  }
+}

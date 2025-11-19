@@ -1,0 +1,18 @@
+{
+  "name": "ergon",
+  "version": "1.0.0",
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "stylelint": "^16.25.0",
+    "stylelint-config-recommended": "^17.0.0",
+    "stylelint-config-standard": "^39.0.1"
+  },
+  "scripts": {
+    "lint:css": "stylelint \"assets/css/**/*.css\" --ignore-path .stylelintignore",
+    "fix:css": "stylelint \"assets/css/**/*.css\" --fix --ignore-path .stylelintignore",
+    "format:css": "prettier --write \"assets/css/**/*.css\"",
+    "css:check": "npm run lint:css && npm run format:css",
+    "css:build": "npm run fix:css && npm run format:css",
+    "precommit": "npm run css:check"
+  }
+}

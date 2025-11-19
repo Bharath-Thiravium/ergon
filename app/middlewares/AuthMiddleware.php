@@ -3,6 +3,20 @@ require_once __DIR__ . '/../helpers/SessionManager.php';
 
 class AuthMiddleware {
     public static function requireAuth() {
+        // Set secure session cookie parameters before starting session
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+            $domain = $_SERVER['HTTP_HOST'];
+            session_set_cookie_params([
+                'lifetime' => 28800,
+                'path' => '/ergon/',
+                'domain' => $domain,
+                'secure' => $isSecure,
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]);
+        }
+        
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -30,20 +44,6 @@ class AuthMiddleware {
         
         // Update last activity
         $_SESSION['last_activity'] = time();
-        
-        // Set secure session cookie parameters
-        if (!headers_sent()) {
-            $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
-            $domain = $_SERVER['HTTP_HOST'];
-            session_set_cookie_params([
-                'lifetime' => 28800,
-                'path' => '/ergon/',
-                'domain' => $domain,
-                'secure' => $isSecure,
-                'httponly' => true,
-                'samesite' => 'Lax'
-            ]);
-        }
     }
     
     public static function requireRole($requiredRole) {
