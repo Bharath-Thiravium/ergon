@@ -487,20 +487,6 @@
   .task-title {
     font-size: var(--font-size-base);
   }
-}var(--font-size-base);
-  }
-}
-
-@media screen and (min-resolution: 2dppx) {
-  .task-card__sla {
-    border-width: 0.5px;
-  }
-  
-  .progress-bar {
-    height: 6px;
-  }
-}var(--font-size-base);
-  }
 }
 
 @media screen and (min-resolution: 2dppx) {

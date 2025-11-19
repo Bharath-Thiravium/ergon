@@ -104,21 +104,6 @@ $content = ob_start();
                              data-pause-duration="<?= $task['pause_duration'] ?? 0 ?>">
                             
                             <div class="task-card__content">
-                                <div class="task-card__sla">
-                                    <div class="sla-time" title="Service Level Agreement: <?= number_format($slaHours, 2) ?> hours"><?= number_format($slaHours, 2) ?>h</div>
-                                    <div class="sla-label">SLA</div>
-                                    <?php if ($status === 'in_progress'): ?>
-                                        <div class="countdown-timer" id="countdown-<?= $taskId ?>">
-                                            <div class="countdown-display"><?= $timeDisplay ?></div>
-                                            <div class="countdown-label">Left</div>
-                                        </div>
-                                    <?php elseif ($status === 'not_started' || $status === 'assigned'): ?>
-                                        <div class="sla-info">
-                                            <div class="sla-total"><?= sprintf('%02d:%02d:%02d', (int)floor($slaHours), (int)floor((($slaHours - floor($slaHours)) * 60)), 0) ?></div>
-                                            <div class="sla-total-label">Total</div>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
                                 <div class="task-card__header">
                                     <h4 class="task-card__title">
                                     <?php 
@@ -164,13 +149,13 @@ $content = ob_start();
                                 $remainingSeconds = max(0, $slaDuration - $activeSeconds);
                                 ?>
                                 <div class="task-card__timing" id="timing-<?= $taskId ?>">
+                                    <div class="countdown-timer" id="countdown-<?= $taskId ?>">
+                                        <div class="countdown-display"><?= $timeDisplay ?></div>
+                                        <div class="countdown-label"><?= $status === 'in_progress' ? 'Remaining' : ($status === 'on_break' ? 'Paused' : 'SLA Time') ?></div>
+                                    </div>
                                     <div class="timing-info">
                                         <span class="timing-label">Time Used:</span>
                                         <span class="timing-value time-used"><?= (int)floor($activeSeconds/3600) ?>h <?= (int)floor(($activeSeconds%3600)/60) ?>m</span>
-                                    </div>
-                                    <div class="timing-info">
-                                        <span class="timing-label">Remaining Time:</span>
-                                        <span class="timing-value time-remaining"><?= (int)floor($remainingSeconds/3600) ?>h <?= (int)floor(($remainingSeconds%3600)/60) ?>m</span>
                                     </div>
                                     <div class="timing-info">
                                         <span class="timing-label">Pause Duration:</span>
@@ -503,7 +488,7 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
     top: 0;
     bottom: 0;
     width: 2px;
-    background: #e67e22;
+    /*background: #e67e22;*/
     border-radius: 2px 0 0 2px;
 }
 
@@ -916,6 +901,21 @@ function updateSLADisplay(taskId) {
             
             // Update individual task timing display
             updateTaskTiming(taskId, data);
+            
+            // Update countdown label based on status
+            const label = document.querySelector(`#countdown-${taskId} .countdown-label`);
+            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+            
+            if (label && taskCard) {
+                const status = taskCard.dataset.status;
+                if (status === 'in_progress') {
+                    label.textContent = 'Remaining';
+                } else if (status === 'on_break') {
+                    label.textContent = 'Paused';
+                } else {
+                    label.textContent = 'SLA Time';
+                }
+            }
         }
     })
     .catch(error => {
@@ -1025,6 +1025,10 @@ function updateSLADashboardStats(stats) {
         const completionRate = (stats.completed_tasks / stats.total_tasks) * 100;
         progressFills[0].style.width = completionRate + '%';
     }
+    
+    // Force immediate visual update
+    const event = new CustomEvent('slaStatsUpdated', { detail: stats });
+    document.dispatchEvent(event);
     
     console.log('SLA Dashboard stats updated:', stats);
 }
@@ -1567,10 +1571,15 @@ function submitPostpone() {
             
             showNotification(`Task postponed to ${newDate}`, 'success');
             
-            // Immediately refresh SLA Dashboard to reflect postponed task
-            setTimeout(() => {
-                refreshSLADashboard();
-            }, 500);
+            // Immediately update SLA Dashboard postponed count
+            const postponedStat = document.querySelector('.stat-item:nth-child(3) .stat-value');
+            if (postponedStat) {
+                const currentCount = parseInt(postponedStat.textContent) || 0;
+                postponedStat.textContent = currentCount + 1;
+            }
+            
+            // Also refresh SLA Dashboard
+            refreshSLADashboard();
             
             // Prevent any auto-refresh by marking as processed
             window.postponedTasks = window.postponedTasks || new Set();
