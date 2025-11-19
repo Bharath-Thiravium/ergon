@@ -363,9 +363,7 @@ class ApiController extends Controller {
     
     public function contactPersons() {
         try {
-            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
+            $pdo = Database::connect();
             
             // Ensure contacts table exists
             $pdo->exec("CREATE TABLE IF NOT EXISTS contacts (
@@ -432,9 +430,7 @@ class ApiController extends Controller {
     
     public function companies() {
         try {
-            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
+            $pdo = Database::connect();
             
             // Get companies from multiple sources
             $companies = [];

@@ -12,9 +12,7 @@ class ContactFollowupController extends Controller {
         }
         
         try {
-            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
+            $pdo = Database::connect();
             
             $contacts = $pdo->query("
                 SELECT c.*, 
@@ -122,9 +120,7 @@ class ContactFollowupController extends Controller {
         }
         
         try {
-            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
+            $pdo = Database::connect();
             
             // Get contacts
             $contacts = $pdo->query("SELECT * FROM contacts ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
@@ -140,9 +136,7 @@ class ContactFollowupController extends Controller {
     
     private function storeStandaloneFollowup() {
         try {
-            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
+            $pdo = Database::connect();
             
             $title = trim($_POST['title'] ?? '');
             $contact_id = $_POST['contact_id'] ?? null;

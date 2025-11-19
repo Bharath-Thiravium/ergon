@@ -11,9 +11,8 @@ class FollowupController extends Controller {
     
     public function index() {
         try {
-            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
+            require_once __DIR__ . '/../config/database.php';
+            $pdo = Database::connect();
             
             $followups = $pdo->query("
                 SELECT f.*, c.name as contact_name, c.company as contact_company 
@@ -41,9 +40,8 @@ class FollowupController extends Controller {
     
     public function store() {
         try {
-            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
+            require_once __DIR__ . '/../config/database.php';
+            $pdo = Database::connect();
             
             // Create tables if they don't exist
             $pdo->exec("CREATE TABLE IF NOT EXISTS contacts (
