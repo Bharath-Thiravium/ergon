@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Responsiveness Test - Ergon</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 20px; }
+        .test-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0; }
+        .test-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; }
+        .test-card h3 { margin-top: 0; color: #333; }
+        .test-link { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 5px; }
+        .test-link:hover { background: #0056b3; }
+        .device-frame { border: 2px solid #333; border-radius: 20px; padding: 10px; margin: 10px 0; }
+        .device-frame iframe { width: 100%; height: 600px; border: none; border-radius: 10px; }
+        .status { padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .status.pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <h1>📱 Ergon Mobile Responsiveness Test Suite</h1>
+    
+    <div class="status pass">
+        <strong>✅ Implementation Complete</strong><br>
+        All mobile responsive fixes have been implemented and are ready for testing.
+    </div>
+    
+    <h2>🧪 Quick Test Links</h2>
+    <div class="test-grid">
+        <div class="test-card">
+            <h3>Dashboard Pages</h3>
+            <a href="/ergon/dashboard?validate=mobile" class="test-link">User Dashboard</a>
+            <a href="/ergon/dashboard?validate=mobile" class="test-link">Admin Dashboard</a>
+            <a href="/ergon/dashboard?validate=mobile" class="test-link">Owner Dashboard</a>
+        </div>
+        
+        <div class="test-card">
+            <h3>Data Management</h3>
+            <a href="/ergon/tasks?validate=mobile" class="test-link">Tasks</a>
+            <a href="/ergon/leaves?validate=mobile" class="test-link">Leaves</a>
+            <a href="/ergon/expenses?validate=mobile" class="test-link">Expenses</a>
+        </div>
+        
+        <div class="test-card">
+            <h3>Forms & Creation</h3>
+            <a href="/ergon/tasks/create?validate=mobile" class="test-link">Create Task</a>
+            <a href="/ergon/leaves/create?validate=mobile" class="test-link">Request Leave</a>
+            <a href="/ergon/expenses/create?validate=mobile" class="test-link">Submit Expense</a>
+        </div>
+        
+        <div class="test-card">
+            <h3>System Pages</h3>
+            <a href="/ergon/users?validate=mobile" class="test-link">Users</a>
+            <a href="/ergon/departments?validate=mobile" class="test-link">Departments</a>
+            <a href="/ergon/settings?validate=mobile" class="test-link">Settings</a>
+        </div>
+    </div>
+    
+    <h2>📏 Device Testing</h2>
+    <p>Use browser DevTools to test these viewport sizes:</p>
+    <ul>
+        <li><strong>iPhone SE:</strong> 375×667px</li>
+        <li><strong>iPhone 12:</strong> 390×844px</li>
+        <li><strong>iPhone 12 Pro Max:</strong> 428×926px</li>
+        <li><strong>iPad:</strong> 768×1024px</li>
+        <li><strong>iPad Pro:</strong> 834×1194px</li>
+    </ul>
+    
+    <h2>✅ Validation Checklist</h2>
+    <div class="test-grid">
+        <div class="test-card">
+            <h3>Layout & Viewport</h3>
+            <ul>
+                <li>No horizontal scrollbars</li>
+                <li>Content fits within viewport</li>
+                <li>Grid collapses properly</li>
+                <li>Text remains readable</li>
+            </ul>
+        </div>
+        
+        <div class="test-card">
+            <h3>Navigation</h3>
+            <ul>
+                <li>Hamburger menu works</li>
+                <li>Swipe gestures functional</li>
+                <li>Dropdowns reposition correctly</li>
+                <li>Touch targets ≥44px</li>
+            </ul>
+        </div>
+        
+        <div class="test-card">
+            <h3>Tables & Data</h3>
+            <ul>
+                <li>Horizontal scroll enabled</li>
+                <li>Action buttons accessible</li>
+                <li>Content doesn't get cut off</li>
+                <li>Scroll indicators present</li>
+            </ul>
+        </div>
+        
+        <div class="test-card">
+            <h3>Forms & Modals</h3>
+            <ul>
+                <li>Single column layout</li>
+                <li>No iOS zoom on input focus</li>
+                <li>Modals full-screen on mobile</li>
+                <li>Proper focus management</li>
+            </ul>
+        </div>
+    </div>
+    
+    <h2>🚀 Performance Testing</h2>
+    <p>Run these tools to validate performance:</p>
+    <ul>
+        <li><strong>Lighthouse:</strong> Target ≥90 mobile score</li>
+        <li><strong>PageSpeed Insights:</strong> Core Web Vitals</li>
+        <li><strong>axe DevTools:</strong> Accessibility compliance</li>
+    </ul>
+    
+    <div class="status pass">
+        <strong>🎯 Success Criteria</strong><br>
+        • All touch targets ≥44px<br>
+        • No horizontal overflow<br>
+        • FCP &lt; 2s, LCP &lt; 4s<br>
+        • WCAG 2.1 AA compliant<br>
+        • Lighthouse mobile score ≥90
+    </div>
+    
+    <script>
+        // Auto-open validation console
+        console.log('📱 Mobile Test Suite Loaded');
+        console.log('Add ?validate=mobile to any URL to run automated tests');
+        console.log('Use MobileValidator.runTests() to run manual validation');
+    </script>
+</body>
+</html>
