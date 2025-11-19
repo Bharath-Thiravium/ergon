@@ -12,23 +12,8 @@ class ContactFollowupController extends Controller {
         }
         
         try {
-            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
-            
-            $contacts = $pdo->query("
-                SELECT c.*, 
-                       COUNT(f.id) as total_followups,
-                       SUM(CASE WHEN f.status = 'pending' AND f.follow_up_date < CURDATE() THEN 1 ELSE 0 END) as overdue_count,
-                       SUM(CASE WHEN f.status = 'pending' AND f.follow_up_date = CURDATE() THEN 1 ELSE 0 END) as today_count,
-                       MAX(f.follow_up_date) as next_followup_date
-                FROM contacts c
-                LEFT JOIN followups f ON c.id = f.contact_id
-                GROUP BY c.id
-                HAVING total_followups > 0
-                ORDER BY next_followup_date ASC
-            ")->fetchAll(PDO::FETCH_ASSOC);
-            
+            $db = Database::connect();
+            $contacts = $this->getContactsWithFollowups($db);
             $this->view('contact_followups/index', ['contacts' => $contacts]);
         } catch (Exception $e) {
             error_log('Contact followups error: ' . $e->getMessage());
@@ -48,16 +33,18 @@ class ContactFollowupController extends Controller {
             // Get all followups for the current user or all if admin/owner
             $sql = "
                 SELECT f.*, c.name as contact_name, c.phone as contact_phone, c.email as contact_email, c.company as contact_company,
-                       'standalone' as followup_type, NULL as task_title
+                       CASE WHEN f.task_id IS NOT NULL THEN 'task' ELSE 'standalone' END as followup_type,
+                       t.title as task_title
                 FROM followups f 
                 LEFT JOIN contacts c ON f.contact_id = c.id 
+                LEFT JOIN tasks t ON f.task_id = t.id
                 WHERE 1=1
             ";
             
             if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                $sql .= " AND f.user_id = ?";
+                $sql .= " AND (f.user_id = ? OR t.assigned_to = ?)";
                 $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC LIMIT 50");
-                $stmt->execute([$_SESSION['user_id']]);
+                $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
             } else {
                 $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC LIMIT 50");
                 $stmt->execute();
@@ -140,33 +127,77 @@ class ContactFollowupController extends Controller {
     
     private function storeStandaloneFollowup() {
         try {
-            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
+            $db = Database::connect();
             
             $title = trim($_POST['title'] ?? '');
-            $contact_id = $_POST['contact_id'] ?? null;
             $follow_up_date = $_POST['follow_up_date'] ?? date('Y-m-d');
             $description = trim($_POST['description'] ?? '');
+            $task_id = !empty($_POST['task_id']) ? intval($_POST['task_id']) : null;
             
-            if (empty($title) || !$contact_id) {
-                header('Location: /ergon/contacts/followups/create?error=Title and contact required');
+            if (empty($title)) {
+                $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=Title required" : '/ergon/contacts/followups/create?error=Title required';
+                header("Location: $redirectUrl");
                 exit;
             }
             
-            $stmt = $pdo->prepare("INSERT INTO followups (contact_id, user_id, title, description, follow_up_date) VALUES (?, ?, ?, ?, ?)");
-            $result = $stmt->execute([$contact_id, $_SESSION['user_id'], $title, $description, $follow_up_date]);
+            // Handle contact creation/selection
+            $contact_id = null;
+            if (!empty($_POST['contact_name']) || !empty($_POST['contact_company'])) {
+                $contact_id = $this->createOrFindContact($db, $_POST);
+            }
+            
+            // Create follow-up
+            $followup_type = $task_id ? 'task' : 'standalone';
+            $user_id = $task_id ? $this->getTaskAssignedUser($db, $task_id) : $_SESSION['user_id'];
+            
+            $stmt = $db->prepare("INSERT INTO followups (contact_id, user_id, task_id, followup_type, title, description, follow_up_date, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())");
+            $result = $stmt->execute([$contact_id, $user_id, $task_id, $followup_type, $title, $description, $follow_up_date]);
             
             if ($result) {
-                header('Location: /ergon/contacts/followups?success=Follow-up created');
+                $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?success=Follow-up added" : '/ergon/contacts/followups?success=Follow-up created';
+                header("Location: $redirectUrl");
             } else {
-                header('Location: /ergon/contacts/followups/create?error=Failed to create');
+                $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=Failed to add follow-up" : '/ergon/contacts/followups/create?error=Failed to create';
+                header("Location: $redirectUrl");
             }
         } catch (Exception $e) {
             error_log('Store followup error: ' . $e->getMessage());
-            header('Location: /ergon/contacts/followups/create?error=' . urlencode($e->getMessage()));
+            $task_id = !empty($_POST['task_id']) ? intval($_POST['task_id']) : null;
+            $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=" . urlencode($e->getMessage()) : '/ergon/contacts/followups/create?error=' . urlencode($e->getMessage());
+            header("Location: $redirectUrl");
         }
         exit;
+    }
+    
+    private function createOrFindContact($db, $postData) {
+        $contactName = trim($postData['contact_name'] ?? '');
+        $contactCompany = trim($postData['contact_company'] ?? '');
+        $contactPhone = trim($postData['contact_phone'] ?? '');
+        
+        if (empty($contactName) && empty($contactCompany)) {
+            return null;
+        }
+        
+        // Check if contact exists
+        $stmt = $db->prepare("SELECT id FROM contacts WHERE name = ? OR company = ?");
+        $stmt->execute([$contactName, $contactCompany]);
+        $existingContact = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($existingContact) {
+            return $existingContact['id'];
+        }
+        
+        // Create new contact
+        $stmt = $db->prepare("INSERT INTO contacts (name, company, phone, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())");
+        $stmt->execute([$contactName, $contactCompany, $contactPhone]);
+        return $db->lastInsertId();
+    }
+    
+    private function getTaskAssignedUser($db, $task_id) {
+        $stmt = $db->prepare("SELECT assigned_to FROM tasks WHERE id = ?");
+        $stmt->execute([$task_id]);
+        $task = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $task ? $task['assigned_to'] : $_SESSION['user_id'];
     }
     
     public function completeFollowup($id) {
@@ -178,40 +209,30 @@ class ContactFollowupController extends Controller {
         try {
             $db = Database::connect();
             
-            // Check if it's a standalone followup
-            $stmt = $db->prepare("SELECT contact_id FROM followups WHERE id = ?");
+            // Get followup details including task_id
+            $stmt = $db->prepare("SELECT id, contact_id, task_id, status FROM followups WHERE id = ?");
             $stmt->execute([$id]);
             $followup = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($followup) {
-                // Complete standalone followup
+                // Complete the followup
                 $stmt = $db->prepare("UPDATE followups SET status = 'completed', completed_at = NOW() WHERE id = ?");
                 $result = $stmt->execute([$id]);
                 
                 if ($result) {
-                    $this->logHistory($id, 'completed', 'pending', 'Follow-up completed');
+                    $this->logHistory($id, 'completed', $followup['status'], 'Follow-up completed');
+                    
+                    // If this followup is linked to a task, update the task status as well
+                    if ($followup['task_id']) {
+                        $this->updateLinkedTaskStatus($db, $followup['task_id'], 'completed');
+                    }
+                    
                     echo json_encode(['success' => true]);
                 } else {
                     echo json_encode(['success' => false, 'error' => 'Failed to complete']);
                 }
             } else {
-                // Check if it's a task-linked followup
-                $stmt = $db->prepare("SELECT * FROM tasks WHERE id = ? AND type = 'followup'");
-                $stmt->execute([$id]);
-                $task = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($task) {
-                    $stmt = $db->prepare("UPDATE tasks SET status = 'completed' WHERE id = ?");
-                    $result = $stmt->execute([$id]);
-                    
-                    if ($result) {
-                        echo json_encode(['success' => true]);
-                    } else {
-                        echo json_encode(['success' => false, 'error' => 'Failed to complete task']);
-                    }
-                } else {
-                    echo json_encode(['success' => false, 'error' => 'Follow-up not found']);
-                }
+                echo json_encode(['success' => false, 'error' => 'Follow-up not found']);
             }
         } catch (Exception $e) {
             error_log('Complete followup error: ' . $e->getMessage());
@@ -645,126 +666,51 @@ class ContactFollowupController extends Controller {
     }
     
     private function getContactsWithFollowups($db) {
-        // Get contacts with standalone followups
+        // Get contacts with followups (both standalone and task-linked)
         $sql = "
             SELECT c.*, 
-                   COUNT(f.id) as standalone_followups,
+                   COUNT(f.id) as total_followups,
                    SUM(CASE WHEN f.status = 'pending' AND f.follow_up_date < CURDATE() THEN 1 ELSE 0 END) as overdue_count,
                    SUM(CASE WHEN f.status = 'pending' AND f.follow_up_date = CURDATE() THEN 1 ELSE 0 END) as today_count,
                    MAX(f.follow_up_date) as next_followup_date
             FROM contacts c
             LEFT JOIN followups f ON c.id = f.contact_id
+            LEFT JOIN tasks t ON f.task_id = t.id
         ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-            $sql .= " WHERE f.user_id = ? OR f.user_id IS NULL";
-            $stmt = $db->prepare($sql . " GROUP BY c.id");
-            $stmt->execute([$_SESSION['user_id']]);
+            $sql .= " WHERE (f.user_id = ? OR t.assigned_to = ? OR f.id IS NULL)";
+            $stmt = $db->prepare($sql . " GROUP BY c.id HAVING total_followups > 0 ORDER BY next_followup_date ASC");
+            $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
         } else {
-            $stmt = $db->prepare($sql . " GROUP BY c.id");
+            $stmt = $db->prepare($sql . " GROUP BY c.id HAVING total_followups > 0 ORDER BY next_followup_date ASC");
             $stmt->execute();
         }
         
-        $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Add task-linked followup counts
-        foreach ($contacts as &$contact) {
-            $taskSql = "
-                SELECT COUNT(*) as task_followups,
-                       SUM(CASE WHEN t.status != 'completed' AND t.deadline < CURDATE() THEN 1 ELSE 0 END) as task_overdue,
-                       SUM(CASE WHEN t.status != 'completed' AND t.deadline = CURDATE() THEN 1 ELSE 0 END) as task_today
-                FROM tasks t 
-                WHERE t.type = 'followup'
-                  AND (t.title LIKE ? OR t.description LIKE ? OR t.description LIKE ?)
-            ";
-            
-            $searchTerms = [
-                '%' . $contact['name'] . '%',
-                '%' . $contact['name'] . '%', 
-                '%' . $contact['phone'] . '%'
-            ];
-            
-            if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                $taskSql .= " AND t.assigned_to = ?";
-                $searchTerms[] = $_SESSION['user_id'];
-            }
-            
-            $taskStmt = $db->prepare($taskSql);
-            $taskStmt->execute($searchTerms);
-            $taskData = $taskStmt->fetch(PDO::FETCH_ASSOC);
-            
-            $contact['total_followups'] = ($contact['standalone_followups'] ?? 0) + ($taskData['task_followups'] ?? 0);
-            $contact['overdue_count'] += ($taskData['task_overdue'] ?? 0);
-            $contact['today_count'] += ($taskData['task_today'] ?? 0);
-        }
-        
-        // Filter out contacts with no followups
-        $contacts = array_filter($contacts, function($contact) {
-            return $contact['total_followups'] > 0;
-        });
-        
-        // Sort by next followup date
-        usort($contacts, function($a, $b) {
-            $dateA = $a['next_followup_date'] ?? '9999-12-31';
-            $dateB = $b['next_followup_date'] ?? '9999-12-31';
-            return strcmp($dateA, $dateB);
-        });
-        
-        return $contacts;
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     private function getContactFollowups($db, $contact_id) {
-        // Get standalone followups
-        $sql = "SELECT f.*, 'standalone' as followup_type, NULL as task_title FROM followups f WHERE f.contact_id = ?";
+        // Get all followups (both standalone and task-linked) for this contact
+        $sql = "
+            SELECT f.*, 
+                   CASE WHEN f.task_id IS NOT NULL THEN 'task' ELSE 'standalone' END as followup_type,
+                   t.title as task_title
+            FROM followups f 
+            LEFT JOIN tasks t ON f.task_id = t.id
+            WHERE f.contact_id = ?
+        ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-            $sql .= " AND f.user_id = ?";
+            $sql .= " AND (f.user_id = ? OR t.assigned_to = ?)";
             $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC");
-            $stmt->execute([$contact_id, $_SESSION['user_id']]);
+            $stmt->execute([$contact_id, $_SESSION['user_id'], $_SESSION['user_id']]);
         } else {
             $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC");
             $stmt->execute([$contact_id]);
         }
         
-        $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Get task-linked followups - tasks with type='followup' that match contact info
-        $contact = $this->getContactById($db, $contact_id);
-        if ($contact) {
-            $taskSql = "
-                SELECT t.id, t.title, t.description, t.deadline as follow_up_date, t.status, 
-                       t.created_at, t.updated_at, 
-                       CASE WHEN t.status = 'completed' THEN t.updated_at ELSE NULL END as completed_at,
-                       'task-linked' as followup_type, t.title as task_title
-                FROM tasks t 
-                WHERE t.type = 'followup'
-                  AND (t.title LIKE ? OR t.description LIKE ? OR t.description LIKE ?)
-            ";
-            
-            $searchTerms = [
-                '%' . $contact['name'] . '%',
-                '%' . $contact['name'] . '%', 
-                '%' . $contact['phone'] . '%'
-            ];
-            
-            if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                $taskSql .= " AND t.assigned_to = ?";
-                $searchTerms[] = $_SESSION['user_id'];
-            }
-            
-            $taskStmt = $db->prepare($taskSql . " ORDER BY t.deadline DESC");
-            $taskStmt->execute($searchTerms);
-            $taskFollowups = $taskStmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $followups = array_merge($followups, $taskFollowups);
-        }
-        
-        // Sort by date
-        usort($followups, function($a, $b) {
-            return strtotime($b['follow_up_date']) - strtotime($a['follow_up_date']);
-        });
-        
-        return $followups;
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     private function getContactById($db, $contact_id) {
@@ -847,6 +793,66 @@ class ContactFollowupController extends Controller {
         }
     }
     
+    /**
+     * Update the status of a linked task when followup status changes
+     */
+    private function updateLinkedTaskStatus($db, $taskId, $status) {
+        try {
+            // Get current task status
+            $stmt = $db->prepare("SELECT status, progress FROM tasks WHERE id = ?");
+            $stmt->execute([$taskId]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($task) {
+                $oldStatus = $task['status'];
+                $newProgress = ($status === 'completed') ? 100 : $task['progress'];
+                
+                // Update task status and progress
+                $stmt = $db->prepare("UPDATE tasks SET status = ?, progress = ?, updated_at = NOW() WHERE id = ?");
+                $result = $stmt->execute([$status, $newProgress, $taskId]);
+                
+                if ($result) {
+                    // Log task history
+                    $this->logTaskHistory($db, $taskId, 'status_changed', $oldStatus, $status, 'Status updated from linked follow-up completion');
+                    if ($status === 'completed' && $task['progress'] != 100) {
+                        $this->logTaskHistory($db, $taskId, 'progress_updated', $task['progress'] . '%', '100%', 'Progress updated from linked follow-up completion');
+                    }
+                    error_log("Successfully updated linked task {$taskId} status from {$oldStatus} to {$status}");
+                } else {
+                    error_log("Failed to update linked task {$taskId} status");
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Update linked task status error: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Log task history for linked task updates
+     */
+    private function logTaskHistory($db, $taskId, $action, $oldValue = null, $newValue = null, $notes = null) {
+        try {
+            // Ensure task history table exists
+            $db->exec("CREATE TABLE IF NOT EXISTS task_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                task_id INT NOT NULL,
+                action VARCHAR(50) NOT NULL,
+                old_value TEXT,
+                new_value TEXT,
+                notes TEXT,
+                created_by INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_task_id (task_id)
+            )");
+            
+            $stmt = $db->prepare("INSERT INTO task_history (task_id, action, old_value, new_value, notes, created_by) VALUES (?, ?, ?, ?, ?, ?)");
+            return $stmt->execute([$taskId, $action, $oldValue, $newValue, $notes, $_SESSION['user_id']]);
+        } catch (Exception $e) {
+            error_log('Task history log error: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
     public function getStatusBadgeClass($status) {
         return match($status) {
             'completed' => 'success',
@@ -856,6 +862,47 @@ class ContactFollowupController extends Controller {
             'cancelled' => 'danger',
             default => 'secondary'
         };
+    }
+    
+    /**
+     * Update followup status when linked task status changes (called from TasksController)
+     */
+    public static function updateLinkedFollowupStatus($taskId, $status) {
+        try {
+            $db = Database::connect();
+            
+            // Find followups linked to this task
+            $stmt = $db->prepare("SELECT id, status FROM followups WHERE task_id = ?");
+            $stmt->execute([$taskId]);
+            $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($followups as $followup) {
+                $oldStatus = $followup['status'];
+                $newStatus = ($status === 'completed') ? 'completed' : 'pending';
+                
+                if ($oldStatus !== $newStatus) {
+                    // Update followup status
+                    $stmt = $db->prepare("UPDATE followups SET status = ?, updated_at = NOW() WHERE id = ?");
+                    $result = $stmt->execute([$newStatus, $followup['id']]);
+                    
+                    if ($result) {
+                        // Log followup history
+                        $stmt = $db->prepare("INSERT INTO followup_history (followup_id, action, old_value, notes, created_by) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->execute([
+                            $followup['id'], 
+                            'status_changed', 
+                            $oldStatus, 
+                            "Status updated from linked task completion", 
+                            $_SESSION['user_id'] ?? null
+                        ]);
+                        
+                        error_log("Successfully updated linked followup {$followup['id']} status from {$oldStatus} to {$newStatus}");
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Update linked followup status error: ' . $e->getMessage());
+        }
     }
 }
 ?>

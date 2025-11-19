@@ -146,6 +146,74 @@ ob_start();
         </div>
     </div>
     
+    <!-- Follow-ups Section -->
+    <?php if ($task['followup_required']): ?>
+    <div class="card">
+        <div class="card__header">
+            <h3 class="card__title">📞 Follow-ups</h3>
+            <div class="card__actions">
+                <span class="badge badge--info"><?= count($followups) ?> follow-ups</span>
+            </div>
+        </div>
+        <div class="card__body">
+            <?php if (!empty($followups)): ?>
+                <div class="followups-list">
+                    <?php foreach ($followups as $followup): ?>
+                        <?php 
+                        $statusClass = match($followup['status']) {
+                            'completed' => 'success',
+                            'in_progress' => 'info',
+                            'postponed' => 'warning',
+                            'cancelled' => 'danger',
+                            default => 'secondary'
+                        };
+                        $statusIcon = match($followup['status']) {
+                            'completed' => '✅',
+                            'in_progress' => '⚡',
+                            'postponed' => '🔄',
+                            'cancelled' => '❌',
+                            default => '⏳'
+                        };
+                        $isOverdue = strtotime($followup['follow_up_date']) < strtotime('today') && $followup['status'] !== 'completed';
+                        ?>
+                        <div class="followup-item <?= $followup['status'] ?> <?= $isOverdue ? 'overdue' : '' ?>">
+                            <div class="followup-header">
+                                <h4><?= htmlspecialchars($followup['title']) ?></h4>
+                                <div class="followup-meta">
+                                    <span class="badge badge--<?= $statusClass ?>"><?= $statusIcon ?> <?= ucfirst(str_replace('_', ' ', $followup['status'])) ?></span>
+                                    <span class="followup-date <?= $isOverdue ? 'overdue' : '' ?>">
+                                        📅 <?= date('M d, Y', strtotime($followup['follow_up_date'])) ?>
+                                        <?php if ($isOverdue): ?><span class="overdue-label">OVERDUE</span><?php endif; ?>
+                                    </span>
+                                </div>
+                            </div>
+                            <?php if ($followup['description']): ?>
+                                <div class="followup-description"><?= nl2br(htmlspecialchars($followup['description'])) ?></div>
+                            <?php endif; ?>
+                            <?php if ($followup['contact_name'] || $followup['contact_company']): ?>
+                                <div class="followup-contact">
+                                    <strong>Contact:</strong> 
+                                    <?= htmlspecialchars($followup['contact_name'] ?? '') ?>
+                                    <?php if ($followup['contact_company']): ?>
+                                        (<?= htmlspecialchars($followup['contact_company']) ?>)
+                                    <?php endif; ?>
+                                    <?php if ($followup['contact_phone']): ?>
+                                        - 📞 <?= htmlspecialchars($followup['contact_phone']) ?>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="empty-followups">
+                    <p>📞 No follow-ups created yet.</p>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+    
     <!-- Inline Progress Update -->
     <div id="progressUpdate" class="progress-update progress-update--hidden">
         <div class="progress-update__header">
@@ -305,11 +373,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modal) modal.style.display = 'none';
     };
     
+
     // Close modal when clicking outside
     window.onclick = function(event) {
-        const modal = document.getElementById('historyModal');
-        if (event.target === modal) {
-            modal.style.display = 'none';
+        const historyModal = document.getElementById('historyModal');
+        if (event.target === historyModal) {
+            historyModal.style.display = 'none';
         }
     };
 });
@@ -818,6 +887,155 @@ document.addEventListener('DOMContentLoaded', function() {
 .no-history p {
     margin: 0;
     font-size: 0.9rem;
+}
+
+/* Follow-ups Section */
+.followups-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.followup-item {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    border-left: 4px solid var(--primary);
+}
+
+.followup-item.completed {
+    border-left-color: #10b981;
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.followup-item.overdue {
+    border-left-color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.followup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+    gap: 1rem;
+}
+
+.followup-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.followup-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.followup-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.followup-date.overdue {
+    color: #ef4444;
+    font-weight: 500;
+}
+
+.overdue-label {
+    background: #ef4444;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
+.followup-description {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.followup-contact {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.empty-followups {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+}
+
+.empty-followups p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Modal Footer */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: var(--space-4);
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+@media (max-width: 768px) {
+    .followup-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .followup-meta {
+        width: 100%;
+        justify-content: space-between;
+    }
 }
 </style>
 

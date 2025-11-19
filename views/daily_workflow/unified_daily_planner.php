@@ -154,6 +154,26 @@ $content = ob_start();
                                     </div>
                                 <?php endif; ?>
                                 
+                                <?php
+                                $activeSeconds = $task['active_seconds'] ?? 0;
+                                $pauseSeconds = $task['total_pause_duration'] ?? 0;
+                                $remainingSeconds = max(0, $slaDuration - $activeSeconds);
+                                ?>
+                                <div class="task-card__timing" id="timing-<?= $taskId ?>">
+                                    <div class="timing-info">
+                                        <span class="timing-label">Time Used:</span>
+                                        <span class="timing-value time-used"><?= floor($activeSeconds/3600) ?>h <?= floor(($activeSeconds%3600)/60) ?>m</span>
+                                    </div>
+                                    <div class="timing-info">
+                                        <span class="timing-label">Remaining Time:</span>
+                                        <span class="timing-value time-remaining"><?= floor($remainingSeconds/3600) ?>h <?= floor(($remainingSeconds%3600)/60) ?>m</span>
+                                    </div>
+                                    <div class="timing-info">
+                                        <span class="timing-label">Pause Duration:</span>
+                                        <span class="timing-value time-paused"><?= floor($pauseSeconds/3600) ?>h <?= floor(($pauseSeconds%3600)/60) ?>m</span>
+                                    </div>
+                                </div>
+                                
                                 <div class="task-card__actions" id="actions-<?= $taskId ?>">
                                     <?php if ($status === 'not_started' || $status === 'assigned'): ?>
                                         <button class="btn btn--sm btn--success" onclick="startTask(<?= $taskId ?>)">
@@ -198,6 +218,9 @@ $content = ob_start();
     <div class="card">
         <div class="card__header">
             <h3 class="card__title"><i class="bi bi-speedometer2"></i> SLA Dashboard</h3>
+            <button class="btn btn--sm btn--secondary" onclick="refreshSLADashboard()" title="Refresh SLA Data">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
         </div>
         <div class="card__body">
             <?php
@@ -239,19 +262,19 @@ $content = ob_start();
                 </div>
                 <div class="metric-row">
                     <span class="metric-label">SLA Total Time:</span>
-                    <span class="metric-value sla-total-time"><?= floor($totalPlannedMinutes / 60) ?>h <?= $totalPlannedMinutes % 60 ?>m</span>
+                    <span class="metric-value sla-total-time">Loading...</span>
                 </div>
                 <div class="metric-row">
                     <span class="metric-label">Time Used:</span>
-                    <span class="metric-value sla-used-time"><?= floor($totalActiveMinutes / 60) ?>h <?= round($totalActiveMinutes % 60) ?>m</span>
+                    <span class="metric-value sla-used-time">Loading...</span>
                 </div>
                 <div class="metric-row">
                     <span class="metric-label">Remaining Time:</span>
-                    <span class="metric-value sla-remaining-time">--</span>
+                    <span class="metric-value sla-remaining-time">Loading...</span>
                 </div>
                 <div class="metric-row">
                     <span class="metric-label">Pause Duration:</span>
-                    <span class="metric-value sla-pause-time">--</span>
+                    <span class="metric-value sla-pause-time">Loading...</span>
                 </div>
                 <div class="metric-row" style="display:none;">
                     <span class="metric-label">Late Time:</span>
@@ -685,6 +708,56 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
     border-color: #2563eb;
 }
 
+/* Task timing display */
+.task-card__timing {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+    padding: 0.4rem;
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.75rem;
+}
+
+.timing-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.timing-label {
+    font-size: 0.65rem;
+    color: #64748b;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 0.1rem;
+}
+
+.timing-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #1e293b;
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+}
+
+.task-card--active .timing-value {
+    color: #059669;
+}
+
+.task-card--break .timing-value {
+    color: #d97706;
+}
+
+.task-card--completed .timing-value {
+    color: #6b7280;
+    opacity: 0.7;
+}
+
 
 
 .modal-header {
@@ -797,8 +870,14 @@ function stopSLATimer(taskId) {
 }
 
 function updateSLADisplay(taskId) {
-    fetch(`/ergon/api/daily_planner_workflow.php?action=timer&task_id=${taskId}`)
-    .then(response => response.json())
+    fetch(`/ergon/api/daily_planner_workflow.php?action=timer&task_id=${taskId}`, {
+        method: 'GET',
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             const display = document.querySelector(`#countdown-${taskId} .countdown-display`);
@@ -820,11 +899,26 @@ function updateSLADisplay(taskId) {
                 }
             }
             
-            // Update SLA dashboard if visible
-            updateSLADashboard(data);
+            // Update individual task timing display
+            updateTaskTiming(taskId, data);
         }
     })
-    .catch(error => console.error('SLA update error:', error));
+    .catch(error => {
+        console.log(`Timer unavailable for task ${taskId}:`, error.message);
+    });
+}
+
+function updateTaskTiming(taskId, data) {
+    const timingDiv = document.querySelector(`#timing-${taskId}`);
+    if (timingDiv) {
+        const timeUsed = timingDiv.querySelector('.time-used');
+        const timeRemaining = timingDiv.querySelector('.time-remaining');
+        const timePaused = timingDiv.querySelector('.time-paused');
+        
+        if (timeUsed) timeUsed.textContent = formatTimeHours(data.active_seconds);
+        if (timeRemaining) timeRemaining.textContent = formatTimeHours(data.remaining_seconds);
+        if (timePaused) timePaused.textContent = formatTimeHours(data.pause_duration);
+    }
 }
 
 function formatTime(seconds) {
@@ -835,21 +929,46 @@ function formatTime(seconds) {
 }
 
 function updateSLADashboard(data) {
+    debugSLA('Updating SLA Dashboard', data);
+    
     // Update SLA metrics in dashboard
     const slaTotal = document.querySelector('.sla-total-time');
     const slaUsed = document.querySelector('.sla-used-time');
     const slaRemaining = document.querySelector('.sla-remaining-time');
     const slaPause = document.querySelector('.sla-pause-time');
-    const slaLate = document.querySelector('.sla-late-time');
     
-    if (slaTotal) slaTotal.textContent = formatTime(data.sla_seconds);
-    if (slaUsed) slaUsed.textContent = formatTime(data.active_seconds);
-    if (slaRemaining) slaRemaining.textContent = formatTime(data.remaining_seconds);
-    if (slaPause) slaPause.textContent = formatTime(data.pause_duration);
-    if (slaLate && data.is_late) {
-        slaLate.textContent = formatTime(data.late_seconds);
-        slaLate.parentElement.style.display = 'block';
+    const newValues = {
+        total: formatTimeHours(data.sla_total_seconds || 0),
+        used: formatTimeHours(data.active_seconds || 0),
+        remaining: formatTimeHours(data.remaining_seconds || 0),
+        pause: formatTimeHours(data.pause_seconds || 0)
+    };
+    
+    if (slaTotal) {
+        debugSLA(`Total time: ${slaTotal.textContent} → ${newValues.total}`);
+        slaTotal.textContent = newValues.total;
     }
+    if (slaUsed) {
+        debugSLA(`Used time: ${slaUsed.textContent} → ${newValues.used}`);
+        slaUsed.textContent = newValues.used;
+    }
+    if (slaRemaining) {
+        debugSLA(`Remaining time: ${slaRemaining.textContent} → ${newValues.remaining}`);
+        slaRemaining.textContent = newValues.remaining;
+    }
+    if (slaPause) {
+        debugSLA(`Pause time: ${slaPause.textContent} → ${newValues.pause}`);
+        slaPause.textContent = newValues.pause;
+    }
+    
+    console.log('SLA Dashboard metrics updated:', newValues);
+}
+
+function formatTimeHours(seconds) {
+    if (!seconds || seconds <= 0) return '0h 0m';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
 }
 
 function updateSLADashboardStats(stats) {
@@ -862,33 +981,158 @@ function updateSLADashboardStats(stats) {
         statItems[3].textContent = stats.total_tasks || 0; // Total
     }
     
-    // Update completion rate
-    const completionRate = stats.total_tasks > 0 ? (stats.completed_tasks / stats.total_tasks) * 100 : 0;
+    // Update completion rate in the metrics section
+    const completionRateEl = document.querySelector('.metric-value');
+    if (completionRateEl && stats.total_tasks > 0) {
+        const rate = (stats.completed_tasks / stats.total_tasks) * 100;
+        completionRateEl.textContent = Math.round(rate) + '%';
+    }
+    
+    // Update progress bars
     const progressFills = document.querySelectorAll('.progress-fill');
-    if (progressFills.length > 0) {
+    if (progressFills.length > 0 && stats.total_tasks > 0) {
+        const completionRate = (stats.completed_tasks / stats.total_tasks) * 100;
         progressFills[0].style.width = completionRate + '%';
     }
     
-    console.log('SLA Dashboard updated with new stats:', stats);
+    console.log('SLA Dashboard stats updated:', stats);
 }
 
+// Store the last successful SLA data to prevent reversion
+let lastValidSLAData = null;
+let slaDebugMode = false; // Set to true for debugging
+let slaUpdateCount = 0;
+
+// Debug function to track SLA updates
+function debugSLA(message, data = null) {
+    if (slaDebugMode) {
+        console.log(`[SLA DEBUG ${++slaUpdateCount}] ${message}`, data || '');
+    }
+}
+
+// Console commands for debugging (use in browser console)
+window.enableSLADebug = function() {
+    slaDebugMode = true;
+    console.log('SLA Debug mode enabled. Use disableSLADebug() to turn off.');
+};
+
+window.disableSLADebug = function() {
+    slaDebugMode = false;
+    console.log('SLA Debug mode disabled.');
+};
+
+window.checkSLAStatus = function() {
+    console.log('SLA Dashboard Status:', {
+        debugMode: slaDebugMode,
+        updateCount: slaUpdateCount,
+        lastValidData: lastValidSLAData,
+        currentValues: {
+            total: document.querySelector('.sla-total-time')?.textContent,
+            used: document.querySelector('.sla-used-time')?.textContent,
+            remaining: document.querySelector('.sla-remaining-time')?.textContent,
+            pause: document.querySelector('.sla-pause-time')?.textContent
+        }
+    });
+};
+
+window.forceSLARefresh = function() {
+    console.log('Forcing SLA Dashboard refresh...');
+    refreshSLADashboard();
+};
+
+// Log available debug commands
+console.log('SLA Dashboard Debug Commands Available:');
+console.log('- enableSLADebug() - Enable detailed logging');
+console.log('- disableSLADebug() - Disable detailed logging');
+console.log('- checkSLAStatus() - Show current SLA status');
+console.log('- forceSLARefresh() - Force refresh SLA data');
+
 function refreshSLADashboard() {
-    // Fetch current stats and update dashboard
     const currentDate = '<?= $selected_date ?>';
-    fetch(`/ergon/api/daily_planner_workflow.php?action=stats&date=${currentDate}`)
-    .then(response => response.json())
+    const currentUserId = <?= $current_user_id ?? $_SESSION['user_id'] ?? 1 ?>;
+    
+    console.log(`Fetching SLA data for User ${currentUserId} on ${currentDate}`);
+    
+    // Fetch user-specific SLA data
+    fetch(`/ergon/api/daily_planner_workflow.php?action=sla-dashboard&date=${currentDate}&user_id=${currentUserId}`, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    })
     .then(data => {
-        if (data.success && data.stats) {
-            updateSLADashboardStats(data.stats);
-            console.log('SLA Dashboard refreshed with latest stats');
+        console.log('User SLA Dashboard:', data);
+        
+        if (data.success && data.user_specific) {
+            debugSLA('Received valid SLA data', data);
+            
+            // Store valid data to prevent reversion
+            lastValidSLAData = data;
+            
+            // Update SLA metrics for current user only
+            updateSLADashboard(data);
+            
+            // Update task counts for current user
+            updateSLADashboardStats({
+                total_tasks: data.total_tasks || 0,
+                completed_tasks: data.completed_tasks || 0,
+                in_progress_tasks: data.in_progress_tasks || 0,
+                postponed_tasks: data.postponed_tasks || 0
+            });
+            
+            // Update completion rate for current user
+            const completionRateEl = document.querySelector('.metric-value');
+            if (completionRateEl) {
+                completionRateEl.textContent = (data.completion_rate || 0) + '%';
+            }
+            
+            console.log(`✓ SLA Dashboard updated for User ${data.current_user_id}: ${data.total_tasks} tasks, SLA Total: ${formatTimeHours(data.sla_total_seconds)}`);
+            
+            // Show user info in dashboard title
+            const dashboardTitle = document.querySelector('.card__title');
+            if (dashboardTitle && dashboardTitle.textContent.includes('SLA Dashboard')) {
+                dashboardTitle.innerHTML = `<i class="bi bi-speedometer2"></i> SLA Dashboard (User ${data.current_user_id})`;
+            }
+        } else {
+            debugSLA('Invalid SLA data received, using cached data', data);
+            console.error('Invalid user-specific SLA data, using last valid data:', data);
+            // Use last valid data instead of reverting to defaults
+            if (lastValidSLAData) {
+                debugSLA('Restoring from cache', lastValidSLAData);
+                updateSLADashboard(lastValidSLAData);
+                updateSLADashboardStats({
+                    total_tasks: lastValidSLAData.total_tasks || 0,
+                    completed_tasks: lastValidSLAData.completed_tasks || 0,
+                    in_progress_tasks: lastValidSLAData.in_progress_tasks || 0,
+                    postponed_tasks: lastValidSLAData.postponed_tasks || 0
+                });
+            }
         }
     })
     .catch(error => {
-        console.error('Error refreshing SLA dashboard:', error);
+        console.error('User SLA Dashboard error:', error);
+        // Use last valid data instead of reverting to defaults
+        if (lastValidSLAData) {
+            console.log('Using cached SLA data due to fetch error');
+            updateSLADashboard(lastValidSLAData);
+        } else {
+            // Only set fallback values if no valid data exists
+            updateSLADashboard({
+                sla_total_seconds: 0,
+                active_seconds: 0,
+                remaining_seconds: 0,
+                pause_seconds: 0
+            });
+        }
     });
 }
 
-// Prevent auto-refresh from overriding postponed tasks
+// Prevent auto-refresh from overriding postponed tasks and SLA data
 function preservePostponedTasks() {
     if (window.postponedTasks) {
         window.postponedTasks.forEach(taskId => {
@@ -909,15 +1153,45 @@ function preservePostponedTasks() {
     }
 }
 
-// Override any refresh functions that might revert postponed status
+// Prevent SLA data reversion
+function preserveSLAData() {
+    if (lastValidSLAData) {
+        // Ensure SLA dashboard maintains correct data
+        const slaTotal = document.querySelector('.sla-total-time');
+        const slaUsed = document.querySelector('.sla-used-time');
+        const slaRemaining = document.querySelector('.sla-remaining-time');
+        const slaPause = document.querySelector('.sla-pause-time');
+        
+        // Only update if elements show default/loading values
+        if (slaTotal && (slaTotal.textContent === 'Loading...' || slaTotal.textContent === '0h 0m')) {
+            updateSLADashboard(lastValidSLAData);
+        }
+    }
+}
+
+// Override any refresh functions that might revert postponed status or SLA data
 const originalSetInterval = window.setInterval;
 window.setInterval = function(callback, delay) {
     const wrappedCallback = function() {
         callback();
         preservePostponedTasks();
+        preserveSLAData();
     };
     return originalSetInterval(wrappedCallback, delay);
 };
+
+// Also protect against direct DOM manipulation
+const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+Object.defineProperty(Element.prototype, 'innerHTML', {
+    set: function(value) {
+        originalInnerHTML.set.call(this, value);
+        // Restore SLA data if it was overwritten
+        if (this.classList && this.classList.contains('sla-metrics') && lastValidSLAData) {
+            setTimeout(() => preserveSLAData(), 100);
+        }
+    },
+    get: originalInnerHTML.get
+});
 
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
@@ -984,21 +1258,24 @@ function startTask(taskId) {
     fetch('/ergon/api/daily_planner_workflow.php?action=start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ task_id: parseInt(taskId) })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             updateTaskUI(taskId, 'start');
-            startSLATimer(taskId);
-            showNotification('Task started - SLA timer running', 'success');
+            showNotification('Task started', 'success');
         } else {
             alert('Error: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Start task error:', error);
-        alert('Network error: ' + error.message + '. Check console for details.');
+        alert('Network error. Please refresh the page.');
     });
 }
 
@@ -1006,21 +1283,24 @@ function pauseTask(taskId) {
     fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ task_id: parseInt(taskId) })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             updateTaskUI(taskId, 'pause');
-            stopSLATimer(taskId);
-            showNotification('Task paused - SLA timer stopped', 'info');
+            showNotification('Task paused', 'info');
         } else {
             alert('Error: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Pause task error:', error);
-        alert('Network error in pauseTask: ' + error.message);
+        alert('Network error. Please refresh the page.');
     });
 }
 
@@ -1028,21 +1308,24 @@ function resumeTask(taskId) {
     fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ task_id: parseInt(taskId) })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             updateTaskUI(taskId, 'resume');
-            startSLATimer(taskId);
-            showNotification('Task resumed - SLA timer running', 'success');
+            showNotification('Task resumed', 'success');
         } else {
             alert('Error: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Resume task error:', error);
-        alert('Network error in resumeTask: ' + error.message);
+        alert('Network error. Please refresh the page.');
     });
 }
 
@@ -1217,6 +1500,7 @@ function updateTaskUI(taskId, action, data = {}) {
                     <i class="bi bi-percent"></i> Update Progress
                 </button>
             `;
+            startSLATimer(taskId);
             break;
         case 'pause':
             newStatus = 'on_break';
@@ -1231,6 +1515,7 @@ function updateTaskUI(taskId, action, data = {}) {
                     <i class="bi bi-percent"></i> Update Progress
                 </button>
             `;
+            stopSLATimer(taskId);
             break;
         case 'completed':
             newStatus = 'completed';
@@ -1301,6 +1586,30 @@ document.addEventListener('DOMContentLoaded', function() {
             startSLATimer(taskId);
         }
     });
+    
+    // Initialize SLA Dashboard immediately
+    refreshSLADashboard();
+    
+    // Set up periodic refresh with stability check
+    let refreshAttempts = 0;
+    const maxRefreshAttempts = 3;
+    
+    const stableRefresh = setInterval(() => {
+        // Only refresh if we have valid data or haven't exceeded attempts
+        if (lastValidSLAData || refreshAttempts < maxRefreshAttempts) {
+            refreshSLADashboard();
+            refreshAttempts++;
+        } else {
+            console.log('SLA Dashboard refresh paused due to repeated failures');
+            clearInterval(stableRefresh);
+            // Try to restart after 2 minutes
+            setTimeout(() => {
+                refreshAttempts = 0;
+                refreshSLADashboard();
+                setInterval(refreshSLADashboard, 30000);
+            }, 120000);
+        }
+    }, 30000);
     
     // Percentage selection
     document.querySelectorAll('.percentage-btn').forEach(btn => {

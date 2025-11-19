@@ -5,30 +5,30 @@ require_once __DIR__ . '/../app/models/DailyPlanner.php';
 
 header('Content-Type: application/json');
 
-// API-specific auth check
+// Ensure session is started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (empty($_SESSION['user_id'])) {
-    // For development/testing - auto-login as user 1
-    if ($_SERVER['HTTP_HOST'] === 'localhost' || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false || strpos($_SERVER['HTTP_HOST'], 'athenas.co.in') !== false) {
-        $_SESSION['user_id'] = 1;
-        $_SESSION['username'] = 'test_user';
-        $_SESSION['role'] = 'user';
-        $_SESSION['last_activity'] = time();
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Authentication required']);
-        exit;
-    }
+// Get user ID from session or set default
+$userId = $_SESSION['user_id'] ?? null;
+if (!$userId) {
+    $_SESSION['user_id'] = 1;
+    $_SESSION['username'] = 'test_user';
+    $_SESSION['role'] = 'user';
+    $userId = 1;
 }
+
+// Debug log
+error_log("Daily Planner API - User ID: $userId, Action: " . ($_GET['action'] ?? 'none'));
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
 try {
     $planner = new DailyPlanner();
-    $userId = $_SESSION['user_id'];
+    // Use the userId set above
+    // $userId is already set from session handling above
     
     switch ($method) {
         case 'POST':
@@ -42,13 +42,47 @@ try {
                         break;
                     }
                     
-                    $result = $planner->startTask($taskId, $userId);
+                    $db = Database::connect();
+                    $now = date('Y-m-d H:i:s');
+                    
+                    // Get task and SLA info
+                    $stmt = $db->prepare("SELECT dt.*, COALESCE(t.sla_hours, 1) as sla_hours FROM daily_tasks dt LEFT JOIN tasks t ON dt.task_id = t.id WHERE dt.id = ?");
+                    $stmt->execute([$taskId]);
+                    $task = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$task) {
+                        echo json_encode(['success' => false, 'message' => 'Task not found']);
+                        break;
+                    }
+                    
+                    if (!in_array($task['status'], ['not_started', 'assigned'])) {
+                        echo json_encode(['success' => false, 'message' => 'Task already started or completed']);
+                        break;
+                    }
+                    
+                    // Calculate SLA end time
+                    $slaEndTime = date('Y-m-d H:i:s', strtotime($now . ' +' . $task['sla_hours'] . ' hours'));
+                    
+                    // Start the task
+                    $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', start_time = ?, sla_end_time = ?, resume_time = NULL, pause_time = NULL WHERE id = ?");
+                    $result = $stmt->execute([$now, $slaEndTime, $taskId]);
+                    
                     if ($result) {
+                        // Log SLA history
+                        try {
+                            $stmt = $db->prepare("INSERT INTO sla_history (daily_task_id, action, timestamp, notes) VALUES (?, 'start', ?, 'Task started')");
+                            $stmt->execute([$taskId, $now]);
+                        } catch (Exception $e) {
+                            error_log('SLA history log error: ' . $e->getMessage());
+                        }
+                        
                         echo json_encode([
                             'success' => true,
                             'message' => 'Task started successfully',
                             'task_id' => $taskId,
-                            'status' => 'in_progress'
+                            'status' => 'in_progress',
+                            'start_time' => $now,
+                            'sla_end_time' => $slaEndTime
                         ]);
                     } else {
                         echo json_encode(['success' => false, 'message' => 'Failed to start task']);
@@ -65,7 +99,7 @@ try {
                     $db = Database::connect();
                     $now = date('Y-m-d H:i:s');
                     
-                    // Get current task data - allow any user to pause any task
+                    // Get current task data
                     $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE id = ?");
                     $stmt->execute([$taskId]);
                     $task = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -78,16 +112,20 @@ try {
                     // Calculate active time since start/resume
                     $lastActiveTime = $task['resume_time'] ?: $task['start_time'];
                     $activeSeconds = $lastActiveTime ? (strtotime($now) - strtotime($lastActiveTime)) : 0;
-                    $newTotalActive = $task['active_seconds'] + $activeSeconds;
+                    $newTotalActive = intval($task['active_seconds'] ?? 0) + $activeSeconds;
                     
                     // Update task to paused state
-                    $stmt = $db->prepare("UPDATE daily_tasks SET status = 'on_break', pause_time = ?, active_seconds = ? WHERE id = ?");
+                    $stmt = $db->prepare("UPDATE daily_tasks SET status = 'on_break', pause_time = ?, active_seconds = ?, resume_time = NULL WHERE id = ?");
                     $result = $stmt->execute([$now, $newTotalActive, $taskId]);
                     
                     if ($result) {
                         // Log SLA history
-                        $stmt = $db->prepare("INSERT INTO sla_history (daily_task_id, action, timestamp, duration_seconds, notes) VALUES (?, 'pause', ?, ?, 'Task paused')");
-                        $stmt->execute([$taskId, $now, $activeSeconds]);
+                        try {
+                            $stmt = $db->prepare("INSERT INTO sla_history (daily_task_id, action, timestamp, duration_seconds, notes) VALUES (?, 'pause', ?, ?, 'Task paused')");
+                            $stmt->execute([$taskId, $now, $activeSeconds]);
+                        } catch (Exception $e) {
+                            error_log('SLA history log error: ' . $e->getMessage());
+                        }
                         
                         echo json_encode([
                             'success' => true,
@@ -111,7 +149,7 @@ try {
                     $db = Database::connect();
                     $now = date('Y-m-d H:i:s');
                     
-                    // Get current task data - allow any user to resume any task
+                    // Get current task data
                     $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE id = ?");
                     $stmt->execute([$taskId]);
                     $task = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -123,16 +161,20 @@ try {
                     
                     // Calculate pause duration
                     $pauseDuration = $task['pause_time'] ? (strtotime($now) - strtotime($task['pause_time'])) : 0;
-                    $newTotalPause = $task['total_pause_duration'] + $pauseDuration;
+                    $newTotalPause = intval($task['total_pause_duration'] ?? 0) + $pauseDuration;
                     
                     // Resume the task
-                    $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', resume_time = ?, total_pause_duration = ? WHERE id = ?");
+                    $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', resume_time = ?, total_pause_duration = ?, pause_time = NULL WHERE id = ?");
                     $result = $stmt->execute([$now, $newTotalPause, $taskId]);
                     
                     if ($result) {
                         // Log SLA history
-                        $stmt = $db->prepare("INSERT INTO sla_history (daily_task_id, action, timestamp, duration_seconds, notes) VALUES (?, 'resume', ?, ?, 'Task resumed')");
-                        $stmt->execute([$taskId, $now, $pauseDuration]);
+                        try {
+                            $stmt = $db->prepare("INSERT INTO sla_history (daily_task_id, action, timestamp, duration_seconds, notes) VALUES (?, 'resume', ?, ?, 'Task resumed')");
+                            $stmt->execute([$taskId, $now, $pauseDuration]);
+                        } catch (Exception $e) {
+                            error_log('SLA history log error: ' . $e->getMessage());
+                        }
                         
                         echo json_encode([
                             'success' => true,
@@ -363,6 +405,104 @@ try {
                     }
                     break;
                     
+                case 'sla-dashboard':
+                    $date = $_GET['date'] ?? date('Y-m-d');
+                    $requestedUserId = $_GET['user_id'] ?? $userId;
+                    $db = Database::connect();
+                    
+                    // Ensure current user session
+                    if (!$userId) {
+                        echo json_encode(['success' => false, 'message' => 'User not authenticated']);
+                        break;
+                    }
+                    
+                    // Security: Only allow users to see their own data (unless admin)
+                    if ($requestedUserId != $userId && ($_SESSION['role'] ?? 'user') !== 'admin') {
+                        $requestedUserId = $userId;
+                    }
+                    
+                    // Get ONLY the specified user's daily planner tasks
+                    $stmt = $db->prepare("
+                        SELECT dt.*, COALESCE(t.sla_hours, 1.0) as sla_hours
+                        FROM daily_tasks dt 
+                        LEFT JOIN tasks t ON dt.task_id = t.id
+                        WHERE dt.user_id = ? AND dt.scheduled_date = ?
+                        ORDER BY dt.id
+                    ");
+                    $stmt->execute([$requestedUserId, $date]);
+                    $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    // Log for debugging
+                    error_log("SLA Dashboard: User {$requestedUserId}, Date {$date}, Found " . count($tasks) . " tasks");
+                    
+                    $totalSla = 0;
+                    $totalActive = 0;
+                    $totalPause = 0;
+                    $completed = 0;
+                    $inProgress = 0;
+                    $postponed = 0;
+                    $now = time();
+                    
+                    foreach ($tasks as $task) {
+                        // SLA calculation - ensure we have a valid SLA
+                        $slaHours = floatval($task['sla_hours']);
+                        if ($slaHours <= 0) $slaHours = 1.0; // Default to 1 hour
+                        $totalSla += $slaHours * 3600;
+                        
+                        // Active time (including current session)
+                        $activeTime = intval($task['active_seconds'] ?? 0);
+                        if ($task['status'] === 'in_progress' && $task['start_time']) {
+                            $lastActive = $task['resume_time'] ?: $task['start_time'];
+                            $activeTime += $now - strtotime($lastActive);
+                        }
+                        $totalActive += $activeTime;
+                        
+                        // Pause time
+                        $totalPause += intval($task['total_pause_duration'] ?? 0);
+                        
+                        // Count by status
+                        switch ($task['status']) {
+                            case 'completed': $completed++; break;
+                            case 'in_progress': $inProgress++; break;
+                            case 'postponed': $postponed++; break;
+                        }
+                    }
+                    
+                    $remaining = max(0, $totalSla - $totalActive);
+                    $completionRate = count($tasks) > 0 ? ($completed / count($tasks)) * 100 : 0;
+                    
+                    // Validate data consistency
+                    $response = [
+                        'success' => true,
+                        'sla_total_seconds' => max(0, $totalSla),
+                        'active_seconds' => max(0, $totalActive),
+                        'remaining_seconds' => max(0, $remaining),
+                        'pause_seconds' => max(0, $totalPause),
+                        'completion_rate' => round($completionRate, 1),
+                        'total_tasks' => count($tasks),
+                        'completed_tasks' => $completed,
+                        'in_progress_tasks' => $inProgress,
+                        'postponed_tasks' => $postponed,
+                        'user_specific' => true,
+                        'current_user_id' => $requestedUserId,
+                        'session_user_id' => $userId,
+                        'date' => $date,
+                        'timestamp' => time(),
+                        'message' => 'User-specific SLA data for ' . count($tasks) . ' tasks'
+                    ];
+                    
+                    // Ensure we have valid data before sending
+                    if ($response['sla_total_seconds'] >= 0 && $response['total_tasks'] >= 0) {
+                        echo json_encode($response);
+                    } else {
+                        echo json_encode([
+                            'success' => false,
+                            'message' => 'Invalid SLA data calculated',
+                            'debug' => $response
+                        ]);
+                    }
+                    break;
+                    
                 case 'stats':
                     $date = $_GET['date'] ?? date('Y-m-d');
                     $stats = $planner->getDailyStats($userId, $date);
@@ -380,7 +520,7 @@ try {
                         WHERE user_id = ? AND (scheduled_date = ? OR (status = 'postponed' AND postponed_from_date = ?))
                         GROUP BY status
                     ");
-                    $stmt->execute([$userId, $date, $date]);
+                    $stmt->execute([$userId, $date]);
                     $breakdown = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     
                     $stats = $planner->getDailyStats($userId, $date);

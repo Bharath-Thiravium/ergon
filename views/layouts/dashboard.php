@@ -270,11 +270,11 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
                         <div class="nav-dropdown-menu" id="tasks">
                             <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">✅</span>
-                                Allocation
+                                Overall Tasks
                             </a>
                             <a href="/ergon/workflow/daily-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">🌅</span>
-                                Planner
+                                Daily Planner
                             </a>
                             <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📞</span>

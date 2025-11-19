@@ -89,7 +89,7 @@ ob_start();
                         'cancelled' => '❌',
                         default => '⏳'
                     };
-                    $typeIcon = $followup['followup_type'] === 'task-linked' ? '🔗' : '📞';
+                    $typeIcon = ($followup['followup_type'] === 'task' || $followup['followup_type'] === 'task-linked') ? '🔗' : '📞';
                     $isOverdue = strtotime($followup['follow_up_date']) < strtotime('today') && $followup['status'] !== 'completed';
                     ?>
                     <div class="followup-card <?= $followup['status'] ?> <?= $isOverdue ? 'overdue' : '' ?>">
@@ -115,8 +115,8 @@ ob_start();
                                 <span class="badge badge--<?= $statusClass ?> badge--modern">
                                     <?= $statusIcon ?> <?= ucfirst(str_replace('_', ' ', $followup['status'])) ?>
                                 </span>
-                                <span class="badge badge--<?= $followup['followup_type'] === 'task-linked' ? 'info' : 'secondary' ?> badge--outline">
-                                    <?= $followup['followup_type'] === 'task-linked' ? 'Task-linked' : 'Standalone' ?>
+                                <span class="badge badge--<?= ($followup['followup_type'] === 'task' || $followup['followup_type'] === 'task-linked') ? 'info' : 'secondary' ?> badge--outline">
+                                    <?= ($followup['followup_type'] === 'task' || $followup['followup_type'] === 'task-linked') ? 'Task-linked' : 'Standalone' ?>
                                 </span>
                             </div>
                         </div>

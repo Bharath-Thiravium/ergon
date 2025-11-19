@@ -250,6 +250,12 @@ class TasksController extends Controller {
                 $db = Database::connect();
                 $this->ensureTasksTable($db);
                 
+                // Get current task status before update for comparison
+                $stmt = $db->prepare("SELECT status FROM tasks WHERE id = ?");
+                $stmt->execute([$id]);
+                $oldTask = $stmt->fetch(PDO::FETCH_ASSOC);
+                $oldStatus = $oldTask ? $oldTask['status'] : null;
+                
                 $stmt = $db->prepare("UPDATE tasks SET title=?, description=?, assigned_to=?, task_type=?, priority=?, deadline=?, status=?, progress=?, sla_hours=?, department_id=?, task_category=?, project_id=?, planned_date=?, followup_required=?, updated_at=NOW() WHERE id=?");
                 $result = $stmt->execute([
                     $taskData['title'], 
@@ -277,6 +283,12 @@ class TasksController extends Controller {
                 if ($result) {
                     // Log task update history
                     $this->logTaskHistory($db, $id, 'updated', 'Task details', 'Task updated', 'Task details were modified');
+                    
+                    // Update linked followups if status changed
+                    if ($oldStatus && $oldStatus !== $taskData['status']) {
+                        require_once __DIR__ . '/ContactFollowupController.php';
+                        ContactFollowupController::updateLinkedFollowupStatus($id, $taskData['status']);
+                    }
                     
                     error_log('Task updated with ID: ' . $id . ', progress: ' . $taskData['progress'] . '%');
                     header('Location: /ergon/tasks?success=Task updated successfully');
@@ -557,22 +569,33 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTaskHistoryTable($db);
             
-            // Always use direct database query with proper JOINs
+            // Get task with proper JOINs
             $stmt = $db->prepare("SELECT t.*, u.name as assigned_user, d.name as department_name, ub.name as assigned_by_name FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id LEFT JOIN departments d ON t.department_id = d.id LEFT JOIN users ub ON t.assigned_by = ub.id WHERE t.id = ?");
             $stmt->execute([$id]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            // Debug logging
-            error_log('Task view debug - ID: ' . $id);
-            error_log('Task data: ' . json_encode($task));
             
             if (!$task) {
                 header('Location: /ergon/tasks?error=not_found');
                 exit;
             }
             
+            // Get follow-ups for this task
+            $followups = [];
+            if ($task['followup_required']) {
+                $stmt = $db->prepare("
+                    SELECT f.*, c.name as contact_name, c.phone as contact_phone, c.email as contact_email, c.company as contact_company
+                    FROM followups f 
+                    LEFT JOIN contacts c ON f.contact_id = c.id 
+                    WHERE f.task_id = ? 
+                    ORDER BY f.follow_up_date DESC
+                ");
+                $stmt->execute([$id]);
+                $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            
             $data = [
                 'task' => $task,
+                'followups' => $followups,
                 'active_page' => 'tasks'
             ];
             
@@ -639,6 +662,12 @@ class TasksController extends Controller {
                 }
                 if ($oldProgress != $progress) {
                     $this->logTaskHistory($db, $taskId, 'progress_updated', $oldProgress . '%', $progress . '%', $reason);
+                }
+                
+                // Update linked followups if task status changed
+                if ($oldStatus !== $status) {
+                    require_once __DIR__ . '/ContactFollowupController.php';
+                    ContactFollowupController::updateLinkedFollowupStatus($taskId, $status);
                 }
                 
                 echo json_encode(['success' => true, 'message' => 'Task updated successfully']);
@@ -876,18 +905,21 @@ class TasksController extends Controller {
             // Create followup record in followups table with correct structure
             $stmt = $db->prepare("
                 INSERT INTO followups (
-                    title, description, followup_type, task_id, contact_id, 
+                    title, description, followup_type, task_id, contact_id, user_id,
                     follow_up_date, status, created_at, updated_at
-                ) VALUES (?, ?, 'task', ?, ?, ?, 'pending', NOW(), NOW())
+                ) VALUES (?, ?, 'task', ?, ?, ?, ?, 'pending', NOW(), NOW())
             ");
             
             $contactId = !empty($postData['contact_id']) ? intval($postData['contact_id']) : null;
+            // Assign follow-up to the same user as the task
+            $assignedUserId = $taskData['assigned_to'];
             
             $result = $stmt->execute([
                 $followupTitle,
                 $followupDesc,
                 $taskId,
                 $contactId,
+                $assignedUserId,
                 $followupDate
             ]);
             
@@ -928,14 +960,20 @@ class TasksController extends Controller {
             $contactId = !empty($postData['contact_id']) ? intval($postData['contact_id']) : null;
             $followupType = $postData['followup_type'] ?? 'task';
             
+            // Get task assigned user for follow-up assignment
+            $taskStmt = $db->prepare("SELECT assigned_to FROM tasks WHERE id = ?");
+            $taskStmt->execute([$taskId]);
+            $taskInfo = $taskStmt->fetch(PDO::FETCH_ASSOC);
+            $assignedUserId = $taskInfo ? $taskInfo['assigned_to'] : $_SESSION['user_id'];
+            
             if ($existingFollowup) {
                 // Update existing follow-up
-                $stmt = $db->prepare("UPDATE followups SET title=?, description=?, followup_type=?, contact_id=?, follow_up_date=?, updated_at=NOW() WHERE task_id=?");
-                $stmt->execute([$followupTitle, $followupDesc, $followupType, $contactId, $followupDate, $taskId]);
+                $stmt = $db->prepare("UPDATE followups SET title=?, description=?, followup_type=?, contact_id=?, user_id=?, follow_up_date=?, updated_at=NOW() WHERE task_id=?");
+                $stmt->execute([$followupTitle, $followupDesc, $followupType, $contactId, $assignedUserId, $followupDate, $taskId]);
             } else {
                 // Create new follow-up
-                $stmt = $db->prepare("INSERT INTO followups (title, description, followup_type, task_id, contact_id, follow_up_date, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())");
-                $stmt->execute([$followupTitle, $followupDesc, $followupType, $taskId, $contactId, $followupDate]);
+                $stmt = $db->prepare("INSERT INTO followups (title, description, followup_type, task_id, contact_id, user_id, follow_up_date, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())");
+                $stmt->execute([$followupTitle, $followupDesc, $followupType, $taskId, $contactId, $assignedUserId, $followupDate]);
             }
             
             // Update or create contact if manual entry provided
@@ -1186,6 +1224,24 @@ class TasksController extends Controller {
         } catch (Exception $e) {
             error_log('ensureTasksTable error: ' . $e->getMessage());
         }
+    }
+    
+    /**
+     * Fallback method for static tasks when database is unavailable
+     */
+    private function getStaticTasks() {
+        return [
+            [
+                'id' => 1,
+                'title' => 'Sample Task',
+                'description' => 'This is a sample task for demonstration',
+                'status' => 'assigned',
+                'priority' => 'medium',
+                'progress' => 0,
+                'assigned_user' => 'System',
+                'created_at' => date('Y-m-d H:i:s')
+            ]
+        ];
     }
 }
 ?>

@@ -10,6 +10,7 @@ class UnifiedWorkflowController extends Controller {
         AuthMiddleware::requireAuth();
         
         $date = $date ?? date('Y-m-d');
+        $currentUserId = $_SESSION['user_id'];
         
         try {
             require_once __DIR__ . '/../config/database.php';
@@ -18,30 +19,30 @@ class UnifiedWorkflowController extends Controller {
             // Ensure daily_tasks table exists
             $this->ensureDailyTasksTable($db);
             
-            // Get existing daily tasks for the date
+            // Get existing daily tasks for current user and date
             $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
-            $stmt->execute([$_SESSION['user_id'], $date]);
+            $stmt->execute([$currentUserId, $date]);
             $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Always refresh daily tasks to ensure sync with Tasks module
             if (empty($dailyTasks)) {
-                $this->createDailyTasksFromRegular($db, $_SESSION['user_id'], $date);
+                $this->createDailyTasksFromRegular($db, $currentUserId, $date);
                 
                 // Re-fetch after creation
                 $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
-                $stmt->execute([$_SESSION['user_id'], $date]);
+                $stmt->execute([$currentUserId, $date]);
                 $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
             // Force refresh if requested
             if (isset($_GET['refresh']) && $_GET['refresh'] === '1') {
                 $stmt = $db->prepare("DELETE FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
-                $stmt->execute([$_SESSION['user_id'], $date]);
+                $stmt->execute([$currentUserId, $date]);
                 
-                $this->createDailyTasksFromRegular($db, $_SESSION['user_id'], $date);
+                $this->createDailyTasksFromRegular($db, $currentUserId, $date);
                 
                 $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
-                $stmt->execute([$_SESSION['user_id'], $date]);
+                $stmt->execute([$currentUserId, $date]);
                 $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
@@ -51,12 +52,13 @@ class UnifiedWorkflowController extends Controller {
             // Use DailyPlanner model for accurate stats including postponed tasks
             require_once __DIR__ . '/../models/DailyPlanner.php';
             $planner = new DailyPlanner();
-            $dailyStats = $planner->getDailyStats($_SESSION['user_id'], $date);
+            $dailyStats = $planner->getDailyStats($currentUserId, $date);
             
             $this->view('daily_workflow/unified_daily_planner', [
                 'planned_tasks' => $plannedTasks,
                 'daily_stats' => $dailyStats,
                 'selected_date' => $date,
+                'current_user_id' => $currentUserId,
                 'active_page' => 'daily-planner'
             ]);
         } catch (Exception $e) {
@@ -796,9 +798,12 @@ class UnifiedWorkflowController extends Controller {
     
     private function createDailyTasksFromRegular($db, $userId, $date) {
         try {
-            // Get ALL active tasks for this user (no date restrictions)
+            // Ensure tasks have SLA hours
+            $db->exec("UPDATE tasks SET sla_hours = 1.0 WHERE sla_hours IS NULL OR sla_hours = 0");
+            
+            // Get active tasks for this user
             $stmt = $db->prepare("
-                SELECT *, COALESCE(sla_hours, 1) as sla_hours FROM tasks 
+                SELECT *, COALESCE(sla_hours, 1.0) as sla_hours FROM tasks 
                 WHERE assigned_to = ? AND status != 'completed'
                 ORDER BY 
                     CASE WHEN assigned_by != assigned_to THEN 1 ELSE 2 END,
@@ -813,11 +818,11 @@ class UnifiedWorkflowController extends Controller {
                     ? "[From Others] " . $task['title']
                     : "[Self] " . $task['title'];
                 
-                $plannedDuration = ((float)$task['sla_hours']) * 60;
+                $plannedDuration = floatval($task['sla_hours']) * 60;
                 
                 $stmt = $db->prepare("
-                    INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', NOW())
+                    INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, active_seconds, total_pause_duration, completed_percentage, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', 0, 0, 0, NOW())
                 ");
                 $stmt->execute([
                     $userId, $task['id'], $date, $taskTitle, 
