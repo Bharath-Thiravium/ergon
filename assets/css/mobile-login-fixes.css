@@ -7,18 +7,14 @@
   }
 
   .slides-section {
-    min-height: 35vh;
-    flex: none;
-    order: 1;
+    display: none; /* Hide slides on mobile */
   }
 
   .login-form-section {
-    min-height: 65vh;
-    flex: none;
-    order: 2;
+    min-height: 100vh;
+    flex: 1;
     padding: 1rem;
-    justify-content: flex-start;
-    padding-top: 2rem;
+    justify-content: center;
   }
 
   .login-form-card {
@@ -61,31 +57,7 @@
     border-radius: 6px;
   }
 
-  .slide {
-    padding: 2rem 1.5rem;
-  }
-
-  .slide h2 {
-    font-size: 1.5rem;
-  }
-
-  .slide-description {
-    font-size: 0.95rem;
-    margin-bottom: 1rem;
-  }
-
-  .feature-highlights {
-    display: none; /* Hide on mobile for cleaner look */
-  }
-
-  .slide-indicators {
-    bottom: 1rem;
-  }
-
-  .indicator {
-    width: 8px;
-    height: 8px;
-  }
+  /* Slides are hidden on mobile, no need for slide styles */
 
   .alert {
     padding: 0.75rem;
@@ -97,7 +69,6 @@
 @media (max-width: 480px) {
   .login-form-section {
     padding: 0.75rem;
-    padding-top: 1.5rem;
   }
 
   .login-form-card {
@@ -106,19 +77,6 @@
 
   .login-header h1 {
     font-size: 1.5rem;
-  }
-
-  .slide {
-    padding: 1.5rem 1rem;
-  }
-
-  .slide h2 {
-    font-size: 1.25rem;
-  }
-
-  .slide-icon {
-    font-size: 2rem;
-    padding: 0.75rem;
   }
 }
 
@@ -138,25 +96,5 @@
     min-height: 44px;
   }
 
-  .indicator {
-    min-width: 44px;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .indicator::before {
-    content: '';
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.4);
-    transition: all 0.3s ease;
-  }
-
-  .indicator.active::before {
-    background: white;
-    transform: scale(1.2);
-  }
+  /* Indicators hidden with slides on mobile */
 }
