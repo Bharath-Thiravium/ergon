@@ -63,7 +63,7 @@ ob_start();
             <table class="table">
                 <thead>
                     <tr>
-                        <th class="col-employee">Employee</th>
+                        <th class="col-title">Employee</th>
                         <th class="col-assignment">Date & Status</th>
                         <th class="col-progress">Working Hours</th>
                         <th class="col-date">Check Times</th>
@@ -117,9 +117,13 @@ ob_start();
                                     $mins = (int)round((int)$totalMins % 60);
                                 }
                                 ?>
+                                <?php 
+                                $progress = $record['check_out'] ? min(100, ($totalMins / 480) * 100) : 0;
+                                $progressColor = $totalMins >= 480 ? '#10b981' : ($totalMins >= 360 ? '#3b82f6' : ($totalMins >= 240 ? '#f59e0b' : '#e2e8f0'));
+                                ?>
                                 <div class="progress-container">
                                     <div class="progress-bar">
-                                        <div class="progress-fill" style="width: <?= min(100, ($totalMins / 480) * 100) ?>%; background: <?= $totalMins >= 480 ? '#10b981' : ($totalMins >= 360 ? '#3b82f6' : ($totalMins >= 240 ? '#f59e0b' : '#e2e8f0')) ?>"></div>
+                                        <div class="progress-fill" style="width: <?= $progress ?>%; background: <?= $progressColor ?>"></div>
                                     </div>
                                     <div class="progress-info">
                                         <span class="progress-percentage"><?= $record['check_out'] ? $hrs . 'h ' . $mins . 'm' : '-' ?></span>
@@ -135,31 +139,37 @@ ob_start();
                             </td>
                             <td>
                                 <div class="ab-container">
+                                    <a class="ab-btn ab-btn--view" data-action="view" data-module="attendance" data-id="<?= $record['id'] ?? 0 ?>" title="View Details">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                            <polyline points="14,2 14,8 20,8"/>
+                                            <line x1="16" y1="13" x2="8" y2="13"/>
+                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                        </svg>
+                                    </a>
                                     <?php if (!$record['check_out'] && ($record['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
-                                        <button class="ab-btn ab-btn--warning" onclick="checkOut(<?= $record['id'] ?? 0 ?>)" title="Check Out">
+                                        <button class="ab-btn ab-btn--progress" onclick="checkOut(<?= $record['id'] ?? 0 ?>)" title="Check Out">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <circle cx="12" cy="12" r="10"/>
-                                                <polyline points="12,6 12,12 16,14"/>
+                                                <polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/>
+                                                <polyline points="16,7 22,7 22,13"/>
                                             </svg>
                                         </button>
                                     <?php endif; ?>
-                                    <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
-                                        <a class="ab-btn ab-btn--edit" data-action="edit" data-module="attendance" data-id="<?= $record['id'] ?? 0 ?>" title="Edit Record">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                                <path d="M15 5l4 4"/>
-                                            </svg>
-                                        </a>
-                                        <button class="ab-btn ab-btn--delete" data-action="delete" data-module="attendance" data-id="<?= $record['id'] ?? 0 ?>" data-name="<?= htmlspecialchars($record['user_name'] ?? 'Record', ENT_QUOTES) ?>" title="Delete Record">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M3 6h18"/>
-                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
-                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                                                <line x1="10" y1="11" x2="10" y2="17"/>
-                                                <line x1="14" y1="11" x2="14" y2="17"/>
-                                            </svg>
-                                        </button>
-                                    <?php endif; ?>
+                                    <a class="ab-btn ab-btn--edit" data-action="edit" data-module="attendance" data-id="<?= $record['id'] ?? 0 ?>" title="Edit Record">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                            <path d="M15 5l4 4"/>
+                                        </svg>
+                                    </a>
+                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="attendance" data-id="<?= $record['id'] ?? 0 ?>" data-name="<?= htmlspecialchars($record['user_name'] ?? 'Record', ENT_QUOTES) ?>" title="Delete Record">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M3 6h18"/>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                            <line x1="10" y1="11" x2="10" y2="17"/>
+                                            <line x1="14" y1="11" x2="14" y2="17"/>
+                                        </svg>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -223,30 +233,7 @@ document.addEventListener('click', function(e) {
 });
 </script>
 
-<style>
-.page-actions .form-input {
-    width: auto;
-    margin-right: var(--space-3);
-}
 
-/* Attendance specific column widths */
-.col-employee {
-    width: 25%;
-    min-width: 150px;
-}
-
-@media (max-width: 768px) {
-    .page-actions {
-        flex-direction: column;
-        gap: var(--space-2);
-    }
-    
-    .page-actions .form-input,
-    .page-actions select {
-        display: none !important;
-    }
-}
-</style>
 
 <?php
 $content = ob_get_clean();

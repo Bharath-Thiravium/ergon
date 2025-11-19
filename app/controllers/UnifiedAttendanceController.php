@@ -22,39 +22,17 @@ class UnifiedAttendanceController extends Controller {
             $role = $_SESSION['role'] ?? 'user';
             $userId = $_SESSION['user_id'];
             
-            if ($role === 'user') {
-                // User view - show only their attendance
-                $filter = $_GET['filter'] ?? 'today';
-                $attendance = $this->getUserAttendance($userId, $filter);
-                $stats = $this->calculateUserStats($attendance);
-                
-                $this->view('attendance/index', [
-                    'attendance' => $attendance,
-                    'stats' => $stats,
-                    'current_filter' => $filter,
-                    'active_page' => 'attendance'
-                ]);
-            } else {
-                // Admin/Owner view
-                $filterDate = $_GET['date'] ?? date('Y-m-d');
-                $employeeAttendance = $this->getEmployeeAttendance($role, $filterDate, $userId);
-                $adminAttendance = $this->getTodayAttendance($userId);
-                
-                // Handle AJAX requests
-                if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
-                    $this->renderAttendanceTable($employeeAttendance);
-                    exit;
-                }
-                
-                $viewName = ($role === 'owner') ? 'attendance/owner_index' : 'attendance/admin_index';
-                $this->view($viewName, [
-                    'employees' => $employeeAttendance,
-                    'admin_attendance' => $adminAttendance,
-                    'active_page' => 'attendance',
-                    'filter_date' => $filterDate,
-                    'user_role' => $role
-                ]);
-            }
+            // Get all attendance records with proper user names
+            $filter = $_GET['filter'] ?? 'today';
+            $attendance = $this->getAllAttendance($filter, $role, $userId);
+            $stats = $this->calculateUserStats($attendance);
+            
+            $this->view('attendance/index', [
+                'attendance' => $attendance,
+                'stats' => $stats,
+                'current_filter' => $filter,
+                'active_page' => 'attendance'
+            ]);
         } catch (Exception $e) {
             error_log('Attendance index error: ' . $e->getMessage());
             http_response_code(500);
@@ -279,22 +257,30 @@ class UnifiedAttendanceController extends Controller {
         }
     }
     
-    private function getUserAttendance($userId, $filter) {
+    private function getAllAttendance($filter, $role, $userId) {
         try {
             $dateCondition = $this->getDateCondition($filter);
             
+            // Role-based filtering
+            if ($role === 'user') {
+                $userCondition = "AND a.user_id = $userId";
+            } elseif ($role === 'admin') {
+                $userCondition = "AND u.role IN ('user', 'admin')";
+            } else {
+                $userCondition = "";
+            }
+            
             $stmt = $this->db->prepare("
-                SELECT a.*, u.name as user_name, COALESCE(d.name, 'Not Assigned') as department 
+                SELECT a.*, u.name as user_name, u.email, u.role as user_role
                 FROM attendance a 
                 LEFT JOIN users u ON a.user_id = u.id 
-                LEFT JOIN departments d ON u.department_id = d.id 
-                WHERE a.user_id = ? AND $dateCondition 
+                WHERE $dateCondition $userCondition
                 ORDER BY a.check_in DESC
             ");
-            $stmt->execute([$userId]);
+            $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
-            error_log('getUserAttendance error: ' . $e->getMessage());
+            error_log('getAllAttendance error: ' . $e->getMessage());
             return [];
         }
     }
