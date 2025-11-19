@@ -1,2 +1,0 @@
--- All required columns already exist in daily_tasks table
--- No changes needed
