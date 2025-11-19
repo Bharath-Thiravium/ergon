@@ -54,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // GET request - show form
     ?>
     <!DOCTYPE html>
+    <!DOCTYPE html>
     <html>
     <head>
         <title>Add Today's Task</title>

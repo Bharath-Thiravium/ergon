@@ -117,14 +117,24 @@ function getCurrentLocation() {
 
 function reverseGeocode(lat, lng) {
     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
         .then(data => {
             if (data.display_name) {
-                document.getElementById('office_address').value = data.display_name;
+                const addressField = document.getElementById('office_address');
+                if (addressField) {
+                    addressField.value = data.display_name;
+                }
             }
         })
         .catch(error => {
-            document.getElementById('office_address').value = `${lat}, ${lng}`;
+            console.warn('Reverse geocoding failed:', error);
+            const addressField = document.getElementById('office_address');
+            if (addressField) {
+                addressField.value = `${lat}, ${lng}`;
+            }
         });
 }
 
@@ -132,22 +142,36 @@ let previewMap, previewMarker;
 
 // Initialize preview map
 function initPreviewMap() {
-    const lat = parseFloat(document.getElementById('office_latitude').value) || 28.6139;
-    const lng = parseFloat(document.getElementById('office_longitude').value) || 77.2090;
-    
-    previewMap = L.map('preview-map').setView([lat, lng], 13);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(previewMap);
-    
-    previewMarker = L.marker([lat, lng], { draggable: true }).addTo(previewMap);
-    
-    previewMarker.on('dragend', function(e) {
-        const pos = e.target.getLatLng();
-        document.getElementById('office_latitude').value = pos.lat.toFixed(6);
-        document.getElementById('office_longitude').value = pos.lng.toFixed(6);
-    });
+    try {
+        const lat = parseFloat(document.getElementById('office_latitude').value) || 28.6139;
+        const lng = parseFloat(document.getElementById('office_longitude').value) || 77.2090;
+        
+        const mapElement = document.getElementById('preview-map');
+        if (!mapElement) {
+            console.error('Map element not found');
+            return;
+        }
+        
+        previewMap = L.map('preview-map').setView([lat, lng], 13);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(previewMap);
+        
+        previewMarker = L.marker([lat, lng], { draggable: true }).addTo(previewMap);
+        
+        previewMarker.on('dragend', function(e) {
+            const pos = e.target.getLatLng();
+            document.getElementById('office_latitude').value = pos.lat.toFixed(6);
+            document.getElementById('office_longitude').value = pos.lng.toFixed(6);
+        });
+        
+        console.log('Preview map initialized successfully');
+    } catch (error) {
+        console.error('Error in initPreviewMap:', error);
+        showMapError();
+    }
 }
 
 // Update preview map when coordinates change
@@ -160,17 +184,70 @@ function updatePreviewMap(lat, lng) {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Load Leaflet CSS and JS
+    // Check if Leaflet is already loaded
+    if (typeof L !== 'undefined') {
+        initPreviewMap();
+        return;
+    }
+    
+    // Load Leaflet CSS
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    link.onerror = function() {
+        console.warn('Failed to load Leaflet CSS');
+        showMapError();
+    };
     document.head.appendChild(link);
     
+    // Load Leaflet JS with timeout
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = initPreviewMap;
+    
+    let loadTimeout = setTimeout(function() {
+        console.error('Leaflet JS loading timeout');
+        showMapError();
+    }, 10000); // 10 second timeout
+    
+    script.onload = function() {
+        clearTimeout(loadTimeout);
+        // Wait a bit for L to be available
+        setTimeout(function() {
+            if (typeof L !== 'undefined') {
+                try {
+                    initPreviewMap();
+                } catch (error) {
+                    console.error('Error initializing map:', error);
+                    showMapError();
+                }
+            } else {
+                console.error('Leaflet L object not available');
+                showMapError();
+            }
+        }, 100);
+    };
+    
+    script.onerror = function() {
+        clearTimeout(loadTimeout);
+        console.error('Failed to load Leaflet JS');
+        showMapError();
+    };
+    
     document.head.appendChild(script);
 });
+
+function showMapError() {
+    const mapDiv = document.getElementById('preview-map');
+    if (mapDiv) {
+        mapDiv.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:#f8f9fa;color:#6c757d;border-radius:8px;padding:20px;text-align:center;">
+                <div style="font-size:48px;margin-bottom:16px;">🗺️</div>
+                <div style="font-weight:600;margin-bottom:8px;">Map Unavailable</div>
+                <div style="font-size:14px;">Please check your internet connection or enter coordinates manually</div>
+            </div>
+        `;
+    }
+}
 
 // Form will submit normally to POST /ergon/settings
 </script>

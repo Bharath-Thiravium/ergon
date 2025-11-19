@@ -26,7 +26,7 @@
 }
 
 /* Badge info dark theme */
-[data-theme="dark"] .badge--info,
+[data-theme='dark'] .badge--info,
 .theme-dark .badge--info {
   background: #1e40af !important;
   color: #e0e7ff !important;

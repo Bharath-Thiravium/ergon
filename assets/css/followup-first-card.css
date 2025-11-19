@@ -49,16 +49,16 @@
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .followup-card:nth-child(1) {
     transform: scale(1);
     margin-bottom: 1.5rem;
   }
-  
+
   .followup-card:nth-child(1):hover {
     transform: translateY(-2px);
   }
-  
+
   .followup-card:nth-child(1)::after {
     font-size: 0.65rem;
     padding: 3px 8px;

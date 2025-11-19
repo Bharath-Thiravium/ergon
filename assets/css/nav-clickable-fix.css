@@ -41,13 +41,7 @@
 }
 
 /* Disable hover events that conflict with click */
-.nav-dropdown {
-  onmouseenter: none !important;
-  onmouseleave: none !important;
-}
-
-.nav-dropdown[onmouseenter],
-.nav-dropdown[onmouseleave] {
+.nav-dropdown:hover {
   pointer-events: auto !important;
 }
 
@@ -135,7 +129,7 @@
 }
 
 /* Mobile specific fixes */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .nav-dropdown-menu {
     position: fixed !important;
     top: auto !important;
@@ -145,7 +139,7 @@
     z-index: 99999 !important;
     pointer-events: auto !important;
   }
-  
+
   .nav-dropdown-item {
     min-height: 44px !important;
     padding: 12px 16px !important;
@@ -154,13 +148,10 @@
 }
 
 /* Debug helper - remove after testing */
-.nav-dropdown-btn:after {
+.nav-dropdown-btn::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0 0 0 0;
   pointer-events: auto;
   z-index: 1;
 }
@@ -191,8 +182,18 @@
 }
 
 /* Ensure proper stacking context */
-.header__nav .nav-dropdown:nth-child(1) { z-index: 10010; }
-.header__nav .nav-dropdown:nth-child(2) { z-index: 10011; }
-.header__nav .nav-dropdown:nth-child(3) { z-index: 10012; }
-.header__nav .nav-dropdown:nth-child(4) { z-index: 10013; }
-.header__nav .nav-dropdown:nth-child(5) { z-index: 10014; }
+.header__nav .nav-dropdown:nth-child(1) {
+  z-index: 10010;
+}
+.header__nav .nav-dropdown:nth-child(2) {
+  z-index: 10011;
+}
+.header__nav .nav-dropdown:nth-child(3) {
+  z-index: 10012;
+}
+.header__nav .nav-dropdown:nth-child(4) {
+  z-index: 10013;
+}
+.header__nav .nav-dropdown:nth-child(5) {
+  z-index: 10014;
+}

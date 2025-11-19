@@ -12,8 +12,21 @@ class ContactFollowupController extends Controller {
         }
         
         try {
-            $db = Database::connect();
-            $contacts = $this->getContactsWithFollowups($db);
+            $pdo = Database::connect();
+            
+            $contacts = $pdo->query("
+                SELECT c.*, 
+                       COUNT(f.id) as total_followups,
+                       SUM(CASE WHEN f.status = 'pending' AND f.follow_up_date < CURDATE() THEN 1 ELSE 0 END) as overdue_count,
+                       SUM(CASE WHEN f.status = 'pending' AND f.follow_up_date = CURDATE() THEN 1 ELSE 0 END) as today_count,
+                       MAX(f.follow_up_date) as next_followup_date
+                FROM contacts c
+                LEFT JOIN followups f ON c.id = f.contact_id
+                GROUP BY c.id
+                HAVING total_followups > 0
+                ORDER BY next_followup_date ASC
+            ")->fetchAll(PDO::FETCH_ASSOC);
+            
             $this->view('contact_followups/index', ['contacts' => $contacts]);
         } catch (Exception $e) {
             error_log('Contact followups error: ' . $e->getMessage());
@@ -109,9 +122,7 @@ class ContactFollowupController extends Controller {
         }
         
         try {
-            $pdo = new PDO('mysql:host=localhost;dbname=ergon_db;charset=utf8mb4', 'root', '', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
+            $pdo = Database::connect();
             
             // Get contacts
             $contacts = $pdo->query("SELECT * FROM contacts ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
@@ -127,7 +138,7 @@ class ContactFollowupController extends Controller {
     
     private function storeStandaloneFollowup() {
         try {
-            $db = Database::connect();
+            $pdo = Database::connect();
             
             $title = trim($_POST['title'] ?? '');
             $follow_up_date = $_POST['follow_up_date'] ?? date('Y-m-d');

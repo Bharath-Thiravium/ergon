@@ -158,35 +158,62 @@ function searchLocation(query) {
 let map, marker;
 
 function initMap() {
-    const defaultLat = 28.6139;
-    const defaultLng = 77.2090;
-    
-    map = L.map('map').setView([defaultLat, defaultLng], 13);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-    
-    marker = L.marker([defaultLat, defaultLng], {
-        draggable: true
-    }).addTo(map);
-    
-    marker.on('dragend', function(e) {
-        const position = e.target.getLatLng();
-        updateLocationInputs(position.lat, position.lng);
-        reverseGeocode(position.lat, position.lng);
-    });
-    
-    map.on('click', function(e) {
-        const lat = e.latlng.lat;
-        const lng = e.latlng.lng;
-        marker.setLatLng([lat, lng]);
-        updateLocationInputs(lat, lng);
-        reverseGeocode(lat, lng);
-    });
-    
-    updateLocationInputs(defaultLat, defaultLng);
-    reverseGeocode(defaultLat, defaultLng);
+    try {
+        const defaultLat = 28.6139;
+        const defaultLng = 77.2090;
+        
+        const mapElement = document.getElementById('map');
+        if (!mapElement) {
+            console.error('Map element not found');
+            return;
+        }
+        
+        map = L.map('map').setView([defaultLat, defaultLng], 13);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        marker = L.marker([defaultLat, defaultLng], {
+            draggable: true
+        }).addTo(map);
+        
+        marker.on('dragend', function(e) {
+            const position = e.target.getLatLng();
+            updateLocationInputs(position.lat, position.lng);
+            reverseGeocode(position.lat, position.lng);
+        });
+        
+        map.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            marker.setLatLng([lat, lng]);
+            updateLocationInputs(lat, lng);
+            reverseGeocode(lat, lng);
+        });
+        
+        updateLocationInputs(defaultLat, defaultLng);
+        reverseGeocode(defaultLat, defaultLng);
+        
+        console.log('Map initialized successfully');
+    } catch (error) {
+        console.error('Error initializing map:', error);
+        showMapError();
+    }
+}
+
+function showMapError() {
+    const mapDiv = document.getElementById('map');
+    if (mapDiv) {
+        mapDiv.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:#f8f9fa;color:#6c757d;border-radius:8px;padding:20px;text-align:center;">
+                <div style="font-size:48px;margin-bottom:16px;">🗺️</div>
+                <div style="font-weight:600;margin-bottom:8px;">Map Unavailable</div>
+                <div style="font-size:14px;">Please check your internet connection or enter coordinates manually</div>
+            </div>
+        `;
+    }
 }
 
 function reverseGeocode(lat, lng) {
@@ -227,7 +254,24 @@ function searchLocation(query) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    initMap();
+    // Check if Leaflet is loaded
+    if (typeof L !== 'undefined') {
+        initMap();
+    } else {
+        // Wait for Leaflet to load with timeout
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds
+        const checkLeaflet = setInterval(function() {
+            attempts++;
+            if (typeof L !== 'undefined') {
+                clearInterval(checkLeaflet);
+                initMap();
+            } else if (attempts >= maxAttempts) {
+                clearInterval(checkLeaflet);
+                showMapError();
+            }
+        }, 100);
+    }
 });
 </script>
 <?php endif; ?>

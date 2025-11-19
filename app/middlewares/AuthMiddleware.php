@@ -3,22 +3,35 @@ require_once __DIR__ . '/../helpers/SessionManager.php';
 
 class AuthMiddleware {
     public static function requireAuth() {
+        // Set secure session cookie parameters before starting session
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+            $domain = $_SERVER['HTTP_HOST'];
+            session_set_cookie_params([
+                'lifetime' => 28800,
+                'path' => '/ergon/',
+                'domain' => $domain,
+                'secure' => $isSecure,
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]);
+        }
+        
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
         
         // Check if session is valid
         if (empty($_SESSION['user_id'])) {
-            // For development/testing - auto-login as user 1
-            if ($_SERVER['HTTP_HOST'] === 'localhost' || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false) {
-                $_SESSION['user_id'] = 1;
-                $_SESSION['username'] = 'test_user';
-                $_SESSION['role'] = 'user';
-                $_SESSION['last_activity'] = time();
-            } else {
-                self::redirectToLogin();
-                return;
-            }
+            error_log('AuthMiddleware: No user_id in session, redirecting to login');
+            self::redirectToLogin();
+            return;
+        }
+        
+        // Ensure role is set
+        if (empty($_SESSION['role'])) {
+            error_log('AuthMiddleware: No role in session for user ' . $_SESSION['user_id']);
+            $_SESSION['role'] = 'user'; // Default role
         }
         
         // Check if session is expired (8 hours timeout)
@@ -31,8 +44,6 @@ class AuthMiddleware {
         
         // Update last activity
         $_SESSION['last_activity'] = time();
-        
-        // Removed aggressive cache headers
     }
     
     public static function requireRole($requiredRole) {

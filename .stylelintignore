@@ -1,0 +1,5 @@
+assets/css/archived_*/**
+_archive_unused_files/**
+*.min.css
+bootstrap-icons.min.css
+node_modules/**

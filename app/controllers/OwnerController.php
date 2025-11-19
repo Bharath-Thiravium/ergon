@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../helpers/RoleManager.php';
 require_once __DIR__ . '/../models/User.php';
@@ -67,7 +68,7 @@ class OwnerController extends Controller {
             // Debug: Log the stats to see what's being fetched
             error_log('Owner Dashboard Stats: ' . json_encode($stats));
             
-            $this->view('owner/dashboard', [
+            $this->view('owner/dashboard_clean', [
                 'data' => [
                     'stats' => $stats,
                     'final_approvals' => $finalApprovals,

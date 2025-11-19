@@ -46,7 +46,7 @@ class UserController extends Controller {
             // Check if user needs to clock in/out
             $attendanceStatus = $this->getTodayAttendanceStatus($db, $userId);
             
-            $this->view('user/dashboard', [
+            $this->view('user/dashboard_clean', [
                 'stats' => $stats,
                 'today_tasks' => $todayTasks,
                 'recent_activities' => $recentActivities,
