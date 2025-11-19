@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Ergon</title>
     <link rel="stylesheet" href="/ergon/assets/css/ergon.css">
+    <link rel="stylesheet" href="/ergon/assets/css/mobile-login-fixes.css">
     <style>
         * {
             margin: 0;
@@ -335,30 +336,13 @@
                 flex-direction: column;
             }
             .slides-section {
-                min-height: 45vh;
+                min-height: 40vh;
                 flex: none;
             }
             .login-form-section {
-                min-height: 55vh;
+                min-height: 60vh;
                 flex: none;
                 padding: 2rem 1.5rem;
-            }
-            .login-form-card {
-                padding: 2rem 1.5rem;
-                max-width: 380px;
-            }
-        }
-        
-        @media (max-width: 640px) {
-            .login-form-section {
-                padding: 1.5rem 1rem;
-            }
-            .login-form-card {
-                padding: 1.5rem 1rem;
-                border-radius: 12px;
-            }
-            .login-header h1 {
-                font-size: 1.875rem;
             }
         }
     </style>

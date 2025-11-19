@@ -1,0 +1,162 @@
+/* Mobile Login Page Improvements */
+
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .slides-section {
+    min-height: 35vh;
+    flex: none;
+    order: 1;
+  }
+
+  .login-form-section {
+    min-height: 65vh;
+    flex: none;
+    order: 2;
+    padding: 1rem;
+    justify-content: flex-start;
+    padding-top: 2rem;
+  }
+
+  .login-form-card {
+    padding: 1.5rem;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    border-radius: 12px;
+    box-shadow: none;
+    border: none;
+  }
+
+  .login-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .login-header h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .login-header p {
+    font-size: 0.9rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-control {
+    padding: 0.75rem;
+    font-size: 16px; /* Prevents zoom on iOS */
+    border-radius: 6px;
+  }
+
+  .btn-login {
+    padding: 0.875rem;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 6px;
+  }
+
+  .slide {
+    padding: 2rem 1.5rem;
+  }
+
+  .slide h2 {
+    font-size: 1.5rem;
+  }
+
+  .slide-description {
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+  }
+
+  .feature-highlights {
+    display: none; /* Hide on mobile for cleaner look */
+  }
+
+  .slide-indicators {
+    bottom: 1rem;
+  }
+
+  .indicator {
+    width: 8px;
+    height: 8px;
+  }
+
+  .alert {
+    padding: 0.75rem;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-form-section {
+    padding: 0.75rem;
+    padding-top: 1.5rem;
+  }
+
+  .login-form-card {
+    padding: 1rem;
+  }
+
+  .login-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .slide {
+    padding: 1.5rem 1rem;
+  }
+
+  .slide h2 {
+    font-size: 1.25rem;
+  }
+
+  .slide-icon {
+    font-size: 2rem;
+    padding: 0.75rem;
+  }
+}
+
+/* Touch improvements */
+@media (hover: none) and (pointer: coarse) {
+  .form-control:focus {
+    transform: none;
+  }
+
+  .btn-login:active {
+    transform: scale(0.98);
+  }
+
+  .password-toggle {
+    padding: 8px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .indicator {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .indicator::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    transition: all 0.3s ease;
+  }
+
+  .indicator.active::before {
+    background: white;
+    transform: scale(1.2);
+  }
+}
