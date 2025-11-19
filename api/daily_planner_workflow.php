@@ -42,43 +42,13 @@ try {
                         break;
                     }
                     
-                    $db = Database::connect();
-                    $now = date('Y-m-d H:i:s');
-                    
-                    // Get task and SLA info - allow any user to start any task
-                    $stmt = $db->prepare("SELECT dt.*, COALESCE(t.sla_hours, 1) as sla_hours FROM daily_tasks dt LEFT JOIN tasks t ON dt.task_id = t.id WHERE dt.id = ?");
-                    $stmt->execute([$taskId]);
-                    $task = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    if (!$task) {
-                        echo json_encode(['success' => false, 'message' => "Task ID $taskId does not exist in daily_tasks table"]);
-                        break;
-                    }
-                    
-                    if ($task['status'] !== 'not_started') {
-                        echo json_encode(['success' => false, 'message' => 'Task already started']);
-                        break;
-                    }
-                    
-                    // Calculate SLA end time
-                    $slaEndTime = date('Y-m-d H:i:s', strtotime($now . ' +' . $task['sla_hours'] . ' hours'));
-                    
-                    // Start the task
-                    $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', start_time = ? WHERE id = ?");
-                    $result = $stmt->execute([$now, $taskId]);
-                    
+                    $result = $planner->startTask($taskId, $userId);
                     if ($result) {
-                        // Log SLA history
-                        $stmt = $db->prepare("INSERT INTO sla_history (daily_task_id, action, timestamp, notes) VALUES (?, 'start', ?, 'Task started')");
-                        $stmt->execute([$taskId, $now]);
-                        
                         echo json_encode([
                             'success' => true,
                             'message' => 'Task started successfully',
                             'task_id' => $taskId,
-                            'status' => 'in_progress',
-                            'start_time' => $now,
-                            'sla_end_time' => $slaEndTime
+                            'status' => 'in_progress'
                         ]);
                     } else {
                         echo json_encode(['success' => false, 'message' => 'Failed to start task']);
@@ -278,13 +248,30 @@ try {
                 case 'postpone':
                     $taskId = $input['task_id'] ?? null;
                     $newDate = $input['new_date'] ?? null;
+                    $reason = $input['reason'] ?? 'No reason provided';
                     
                     if (!$taskId || !$newDate) {
                         throw new Exception('Task ID and new date required');
                     }
                     
                     $result = $planner->postponeTask($taskId, $userId, $newDate);
-                    echo json_encode(['success' => $result, 'message' => $result ? 'Task postponed' : 'Failed to postpone task']);
+                    
+                    if ($result) {
+                        // Get updated daily stats to return to frontend
+                        $currentDate = date('Y-m-d');
+                        $stats = $planner->getDailyStats($userId, $currentDate);
+                        
+                        echo json_encode([
+                            'success' => true, 
+                            'message' => 'Task postponed successfully',
+                            'new_date' => $newDate,
+                            'task_id' => $taskId,
+                            'updated_stats' => $stats,
+                            'postponed_count' => $stats['postponed_tasks']
+                        ]);
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'Failed to postpone task']);
+                    }
                     break;
                     
                 case 'quick-add':
@@ -380,6 +367,30 @@ try {
                     $date = $_GET['date'] ?? date('Y-m-d');
                     $stats = $planner->getDailyStats($userId, $date);
                     echo json_encode(['success' => true, 'stats' => $stats]);
+                    break;
+                    
+                case 'debug-stats':
+                    $date = $_GET['date'] ?? date('Y-m-d');
+                    $db = Database::connect();
+                    
+                    // Get detailed breakdown
+                    $stmt = $db->prepare("
+                        SELECT status, COUNT(*) as count, GROUP_CONCAT(title SEPARATOR ', ') as tasks
+                        FROM daily_tasks 
+                        WHERE user_id = ? AND (scheduled_date = ? OR (status = 'postponed' AND postponed_from_date = ?))
+                        GROUP BY status
+                    ");
+                    $stmt->execute([$userId, $date, $date]);
+                    $breakdown = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    $stats = $planner->getDailyStats($userId, $date);
+                    echo json_encode([
+                        'success' => true, 
+                        'date' => $date,
+                        'user_id' => $userId,
+                        'stats' => $stats,
+                        'breakdown' => $breakdown
+                    ]);
                     break;
                     
                 case 'task-history':

@@ -48,7 +48,10 @@ class UnifiedWorkflowController extends Controller {
             // Process daily tasks for display
             $plannedTasks = $this->processDailyTasks($db, $dailyTasks);
             
-            $dailyStats = $this->calculateDailyStats($plannedTasks);
+            // Use DailyPlanner model for accurate stats including postponed tasks
+            require_once __DIR__ . '/../models/DailyPlanner.php';
+            $planner = new DailyPlanner();
+            $dailyStats = $planner->getDailyStats($_SESSION['user_id'], $date);
             
             $this->view('daily_workflow/unified_daily_planner', [
                 'planned_tasks' => $plannedTasks,

@@ -341,53 +341,81 @@ class DailyPlanner {
     
     public function postponeTask($taskId, $userId, $newDate) {
         try {
-            $this->db->beginTransaction();
+            // Add missing columns first
+            $this->addPostponeColumns();
             
             $now = date('Y-m-d H:i:s');
             $currentDate = date('Y-m-d');
             
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
-                SET status = 'postponed', scheduled_date = ?, postponed_from_date = ?, updated_at = NOW()
-                WHERE id = ? AND user_id = ?
+                SET status = 'postponed', scheduled_date = ?, postponed_from_date = ?, postponed_to_date = ?, updated_at = NOW()
+                WHERE id = ?
             ");
-            $stmt->execute([$newDate, $currentDate, $taskId, $userId]);
+            $result = $stmt->execute([$newDate, $currentDate, $newDate, $taskId]);
             
-            $this->logTimeAction($taskId, $userId, 'postpone', $now);
-            $this->updateDailyPerformance($userId, $currentDate);
+            if ($result) {
+                $this->logTimeAction($taskId, $userId, 'postpone', $now);
+                $this->logTaskHistory($taskId, $userId, 'postponed', $currentDate, $newDate, 'Task postponed to ' . $newDate);
+                $this->updateDailyPerformance($userId, $currentDate);
+            }
             
-            $this->db->commit();
-            return true;
+            return $result;
         } catch (Exception $e) {
-            $this->db->rollback();
             error_log("DailyPlanner postponeTask error: " . $e->getMessage());
             return false;
         }
     }
     
+    private function addPostponeColumns() {
+        try {
+            // Add postponed_to_date column if missing
+            $stmt = $this->db->prepare("SHOW COLUMNS FROM daily_tasks LIKE 'postponed_to_date'");
+            $stmt->execute();
+            if (!$stmt->fetch()) {
+                $this->db->exec("ALTER TABLE daily_tasks ADD COLUMN postponed_to_date DATE NULL");
+            }
+        } catch (Exception $e) {
+            error_log('Add postpone columns error: ' . $e->getMessage());
+        }
+    }
+    
     public function getDailyStats($userId, $date) {
         try {
-            // First try to get stats from daily_tasks
+            // Get stats from daily_tasks with proper postponed counting
             try {
                 $stmt = $this->db->prepare("
                     SELECT 
                         COUNT(*) as total_tasks,
                         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
                         SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
-                        SUM(CASE WHEN status = 'postponed' THEN 1 ELSE 0 END) as postponed_tasks,
+                        SUM(CASE WHEN status = 'postponed' AND postponed_from_date = ? THEN 1 ELSE 0 END) as postponed_tasks,
+                        SUM(CASE WHEN status = 'on_break' THEN 1 ELSE 0 END) as paused_tasks,
                         SUM(planned_duration) as total_planned_minutes,
                         SUM(active_seconds) as total_active_seconds,
                         AVG(completed_percentage) as avg_completion
                     FROM daily_tasks 
                     WHERE user_id = ? AND scheduled_date = ?
                 ");
-                $stmt->execute([$userId, $date]);
+                $stmt->execute([$date, $userId, $date]);
                 $dailyStats = $stmt->fetch(PDO::FETCH_ASSOC);
             } catch (Exception $e) {
                 error_log('Daily stats complex query failed, using fallback: ' . $e->getMessage());
                 $stmt = $this->db->prepare("SELECT COUNT(*) as total_tasks FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
                 $stmt->execute([$userId, $date]);
                 $dailyStats = ['total_tasks' => $stmt->fetchColumn(), 'completed_tasks' => 0, 'in_progress_tasks' => 0, 'postponed_tasks' => 0, 'total_planned_minutes' => 0, 'total_active_seconds' => 0, 'avg_completion' => 0];
+            }
+            
+            // Add postponed tasks count from other dates
+            if ($dailyStats) {
+                $stmt = $this->db->prepare("
+                    SELECT COUNT(*) as postponed_count
+                    FROM daily_tasks 
+                    WHERE user_id = ? AND status = 'postponed' AND postponed_from_date = ?
+                ");
+                $stmt->execute([$userId, $date]);
+                $postponedCount = $stmt->fetchColumn();
+                $dailyStats['postponed_tasks'] = $postponedCount;
             }
             
             // If no daily tasks stats, get from regular tasks
@@ -554,6 +582,19 @@ class DailyPlanner {
                     INDEX idx_daily_task_id (daily_task_id)
                 )
             ");
+            
+            // Also ensure sla_history table has postpone tracking
+            $this->db->exec("
+                CREATE TABLE IF NOT EXISTS sla_history (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    daily_task_id INT NOT NULL,
+                    action VARCHAR(20) NOT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    duration_seconds INT DEFAULT 0,
+                    notes TEXT,
+                    INDEX idx_daily_task_id (daily_task_id)
+                )
+            ");
         } catch (Exception $e) {
             error_log('ensureTaskHistoryTable error: ' . $e->getMessage());
         }
@@ -580,7 +621,7 @@ class DailyPlanner {
         return 0;
     }
     
-    private function updateDailyPerformance($userId, $date) {
+    public function updateDailyPerformance($userId, $date) {
         try {
             $stats = $this->getDailyStats($userId, $date);
             

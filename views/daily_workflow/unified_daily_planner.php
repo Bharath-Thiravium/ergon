@@ -339,24 +339,27 @@ $updateProgressContent = '
 
 $updateProgressFooter = createFormModalFooter('Cancel', 'Update Progress', 'updateProgressModal');
 
-renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $updateProgressFooter, ['icon' => '📊']);
+renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $updateProgressFooter, ['icon' => '📊', 'zIndex' => 999]);
 ?>
 
-<?php
-// Postpone Task Modal Content
-$postponeTaskContent = '
-<form id="postponeTaskForm">
-    <input type="hidden" id="postponeTaskId" name="task_id">
-    <div class="form-group">
-        <label for="newDate" class="form-label">Reschedule to Date</label>
-        <input type="date" id="newDate" name="new_date" class="form-control" required min="' . date('Y-m-d', strtotime('+1 day')) . '">
+<!-- Inline Postpone Form -->
+<div id="postponeForm" style="display: none; position: fixed; top: 60%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 9999; min-width: 300px;">
+    <h4>📅 Postpone Task</h4>
+    <input type="hidden" id="postponeTaskId">
+    <div style="margin: 15px 0;">
+        <label>New Date:</label>
+        <input type="date" id="newDate" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;" min="<?= date('Y-m-d', strtotime('+1 day')) ?>">
     </div>
-</form>';
-
-$postponeTaskFooter = createFormModalFooter('Cancel', 'Postpone Task', 'postponeTaskModal', 'warning');
-
-renderModal('postponeTaskModal', 'Postpone Task', $postponeTaskContent, $postponeTaskFooter, ['icon' => '📅', 'zIndex' => 100000]);
-?>
+    <div style="margin: 15px 0;">
+        <label>Reason:</label>
+        <textarea id="postponeReason" placeholder="Why are you postponing this task?" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; height: 60px;"></textarea>
+    </div>
+    <div style="text-align: right; margin-top: 20px;">
+        <button onclick="cancelPostpone()" style="padding: 8px 16px; margin-right: 10px; background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">Cancel</button>
+        <button onclick="submitPostpone()" style="padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer;">Postpone</button>
+    </div>
+</div>
+<div id="postponeOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9998;" onclick="cancelPostpone()"></div>
 
 <div id="progressDialog" class="dialog" style="display: none;">
     <div class="dialog-content">
@@ -682,28 +685,7 @@ renderModal('postponeTaskModal', 'Postpone Task', $postponeTaskContent, $postpon
     border-color: #2563eb;
 }
 
-/* Modal styles */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 999999 !important;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    backdrop-filter: blur(2px);
-}
 
-.modal-content {
-    background-color: var(--bg-primary, #ffffff);
-    margin: 5% auto;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 600px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    border: 1px solid var(--border-color, #e5e7eb);
-}
 
 .modal-header {
     display: flex;
@@ -869,6 +851,73 @@ function updateSLADashboard(data) {
         slaLate.parentElement.style.display = 'block';
     }
 }
+
+function updateSLADashboardStats(stats) {
+    // Update task count statistics in SLA Dashboard
+    const statItems = document.querySelectorAll('.stat-item .stat-value');
+    if (statItems.length >= 4) {
+        statItems[0].textContent = stats.completed_tasks || 0; // Completed
+        statItems[1].textContent = stats.in_progress_tasks || 0; // In Progress
+        statItems[2].textContent = stats.postponed_tasks || 0; // Postponed
+        statItems[3].textContent = stats.total_tasks || 0; // Total
+    }
+    
+    // Update completion rate
+    const completionRate = stats.total_tasks > 0 ? (stats.completed_tasks / stats.total_tasks) * 100 : 0;
+    const progressFills = document.querySelectorAll('.progress-fill');
+    if (progressFills.length > 0) {
+        progressFills[0].style.width = completionRate + '%';
+    }
+    
+    console.log('SLA Dashboard updated with new stats:', stats);
+}
+
+function refreshSLADashboard() {
+    // Fetch current stats and update dashboard
+    const currentDate = '<?= $selected_date ?>';
+    fetch(`/ergon/api/daily_planner_workflow.php?action=stats&date=${currentDate}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.stats) {
+            updateSLADashboardStats(data.stats);
+            console.log('SLA Dashboard refreshed with latest stats');
+        }
+    })
+    .catch(error => {
+        console.error('Error refreshing SLA dashboard:', error);
+    });
+}
+
+// Prevent auto-refresh from overriding postponed tasks
+function preservePostponedTasks() {
+    if (window.postponedTasks) {
+        window.postponedTasks.forEach(taskId => {
+            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+            if (taskCard && !taskCard.dataset.postponed) {
+                taskCard.dataset.status = 'postponed';
+                taskCard.dataset.postponed = 'true';
+                taskCard.style.opacity = '0.6';
+                taskCard.style.pointerEvents = 'none';
+                
+                const statusBadge = taskCard.querySelector('.badge');
+                if (statusBadge) {
+                    statusBadge.textContent = 'Postponed';
+                    statusBadge.className = 'badge badge--warning';
+                }
+            }
+        });
+    }
+}
+
+// Override any refresh functions that might revert postponed status
+const originalSetInterval = window.setInterval;
+window.setInterval = function(callback, delay) {
+    const wrappedCallback = function() {
+        callback();
+        preservePostponedTasks();
+    };
+    return originalSetInterval(wrappedCallback, delay);
+};
 
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
@@ -1058,7 +1107,81 @@ function completeTask(taskId) {
 
 function postponeTask(taskId) {
     document.getElementById('postponeTaskId').value = taskId;
-    showModal('postponeTaskModal');
+    document.getElementById('postponeForm').style.display = 'block';
+    document.getElementById('postponeOverlay').style.display = 'block';
+    document.getElementById('newDate').focus();
+}
+
+function cancelPostpone() {
+    document.getElementById('postponeForm').style.display = 'none';
+    document.getElementById('postponeOverlay').style.display = 'none';
+    document.getElementById('newDate').value = '';
+    document.getElementById('postponeReason').value = '';
+}
+
+function submitPostpone() {
+    const taskId = document.getElementById('postponeTaskId').value;
+    const newDate = document.getElementById('newDate').value;
+    const reason = document.getElementById('postponeReason').value;
+    
+    if (!newDate) {
+        alert('Please select a date');
+        return;
+    }
+    
+    fetch('/ergon/api/daily_planner_workflow.php?action=postpone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            task_id: parseInt(taskId), 
+            new_date: newDate,
+            reason: reason || 'No reason provided'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            cancelPostpone();
+            
+            // Update SLA Dashboard with actual database values
+            if (data.updated_stats) {
+                updateSLADashboardStats(data.updated_stats);
+            }
+            
+            // Mark task as postponed in UI permanently
+            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+            if (taskCard) {
+                taskCard.dataset.status = 'postponed';
+                taskCard.dataset.postponed = 'true';
+                taskCard.style.opacity = '0.6';
+                taskCard.style.pointerEvents = 'none';
+                
+                const statusBadge = taskCard.querySelector('.badge');
+                if (statusBadge) {
+                    statusBadge.textContent = 'Postponed';
+                    statusBadge.className = 'badge badge--warning';
+                }
+                
+                const actionsDiv = taskCard.querySelector('.task-card__actions');
+                if (actionsDiv) {
+                    actionsDiv.innerHTML = `<span class="badge badge--warning"><i class="bi bi-calendar-plus"></i> Postponed to ${newDate}</span>`;
+                }
+            }
+            
+            showNotification(`Task postponed to ${newDate}`, 'success');
+            
+            // Prevent any auto-refresh by marking as processed
+            window.postponedTasks = window.postponedTasks || new Set();
+            window.postponedTasks.add(taskId);
+            
+        } else {
+            alert('Failed to postpone task: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error postponing task');
+    });
 }
 
 
@@ -1270,40 +1393,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    document.getElementById('postponeTaskForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const taskId = document.getElementById('postponeTaskId').value;
-        const newDate = document.getElementById('newDate').value;
-        
-        if (!newDate) {
-            alert('Please select a date');
-            return;
-        }
-        
-        fetch('/ergon/api/daily_planner_workflow.php?action=postpone', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                task_id: parseInt(taskId), 
-                new_date: newDate 
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                updateTaskUI(taskId, 'postponed');
-                closeModal('postponeTaskModal');
-                showNotification('Task postponed to ' + newDate, 'success');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                alert('Failed to postpone task: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error postponing task: ' + error.message);
-        });
-    });
+
 });
 </script>
 

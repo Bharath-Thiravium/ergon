@@ -38,18 +38,15 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     
-    <script src="/ergon/assets/js/theme-preload.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
+    <!-- Critical CSS inline to prevent FOUC -->
+    <style><?php include __DIR__ . '/../../assets/css/critical-inline.css'; ?></style>
     
-    <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/theme-enhanced.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/utilities-new.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/instant-theme.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/global-tooltips.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/action-button-clean.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/responsive-mobile.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/mobile-critical-fixes.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/nav-simple-fix.css?v=<?= time() ?>" rel="stylesheet">
+    <!-- Preload external fonts -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous">
+    <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous"></noscript>
+    
+    <!-- Optimized CSS Loader -->
+    <script src="/ergon/assets/js/optimized-css-loader.js"></script>
 
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
