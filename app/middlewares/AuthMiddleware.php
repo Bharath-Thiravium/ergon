@@ -31,7 +31,19 @@ class AuthMiddleware {
         // Update last activity
         $_SESSION['last_activity'] = time();
         
-        // Removed aggressive cache headers
+        // Set secure session cookie parameters
+        if (!headers_sent()) {
+            $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+            $domain = $_SERVER['HTTP_HOST'];
+            session_set_cookie_params([
+                'lifetime' => 28800,
+                'path' => '/ergon/',
+                'domain' => $domain,
+                'secure' => $isSecure,
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]);
+        }
     }
     
     public static function requireRole($requiredRole) {

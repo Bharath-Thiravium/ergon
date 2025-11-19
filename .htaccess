@@ -1,2 +1,7 @@
+RewriteEngine On
+RewriteRule ^dashboard/?$ index.php [L]
+RewriteRule ^owner/dashboard/?$ index.php [L]
+RewriteRule ^admin/dashboard/?$ index.php [L]
+RewriteRule ^user/dashboard/?$ index.php [L]
 AddType font/woff2 .woff2
 AddType font/woff .woff
