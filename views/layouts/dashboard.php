@@ -38,15 +38,26 @@ $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' =>
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     
-    <!-- Critical CSS inline to prevent FOUC -->
-    <style><?php include __DIR__ . '/../../assets/css/critical-inline.css'; ?></style>
+    <script src="/ergon/assets/js/theme-preload.js"></script>
     
-    <!-- Preload external fonts -->
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous">
-    <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous"></noscript>
+    <style>
+    /* Critical inline CSS to prevent FOUC */
+    .main-content{margin-top:110px;padding:24px;background:#f8fafc;min-height:calc(100vh - 110px);width:100vw;max-width:100vw;overflow-x:hidden}
+    .main-header{background:#000080;position:fixed;top:0;left:0;right:0;z-index:9999;width:100%}
+    .header__top{display:flex;align-items:center;justify-content:space-between;padding:12px 24px}
+    body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0}
+    </style>
     
-    <!-- Optimized CSS Loader -->
-    <script src="/ergon/assets/js/optimized-css-loader.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="/ergon/assets/css/ergon.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/theme-enhanced.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/utilities-new.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/instant-theme.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/global-tooltips.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/action-button-clean.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/mobile-critical-fixes.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/nav-simple-fix.css?v=1.0" rel="stylesheet">
 
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
