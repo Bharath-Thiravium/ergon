@@ -1,7 +1,13 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/session.php';
 require_once __DIR__ . '/../helpers/NotificationHelper.php';
+
+// Enable output compression
+if (!ob_get_level()) {
+    ob_start('ob_gzhandler');
+}
 
 class ContactFollowupController extends Controller {
     

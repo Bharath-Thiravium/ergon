@@ -16,7 +16,6 @@ class Database {
     
     public function __construct() {
         try {
-            // Force production credentials for Hostinger
             $this->host = 'localhost';
             $this->db_name = 'u494785662_ergon';
             $this->username = 'u494785662_ergon';
@@ -37,7 +36,8 @@ class Database {
                 PDO::ATTR_EMULATE_PREPARES => false,
                 PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4",
                 PDO::ATTR_PERSISTENT => true,
-                PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true
+                PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
+                PDO::MYSQL_ATTR_FOUND_ROWS => true
             ];
             
             if (!Environment::isDevelopment()) {
