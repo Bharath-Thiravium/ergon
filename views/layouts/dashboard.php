@@ -34,6 +34,7 @@ ob_end_clean();
     .mobile-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9997;display:none}
     </style>
     
+    <link href="/ergon/assets/css/font-fixes.css" rel="stylesheet">
     <link href="/ergon/assets/css/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/ergon/assets/css/ergon.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/theme-enhanced.css?v=1.0" rel="stylesheet">
