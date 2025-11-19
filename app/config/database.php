@@ -16,10 +16,20 @@ class Database {
     
     public function __construct() {
         try {
-            $this->host = 'localhost';
-            $this->db_name = 'u494785662_ergon';
-            $this->username = 'u494785662_ergon';
-            $this->password = '@Admin@2025@';
+            // Auto-detect environment and set database credentials
+            if (Environment::isDevelopment()) {
+                // Local development settings
+                $this->host = 'localhost';
+                $this->db_name = 'ergon';
+                $this->username = 'root';
+                $this->password = '';
+            } else {
+                // Production settings
+                $this->host = 'localhost';
+                $this->db_name = 'u494785662_ergon';
+                $this->username = 'u494785662_ergon';
+                $this->password = '@Admin@2025@';
+            }
         } catch (Exception $e) {
             error_log('Database configuration error: ' . $e->getMessage());
             throw new Exception('Database configuration failed');

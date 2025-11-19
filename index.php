@@ -8,8 +8,13 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Session configuration
+require_once __DIR__ . '/app/config/session.php';
+
 // Start session
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Set timezone
 date_default_timezone_set('Asia/Kolkata');
