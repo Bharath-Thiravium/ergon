@@ -16,17 +16,22 @@ class Database {
     
     public function __construct() {
         try {
-            if (Environment::isDevelopment()) {
-                $this->host = 'localhost';
-                $this->db_name = 'ergon_db';
-                $this->username = 'root';
-                $this->password = '';
-            } else {
-                $this->host = 'localhost';
-                $this->db_name = 'u494785662_ergon';
-                $this->username = 'u494785662_ergon';
-                $this->password = '@Admin@2025@';
+            // Load .env file
+            $envFile = __DIR__ . '/../../.env';
+            if (file_exists($envFile)) {
+                $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                foreach ($lines as $line) {
+                    if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
+                        list($key, $value) = explode('=', $line, 2);
+                        $_ENV[trim($key)] = trim($value);
+                    }
+                }
             }
+            
+            $this->host = $_ENV['DB_HOST'] ?? 'localhost';
+            $this->db_name = $_ENV['DB_NAME'] ?? 'ergon_db';
+            $this->username = $_ENV['DB_USER'] ?? 'root';
+            $this->password = $_ENV['DB_PASS'] ?? null;
         } catch (Exception $e) {
             error_log('Database configuration error: ' . $e->getMessage());
             throw new Exception('Database configuration failed');
@@ -54,7 +59,7 @@ class Database {
             $this->conn = new PDO(
                 "mysql:host=" . $this->host . ";dbname=" . $this->db_name . ";charset=utf8mb4",
                 $this->username,
-                $this->password,
+                $this->password ?? '',
                 $options
             );
         } catch(PDOException $e) {
@@ -73,7 +78,7 @@ class Database {
     }
     
     public function getEnvironment() {
-        return Environment::isDevelopment() ? 'development' : 'production';
+        return $_ENV['APP_ENV'] ?? 'development';
     }
 }
 ?>
