@@ -114,6 +114,37 @@ ob_start();
                 <input type="text" name="emergency_contact" class="form-control" value="<?= htmlspecialchars($user['emergency_contact'] ?? '') ?>">
             </div>
             
+            <div class="form-group">
+                <label class="form-label">Documents</label>
+                <div class="document-upload">
+                    <div class="document-category">
+                        <label>Passport Size Photo</label>
+                        <input type="file" name="passport_photo" class="form-control" accept=".jpg,.jpeg,.png">
+                    </div>
+                    <div class="document-category">
+                        <label>Aadhar Card</label>
+                        <input type="file" name="aadhar" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                    <div class="document-category">
+                        <label>PAN Card</label>
+                        <input type="file" name="pan" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                    <div class="document-category">
+                        <label>Resume</label>
+                        <input type="file" name="resume" class="form-control" accept=".pdf,.doc,.docx">
+                    </div>
+                    <div class="document-category">
+                        <label>Education Documents</label>
+                        <input type="file" name="education_docs[]" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                    <div class="document-category">
+                        <label>Experience Certificates</label>
+                        <input type="file" name="experience_certs[]" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                    <small class="form-text">Max 5MB per file. JPG/PNG for photos, PDF/DOC for documents.</small>
+                </div>
+            </div>
+            
             <div class="form-actions">
                 <button type="submit" class="btn btn--primary">✨ Update User</button>
                 <a href="<?= in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users' ?>" class="btn btn--secondary">❌ Cancel</a>
@@ -122,7 +153,27 @@ ob_start();
     </div>
 </div>
 
-
+<style>
+.document-upload {
+    border: 1px solid #ddd;
+    padding: 1rem;
+    border-radius: 4px;
+    background: #f9f9f9;
+}
+.document-category {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 4px;
+    border: 1px solid #eee;
+}
+.document-category label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+</style>
 
 <script>
 function generateEmployeeId() {
