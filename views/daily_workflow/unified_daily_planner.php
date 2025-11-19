@@ -5,6 +5,7 @@ $content = ob_start();
 <link rel="stylesheet" href="/ergon/assets/css/daily-planner.css">
 <link rel="stylesheet" href="/ergon/assets/css/daily-planner-modern.css">
 <link rel="stylesheet" href="/ergon/assets/css/planner-access-control.css">
+<link rel="stylesheet" href="/ergon/assets/css/production-fixes.css">
 
 <?php renderModalCSS(); ?>
 
