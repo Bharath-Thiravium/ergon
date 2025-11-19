@@ -7,7 +7,7 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 
 $_SESSION['last_activity'] = time();
 $content = $content ?? '';
 $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' => 'en'];
-ob_clean();
+ob_end_clean();
 ?>
 <!DOCTYPE html>
 <html lang="en">
