@@ -1,4 +1,6 @@
 <?php
+ob_start();
+header('Content-Type: text/html; charset=UTF-8');
 require_once __DIR__ . '/../../app/helpers/Security.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) { header('Location: /ergon/login'); exit; }
@@ -6,6 +8,7 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 
 $_SESSION['last_activity'] = time();
 $content = $content ?? '';
 $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' => 'en'];
+ob_end_clean();
 ?>
 <!DOCTYPE html>
 <html lang="en">
