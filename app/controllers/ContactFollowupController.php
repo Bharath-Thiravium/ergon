@@ -39,18 +39,16 @@ class ContactFollowupController extends Controller {
             // Get all followups for the current user or all if admin/owner
             $sql = "
                 SELECT f.*, c.name as contact_name, c.phone as contact_phone, c.email as contact_email, c.company as contact_company,
-                       CASE WHEN f.task_id IS NOT NULL THEN 'task' ELSE 'standalone' END as followup_type,
-                       t.title as task_title
+                       'standalone' as followup_type
                 FROM followups f 
                 LEFT JOIN contacts c ON f.contact_id = c.id 
-                LEFT JOIN tasks t ON f.task_id = t.id
                 WHERE 1=1
             ";
             
             if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                $sql .= " AND (f.user_id = ? OR t.assigned_to = ?)";
+                $sql .= " AND f.user_id = ?";
                 $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC LIMIT 50");
-                $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
+                $stmt->execute([$_SESSION['user_id']]);
             } else {
                 $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC LIMIT 50");
                 $stmt->execute();
@@ -465,13 +463,12 @@ class ContactFollowupController extends Controller {
                    MAX(f.follow_up_date) as next_followup_date
             FROM contacts c
             LEFT JOIN followups f ON c.id = f.contact_id
-            LEFT JOIN tasks t ON f.task_id = t.id
         ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-            $sql .= " WHERE (f.user_id = ? OR t.assigned_to = ? OR f.id IS NULL)";
+            $sql .= " WHERE (f.user_id = ? OR f.id IS NULL)";
             $stmt = $db->prepare($sql . " GROUP BY c.id HAVING total_followups > 0 ORDER BY next_followup_date ASC");
-            $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
+            $stmt->execute([$_SESSION['user_id']]);
         } else {
             $stmt = $db->prepare($sql . " GROUP BY c.id HAVING total_followups > 0 ORDER BY next_followup_date ASC");
             $stmt->execute();
@@ -483,17 +480,15 @@ class ContactFollowupController extends Controller {
     private function getContactFollowups($db, $contact_id) {
         $sql = "
             SELECT f.*, 
-                   CASE WHEN f.task_id IS NOT NULL THEN 'task' ELSE 'standalone' END as followup_type,
-                   t.title as task_title
+                   'standalone' as followup_type
             FROM followups f 
-            LEFT JOIN tasks t ON f.task_id = t.id
             WHERE f.contact_id = ?
         ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-            $sql .= " AND (f.user_id = ? OR t.assigned_to = ?)";
+            $sql .= " AND f.user_id = ?";
             $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC");
-            $stmt->execute([$contact_id, $_SESSION['user_id'], $_SESSION['user_id']]);
+            $stmt->execute([$contact_id, $_SESSION['user_id']]);
         } else {
             $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC");
             $stmt->execute([$contact_id]);
