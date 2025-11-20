@@ -22,16 +22,29 @@ class UnifiedAttendanceController extends Controller {
             $role = $_SESSION['role'] ?? 'user';
             $userId = $_SESSION['user_id'];
             
-            // Get all attendance records with proper user names
+            // Get date filter
+            $selectedDate = $_GET['date'] ?? date('Y-m-d');
             $filter = $_GET['filter'] ?? 'today';
-            $attendance = $this->getAllAttendance($filter, $role, $userId);
+            
+            // Get attendance records
+            $attendance = $this->getAllAttendanceByDate($selectedDate, $role, $userId);
             $stats = $this->calculateUserStats($attendance);
+            
+            // For admin, get their own attendance separately
+            $adminAttendance = null;
+            if ($role === 'admin') {
+                $adminAttendance = $this->getAdminOwnAttendance($userId, $selectedDate);
+            }
             
             $this->view('attendance/index', [
                 'attendance' => $attendance,
+                'admin_attendance' => $adminAttendance,
                 'stats' => $stats,
                 'current_filter' => $filter,
-                'active_page' => 'attendance'
+                'selected_date' => $selectedDate,
+                'user_role' => $role,
+                'active_page' => 'attendance',
+                'is_grouped' => $role === 'owner' && is_array($attendance) && isset($attendance['admin'])
             ]);
         } catch (Exception $e) {
             error_log('Attendance index error: ' . $e->getMessage());
@@ -73,9 +86,19 @@ class UnifiedAttendanceController extends Controller {
         $todayAttendance = $this->getTodayAttendance($_SESSION['user_id']);
         $onLeave = $this->checkIfOnLeave($_SESSION['user_id']);
         
+        // Prepare attendance status for smart button
+        $attendanceStatus = [
+            'has_clocked_in' => $todayAttendance ? true : false,
+            'has_clocked_out' => $todayAttendance && $todayAttendance['check_out'] ? true : false,
+            'clock_in_time' => $todayAttendance ? $todayAttendance['check_in'] : null,
+            'clock_out_time' => $todayAttendance ? $todayAttendance['check_out'] : null,
+            'on_leave' => $onLeave
+        ];
+        
         $this->view('attendance/clock', [
             'today_attendance' => $todayAttendance,
             'on_leave' => $onLeave,
+            'attendance_status' => $attendanceStatus,
             'active_page' => 'attendance'
         ]);
     }
@@ -86,12 +109,14 @@ class UnifiedAttendanceController extends Controller {
         
         try {
             $todayAttendance = $this->getTodayAttendance($_SESSION['user_id']);
+            $onLeave = $this->checkIfOnLeave($_SESSION['user_id']);
             
             echo json_encode([
                 'success' => true,
                 'attendance' => $todayAttendance,
-                'can_clock_in' => !$todayAttendance || $todayAttendance['check_out'],
-                'can_clock_out' => $todayAttendance && !$todayAttendance['check_out']
+                'on_leave' => $onLeave,
+                'can_clock_in' => !$onLeave && (!$todayAttendance || $todayAttendance['check_out']),
+                'can_clock_out' => !$onLeave && $todayAttendance && !$todayAttendance['check_out']
             ]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -260,24 +285,55 @@ class UnifiedAttendanceController extends Controller {
     private function getAllAttendance($filter, $role, $userId) {
         try {
             $dateCondition = $this->getDateCondition($filter);
+            $filterDate = $this->getFilterDate($filter);
             
-            // Role-based filtering
+            // Role-based filtering for users
             if ($role === 'user') {
-                $userCondition = "AND a.user_id = $userId";
+                $userCondition = "AND u.id = $userId";
             } elseif ($role === 'admin') {
                 $userCondition = "AND u.role IN ('user', 'admin')";
             } else {
-                $userCondition = "";
+                $userCondition = "AND u.role IN ('user', 'admin')";
             }
             
+            // Get all users with their attendance and leave status
             $stmt = $this->db->prepare("
-                SELECT a.*, u.name as user_name, u.email, u.role as user_role
-                FROM attendance a 
-                LEFT JOIN users u ON a.user_id = u.id 
-                WHERE $dateCondition $userCondition
-                ORDER BY a.check_in DESC
+                SELECT 
+                    u.id as user_id,
+                    u.name as user_name, 
+                    u.email, 
+                    u.role as user_role,
+                    a.check_in,
+                    a.check_out,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN 'On Leave'
+                        WHEN a.check_in IS NOT NULL THEN 'Present'
+                        ELSE 'Absent'
+                    END as status,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN 'On Leave'
+                        WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
+                            CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out), 'h ', 
+                                   TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) % 60, 'm')
+                        WHEN a.check_in IS NOT NULL THEN 'Working...'
+                        ELSE '0h 0m'
+                    END as working_hours,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN '00:00'
+                        ELSE COALESCE(TIME_FORMAT(a.check_in, '%H:%i'), '00:00')
+                    END as check_in_time,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN '00:00'
+                        ELSE COALESCE(TIME_FORMAT(a.check_out, '%H:%i'), '00:00')
+                    END as check_out_time
+                FROM users u
+                LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
+                LEFT JOIN leaves l ON u.id = l.user_id AND l.status = 'approved' 
+                    AND ? BETWEEN DATE(l.start_date) AND DATE(l.end_date)
+                WHERE u.status = 'active' $userCondition
+                ORDER BY u.name
             ");
-            $stmt->execute();
+            $stmt->execute([$filterDate, $filterDate]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             error_log('getAllAttendance error: ' . $e->getMessage());
@@ -384,12 +440,11 @@ class UnifiedAttendanceController extends Controller {
             $stmt = $this->db->prepare("
                 SELECT id FROM leaves 
                 WHERE user_id = ? AND status = 'approved' 
-                AND CURDATE() BETWEEN start_date AND end_date
+                AND CURDATE() BETWEEN DATE(start_date) AND DATE(end_date)
             ");
             $stmt->execute([$userId]);
             return $stmt->fetch() ? true : false;
         } catch (Exception $e) {
-            // If leaves table doesn't exist, assume not on leave
             return false;
         }
     }
@@ -478,11 +533,147 @@ class UnifiedAttendanceController extends Controller {
         }
     }
     
+    private function getFilterDate($filter) {
+        switch ($filter) {
+            case 'today':
+            default:
+                return date('Y-m-d');
+        }
+    }
+    
+    private function getAllAttendanceByDate($selectedDate, $role, $userId) {
+        try {
+            // Role-based filtering for users
+            if ($role === 'user') {
+                $userCondition = "AND u.id = $userId";
+            } elseif ($role === 'admin') {
+                $userCondition = "AND u.role IN ('user', 'admin') AND u.id != $userId";
+            } else {
+                $userCondition = "AND u.role IN ('user', 'admin')";
+            }
+            
+            // Get all users with their attendance and leave status for selected date
+            $stmt = $this->db->prepare("
+                SELECT 
+                    u.id as user_id,
+                    u.name as user_name, 
+                    u.email, 
+                    u.role as user_role,
+                    a.id as attendance_id,
+                    a.check_in,
+                    a.check_out,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN 'On Leave'
+                        WHEN a.check_in IS NOT NULL THEN 'Present'
+                        ELSE 'Absent'
+                    END as status,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN 'On Leave'
+                        WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
+                            CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out), 'h ', 
+                                   TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) % 60, 'm')
+                        WHEN a.check_in IS NOT NULL THEN 'Working...'
+                        ELSE '0h 0m'
+                    END as working_hours,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN '00:00'
+                        ELSE COALESCE(TIME_FORMAT(a.check_in, '%H:%i'), '00:00')
+                    END as check_in_time,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN '00:00'
+                        ELSE COALESCE(TIME_FORMAT(a.check_out, '%H:%i'), '00:00')
+                    END as check_out_time
+                FROM users u
+                LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
+                LEFT JOIN leaves l ON u.id = l.user_id AND l.status = 'approved' 
+                    AND ? BETWEEN DATE(l.start_date) AND DATE(l.end_date)
+                WHERE u.status = 'active' $userCondition
+                ORDER BY 
+                    CASE 
+                        WHEN u.role = 'admin' THEN 1
+                        WHEN u.role = 'user' THEN 2
+                        ELSE 3
+                    END, u.name
+            ");
+            $stmt->execute([$selectedDate, $selectedDate]);
+            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Group by role for Owner panel
+            if ($role === 'owner') {
+                $grouped = ['admin' => [], 'user' => []];
+                foreach ($records as $record) {
+                    $userRole = $record['user_role'] === 'admin' ? 'admin' : 'user';
+                    $grouped[$userRole][] = $record;
+                }
+                return $grouped;
+            }
+            
+            return $records;
+        } catch (Exception $e) {
+            error_log('getAllAttendanceByDate error: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
+    private function getAdminOwnAttendance($userId, $selectedDate) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT 
+                    u.id as user_id,
+                    u.name as user_name, 
+                    u.email, 
+                    u.role as user_role,
+                    a.id as attendance_id,
+                    a.check_in,
+                    a.check_out,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN 'On Leave'
+                        WHEN a.check_in IS NOT NULL THEN 'Present'
+                        ELSE 'Absent'
+                    END as status,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN 'On Leave'
+                        WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
+                            CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out), 'h ', 
+                                   TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) % 60, 'm')
+                        WHEN a.check_in IS NOT NULL THEN 'Working...'
+                        ELSE '0h 0m'
+                    END as working_hours,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN '00:00'
+                        ELSE COALESCE(TIME_FORMAT(a.check_in, '%H:%i'), '00:00')
+                    END as check_in_time,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN '00:00'
+                        ELSE COALESCE(TIME_FORMAT(a.check_out, '%H:%i'), '00:00')
+                    END as check_out_time
+                FROM users u
+                LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
+                LEFT JOIN leaves l ON u.id = l.user_id AND l.status = 'approved' 
+                    AND ? BETWEEN DATE(l.start_date) AND DATE(l.end_date)
+                WHERE u.id = ?
+            ");
+            $stmt->execute([$selectedDate, $selectedDate, $userId]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('getAdminOwnAttendance error: ' . $e->getMessage());
+            return null;
+        }
+    }
+    
     private function calculateUserStats($attendance) {
         $totalMinutes = 0;
         $presentDays = 0;
         
-        foreach ($attendance as $record) {
+        // Handle grouped attendance for owner
+        $records = [];
+        if (is_array($attendance) && isset($attendance['admin'])) {
+            $records = array_merge($attendance['admin'], $attendance['user']);
+        } else {
+            $records = $attendance;
+        }
+        
+        foreach ($records as $record) {
             if ($record['check_in'] && $record['check_out']) {
                 $minutes = (float)((strtotime($record['check_out']) - strtotime($record['check_in'])) / 60.0);
                 $totalMinutes += $minutes;

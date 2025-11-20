@@ -32,6 +32,13 @@ ob_end_clean();
     .main-content{margin:110px 0 0 0;padding:24px 24px 24px 0;background:#f8fafc;min-height:calc(100vh - 110px);width:100%;max-width:100vw;overflow-x:hidden;position:relative}
     .sidebar{position:fixed;left:-280px;top:0;width:280px;height:100vh;background:#fff;z-index:9998;transition:left 0.3s ease}
     .mobile-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9997;display:none}
+    
+    /* Smart Attendance Button States */
+    .btn--attendance-toggle.state-out{background:#22c55e !important;border-color:#22c55e !important;color:#ffffff !important}
+    .btn--attendance-toggle.state-in{background:#b91c1c !important;color:#ffffff !important;border-color:#991b1b !important;box-shadow:0 2px 16px rgba(185,28,28,0.8) !important;font-weight:800 !important;border-width:3px !important;text-shadow:0 1px 2px rgba(0,0,0,0.3) !important}
+    .btn--attendance-toggle.state-completed{background:#059669 !important;border-color:#047857 !important;color:#ffffff !important;opacity:1 !important;box-shadow:0 2px 8px rgba(5,150,105,0.3) !important}
+    .btn--attendance-toggle.state-leave{background:#f59e0b !important;border-color:#f59e0b !important;color:#ffffff !important;opacity:1 !important}
+    .btn--attendance-toggle{transition:all 0.3s ease;color:#ffffff !important}
     </style>
     
     <link href="/ergon/assets/css/bootstrap-icons.min.css" rel="stylesheet">
@@ -855,20 +862,40 @@ ob_end_clean();
         return;
     }
     
-    // Attendance Toggle Function
+    // Smart Attendance Toggle Function - mirrors clockBtn logic
+    let headerAttendanceStatus = {
+        has_clocked_in: false,
+        has_clocked_out: false,
+        on_leave: false
+    };
+    
     function toggleAttendance() {
         const button = document.getElementById('attendanceToggle');
         const icon = document.getElementById('attendanceIcon');
         const text = document.getElementById('attendanceText');
         
-        // Immediate visual feedback
+        if (headerAttendanceStatus.on_leave) {
+            showAttendanceNotification('You are on approved leave today', 'error');
+            return;
+        }
+        
+        // Determine action based on current status
+        let action;
+        if (!headerAttendanceStatus.has_clocked_in) {
+            action = 'in';
+        } else if (headerAttendanceStatus.has_clocked_in && !headerAttendanceStatus.has_clocked_out) {
+            action = 'out';
+        } else {
+            showAttendanceNotification('Attendance completed for today', 'error');
+            return;
+        }
+        
+        // Show loading state
         button.disabled = true;
         button.classList.add('loading');
-        text.textContent = 'Processing...';
+        const originalText = text.textContent;
+        text.textContent = action === 'in' ? 'Clocking In...' : 'Clocking Out...';
         
-        const action = attendanceState === 'out' ? 'in' : 'out';
-        
-        // Skip geolocation for faster response
         fetch('/ergon/attendance/clock', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -877,15 +904,23 @@ ob_end_clean();
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                attendanceState = action;
-                updateAttendanceButton();
-                showAttendanceNotification(action === 'in' ? 'Clocked in successfully!' : 'Clocked out successfully!', 'success');
+                // Update status
+                if (action === 'in') {
+                    headerAttendanceStatus.has_clocked_in = true;
+                } else {
+                    headerAttendanceStatus.has_clocked_out = true;
+                }
+                
+                updateHeaderAttendanceButton();
+                showAttendanceNotification(`Clocked ${action} successfully!`, 'success');
             } else {
                 showAttendanceNotification(data.error || 'Failed to update attendance', 'error');
+                text.textContent = originalText;
             }
         })
         .catch(error => {
             showAttendanceNotification('Network error occurred', 'error');
+            text.textContent = originalText;
         })
         .finally(() => {
             button.disabled = false;
@@ -893,21 +928,37 @@ ob_end_clean();
         });
     }
     
-    function updateAttendanceButton() {
+    function updateHeaderAttendanceButton() {
         const button = document.getElementById('attendanceToggle');
         const icon = document.getElementById('attendanceIcon');
         const text = document.getElementById('attendanceText');
         
-        if (attendanceState === 'in') {
-            button.classList.remove('state-out');
-            button.classList.add('state-in');
-            icon.className = 'bi bi-stop-fill';
-            text.textContent = 'Clock Out';
-        } else {
-            button.classList.remove('state-in');
-            button.classList.add('state-out');
-            icon.className = 'bi bi-play-fill';
+        if (!button || !icon || !text) return;
+        
+        button.disabled = false;
+        
+        if (headerAttendanceStatus.on_leave) {
+            // On Leave state
+            text.textContent = 'On Leave';
+            icon.className = 'bi bi-calendar-x';
+            button.className = 'btn btn--attendance-toggle state-leave';
+            button.disabled = true;
+        } else if (!headerAttendanceStatus.has_clocked_in) {
+            // Clock In state
             text.textContent = 'Clock In';
+            icon.className = 'bi bi-play-fill';
+            button.className = 'btn btn--attendance-toggle state-out';
+        } else if (headerAttendanceStatus.has_clocked_in && !headerAttendanceStatus.has_clocked_out) {
+            // Clock Out state
+            text.textContent = 'Clock Out';
+            icon.className = 'bi bi-stop-fill';
+            button.className = 'btn btn--attendance-toggle state-in';
+        } else {
+            // Completed state
+            text.textContent = 'Completed';
+            icon.className = 'bi bi-check-circle-fill';
+            button.className = 'btn btn--attendance-toggle state-completed';
+            button.disabled = true;
         }
     }
     
@@ -963,13 +1014,8 @@ ob_end_clean();
         }, 3000);
     }
     
-    // Check attendance status on page load
+    // Check attendance status on page load - updated for smart button
     function checkAttendanceStatus() {
-        // Ensure attendanceState is initialized before use
-        if (typeof attendanceState === 'undefined') {
-            attendanceState = 'out';
-        }
-        
         fetch('/ergon/attendance/status')
         .then(response => {
             if (!response.ok) {
@@ -978,9 +1024,18 @@ ob_end_clean();
             return response.json();
         })
         .then(data => {
-            if (data.success && data.attendance) {
-                attendanceState = data.attendance.check_out ? 'out' : 'in';
-                updateAttendanceButton();
+            if (data.success) {
+                // Update header attendance status
+                headerAttendanceStatus = {
+                    has_clocked_in: data.attendance && data.attendance.check_in ? true : false,
+                    has_clocked_out: data.attendance && data.attendance.check_out ? true : false,
+                    on_leave: data.on_leave || false
+                };
+                
+                // Legacy state for backward compatibility
+                attendanceState = (data.attendance && data.attendance.check_out) ? 'out' : 'in';
+                
+                updateHeaderAttendanceButton();
             }
         })
         .catch(error => {
