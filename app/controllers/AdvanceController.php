@@ -172,8 +172,17 @@ class AdvanceController extends Controller {
             session_start();
         }
         
+        $this->requireAuth();
+        
         if (!$id) {
             header('Location: /ergon/advances?error=Invalid advance ID');
+            exit;
+        }
+        
+        // Check authorization - only admin/owner can approve
+        $currentUserRole = $_SESSION['role'] ?? 'user';
+        if (!in_array($currentUserRole, ['admin', 'owner'])) {
+            header('Location: /ergon/advances?error=Unauthorized access');
             exit;
         }
         
@@ -190,7 +199,8 @@ class AdvanceController extends Controller {
                 header('Location: /ergon/advances?error=Advance not found or already processed');
             }
         } catch (Exception $e) {
-            header('Location: /ergon/advances?error=Database error: ' . $e->getMessage());
+            error_log('Advance approve error: ' . $e->getMessage());
+            header('Location: /ergon/advances?error=Failed to approve advance');
         }
         exit;
     }
@@ -200,8 +210,17 @@ class AdvanceController extends Controller {
             session_start();
         }
         
+        $this->requireAuth();
+        
         if (!$id) {
             header('Location: /ergon/advances?error=Invalid advance ID');
+            exit;
+        }
+        
+        // Check authorization - only admin/owner can reject
+        $currentUserRole = $_SESSION['role'] ?? 'user';
+        if (!in_array($currentUserRole, ['admin', 'owner'])) {
+            header('Location: /ergon/advances?error=Unauthorized access');
             exit;
         }
         
@@ -211,8 +230,8 @@ class AdvanceController extends Controller {
             
             $reason = $_POST['rejection_reason'] ?? 'Rejected by administrator';
             
-            $stmt = $db->prepare("UPDATE advances SET status = 'rejected', rejection_reason = ? WHERE id = ? AND status = 'pending'");
-            $result = $stmt->execute([$reason, $id]);
+            $stmt = $db->prepare("UPDATE advances SET status = 'rejected', rejection_reason = ?, rejected_by = ?, rejected_at = NOW() WHERE id = ? AND status = 'pending'");
+            $result = $stmt->execute([$reason, $_SESSION['user_id'], $id]);
             
             if ($result && $stmt->rowCount() > 0) {
                 header('Location: /ergon/advances?success=Advance rejected successfully');
@@ -220,7 +239,8 @@ class AdvanceController extends Controller {
                 header('Location: /ergon/advances?error=Advance not found or already processed');
             }
         } catch (Exception $e) {
-            header('Location: /ergon/advances?error=Database error: ' . $e->getMessage());
+            error_log('Advance reject error: ' . $e->getMessage());
+            header('Location: /ergon/advances?error=Failed to reject advance');
         }
         exit;
     }

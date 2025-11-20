@@ -400,7 +400,8 @@ class ExpenseController extends Controller {
                     $expense['amount'],
                     $expense['category'],
                     $expense['description'],
-                    $_SESSION['user_id']
+                    $_SESSION['user_id'],
+                    $db
                 );
                 
                 $db->commit();
