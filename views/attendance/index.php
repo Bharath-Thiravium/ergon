@@ -10,6 +10,9 @@ ob_start();
         <p>Track employee attendance and working hours</p>
     </div>
     <div class="page-actions">
+        <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
+        <input type="date" id="dateFilter" value="<?= $selected_date ?? date('Y-m-d') ?>" onchange="filterByDate(this.value)" class="form-input" style="margin-right: 1rem;">
+        <?php endif; ?>
         <select id="filterSelect" onchange="filterAttendance(this.value)" class="form-input">
             <option value="today" <?= ($current_filter ?? 'today') === 'today' ? 'selected' : '' ?>>Today</option>
             <option value="week" <?= ($current_filter ?? '') === 'week' ? 'selected' : '' ?>>One Week</option>
@@ -28,7 +31,13 @@ ob_start();
             <div class="kpi-card__icon">📍</div>
             <div class="kpi-card__trend">↗ +5%</div>
         </div>
-        <div class="kpi-card__value"><?= count($attendance ?? []) ?></div>
+        <div class="kpi-card__value"><?php 
+            if ($is_grouped ?? false) {
+                echo count($attendance['admin'] ?? []) + count($attendance['user'] ?? []);
+            } else {
+                echo count($attendance ?? []);
+            }
+        ?></div>
         <div class="kpi-card__label">Total Records</div>
         <div class="kpi-card__status">Tracked</div>
     </div>
@@ -53,6 +62,78 @@ ob_start();
         <div class="kpi-card__status">Logged</div>
     </div>
 </div>
+
+<?php if (($user_role ?? '') === 'admin' && $admin_attendance): ?>
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card__header">
+        <h2 class="card__title">
+            <span>💼</span> My Attendance (Admin)
+        </h2>
+    </div>
+    <div class="card__body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="col-title">Employee</th>
+                        <th class="col-assignment">Date & Status</th>
+                        <th class="col-progress">Working Hours</th>
+                        <th class="col-date">Check Times</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <strong><?= htmlspecialchars($admin_attendance['user_name'] ?? 'Unknown') ?></strong>
+                            <br><small class="text-muted">Role: Admin</small>
+                        </td>
+                        <td>
+                            <div class="assignment-info">
+                                <div class="assigned-user"><?= date('M d, Y', strtotime($selected_date ?? 'now')) ?></div>
+                                <div class="priority-badge">
+                                    <?php 
+                                    $statusClass = match($admin_attendance['status'] ?? 'Absent') {
+                                        'Present' => 'success',
+                                        'On Leave' => 'warning',
+                                        'Absent' => 'danger',
+                                        default => 'danger'
+                                    };
+                                    ?>
+                                    <span class="badge badge--<?= $statusClass ?>"><?= $admin_attendance['status'] ?? 'Absent' ?></span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="progress-container">
+                                <div class="progress-info">
+                                    <span class="progress-percentage"><?= $admin_attendance['working_hours'] ?? '0h 0m' ?></span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="cell-meta">
+                                <div class="cell-primary">In: <?= $admin_attendance['check_in_time'] ?? '00:00' ?></div>
+                                <div class="cell-secondary">Out: <?= $admin_attendance['check_out_time'] ?? '00:00' ?></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="ab-container">
+                                <a class="ab-btn ab-btn--view" href="/ergon/attendance/clock" title="Clock In/Out">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12,6 12,12 16,14"/>
+                                    </svg>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="card">
     <div class="card__header">
@@ -81,65 +162,191 @@ ob_start();
                             </div>
                         </td>
                     </tr>
-                    <?php else: ?>
-                        <?php foreach ($attendance as $record): ?>
+                    <?php elseif ($is_grouped ?? false): ?>
+                        <!-- Admin Users Section -->
+                        <?php if (!empty($attendance['admin'])): ?>
+                        <tr class="group-header">
+                            <td colspan="5" style="background: #f8fafc; font-weight: 600; color: #374151; padding: 0.75rem 1rem; border-top: 2px solid #e5e7eb;">
+                                <span>👔</span> Admin Users
+                            </td>
+                        </tr>
+                        <?php foreach ($attendance['admin'] as $record): ?>
                         <tr>
                             <td>
                                 <strong><?= htmlspecialchars($record['user_name'] ?? 'Unknown') ?></strong>
-                                <?php if (isset($record['employee_id'])): ?>
-                                    <br><small class="text-muted">ID: <?= htmlspecialchars($record['employee_id']) ?></small>
-                                <?php endif; ?>
+                                <br><small class="text-muted">Role: Admin</small>
                             </td>
                             <td>
                                 <div class="assignment-info">
-                                    <div class="assigned-user"><?= $record['check_in'] ? date('M d, Y', strtotime($record['check_in'])) : '-' ?></div>
+                                    <div class="assigned-user"><?= date('M d, Y') ?></div>
                                     <div class="priority-badge">
                                         <?php 
-                                        $statusClass = match($record['status'] ?? 'present') {
-                                            'present' => 'success',
-                                            'late' => 'warning',
-                                            'absent' => 'danger',
-                                            default => 'secondary'
+                                        $statusClass = match($record['status'] ?? 'Absent') {
+                                            'Present' => 'success',
+                                            'On Leave' => 'warning',
+                                            'Absent' => 'danger',
+                                            default => 'danger'
                                         };
                                         ?>
-                                        <span class="badge badge--<?= $statusClass ?>"><?= ucfirst($record['status'] ?? 'present') ?></span>
+                                        <span class="badge badge--<?= $statusClass ?>"><?= $record['status'] ?? 'Absent' ?></span>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <?php 
-                                $totalMins = 0;
-                                $hrs = 0;
-                                $mins = 0;
-                                if ($record['check_out']) {
-                                    $totalMins = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 60;
-                                    $hrs = (int)floor($totalMins / 60);
-                                    $mins = (int)round((int)$totalMins % 60);
-                                }
-                                ?>
-                                <?php 
-                                $progress = $record['check_out'] ? min(100, ($totalMins / 480) * 100) : 0;
-                                $progressColor = $totalMins >= 480 ? '#10b981' : ($totalMins >= 360 ? '#3b82f6' : ($totalMins >= 240 ? '#f59e0b' : '#e2e8f0'));
-                                ?>
                                 <div class="progress-container">
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" style="width: <?= $progress ?>%; background: <?= $progressColor ?>"></div>
-                                    </div>
                                     <div class="progress-info">
-                                        <span class="progress-percentage"><?= $record['check_out'] ? $hrs . 'h ' . $mins . 'm' : '-' ?></span>
-                                        <span class="progress-status"><?= $record['check_out'] ? sprintf('%.1f', $totalMins/60) . ' hours' : 'Active' ?></span>
+                                        <span class="progress-percentage"><?= $record['working_hours'] ?? '0h 0m' ?></span>
                                     </div>
                                 </div>
                             </td>
                             <td>
                                 <div class="cell-meta">
-                                    <div class="cell-primary">In: <?= $record['check_in'] ? date('H:i', strtotime($record['check_in'])) : '-' ?></div>
-                                    <div class="cell-secondary">Out: <?= $record['check_out'] ? date('H:i', strtotime($record['check_out'])) : 'Active' ?></div>
+                                    <div class="cell-primary">In: <?= $record['check_in_time'] ?? '00:00' ?></div>
+                                    <div class="cell-secondary">Out: <?= $record['check_out_time'] ?? '00:00' ?></div>
                                 </div>
                             </td>
                             <td>
                                 <div class="ab-container">
-                                    <a class="ab-btn ab-btn--view" data-action="view" data-module="attendance" data-id="<?= $record['id'] ?? 0 ?>" title="View Details">
+                                    <a class="ab-btn ab-btn--view" data-action="view" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="View Details">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                            <polyline points="14,2 14,8 20,8"/>
+                                            <line x1="16" y1="13" x2="8" y2="13"/>
+                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                        </svg>
+                                    </a>
+                                    <a class="ab-btn ab-btn--edit" data-action="edit" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="Edit Record">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                            <path d="M15 5l4 4"/>
+                                        </svg>
+                                    </a>
+                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" data-name="<?= htmlspecialchars($record['user_name'] ?? 'Record', ENT_QUOTES) ?>" title="Delete Record">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M3 6h18"/>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                            <line x1="10" y1="11" x2="10" y2="17"/>
+                                            <line x1="14" y1="11" x2="14" y2="17"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+                        
+                        <!-- Employee Users Section -->
+                        <?php if (!empty($attendance['user'])): ?>
+                        <tr class="group-header">
+                            <td colspan="5" style="background: #f8fafc; font-weight: 600; color: #374151; padding: 0.75rem 1rem; border-top: 2px solid #e5e7eb;">
+                                <span>👥</span> Employee Users
+                            </td>
+                        </tr>
+                        <?php foreach ($attendance['user'] as $record): ?>
+                        <tr>
+                            <td>
+                                <strong><?= htmlspecialchars($record['user_name'] ?? 'Unknown') ?></strong>
+                                <br><small class="text-muted">Role: Employee</small>
+                            </td>
+                            <td>
+                                <div class="assignment-info">
+                                    <div class="assigned-user"><?= date('M d, Y') ?></div>
+                                    <div class="priority-badge">
+                                        <?php 
+                                        $statusClass = match($record['status'] ?? 'Absent') {
+                                            'Present' => 'success',
+                                            'On Leave' => 'warning',
+                                            'Absent' => 'danger',
+                                            default => 'danger'
+                                        };
+                                        ?>
+                                        <span class="badge badge--<?= $statusClass ?>"><?= $record['status'] ?? 'Absent' ?></span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="progress-container">
+                                    <div class="progress-info">
+                                        <span class="progress-percentage"><?= $record['working_hours'] ?? '0h 0m' ?></span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="cell-meta">
+                                    <div class="cell-primary">In: <?= $record['check_in_time'] ?? '00:00' ?></div>
+                                    <div class="cell-secondary">Out: <?= $record['check_out_time'] ?? '00:00' ?></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="ab-container">
+                                    <a class="ab-btn ab-btn--view" data-action="view" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="View Details">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                            <polyline points="14,2 14,8 20,8"/>
+                                            <line x1="16" y1="13" x2="8" y2="13"/>
+                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                        </svg>
+                                    </a>
+                                    <a class="ab-btn ab-btn--edit" data-action="edit" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="Edit Record">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                            <path d="M15 5l4 4"/>
+                                        </svg>
+                                    </a>
+                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" data-name="<?= htmlspecialchars($record['user_name'] ?? 'Record', ENT_QUOTES) ?>" title="Delete Record">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M3 6h18"/>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                            <line x1="10" y1="11" x2="10" y2="17"/>
+                                            <line x1="14" y1="11" x2="14" y2="17"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <?php foreach ($attendance as $record): ?>
+                        <tr>
+                            <td>
+                                <strong><?= htmlspecialchars($record['user_name'] ?? 'Unknown') ?></strong>
+                                <br><small class="text-muted">Role: <?= ucfirst($record['user_role'] ?? 'Employee') === 'User' ? 'Employee' : ucfirst($record['user_role'] ?? 'Employee') ?></small>
+                            </td>
+                            <td>
+                                <div class="assignment-info">
+                                    <div class="assigned-user"><?= date('M d, Y') ?></div>
+                                    <div class="priority-badge">
+                                        <?php 
+                                        $statusClass = match($record['status'] ?? 'Absent') {
+                                            'Present' => 'success',
+                                            'On Leave' => 'warning',
+                                            'Absent' => 'danger',
+                                            default => 'danger'
+                                        };
+                                        ?>
+                                        <span class="badge badge--<?= $statusClass ?>"><?= $record['status'] ?? 'Absent' ?></span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="progress-container">
+                                    <div class="progress-info">
+                                        <span class="progress-percentage"><?= $record['working_hours'] ?? '0h 0m' ?></span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="cell-meta">
+                                    <div class="cell-primary">In: <?= $record['check_in_time'] ?? '00:00' ?></div>
+                                    <div class="cell-secondary">Out: <?= $record['check_out_time'] ?? '00:00' ?></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="ab-container">
+                                    <a class="ab-btn ab-btn--view" data-action="view" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                             <polyline points="14,2 14,8 20,8"/>
@@ -148,20 +355,20 @@ ob_start();
                                         </svg>
                                     </a>
                                     <?php if (!$record['check_out'] && ($record['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
-                                        <button class="ab-btn ab-btn--progress" onclick="checkOut(<?= $record['id'] ?? 0 ?>)" title="Check Out">
+                                        <button class="ab-btn ab-btn--progress" onclick="checkOut(<?= $record['attendance_id'] ?? 0 ?>)" title="Check Out">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                 <polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/>
                                                 <polyline points="16,7 22,7 22,13"/>
                                             </svg>
                                         </button>
                                     <?php endif; ?>
-                                    <a class="ab-btn ab-btn--edit" data-action="edit" data-module="attendance" data-id="<?= $record['id'] ?? 0 ?>" title="Edit Record">
+                                    <a class="ab-btn ab-btn--edit" data-action="edit" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="Edit Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                             <path d="M15 5l4 4"/>
                                         </svg>
                                     </a>
-                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="attendance" data-id="<?= $record['id'] ?? 0 ?>" data-name="<?= htmlspecialchars($record['user_name'] ?? 'Record', ENT_QUOTES) ?>" title="Delete Record">
+                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" data-name="<?= htmlspecialchars($record['user_name'] ?? 'Record', ENT_QUOTES) ?>" title="Delete Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M3 6h18"/>
                                             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -185,7 +392,17 @@ ob_start();
 
 <script>
 function filterAttendance(filter) {
-    window.location.href = '/ergon/attendance?filter=' + filter;
+    const currentDate = document.getElementById('dateFilter')?.value || '';
+    let url = '/ergon/attendance?filter=' + filter;
+    if (currentDate) {
+        url += '&date=' + currentDate;
+    }
+    window.location.href = url;
+}
+
+function filterByDate(selectedDate) {
+    const currentFilter = document.getElementById('filterSelect')?.value || 'today';
+    window.location.href = '/ergon/attendance?date=' + selectedDate + '&filter=' + currentFilter;
 }
 
 function checkOut(recordId) {
