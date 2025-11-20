@@ -163,8 +163,8 @@ class ProfileController extends Controller {
                 'dashboard_layout' => Security::sanitizeString($_POST['dashboard_layout'] ?? 'default'),
                 'language' => Security::sanitizeString($_POST['language'] ?? 'en'),
                 'timezone' => Security::sanitizeString($_POST['timezone'] ?? 'UTC'),
-                'notifications_email' => isset($_POST['notifications_email']) ? 1 : 0,
-                'notifications_browser' => isset($_POST['notifications_browser']) ? 1 : 0
+                'notifications_email' => isset($_POST['notifications_email']) ? '1' : '0',
+                'notifications_browser' => isset($_POST['notifications_browser']) ? '1' : '0'
             ];
             
             // Check if this is an AJAX request
@@ -265,17 +265,26 @@ class ProfileController extends Controller {
             $stmt->execute([$userId]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            return $result ?: [
+            error_log('Retrieved preferences for user ' . $userId . ': ' . json_encode($result));
+            
+            if ($result) {
+                // Convert TINYINT to string for consistency
+                $result['notifications_email'] = (string)$result['notifications_email'];
+                $result['notifications_browser'] = (string)$result['notifications_browser'];
+                return $result;
+            }
+            
+            return [
                 'theme' => 'light',
                 'dashboard_layout' => 'default',
                 'language' => 'en',
                 'timezone' => 'UTC',
-                'notifications_email' => 1,
-                'notifications_browser' => 1
+                'notifications_email' => '1',
+                'notifications_browser' => '1'
             ];
         } catch (Exception $e) {
             error_log('getUserPreferences error: ' . $e->getMessage());
-            return ['theme' => 'light', 'dashboard_layout' => 'default', 'language' => 'en', 'timezone' => 'UTC', 'notifications_email' => 1, 'notifications_browser' => 1];
+            return ['theme' => 'light', 'dashboard_layout' => 'default', 'language' => 'en', 'timezone' => 'UTC', 'notifications_email' => '1', 'notifications_browser' => '1'];
         }
     }
     
@@ -283,6 +292,9 @@ class ProfileController extends Controller {
         try {
             // Ensure table exists
             $this->createUserPreferencesTable();
+            
+            // Debug log
+            error_log('Saving preferences for user ' . $userId . ': ' . json_encode($preferences));
             
             $sql = "INSERT INTO user_preferences (user_id, theme, dashboard_layout, language, timezone, notifications_email, notifications_browser) 
                     VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -295,7 +307,7 @@ class ProfileController extends Controller {
                     notifications_browser = VALUES(notifications_browser)";
             
             $stmt = $this->db->prepare($sql);
-            return $stmt->execute([
+            $result = $stmt->execute([
                 $userId,
                 $preferences['theme'],
                 $preferences['dashboard_layout'],
@@ -304,6 +316,17 @@ class ProfileController extends Controller {
                 $preferences['notifications_email'],
                 $preferences['notifications_browser']
             ]);
+            
+            // Verify save
+            if ($result) {
+                $checkSql = "SELECT * FROM user_preferences WHERE user_id = ?";
+                $checkStmt = $this->db->prepare($checkSql);
+                $checkStmt->execute([$userId]);
+                $saved = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                error_log('Saved preferences: ' . json_encode($saved));
+            }
+            
+            return $result;
         } catch (Exception $e) {
             error_log('updateUserPreferences error: ' . $e->getMessage());
             return false;
