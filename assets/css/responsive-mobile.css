@@ -160,7 +160,7 @@
 }
 
 /* High DPI Displays */
-@media (-webkit-min-device-pixel-ratio: 2), (resolution >= 192dpi) {
+@media (min-device-pixel-ratio: 2), (resolution >= 192dpi) {
   .brand-icon,
   .ab-btn svg,
   .control-btn i {
@@ -277,6 +277,7 @@
     from {
       transform: translateX(-100%);
     }
+
     to {
       transform: translateX(0);
     }

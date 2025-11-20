@@ -42,6 +42,7 @@
 .ab-btn--view {
   color: #3b82f6;
 }
+
 .ab-btn--view:hover {
   background: #3b82f6;
   color: white;
@@ -50,6 +51,7 @@
 .ab-btn--edit {
   color: #f59e0b;
 }
+
 .ab-btn--edit:hover {
   background: #f59e0b;
   color: white;
@@ -58,6 +60,7 @@
 .ab-btn--delete {
   color: #ef4444;
 }
+
 .ab-btn--delete:hover {
   background: #ef4444;
   color: white;
@@ -66,6 +69,7 @@
 .ab-btn--warning {
   color: #f59e0b;
 }
+
 .ab-btn--warning:hover {
   background: #f59e0b;
   color: white;
@@ -74,6 +78,7 @@
 .ab-btn--success {
   color: #10b981;
 }
+
 .ab-btn--success:hover {
   background: #10b981;
   color: white;
@@ -82,6 +87,7 @@
 .ab-btn--approve {
   color: #10b981;
 }
+
 .ab-btn--approve:hover {
   background: #10b981;
   color: white;
@@ -90,6 +96,7 @@
 .ab-btn--reject {
   color: #f43f5e;
 }
+
 .ab-btn--reject:hover {
   background: #f43f5e;
   color: white;
@@ -98,6 +105,7 @@
 .ab-btn--progress {
   color: #8b5cf6;
 }
+
 .ab-btn--progress:hover {
   background: #8b5cf6;
   color: white;
@@ -106,6 +114,7 @@
 .ab-btn--reset {
   color: #6366f1;
 }
+
 .ab-btn--reset:hover {
   background: #6366f1;
   color: white;
@@ -187,6 +196,7 @@
     opacity: 0;
     transform: translateX(-50%) translateY(4px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0) scale(1);
@@ -198,10 +208,12 @@
   .ab-container {
     gap: 4px;
   }
+
   .ab-btn {
     width: 28px;
     height: 28px;
   }
+
   .ab-btn svg {
     width: 14px;
     height: 14px;

@@ -1,9 +1,9 @@
 /* Instant Theme Switching - Override all transitions */
 * {
   transition: none !important;
-  -webkit-transition: none !important;
-  -moz-transition: none !important;
-  -o-transition: none !important;
+  transition: none !important;
+  transition: none !important;
+  transition: none !important;
 }
 
 /* Force instant color changes */

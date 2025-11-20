@@ -4,25 +4,32 @@
 .flex-row {
   display: flex;
 }
+
 .flex-col {
   display: flex;
   flex-direction: column;
 }
+
 .align-center {
   align-items: center;
 }
+
 .justify-center {
   justify-content: center;
 }
+
 .justify-between {
   justify-content: space-between;
 }
+
 .justify-end {
   justify-content: flex-end;
 }
+
 .text-center {
   text-align: center;
 }
+
 .text-end {
   text-align: end;
 }
@@ -31,30 +38,39 @@
 .gap-sm {
   gap: var(--space-2);
 }
+
 .gap-md {
   gap: var(--space-3);
 }
+
 .gap-lg {
   gap: var(--space-4);
 }
+
 .m-sm {
   margin: var(--space-2);
 }
+
 .m-md {
   margin: var(--space-3);
 }
+
 .m-lg {
   margin: var(--space-4);
 }
+
 .p-sm {
   padding: var(--space-2);
 }
+
 .p-md {
   padding: var(--space-3);
 }
+
 .p-lg {
   padding: var(--space-4);
 }
+
 .me-2 {
   margin-right: 0.5rem;
 }
@@ -63,16 +79,20 @@
 .text-strong {
   font-weight: 500;
 }
+
 .font-weight-bold {
   font-weight: bold;
 }
+
 .text-muted {
   color: var(--text-muted);
 }
+
 .text-primary {
   color: var(--primary);
   text-decoration: none;
 }
+
 .text-primary:hover {
   text-decoration: underline;
 }
@@ -81,12 +101,15 @@
 .bg-soft {
   background: #f8fafc;
 }
+
 .bg-success {
   background-color: #28a745;
 }
+
 .bg-warning {
   background-color: #ffc107;
 }
+
 .bg-danger {
   background-color: #dc3545;
 }
@@ -276,7 +299,7 @@
 }
 
 .detail-group h4 {
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 0.75rem;
   font-size: 0.9rem;
   color: var(--primary);
   font-weight: 600;

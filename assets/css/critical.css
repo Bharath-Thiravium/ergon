@@ -1,7 +1,7 @@
 /* Critical CSS - Above the fold styles */
 :root {
   --primary: #1e40af;
-  --bg-primary: #ffffff;
+  --bg-primary: #fff;
   --bg-secondary: #f8fafc;
   --text-primary: #0f172a;
   --text-secondary: #64748b;

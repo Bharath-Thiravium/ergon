@@ -11,7 +11,7 @@
   --warning: #d97706;
   --error: #dc2626;
   --info: #0284c7;
-  --white: #ffffff;
+  --white: #fff;
   --gray-50: #f8fafc;
   --gray-100: #f1f5f9;
   --gray-200: #e2e8f0;
@@ -106,7 +106,7 @@ body {
 .col {
   max-width: 100%;
   overflow-x: hidden;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .table-responsive {
@@ -124,7 +124,7 @@ table {
 
 table td,
 table th {
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   overflow-wrap: break-word;
   max-width: 0;
 }
@@ -146,7 +146,7 @@ textarea {
 pre,
 code {
   white-space: pre-wrap;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   overflow-wrap: break-word;
 }
 
@@ -332,7 +332,7 @@ code {
   margin-left: 0;
   margin-right: 0;
   margin-top: 110px;
-  padding: 24px 24px 80px 24px;
+  padding: 24px 24px 80px;
   background: #f8fafc;
   min-height: calc(100vh - 110px);
   width: 100vw;
@@ -960,27 +960,34 @@ code {
 .ab-btn--view {
   color: #3b82f6;
 }
+
 .ab-btn--view:hover {
   background: #3b82f6;
   color: white;
 }
+
 .ab-btn--edit {
   color: #f59e0b;
 }
+
 .ab-btn--edit:hover {
   background: #f59e0b;
   color: white;
 }
+
 .ab-btn--delete {
   color: #ef4444;
 }
+
 .ab-btn--delete:hover {
   background: #ef4444;
   color: white;
 }
+
 .ab-btn--progress {
   color: #8b5cf6;
 }
+
 .ab-btn--progress:hover {
   background: #8b5cf6;
   color: white;
@@ -998,18 +1005,22 @@ code {
   background: #d1fae5;
   color: #059669;
 }
+
 .badge--warning {
   background: #fef3c7;
   color: #d97706;
 }
+
 .badge--danger {
   background: #fee2e2;
   color: #dc2626;
 }
+
 .badge--info {
   background: #dbeafe;
   color: #1d4ed8;
 }
+
 .badge--pending {
   background: #fce7f3;
   color: #be185d;
@@ -1093,7 +1104,7 @@ code {
   transition: all 0.2s ease;
 }
 
-.table-header__cell:not(:hover):not(.table-header__cell--active) .table-header__controls {
+.table-header__cell:not(:hover, .table-header__cell--active) .table-header__controls {
   opacity: 0.3;
 }
 
@@ -1542,6 +1553,7 @@ code {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1553,6 +1565,7 @@ code {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1564,6 +1577,7 @@ code {
     opacity: 0;
     transform: translateY(-5px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1575,6 +1589,7 @@ code {
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.7;
   }
@@ -1942,18 +1957,22 @@ code {
     width: 40%;
     min-width: 200px;
   }
+
   .col-assignment {
     width: 25%;
     min-width: 150px;
   }
+
   .col-progress {
     width: 20%;
     min-width: 120px;
   }
+
   .col-date {
     width: 15%;
     min-width: 100px;
   }
+
   .col-actions {
     width: 80px;
     min-width: 80px;
@@ -2011,22 +2030,27 @@ code {
     width: 25%;
     min-width: 120px;
   }
+
   .col-type {
     width: 15%;
     min-width: 100px;
   }
+
   .col-start-date {
     width: 15%;
     min-width: 100px;
   }
+
   .col-end-date {
     width: 15%;
     min-width: 100px;
   }
+
   .col-days {
     width: 10%;
     min-width: 60px;
   }
+
   .col-status {
     width: 12%;
     min-width: 80px;
@@ -2037,10 +2061,12 @@ code {
     width: 30%;
     min-width: 150px;
   }
+
   .col-amount {
     width: 15%;
     min-width: 100px;
   }
+
   .col-date {
     width: 15%;
     min-width: 100px;
@@ -2358,18 +2384,23 @@ code {
 .followup-card.completed {
   border-left-color: #10b981;
 }
+
 .followup-card.in_progress {
   border-left-color: #3b82f6;
 }
+
 .followup-card.postponed {
   border-left-color: #f59e0b;
 }
+
 .followup-card.pending {
   border-left-color: #6b7280;
 }
+
 .followup-card.cancelled {
   border-left-color: #ef4444;
 }
+
 .followup-card.overdue {
   border-left-color: #ef4444;
 }

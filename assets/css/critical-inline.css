@@ -1,7 +1,7 @@
 /* Critical CSS - Inline to prevent FOUC */
 :root {
   --primary: #1e40af;
-  --bg-primary: #ffffff;
+  --bg-primary: #fff;
   --bg-secondary: #f8fafc;
   --text-primary: #0f172a;
   --text-secondary: #64748b;
@@ -19,7 +19,7 @@
 [data-theme='dark'] {
   --bg-primary: #1e293b;
   --bg-secondary: #0f172a;
-  --text-primary: #ffffff;
+  --text-primary: #fff;
   --text-secondary: #cbd5e1;
   --border-color: #475569;
 }
@@ -150,6 +150,7 @@ html.loaded body {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
