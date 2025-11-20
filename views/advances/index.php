@@ -145,7 +145,7 @@ ob_start();
                                     $currentUserRole = $user_role ?? '';
                                     $isPending = ($advance['status'] ?? 'pending') === 'pending';
                                     $isNotOwnAdvance = ($advance['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0);
-                                    $canApprove = $isPending && (($currentUserRole === 'owner') || ($currentUserRole === 'admin' && $isNotOwnAdvance));
+                                    $canApprove = $isPending && in_array($currentUserRole, ['owner', 'admin']);
                                     ?>
                                     <?php if ($canApprove): ?>
                                     <button class="ab-btn ab-btn--approve" data-action="approve" data-module="advances" data-id="<?= $advance['id'] ?>" data-name="Advance Request" title="Approve Advance">
@@ -192,7 +192,7 @@ $rejectContent = '
     </div>
 </form>';
 
-$rejectFooter = createFormModalFooter('Cancel', 'Reject Advance', 'rejectModal', 'danger');
+$rejectFooter = '<button type="button" class="btn btn--secondary" onclick="closeModal(\'rejectModal\')">Cancel</button><button type="submit" form="rejectForm" class="btn btn--danger">Reject Advance</button>';
 
 // Render Modal
 renderModal('rejectModal', 'Reject Advance Request', $rejectContent, $rejectFooter, ['icon' => '❌']);
@@ -202,9 +202,41 @@ renderModal('rejectModal', 'Reject Advance Request', $rejectContent, $rejectFoot
 
 <script>
 function showRejectModal(advanceId) {
-    document.getElementById('rejectForm').action = '/ergon/advances/reject/' + advanceId;
+    const form = document.getElementById('rejectForm');
+    if (form) {
+        form.action = '/ergon/advances/reject/' + advanceId;
+        form.method = 'POST';
+        // Clear previous reason
+        const reasonField = document.getElementById('rejection_reason');
+        if (reasonField) {
+            reasonField.value = '';
+        }
+    }
     showModal('rejectModal');
 }
+
+// Handle form submission validation
+document.addEventListener('DOMContentLoaded', function() {
+    const rejectForm = document.getElementById('rejectForm');
+    if (rejectForm) {
+        rejectForm.addEventListener('submit', function(e) {
+            const reason = document.getElementById('rejection_reason');
+            if (!reason || !reason.value.trim()) {
+                e.preventDefault();
+                alert('Please provide a reason for rejection.');
+                if (reason) reason.focus();
+                return false;
+            }
+            
+            // Show loading state
+            const submitBtn = rejectForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Rejecting...';
+            }
+        });
+    }
+});
 </script>
 
 <script src="/ergon/assets/js/table-utils.js"></script>

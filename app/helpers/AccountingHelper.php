@@ -14,10 +14,15 @@ class AccountingHelper {
     /**
      * Record expense approval in accounting system
      */
-    public static function recordExpenseApproval($expenseId, $amount, $category, $description, $approvedBy) {
+    public static function recordExpenseApproval($expenseId, $amount, $category, $description, $approvedBy, $db = null) {
         try {
-            $db = self::getDb();
-            $db->beginTransaction();
+            if (!$db) {
+                $db = self::getDb();
+                $shouldCommit = true;
+                $db->beginTransaction();
+            } else {
+                $shouldCommit = false;
+            }
             
             // Get appropriate expense account based on category
             $accountId = self::getExpenseAccountId($category);
@@ -53,11 +58,13 @@ class AccountingHelper {
             $stmt = $db->prepare("UPDATE expenses SET journal_entry_id = ? WHERE id = ?");
             $stmt->execute([$journalEntryId, $expenseId]);
             
-            $db->commit();
+            if ($shouldCommit) {
+                $db->commit();
+            }
             return $journalEntryId;
             
         } catch (Exception $e) {
-            if ($db->inTransaction()) {
+            if ($shouldCommit && $db->inTransaction()) {
                 $db->rollback();
             }
             error_log('Accounting Helper Error: ' . $e->getMessage());
