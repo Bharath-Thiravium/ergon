@@ -12,6 +12,9 @@ class UnifiedWorkflowController extends Controller {
         $date = $date ?? date('Y-m-d');
         $currentUserId = $_SESSION['user_id'];
         
+        // Only carry forward for current date or future dates
+        $shouldCarryForward = $date >= date('Y-m-d');
+        
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
@@ -24,9 +27,9 @@ class UnifiedWorkflowController extends Controller {
             $stmt->execute([$currentUserId, $date]);
             $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Always refresh daily tasks to ensure sync with Tasks module
+            // Create daily tasks if none exist (no carry forward here)
             if (empty($dailyTasks)) {
-                $this->createDailyTasksFromRegular($db, $currentUserId, $date);
+                $this->createDailyTasksFromRegularWithoutCarryForward($db, $currentUserId, $date);
                 
                 // Re-fetch after creation
                 $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
@@ -49,19 +52,17 @@ class UnifiedWorkflowController extends Controller {
                 $stmt = $db->prepare("DELETE FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
                 $stmt->execute([$currentUserId, $date]);
                 
-                $this->createDailyTasksFromRegular($db, $currentUserId, $date, $existingStatuses);
+                $this->createDailyTasksFromRegularWithoutCarryForward($db, $currentUserId, $date, $existingStatuses);
                 
                 $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
                 $stmt->execute([$currentUserId, $date]);
                 $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
-            // Process daily tasks for display
-            $plannedTasks = $this->processDailyTasks($db, $dailyTasks);
-            
-            // Use DailyPlanner model for accurate stats including postponed tasks
+            // Use DailyPlanner model for both tasks and stats
             require_once __DIR__ . '/../models/DailyPlanner.php';
             $planner = new DailyPlanner();
+            $plannedTasks = $planner->getTasksForDate($currentUserId, $date);
             $dailyStats = $planner->getDailyStats($currentUserId, $date);
             
             $this->view('daily_workflow/unified_daily_planner', [
@@ -811,16 +812,22 @@ class UnifiedWorkflowController extends Controller {
             // Ensure tasks have SLA hours
             $db->exec("UPDATE tasks SET sla_hours = 1.0 WHERE sla_hours IS NULL OR sla_hours = 0");
             
-            // Get active tasks for this user
+            // Get tasks for this user that are planned for the specific date
+            // Carry forward is now handled separately before this method is called
             $stmt = $db->prepare("
                 SELECT *, COALESCE(sla_hours, 1.0) as sla_hours FROM tasks 
-                WHERE assigned_to = ? AND status != 'completed'
+                WHERE assigned_to = ? 
+                AND status != 'completed'
+                AND (
+                    planned_date = ? OR 
+                    (planned_date IS NULL AND DATE(created_at) = ?)
+                )
                 ORDER BY 
                     CASE WHEN assigned_by != assigned_to THEN 1 ELSE 2 END,
                     CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
                     created_at DESC
             ");
-            $stmt->execute([$userId]);
+            $stmt->execute([$userId, $date, $date]);
             $regularTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             foreach ($regularTasks as $task) {
@@ -837,18 +844,132 @@ class UnifiedWorkflowController extends Controller {
                 $activeSeconds = $existingStatus ? $existingStatus['active_seconds'] : 0;
                 $completedPercentage = $existingStatus ? $existingStatus['completed_percentage'] : 0;
                 
+                // Use the planned_date from the task, or fall back to the current date
+                $taskScheduledDate = $task['planned_date'] ?? $date;
+                
                 $stmt = $db->prepare("
                     INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, start_time, active_seconds, total_pause_duration, completed_percentage, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, NOW())
                 ");
                 $stmt->execute([
-                    $userId, $task['id'], $date, $taskTitle, 
+                    $userId, $task['id'], $taskScheduledDate, $taskTitle, 
                     $task['description'], $plannedDuration, $task['priority'] ?? 'medium',
                     $status, $startTime, $activeSeconds, $completedPercentage
                 ]);
             }
         } catch (Exception $e) {
             error_log('Create daily tasks error: ' . $e->getMessage());
+            error_log('Query was for user: ' . $userId . ', date: ' . $date);
+        }
+    }
+    
+    private function carryForwardPendingTasks($db, $userId, $currentDate) {
+        try {
+            // Find unattended/pending tasks from previous dates
+            $stmt = $db->prepare("
+                UPDATE tasks SET planned_date = ? 
+                WHERE assigned_to = ? 
+                AND status IN ('assigned', 'not_started') 
+                AND planned_date < ? 
+                AND planned_date IS NOT NULL
+            ");
+            $result = $stmt->execute([$currentDate, $userId, $currentDate]);
+            
+            if ($result && $stmt->rowCount() > 0) {
+                error_log("Carried forward {$stmt->rowCount()} pending tasks to {$currentDate} for user {$userId}");
+                return $stmt->rowCount();
+            }
+            return 0;
+        } catch (Exception $e) {
+            error_log('Carry forward pending tasks error: ' . $e->getMessage());
+            return 0;
+        }
+    }
+    
+    public function manualCarryForward() {
+        AuthMiddleware::requireAuth();
+        header('Content-Type: application/json');
+        
+        // Only allow manual carry forward for testing/admin purposes
+        if (($_SESSION['role'] ?? 'user') !== 'owner') {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Manual carry forward is only available for testing. Use the daily cron job instead.'
+            ]);
+            return;
+        }
+        
+        try {
+            // Run the daily carry forward script
+            ob_start();
+            include __DIR__ . '/../../cron/daily_carry_forward.php';
+            $output = ob_get_clean();
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Manual carry forward completed',
+                'output' => $output
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    private function createDailyTasksFromRegularWithoutCarryForward($db, $userId, $date, $existingStatuses = []) {
+        try {
+            // Ensure tasks have SLA hours
+            $db->exec("UPDATE tasks SET sla_hours = 1.0 WHERE sla_hours IS NULL OR sla_hours = 0");
+            
+            // Get tasks for this user that are planned for the specific date (no carry forward)
+            $stmt = $db->prepare("
+                SELECT *, COALESCE(sla_hours, 1.0) as sla_hours FROM tasks 
+                WHERE assigned_to = ? 
+                AND status != 'completed'
+                AND (
+                    planned_date = ? OR 
+                    (planned_date IS NULL AND DATE(created_at) = ?)
+                )
+                ORDER BY 
+                    CASE WHEN assigned_by != assigned_to THEN 1 ELSE 2 END,
+                    CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+                    created_at DESC
+            ");
+            $stmt->execute([$userId, $date, $date]);
+            $regularTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($regularTasks as $task) {
+                $taskTitle = ($task['assigned_by'] != $task['assigned_to']) 
+                    ? "[From Others] " . $task['title']
+                    : "[Self] " . $task['title'];
+                
+                $plannedDuration = floatval($task['sla_hours']) * 60;
+                
+                // Check if we have existing status for this task
+                $existingStatus = $existingStatuses[$task['id']] ?? null;
+                $status = $existingStatus ? $existingStatus['status'] : 'not_started';
+                $startTime = $existingStatus ? $existingStatus['start_time'] : null;
+                $activeSeconds = $existingStatus ? $existingStatus['active_seconds'] : 0;
+                $completedPercentage = $existingStatus ? $existingStatus['completed_percentage'] : 0;
+                
+                // Use the planned_date from the task, or fall back to the current date
+                $taskScheduledDate = $task['planned_date'] ?? $date;
+                
+                $stmt = $db->prepare("
+                    INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, start_time, active_seconds, total_pause_duration, completed_percentage, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, NOW())
+                ");
+                $stmt->execute([
+                    $userId, $task['id'], $taskScheduledDate, $taskTitle, 
+                    $task['description'], $plannedDuration, $task['priority'] ?? 'medium',
+                    $status, $startTime, $activeSeconds, $completedPercentage
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log('Create daily tasks without carry forward error: ' . $e->getMessage());
+            error_log('Query was for user: ' . $userId . ', date: ' . $date);
         }
     }
     

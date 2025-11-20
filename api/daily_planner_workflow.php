@@ -335,9 +335,9 @@ try {
                         throw new Exception('Task ID and new date required');
                     }
                     
-                    $result = $planner->postponeTask($taskId, $userId, $newDate);
-                    
-                    if ($result) {
+                    try {
+                        $result = $planner->postponeTask($taskId, $userId, $newDate);
+                        
                         // Get updated daily stats to return to frontend
                         $currentDate = date('Y-m-d');
                         $stats = $planner->getDailyStats($userId, $currentDate);
@@ -350,8 +350,42 @@ try {
                             'updated_stats' => $stats,
                             'postponed_count' => $stats['postponed_tasks']
                         ]);
+                    } catch (Exception $e) {
+                        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                    }
+                    break;
+                    
+                case 'activate-postponed':
+                    $taskId = $input['task_id'] ?? null;
+                    if (!$taskId) {
+                        throw new Exception('Task ID required');
+                    }
+                    
+                    $db = Database::connect();
+                    $currentDate = date('Y-m-d');
+                    
+                    // Check if task is postponed to today
+                    $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE id = ? AND status = 'postponed' AND postponed_to_date = ?");
+                    $stmt->execute([$taskId, $currentDate]);
+                    $task = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$task) {
+                        throw new Exception('Task not found or not postponed to today');
+                    }
+                    
+                    // Activate the task (reset to not_started)
+                    $stmt = $db->prepare("UPDATE daily_tasks SET status = 'not_started', postponed_to_date = NULL WHERE id = ?");
+                    $result = $stmt->execute([$taskId]);
+                    
+                    if ($result) {
+                        echo json_encode([
+                            'success' => true,
+                            'message' => 'Task activated successfully',
+                            'task_id' => $taskId,
+                            'status' => 'not_started'
+                        ]);
                     } else {
-                        echo json_encode(['success' => false, 'message' => 'Failed to postpone task']);
+                        throw new Exception('Failed to activate task');
                     }
                     break;
                     

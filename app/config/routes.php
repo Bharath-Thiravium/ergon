@@ -331,6 +331,7 @@ $router->get('/system-admin/export', 'SystemAdminController', 'export');
 
 $router->get('/workflow/daily-planner', 'UnifiedWorkflowController', 'dailyPlanner');
 $router->get('/workflow/daily-planner/{date}', 'UnifiedWorkflowController', 'dailyPlanner');
+$router->post('/workflow/manual-carry-forward', 'UnifiedWorkflowController', 'manualCarryForward');
 
 $router->get('/workflow/followups', 'UnifiedWorkflowController', 'followups');
 // Redirect calendar to task visualization

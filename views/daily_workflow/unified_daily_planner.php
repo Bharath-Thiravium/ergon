@@ -66,6 +66,7 @@ $content = ob_start();
                         $slaDuration = (int)($slaHours * 3600);
                         $startTime = $task['start_time'] ?? null;
                         $startTimestamp = $startTime ? strtotime($startTime) : 0;
+                        $postponeContext = $task['postpone_context'] ?? 'normal';
                         
                         $remainingTime = $slaDuration;
                         if ($startTimestamp > 0 && ($status === 'in_progress' || $status === 'on_break')) {
@@ -83,6 +84,11 @@ $content = ob_start();
                         if ($status === 'in_progress') $cssClass = 'task-item--active';
                         elseif ($status === 'on_break') $cssClass = 'task-item--break';
                         elseif ($status === 'completed') $cssClass = 'task-item--completed';
+                        elseif ($status === 'postponed') {
+                            $isCurrentDate = ($selected_date === date('Y-m-d'));
+                            $isPostponedToToday = ($postponeContext === 'postponed_to_today');
+                            $cssClass = ($isCurrentDate && $isPostponedToToday) ? 'task-card--postponed-active' : 'task-card--postponed';
+                        }
                     ?>
                         <?php 
                         $taskSource = 'unknown';
@@ -163,8 +169,41 @@ $content = ob_start();
                                     </div>
                                 </div>
                                 
+                                <?php 
+                                // Show creation info for postponed tasks
+                                if ($status === 'postponed'): 
+                                    $createdAt = $task['created_at'] ?? date('Y-m-d H:i:s');
+                                ?>
+                                    <div class="task-card__created-info">
+                                        <small class="text-muted"><i class="bi bi-calendar"></i> Created on: <?= date('d/m/Y', strtotime($createdAt)) ?></small>
+                                        <?php if ($postponeContext === 'postponed_to_today' && isset($task['postponed_from_date']) && $task['postponed_from_date']): ?>
+                                            <small class="text-muted"><i class="bi bi-arrow-right"></i> Postponed from: <?= date('d/m/Y', strtotime($task['postponed_from_date'])) ?></small>
+                                        <?php elseif ($postponeContext === 'postponed_from_today' && isset($task['postponed_to_date']) && $task['postponed_to_date']): ?>
+                                            <small class="text-muted"><i class="bi bi-arrow-right"></i> Postponed to: <?= date('d/m/Y', strtotime($task['postponed_to_date'])) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                                
                                 <div class="task-card__actions" id="actions-<?= $taskId ?>">
-                                    <?php if ($status === 'not_started' || $status === 'assigned'): ?>
+                                    <?php if ($status === 'postponed'): ?>
+                                        <?php 
+                                        $isCurrentDate = ($selected_date === date('Y-m-d'));
+                                        $isPostponedToToday = ($postponeContext === 'postponed_to_today');
+                                        $canStart = $isCurrentDate && $isPostponedToToday;
+                                        ?>
+                                        
+                                        <?php if ($canStart): ?>
+                                            <button class="btn btn--sm btn--success" onclick="activatePostponedTask(<?= $taskId ?>)">
+                                                <i class="bi bi-play"></i> Start
+                                            </button>
+                                        <?php else: ?>
+                                            <span class="badge badge--warning"><i class="bi bi-calendar-plus"></i> Postponed</span>
+                                        <?php endif; ?>
+                                        
+                                        <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)" title="Re-postpone to another date">
+                                            <i class="bi bi-calendar-plus"></i> Re-postpone
+                                        </button>
+                                    <?php elseif ($status === 'not_started' || $status === 'assigned'): ?>
                                         <button class="btn btn--sm btn--success" onclick="startTask(<?= $taskId ?>)">
                                             <i class="bi bi-play"></i> Start
                                         </button>
@@ -189,7 +228,7 @@ $content = ob_start();
                                     <?php elseif ($status === 'suspended'): ?>
                                         <span class="badge badge--warning"><i class="bi bi-pause-circle"></i> Suspended</span>
                                     <?php endif; ?>
-                                    <?php if (!in_array($status, ['completed', 'cancelled', 'suspended'])): ?>
+                                    <?php if (!in_array($status, ['completed', 'cancelled', 'suspended', 'postponed'])): ?>
                                         <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)">
                                             <i class="bi bi-calendar-plus"></i> Postpone
                                         </button>
@@ -479,6 +518,40 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
 /* Task card enhancements */
 .task-card {
     position: relative;
+}
+
+.task-card--postponed {
+    opacity: 0.7;
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+}
+
+.task-card--postponed .task-card__actions {
+    pointer-events: auto;
+}
+
+.task-card--postponed .btn:not(.btn--secondary):not(.btn--success) {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.task-card--postponed-active {
+    opacity: 1;
+    background: #ecfdf5;
+    border-left: 4px solid #10b981;
+}
+
+.task-card--postponed-active .btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.task-card__created-info {
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid #3b82f6;
 }
 
 .task-card[data-task-source="from_others"]:before {
@@ -1358,9 +1431,66 @@ function changeDate(date) {
     window.location.href = `/ergon/workflow/daily-planner/${date}`;
 }
 
+function activatePostponedTask(taskId) {
+    // Activate a postponed task on its target date
+    fetch('/ergon/api/daily_planner_workflow.php?action=activate-postponed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ task_id: parseInt(taskId) })
+    })
+    .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Update task to normal state
+            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+            if (taskCard) {
+                taskCard.dataset.status = 'not_started';
+                taskCard.classList.remove('task-card--postponed', 'task-card--postponed-active');
+                
+                const statusBadge = taskCard.querySelector('.badge');
+                if (statusBadge) {
+                    statusBadge.textContent = 'Not Started';
+                    statusBadge.className = 'badge badge--not_started';
+                }
+                
+                const actionsDiv = taskCard.querySelector('.task-card__actions');
+                if (actionsDiv) {
+                    actionsDiv.innerHTML = `
+                        <button class="btn btn--sm btn--success" onclick="startTask(${taskId})">
+                            <i class="bi bi-play"></i> Start
+                        </button>
+                        <button class="btn btn--sm btn--secondary" onclick="postponeTask(${taskId})">
+                            <i class="bi bi-calendar-plus"></i> Postpone
+                        </button>
+                    `;
+                }
+            }
+            showNotification('Task activated and ready to start', 'success');
+            refreshSLADashboard();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Activate postponed task error:', error);
+        alert('Network error. Please refresh the page.');
+    });
+}
+
 function startTask(taskId) {
     if (!taskId) {
         alert('Error: Task ID is missing');
+        return;
+    }
+    
+    // Check if task is postponed (but not on target date)
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (taskCard && taskCard.dataset.status === 'postponed' && !taskCard.classList.contains('task-card--postponed-active')) {
+        alert('Cannot start a postponed task. Please wait until the postponed date.');
         return;
     }
     
@@ -1586,7 +1716,7 @@ function submitPostpone() {
             window.postponedTasks.add(taskId);
             
         } else {
-            alert('Failed to postpone task: ' + data.message);
+            alert(data.message || 'Failed to postpone task');
         }
     })
     .catch(error => {

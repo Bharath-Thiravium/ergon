@@ -100,9 +100,9 @@ class TasksController extends Controller {
             'task_type' => $_POST['task_type'] ?? 'ad-hoc',
             'priority' => $_POST['priority'] ?? 'medium',
             'deadline' => !empty($_POST['deadline']) ? $_POST['deadline'] : null,
+            'planned_date' => !empty($_POST['planned_date']) ? $_POST['planned_date'] : null,
             'status' => $_POST['status'] ?? 'assigned',
             'progress' => intval($_POST['progress'] ?? 0),
-
             'sla_hours' => floatval($_POST['sla_hours'] ?? 0.25),
             'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
             'task_category' => trim($_POST['task_category'] ?? ''),
@@ -129,7 +129,7 @@ class TasksController extends Controller {
             
             $followupRequired = !empty($_POST['followup_required']) ? 1 : 0;
             
-            $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, status, progress, sla_hours, department_id, task_category, project_id, followup_required, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, planned_date, status, progress, sla_hours, department_id, task_category, project_id, followup_required, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
             $result = $stmt->execute([
                 $taskData['title'], 
                 $taskData['description'], 
@@ -138,6 +138,7 @@ class TasksController extends Controller {
                 $taskData['task_type'],
                 $taskData['priority'], 
                 $taskData['deadline'],
+                $taskData['planned_date'],
                 $taskData['status'],
                 $taskData['progress'],
                 $taskData['sla_hours'],
@@ -189,7 +190,7 @@ class TasksController extends Controller {
                     error_log('No followup created - followup_required not checked. POST followup_required value: ' . ($_POST['followup_required'] ?? 'not set'));
                 }
                 
-                error_log('Task created with ID: ' . $taskId . ', type: ' . $taskData['task_type'] . ', progress: ' . $taskData['progress'] . '%');
+                error_log('Task created with ID: ' . $taskId . ', type: ' . $taskData['task_type'] . ', progress: ' . $taskData['progress'] . '%, planned_date: ' . ($taskData['planned_date'] ?? 'null'));
                 header('Location: /ergon/tasks?success=Task created successfully');
             } else {
                 error_log('Task creation failed: ' . implode(', ', $stmt->errorInfo()));
@@ -245,7 +246,7 @@ class TasksController extends Controller {
                 $oldTask = $stmt->fetch(PDO::FETCH_ASSOC);
                 $oldStatus = $oldTask ? $oldTask['status'] : null;
                 
-                $stmt = $db->prepare("UPDATE tasks SET title=?, description=?, assigned_to=?, task_type=?, priority=?, deadline=?, status=?, progress=?, sla_hours=?, department_id=?, task_category=?, project_id=?, planned_date=?, followup_required=?, updated_at=NOW() WHERE id=?");
+                $stmt = $db->prepare("UPDATE tasks SET title=?, description=?, assigned_to=?, task_type=?, priority=?, deadline=?, planned_date=?, status=?, progress=?, sla_hours=?, department_id=?, task_category=?, project_id=?, followup_required=?, updated_at=NOW() WHERE id=?");
                 $result = $stmt->execute([
                     $taskData['title'], 
                     $taskData['description'], 
@@ -253,13 +254,13 @@ class TasksController extends Controller {
                     $taskData['task_type'],
                     $taskData['priority'], 
                     $taskData['deadline'], 
+                    $taskData['planned_date'],
                     $taskData['status'],
                     $taskData['progress'],
                     $taskData['sla_hours'],
                     $taskData['department_id'],
                     $taskData['task_category'],
                     $taskData['project_id'],
-                    $taskData['planned_date'],
                     $taskData['followup_required'],
                     $id
                 ]);
@@ -279,7 +280,7 @@ class TasksController extends Controller {
                         ContactFollowupController::updateLinkedFollowupStatus($id, $taskData['status']);
                     }
                     
-                    error_log('Task updated with ID: ' . $id . ', progress: ' . $taskData['progress'] . '%');
+                    error_log('Task updated with ID: ' . $id . ', progress: ' . $taskData['progress'] . '%, planned_date: ' . ($taskData['planned_date'] ?? 'null'));
                     header('Location: /ergon/tasks?success=Task updated successfully');
                 } else {
                     error_log('Task update failed: ' . implode(', ', $stmt->errorInfo()));

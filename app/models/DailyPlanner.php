@@ -49,10 +49,18 @@ class DailyPlanner {
     
     private function addMissingColumns() {
         try {
+            // Add pause_duration column if missing
             $stmt = $this->db->prepare("SHOW COLUMNS FROM daily_tasks LIKE 'pause_duration'");
             $stmt->execute();
             if (!$stmt->fetch()) {
                 $this->db->exec("ALTER TABLE daily_tasks ADD COLUMN pause_duration INT DEFAULT 0 AFTER active_seconds");
+            }
+            
+            // Add postponed_to_date column if missing
+            $stmt = $this->db->prepare("SHOW COLUMNS FROM daily_tasks LIKE 'postponed_to_date'");
+            $stmt->execute();
+            if (!$stmt->fetch()) {
+                $this->db->exec("ALTER TABLE daily_tasks ADD COLUMN postponed_to_date DATE NULL AFTER postponed_from_date");
             }
         } catch (Exception $e) {
             error_log('addMissingColumns error: ' . $e->getMessage());
@@ -67,16 +75,27 @@ class DailyPlanner {
                     dt.id, dt.title, dt.description, dt.priority, dt.status,
                     dt.completed_percentage, dt.start_time, dt.active_seconds,
                     dt.planned_duration, dt.task_id, dt.pause_duration,
-                    dt.completion_time,
-                    COALESCE(t.sla_hours, 1) as sla_hours
+                    dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
+                    dt.created_at, dt.scheduled_date,
+                    COALESCE(t.sla_hours, 1) as sla_hours,
+                    CASE 
+                        WHEN dt.status = 'postponed' AND dt.scheduled_date = ? THEN 'postponed_from_today'
+                        WHEN dt.status = 'postponed' AND dt.postponed_to_date = ? THEN 'postponed_to_today'
+                        ELSE 'normal'
+                    END as postpone_context
                 FROM daily_tasks dt
                 LEFT JOIN tasks t ON dt.task_id = t.id
-                WHERE dt.user_id = ? AND dt.scheduled_date = ?
+                WHERE dt.user_id = ? AND (
+                    (dt.scheduled_date = ? AND dt.status != 'postponed') OR
+                    (dt.scheduled_date = ? AND dt.status = 'postponed') OR
+                    (dt.postponed_to_date = ? AND dt.status = 'postponed')
+                )
                 ORDER BY 
                     CASE dt.status 
                         WHEN 'in_progress' THEN 1 
                         WHEN 'on_break' THEN 2 
-                        WHEN 'not_started' THEN 3 
+                        WHEN 'not_started' THEN 3
+                        WHEN 'postponed' THEN 5
                         ELSE 4 
                     END, 
                     CASE dt.priority 
@@ -86,7 +105,7 @@ class DailyPlanner {
                         ELSE 4 
                     END
             ");
-            $stmt->execute([$userId, $date]);
+            $stmt->execute([$date, $date, $userId, $date, $date, $date]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             error_log("DailyPlanner getTasksForDate error: " . $e->getMessage());
@@ -362,23 +381,51 @@ class DailyPlanner {
             $now = date('Y-m-d H:i:s');
             $currentDate = date('Y-m-d');
             
+            // Get current task data
+            $stmt = $this->db->prepare("SELECT scheduled_date, postponed_to_date, status FROM daily_tasks WHERE id = ?");
+            $stmt->execute([$taskId]);
+            $currentTask = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$currentTask) {
+                throw new Exception('Task not found');
+            }
+            
+            // Check if already postponed to the same date
+            if ($currentTask['postponed_to_date'] === $newDate) {
+                throw new Exception('This task is already postponed to this date.');
+            }
+            
+            // Check if task already exists on target date to prevent duplicates
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) FROM daily_tasks 
+                WHERE task_id = (SELECT task_id FROM daily_tasks WHERE id = ?) 
+                AND scheduled_date = ? AND user_id = ?
+            ");
+            $stmt->execute([$taskId, $newDate, $userId]);
+            if ($stmt->fetchColumn() > 0) {
+                throw new Exception('A task with this content already exists on the target date.');
+            }
+            
+            $originalDate = $currentTask['scheduled_date'];
+            
+            // Update the task with postponed status but keep on original date
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
-                SET status = 'postponed', scheduled_date = ?, postponed_from_date = ?, postponed_to_date = ?, updated_at = NOW()
+                SET status = 'postponed', postponed_from_date = ?, postponed_to_date = ?, updated_at = NOW()
                 WHERE id = ?
             ");
-            $result = $stmt->execute([$newDate, $currentDate, $newDate, $taskId]);
+            $result = $stmt->execute([$originalDate, $newDate, $taskId]);
             
             if ($result) {
                 $this->logTimeAction($taskId, $userId, 'postpone', $now);
-                $this->logTaskHistory($taskId, $userId, 'postponed', $currentDate, $newDate, 'Task postponed to ' . $newDate);
-                $this->updateDailyPerformance($userId, $currentDate);
+                $this->logTaskHistory($taskId, $userId, 'postponed', $originalDate, $newDate, 'Task postponed to ' . $newDate);
+                $this->updateDailyPerformance($userId, $originalDate);
             }
             
             return $result;
         } catch (Exception $e) {
             error_log("DailyPlanner postponeTask error: " . $e->getMessage());
-            return false;
+            throw $e; // Re-throw to show specific error message
         }
     }
     
@@ -404,16 +451,16 @@ class DailyPlanner {
                         COUNT(*) as total_tasks,
                         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
                         SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
-                        SUM(CASE WHEN status = 'postponed' THEN 1 ELSE 0 END) as postponed_tasks,
+                        SUM(CASE WHEN status = 'postponed' AND postponed_from_date = ? THEN 1 ELSE 0 END) as postponed_tasks,
                         SUM(CASE WHEN status = 'on_break' THEN 1 ELSE 0 END) as paused_tasks,
                         SUM(planned_duration) as total_planned_minutes,
                         SUM(active_seconds) as total_active_seconds,
                         SUM(pause_duration) as total_pause_seconds,
                         AVG(completed_percentage) as avg_completion
                     FROM daily_tasks 
-                    WHERE user_id = ? AND scheduled_date = ? AND DATE(created_at) = ?
+                    WHERE user_id = ? AND scheduled_date = ?
                 ");
-                $stmt->execute([$userId, $date, $date]);
+                $stmt->execute([$date, $userId, $date]);
                 $dailyStats = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 // Calculate SLA totals from today's assigned tasks only
