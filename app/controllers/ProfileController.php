@@ -281,6 +281,9 @@ class ProfileController extends Controller {
     
     private function updateUserPreferences($userId, $preferences) {
         try {
+            // Ensure table exists
+            $this->createUserPreferencesTable();
+            
             $sql = "INSERT INTO user_preferences (user_id, theme, dashboard_layout, language, timezone, notifications_email, notifications_browser) 
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
@@ -304,6 +307,26 @@ class ProfileController extends Controller {
         } catch (Exception $e) {
             error_log('updateUserPreferences error: ' . $e->getMessage());
             return false;
+        }
+    }
+    
+    private function createUserPreferencesTable() {
+        try {
+            $sql = "CREATE TABLE IF NOT EXISTS user_preferences (
+                user_id INT PRIMARY KEY,
+                theme VARCHAR(20) DEFAULT 'light',
+                dashboard_layout VARCHAR(20) DEFAULT 'default',
+                language VARCHAR(10) DEFAULT 'en',
+                timezone VARCHAR(50) DEFAULT 'UTC',
+                notifications_email TINYINT(1) DEFAULT 1,
+                notifications_browser TINYINT(1) DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )";
+            $this->db->exec($sql);
+        } catch (Exception $e) {
+            error_log('createUserPreferencesTable error: ' . $e->getMessage());
         }
     }
 }

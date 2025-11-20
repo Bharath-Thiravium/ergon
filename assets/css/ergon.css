@@ -1630,6 +1630,9 @@ code {
   .mobile-card-container {
     display: block;
     padding: 0;
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
   .task-card, .item-card {
@@ -1640,6 +1643,8 @@ code {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     border-left: 2px solid #3b82f6;
     position: relative;
+    max-height: none;
+    overflow: visible;
   }
   
   .task-card__header {
@@ -1671,6 +1676,8 @@ code {
     gap: 8px;
     margin-bottom: 12px;
     font-size: 14px;
+    max-height: 200px;
+    overflow-y: auto;
   }
   
   .task-card__field {
