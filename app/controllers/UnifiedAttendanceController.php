@@ -124,7 +124,7 @@ class UnifiedAttendanceController extends Controller {
         exit;
     }
     
-    public function manual() {
+    public function edit() {
         $this->requireAuth();
         
         if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
@@ -136,41 +136,111 @@ class UnifiedAttendanceController extends Controller {
             header('Content-Type: application/json');
             
             try {
+                $attendanceId = intval($_POST['attendance_id']);
                 $userId = intval($_POST['user_id']);
-                $checkIn = $_POST['check_in'] ?? null;
-                $checkOut = $_POST['check_out'] ?? null;
-                $date = $_POST['date'] ?? date('Y-m-d');
+                $date = $_POST['date'];
+                $clockIn = $_POST['clock_in'];
+                $clockOut = $_POST['clock_out'] ?? null;
+                $status = $_POST['status'];
+                $editReason = $_POST['edit_reason'] ?? '';
+                $editorId = $_SESSION['user_id'];
                 
-                // Check if record exists
-                $stmt = $this->db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
-                $stmt->execute([$userId, $date]);
-                $existing = $stmt->fetch();
+                // Admin role check - cannot edit admin users
+                if ($_SESSION['role'] === 'admin') {
+                    $stmt = $this->db->prepare("SELECT role FROM users WHERE id = ?");
+                    $stmt->execute([$userId]);
+                    $targetUser = $stmt->fetch();
+                    if ($targetUser && $targetUser['role'] === 'admin') {
+                        echo json_encode(['success' => false, 'error' => 'Cannot edit admin attendance']);
+                        exit;
+                    }
+                }
                 
-                if ($existing) {
+                // Calculate working hours
+                $workingHours = 0;
+                if ($clockIn && $clockOut) {
+                    $checkInTime = strtotime($date . ' ' . $clockIn);
+                    $checkOutTime = strtotime($date . ' ' . $clockOut);
+                    if ($checkOutTime > $checkInTime) {
+                        $workingHours = ($checkOutTime - $checkInTime) / 3600;
+                    }
+                }
+                
+                if ($attendanceId > 0) {
                     // Update existing record
-                    $stmt = $this->db->prepare("UPDATE attendance SET check_in = ?, check_out = ?, updated_at = NOW() WHERE id = ?");
+                    $stmt = $this->db->prepare("
+                        UPDATE attendance SET 
+                        check_in = ?, check_out = ?, status = ?, working_hours = ?,
+                        manual_entry = 1, edited_by = ?, edit_reason = ?, updated_at = NOW()
+                        WHERE id = ?
+                    ");
                     $stmt->execute([
-                        $date . ' ' . $checkIn,
-                        $checkOut ? $date . ' ' . $checkOut : null,
-                        $existing['id']
+                        $date . ' ' . $clockIn,
+                        $clockOut ? $date . ' ' . $clockOut : null,
+                        $status,
+                        $workingHours,
+                        $editorId,
+                        $editReason,
+                        $attendanceId
                     ]);
                 } else {
                     // Create new record
-                    $stmt = $this->db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status, location_name, created_at) VALUES (?, ?, ?, 'present', 'Manual Entry', NOW())");
+                    $stmt = $this->db->prepare("
+                        INSERT INTO attendance (user_id, check_in, check_out, status, working_hours, 
+                        manual_entry, edited_by, edit_reason, location_name, created_at) 
+                        VALUES (?, ?, ?, ?, ?, 1, ?, ?, 'Manual Entry', NOW())
+                    ");
                     $stmt->execute([
                         $userId,
-                        $date . ' ' . $checkIn,
-                        $checkOut ? $date . ' ' . $checkOut : null
+                        $date . ' ' . $clockIn,
+                        $clockOut ? $date . ' ' . $clockOut : null,
+                        $status,
+                        $workingHours,
+                        $editorId,
+                        $editReason
                     ]);
                 }
                 
-                echo json_encode(['success' => true, 'message' => 'Manual attendance recorded']);
+                echo json_encode(['success' => true, 'message' => 'Attendance updated successfully']);
                 
             } catch (Exception $e) {
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
             exit;
         }
+        
+        // GET request - show edit form
+        $attendanceId = $_GET['id'] ?? 0;
+        $userId = $_GET['user_id'] ?? 0;
+        $record = null;
+        
+        if ($attendanceId > 0) {
+            $stmt = $this->db->prepare("
+                SELECT a.*, u.name as user_name, u.role as user_role
+                FROM attendance a 
+                JOIN users u ON a.user_id = u.id 
+                WHERE a.id = ?
+            ");
+            $stmt->execute([$attendanceId]);
+            $record = $stmt->fetch(PDO::FETCH_ASSOC);
+        } elseif ($userId > 0) {
+            $stmt = $this->db->prepare("SELECT id, name, role FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($user) {
+                $record = [
+                    'user_id' => $user['id'],
+                    'user_name' => $user['name'],
+                    'user_role' => $user['role']
+                ];
+            }
+        }
+        
+        $this->view('attendance/edit', [
+            'record' => $record,
+            'attendance_id' => $attendanceId,
+            'active_page' => 'attendance'
+        ]);
     }
     
     private function clockIn($userId, $latitude, $longitude) {

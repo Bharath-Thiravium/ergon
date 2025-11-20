@@ -148,13 +148,15 @@ ob_start();
                         <th class="col-assignment">Date & Status</th>
                         <th class="col-progress">Working Hours</th>
                         <th class="col-date">Check Times</th>
+                        <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
                         <th class="col-actions">Actions</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($attendance ?? [])): ?>
                     <tr>
-                        <td colspan="5" class="text-center">
+                        <td colspan="<?= in_array($user_role ?? '', ['owner', 'admin']) ? '5' : '4' ?>" class="text-center">
                             <div class="empty-state">
                                 <div class="empty-icon">📍</div>
                                 <h3>No Attendance Records</h3>
@@ -166,7 +168,7 @@ ob_start();
                         <!-- Admin Users Section -->
                         <?php if (!empty($attendance['admin'])): ?>
                         <tr class="group-header">
-                            <td colspan="5" style="background: #f8fafc; font-weight: 600; color: #374151; padding: 0.75rem 1rem; border-top: 2px solid #e5e7eb;">
+                            <td colspan="<?= in_array($user_role ?? '', ['owner', 'admin']) ? '5' : '4' ?>" style="background: #f8fafc; font-weight: 600; color: #374151; padding: 0.75rem 1rem; border-top: 2px solid #e5e7eb;">
                                 <span>👔</span> Admin Users
                             </td>
                         </tr>
@@ -205,6 +207,7 @@ ob_start();
                                     <div class="cell-secondary">Out: <?= $record['check_out_time'] ?? '00:00' ?></div>
                                 </div>
                             </td>
+                            <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
                             <td>
                                 <div class="ab-container">
                                     <a class="ab-btn ab-btn--view" data-action="view" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="View Details">
@@ -215,7 +218,8 @@ ob_start();
                                             <line x1="16" y1="17" x2="8" y2="17"/>
                                         </svg>
                                     </a>
-                                    <a class="ab-btn ab-btn--edit" data-action="edit" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="Edit Record">
+                                    <?php if ($user_role === 'owner'): ?>
+                                    <a class="ab-btn ab-btn--edit" href="/ergon/attendance/edit?id=<?= $record['attendance_id'] ?? 0 ?>&user_id=<?= $record['user_id'] ?>" title="Edit Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                             <path d="M15 5l4 4"/>
@@ -230,8 +234,10 @@ ob_start();
                                             <line x1="14" y1="11" x2="14" y2="17"/>
                                         </svg>
                                     </button>
+                                    <?php endif; ?>
                                 </div>
                             </td>
+                            <?php endif; ?>
                         </tr>
                         <?php endforeach; ?>
                         <?php endif; ?>
@@ -239,7 +245,7 @@ ob_start();
                         <!-- Employee Users Section -->
                         <?php if (!empty($attendance['user'])): ?>
                         <tr class="group-header">
-                            <td colspan="5" style="background: #f8fafc; font-weight: 600; color: #374151; padding: 0.75rem 1rem; border-top: 2px solid #e5e7eb;">
+                            <td colspan="<?= in_array($user_role ?? '', ['owner', 'admin']) ? '5' : '4' ?>" style="background: #f8fafc; font-weight: 600; color: #374151; padding: 0.75rem 1rem; border-top: 2px solid #e5e7eb;">
                                 <span>👥</span> Employee Users
                             </td>
                         </tr>
@@ -278,6 +284,7 @@ ob_start();
                                     <div class="cell-secondary">Out: <?= $record['check_out_time'] ?? '00:00' ?></div>
                                 </div>
                             </td>
+                            <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
                             <td>
                                 <div class="ab-container">
                                     <a class="ab-btn ab-btn--view" data-action="view" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="View Details">
@@ -288,7 +295,7 @@ ob_start();
                                             <line x1="16" y1="17" x2="8" y2="17"/>
                                         </svg>
                                     </a>
-                                    <a class="ab-btn ab-btn--edit" data-action="edit" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="Edit Record">
+                                    <a class="ab-btn ab-btn--edit" href="/ergon/attendance/edit?id=<?= $record['attendance_id'] ?? 0 ?>&user_id=<?= $record['user_id'] ?>" title="Edit Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                             <path d="M15 5l4 4"/>
@@ -305,6 +312,7 @@ ob_start();
                                     </button>
                                 </div>
                             </td>
+                            <?php endif; ?>
                         </tr>
                         <?php endforeach; ?>
                         <?php endif; ?>
@@ -344,6 +352,7 @@ ob_start();
                                     <div class="cell-secondary">Out: <?= $record['check_out_time'] ?? '00:00' ?></div>
                                 </div>
                             </td>
+                            <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
                             <td>
                                 <div class="ab-container">
                                     <a class="ab-btn ab-btn--view" data-action="view" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="View Details">
@@ -354,15 +363,8 @@ ob_start();
                                             <line x1="16" y1="17" x2="8" y2="17"/>
                                         </svg>
                                     </a>
-                                    <?php if (!$record['check_out'] && ($record['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
-                                        <button class="ab-btn ab-btn--progress" onclick="checkOut(<?= $record['attendance_id'] ?? 0 ?>)" title="Check Out">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/>
-                                                <polyline points="16,7 22,7 22,13"/>
-                                            </svg>
-                                        </button>
-                                    <?php endif; ?>
-                                    <a class="ab-btn ab-btn--edit" data-action="edit" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="Edit Record">
+                                    <?php if (!(($user_role ?? '') === 'admin' && ($record['user_role'] ?? '') === 'admin')): ?>
+                                    <a class="ab-btn ab-btn--edit" href="/ergon/attendance/edit?id=<?= $record['attendance_id'] ?? 0 ?>&user_id=<?= $record['user_id'] ?>" title="Edit Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                             <path d="M15 5l4 4"/>
@@ -377,8 +379,10 @@ ob_start();
                                             <line x1="14" y1="11" x2="14" y2="17"/>
                                         </svg>
                                     </button>
+                                    <?php endif; ?>
                                 </div>
                             </td>
+                            <?php endif; ?>
                         </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
