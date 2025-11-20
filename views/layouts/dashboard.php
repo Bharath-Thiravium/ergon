@@ -28,13 +28,12 @@ ob_end_clean();
     body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;background:#f8fafc;overflow-x:hidden}
     .main-header{background:#000080;position:fixed;top:0;left:0;right:0;z-index:9999;width:100%;height:110px}
     .header__top{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;height:60px}
-    .header__nav-container{height:50px;border-top:1px solid rgba(255,255,255,0.1)}
-    .main-content{margin-top:110px;padding:24px;background:#f8fafc;min-height:calc(100vh - 110px);width:100%;max-width:100vw;overflow-x:hidden;position:relative}
+    .header__nav-container{height:50px;/*border-top:1px solid rgba(255,255,255,0.1)*/}
+    .main-content{margin:110px 0 0 0;padding:24px 24px 24px 0;background:#f8fafc;min-height:calc(100vh - 110px);width:100%;max-width:100vw;overflow-x:hidden;position:relative}
     .sidebar{position:fixed;left:-280px;top:0;width:280px;height:100vh;background:#fff;z-index:9998;transition:left 0.3s ease}
     .mobile-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9997;display:none}
     </style>
     
-    <link href="/ergon/assets/css/font-fixes.css" rel="stylesheet">
     <link href="/ergon/assets/css/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/ergon/assets/css/ergon.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/theme-enhanced.css?v=1.0" rel="stylesheet">
@@ -43,15 +42,10 @@ ob_end_clean();
     <link href="/ergon/assets/css/global-tooltips.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/action-button-clean.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/mobile-critical-fixes.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/nav-simple-fix.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/browser-fixes.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/production-fixes.css?v=1.0" rel="stylesheet">
     <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
     <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
     <?php endif; ?>
 
-    <script src="/ergon/assets/js/error-fixes.js?v=<?= time() ?>"></script>
     <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
     <script src="/ergon/assets/js/action-button-clean.js?v=<?= time() ?>" defer></script>

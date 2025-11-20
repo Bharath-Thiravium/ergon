@@ -1,145 +1,189 @@
 /**
  * Mobile Table to Card Converter
- * Converts desktop tables to mobile-friendly card layouts
+ * Automatically converts tables to mobile-friendly cards on small screens
  */
 
-(function() {
-    'use strict';
+function convertTablesToCards() {
+  if (window.innerWidth > 768) return;
+
+  const tables = document.querySelectorAll('.table-responsive');
+  
+  tables.forEach(container => {
+    if (container.querySelector('.mobile-card-container')) return;
     
-    function convertTablesToCards() {
-        if (window.innerWidth > 768) return;
-        
-        const tables = document.querySelectorAll('.table-responsive .table');
-        
-        tables.forEach(table => {
-            const cardList = createCardList(table);
-            if (cardList) {
-                table.parentNode.appendChild(cardList);
-            }
-        });
-    }
+    const table = container.querySelector('table');
+    if (!table) return;
+
+    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+    const rows = table.querySelectorAll('tbody tr');
     
-    function createCardList(table) {
-        const tbody = table.querySelector('tbody');
-        const headers = Array.from(table.querySelectorAll('thead th')).map(th => {
-            // Clean up header text by removing sorting controls
-            const headerTextElement = th.querySelector('.table-header__text');
-            if (headerTextElement) {
-                return headerTextElement.textContent.trim();
-            }
-            // Fallback: remove common sorting symbols
-            return th.textContent.replace(/[⇅🔍]/g, '').replace(/Apply|Clear/g, '').trim();
-        });
-        
-        if (!tbody || headers.length === 0) return null;
-        
-        const cardList = document.createElement('div');
-        cardList.className = 'mobile-card-list';
-        
-        const rows = tbody.querySelectorAll('tr');
-        rows.forEach(row => {
-            const card = createCard(row, headers);
-            if (card) cardList.appendChild(card);
-        });
-        
-        return cardList;
-    }
+    const cardContainer = document.createElement('div');
+    cardContainer.className = 'mobile-card-container';
+    cardContainer.style.display = 'block';
     
-    function createCard(row, headers) {
-        const cells = row.querySelectorAll('td');
-        if (cells.length === 0) return null;
-        
-        const card = document.createElement('div');
-        card.className = 'mobile-card';
-        
-        // Main content area
-        const main = document.createElement('div');
-        main.className = 'mobile-card__main';
-        
-        const title = document.createElement('div');
-        title.className = 'mobile-card__title';
-        title.innerHTML = cells[0].innerHTML;
-        main.appendChild(title);
-        
-        // Find and add status badge
-        for (let i = cells.length - 2; i >= Math.max(0, cells.length - 3); i--) {
-            const badge = cells[i].querySelector('.badge');
-            if (badge) {
-                const statusDiv = document.createElement('div');
-                statusDiv.className = 'mobile-card__status';
-                statusDiv.appendChild(badge.cloneNode(true));
-                main.appendChild(statusDiv);
-                break;
-            }
-        }
-        
-        card.appendChild(main);
-        
-        // Meta information (key details only)
-        const meta = document.createElement('div');
-        meta.className = 'mobile-card__meta';
-        
-        // For attendance tables, show time information
-        if (headers.some(h => h.toLowerCase().includes('time') || h.toLowerCase().includes('in') || h.toLowerCase().includes('out'))) {
-            // Show check-in and check-out times
-            for (let i = 1; i < cells.length - 1; i++) {
-                if (!cells[i].querySelector('.badge') && !cells[i].querySelector('.ab-container')) {
-                    const metaItem = document.createElement('div');
-                    metaItem.className = 'mobile-card__meta-item';
-                    
-                    const cleanText = cells[i].textContent.trim();
-                    const headerText = headers[i] || '';
-                    
-                    if (cleanText && cleanText !== 'N/A' && cleanText !== '-') {
-                        metaItem.innerHTML = `<strong>${headerText}:</strong> ${cleanText}`;
-                        meta.appendChild(metaItem);
-                    } else if (headerText.toLowerCase().includes('out')) {
-                        metaItem.innerHTML = `<strong>${headerText}:</strong> <span style="color: #6b7280;">Not clocked out</span>`;
-                        meta.appendChild(metaItem);
-                    }
-                }
-            }
-        } else {
-            // Default behavior for other tables
-            const essentialColumns = [1, 2];
-            essentialColumns.forEach(i => {
-                if (i < cells.length - 1 && !cells[i].querySelector('.badge')) {
-                    const metaItem = document.createElement('div');
-                    metaItem.className = 'mobile-card__meta-item';
-                    
-                    const cleanText = cells[i].textContent.trim();
-                    if (cleanText && cleanText !== 'N/A' && cleanText !== '-') {
-                        metaItem.textContent = cleanText;
-                        meta.appendChild(metaItem);
-                    }
-                }
-            });
-        }
-        
-        if (meta.children.length > 0) {
-            card.appendChild(meta);
-        }
-        
-        // Actions
-        const actionsCell = cells[cells.length - 1];
-        const actionButtons = actionsCell.querySelector('.ab-container');
-        if (actionButtons) {
-            const actions = document.createElement('div');
-            actions.className = 'mobile-card__actions';
-            actions.appendChild(actionButtons.cloneNode(true));
-            card.appendChild(actions);
-        }
-        
-        return card;
-    }
-    
-    // Initialize on DOM ready and resize
-    document.addEventListener('DOMContentLoaded', convertTablesToCards);
-    window.addEventListener('resize', function() {
-        // Remove existing card lists
-        document.querySelectorAll('.mobile-card-list').forEach(list => list.remove());
-        // Recreate if mobile
-        setTimeout(convertTablesToCards, 100);
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      const card = createCard(headers, cells);
+      cardContainer.appendChild(card);
     });
     
-})();
+    container.style.position = 'relative';
+    container.appendChild(cardContainer);
+    
+    // Hide table on mobile
+    table.style.display = 'none';
+  });
+}
+
+function createCard(headers, cells) {
+  const card = document.createElement('div');
+  card.className = 'task-card';
+  
+  // Card content
+  let cardHTML = `
+    <div class="task-card__header">
+      <h3 class="task-card__title">${cells[0]?.textContent.trim() || 'Item'}</h3>
+    </div>
+    <div class="task-card__meta">
+  `;
+  
+  // Add fields (skip first column as it's the title)
+  for (let i = 1; i < Math.min(headers.length, cells.length); i++) {
+    if (cells[i] && headers[i]) {
+      cardHTML += `
+        <div class="task-card__field">
+          <div class="task-card__label">${headers[i]}</div>
+          <div class="task-card__value">${cells[i].innerHTML}</div>
+        </div>
+      `;
+    }
+  }
+  
+  cardHTML += '</div>';
+  
+  // Add exactly two action buttons from last cell (exclude View button and extended actions)
+  const lastCell = cells[cells.length - 1];
+  if (lastCell) {
+    const allButtons = lastCell.querySelectorAll('button, a, .ab-btn');
+    const filteredButtons = Array.from(allButtons).filter(btn => {
+      const text = btn.textContent.toLowerCase();
+      const hasAbContainer = btn.closest('.ab-container');
+      return !text.includes('view') && !text.includes('extended') && !hasAbContainer;
+    });
+    
+    if (filteredButtons.length > 0) {
+      cardHTML += '<div class="task-card__actions">';
+      // Take first two filtered buttons only
+      for (let i = 0; i < Math.min(2, filteredButtons.length); i++) {
+        cardHTML += filteredButtons[i].outerHTML;
+      }
+      cardHTML += '</div>';
+    }
+  }
+  
+  card.innerHTML = cardHTML;
+  return card;
+}
+
+function getStatusFromRow(cells) {
+  // Look for status in common column positions or badge elements
+  for (let cell of cells) {
+    const badge = cell.querySelector('.badge, .status, [class*="status"]');
+    if (badge) return badge.textContent.trim();
+    
+    const text = cell.textContent.trim().toLowerCase();
+    if (['pending', 'completed', 'in progress', 'overdue', 'active', 'inactive'].includes(text)) {
+      return text;
+    }
+  }
+  return 'pending';
+}
+
+function getPriorityFromRow(cells) {
+  // Look for priority indicators
+  for (let cell of cells) {
+    const text = cell.textContent.trim().toLowerCase();
+    if (['high', 'medium', 'low'].includes(text)) {
+      return text;
+    }
+    
+    const badge = cell.querySelector('.badge, .priority');
+    if (badge) {
+      const badgeText = badge.textContent.trim().toLowerCase();
+      if (['high', 'medium', 'low'].includes(badgeText)) {
+        return badgeText;
+      }
+    }
+  }
+  return 'medium';
+}
+
+// Debug function
+function debugTables() {
+  console.log('Screen width:', window.innerWidth);
+  console.log('Tables found:', document.querySelectorAll('.table-responsive').length);
+  console.log('Mobile cards found:', document.querySelectorAll('.mobile-card-container').length);
+}
+
+// Initialize immediately and on events
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    debugTables();
+    convertTablesToCards();
+  });
+} else {
+  debugTables();
+  convertTablesToCards();
+}
+
+// Also run after delays to catch dynamically loaded content
+setTimeout(() => {
+  debugTables();
+  convertTablesToCards();
+}, 500);
+
+setTimeout(() => {
+  debugTables();
+  convertTablesToCards();
+}, 1000);
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 768) {
+    document.querySelectorAll('.mobile-card-container').forEach(container => {
+      container.remove();
+    });
+  } else {
+    setTimeout(convertTablesToCards, 100);
+  }
+});
+
+// Run on any table updates
+const observer = new MutationObserver(() => {
+  if (window.innerWidth <= 768) {
+    setTimeout(convertTablesToCards, 100);
+  }
+});
+
+if (document.body) {
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Function to remove element by XPath
+function removeElementByXPath(xpath) {
+  const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+  const element = result.singleNodeValue;
+  if (element) {
+    element.remove();
+    console.log('Element removed:', xpath);
+    return true;
+  }
+  console.log('Element not found:', xpath);
+  return false;
+}
+
+// Remove the specific element
+removeElementByXPath('/html/body/main/div[3]/div[2]/div/div/div[1]/div[3]/div');
+
+// Export for manual triggering
+window.convertTablesToCards = convertTablesToCards;
+window.removeElementByXPath = removeElementByXPath;

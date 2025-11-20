@@ -147,7 +147,7 @@
 /* iPad Landscape */
 @media (width >= 1024px) and (width <= 1366px) and (orientation: landscape) {
   .main-content {
-    margin-left: 260px;
+    margin-left: 20px;
   }
 
   .sidebar {
@@ -160,7 +160,7 @@
 }
 
 /* High DPI Displays */
-@media (min-device-pixel-ratio: 2), (resolution >= 192dpi) {
+@media (resolution >= 192dpi) {
   .brand-icon,
   .ab-btn svg,
   .control-btn i {
