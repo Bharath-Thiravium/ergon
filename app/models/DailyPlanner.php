@@ -862,53 +862,46 @@ class DailyPlanner {
             $rolledOverCount = 0;
             
             foreach ($uncompletedTasks as $task) {
-                // Prevent duplicate rollover entries
+                // Allow duplicate rollovers until task is completed
+                // Create new rollover entry for today
                 $stmt = $this->db->prepare("
-                    SELECT COUNT(*) FROM daily_tasks 
-                    WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ?
+                    INSERT INTO daily_tasks 
+                    (user_id, task_id, original_task_id, title, description, scheduled_date, 
+                     planned_start_time, planned_duration, priority, status, 
+                     completed_percentage, active_seconds, pause_duration,
+                     rollover_source_date, rollover_timestamp, source_field)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, ?, ?, NOW(), 'rollover')
                 ");
-                $stmt->execute([$task['user_id'], $task['original_task_id'] ?: $task['task_id'], $today]);
                 
-                if ($stmt->fetchColumn() == 0) {
-                    // Create new rollover entry for today
-                    $stmt = $this->db->prepare("
-                        INSERT INTO daily_tasks 
-                        (user_id, task_id, original_task_id, title, description, scheduled_date, 
-                         planned_start_time, planned_duration, priority, status, 
-                         completed_percentage, active_seconds, pause_duration,
-                         rollover_source_date, rollover_timestamp, source_field)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, ?, ?, NOW(), 'rollover')
-                    ");
-                    
-                    $stmt->execute([
-                        $task['user_id'],
-                        $task['task_id'],
-                        $task['original_task_id'] ?: $task['task_id'],
-                        $task['title'],
-                        $task['description'],
-                        $today,
-                        $task['planned_start_time'],
-                        $task['planned_duration'],
-                        $task['priority'],
-                        $task['completed_percentage'],
-                        $task['active_seconds'],
-                        $task['pause_duration']
-                    ]);
-                    
-                    $newTaskId = $this->db->lastInsertId();
-                    
-                    // Log rollover action in task history
-                    $this->logTaskHistory(
-                        $newTaskId, 
-                        $task['user_id'], 
-                        'rolled_over', 
-                        $yesterday, 
-                        $today, 
-                        "🔄 Rolled over from: {$yesterday}"
-                    );
-                    
-                    $rolledOverCount++;
-                }
+                $stmt->execute([
+                    $task['user_id'],
+                    $task['task_id'],
+                    $task['original_task_id'] ?: $task['task_id'],
+                    $task['title'],
+                    $task['description'],
+                    $today,
+                    $task['planned_start_time'],
+                    $task['planned_duration'],
+                    $task['priority'],
+                    $task['completed_percentage'],
+                    $task['active_seconds'],
+                    $task['pause_duration'],
+                    $yesterday
+                ]);
+                
+                $newTaskId = $this->db->lastInsertId();
+                
+                // Log rollover action in task history
+                $this->logTaskHistory(
+                    $newTaskId, 
+                    $task['user_id'], 
+                    'rolled_over', 
+                    $yesterday, 
+                    $today, 
+                    "🔄 Rolled over from: {$yesterday}"
+                );
+                
+                $rolledOverCount++;
             }
             
             return $rolledOverCount;

@@ -289,7 +289,9 @@ class UsersController extends Controller {
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
-                $userId = $_POST['user_id'] ?? null;
+                // Handle JSON input
+                $input = json_decode(file_get_contents('php://input'), true);
+                $userId = $input['user_id'] ?? $_POST['user_id'] ?? null;
                 if (!$userId) {
                     echo json_encode(['success' => false, 'message' => 'User ID required']);
                     exit;
@@ -310,13 +312,15 @@ class UsersController extends Controller {
                     $result = $stmt->execute([$hashedPassword, $userId]);
                     
                     if ($result) {
+                        $_SESSION['reset_credentials'] = [
+                            'email' => $user['email'],
+                            'password' => $tempPassword,
+                            'name' => $user['name']
+                        ];
                         echo json_encode([
                             'success' => true, 
-                            'message' => 'Password reset successfully',
-                            'credentials' => [
-                                'email' => $user['email'],
-                                'password' => $tempPassword
-                            ]
+                            'message' => 'Password reset successfully. Download credentials file.',
+                            'download_available' => true
                         ]);
                     } else {
                         echo json_encode(['success' => false, 'message' => 'Failed to reset password']);

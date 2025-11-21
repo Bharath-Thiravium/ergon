@@ -257,7 +257,7 @@ document.addEventListener('click', function(e) {
                 alert('Error activating user');
             });
         }
- else if (action === 'reset' && module && id && name) {
+    } else if (action === 'reset' && module && id && name) {
         if (confirm(`Reset password for ${name}?`)) {
             fetch(`/ergon/${module}/reset-password`, {
                 method: 'POST',
@@ -267,7 +267,7 @@ document.addEventListener('click', function(e) {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Password reset successfully');
+                    alert(data.message || 'Password reset successfully');
                     location.reload();
                 } else {
                     alert('Error: ' + (data.message || 'Reset failed'));

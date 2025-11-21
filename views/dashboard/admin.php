@@ -8,14 +8,22 @@ ob_start();
             
             <!-- Header Actions -->
             <div class="header-actions">
-                <button class="btn btn--primary">
+                <a href="/ergon/tasks/create" class="btn btn--primary">
                     <i class="fas fa-plus"></i>
                     Create Task
-                </button>
-                <button class="btn btn--secondary">
+                </a>
+                <a href="/ergon/users" class="btn btn--secondary">
+                    <i class="fas fa-users"></i>
+                    Manage Users
+                </a>
+                <a href="/ergon/attendance" class="btn btn--secondary">
+                    <i class="fas fa-clock"></i>
+                    Attendance
+                </a>
+                <a href="/ergon/reports" class="btn btn--secondary">
                     <i class="fas fa-download"></i>
-                    Export Report
-                </button>
+                    Reports
+                </a>
             </div>
             
             <!-- KPI Dashboard Grid -->

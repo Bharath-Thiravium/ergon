@@ -136,6 +136,28 @@ ob_start();
                                             <circle cx="12" cy="12" r="3"/>
                                         </svg>
                                     </button>
+                                    
+                                    <?php 
+                                    // Only owners can manually clock in/out admins
+                                    if ($user_role === 'owner' && $selected_date === date('Y-m-d')): 
+                                    ?>
+                                        <?php if (empty($record['check_in'])): ?>
+                                        <button class="ab-btn ab-btn--success" onclick="clockInUser(<?= $record['user_id'] ?>)" title="Clock In Admin">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <polyline points="12,6 12,12 16,14"/>
+                                            </svg>
+                                        </button>
+                                        <?php elseif (empty($record['check_out'])): ?>
+                                        <button class="ab-btn ab-btn--warning" onclick="clockOutUser(<?= $record['user_id'] ?>)" title="Clock Out Admin">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <path d="M16 12l-4-4-4 4"/>
+                                            </svg>
+                                        </button>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                    
                                     <button class="ab-btn ab-btn--edit" onclick="editAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, <?= $record['user_id'] ?>)" title="Edit Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
@@ -203,20 +225,26 @@ ob_start();
                                             <circle cx="12" cy="12" r="3"/>
                                         </svg>
                                     </button>
-                                    <?php if (empty($record['check_in'])): ?>
-                                    <button class="ab-btn ab-btn--success" onclick="clockInUser(<?= $record['user_id'] ?>)" title="Clock In User">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <circle cx="12" cy="12" r="10"/>
-                                            <polyline points="12,6 12,12 16,14"/>
-                                        </svg>
-                                    </button>
-                                    <?php elseif (empty($record['check_out'])): ?>
-                                    <button class="ab-btn ab-btn--warning" onclick="clockOutUser(<?= $record['user_id'] ?>)" title="Clock Out User">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <circle cx="12" cy="12" r="10"/>
-                                            <path d="M16 12l-4-4-4 4"/>
-                                        </svg>
-                                    </button>
+                                    <?php 
+                                    // Admins can only clock in/out regular users, owners can clock in/out anyone
+                                    $canClockInOut = ($user_role === 'owner') || ($user_role === 'admin' && $record['role'] === 'user');
+                                    if ($canClockInOut && $selected_date === date('Y-m-d')): 
+                                    ?>
+                                        <?php if (empty($record['check_in']) || $record['check_in'] === null): ?>
+                                        <button class="ab-btn ab-btn--success" onclick="clockInUser(<?= $record['user_id'] ?>)" title="Clock In User">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <polyline points="12,6 12,12 16,14"/>
+                                            </svg>
+                                        </button>
+                                        <?php elseif (empty($record['check_out']) || $record['check_out'] === null): ?>
+                                        <button class="ab-btn ab-btn--warning" onclick="clockOutUser(<?= $record['user_id'] ?>)" title="Clock Out User">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <path d="M16 12l-4-4-4 4"/>
+                                            </svg>
+                                        </button>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                     <button class="ab-btn ab-btn--edit" onclick="editAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, <?= $record['user_id'] ?>)" title="Edit Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -224,7 +252,18 @@ ob_start();
                                             <path d="M15 5l4 4"/>
                                         </svg>
                                     </button>
-                                    <?php if ($user_role === 'owner'): ?>
+                                    
+                                    <button class="ab-btn ab-btn--info" onclick="generateUserReport(<?= $record['user_id'] ?>)" title="Generate Report">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                            <polyline points="14,2 14,8 20,8"/>
+                                            <line x1="16" y1="13" x2="8" y2="13"/>
+                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                            <polyline points="10,9 9,9 8,9"/>
+                                        </svg>
+                                    </button>
+                                    
+                                    <?php if (in_array($user_role, ['owner', 'admin'])): ?>
                                     <button class="ab-btn ab-btn--delete" onclick="deleteAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, '<?= htmlspecialchars($record['name'] ?? 'Record', ENT_QUOTES) ?>')" title="Delete Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M3 6h18"/>
@@ -305,8 +344,11 @@ ob_start();
                                         </svg>
                                     </button>
                                     
-                                    <?php if ($isToday): ?>
-                                        <?php if (!isset($record['check_in']) || empty($record['check_in'])): ?>
+                                    <?php 
+                                    $canClockInOut = ($user_role === 'owner') || ($user_role === 'admin' && ($record['role'] ?? 'user') === 'user');
+                                    if ($isToday && $canClockInOut): 
+                                    ?>
+                                        <?php if (!isset($record['check_in']) || empty($record['check_in']) || $record['check_in'] === null): ?>
                                         <!-- Clock In -->
                                         <button class="ab-btn ab-btn--success" onclick="clockInUser(<?= intval($record['user_id'] ?? 0) ?>)" title="Clock In User">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -344,8 +386,8 @@ ob_start();
                                         </svg>
                                     </button>
                                     
-                                    <?php if ($user_role === 'owner'): ?>
-                                    <!-- Delete Record (Owner Only) -->
+                                    <?php if (in_array($user_role, ['owner', 'admin'])): ?>
+                                    <!-- Delete Record -->
                                     <button class="ab-btn ab-btn--delete" onclick="deleteAttendanceRecord(<?= intval($record['attendance_id'] ?? 0) ?>, '<?= htmlspecialchars($record['name'] ?? 'Record', ENT_QUOTES) ?>')" title="Delete Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M3 6h18"/>
