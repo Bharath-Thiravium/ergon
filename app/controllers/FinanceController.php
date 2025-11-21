@@ -86,6 +86,7 @@ class FinanceController extends Controller {
     }
     
     public function sync() {
+        ob_clean();
         header('Content-Type: application/json');
         
         try {
@@ -93,7 +94,7 @@ class FinanceController extends Controller {
             
             if (!$conn) {
                 echo json_encode(['error' => 'PostgreSQL connection failed']);
-                return;
+                exit;
             }
             
             $db = Database::connect();
@@ -129,8 +130,10 @@ class FinanceController extends Controller {
             echo json_encode(['tables' => $syncCount]);
             
         } catch (Exception $e) {
+            ob_clean();
             echo json_encode(['error' => $e->getMessage()]);
         }
+        exit;
     }
     
     public function getFinanceStats() {
