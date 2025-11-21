@@ -79,18 +79,18 @@ ob_end_clean();
     <link href="/ergon/assets/css/utilities-new.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/instant-theme.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/global-tooltips.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/action-button-clean.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/_archive_legacy/css/action-button-clean.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/user-management-mobile.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/_archive_legacy/css/user-management-mobile.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/_archive_legacy/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
     <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
     <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
     <?php endif; ?>
 
     <script src="/ergon/assets/js/theme-switcher.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=1.0" defer></script>
-    <script src="/ergon/assets/js/action-button-clean.js?v=1.0" defer></script>
-    <script src="/ergon/assets/js/mobile-enhanced.js?v=1.0" defer></script>
+    <script src="/ergon/assets/_archive_legacy/js/action-button-clean.js?v=1.0" defer></script>
+    <script src="/ergon/assets/_archive_legacy/js/mobile-enhanced.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/mobile-table-cards.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/user-status-check.js?v=1.0" defer></script>
 
