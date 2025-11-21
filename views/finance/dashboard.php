@@ -534,36 +534,49 @@ function updateConversionFunnel(data) {
     document.getElementById('invoiceToPayment').textContent = `${funnel.invoiceToPayment || 0}%`;
 }
 
-function updateCharts(data) {
-    // Update Quotations Chart
-    if (quotationsChart && data.quotationsChart) {
-        quotationsChart.data.labels = data.quotationsChart.labels;
-        quotationsChart.data.datasets[0].data = data.quotationsChart.data;
-        quotationsChart.update();
+async function updateCharts() {
+    try {
+        // Update Quotations Chart
+        const quotationsResponse = await fetch('/ergon/finance/visualization?type=quotations');
+        const quotationsData = await quotationsResponse.json();
         
-        document.getElementById('quotationsDraft').textContent = data.quotationsChart.draft || 0;
-        document.getElementById('quotationsRevised').textContent = data.quotationsChart.revised || 0;
-    }
-    
-    // Update Purchase Orders Chart
-    if (purchaseOrdersChart && data.purchaseOrdersChart) {
-        purchaseOrdersChart.data.labels = data.purchaseOrdersChart.labels;
-        purchaseOrdersChart.data.datasets[0].data = data.purchaseOrdersChart.data;
-        purchaseOrdersChart.update();
-        
-        document.getElementById('largestPO').textContent = `₹${(data.purchaseOrdersChart.largest || 0).toLocaleString()}`;
-    }
-    
-    // Update Invoices Chart
-    if (invoicesChart && data.invoicesChart) {
-        invoicesChart.data.datasets[0].data = data.invoicesChart.data;
-        invoicesChart.update();
-        
-        // Show overdue alert
-        if (data.invoicesChart.overdueCount > 0) {
-            document.getElementById('overdueAlert').style.display = 'block';
-            document.getElementById('overdueCount').textContent = data.invoicesChart.overdueCount;
+        if (quotationsChart && quotationsData.data) {
+            quotationsChart.data.datasets[0].data = quotationsData.data;
+            quotationsChart.update();
+            
+            document.getElementById('quotationsDraft').textContent = quotationsData.draft || 0;
+            document.getElementById('quotationsRevised').textContent = quotationsData.revised || 0;
         }
+        
+        // Update Purchase Orders Chart
+        const poResponse = await fetch('/ergon/finance/visualization?type=purchase_orders');
+        const poData = await poResponse.json();
+        
+        if (purchaseOrdersChart && poData.labels) {
+            purchaseOrdersChart.data.labels = poData.labels;
+            purchaseOrdersChart.data.datasets[0].data = poData.data;
+            purchaseOrdersChart.update();
+            
+            document.getElementById('largestPO').textContent = `₹${(poData.largest || 0).toLocaleString()}`;
+        }
+        
+        // Update Invoices Chart
+        const invoicesResponse = await fetch('/ergon/finance/visualization?type=invoices');
+        const invoicesData = await invoicesResponse.json();
+        
+        if (invoicesChart && invoicesData.data) {
+            invoicesChart.data.datasets[0].data = invoicesData.data;
+            invoicesChart.update();
+            
+            // Show overdue alert
+            if (invoicesData.overdueCount > 0) {
+                document.getElementById('overdueAlert').style.display = 'block';
+                document.getElementById('overdueCount').textContent = invoicesData.overdueCount;
+            }
+        }
+        
+    } catch (error) {
+        console.error('Failed to update charts:', error);
     }
 }
 

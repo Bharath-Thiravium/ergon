@@ -353,87 +353,13 @@ class FinanceController extends Controller {
             
             switch ($type) {
                 case 'quotations':
-                    $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-                    $stmt->execute();
-                    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    
-                    $statusCount = ['draft' => 0, 'revised' => 0, 'converted' => 0];
-                    foreach ($results as $row) {
-                        $data = json_decode($row['data'], true);
-                        $quotationNumber = $data['quotation_number'] ?? '';
-                        
-                        // Filter only BKC prefix in quotation numbers
-                        if (!str_contains(strtoupper($quotationNumber), 'BKC')) continue;
-                        
-                        $status = strtolower($data['status'] ?? 'draft');
-                        if (isset($statusCount[$status])) {
-                            $statusCount[$status]++;
-                        }
-                    }
-                    
-                    echo json_encode(['data' => array_values($statusCount)]);
+                    echo json_encode($this->getQuotationsChart($db));
                     break;
-                    
                 case 'purchase_orders':
-                    $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
-                    $stmt->execute();
-                    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    
-                    $monthlyData = [];
-                    foreach ($results as $row) {
-                        $data = json_decode($row['data'], true);
-                        $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
-                        
-                        // Filter only BKC prefix in PO numbers
-                        if (!str_contains(strtoupper($poNumber), 'BKC')) continue;
-                        
-                        $month = date('M Y', strtotime($data['po_date'] ?? '2024-01-01'));
-                        $amount = floatval($data['total_amount'] ?? 0);
-                        
-                        if (!isset($monthlyData[$month])) {
-                            $monthlyData[$month] = 0;
-                        }
-                        $monthlyData[$month] += $amount;
-                    }
-                    
-                    echo json_encode([
-                        'labels' => array_keys($monthlyData),
-                        'data' => array_values($monthlyData)
-                    ]);
+                    echo json_encode($this->getPurchaseOrdersChart($db));
                     break;
-                    
                 case 'invoices':
-                    $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-                    $stmt->execute();
-                    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    
-                    $paid = 0;
-                    $unpaid = 0;
-                    $outstanding = 0;
-                    
-                    foreach ($results as $row) {
-                        $data = json_decode($row['data'], true);
-                        $invoiceNumber = $data['invoice_number'] ?? '';
-                        
-                        // Filter only BKC prefix in invoice numbers
-                        if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
-                        
-                        $status = strtolower($data['payment_status'] ?? 'unpaid');
-                        $amount = floatval($data['total_amount'] ?? 0);
-                        $outstandingAmount = floatval($data['outstanding_amount'] ?? 0);
-                        
-                        if ($status === 'paid') {
-                            $paid += $amount;
-                        } else {
-                            $unpaid += $amount;
-                            $outstanding += $outstandingAmount;
-                        }
-                    }
-                    
-                    echo json_encode([
-                        'data' => [$paid, $unpaid, 0],
-                        'outstanding' => $outstanding
-                    ]);
+                    echo json_encode($this->getInvoicesChart($db));
                     break;
             }
             
@@ -659,6 +585,96 @@ class FinanceController extends Controller {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX(table_name)
         )");
+    }
+    
+    private function getQuotationsChart($db) {
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $statusCount = ['draft' => 0, 'revised' => 0, 'converted' => 0];
+        foreach ($results as $row) {
+            $data = json_decode($row['data'], true);
+            $quotationNumber = $data['quotation_number'] ?? '';
+            
+            if (!str_contains(strtoupper($quotationNumber), 'BKC')) continue;
+            
+            $status = strtolower($data['status'] ?? 'draft');
+            if (isset($statusCount[$status])) {
+                $statusCount[$status]++;
+            }
+        }
+        
+        return [
+            'data' => array_values($statusCount),
+            'draft' => $statusCount['draft'],
+            'revised' => $statusCount['revised']
+        ];
+    }
+    
+    private function getPurchaseOrdersChart($db) {
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $monthlyData = [];
+        $largest = 0;
+        foreach ($results as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
+            
+            if (!str_contains(strtoupper($poNumber), 'BKC')) continue;
+            
+            $month = date('M Y', strtotime($data['po_date'] ?? '2024-01-01'));
+            $amount = floatval($data['total_amount'] ?? 0);
+            
+            if ($amount > $largest) $largest = $amount;
+            
+            if (!isset($monthlyData[$month])) {
+                $monthlyData[$month] = 0;
+            }
+            $monthlyData[$month] += $amount;
+        }
+        
+        return [
+            'labels' => array_keys($monthlyData),
+            'data' => array_values($monthlyData),
+            'largest' => $largest
+        ];
+    }
+    
+    private function getInvoicesChart($db) {
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $paid = 0;
+        $unpaid = 0;
+        $overdueCount = 0;
+        
+        foreach ($results as $row) {
+            $data = json_decode($row['data'], true);
+            $invoiceNumber = $data['invoice_number'] ?? '';
+            
+            if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
+            
+            $status = strtolower($data['payment_status'] ?? 'unpaid');
+            $amount = floatval($data['total_amount'] ?? 0);
+            $dueDate = $data['due_date'] ?? date('Y-m-d');
+            $isOverdue = strtotime($dueDate) < time();
+            
+            if ($status === 'paid') {
+                $paid += $amount;
+            } else {
+                $unpaid += $amount;
+                if ($isOverdue) $overdueCount++;
+            }
+        }
+        
+        return [
+            'data' => [$paid, $unpaid, 0],
+            'overdueCount' => $overdueCount
+        ];
     }
     
     private function getConversionFunnel($db) {
