@@ -544,26 +544,20 @@ class FinanceController extends Controller {
                 $db = Database::connect();
                 $this->createTables($db);
                 
-                $stmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('company_prefix', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-                $stmt->execute([$prefix, $prefix]);
+                // Delete existing setting
+                $stmt = $db->prepare("DELETE FROM finance_data WHERE table_name = 'company_prefix_setting'");
+                $stmt->execute();
+                
+                // Insert new setting
+                $stmt = $db->prepare("INSERT INTO finance_data (table_name, data) VALUES ('company_prefix_setting', ?)");
+                $stmt->execute([json_encode(['prefix' => $prefix])]);
                 
                 echo json_encode(['success' => true, 'prefix' => $prefix]);
             } catch (Exception $e) {
                 echo json_encode(['error' => $e->getMessage()]);
             }
         } else {
-            try {
-                $db = Database::connect();
-                $this->createTables($db);
-                
-                $stmt = $db->prepare("SELECT setting_value FROM settings WHERE setting_key = 'company_prefix'");
-                $stmt->execute();
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                echo json_encode(['prefix' => $result['setting_value'] ?? 'BKC']);
-            } catch (Exception $e) {
-                echo json_encode(['prefix' => 'BKC']);
-            }
+            echo json_encode(['prefix' => $this->getCompanyPrefix()]);
         }
     }
     
@@ -788,12 +782,16 @@ class FinanceController extends Controller {
     private function getCompanyPrefix() {
         try {
             $db = Database::connect();
-            $stmt = $db->prepare("SELECT setting_value FROM settings WHERE setting_key = 'company_prefix'");
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'company_prefix_setting' LIMIT 1");
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return strtoupper($result['setting_value'] ?? 'BKC');
+            if ($result) {
+                $data = json_decode($result['data'], true);
+                return strtoupper($data['prefix'] ?? 'BKC');
+            }
+            return 'BKC';
         } catch (Exception $e) {
-            return 'BKC'; // Default fallback
+            return 'BKC';
         }
     }
     
