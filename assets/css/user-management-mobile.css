@@ -1,0 +1,6 @@
+/* User Management Mobile Styles */
+@media (max-width: 768px) {
+    .table-responsive { overflow-x: auto; }
+    .btn-group { flex-direction: column; }
+    .card-body { padding: 1rem; }
+}

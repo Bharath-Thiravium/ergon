@@ -6,15 +6,52 @@ ob_start();
 
 <div class="container-fluid">
     <div class="card">
-        <div class="card-header d-flex justify-content-between">
-            <h4>Finance Data Sync</h4>
-            <button id="syncBtn" class="btn btn-primary">Sync PostgreSQL Data</button>
+        <div class="card-header">
+            <h4>Finance Data Management</h4>
+            <small class="text-muted">Import PostgreSQL data via CSV/JSON files</small>
         </div>
         <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card border-primary">
+                        <div class="card-header bg-primary text-white">Upload Data</div>
+                        <div class="card-body">
+                            <form id="uploadForm" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label class="form-label">Table Name</label>
+                                    <input type="text" name="tableName" class="form-control" placeholder="e.g., sales_data" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Data File (CSV/JSON)</label>
+                                    <input type="file" name="dataFile" class="form-control" accept=".csv,.json" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Upload Data</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-success">
+                        <div class="card-header bg-success text-white">Quick Actions</div>
+                        <div class="card-body">
+                            <button id="syncBtn" class="btn btn-success mb-2 w-100">Create Sample Data</button>
+                            <button id="refreshBtn" class="btn btn-info w-100">Refresh Tables</button>
+                            <hr>
+                            <small class="text-muted">
+                                <strong>Export from PostgreSQL:</strong><br>
+                                1. Use pgAdmin or command line<br>
+                                2. Export as CSV/JSON<br>
+                                3. Upload files here
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="row">
                 <div class="col-md-4">
                     <div class="card border-info">
-                        <div class="card-header bg-info text-white">Tables</div>
+                        <div class="card-header bg-info text-white">Available Tables</div>
                         <div class="card-body">
                             <div id="tablesContainer">Loading...</div>
                         </div>
@@ -35,7 +72,7 @@ ob_start();
                             <div id="dataContainer">
                                 <div class="text-center text-muted">
                                     <i class="bi bi-database"></i>
-                                    <p>Select a table to view data</p>
+                                    <p>Upload data or create sample data to get started</p>
                                 </div>
                             </div>
                         </div>
@@ -47,37 +84,64 @@ ob_start();
 </div>
 
 <script>
-class FinanceSync {
+class FinanceManager {
     constructor() {
         this.loadTables();
         this.bindEvents();
     }
     
     bindEvents() {
-        document.getElementById('syncBtn').addEventListener('click', () => this.syncData());
+        document.getElementById('syncBtn').addEventListener('click', () => this.createSample());
+        document.getElementById('refreshBtn').addEventListener('click', () => this.loadTables());
+        document.getElementById('uploadForm').addEventListener('submit', (e) => this.uploadData(e));
         document.getElementById('loadData').addEventListener('click', () => this.loadTableData());
     }
     
-    async syncData() {
+    async createSample() {
         const btn = document.getElementById('syncBtn');
         btn.disabled = true;
-        btn.textContent = 'Syncing...';
+        btn.textContent = 'Creating...';
         
         try {
             const response = await fetch('/ergon/finance/sync', {method: 'POST'});
             const result = await response.json();
             
             if (result.error) {
-                alert('Sync failed: ' + result.error);
+                alert('Error: ' + result.error);
             } else {
-                alert(`Synced ${result.tables} tables successfully`);
+                alert(result.message || 'Sample data created successfully');
                 this.loadTables();
             }
         } catch (error) {
-            alert('Sync failed: ' + error.message);
+            alert('Error: ' + error.message);
         } finally {
             btn.disabled = false;
-            btn.textContent = 'Sync PostgreSQL Data';
+            btn.textContent = 'Create Sample Data';
+        }
+    }
+    
+    async uploadData(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        
+        try {
+            const response = await fetch('/ergon/finance/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.error) {
+                alert('Upload failed: ' + result.error);
+            } else {
+                alert(`Successfully uploaded ${result.records} records`);
+                e.target.reset();
+                this.loadTables();
+            }
+        } catch (error) {
+            alert('Upload failed: ' + error.message);
         }
     }
     
@@ -104,7 +168,7 @@ class FinanceSync {
                 html += '</div>';
                 container.innerHTML = html;
             } else {
-                container.innerHTML = '<p class="text-muted">No tables synced yet</p>';
+                container.innerHTML = '<p class="text-muted">No tables found. Upload data to get started.</p>';
             }
         } catch (error) {
             document.getElementById('tablesContainer').innerHTML = '<p class="text-danger">Error loading tables</p>';
@@ -167,7 +231,7 @@ class FinanceSync {
     }
 }
 
-new FinanceSync();
+new FinanceManager();
 </script>
 
 <?php 

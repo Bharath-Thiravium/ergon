@@ -1,0 +1,5 @@
+/* Management Mobile Fix */
+@media (max-width: 768px) {
+    .main-content { padding: 1rem; }
+    .card { margin-bottom: 1rem; }
+}
