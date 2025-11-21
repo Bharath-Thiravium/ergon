@@ -9,19 +9,22 @@ class FinanceController extends Controller {
     }
     
     public function analyzeAllTables() {
-        header('Content-Type: application/json');
         ob_clean();
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="finance_tables_analysis_' . date('Y-m-d_H-i-s') . '.csv"');
         
         try {
-            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=5");
+            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
             
             if (!$conn) {
-                echo json_encode(['error' => 'Connection failed']);
+                echo "Error,PostgreSQL connection failed\n";
                 exit;
             }
             
             $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
-            $analysis = [];
+            
+            // CSV Header
+            echo "Table Name,Exists,Row Count,Column Count,Columns,Sample Data\n";
             
             foreach ($targetTables as $tableName) {
                 // Check if table exists
@@ -33,34 +36,30 @@ class FinanceController extends Controller {
                     $countResult = pg_query($conn, "SELECT COUNT(*) FROM \"$tableName\"");
                     $rowCount = pg_fetch_row($countResult)[0];
                     
-                    // Get column info
-                    $colResult = pg_query($conn, "SELECT column_name FROM information_schema.columns WHERE table_name = '$tableName' ORDER BY ordinal_position LIMIT 10");
+                    // Get all columns
+                    $colResult = pg_query($conn, "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '$tableName' ORDER BY ordinal_position");
                     $columns = [];
-                    while ($col = pg_fetch_row($colResult)) {
-                        $columns[] = $col[0];
+                    while ($col = pg_fetch_assoc($colResult)) {
+                        $columns[] = $col['column_name'] . '(' . $col['data_type'] . ')';
                     }
                     
-                    $analysis[] = [
-                        'name' => $tableName,
-                        'exists' => true,
-                        'rows' => (int)$rowCount,
-                        'columns' => $columns
-                    ];
+                    // Get sample data
+                    $sampleResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 2");
+                    $sampleData = [];
+                    while ($sample = pg_fetch_assoc($sampleResult)) {
+                        $sampleData[] = json_encode($sample);
+                    }
+                    
+                    echo '"' . $tableName . '",YES,' . $rowCount . ',' . count($columns) . ',"' . implode('; ', $columns) . '","' . implode(' | ', $sampleData) . '"\n';
                 } else {
-                    $analysis[] = [
-                        'name' => $tableName,
-                        'exists' => false,
-                        'rows' => 0,
-                        'columns' => []
-                    ];
+                    echo '"' . $tableName . '",NO,0,0,"",""\n';
                 }
             }
             
             pg_close($conn);
-            echo json_encode(['tables' => $analysis]);
             
         } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
+            echo "Error," . $e->getMessage() . "\n";
         }
         exit;
     }

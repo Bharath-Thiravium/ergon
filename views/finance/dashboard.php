@@ -250,48 +250,23 @@ function closeStructureModal() {
     document.getElementById('structureModal').style.display = 'none';
 }
 
-async function analyzeAllTables() {
+function analyzeAllTables() {
     const btn = document.getElementById('analyzeBtn');
     btn.disabled = true;
-    btn.textContent = 'Analyzing...';
+    btn.textContent = 'Generating CSV...';
     
-    try {
-        const response = await fetch('/ergon/finance/analyze');
-        const data = await response.json();
-        
-        if (data.error) {
-            alert('Analysis failed: ' + data.error);
-            return;
-        }
-        
-        console.log('Finance Tables Analysis:', data.tables);
-        
-        // Display finance table analysis
-        const container = document.getElementById('structureContainer');
-        let html = '<div class="finance-analysis"><h4>Finance Tables Analysis:</h4>';
-        
-        data.tables.forEach(table => {
-            const status = table.exists ? `✅ ${table.rows} rows` : '❌ Not found';
-            const color = table.exists ? (table.rows > 0 ? '#28a745' : '#ffc107') : '#dc3545';
-            
-            html += `
-                <div class="table-item" style="border-left: 4px solid ${color}; padding: 10px; margin: 5px 0; background: #f8f9fa;">
-                    <strong>${table.name.replace('finance_', '')}</strong> - ${status}
-                    ${table.exists && table.columns.length > 0 ? `<br><small>Columns: ${table.columns.slice(0, 5).join(', ')}${table.columns.length > 5 ? '...' : ''}</small>` : ''}
-                </div>`;
-        });
-        
-        html += '</div>';
-        container.innerHTML = html;
-        
-        document.getElementById('structureModal').style.display = 'flex';
-        
-    } catch (error) {
-        alert('Analysis failed: ' + error.message);
-    } finally {
+    // Create download link
+    const link = document.createElement('a');
+    link.href = '/ergon/finance/analyze';
+    link.download = 'finance_analysis.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setTimeout(() => {
         btn.disabled = false;
         btn.textContent = 'Analyze All Tables';
-    }
+    }, 1000);
 }
 
 async function syncFinanceData() {
