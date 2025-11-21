@@ -336,8 +336,6 @@ class LeaveController extends Controller {
             $result = $stmt->execute([$id]);
             
             if ($result) {
-                // Create attendance records for leave dates
-                $this->createLeaveAttendanceRecords($db, $leave['user_id'], $leave['start_date'], $leave['end_date']);
                 header('Location: /ergon/leaves?success=Leave approved successfully');
             } else {
                 header('Location: /ergon/leaves?error=Failed to approve leave');

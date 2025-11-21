@@ -6,19 +6,24 @@ ob_start();
 
 <div class="page-header">
     <div class="page-title">
+        <?php if ($user_role === 'user'): ?>
+        <h1><span>📍</span> My Attendance</h1>
+        <p>View your attendance records and working hours</p>
+        <?php else: ?>
         <h1><span>📍</span> Attendance Management</h1>
         <p>Track employee attendance and working hours</p>
+        <?php endif; ?>
     </div>
     <div class="page-actions">
         <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
         <input type="date" id="dateFilter" value="<?= $selected_date ?? date('Y-m-d') ?>" onchange="filterByDate(this.value)" class="form-input" style="margin-right: 1rem;">
-        <?php endif; ?>
         <select id="filterSelect" onchange="filterAttendance(this.value)" class="form-input">
             <option value="today" <?= ($current_filter ?? 'today') === 'today' ? 'selected' : '' ?>>Today</option>
             <option value="week" <?= ($current_filter ?? '') === 'week' ? 'selected' : '' ?>>One Week</option>
             <option value="two_weeks" <?= ($current_filter ?? '') === 'two_weeks' ? 'selected' : '' ?>>Two Weeks</option>
             <option value="month" <?= ($current_filter ?? '') === 'month' ? 'selected' : '' ?>>One Month</option>
         </select>
+        <?php endif; ?>
         <a href="/ergon/attendance/clock" class="btn btn--primary">
             <span>🕰️</span> Clock In/Out
         </a>

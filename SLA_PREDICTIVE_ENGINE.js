@@ -158,6 +158,30 @@ function updateSLADashboardPredictive(data) {
     });
 }
 
+// SLA Alert Functions
+function showSLAAlert(message, type) {
+    let alert = document.querySelector('.sla-alert');
+    if (!alert) {
+        alert = document.createElement('div');
+        alert.className = 'sla-alert';
+        const metricsContainer = document.querySelector('.sla-metrics') || document.body;
+        metricsContainer.appendChild(alert);
+    }
+    
+    alert.innerHTML = `
+        <div class="alert-content alert-${type}">
+            <span class="alert-message">${message}</span>
+            <button onclick="dismissSLAAlert()" class="alert-dismiss">×</button>
+        </div>
+    `;
+    alert.style.display = 'block';
+}
+
+function dismissSLAAlert() {
+    const alert = document.querySelector('.sla-alert');
+    if (alert) alert.style.display = 'none';
+}
+
 // Process and display alerts
 function processAlerts(alerts) {
     dismissSLAAlert();

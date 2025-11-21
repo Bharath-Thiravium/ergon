@@ -100,6 +100,18 @@ class UsersController extends Controller {
                 // Ensure all required columns exist
                 $this->ensureUserColumns($db);
                 
+                // Validate age requirement (17+)
+                if (!empty($_POST['date_of_birth'])) {
+                    $dob = new DateTime($_POST['date_of_birth']);
+                    $today = new DateTime();
+                    $age = $today->diff($dob)->y;
+                    
+                    if ($age < 17) {
+                        header('Location: /ergon/users/edit/' . $id . '?error=Users must be at least 17 years old');
+                        exit;
+                    }
+                }
+                
                 $updateData = [
                     'name' => trim($_POST['name'] ?? ''),
                     'email' => trim($_POST['email'] ?? ''),
@@ -190,6 +202,19 @@ class UsersController extends Controller {
                     }
                     
                     $employeeId = 'EMP' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+                }
+                
+                // Validate age requirement (17+)
+                if (!empty($_POST['date_of_birth'])) {
+                    $dob = new DateTime($_POST['date_of_birth']);
+                    $today = new DateTime();
+                    $age = $today->diff($dob)->y;
+                    
+                    if ($age < 17) {
+                        $_SESSION['old_data'] = $_POST;
+                        header('Location: /ergon/users/create?error=Users must be at least 17 years old');
+                        exit;
+                    }
                 }
                 
                 // Generate temporary password

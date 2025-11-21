@@ -127,7 +127,7 @@ ob_start();
                             </div>
                         <?php endif; ?>
                         
-                        <?php if ($followup['task_title']): ?>
+                        <?php if (isset($followup['task_title']) && $followup['task_title']): ?>
                             <div class="linked-task">
                                 <div class="linked-task__icon">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">

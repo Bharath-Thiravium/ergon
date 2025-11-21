@@ -361,7 +361,7 @@ class UnifiedAttendanceController extends Controller {
             if ($role === 'user') {
                 $userCondition = "AND u.id = $userId";
             } elseif ($role === 'admin') {
-                $userCondition = "AND u.role IN ('user', 'admin')";
+                $userCondition = "AND u.role = 'user'";
             } else {
                 $userCondition = "AND u.role IN ('user', 'admin')";
             }
@@ -613,11 +613,54 @@ class UnifiedAttendanceController extends Controller {
     
     private function getAllAttendanceByDate($selectedDate, $role, $userId) {
         try {
-            // Role-based filtering
-            if ($role === "user") {
-                $userCondition = "AND u.id = $userId";
-            } elseif ($role === "admin") {
-                $userCondition = "AND u.role IN ('user', 'admin') AND u.id != $userId";
+            // If the current user is a regular user, return only their attendance record(s)
+            if ($role === 'user') {
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        u.id as user_id,
+                        u.name as user_name,
+                        u.email,
+                        u.role as user_role,
+                        a.id as attendance_id,
+                        a.check_in,
+                        a.check_out,
+                        CASE 
+                            WHEN l.id IS NOT NULL THEN 'On Leave'
+                            WHEN a.check_in IS NOT NULL THEN 'Present'
+                            ELSE 'Absent'
+                        END as status,
+                        CASE 
+                            WHEN l.id IS NOT NULL THEN 'On Leave'
+                            WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
+                                CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out), 'h ', 
+                                       TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) % 60, 'm')
+                            WHEN a.check_in IS NOT NULL THEN 'Working...'
+                            ELSE '0h 0m'
+                        END as total_hours,
+                        CASE 
+                            WHEN l.id IS NOT NULL THEN '00:00'
+                            ELSE COALESCE(TIME_FORMAT(a.check_in, '%H:%i'), '00:00')
+                        END as check_in_time,
+                        CASE 
+                            WHEN l.id IS NOT NULL THEN '00:00'
+                            ELSE COALESCE(TIME_FORMAT(a.check_out, '%H:%i'), '00:00')
+                        END as check_out_time
+                    FROM users u
+                    LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
+                    LEFT JOIN leaves l ON u.id = l.user_id AND l.status = 'approved' 
+                        AND ? BETWEEN DATE(l.start_date) AND DATE(l.end_date)
+                    WHERE u.status != 'removed' AND u.id = ?
+                    ORDER BY a.check_in DESC
+                ");
+                $stmt->execute([$selectedDate, $selectedDate, $userId]);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                // Return array (views expect an array)
+                return $rows ?: [];
+            }
+            
+            // Role-based filtering for admin/owner
+            if ($role === "admin") {
+                $userCondition = "AND u.role = 'user'";
             } else {
                 $userCondition = "AND u.role IN ('user', 'admin')";
             }
@@ -632,66 +675,10 @@ class UnifiedAttendanceController extends Controller {
                     a.check_in,
                     a.check_out,
                     CASE 
-                        WHEN a.check_in IS NOT NULL THEN 'Present'
-                        ELSE 'Absent'
-                    END as status,
-                    COALESCE(TIME_FORMAT(a.check_in, '%H:%i'), '00:00') as check_in_time,
-                    COALESCE(TIME_FORMAT(a.check_out, '%H:%i'), '00:00') as check_out_time,
-                    CASE 
-                        WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
-                            CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out), 'h ', 
-                                   TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) % 60, 'm')
-                        ELSE '0h 0m'
-                    END as working_hours
-                FROM users u
-                LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
-                WHERE u.status != 'removed' $userCondition
-                ORDER BY u.role DESC, u.name
-            ");
-            $stmt->execute([$selectedDate]);
-            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            if ($role === "owner") {
-                $grouped = ['admin' => [], 'user' => []];
-                foreach ($records as $record) {
-                    $userRole = $record['role'] === 'admin' ? 'admin' : 'user';
-                    $grouped[$userRole][] = $record;
-                }
-                return $grouped;
-            }
-            
-            return $records;
-        } catch (Exception $e) {
-            error_log('getAllAttendanceByDate error: ' . $e->getMessage());
-            return [];
-        }
-    } else {
-                $userCondition = "AND u.role IN ('user', 'admin') AND u.status != 'removed'";
-            }
-            
-            // Get all users with their attendance and leave status for selected date
-            $stmt = $this->db->prepare("
-                SELECT 
-                    u.id as user_id,
-                    u.name as user_name, 
-                    u.email, 
-                    u.role as user_role,
-                    a.id as attendance_id,
-                    a.check_in,
-                    a.check_out,
-                    CASE 
                         WHEN l.id IS NOT NULL THEN 'On Leave'
                         WHEN a.check_in IS NOT NULL THEN 'Present'
                         ELSE 'Absent'
                     END as status,
-                    CASE 
-                        WHEN l.id IS NOT NULL THEN 'On Leave'
-                        WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
-                            CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out), 'h ', 
-                                   TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) % 60, 'm')
-                        WHEN a.check_in IS NOT NULL THEN 'Working...'
-                        ELSE '0h 0m'
-                    END as working_hours,
                     CASE 
                         WHEN l.id IS NOT NULL THEN '00:00'
                         ELSE COALESCE(TIME_FORMAT(a.check_in, '%H:%i'), '00:00')
@@ -699,27 +686,28 @@ class UnifiedAttendanceController extends Controller {
                     CASE 
                         WHEN l.id IS NOT NULL THEN '00:00'
                         ELSE COALESCE(TIME_FORMAT(a.check_out, '%H:%i'), '00:00')
-                    END as check_out_time
+                    END as check_out_time,
+                    CASE 
+                        WHEN l.id IS NOT NULL THEN 'On Leave'
+                        WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
+                            CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out), 'h ', 
+                                   TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) % 60, 'm')
+                        ELSE '0h 0m'
+                    END as working_hours
                 FROM users u
                 LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
                 LEFT JOIN leaves l ON u.id = l.user_id AND l.status = 'approved' 
                     AND ? BETWEEN DATE(l.start_date) AND DATE(l.end_date)
-                WHERE u.status = 'active' $userCondition
-                ORDER BY 
-                    CASE 
-                        WHEN u.role = 'admin' THEN 1
-                        WHEN u.role = 'user' THEN 2
-                        ELSE 3
-                    END, u.name
+                WHERE u.status != 'removed' $userCondition
+                ORDER BY u.role DESC, u.name
             ");
             $stmt->execute([$selectedDate, $selectedDate]);
             $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Group by role for Owner panel
-            if ($role === 'owner') {
+            if ($role === "owner") {
                 $grouped = ['admin' => [], 'user' => []];
                 foreach ($records as $record) {
-                    $userRole = $record['user_role'] === 'admin' ? 'admin' : 'user';
+                    $userRole = $record['role'] === 'admin' ? 'admin' : 'user';
                     $grouped[$userRole][] = $record;
                 }
                 return $grouped;
