@@ -534,6 +534,35 @@ class FinanceController extends Controller {
         exit;
     }
     
+    public function updateCompanyPrefix() {
+        header('Content-Type: application/json');
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $prefix = strtoupper(trim($_POST['company_prefix'] ?? 'BKC'));
+            
+            try {
+                $db = Database::connect();
+                $stmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('company_prefix', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                $stmt->execute([$prefix, $prefix]);
+                
+                echo json_encode(['success' => true, 'prefix' => $prefix]);
+            } catch (Exception $e) {
+                echo json_encode(['error' => $e->getMessage()]);
+            }
+        } else {
+            try {
+                $db = Database::connect();
+                $stmt = $db->prepare("SELECT setting_value FROM settings WHERE setting_key = 'company_prefix'");
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                echo json_encode(['prefix' => $result['setting_value'] ?? 'BKC']);
+            } catch (Exception $e) {
+                echo json_encode(['prefix' => 'BKC']);
+            }
+        }
+    }
+    
     public function exportData() {
         $type = $_GET['type'] ?? 'quotations';
         
@@ -743,6 +772,18 @@ class FinanceController extends Controller {
             'paymentValue' => $paymentValue,
             'invoiceToPayment' => $invoiceValue > 0 ? round(($paymentValue / $invoiceValue) * 100) : 0
         ];
+    }
+    
+    private function getCompanyPrefix() {
+        try {
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT setting_value FROM settings WHERE setting_key = 'company_prefix'");
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return strtoupper($result['setting_value'] ?? 'BKC');
+        } catch (Exception $e) {
+            return 'BKC'; // Default fallback
+        }
     }
     
     private function storeTableData($db, $tableName, $data) {

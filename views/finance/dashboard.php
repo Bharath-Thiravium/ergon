@@ -9,6 +9,8 @@ ob_start();
     <div class="header-actions">
         <button id="syncBtn" class="btn btn--primary">🔄 Sync Data</button>
         <button id="exportBtn" class="btn btn--secondary">📥 Export Dashboard</button>
+        <input type="text" id="companyPrefix" class="form-control" placeholder="Company Prefix (e.g., BKC)" maxlength="10">
+        <button id="updatePrefixBtn" class="btn btn--secondary">🏢 Update Prefix</button>
         <select id="dateFilter" class="form-control">
             <option value="all">All Time</option>
             <option value="30">Last 30 Days</option>
@@ -270,7 +272,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
     document.getElementById('exportBtn').addEventListener('click', exportDashboard);
+    document.getElementById('updatePrefixBtn').addEventListener('click', updateCompanyPrefix);
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
+    
+    loadCompanyPrefix();
 });
 
 function initCharts() {
@@ -855,6 +860,52 @@ function exportTable(type) {
 
 function exportDashboard() {
     window.open('/ergon/finance/export-dashboard', '_blank');
+}
+
+async function loadCompanyPrefix() {
+    try {
+        const response = await fetch('/ergon/finance/company-prefix');
+        const data = await response.json();
+        document.getElementById('companyPrefix').value = data.prefix || 'BKC';
+    } catch (error) {
+        console.error('Failed to load company prefix:', error);
+    }
+}
+
+async function updateCompanyPrefix() {
+    const prefix = document.getElementById('companyPrefix').value.trim().toUpperCase();
+    
+    if (!prefix) {
+        alert('Please enter a company prefix');
+        return;
+    }
+    
+    const btn = document.getElementById('updatePrefixBtn');
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+    
+    try {
+        const formData = new FormData();
+        formData.append('company_prefix', prefix);
+        
+        const response = await fetch('/ergon/finance/company-prefix', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`Company prefix updated to: ${result.prefix}`);
+            loadDashboardData(); // Reload dashboard with new prefix
+        } else {
+            alert('Failed to update prefix: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Failed to update prefix: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🏢 Update Prefix';
+    }
 }
 
 function filterByDate() {

@@ -387,5 +387,7 @@ $router->post('/finance/sync', 'FinanceController', 'sync');
 $router->get('/finance/analyze', 'FinanceController', 'analyzeAllTables');
 $router->get('/finance/visualization', 'FinanceController', 'getVisualizationData');
 $router->get('/finance/export', 'FinanceController', 'exportData');
+$router->get('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
+$router->post('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
 
 ?>
