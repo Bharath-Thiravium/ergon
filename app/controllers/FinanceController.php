@@ -197,6 +197,7 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
+            $prefix = $this->getCompanyPrefix();
             
             // Get invoice data
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
@@ -212,8 +213,7 @@ class FinanceController extends Controller {
                 $data = json_decode($row['data'], true);
                 $invoiceNumber = $data['invoice_number'] ?? '';
                 
-                // Filter only BKC prefix in invoice numbers
-                if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
+                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
                 
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
@@ -237,8 +237,7 @@ class FinanceController extends Controller {
                 $data = json_decode($row['data'], true);
                 $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
                 
-                // Filter only BKC prefix in PO numbers
-                if (!str_contains(strtoupper($poNumber), 'BKC')) continue;
+                if (!str_contains(strtoupper($poNumber), $prefix)) continue;
                 
                 $status = strtolower($data['status'] ?? 'pending');
                 $amount = floatval($data['total_amount'] ?? 0);
@@ -374,6 +373,7 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
+            $prefix = $this->getCompanyPrefix();
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -383,8 +383,7 @@ class FinanceController extends Controller {
                 $data = json_decode($row['data'], true);
                 $invoiceNumber = $data['invoice_number'] ?? '';
                 
-                // Filter only BKC prefix in invoice numbers
-                if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
+                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
                 
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
                 
@@ -415,6 +414,7 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
+            $prefix = $this->getCompanyPrefix();
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -427,8 +427,7 @@ class FinanceController extends Controller {
                 $data = json_decode($row['data'], true);
                 $quotationNumber = $data['quotation_number'] ?? '';
                 
-                // Filter only BKC prefix in quotation numbers
-                if (!str_contains(strtoupper($quotationNumber), 'BKC')) continue;
+                if (!str_contains(strtoupper($quotationNumber), $prefix)) continue;
                 
                 $quotations[] = [
                     'quotation_number' => $quotationNumber,
@@ -461,12 +460,12 @@ class FinanceController extends Controller {
                 $stmt->execute();
                 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
+                $prefix = $this->getCompanyPrefix();
                 foreach ($results as $row) {
                     $data = json_decode($row['data'], true);
                     $invoiceNumber = $data['invoice_number'] ?? '';
                     
-                    // Filter only BKC prefix in invoice numbers
-                    if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
+                    if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
                     
                     $outstanding = floatval($data['outstanding_amount'] ?? 0);
                     
@@ -508,12 +507,12 @@ class FinanceController extends Controller {
             $invoiceReceived = 0;
             $pendingInvoiceAmount = 0;
             
+            $prefix = $this->getCompanyPrefix();
             foreach ($invoiceResults as $row) {
                 $data = json_decode($row['data'], true);
                 $invoiceNumber = $data['invoice_number'] ?? '';
                 
-                // Filter only BKC prefix in invoice numbers
-                if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
+                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
                 
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
@@ -623,12 +622,13 @@ class FinanceController extends Controller {
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
+        $prefix = $this->getCompanyPrefix();
         $statusCount = ['draft' => 0, 'revised' => 0, 'converted' => 0];
         foreach ($results as $row) {
             $data = json_decode($row['data'], true);
             $quotationNumber = $data['quotation_number'] ?? '';
             
-            if (!str_contains(strtoupper($quotationNumber), 'BKC')) continue;
+            if (!str_contains(strtoupper($quotationNumber), $prefix)) continue;
             
             $status = strtolower($data['status'] ?? 'draft');
             if (isset($statusCount[$status])) {
@@ -648,13 +648,14 @@ class FinanceController extends Controller {
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
+        $prefix = $this->getCompanyPrefix();
         $monthlyData = [];
         $largest = 0;
         foreach ($results as $row) {
             $data = json_decode($row['data'], true);
             $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
             
-            if (!str_contains(strtoupper($poNumber), 'BKC')) continue;
+            if (!str_contains(strtoupper($poNumber), $prefix)) continue;
             
             $month = date('M Y', strtotime($data['po_date'] ?? '2024-01-01'));
             $amount = floatval($data['total_amount'] ?? 0);
@@ -679,6 +680,7 @@ class FinanceController extends Controller {
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
+        $prefix = $this->getCompanyPrefix();
         $paid = 0;
         $unpaid = 0;
         $overdueCount = 0;
@@ -687,7 +689,7 @@ class FinanceController extends Controller {
             $data = json_decode($row['data'], true);
             $invoiceNumber = $data['invoice_number'] ?? '';
             
-            if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
+            if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
             
             $status = strtolower($data['payment_status'] ?? 'unpaid');
             $amount = floatval($data['total_amount'] ?? 0);
@@ -709,7 +711,9 @@ class FinanceController extends Controller {
     }
     
     private function getConversionFunnel($db) {
-        // Count BKC quotations
+        $prefix = $this->getCompanyPrefix();
+        
+        // Count quotations
         $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
         $stmt->execute();
         $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -719,13 +723,13 @@ class FinanceController extends Controller {
         foreach ($quotationResults as $row) {
             $data = json_decode($row['data'], true);
             $quotationNumber = $data['quotation_number'] ?? '';
-            if (str_contains(strtoupper($quotationNumber), 'BKC')) {
+            if (str_contains(strtoupper($quotationNumber), $prefix)) {
                 $quotationCount++;
                 $quotationValue += floatval($data['total_amount'] ?? 0);
             }
         }
         
-        // Count BKC POs
+        // Count POs
         $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
         $stmt->execute();
         $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -735,13 +739,13 @@ class FinanceController extends Controller {
         foreach ($poResults as $row) {
             $data = json_decode($row['data'], true);
             $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
-            if (str_contains(strtoupper($poNumber), 'BKC')) {
+            if (str_contains(strtoupper($poNumber), $prefix)) {
                 $poCount++;
                 $poValue += floatval($data['total_amount'] ?? 0);
             }
         }
         
-        // Count BKC invoices
+        // Count invoices
         $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
         $stmt->execute();
         $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -752,7 +756,7 @@ class FinanceController extends Controller {
         foreach ($invoiceResults as $row) {
             $data = json_decode($row['data'], true);
             $invoiceNumber = $data['invoice_number'] ?? '';
-            if (str_contains(strtoupper($invoiceNumber), 'BKC')) {
+            if (str_contains(strtoupper($invoiceNumber), $prefix)) {
                 $invoiceCount++;
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
