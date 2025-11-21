@@ -1,0 +1,252 @@
+/* SLA Dashboard 2.0 - Advanced Visual Enhancements */
+
+/* Velocity Index Styling */
+.velocity-index.text-success { 
+    color: #10b981 !important; 
+    font-weight: 600;
+}
+.velocity-index.text-warning { 
+    color: #f59e0b !important; 
+    font-weight: 600;
+}
+.velocity-index.text-danger { 
+    color: #ef4444 !important; 
+    font-weight: 600;
+    animation: pulse-danger 2s infinite;
+}
+
+/* Breach Risk Styling */
+.breach-risk.text-success { 
+    color: #10b981 !important; 
+    font-weight: 700;
+}
+.breach-risk.text-warning { 
+    color: #f59e0b !important; 
+    font-weight: 700;
+}
+.breach-risk.text-danger { 
+    color: #ef4444 !important; 
+    font-weight: 700;
+    animation: pulse-danger 2s infinite;
+}
+
+/* SLA Alert System */
+.sla-alert {
+    margin-top: 1rem;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.alert-content {
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.alert-critical {
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    border: 1px solid #ef4444;
+    color: #991b1b;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, #fefbf2, #fef3c7);
+    border: 1px solid #f59e0b;
+    color: #92400e;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #f0f9ff, #dbeafe);
+    border: 1px solid #3b82f6;
+    color: #1e40af;
+}
+
+.alert-message {
+    font-weight: 600;
+    flex: 1;
+}
+
+.alert-dismiss {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.alert-dismiss:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Task-level SLA Chips */
+.sla-chip {
+    display: inline-block;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: help;
+}
+
+.sla-chip.sla-critical {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    animation: pulse-critical 1.5s infinite;
+}
+
+.sla-chip.sla-warning {
+    background: #fefbf2;
+    color: #d97706;
+    border: 1px solid #fed7aa;
+}
+
+.sla-chip.sla-good {
+    background: #f0fdf4;
+    color: #059669;
+    border: 1px solid #bbf7d0;
+}
+
+/* Enhanced Progress Bars */
+.progress-bar {
+    position: relative;
+    overflow: hidden;
+    background: #e5e7eb;
+    border-radius: 6px;
+    height: 10px;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 255, 255, 0.4), 
+        transparent
+    );
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* SLA Health Indicator */
+.sla-health-indicator {
+    display: inline-block;
+    margin-left: 0.5rem;
+    font-size: 1.2rem;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+/* Metric Value Enhancements */
+.metric-value {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.metric-value.text-success { 
+    color: #10b981; 
+}
+.metric-value.text-warning { 
+    color: #f59e0b; 
+}
+.metric-value.text-danger { 
+    color: #ef4444; 
+    animation: pulse-danger 2s infinite;
+}
+
+/* Pulse Animations */
+@keyframes pulse-danger {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.8; 
+        transform: scale(1.05);
+    }
+}
+
+@keyframes pulse-critical {
+    0%, 100% { 
+        opacity: 1; 
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+    }
+    50% { 
+        opacity: 0.9; 
+        box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+    }
+}
+
+/* Real-time Counter Animation */
+.metric-value[data-animated="true"] {
+    animation: counter-update 0.3s ease;
+}
+
+@keyframes counter-update {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); color: #3b82f6; }
+    100% { transform: scale(1); }
+}
+
+/* SLA Dashboard Card Enhancement */
+.card:has(.sla-metrics) {
+  /*border-left: 4px solid #3b82f6;*/
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
+}
+
+.card:has(.breach-risk.text-danger) {
+  /*border-left-color: #ef4444;*/
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2);
+    animation: card-alert 3s infinite;
+}
+
+@keyframes card-alert {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+}
+
+/* Responsive Enhancements */
+@media (max-width: 768px) {
+    .sla-chip {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.3rem;
+    }
+    
+    .alert-content {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .metric-value {
+        font-size: 0.9rem;
+    }
+}

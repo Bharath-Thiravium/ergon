@@ -16,30 +16,77 @@ if (!isset($_SESSION['user_id'])) {
 require_once __DIR__ . '/../app/config/database.php';
 require_once __DIR__ . '/../app/models/DailyPlanner.php';
 
-// CSRF token validation
+// Helper function to safely parse JSON input
+function getJsonInput() {
+    $rawInput = @file_get_contents('php://input');
+    if ($rawInput === false || strlen($rawInput) === 0) {
+        return $_POST ?? [];
+    }
+    $decoded = json_decode($rawInput, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return $_POST ?? [];
+    }
+    return is_array($decoded) ? $decoded : [];
+}
+
+// Store input for reuse
+$requestInput = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
-        exit;
+    $requestInput = getJsonInput();
+}
+
+// CSRF token validation for POST requests (except timer calls)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_GET['action'] ?? '';
+    if ($action !== 'timer') {
+        $token = $requestInput['csrf_token'] ?? $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        
+        // Generate CSRF token if not exists
+        if (!isset($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        
+        if (!hash_equals($_SESSION['csrf_token'], $token)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
+            exit;
+        }
     }
 }
 
-// Rate limiting
-if (!isset($_SESSION['api_calls'])) {
-    $_SESSION['api_calls'] = [];
+// Rate limiting - different limits for different actions
+$action = $_GET['action'] ?? '';
+if ($action === 'timer') {
+    // More lenient rate limiting for timer calls
+    if (!isset($_SESSION['timer_calls'])) {
+        $_SESSION['timer_calls'] = [];
+    }
+    $now = time();
+    $_SESSION['timer_calls'] = array_filter($_SESSION['timer_calls'], function($time) use ($now) {
+        return $now - $time < 60;
+    });
+    if (count($_SESSION['timer_calls']) >= 200) {
+        http_response_code(429);
+        echo json_encode(['success' => false, 'message' => 'Timer rate limit exceeded']);
+        exit;
+    }
+    $_SESSION['timer_calls'][] = $now;
+} else {
+    // Standard rate limiting for other calls
+    if (!isset($_SESSION['api_calls'])) {
+        $_SESSION['api_calls'] = [];
+    }
+    $now = time();
+    $_SESSION['api_calls'] = array_filter($_SESSION['api_calls'], function($time) use ($now) {
+        return $now - $time < 60;
+    });
+    if (count($_SESSION['api_calls']) >= 50) {
+        http_response_code(429);
+        echo json_encode(['success' => false, 'message' => 'Rate limit exceeded']);
+        exit;
+    }
+    $_SESSION['api_calls'][] = $now;
 }
-$now = time();
-$_SESSION['api_calls'] = array_filter($_SESSION['api_calls'], function($time) use ($now) {
-    return $now - $time < 60;
-});
-if (count($_SESSION['api_calls']) >= 100) {
-    http_response_code(429);
-    echo json_encode(['success' => false, 'message' => 'Rate limit exceeded']);
-    exit;
-}
-$_SESSION['api_calls'][] = $now;
 
 // Sanitize and validate action parameter
 $allowedActions = ['sla-dashboard', 'timer', 'start', 'pause', 'resume', 'update-progress', 'postpone'];
@@ -83,21 +130,7 @@ function logTaskHistory($db, $taskId, $action, $oldValue, $newValue, $notes, $us
     }
 }
 
-// Helper function to safely parse JSON input
-function getJsonInput() {
-    $rawInput = file_get_contents('php://input');
-    if ($rawInput === false || strlen($rawInput) === 0) {
-        throw new Exception('No input data received');
-    }
-    if (strlen($rawInput) > 1048576) {
-        throw new Exception('Input data too large');
-    }
-    $decoded = json_decode($rawInput, true, 10, JSON_THROW_ON_ERROR);
-    if (!is_array($decoded)) {
-        throw new Exception('Invalid JSON structure');
-    }
-    return $decoded;
-}
+
 
 try {
     $db = Database::connect();
@@ -228,8 +261,7 @@ try {
             break;
             
         case 'start':
-            $input = getJsonInput();
-            $taskId = filter_var($input['task_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $taskId = filter_var($requestInput['task_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             if ($taskId === false || $taskId === null) {
                 throw new Exception('Valid Task ID required');
             }
@@ -244,8 +276,7 @@ try {
             break;
             
         case 'pause':
-            $input = getJsonInput();
-            $taskId = filter_var($input['task_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $taskId = filter_var($requestInput['task_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             if ($taskId === false || $taskId === null) {
                 throw new Exception('Valid Task ID required');
             }
@@ -260,8 +291,7 @@ try {
             break;
             
         case 'resume':
-            $input = getJsonInput();
-            $taskId = filter_var($input['task_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $taskId = filter_var($requestInput['task_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             if ($taskId === false || $taskId === null) {
                 throw new Exception('Valid Task ID required');
             }
@@ -276,10 +306,9 @@ try {
             break;
             
         case 'update-progress':
-            $input = getJsonInput();
-            $taskId = filter_var($input['task_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-            $progress = filter_var($input['progress'] ?? 100, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 100]]);
-            $status = filter_var($input['status'] ?? 'completed', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            $taskId = filter_var($requestInput['task_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $progress = filter_var($requestInput['progress'] ?? 100, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 100]]);
+            $status = filter_var($requestInput['status'] ?? 'completed', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
             $allowedStatuses = ['not_started', 'in_progress', 'completed', 'on_break', 'postponed'];
             
             if ($taskId === false || $taskId === null || $progress === false || !in_array($status, $allowedStatuses)) {
@@ -306,10 +335,9 @@ try {
             break;
             
         case 'postpone':
-            $input = getJsonInput();
-            $taskId = filter_var($input['task_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-            $newDate = filter_var($input['new_date'] ?? null, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-            $reason = filter_var($input['reason'] ?? 'Postponed via Daily Planner', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            $taskId = filter_var($requestInput['task_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $newDate = filter_var($requestInput['new_date'] ?? null, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            $reason = filter_var($requestInput['reason'] ?? 'Postponed via Daily Planner', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
             
             if ($taskId === false || $taskId === null || !$newDate || strlen($reason) > 500) {
                 throw new Exception('Valid Task ID, new date, and reason (max 500 chars) required');
@@ -355,27 +383,16 @@ try {
     }
     
 } catch (Exception $e) {
-    error_log('Daily planner workflow API error: ' . $e->getMessage() . ' | User: ' . $userId . ' | IP: ' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
-    
-    // Sanitize error messages for client
-    $safeMessages = [
-        'Authentication required', 'Invalid CSRF token', 'Rate limit exceeded',
-        'Invalid action', 'Invalid user session', 'Valid Task ID required',
-        'Task not found or access denied', 'Invalid date format', 'Cannot access future dates',
-        'Date too far in the past', 'Cannot postpone to past dates', 'Cannot postpone more than 1 year ahead',
-        'Valid Task ID, progress (0-100), and status required', 'Valid Task ID, new date, and reason (max 500 chars) required',
-        'Invalid date format. Use YYYY-MM-DD', 'No input data received', 'Input data too large',
-        'Invalid JSON structure', 'Failed to start task', 'Failed to pause task',
-        'Failed to resume task', 'Failed to update progress', 'Failed to postpone task'
-    ];
-    
-    $clientMessage = in_array($e->getMessage(), $safeMessages) ? 
-        htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') : 'An error occurred';
+    error_log('Daily planner workflow API error: ' . $e->getMessage() . ' | Action: ' . ($action ?? 'unknown') . ' | User: ' . ($userId ?? 'unknown') . ' | Input: ' . json_encode($requestInput ?? []) . ' | IP: ' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
     
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'message' => $clientMessage,
-        'timestamp' => time()
+        'message' => $e->getMessage(),
+        'debug' => [
+            'action' => $action ?? 'unknown',
+            'input' => $requestInput ?? [],
+            'error' => $e->getMessage()
+        ]
     ]);
 }

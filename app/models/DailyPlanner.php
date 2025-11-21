@@ -433,8 +433,6 @@ class DailyPlanner {
     
     public function updateTaskProgress($taskId, $userId, $progress, $status, $reason = '') {
         try {
-            $this->db->beginTransaction();
-            
             // Get current task data for history
             $stmt = $this->db->prepare("SELECT status, completed_percentage FROM daily_tasks WHERE id = ? AND user_id = ?");
             $stmt->execute([$taskId, $userId]);
@@ -459,9 +457,11 @@ class DailyPlanner {
                         active_seconds = active_seconds + ?, updated_at = NOW()
                     WHERE id = ? AND user_id = ?
                 ");
-                $stmt->execute([$newStatus, $progress, $activeTime, $taskId, $userId]);
+                $result = $stmt->execute([$newStatus, $progress, $activeTime, $taskId, $userId]);
                 
-                $this->logTimeAction($taskId, $userId, 'complete', date('Y-m-d H:i:s'), $activeTime);
+                if ($result) {
+                    $this->logTimeAction($taskId, $userId, 'complete', date('Y-m-d H:i:s'), $activeTime);
+                }
             } else {
                 $newStatus = $progress > 0 ? 'in_progress' : 'assigned';
                 
@@ -471,17 +471,25 @@ class DailyPlanner {
                     SET status = ?, completed_percentage = ?, updated_at = NOW()
                     WHERE id = ? AND user_id = ?
                 ");
-                $stmt->execute([$newStatus, $progress, $taskId, $userId]);
+                $result = $stmt->execute([$newStatus, $progress, $taskId, $userId]);
             }
             
-            // Update linked task if exists
-            $stmt = $this->db->prepare("
-                UPDATE tasks t 
-                JOIN daily_tasks dt ON t.id = dt.task_id
-                SET t.status = ?, t.progress = ?
-                WHERE dt.id = ?
-            ");
-            $stmt->execute([$newStatus, $progress, $taskId]);
+            if (!$result || $stmt->rowCount() === 0) {
+                throw new Exception('Failed to update task progress');
+            }
+            
+            // Update linked task if exists (optional, don't fail if this fails)
+            try {
+                $stmt = $this->db->prepare("
+                    UPDATE tasks t 
+                    JOIN daily_tasks dt ON t.id = dt.task_id
+                    SET t.status = ?, t.progress = ?
+                    WHERE dt.id = ?
+                ");
+                $stmt->execute([$newStatus, $progress, $taskId]);
+            } catch (Exception $e) {
+                error_log("Failed to update linked task: " . $e->getMessage());
+            }
             
             // Log history if status or progress changed
             if ($oldStatus !== $newStatus) {
@@ -493,12 +501,8 @@ class DailyPlanner {
             
             $this->updateDailyPerformance($userId, date('Y-m-d'));
             
-            $this->db->commit();
             return true;
         } catch (Exception $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollback();
-            }
             error_log("DailyPlanner updateTaskProgress error: " . $e->getMessage());
             return false;
         }
