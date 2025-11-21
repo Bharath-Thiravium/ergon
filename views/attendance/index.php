@@ -406,7 +406,7 @@ function viewAttendanceDetails(attendanceId) {
     .then(data => {
         if (data.success) {
             const record = data.record;
-            alert(`Attendance Details:\n\nEmployee: ${record.user_name}\nEmail: ${record.email}\nDate: ${record.date}\nStatus: ${record.status || 'Present'}\nCheck In: ${record.check_in || 'Not checked in'}\nCheck Out: ${record.check_out || 'Not checked out'}\nWorking Hours: ${record.working_hours_calculated || 'N/A'}`);
+            showViewDialog(record);
         } else {
             alert('Error: ' + (data.message || 'Failed to get attendance details'));
         }
@@ -415,6 +415,21 @@ function viewAttendanceDetails(attendanceId) {
         console.error('Error:', error);
         alert('An error occurred while fetching attendance details.');
     });
+}
+
+function showViewDialog(record) {
+    document.getElementById('viewEmployee').textContent = record.user_name || 'Unknown';
+    document.getElementById('viewEmail').textContent = record.email || 'N/A';
+    document.getElementById('viewDate').textContent = record.date || 'N/A';
+    document.getElementById('viewStatus').textContent = record.status || 'Present';
+    document.getElementById('viewCheckIn').textContent = record.check_in || 'Not checked in';
+    document.getElementById('viewCheckOut').textContent = record.check_out || 'Not checked out';
+    document.getElementById('viewWorkingHours').textContent = record.working_hours_calculated || 'N/A';
+    document.getElementById('viewDialog').style.display = 'flex';
+}
+
+function closeViewDialog() {
+    document.getElementById('viewDialog').style.display = 'none';
 }
 
 function clockInUser(userId) {
@@ -446,6 +461,15 @@ function submitAttendance() {
     
     if (!date || !time) {
         alert('Please select both date and time');
+        return;
+    }
+    
+    // Check for future date/time
+    const selectedDateTime = new Date(date + 'T' + time);
+    const now = new Date();
+    
+    if (selectedDateTime > now) {
+        alert('Warning: Cannot set attendance for future date/time. Please select a past or current date/time.');
         return;
     }
     
@@ -528,6 +552,31 @@ function submitEdit() {
         return;
     }
     
+    // Check for future date/time
+    const now = new Date();
+    const selectedDate = new Date(date);
+    
+    if (selectedDate > now) {
+        alert('Warning: Cannot set attendance for future date. Please select a past or current date.');
+        return;
+    }
+    
+    if (checkIn) {
+        const checkInDateTime = new Date(date + 'T' + checkIn);
+        if (checkInDateTime > now) {
+            alert('Warning: Check-in time cannot be in the future.');
+            return;
+        }
+    }
+    
+    if (checkOut) {
+        const checkOutDateTime = new Date(date + 'T' + checkOut);
+        if (checkOutDateTime > now) {
+            alert('Warning: Check-out time cannot be in the future.');
+            return;
+        }
+    }
+    
     fetch('/ergon/api/simple_attendance.php', {
         method: 'POST',
         headers: {
@@ -600,7 +649,7 @@ function deleteAttendanceRecord(attendanceId, userName) {
             
             <div class="form-group">
                 <label>Date</label>
-                <input type="date" id="attendanceDate" class="form-control" required>
+                <input type="date" id="attendanceDate" class="form-control" max="<?= date('Y-m-d') ?>" required>
             </div>
             
             <div class="form-group">
@@ -615,6 +664,46 @@ function deleteAttendanceRecord(attendanceId, userName) {
     </div>
 </div>
 
+<!-- View Attendance Details Modal -->
+<div id="viewDialog" class="dialog" style="display: none;">
+    <div class="dialog-content">
+        <h4>Attendance Details</h4>
+        <div class="details-grid">
+            <div class="detail-item">
+                <label>Employee:</label>
+                <span id="viewEmployee"></span>
+            </div>
+            <div class="detail-item">
+                <label>Email:</label>
+                <span id="viewEmail"></span>
+            </div>
+            <div class="detail-item">
+                <label>Date:</label>
+                <span id="viewDate"></span>
+            </div>
+            <div class="detail-item">
+                <label>Status:</label>
+                <span id="viewStatus"></span>
+            </div>
+            <div class="detail-item">
+                <label>Check In:</label>
+                <span id="viewCheckIn"></span>
+            </div>
+            <div class="detail-item">
+                <label>Check Out:</label>
+                <span id="viewCheckOut"></span>
+            </div>
+            <div class="detail-item">
+                <label>Working Hours:</label>
+                <span id="viewWorkingHours"></span>
+            </div>
+        </div>
+        <div class="dialog-buttons">
+            <button onclick="closeViewDialog()">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Edit Attendance Modal -->
 <div id="editDialog" class="dialog" style="display: none;">
     <div class="dialog-content">
@@ -625,7 +714,7 @@ function deleteAttendanceRecord(attendanceId, userName) {
             
             <div class="form-group">
                 <label>Date</label>
-                <input type="date" id="editDate" class="form-control" required>
+                <input type="date" id="editDate" class="form-control" max="<?= date('Y-m-d') ?>" required>
             </div>
             
             <div class="form-group">
@@ -719,6 +808,33 @@ function deleteAttendanceRecord(attendanceId, userName) {
 
 .dialog-buttons button:hover {
     opacity: 0.9;
+}
+
+.details-grid {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.detail-item label {
+    font-weight: 600;
+    color: #374151;
+    margin: 0;
+}
+
+.detail-item span {
+    color: #1f2937;
+    font-weight: 500;
 }
 </style>
 
