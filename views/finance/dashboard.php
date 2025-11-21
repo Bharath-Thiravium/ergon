@@ -5,22 +5,52 @@ ob_start();
 ?>
 
 <div class="container-fluid">
-    <!-- Stats Cards -->
-    <div class="row mb-4">
+    <div class="header-actions">
+        <button id="syncBtn" class="btn btn--primary">🔄 Sync Finance Data</button>
+        <button id="structureBtn" class="btn btn--secondary">📊 View Structure</button>
+        <button id="analyzeBtn" class="btn btn--secondary">📋 Analyze Tables</button>
+        <a href="/ergon/finance/export?type=all" class="btn btn--secondary">📥 Export All</a>
+    </div>
+
+    <div class="dashboard-grid">
         <div class="kpi-card">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">📊</div>
+                <div class="kpi-card__trend">↗ +2%</div>
+            </div>
             <div class="kpi-card__value" id="totalTables">0</div>
             <div class="kpi-card__label">Finance Tables</div>
+            <div class="kpi-card__status">Active</div>
         </div>
+        
         <div class="kpi-card">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">📈</div>
+                <div class="kpi-card__trend">↗ +15%</div>
+            </div>
             <div class="kpi-card__value" id="totalRecords">0</div>
             <div class="kpi-card__label">Total Records</div>
+            <div class="kpi-card__status">Synced</div>
         </div>
-        <div class="kpi-card">
-            <button id="structureBtn" class="btn btn--primary btn--block">View Table Structure</button>
+        
+        <div class="kpi-card kpi-card--warning">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">💰</div>
+                <div class="kpi-card__trend">— 0%</div>
+            </div>
+            <div class="kpi-card__value" id="outstandingAmount">₹0</div>
+            <div class="kpi-card__label">Outstanding Invoices</div>
+            <div class="kpi-card__status kpi-card__status--pending">Needs Review</div>
         </div>
+        
         <div class="kpi-card">
-            <button id="syncBtn" class="btn btn--warning btn--block">Sync Finance Data</button>
-            <button id="analyzeBtn" class="btn btn--secondary btn--block">Analyze All Tables</button>
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">📋</div>
+                <div class="kpi-card__trend">↗ +8%</div>
+            </div>
+            <div class="kpi-card__value" id="totalInvoices">0</div>
+            <div class="kpi-card__label">Total Invoices</div>
+            <div class="kpi-card__status">Processing</div>
         </div>
     </div>
 
@@ -42,82 +72,256 @@ ob_start();
         </div>
     </div>
 
-    <!-- Modular Finance Panels -->
     <div class="dashboard-grid">
-        <!-- Quotations Panel -->
         <div class="card">
             <div class="card__header">
-                <h3 class="card__title">📋 Quotations Lifecycle</h3>
-                <button class="btn btn--secondary btn--sm" onclick="exportChart('quotations')">CSV</button>
+                <h2 class="card__title">📋 Quotations Overview</h2>
+                <div class="card-actions">
+                    <button class="btn btn--primary btn--sm" onclick="exportChart('quotations')">Export CSV</button>
+                </div>
             </div>
             <div class="card__body">
-                <canvas id="quotationsChart" height="200"></canvas>
+                <div class="overview-summary">
+                    <div class="summary-stat">
+                        <span class="summary-number" id="quotationsDraft">📝 0</span>
+                        <span class="summary-label">Draft</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-number" id="quotationsRevised">🔄 0</span>
+                        <span class="summary-label">Revised</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-number" id="quotationsConverted">✅ 0</span>
+                        <span class="summary-label">Converted</span>
+                    </div>
+                </div>
+                <canvas id="quotationsChart" height="150"></canvas>
+                <div class="overview-progress">
+                    <div class="progress-header">
+                        <span class="progress-label">Conversion Rate</span>
+                        <span class="progress-value" id="conversionRate">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="conversionProgress" style="width: 0%"></div>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <!-- Purchase Orders Panel -->
         <div class="card">
             <div class="card__header">
-                <h3 class="card__title">🛒 Purchase Orders Volume</h3>
-                <button class="btn btn--secondary btn--sm" onclick="exportChart('purchase_orders')">CSV</button>
+                <h2 class="card__title">🛒 Purchase Orders Analysis</h2>
+                <div class="card-actions">
+                    <button class="btn btn--primary btn--sm" onclick="exportChart('purchase_orders')">Export CSV</button>
+                </div>
             </div>
             <div class="card__body">
-                <canvas id="purchaseOrdersChart" height="200"></canvas>
+                <div class="overview-summary">
+                    <div class="summary-stat">
+                        <span class="summary-number" id="poTotal">📦 0</span>
+                        <span class="summary-label">Total Orders</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-number" id="poValue">💰 ₹0</span>
+                        <span class="summary-label">Total Value</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-number" id="poAverage">📊 ₹0</span>
+                        <span class="summary-label">Avg Order</span>
+                    </div>
+                </div>
+                <canvas id="purchaseOrdersChart" height="150"></canvas>
+                <div class="overview-stats">
+                    <div class="stat-row">
+                        <div class="stat-item-inline">
+                            <div class="stat-icon">📈</div>
+                            <div>
+                                <div class="stat-value-sm" id="poGrowth">+0%</div>
+                                <div class="stat-label-sm">Growth</div>
+                            </div>
+                        </div>
+                        <div class="stat-item-inline">
+                            <div class="stat-icon">🎯</div>
+                            <div>
+                                <div class="stat-value-sm" id="poTarget">85%</div>
+                                <div class="stat-label-sm">Target</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <!-- Invoices Panel -->
+    </div>
+    
+    <div class="dashboard-grid">
         <div class="card">
             <div class="card__header">
-                <h3 class="card__title">💰 Invoices Status</h3>
-                <button class="btn btn--secondary btn--sm" onclick="exportChart('invoices')">CSV</button>
+                <h2 class="card__title">💰 Invoice Management</h2>
+                <div class="card-actions">
+                    <button class="btn btn--primary btn--sm" onclick="exportChart('invoices')">Export CSV</button>
+                </div>
             </div>
             <div class="card__body">
-                <canvas id="invoicesChart" height="200"></canvas>
+                <div class="overview-summary">
+                    <div class="summary-stat">
+                        <span class="summary-number" id="invoicesPaid">✅ ₹0</span>
+                        <span class="summary-label">Paid</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-number" id="invoicesUnpaid">⏳ ₹0</span>
+                        <span class="summary-label">Unpaid</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-number" id="invoicesOverdue">🚨 ₹0</span>
+                        <span class="summary-label">Overdue</span>
+                    </div>
+                </div>
+                <canvas id="invoicesChart" height="150"></canvas>
                 <div id="outstandingAlert" class="alert alert--warning" style="display: none;"></div>
+                <div class="overview-progress">
+                    <div class="progress-header">
+                        <span class="progress-label">Collection Rate</span>
+                        <span class="progress-value" id="collectionRate">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="collectionProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-footer">
+                        <span class="progress-trend" id="collectionTrend">— No change</span>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <!-- Payments Panel -->
         <div class="card">
             <div class="card__header">
-                <h3 class="card__title">💳 Payments Status</h3>
+                <h2 class="card__title">💳 Payment Processing</h2>
             </div>
             <div class="card__body">
+                <div class="overview-summary">
+                    <div class="summary-stat">
+                        <span class="summary-number">💳 0</span>
+                        <span class="summary-label">Processed</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-number">⏳ 0</span>
+                        <span class="summary-label">Pending</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-number">❌ 0</span>
+                        <span class="summary-label">Failed</span>
+                    </div>
+                </div>
                 <div class="empty-state">
-                    <div class="empty-icon">⚠️</div>
-                    <h5>No Payment Records</h5>
-                    <p class="text-muted">Payment data will appear here once records are available</p>
+                    <div class="empty-icon">💳</div>
+                    <h5>Payment System Ready</h5>
+                    <p class="text-muted">Payment records will appear here once transactions are processed</p>
+                </div>
+                <div class="overview-progress">
+                    <div class="progress-header">
+                        <span class="progress-label">Success Rate</span>
+                        <span class="progress-value">100%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Data Tables -->
     <div class="dashboard-grid">
         <div class="card">
             <div class="card__header">
-                <h3 class="card__title">Finance Tables</h3>
+                <h2 class="card__title">📊 Data Tables Summary</h2>
             </div>
             <div class="card__body">
-                <div id="tablesContainer">Loading...</div>
+                <div id="tablesContainer">
+                    <div class="form-group">
+                        <div class="form-label">📋 Loading Tables...</div>
+                        <p>Fetching finance table information</p>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="card" style="grid-column: span 2;">
+        
+        <div class="card">
             <div class="card__header">
-                <h3 class="card__title">Table Data</h3>
-                <div class="btn-group">
+                <h2 class="card__title">🔍 Data Explorer</h2>
+                <div class="card-actions">
                     <select id="tableSelect" class="form-control">
                         <option value="">Select Table</option>
                     </select>
-                    <button id="loadData" class="btn btn--primary btn--sm">Load</button>
+                    <button id="loadData" class="btn btn--primary btn--sm">Load Data</button>
                 </div>
             </div>
-            <div class="card__body">
+            <div class="card__body card__body--scrollable">
                 <div id="dataContainer">
-                    <div class="empty-state">
-                        <div class="empty-icon">📈</div>
-                        <p>Select a finance table to view data</p>
+                    <div class="form-group">
+                        <div class="form-label">📈 Data Viewer</div>
+                        <p>Select a finance table to explore detailed records and analytics</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-grid">
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">📈 Financial Trends</h2>
+            </div>
+            <div class="card__body">
+                <div class="overview-summary">
+                    <div class="summary-stat">
+                        <span class="summary-number">📊 0</span>
+                        <span class="summary-label">Monthly Growth</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-number">💹 0%</span>
+                        <span class="summary-label">Revenue Change</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-number">🎯 0%</span>
+                        <span class="summary-label">Target Achievement</span>
+                    </div>
+                </div>
+                <div class="overview-stats">
+                    <div class="stat-row">
+                        <div class="stat-item-inline">
+                            <div class="stat-icon">📈</div>
+                            <div>
+                                <div class="stat-value-sm">+0%</div>
+                                <div class="stat-label-sm">YoY Growth</div>
+                            </div>
+                        </div>
+                        <div class="stat-item-inline">
+                            <div class="stat-icon">💰</div>
+                            <div>
+                                <div class="stat-value-sm">₹0</div>
+                                <div class="stat-label-sm">Revenue</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">⚡ Recent Finance Activities</h2>
+            </div>
+            <div class="card__body card__body--scrollable">
+                <div id="recentActivities">
+                    <div class="form-group">
+                        <div class="form-label">🔄 System Sync</div>
+                        <p>Finance data synchronized successfully</p>
+                        <small>Just now</small>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">📊 Dashboard Loaded</div>
+                        <p>Finance dashboard initialized with latest data</p>
+                        <small>2 minutes ago</small>
                     </div>
                 </div>
             </div>
@@ -379,11 +583,59 @@ async function loadFinanceStats() {
         const response = await fetch('/ergon/finance/stats');
         const data = await response.json();
         
+        // Update KPI cards
         document.getElementById('totalTables').textContent = data.totalTables || 0;
-        document.getElementById('totalRecords').textContent = data.totalRecords || 0;
+        document.getElementById('totalRecords').textContent = (data.totalRecords || 0).toLocaleString();
+        
+        // Update detailed stats
+        updateDetailedStats(data);
         
     } catch (error) {
         console.error('Failed to load stats:', error);
+    }
+}
+
+function updateDetailedStats(data) {
+    // Update quotations summary
+    const quotationsData = data.quotations || { draft: 0, revised: 0, converted: 0 };
+    document.getElementById('quotationsDraft').innerHTML = `📝 ${quotationsData.draft}`;
+    document.getElementById('quotationsRevised').innerHTML = `🔄 ${quotationsData.revised}`;
+    document.getElementById('quotationsConverted').innerHTML = `✅ ${quotationsData.converted}`;
+    
+    // Calculate conversion rate
+    const total = quotationsData.draft + quotationsData.revised + quotationsData.converted;
+    const conversionRate = total > 0 ? Math.round((quotationsData.converted / total) * 100) : 0;
+    document.getElementById('conversionRate').textContent = `${conversionRate}%`;
+    document.getElementById('conversionProgress').style.width = `${conversionRate}%`;
+    
+    // Update purchase orders
+    const poData = data.purchaseOrders || { total: 0, value: 0 };
+    document.getElementById('poTotal').innerHTML = `📦 ${poData.total}`;
+    document.getElementById('poValue').innerHTML = `💰 ₹${(poData.value || 0).toLocaleString()}`;
+    document.getElementById('poAverage').innerHTML = `📊 ₹${poData.total > 0 ? Math.round(poData.value / poData.total).toLocaleString() : 0}`;
+    
+    // Update invoices
+    const invoiceData = data.invoices || { paid: 0, unpaid: 0, overdue: 0 };
+    document.getElementById('invoicesPaid').innerHTML = `✅ ₹${(invoiceData.paid || 0).toLocaleString()}`;
+    document.getElementById('invoicesUnpaid').innerHTML = `⏳ ₹${(invoiceData.unpaid || 0).toLocaleString()}`;
+    document.getElementById('invoicesOverdue').innerHTML = `🚨 ₹${(invoiceData.overdue || 0).toLocaleString()}`;
+    
+    // Calculate collection rate
+    const totalInvoices = invoiceData.paid + invoiceData.unpaid + invoiceData.overdue;
+    const collectionRate = totalInvoices > 0 ? Math.round((invoiceData.paid / totalInvoices) * 100) : 100;
+    document.getElementById('collectionRate').textContent = `${collectionRate}%`;
+    document.getElementById('collectionProgress').style.width = `${collectionRate}%`;
+    
+    // Update outstanding amount
+    const outstanding = invoiceData.unpaid + invoiceData.overdue;
+    document.getElementById('outstandingAmount').textContent = `₹${outstanding.toLocaleString()}`;
+    document.getElementById('totalInvoices').textContent = totalInvoices;
+    
+    // Show outstanding alert if needed
+    if (outstanding > 0) {
+        const alert = document.getElementById('outstandingAlert');
+        alert.style.display = 'block';
+        alert.innerHTML = `<strong>Alert:</strong> ₹${outstanding.toLocaleString()} in outstanding invoices requires attention`;
     }
 }
 
@@ -436,25 +688,37 @@ async function loadTables() {
         const select = document.getElementById('tableSelect');
         
         if (data.tables && data.tables.length > 0) {
-            let html = '<div class="list-group list-group-flush">';
+            let html = '';
             select.innerHTML = '<option value="">Select Table</option>';
             
             data.tables.forEach(table => {
                 const displayName = table.table_name.replace('finance_', '');
-                html += `<div class="list-group-item d-flex justify-content-between">
-                    <span><strong>${displayName}</strong></span>
-                    <small class="badge bg-primary">${table.record_count}</small>
-                </div>`;
-                select.innerHTML += `<option value="${table.table_name}">${displayName}</option>`;
+                const lastSync = table.last_sync ? new Date(table.last_sync).toLocaleDateString() : 'Never';
+                
+                html += `
+                    <div class="form-group">
+                        <div class="form-label">📊 ${displayName.charAt(0).toUpperCase() + displayName.slice(1)}</div>
+                        <p>${table.record_count.toLocaleString()} records</p>
+                        <small>Last sync: ${lastSync}</small>
+                    </div>`;
+                    
+                select.innerHTML += `<option value="${table.table_name}">${displayName.charAt(0).toUpperCase() + displayName.slice(1)}</option>`;
             });
             
-            html += '</div>';
             container.innerHTML = html;
         } else {
-            container.innerHTML = '<p class="text-muted">No finance tables found. Click sync to load data.</p>';
+            container.innerHTML = `
+                <div class="form-group">
+                    <div class="form-label">📋 No Data</div>
+                    <p>No finance tables found. Click sync to load data.</p>
+                </div>`;
         }
     } catch (error) {
-        document.getElementById('tablesContainer').innerHTML = '<p class="text-danger">Error loading tables</p>';
+        container.innerHTML = `
+            <div class="form-group">
+                <div class="form-label">❌ Error</div>
+                <p>Failed to load table information</p>
+            </div>`;
     }
 }
 
@@ -485,37 +749,63 @@ function renderTable(data, columns) {
     const container = document.getElementById('dataContainer');
     
     if (!data || data.length === 0) {
-        container.innerHTML = '<p class="text-muted">No data found in this table</p>';
+        container.innerHTML = `
+            <div class="form-group">
+                <div class="form-label">📋 No Data</div>
+                <p>No records found in this table</p>
+            </div>`;
         return;
     }
     
-    let html = '<div class="table-responsive"><table class="table table-striped table-sm">';
+    // Show summary first
+    let html = `
+        <div class="overview-summary">
+            <div class="summary-stat">
+                <span class="summary-number">📊 ${data.length}</span>
+                <span class="summary-label">Records</span>
+            </div>
+            <div class="summary-stat">
+                <span class="summary-number">📋 ${columns.length}</span>
+                <span class="summary-label">Columns</span>
+            </div>
+        </div>`;
     
-    html += '<thead class="table-dark"><tr>';
-    columns.forEach(col => html += `<th>${col}</th>`);
+    // Add table
+    html += '<div class="table-responsive"><table class="table">';
+    
+    html += '<thead><tr>';
+    columns.slice(0, 6).forEach(col => html += `<th>${col}</th>`);
+    if (columns.length > 6) html += '<th>...</th>';
     html += '</tr></thead><tbody>';
     
-    data.forEach(row => {
+    data.slice(0, 10).forEach(row => {
         html += '<tr>';
-        columns.forEach(col => {
+        columns.slice(0, 6).forEach(col => {
             let value = row[col];
             if (typeof value === 'number' && col.includes('amount')) {
                 value = '₹' + value.toLocaleString();
             }
-            html += `<td>${value !== null ? value : ''}</td>`;
+            html += `<td>${value !== null ? String(value).substring(0, 50) : ''}</td>`;
         });
+        if (columns.length > 6) html += '<td>...</td>';
         html += '</tr>';
     });
     
     html += '</tbody></table></div>';
-    html += `<small class="text-muted">Showing ${data.length} records</small>`;
+    
+    if (data.length > 10) {
+        html += `<div class="form-group"><small class="text-muted">Showing first 10 of ${data.length} records</small></div>`;
+    }
     
     container.innerHTML = html;
 }
 
 function showError(message) {
-    document.getElementById('dataContainer').innerHTML = 
-        `<div class="alert alert-danger">${message}</div>`;
+    document.getElementById('dataContainer').innerHTML = `
+        <div class="form-group">
+            <div class="form-label">❌ Error</div>
+            <p>${message}</p>
+        </div>`;
 }
 </script>
 
