@@ -13,51 +13,32 @@ class FinanceController extends Controller {
         ob_clean();
         
         try {
-            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
+            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=5");
             
             if (!$conn) {
-                echo json_encode(['error' => 'PostgreSQL connection failed']);
+                echo json_encode(['error' => 'Connection failed']);
                 exit;
             }
             
-            // Get all tables
+            // Get only table names and basic info
             $result = pg_query($conn, "
-                SELECT table_name, 
-                       (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as column_count
-                FROM information_schema.tables t
+                SELECT table_name
+                FROM information_schema.tables
                 WHERE table_schema = 'public' 
                 AND table_type = 'BASE TABLE'
                 ORDER BY table_name
+                LIMIT 50
             ");
             
-            $allTables = [];
+            $tables = [];
             while ($row = pg_fetch_assoc($result)) {
-                $tableName = $row['table_name'];
-                
-                // Get row count
-                $countResult = pg_query($conn, "SELECT COUNT(*) as row_count FROM \"$tableName\"");
-                $countRow = pg_fetch_assoc($countResult);
-                
-                // Get sample data
-                $sampleResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 3");
-                $sampleData = [];
-                while ($sample = pg_fetch_assoc($sampleResult)) {
-                    $sampleData[] = $sample;
-                }
-                
-                $allTables[] = [
-                    'name' => $tableName,
-                    'columns' => (int)$row['column_count'],
-                    'rows' => (int)$countRow['row_count'],
-                    'sample' => $sampleData
-                ];
+                $tables[] = $row['table_name'];
             }
             
             pg_close($conn);
-            echo json_encode(['tables' => $allTables]);
+            echo json_encode(['tables' => $tables, 'count' => count($tables)]);
             
         } catch (Exception $e) {
-            ob_clean();
             echo json_encode(['error' => $e->getMessage()]);
         }
         exit;

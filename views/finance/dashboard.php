@@ -264,22 +264,18 @@ async function analyzeAllTables() {
             return;
         }
         
-        console.log('Database Analysis:', data.tables);
+        console.log('All Tables:', data.tables);
         
-        // Display analysis in modal
+        // Display table list in modal
         const container = document.getElementById('structureContainer');
-        let html = '<div class="analysis-results">';
+        let html = `<div class="table-list"><h4>Found ${data.count} Tables:</h4><ul>`;
         
         data.tables.forEach(table => {
-            html += `
-                <div class="table-analysis">
-                    <h4>${table.name}</h4>
-                    <p>Columns: ${table.columns} | Rows: ${table.rows}</p>
-                    <pre>${JSON.stringify(table.sample, null, 2)}</pre>
-                </div>`;
+            const isFinance = table.includes('finance');
+            html += `<li style="${isFinance ? 'font-weight: bold; color: #007bff;' : ''}">${table}</li>`;
         });
         
-        html += '</div>';
+        html += '</ul></div>';
         container.innerHTML = html;
         
         document.getElementById('structureModal').style.display = 'flex';
