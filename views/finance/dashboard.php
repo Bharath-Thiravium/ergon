@@ -5,335 +5,230 @@ ob_start();
 ?>
 
 <div class="container-fluid">
+    <!-- Header Actions -->
     <div class="header-actions">
-        <button id="syncBtn" class="btn btn--primary">🔄 Sync Finance Data</button>
-        <button id="structureBtn" class="btn btn--secondary">📊 View Structure</button>
-        <button id="analyzeBtn" class="btn btn--secondary">📋 Analyze Tables</button>
-        <a href="/ergon/finance/export?type=all" class="btn btn--secondary">📥 Export All</a>
+        <button id="syncBtn" class="btn btn--primary">🔄 Sync Data</button>
+        <button id="exportBtn" class="btn btn--secondary">📥 Export Dashboard</button>
+        <select id="dateFilter" class="form-control">
+            <option value="all">All Time</option>
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+            <option value="365">Last Year</option>
+        </select>
     </div>
 
+    <!-- Top-Level KPI Cards -->
     <div class="dashboard-grid">
-        <div class="kpi-card">
+        <div class="kpi-card kpi-card--success">
             <div class="kpi-card__header">
-                <div class="kpi-card__icon">📊</div>
-                <div class="kpi-card__trend">↗ +2%</div>
+                <div class="kpi-card__icon">💰</div>
+                <div class="kpi-card__trend" id="invoiceTrend">↗ +0%</div>
             </div>
-            <div class="kpi-card__value" id="totalTables">0</div>
-            <div class="kpi-card__label">Finance Tables</div>
-            <div class="kpi-card__status">Active</div>
+            <div class="kpi-card__value" id="totalInvoiceAmount">₹0</div>
+            <div class="kpi-card__label">Total Invoice Amount</div>
+            <div class="kpi-card__status">Revenue</div>
         </div>
         
-        <div class="kpi-card">
+        <div class="kpi-card kpi-card--success">
             <div class="kpi-card__header">
-                <div class="kpi-card__icon">📈</div>
-                <div class="kpi-card__trend">↗ +15%</div>
+                <div class="kpi-card__icon">✅</div>
+                <div class="kpi-card__trend" id="receivedTrend">↗ +0%</div>
             </div>
-            <div class="kpi-card__value" id="totalRecords">0</div>
-            <div class="kpi-card__label">Total Records</div>
-            <div class="kpi-card__status">Synced</div>
+            <div class="kpi-card__value" id="invoiceReceived">₹0</div>
+            <div class="kpi-card__label">Amount Received</div>
+            <div class="kpi-card__status">Collected</div>
         </div>
         
         <div class="kpi-card kpi-card--warning">
             <div class="kpi-card__header">
-                <div class="kpi-card__icon">💰</div>
-                <div class="kpi-card__trend">— 0%</div>
+                <div class="kpi-card__icon">⏳</div>
+                <div class="kpi-card__trend" id="pendingTrend">— 0%</div>
             </div>
-            <div class="kpi-card__value" id="outstandingAmount">₹0</div>
-            <div class="kpi-card__label">Outstanding Invoices</div>
-            <div class="kpi-card__status kpi-card__status--pending">Needs Review</div>
+            <div class="kpi-card__value" id="pendingInvoiceAmount">₹0</div>
+            <div class="kpi-card__label">Pending Invoice Amount</div>
+            <div class="kpi-card__status kpi-card__status--pending">Outstanding</div>
         </div>
         
-        <div class="kpi-card">
+        <div class="kpi-card kpi-card--info">
             <div class="kpi-card__header">
-                <div class="kpi-card__icon">📋</div>
-                <div class="kpi-card__trend">↗ +8%</div>
+                <div class="kpi-card__icon">🏛️</div>
+                <div class="kpi-card__trend" id="gstTrend">— 0%</div>
             </div>
-            <div class="kpi-card__value" id="totalInvoices">0</div>
-            <div class="kpi-card__label">Total Invoices</div>
-            <div class="kpi-card__status">Processing</div>
+            <div class="kpi-card__value" id="pendingGSTAmount">₹0</div>
+            <div class="kpi-card__label">Pending GST Amount</div>
+            <div class="kpi-card__status">Tax Liability</div>
+        </div>
+        
+        <div class="kpi-card kpi-card--primary">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">🛒</div>
+                <div class="kpi-card__trend" id="poTrend">↗ +0%</div>
+            </div>
+            <div class="kpi-card__value" id="pendingPOValue">₹0</div>
+            <div class="kpi-card__label">Pending PO Value</div>
+            <div class="kpi-card__status">Commitments</div>
+        </div>
+        
+        <div class="kpi-card kpi-card--secondary">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">💸</div>
+                <div class="kpi-card__trend" id="claimableTrend">— 0%</div>
+            </div>
+            <div class="kpi-card__value" id="claimableAmount">₹0</div>
+            <div class="kpi-card__label">Claimable Amount</div>
+            <div class="kpi-card__status">Recoverable</div>
         </div>
     </div>
 
-    <!-- Database Structure Modal -->
-    <div class="modal" id="structureModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>📊 Database Structure</h3>
-                <button class="modal-close" onclick="closeStructureModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="structureContainer">
-                    <div class="empty-state">
-                        <div class="empty-icon">🔄</div>
-                        <p>Loading structure...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Finance Analytics KPI Cards -->
+    <!-- Conversion Funnel -->
     <div class="dashboard-grid">
-        <div class="kpi-stat-card">
-            <div class="kpi-stat-card__header">
-                <div class="kpi-stat-card__icon">📝</div>
-                <div class="kpi-stat-card__title">Quotations Analysis</div>
-            </div>
-            <div class="kpi-stat-card__metrics">
-                <div class="metric">
-                    <div class="metric__value" id="quotationTotal">0</div>
-                    <div class="metric__label">Total</div>
-                </div>
-                <div class="metric">
-                    <div class="metric__value" id="quotationValue">₹0</div>
-                    <div class="metric__label">Value</div>
-                </div>
-                <div class="metric">
-                    <div class="metric__value" id="quotationRate">0%</div>
-                    <div class="metric__label">Conversion</div>
-                </div>
-            </div>
-            <div class="kpi-stat-card__chart">
-                <div class="mini-chart">
-                    <div class="chart-bar" data-value="30"></div>
-                    <div class="chart-bar" data-value="45"></div>
-                    <div class="chart-bar" data-value="25"></div>
-                    <div class="chart-bar" data-value="60"></div>
-                    <div class="chart-bar" data-value="40"></div>
-                </div>
-            </div>
-            <div class="kpi-stat-card__trend">
-                <span class="trend-indicator trend-up">↗ +12%</span>
-                <span class="trend-label">vs last month</span>
-            </div>
-        </div>
-        
-        <div class="kpi-stat-card">
-            <div class="kpi-stat-card__header">
-                <div class="kpi-stat-card__icon">🛒</div>
-                <div class="kpi-stat-card__title">Purchase Orders</div>
-            </div>
-            <div class="kpi-stat-card__metrics">
-                <div class="metric">
-                    <div class="metric__value" id="poCount">0</div>
-                    <div class="metric__label">Orders</div>
-                </div>
-                <div class="metric">
-                    <div class="metric__value" id="poAmount">₹0</div>
-                    <div class="metric__label">Amount</div>
-                </div>
-                <div class="metric">
-                    <div class="metric__value" id="poAvg">₹0</div>
-                    <div class="metric__label">Average</div>
-                </div>
-            </div>
-            <div class="kpi-stat-card__chart">
-                <div class="mini-chart">
-                    <div class="chart-bar" data-value="50"></div>
-                    <div class="chart-bar" data-value="35"></div>
-                    <div class="chart-bar" data-value="70"></div>
-                    <div class="chart-bar" data-value="45"></div>
-                    <div class="chart-bar" data-value="55"></div>
-                </div>
-            </div>
-            <div class="kpi-stat-card__trend">
-                <span class="trend-indicator trend-up">↗ +8%</span>
-                <span class="trend-label">vs last month</span>
-            </div>
-        </div>
-        
-        <div class="kpi-stat-card">
-            <div class="kpi-stat-card__header">
-                <div class="kpi-stat-card__icon">💰</div>
-                <div class="kpi-stat-card__title">Invoice Status</div>
-            </div>
-            <div class="kpi-stat-card__metrics">
-                <div class="metric">
-                    <div class="metric__value" id="invoicePaid">₹0</div>
-                    <div class="metric__label">Paid</div>
-                </div>
-                <div class="metric">
-                    <div class="metric__value" id="invoicePending">₹0</div>
-                    <div class="metric__label">Pending</div>
-                </div>
-                <div class="metric">
-                    <div class="metric__value" id="invoiceOverdue">₹0</div>
-                    <div class="metric__label">Overdue</div>
-                </div>
-            </div>
-            <div class="kpi-stat-card__chart">
-                <div class="progress-ring">
-                    <div class="ring-segment paid" data-percentage="60"></div>
-                    <div class="ring-segment pending" data-percentage="25"></div>
-                    <div class="ring-segment overdue" data-percentage="15"></div>
-                </div>
-            </div>
-            <div class="kpi-stat-card__trend">
-                <span class="trend-indicator trend-down">↘ -5%</span>
-                <span class="trend-label">overdue reduced</span>
-            </div>
-        </div>
-        
-        <div class="kpi-stat-card">
-            <div class="kpi-stat-card__header">
-                <div class="kpi-stat-card__icon">💳</div>
-                <div class="kpi-stat-card__title">Payment Flow</div>
-            </div>
-            <div class="kpi-stat-card__metrics">
-                <div class="metric">
-                    <div class="metric__value" id="paymentReceived">₹0</div>
-                    <div class="metric__label">Received</div>
-                </div>
-                <div class="metric">
-                    <div class="metric__value" id="paymentPending">₹0</div>
-                    <div class="metric__label">Pending</div>
-                </div>
-                <div class="metric">
-                    <div class="metric__value" id="paymentRate">0%</div>
-                    <div class="metric__label">Success Rate</div>
-                </div>
-            </div>
-            <div class="kpi-stat-card__chart">
-                <div class="wave-chart">
-                    <div class="wave-line">
-                        <span class="wave-point" data-value="40"></span>
-                        <span class="wave-point" data-value="60"></span>
-                        <span class="wave-point" data-value="35"></span>
-                        <span class="wave-point" data-value="75"></span>
-                        <span class="wave-point" data-value="50"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="kpi-stat-card__trend">
-                <span class="trend-indicator trend-up">↗ +15%</span>
-                <span class="trend-label">collection improved</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Data Views Section -->
-    <div class="dashboard-grid">
-        <div class="card">
+        <div class="card card--full-width">
             <div class="card__header">
-                <h2 class="card__title">📋 Quotations Overview</h2>
-                <div class="card-actions">
-                    <div class="view-toggle">
-                        <button class="view-btn active" onclick="toggleView('quotations', 'list')">List</button>
-                        <button class="view-btn" onclick="toggleView('quotations', 'grid')">Grid</button>
-                    </div>
-                    <button class="btn btn--primary btn--sm" onclick="exportChart('quotations')">Export</button>
-                </div>
+                <h2 class="card__title">🔄 Revenue Conversion Funnel</h2>
             </div>
             <div class="card__body">
-                <div class="overview-summary">
-                    <div class="summary-stat">
-                        <span class="summary-number" id="quotationsDraft">📝 0</span>
-                        <span class="summary-label">Draft</span>
+                <div class="funnel-container">
+                    <div class="funnel-stage">
+                        <div class="funnel-number" id="funnelQuotations">0</div>
+                        <div class="funnel-label">Quotations</div>
+                        <div class="funnel-value" id="funnelQuotationValue">₹0</div>
                     </div>
-                    <div class="summary-stat">
-                        <span class="summary-number" id="quotationsRevised">🔄 0</span>
-                        <span class="summary-label">Revised</span>
+                    <div class="funnel-arrow">→</div>
+                    <div class="funnel-stage">
+                        <div class="funnel-number" id="funnelPOs">0</div>
+                        <div class="funnel-label">Purchase Orders</div>
+                        <div class="funnel-value" id="funnelPOValue">₹0</div>
+                        <div class="funnel-conversion" id="quotationToPO">0%</div>
                     </div>
-                    <div class="summary-stat">
-                        <span class="summary-number" id="quotationsConverted">✅ 0</span>
-                        <span class="summary-label">Converted</span>
+                    <div class="funnel-arrow">→</div>
+                    <div class="funnel-stage">
+                        <div class="funnel-number" id="funnelInvoices">0</div>
+                        <div class="funnel-label">Invoices</div>
+                        <div class="funnel-value" id="funnelInvoiceValue">₹0</div>
+                        <div class="funnel-conversion" id="poToInvoice">0%</div>
+                    </div>
+                    <div class="funnel-arrow">→</div>
+                    <div class="funnel-stage">
+                        <div class="funnel-number" id="funnelPayments">0</div>
+                        <div class="funnel-label">Payments</div>
+                        <div class="funnel-value" id="funnelPaymentValue">₹0</div>
+                        <div class="funnel-conversion" id="invoiceToPayment">0%</div>
                     </div>
                 </div>
-                <div class="data-view" id="quotationsView">
-                    <div class="data-list active" id="quotationsList">
-                        <div class="form-group">
-                            <div class="form-label">📋 Loading quotations...</div>
-                        </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="dashboard-grid">
+        <!-- Quotations Panel -->
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">📝 Quotations Overview</h2>
+                <button class="btn btn--sm" onclick="exportChart('quotations')">Export</button>
+            </div>
+            <div class="card__body">
+                <canvas id="quotationsChart" height="200"></canvas>
+                <div class="chart-summary">
+                    <div class="summary-item">
+                        <span class="summary-label">Draft:</span>
+                        <span class="summary-value" id="quotationsDraft">0</span>
                     </div>
-                    <div class="data-grid" id="quotationsGrid">
-                        <div class="form-group">
-                            <div class="form-label">📋 Loading quotations...</div>
-                        </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Revised:</span>
+                        <span class="summary-value" id="quotationsRevised">0</span>
                     </div>
                 </div>
             </div>
         </div>
         
+        <!-- Purchase Orders Panel -->
         <div class="card">
             <div class="card__header">
-                <h2 class="card__title">🛒 Purchase Orders Analysis</h2>
-                <div class="card-actions">
-                    <div class="view-toggle">
-                        <button class="view-btn active" onclick="toggleView('purchase_orders', 'list')">List</button>
-                        <button class="view-btn" onclick="toggleView('purchase_orders', 'grid')">Grid</button>
-                    </div>
-                    <button class="btn btn--primary btn--sm" onclick="exportChart('purchase_orders')">Export</button>
-                </div>
+                <h2 class="card__title">🛒 Purchase Orders</h2>
+                <button class="btn btn--sm" onclick="exportChart('purchase_orders')">Export</button>
             </div>
             <div class="card__body">
-                <div class="overview-summary">
-                    <div class="summary-stat">
-                        <span class="summary-number" id="poTotal">📦 0</span>
-                        <span class="summary-label">Total Orders</span>
-                    </div>
-                    <div class="summary-stat">
-                        <span class="summary-number" id="poValue">💰 ₹0</span>
-                        <span class="summary-label">Total Value</span>
-                    </div>
-                    <div class="summary-stat">
-                        <span class="summary-number" id="poAverage">📊 ₹0</span>
-                        <span class="summary-label">Avg Order</span>
-                    </div>
+                <canvas id="purchaseOrdersChart" height="200"></canvas>
+                <div class="highlight-card">
+                    <div class="highlight-label">Largest PO:</div>
+                    <div class="highlight-value" id="largestPO">₹0</div>
                 </div>
-                <div class="data-view" id="purchaseOrdersView">
-                    <div class="data-list active" id="purchaseOrdersList">
-                        <div class="form-group">
-                            <div class="form-label">📦 Loading purchase orders...</div>
-                        </div>
-                    </div>
-                    <div class="data-grid" id="purchaseOrdersGrid">
-                        <div class="form-group">
-                            <div class="form-label">📦 Loading purchase orders...</div>
-                        </div>
-                    </div>
+            </div>
+        </div>
+        
+        <!-- Invoices Panel -->
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">💰 Invoice Status</h2>
+                <button class="btn btn--sm" onclick="exportChart('invoices')">Export</button>
+            </div>
+            <div class="card__body">
+                <canvas id="invoicesChart" height="200"></canvas>
+                <div id="overdueAlert" class="alert alert--danger" style="display: none;">
+                    <strong>⚠️ Overdue Alert:</strong> <span id="overdueCount">0</span> invoices overdue
+                </div>
+            </div>
+        </div>
+        
+        <!-- Payments Panel -->
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">💳 Payments</h2>
+                <button class="btn btn--sm" onclick="exportChart('payments')">Export</button>
+            </div>
+            <div class="card__body">
+                <div class="empty-state" id="paymentsEmpty">
+                    <div class="empty-icon">💳</div>
+                    <h3>No Payments Recorded</h3>
+                    <p>Payment data will appear here once transactions are recorded</p>
+                </div>
+                <canvas id="paymentsChart" height="200" style="display: none;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outstanding Invoices Table -->
+    <div class="dashboard-grid">
+        <div class="card card--full-width">
+            <div class="card__header">
+                <h2 class="card__title">⚠️ Outstanding Invoices</h2>
+                <button class="btn btn--sm" onclick="exportTable('outstanding')">Export</button>
+            </div>
+            <div class="card__body">
+                <div class="table-responsive">
+                    <table class="table" id="outstandingTable">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Customer</th>
+                                <th>Due Date</th>
+                                <th>Outstanding Amount</th>
+                                <th>Days Overdue</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" class="text-center">Loading outstanding invoices...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
     
+    <!-- Recent Quotations -->
     <div class="dashboard-grid">
         <div class="card">
             <div class="card__header">
-                <h2 class="card__title">💰 Invoice Management</h2>
-                <div class="card-actions">
-                    <div class="view-toggle">
-                        <button class="view-btn active" onclick="toggleView('invoices', 'list')">List</button>
-                        <button class="view-btn" onclick="toggleView('invoices', 'grid')">Grid</button>
-                    </div>
-                    <button class="btn btn--primary btn--sm" onclick="exportChart('invoices')">Export</button>
-                </div>
+                <h2 class="card__title">📝 Recent Quotations</h2>
             </div>
             <div class="card__body">
-                <div class="overview-summary">
-                    <div class="summary-stat">
-                        <span class="summary-number" id="invoicesPaid">✅ ₹0</span>
-                        <span class="summary-label">Paid</span>
-                    </div>
-                    <div class="summary-stat">
-                        <span class="summary-number" id="invoicesUnpaid">⏳ ₹0</span>
-                        <span class="summary-label">Unpaid</span>
-                    </div>
-                    <div class="summary-stat">
-                        <span class="summary-number" id="invoicesOverdue">🚨 ₹0</span>
-                        <span class="summary-label">Overdue</span>
-                    </div>
-                </div>
-                <div id="outstandingAlert" class="alert alert--warning" style="display: none;"></div>
-                <div class="data-view" id="invoicesView">
-                    <div class="data-list active" id="invoicesList">
-                        <div class="form-group">
-                            <div class="form-label">💰 Loading invoices...</div>
-                        </div>
-                    </div>
-                    <div class="data-grid" id="invoicesGrid">
-                        <div class="form-group">
-                            <div class="form-label">💰 Loading invoices...</div>
-                        </div>
+                <div id="recentQuotations">
+                    <div class="form-group">
+                        <div class="form-label">Loading recent quotations...</div>
                     </div>
                 </div>
             </div>
@@ -341,154 +236,21 @@ ob_start();
         
         <div class="card">
             <div class="card__header">
-                <h2 class="card__title">💳 Payment Processing</h2>
-                <div class="card-actions">
-                    <div class="view-toggle">
-                        <button class="view-btn active" onclick="toggleView('payments', 'list')">List</button>
-                        <button class="view-btn" onclick="toggleView('payments', 'grid')">Grid</button>
-                    </div>
-                    <button class="btn btn--primary btn--sm" onclick="exportChart('payments')">Export</button>
-                </div>
+                <h2 class="card__title">💰 Cash Flow Projection</h2>
             </div>
             <div class="card__body">
-                <div class="overview-summary">
-                    <div class="summary-stat">
-                        <span class="summary-number">💳 0</span>
-                        <span class="summary-label">Processed</span>
+                <div class="cash-flow-summary">
+                    <div class="flow-item">
+                        <div class="flow-label">Expected Inflow:</div>
+                        <div class="flow-value flow-positive" id="expectedInflow">₹0</div>
                     </div>
-                    <div class="summary-stat">
-                        <span class="summary-number">⏳ 0</span>
-                        <span class="summary-label">Pending</span>
+                    <div class="flow-item">
+                        <div class="flow-label">PO Commitments:</div>
+                        <div class="flow-value flow-negative" id="poCommitments">₹0</div>
                     </div>
-                    <div class="summary-stat">
-                        <span class="summary-number">❌ 0</span>
-                        <span class="summary-label">Failed</span>
-                    </div>
-                </div>
-                <div class="data-view" id="paymentsView">
-                    <div class="data-list active" id="paymentsList">
-                        <div class="form-group">
-                            <div class="form-label">💳 No payments yet</div>
-                            <p>Payment records will appear here</p>
-                        </div>
-                    </div>
-                    <div class="data-grid" id="paymentsGrid">
-                        <div class="form-group">
-                            <div class="form-label">💳 No payments yet</div>
-                            <p>Payment records will appear here</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="dashboard-grid">
-        <div class="card">
-            <div class="card__header">
-                <h2 class="card__title">📊 Data Tables Summary</h2>
-                <div class="card-actions">
-                    <div class="view-toggle">
-                        <button class="view-btn active" onclick="toggleView('tables', 'list')">List</button>
-                        <button class="view-btn" onclick="toggleView('tables', 'grid')">Grid</button>
-                    </div>
-                </div>
-            </div>
-            <div class="card__body">
-                <div class="data-view" id="tablesView">
-                    <div class="data-list active" id="tablesContainer">
-                        <div class="form-group">
-                            <div class="form-label">📋 Loading Tables...</div>
-                            <p>Fetching finance table information</p>
-                        </div>
-                    </div>
-                    <div class="data-grid" id="tablesGrid">
-                        <div class="form-group">
-                            <div class="form-label">📋 Loading Tables...</div>
-                            <p>Fetching finance table information</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card__header">
-                <h2 class="card__title">🔍 Data Explorer</h2>
-                <div class="card-actions">
-                    <select id="tableSelect" class="form-control">
-                        <option value="">Select Table</option>
-                    </select>
-                    <button id="loadData" class="btn btn--primary btn--sm">Load Data</button>
-                </div>
-            </div>
-            <div class="card__body card__body--scrollable">
-                <div id="dataContainer">
-                    <div class="form-group">
-                        <div class="form-label">📈 Data Viewer</div>
-                        <p>Select a finance table to explore detailed records and analytics</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="dashboard-grid">
-        <div class="card">
-            <div class="card__header">
-                <h2 class="card__title">📈 Financial Trends</h2>
-            </div>
-            <div class="card__body">
-                <div class="overview-summary">
-                    <div class="summary-stat">
-                        <span class="summary-number">📊 0</span>
-                        <span class="summary-label">Monthly Growth</span>
-                    </div>
-                    <div class="summary-stat">
-                        <span class="summary-number">💹 0%</span>
-                        <span class="summary-label">Revenue Change</span>
-                    </div>
-                    <div class="summary-stat">
-                        <span class="summary-number">🎯 0%</span>
-                        <span class="summary-label">Target Achievement</span>
-                    </div>
-                </div>
-                <div class="overview-stats">
-                    <div class="stat-row">
-                        <div class="stat-item-inline">
-                            <div class="stat-icon">📈</div>
-                            <div>
-                                <div class="stat-value-sm">+0%</div>
-                                <div class="stat-label-sm">YoY Growth</div>
-                            </div>
-                        </div>
-                        <div class="stat-item-inline">
-                            <div class="stat-icon">💰</div>
-                            <div>
-                                <div class="stat-value-sm">₹0</div>
-                                <div class="stat-label-sm">Revenue</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card__header">
-                <h2 class="card__title">⚡ Recent Finance Activities</h2>
-            </div>
-            <div class="card__body card__body--scrollable">
-                <div id="recentActivities">
-                    <div class="form-group">
-                        <div class="form-label">🔄 System Sync</div>
-                        <p>Finance data synchronized successfully</p>
-                        <small>Just now</small>
-                    </div>
-                    <div class="form-group">
-                        <div class="form-label">📊 Dashboard Loaded</div>
-                        <p>Finance dashboard initialized with latest data</p>
-                        <small>2 minutes ago</small>
+                    <div class="flow-item">
+                        <div class="flow-label">Net Cash Flow:</div>
+                        <div class="flow-value" id="netCashFlow">₹0</div>
                     </div>
                 </div>
             </div>
@@ -500,44 +262,78 @@ ob_start();
 <script>
 
 
+let quotationsChart, purchaseOrdersChart, invoicesChart, paymentsChart;
+
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
-    loadFinanceStats();
-    loadTables();
-    loadDetailedLists();
+    loadDashboardData();
     
     document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
-    document.getElementById('structureBtn').addEventListener('click', showTableStructure);
-    document.getElementById('loadData').addEventListener('click', loadTableData);
-    document.getElementById('analyzeBtn').addEventListener('click', analyzeAllTables);
+    document.getElementById('exportBtn').addEventListener('click', exportDashboard);
+    document.getElementById('dateFilter').addEventListener('change', filterByDate);
 });
 
 function initCharts() {
-    // Initialize mini charts
-    initMiniCharts();
-    initProgressRings();
-    initWaveCharts();
-}
-
-function initMiniCharts() {
-    document.querySelectorAll('.chart-bar').forEach(bar => {
-        const value = bar.dataset.value;
-        bar.style.height = value + '%';
-    });
-}
-
-function initProgressRings() {
-    document.querySelectorAll('.ring-segment').forEach(segment => {
-        const percentage = segment.dataset.percentage;
-        segment.style.setProperty('--percentage', percentage + '%');
-    });
-}
-
-function initWaveCharts() {
-    document.querySelectorAll('.wave-point').forEach(point => {
-        const value = point.dataset.value;
-        point.style.bottom = value + '%';
-    });
+    // Quotations Line Chart
+    const quotationsCtx = document.getElementById('quotationsChart');
+    if (quotationsCtx) {
+        quotationsChart = new Chart(quotationsCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Quotation Value',
+                    data: [],
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+    
+    // Purchase Orders Bar Chart
+    const poCtx = document.getElementById('purchaseOrdersChart');
+    if (poCtx) {
+        purchaseOrdersChart = new Chart(poCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'PO Amount',
+                    data: [],
+                    backgroundColor: '#28a745'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+    
+    // Invoices Donut Chart
+    const invoicesCtx = document.getElementById('invoicesChart');
+    if (invoicesCtx) {
+        invoicesChart = new Chart(invoicesCtx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Paid', 'Unpaid', 'Overdue'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
 }
 
 async function showTableStructure() {
@@ -672,122 +468,162 @@ async function syncFinanceData() {
             alert('Sync failed: ' + result.error);
         } else {
             alert(`Synced ${result.tables} finance tables successfully`);
-            loadFinanceStats();
-            loadTables();
-            updateCharts();
-            loadDetailedLists();
+            loadDashboardData();
         }
     } catch (error) {
         alert('Sync failed: ' + error.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Sync Finance Data';
+        btn.textContent = '🔄 Sync Data';
     }
 }
 
-async function loadFinanceStats() {
+async function loadDashboardData() {
     try {
-        const response = await fetch('/ergon/finance/stats');
-        const data = await response.json();
-        
-        // Update KPI cards
-        document.getElementById('totalTables').textContent = data.totalTables || 0;
-        document.getElementById('totalRecords').textContent = (data.totalRecords || 0).toLocaleString();
-        
-        // Update detailed stats
-        updateDetailedStats(data);
-        
-    } catch (error) {
-        console.error('Failed to load stats:', error);
-    }
-}
-
-function updateDetailedStats(data) {
-    // Update quotations summary
-    const quotationsData = data.quotations || { draft: 0, revised: 0, converted: 0 };
-    const quotationsDraft = document.getElementById('quotationsDraft');
-    const quotationsRevised = document.getElementById('quotationsRevised');
-    const quotationsConverted = document.getElementById('quotationsConverted');
-    
-    if (quotationsDraft) quotationsDraft.innerHTML = `📝 ${quotationsData.draft}`;
-    if (quotationsRevised) quotationsRevised.innerHTML = `🔄 ${quotationsData.revised}`;
-    if (quotationsConverted) quotationsConverted.innerHTML = `✅ ${quotationsData.converted}`;
-    
-    // Update purchase orders
-    const poData = data.purchaseOrders || { total: 0, value: 0 };
-    const poTotal = document.getElementById('poTotal');
-    const poValue = document.getElementById('poValue');
-    const poAverage = document.getElementById('poAverage');
-    
-    if (poTotal) poTotal.innerHTML = `📦 ${poData.total}`;
-    if (poValue) poValue.innerHTML = `💰 ₹${(poData.value || 0).toLocaleString()}`;
-    if (poAverage) poAverage.innerHTML = `📊 ₹${poData.total > 0 ? Math.round(poData.value / poData.total).toLocaleString() : 0}`;
-    
-    // Update invoices
-    const invoiceData = data.invoices || { paid: 0, unpaid: 0, overdue: 0 };
-    const invoicesPaid = document.getElementById('invoicesPaid');
-    const invoicesUnpaid = document.getElementById('invoicesUnpaid');
-    const invoicesOverdue = document.getElementById('invoicesOverdue');
-    
-    if (invoicesPaid) invoicesPaid.innerHTML = `✅ ₹${(invoiceData.paid || 0).toLocaleString()}`;
-    if (invoicesUnpaid) invoicesUnpaid.innerHTML = `⏳ ₹${(invoiceData.unpaid || 0).toLocaleString()}`;
-    if (invoicesOverdue) invoicesOverdue.innerHTML = `🚨 ₹${(invoiceData.overdue || 0).toLocaleString()}`;
-    
-    // Update outstanding amount
-    const outstanding = invoiceData.unpaid + invoiceData.overdue;
-    const outstandingAmount = document.getElementById('outstandingAmount');
-    const totalInvoices = document.getElementById('totalInvoices');
-    
-    if (outstandingAmount) outstandingAmount.textContent = `₹${outstanding.toLocaleString()}`;
-    if (totalInvoices) totalInvoices.textContent = invoiceData.paid + invoiceData.unpaid + invoiceData.overdue;
-    
-    // Show outstanding alert if needed
-    if (outstanding > 0) {
-        const alert = document.getElementById('outstandingAlert');
-        if (alert) {
-            alert.style.display = 'block';
-            alert.innerHTML = `<strong>Alert:</strong> ₹${outstanding.toLocaleString()} in outstanding invoices requires attention`;
-        }
-    }
-}
-
-async function updateCharts() {
-    try {
-        const response = await fetch('/ergon/finance/stats');
+        const response = await fetch('/ergon/finance/dashboard-stats');
         const data = await response.json();
         
         updateKPICards(data);
+        updateConversionFunnel(data);
+        updateCharts(data);
+        loadOutstandingInvoices();
+        loadRecentQuotations();
+        updateCashFlow(data);
         
     } catch (error) {
-        console.error('Failed to update KPI cards:', error);
+        console.error('Failed to load dashboard data:', error);
     }
 }
 
 function updateKPICards(data) {
-    // Update quotations KPI
-    const quotationsData = data.quotations || {};
-    const quotationTotal = quotationsData.draft + quotationsData.revised + quotationsData.converted;
-    document.getElementById('quotationTotal').textContent = quotationTotal || 0;
-    document.getElementById('quotationValue').textContent = '₹' + (quotationsData.value || 0).toLocaleString();
-    document.getElementById('quotationRate').textContent = (quotationsData.conversionRate || 0) + '%';
+    // Total Invoice Amount
+    document.getElementById('totalInvoiceAmount').textContent = `₹${(data.totalInvoiceAmount || 0).toLocaleString()}`;
     
-    // Update purchase orders KPI
-    const poData = data.purchaseOrders || {};
-    document.getElementById('poCount').textContent = poData.total || 0;
-    document.getElementById('poAmount').textContent = '₹' + (poData.value || 0).toLocaleString();
-    document.getElementById('poAvg').textContent = '₹' + (poData.average || 0).toLocaleString();
+    // Invoice Amount Received
+    document.getElementById('invoiceReceived').textContent = `₹${(data.invoiceReceived || 0).toLocaleString()}`;
     
-    // Update invoices KPI
-    const invoiceData = data.invoices || {};
-    document.getElementById('invoicePaid').textContent = '₹' + (invoiceData.paid || 0).toLocaleString();
-    document.getElementById('invoicePending').textContent = '₹' + (invoiceData.unpaid || 0).toLocaleString();
-    document.getElementById('invoiceOverdue').textContent = '₹' + (invoiceData.overdue || 0).toLocaleString();
+    // Pending Invoice Amount
+    document.getElementById('pendingInvoiceAmount').textContent = `₹${(data.pendingInvoiceAmount || 0).toLocaleString()}`;
     
-    // Update payments KPI
-    const paymentData = data.payments || {};
-    document.getElementById('paymentReceived').textContent = '₹' + (paymentData.received || 0).toLocaleString();
-    document.getElementById('paymentPending').textContent = '₹' + (paymentData.pending || 0).toLocaleString();
-    document.getElementById('paymentRate').textContent = (paymentData.successRate || 0) + '%';
+    // Pending GST Amount
+    document.getElementById('pendingGSTAmount').textContent = `₹${(data.pendingGSTAmount || 0).toLocaleString()}`;
+    
+    // Pending PO Value
+    document.getElementById('pendingPOValue').textContent = `₹${(data.pendingPOValue || 0).toLocaleString()}`;
+    
+    // Claimable Amount
+    document.getElementById('claimableAmount').textContent = `₹${(data.claimableAmount || 0).toLocaleString()}`;
+}
+
+function updateConversionFunnel(data) {
+    const funnel = data.conversionFunnel || {};
+    
+    document.getElementById('funnelQuotations').textContent = funnel.quotations || 0;
+    document.getElementById('funnelQuotationValue').textContent = `₹${(funnel.quotationValue || 0).toLocaleString()}`;
+    
+    document.getElementById('funnelPOs').textContent = funnel.purchaseOrders || 0;
+    document.getElementById('funnelPOValue').textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
+    document.getElementById('quotationToPO').textContent = `${funnel.quotationToPO || 0}%`;
+    
+    document.getElementById('funnelInvoices').textContent = funnel.invoices || 0;
+    document.getElementById('funnelInvoiceValue').textContent = `₹${(funnel.invoiceValue || 0).toLocaleString()}`;
+    document.getElementById('poToInvoice').textContent = `${funnel.poToInvoice || 0}%`;
+    
+    document.getElementById('funnelPayments').textContent = funnel.payments || 0;
+    document.getElementById('funnelPaymentValue').textContent = `₹${(funnel.paymentValue || 0).toLocaleString()}`;
+    document.getElementById('invoiceToPayment').textContent = `${funnel.invoiceToPayment || 0}%`;
+}
+
+function updateCharts(data) {
+    // Update Quotations Chart
+    if (quotationsChart && data.quotationsChart) {
+        quotationsChart.data.labels = data.quotationsChart.labels;
+        quotationsChart.data.datasets[0].data = data.quotationsChart.data;
+        quotationsChart.update();
+        
+        document.getElementById('quotationsDraft').textContent = data.quotationsChart.draft || 0;
+        document.getElementById('quotationsRevised').textContent = data.quotationsChart.revised || 0;
+    }
+    
+    // Update Purchase Orders Chart
+    if (purchaseOrdersChart && data.purchaseOrdersChart) {
+        purchaseOrdersChart.data.labels = data.purchaseOrdersChart.labels;
+        purchaseOrdersChart.data.datasets[0].data = data.purchaseOrdersChart.data;
+        purchaseOrdersChart.update();
+        
+        document.getElementById('largestPO').textContent = `₹${(data.purchaseOrdersChart.largest || 0).toLocaleString()}`;
+    }
+    
+    // Update Invoices Chart
+    if (invoicesChart && data.invoicesChart) {
+        invoicesChart.data.datasets[0].data = data.invoicesChart.data;
+        invoicesChart.update();
+        
+        // Show overdue alert
+        if (data.invoicesChart.overdueCount > 0) {
+            document.getElementById('overdueAlert').style.display = 'block';
+            document.getElementById('overdueCount').textContent = data.invoicesChart.overdueCount;
+        }
+    }
+}
+
+async function loadOutstandingInvoices() {
+    try {
+        const response = await fetch('/ergon/finance/outstanding-invoices');
+        const data = await response.json();
+        
+        const tbody = document.querySelector('#outstandingTable tbody');
+        if (data.invoices && data.invoices.length > 0) {
+            tbody.innerHTML = data.invoices.map(invoice => `
+                <tr class="${invoice.daysOverdue > 0 ? 'table-row--danger' : ''}">
+                    <td>${invoice.invoice_number}</td>
+                    <td>${invoice.customer_name}</td>
+                    <td>${invoice.due_date}</td>
+                    <td>₹${invoice.outstanding_amount.toLocaleString()}</td>
+                    <td>${invoice.daysOverdue > 0 ? invoice.daysOverdue : '-'}</td>
+                    <td><span class="badge ${invoice.daysOverdue > 0 ? 'badge--danger' : 'badge--warning'}">${invoice.status}</span></td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No outstanding invoices</td></tr>';
+        }
+    } catch (error) {
+        console.error('Failed to load outstanding invoices:', error);
+    }
+}
+
+async function loadRecentQuotations() {
+    try {
+        const response = await fetch('/ergon/finance/recent-quotations');
+        const data = await response.json();
+        
+        const container = document.getElementById('recentQuotations');
+        if (data.quotations && data.quotations.length > 0) {
+            container.innerHTML = data.quotations.map(quote => `
+                <div class="form-group">
+                    <div class="form-label">${quote.quotation_number}</div>
+                    <p>₹${quote.total_amount.toLocaleString()} - ${quote.customer_name}</p>
+                    <small>Expires: ${quote.valid_until}</small>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<div class="form-group"><div class="form-label">No recent quotations</div></div>';
+        }
+    } catch (error) {
+        console.error('Failed to load recent quotations:', error);
+    }
+}
+
+function updateCashFlow(data) {
+    const cashFlow = data.cashFlow || {};
+    
+    document.getElementById('expectedInflow').textContent = `₹${(cashFlow.expectedInflow || 0).toLocaleString()}`;
+    document.getElementById('poCommitments').textContent = `₹${(cashFlow.poCommitments || 0).toLocaleString()}`;
+    
+    const netFlow = (cashFlow.expectedInflow || 0) - (cashFlow.poCommitments || 0);
+    const netElement = document.getElementById('netCashFlow');
+    netElement.textContent = `₹${netFlow.toLocaleString()}`;
+    netElement.className = `flow-value ${netFlow >= 0 ? 'flow-positive' : 'flow-negative'}`;
 }
 
 function exportChart(type) {
@@ -996,99 +832,23 @@ function showError(message) {
         </div>`;
 }
 
-async function loadDetailedLists() {
-    try {
-        // Load quotations
-        const quotationsResponse = await fetch('/ergon/finance/data?table=finance_quotations&limit=10');
-        const quotationsData = await quotationsResponse.json();
-        if (quotationsData.data) {
-            renderModuleList('quotations', quotationsData.data);
-        }
-        
-        // Load purchase orders
-        const poResponse = await fetch('/ergon/finance/data?table=finance_purchase_orders&limit=10');
-        const poData = await poResponse.json();
-        if (poData.data) {
-            renderModuleList('purchaseOrders', poData.data);
-        }
-        
-        // Load invoices
-        const invoicesResponse = await fetch('/ergon/finance/data?table=finance_invoices&limit=10');
-        const invoicesData = await invoicesResponse.json();
-        if (invoicesData.data) {
-            renderModuleList('invoices', invoicesData.data);
-        }
-        
-    } catch (error) {
-        console.error('Failed to load detailed lists:', error);
-    }
+function exportChart(type) {
+    window.open(`/ergon/finance/export?type=${type}`, '_blank');
 }
 
-function renderModuleList(module, data) {
-    let containerId = `${module}List`;
-    if (module === 'purchaseOrders') containerId = 'purchaseOrdersList';
-    
-    const container = document.getElementById(containerId);
-    if (!container || !data || data.length === 0) return;
-    
-    let html = '';
-    
-    data.slice(0, 5).forEach(item => {
-        if (module === 'quotations') {
-            html += `
-                <div class="list-item">
-                    <div class="list-header">
-                        <div class="list-title">${item.quotation_number || 'N/A'}</div>
-                        <div class="list-amount">₹${(item.total_amount || 0).toLocaleString()}</div>
-                    </div>
-                    <div class="list-details">
-                        <div class="list-customer">${item.customer_name || 'Unknown'}</div>
-                        <div class="list-status">${item.status || 'Draft'}</div>
-                    </div>
-                    <div class="list-meta">
-                        <span>Date: ${item.quotation_date || 'N/A'}</span>
-                        <span>Valid: ${item.valid_until || 'N/A'}</span>
-                    </div>
-                </div>`;
-        } else if (module === 'purchaseOrders') {
-            html += `
-                <div class="list-item">
-                    <div class="list-header">
-                        <div class="list-title">${item.po_number || 'N/A'}</div>
-                        <div class="list-amount">₹${(item.total_amount || 0).toLocaleString()}</div>
-                    </div>
-                    <div class="list-details">
-                        <div class="list-customer">${item.vendor_name || 'Unknown'}</div>
-                        <div class="list-status">${item.status || 'Pending'}</div>
-                    </div>
-                    <div class="list-meta">
-                        <span>Date: ${item.po_date || 'N/A'}</span>
-                        <span>Delivery: ${item.delivery_date || 'N/A'}</span>
-                    </div>
-                </div>`;
-        } else if (module === 'invoices') {
-            const isOverdue = item.status === 'Overdue' || item.payment_status === 'Overdue';
-            html += `
-                <div class="list-item ${isOverdue ? 'list-item--warning' : ''}">
-                    <div class="list-header">
-                        <div class="list-title">${item.invoice_number || 'N/A'}</div>
-                        <div class="list-amount">₹${(item.total_amount || 0).toLocaleString()}</div>
-                    </div>
-                    <div class="list-details">
-                        <div class="list-customer">${item.customer_name || 'Unknown'}</div>
-                        <div class="list-status">${item.payment_status || 'Pending'}</div>
-                    </div>
-                    <div class="list-meta">
-                        <span>Date: ${item.invoice_date || 'N/A'}</span>
-                        <span>Due: ${item.due_date || 'N/A'}</span>
-                    </div>
-                    ${isOverdue ? '<div class="list-outstanding">⚠️ Payment Overdue</div>' : ''}
-                </div>`;
-        }
-    });
-    
-    if (html) {
-        container.innerHTML = html;
+function exportTable(type) {
+    window.open(`/ergon/finance/export-table?type=${type}`, '_blank');
+}
+
+function exportDashboard() {
+    window.open('/ergon/finance/export-dashboard', '_blank');
+}
+
+function filterByDate() {
+    const days = document.getElementById('dateFilter').value;
+    if (days !== 'all') {
+        // Reload dashboard with date filter
+        loadDashboardData();
     }
 }
 </script>
@@ -1204,181 +964,176 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     color: white;
 }
 
-/* KPI Stat Cards */
-.kpi-stat-card {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 1.5rem;
+/* Conversion Funnel */
+.funnel-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.funnel-stage {
+    text-align: center;
+    flex: 1;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
     transition: all 0.3s ease;
 }
 
-.kpi-stat-card:hover {
-    box-shadow: var(--shadow-md);
+.funnel-stage:hover {
+    background: var(--primary-light);
     transform: translateY(-2px);
 }
 
-.kpi-stat-card__header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.kpi-stat-card__icon {
+.funnel-number {
     font-size: 1.5rem;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-}
-
-.kpi-stat-card__title {
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-}
-
-.kpi-stat-card__metrics {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-}
-
-.metric {
-    text-align: center;
-}
-
-.metric__value {
-    font-size: 1.1rem;
     font-weight: 700;
     color: var(--primary);
     margin-bottom: 0.25rem;
 }
 
-.metric__label {
-    font-size: 0.75rem;
+.funnel-label {
+    font-size: 0.8rem;
     color: var(--text-secondary);
+    margin-bottom: 0.5rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
-.kpi-stat-card__chart {
-    height: 60px;
-    margin-bottom: 1rem;
+.funnel-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.funnel-conversion {
+    font-size: 0.75rem;
+    color: var(--success);
+    font-weight: 600;
+}
+
+.funnel-arrow {
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    margin: 0 0.5rem;
+}
+
+/* Chart Summary */
+.chart-summary {
     display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Mini Bar Chart */
-.mini-chart {
-    display: flex;
-    align-items: end;
-    gap: 4px;
-    height: 40px;
-    width: 100%;
-    max-width: 120px;
-}
-
-.chart-bar {
-    flex: 1;
-    background: linear-gradient(to top, var(--primary), var(--primary-light));
-    border-radius: 2px;
-    min-height: 8px;
-    transition: all 0.3s ease;
-}
-
-.chart-bar:hover {
-    background: var(--primary-dark);
-}
-
-/* Progress Ring */
-.progress-ring {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: conic-gradient(
-        #28a745 0% var(--paid-percentage, 60%),
-        #ffc107 var(--paid-percentage, 60%) calc(var(--paid-percentage, 60%) + var(--pending-percentage, 25%)),
-        #dc3545 calc(var(--paid-percentage, 60%) + var(--pending-percentage, 25%)) 100%
-    );
-    position: relative;
-}
-
-.progress-ring::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 30px;
-    height: 30px;
-    background: var(--bg-primary);
-    border-radius: 50%;
-}
-
-/* Wave Chart */
-.wave-chart {
-    width: 100%;
-    height: 40px;
-    position: relative;
-}
-
-.wave-line {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-    height: 100%;
-    position: relative;
-}
-
-.wave-point {
-    width: 8px;
-    height: 8px;
-    background: var(--primary);
-    border-radius: 50%;
-    position: absolute;
-    transition: all 0.3s ease;
-}
-
-.wave-point:nth-child(1) { left: 0%; }
-.wave-point:nth-child(2) { left: 25%; }
-.wave-point:nth-child(3) { left: 50%; }
-.wave-point:nth-child(4) { left: 75%; }
-.wave-point:nth-child(5) { left: 100%; }
-
-.kpi-stat-card__trend {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding-top: 0.75rem;
+    justify-content: space-around;
+    margin-top: 1rem;
+    padding-top: 1rem;
     border-top: 1px solid var(--border-color);
 }
 
-.trend-indicator {
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
+.summary-item {
+    text-align: center;
 }
 
-.trend-up {
-    background: rgba(34, 197, 94, 0.1);
-    color: #22c55e;
-}
-
-.trend-down {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-}
-
-.trend-label {
+.summary-label {
     font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-right: 0.5rem;
+}
+
+.summary-value {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+/* Highlight Card */
+.highlight-card {
+    background: var(--bg-secondary);
+    padding: 0.75rem;
+    border-radius: 6px;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.highlight-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.highlight-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+/* Cash Flow */
+.cash-flow-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.flow-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.flow-item:last-child {
+    border-bottom: none;
+    font-weight: 600;
+}
+
+.flow-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.flow-value {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.flow-positive {
+    color: var(--success);
+}
+
+.flow-negative {
+    color: var(--error);
+}
+
+/* Table Enhancements */
+.table-row--danger {
+    background: rgba(220, 38, 38, 0.05);
+}
+
+.table-row--danger:hover {
+    background: rgba(220, 38, 38, 0.1);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 2rem;
     color: var(--text-muted);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+/* Full Width Card */
+.card--full-width {
+    grid-column: 1 / -1;
 }
 
 /* Data View Styles */
@@ -1455,36 +1210,31 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 }
 
 @media (max-width: 768px) {
-    .list-details {
+    .funnel-container {
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 0.5rem;
     }
     
-    .list-meta {
+    .funnel-arrow {
+        transform: rotate(90deg);
+        margin: 0.5rem 0;
+    }
+    
+    .chart-summary {
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 0.5rem;
     }
     
-    .grid-container {
-        grid-template-columns: 1fr;
-    }
-    
-    .view-toggle {
-        margin-bottom: 0.5rem;
-    }
-    
-    .kpi-stat-card__metrics {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-    
-    .metric {
+    .summary-item {
         display: flex;
         justify-content: space-between;
-        align-items: center;
     }
     
-    .kpi-stat-card__trend {
+    .cash-flow-summary {
+        gap: 0.5rem;
+    }
+    
+    .flow-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.25rem;
