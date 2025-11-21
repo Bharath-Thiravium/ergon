@@ -542,6 +542,8 @@ class FinanceController extends Controller {
             
             try {
                 $db = Database::connect();
+                $this->createTables($db);
+                
                 $stmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('company_prefix', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
                 $stmt->execute([$prefix, $prefix]);
                 
@@ -552,6 +554,8 @@ class FinanceController extends Controller {
         } else {
             try {
                 $db = Database::connect();
+                $this->createTables($db);
+                
                 $stmt = $db->prepare("SELECT setting_value FROM settings WHERE setting_key = 'company_prefix'");
                 $stmt->execute();
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -613,6 +617,13 @@ class FinanceController extends Controller {
             data JSON,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX(table_name)
+        )");
+        
+        $db->exec("CREATE TABLE IF NOT EXISTS settings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            setting_key VARCHAR(100) UNIQUE,
+            setting_value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )");
     }
     
