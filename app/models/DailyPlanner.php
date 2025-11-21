@@ -16,6 +16,7 @@ class DailyPlanner {
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     user_id INT NOT NULL,
                     task_id INT NULL,
+                    original_task_id INT NULL,
                     title VARCHAR(255) NOT NULL,
                     description TEXT,
                     scheduled_date DATE NOT NULL,
@@ -32,15 +33,21 @@ class DailyPlanner {
                     active_seconds INT DEFAULT 0,
                     pause_duration INT DEFAULT 0,
                     postponed_from_date DATE NULL,
+                    postponed_to_date DATE NULL,
+                    source_field VARCHAR(50) NULL,
+                    rollover_source_date DATE NULL,
+                    rollover_timestamp TIMESTAMP NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_user_date (user_id, scheduled_date),
                     INDEX idx_task_id (task_id),
-                    INDEX idx_status (status)
+                    INDEX idx_original_task_id (original_task_id),
+                    INDEX idx_status (status),
+                    INDEX idx_rollover_source (rollover_source_date),
+                    UNIQUE KEY unique_task_date (user_id, original_task_id, scheduled_date)
                 )
             ");
             
-            // Add pause_duration column if missing
             $this->addMissingColumns();
         } catch (Exception $e) {
             error_log('ensureDailyTasksTable error: ' . $e->getMessage());
@@ -49,18 +56,30 @@ class DailyPlanner {
     
     private function addMissingColumns() {
         try {
-            // Add pause_duration column if missing
-            $stmt = $this->db->prepare("SHOW COLUMNS FROM daily_tasks LIKE 'pause_duration'");
-            $stmt->execute();
-            if (!$stmt->fetch()) {
-                $this->db->exec("ALTER TABLE daily_tasks ADD COLUMN pause_duration INT DEFAULT 0 AFTER active_seconds");
+            $columns = [
+                'pause_duration' => "ALTER TABLE daily_tasks ADD COLUMN pause_duration INT DEFAULT 0 AFTER active_seconds",
+                'postponed_to_date' => "ALTER TABLE daily_tasks ADD COLUMN postponed_to_date DATE NULL AFTER postponed_from_date",
+                'original_task_id' => "ALTER TABLE daily_tasks ADD COLUMN original_task_id INT NULL AFTER task_id",
+                'source_field' => "ALTER TABLE daily_tasks ADD COLUMN source_field VARCHAR(50) NULL AFTER postponed_to_date",
+                'rollover_source_date' => "ALTER TABLE daily_tasks ADD COLUMN rollover_source_date DATE NULL AFTER source_field",
+                'rollover_timestamp' => "ALTER TABLE daily_tasks ADD COLUMN rollover_timestamp TIMESTAMP NULL AFTER rollover_source_date"
+            ];
+            
+            foreach ($columns as $column => $sql) {
+                $stmt = $this->db->prepare("SHOW COLUMNS FROM daily_tasks LIKE '{$column}'");
+                $stmt->execute();
+                if (!$stmt->fetch()) {
+                    $this->db->exec($sql);
+                }
             }
             
-            // Add postponed_to_date column if missing
-            $stmt = $this->db->prepare("SHOW COLUMNS FROM daily_tasks LIKE 'postponed_to_date'");
-            $stmt->execute();
-            if (!$stmt->fetch()) {
-                $this->db->exec("ALTER TABLE daily_tasks ADD COLUMN postponed_to_date DATE NULL AFTER postponed_from_date");
+            // Add indexes if missing
+            try {
+                $this->db->exec("ALTER TABLE daily_tasks ADD INDEX idx_original_task_id (original_task_id)");
+                $this->db->exec("ALTER TABLE daily_tasks ADD INDEX idx_rollover_source (rollover_source_date)");
+                $this->db->exec("ALTER TABLE daily_tasks ADD UNIQUE KEY unique_task_date (user_id, original_task_id, scheduled_date)");
+            } catch (Exception $e) {
+                // Indexes may already exist, ignore errors
             }
         } catch (Exception $e) {
             error_log('addMissingColumns error: ' . $e->getMessage());
@@ -69,82 +88,170 @@ class DailyPlanner {
     
     public function getTasksForDate($userId, $date) {
         try {
-            // Get tasks from daily_tasks table with proper SLA data and timing info
-            $stmt = $this->db->prepare("
-                SELECT 
-                    dt.id, dt.title, dt.description, dt.priority, dt.status,
-                    dt.completed_percentage, dt.start_time, dt.active_seconds,
-                    dt.planned_duration, dt.task_id, dt.pause_duration,
-                    dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
-                    dt.created_at, dt.scheduled_date,
-                    COALESCE(t.sla_hours, 1) as sla_hours,
-                    CASE 
-                        WHEN dt.status = 'postponed' AND dt.scheduled_date = ? THEN 'postponed_from_today'
-                        WHEN dt.status = 'postponed' AND dt.postponed_to_date = ? THEN 'postponed_to_today'
-                        ELSE 'normal'
-                    END as postpone_context
-                FROM daily_tasks dt
-                LEFT JOIN tasks t ON dt.task_id = t.id
-                WHERE dt.user_id = ? AND (
-                    (dt.scheduled_date = ? AND dt.status != 'postponed') OR
-                    (dt.scheduled_date = ? AND dt.status = 'postponed') OR
-                    (dt.postponed_to_date = ? AND dt.status = 'postponed')
-                )
-                ORDER BY 
-                    CASE dt.status 
-                        WHEN 'in_progress' THEN 1 
-                        WHEN 'on_break' THEN 2 
-                        WHEN 'not_started' THEN 3
-                        WHEN 'postponed' THEN 5
-                        ELSE 4 
-                    END, 
-                    CASE dt.priority 
-                        WHEN 'high' THEN 1 
-                        WHEN 'medium' THEN 2 
-                        WHEN 'low' THEN 3 
-                        ELSE 4 
-                    END
-            ");
-            $stmt->execute([$date, $date, $userId, $date, $date, $date]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $isCurrentDate = ($date === date('Y-m-d'));
+            
+            // Step 1: Fetch assigned/planned tasks for the concern date
+            $this->fetchAssignedTasksForDate($userId, $date);
+            
+            // Step 2: Auto-rollover only for current date
+            if ($isCurrentDate) {
+                $this->rolloverUncompletedTasks();
+            }
+            
+            // Step 3: Get tasks with audit trail and visual indicators
+            if ($isCurrentDate) {
+                // Current date: show all tasks including rollovers
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        dt.id, dt.title, dt.description, dt.priority, dt.status,
+                        dt.completed_percentage, dt.start_time, dt.active_seconds,
+                        dt.planned_duration, dt.task_id, dt.original_task_id, dt.pause_duration,
+                        dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
+                        dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
+                        COALESCE(t.sla_hours, 1) as sla_hours,
+                        CASE 
+                            WHEN dt.rollover_source_date IS NOT NULL THEN CONCAT('🔄 Rolled over from: ', dt.rollover_source_date)
+                            WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
+                            WHEN t.assigned_by != t.assigned_to THEN '👥 From Others'
+                            ELSE '👤 Self-Assigned'
+                        END as task_indicator
+                    FROM daily_tasks dt
+                    LEFT JOIN tasks t ON dt.original_task_id = t.id
+                    WHERE dt.user_id = ? AND dt.scheduled_date = ?
+                    ORDER BY 
+                        CASE dt.status 
+                            WHEN 'in_progress' THEN 1 
+                            WHEN 'on_break' THEN 2 
+                            WHEN 'not_started' THEN 3
+                            WHEN 'postponed' THEN 5
+                            ELSE 4 
+                        END, 
+                        CASE dt.priority 
+                            WHEN 'high' THEN 1 
+                            WHEN 'medium' THEN 2 
+                            WHEN 'low' THEN 3 
+                            ELSE 4 
+                        END
+                ");
+                $stmt->execute([$userId, $date]);
+            } else {
+                // Past date: show all tasks that were scheduled for that date
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        dt.id, dt.title, dt.description, dt.priority, dt.status,
+                        dt.completed_percentage, dt.start_time, dt.active_seconds,
+                        dt.planned_duration, dt.task_id, dt.original_task_id, dt.pause_duration,
+                        dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
+                        dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
+                        COALESCE(t.sla_hours, 1) as sla_hours,
+                        CASE 
+                            WHEN dt.rollover_source_date IS NOT NULL THEN CONCAT('🔄 Rolled over from: ', dt.rollover_source_date)
+                            WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
+                            ELSE '📜 Historical View'
+                        END as task_indicator
+                    FROM daily_tasks dt
+                    LEFT JOIN tasks t ON dt.original_task_id = t.id
+                    WHERE dt.user_id = ? AND dt.scheduled_date = ?
+                    ORDER BY 
+                        CASE dt.status 
+                            WHEN 'completed' THEN 1
+                            WHEN 'in_progress' THEN 2 
+                            WHEN 'not_started' THEN 3
+                            ELSE 4 
+                        END, 
+                        CASE dt.priority 
+                            WHEN 'high' THEN 1 
+                            WHEN 'medium' THEN 2 
+                            WHEN 'low' THEN 3 
+                            ELSE 4 
+                        END
+                ");
+                $stmt->execute([$userId, $date]);
+            }
+            
+            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Log view access for audit trail
+            $this->logViewAccess($userId, $date, count($tasks));
+            
+            return $tasks;
         } catch (Exception $e) {
             error_log("DailyPlanner getTasksForDate error: " . $e->getMessage());
             return [];
         }
     }
     
-    private function getRelevantTasksForDate($userId, $date) {
+    public function fetchAssignedTasksForDate($userId, $date) {
         try {
+            // Query tasks table for the concern date with multiple criteria
             $stmt = $this->db->prepare("
                 SELECT 
                     t.id, t.title, t.description, t.priority, t.status,
-                    t.deadline, t.estimated_duration, t.sla_hours,
-                    'not_started' as completion_status, 0 as active_seconds,
-                    0 as completed_percentage, NULL as start_time,
-                    NULL as planned_start_time, NULL as planned_duration
+                    t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
+                    CASE 
+                        WHEN DATE(t.planned_date) = ? THEN 'planned_date'
+                        WHEN DATE(t.deadline) = ? THEN 'deadline'
+                        WHEN DATE(t.created_at) = ? THEN 'created_at'
+                        WHEN DATE(t.updated_at) = ? THEN 'updated_at'
+                        ELSE 'other'
+                    END as source_field
                 FROM tasks t
-                WHERE t.assigned_to = ? 
+                WHERE (t.assigned_to = ? OR t.assigned_by = ?) 
                 AND (
-                    DATE(t.deadline) = ? 
-                    OR (DATE(t.created_at) = ? AND t.status IN ('assigned', 'in_progress'))
-                    OR (t.status = 'in_progress' AND DATE(t.updated_at) <= ?)
+                    DATE(t.planned_date) = ? OR
+                    DATE(t.deadline) = ? OR
+                    DATE(t.created_at) = ? OR
+                    DATE(t.updated_at) = ?
                 )
                 AND t.status != 'completed'
-                ORDER BY 
-                    CASE t.priority 
-                        WHEN 'high' THEN 3 
-                        WHEN 'medium' THEN 2 
-                        WHEN 'low' THEN 1 
-                        ELSE 0 
-                    END DESC, 
-                    t.created_at DESC
-                LIMIT 15
             ");
-            $stmt->execute([$userId, $date, $date, $date]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt->execute([$date, $date, $date, $date, $userId, $userId, $date, $date, $date, $date]);
+            $relevantTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($relevantTasks as $task) {
+                // Check if task already exists in daily_tasks for this date
+                $checkStmt = $this->db->prepare("
+                    SELECT COUNT(*) FROM daily_tasks 
+                    WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ?
+                ");
+                $checkStmt->execute([$userId, $task['id'], $date]);
+                
+                if ($checkStmt->fetchColumn() == 0) {
+                    // Insert into daily_tasks with audit trail
+                    $insertStmt = $this->db->prepare("
+                        INSERT INTO daily_tasks 
+                        (user_id, task_id, original_task_id, title, description, scheduled_date, 
+                         priority, status, planned_duration, source_field, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, NOW())
+                    ");
+                    $insertStmt->execute([
+                        $userId,
+                        $task['id'],
+                        $task['id'],
+                        $task['title'],
+                        $task['description'],
+                        $date,
+                        $task['priority'],
+                        $task['estimated_duration'] ?: 60,
+                        $task['source_field']
+                    ]);
+                    
+                    // Log audit trail
+                    $this->logTaskHistory(
+                        $this->db->lastInsertId(), 
+                        $userId, 
+                        'fetched', 
+                        null, 
+                        $task['source_field'], 
+                        "📌 Source: {$task['source_field']} on {$date}"
+                    );
+                }
+            }
+            
+            return count($relevantTasks);
         } catch (Exception $e) {
-            error_log("DailyPlanner getRelevantTasksForDate error: " . $e->getMessage());
-            return [];
+            error_log("fetchAssignedTasksForDate error: " . $e->getMessage());
+            return 0;
         }
     }
     
@@ -686,6 +793,8 @@ class DailyPlanner {
             'cancelled' => 'Task Cancelled',
             'updated' => 'Task Updated',
             'commented' => 'Comment Added',
+            'rolled_over' => 'Rolled Over',
+            'postponed' => 'Postponed',
             default => ucfirst(str_replace('_', ' ', $action))
         };
     }
@@ -732,6 +841,134 @@ class DailyPlanner {
             ]);
         } catch (Exception $e) {
             error_log("updateDailyPerformance error: " . $e->getMessage());
+        }
+    }
+    
+    public function rolloverUncompletedTasks($targetDate = null) {
+        try {
+            $yesterday = $targetDate ?: date('Y-m-d', strtotime('-1 day'));
+            $today = date('Y-m-d');
+            
+            // Get uncompleted tasks from yesterday only
+            $stmt = $this->db->prepare("
+                SELECT * FROM daily_tasks 
+                WHERE scheduled_date = ? 
+                AND status IN ('not_started', 'in_progress', 'postponed') 
+                AND completed_percentage < 100
+            ");
+            $stmt->execute([$yesterday]);
+            $uncompletedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $rolledOverCount = 0;
+            
+            foreach ($uncompletedTasks as $task) {
+                // Prevent duplicate rollover entries
+                $stmt = $this->db->prepare("
+                    SELECT COUNT(*) FROM daily_tasks 
+                    WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ?
+                ");
+                $stmt->execute([$task['user_id'], $task['original_task_id'] ?: $task['task_id'], $today]);
+                
+                if ($stmt->fetchColumn() == 0) {
+                    // Create new rollover entry for today
+                    $stmt = $this->db->prepare("
+                        INSERT INTO daily_tasks 
+                        (user_id, task_id, original_task_id, title, description, scheduled_date, 
+                         planned_start_time, planned_duration, priority, status, 
+                         completed_percentage, active_seconds, pause_duration,
+                         rollover_source_date, rollover_timestamp, source_field)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, ?, ?, NOW(), 'rollover')
+                    ");
+                    
+                    $stmt->execute([
+                        $task['user_id'],
+                        $task['task_id'],
+                        $task['original_task_id'] ?: $task['task_id'],
+                        $task['title'],
+                        $task['description'],
+                        $today,
+                        $task['planned_start_time'],
+                        $task['planned_duration'],
+                        $task['priority'],
+                        $task['completed_percentage'],
+                        $task['active_seconds'],
+                        $task['pause_duration']
+                    ]);
+                    
+                    $newTaskId = $this->db->lastInsertId();
+                    
+                    // Log rollover action in task history
+                    $this->logTaskHistory(
+                        $newTaskId, 
+                        $task['user_id'], 
+                        'rolled_over', 
+                        $yesterday, 
+                        $today, 
+                        "🔄 Rolled over from: {$yesterday}"
+                    );
+                    
+                    $rolledOverCount++;
+                }
+            }
+            
+            return $rolledOverCount;
+        } catch (Exception $e) {
+            error_log("rolloverUncompletedTasks error: " . $e->getMessage());
+            return 0;
+        }
+    }
+    
+    private function logViewAccess($userId, $date, $taskCount) {
+        try {
+            $this->ensureAuditTable();
+            $stmt = $this->db->prepare("
+                INSERT INTO daily_planner_audit 
+                (user_id, action, target_date, task_count, timestamp)
+                VALUES (?, 'view_access', ?, ?, NOW())
+            ");
+            $stmt->execute([$userId, $date, $taskCount]);
+        } catch (Exception $e) {
+            error_log("logViewAccess error: " . $e->getMessage());
+        }
+    }
+    
+    private function ensureAuditTable() {
+        try {
+            $this->db->exec("
+                CREATE TABLE IF NOT EXISTS daily_planner_audit (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    action VARCHAR(50) NOT NULL,
+                    target_date DATE NULL,
+                    task_count INT DEFAULT 0,
+                    details TEXT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_user_action (user_id, action),
+                    INDEX idx_date (target_date)
+                )
+            ");
+        } catch (Exception $e) {
+            error_log('ensureAuditTable error: ' . $e->getMessage());
+        }
+    }
+    
+    public static function runDailyRollover() {
+        try {
+            $planner = new DailyPlanner();
+            $count = $planner->rolloverUncompletedTasks();
+            
+            // Log rollover completion
+            $planner->db->prepare("
+                INSERT INTO daily_planner_audit 
+                (user_id, action, task_count, details, timestamp)
+                VALUES (0, 'daily_rollover', ?, 'Automated midnight rollover', NOW())
+            ")->execute([$count]);
+            
+            error_log("Daily rollover completed: {$count} tasks rolled over");
+            return $count;
+        } catch (Exception $e) {
+            error_log("Daily rollover failed: " . $e->getMessage());
+            return 0;
         }
     }
 }

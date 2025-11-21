@@ -401,8 +401,16 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.assigned_to = ? ORDER BY t.created_at DESC");
-            $stmt->execute([$_SESSION['user_id']]);
+            // Get tasks based on user role
+            if (($_SESSION['role'] ?? 'user') === 'user') {
+                // Regular users see only their assigned tasks
+                $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.assigned_to = ? ORDER BY t.created_at DESC");
+                $stmt->execute([$_SESSION['user_id']]);
+            } else {
+                // Admins/owners see all tasks
+                $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id ORDER BY t.created_at DESC");
+                $stmt->execute();
+            }
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Get followups data including postponed/rescheduled
@@ -464,18 +472,31 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            // Get tasks with date fields for visualization
-            $stmt = $db->prepare("
-                SELECT t.*, u.name as assigned_user, d.name as department_name, p.name as project_name
-                FROM tasks t 
-                LEFT JOIN users u ON t.assigned_to = u.id 
-                LEFT JOIN departments d ON t.department_id = d.id
-                LEFT JOIN projects p ON t.project_id = p.id
-                WHERE t.assigned_to = ? 
-                AND (t.deadline IS NOT NULL OR t.created_at >= ?)
-                ORDER BY COALESCE(t.deadline, t.created_at) ASC
-            ");
-            $stmt->execute([$_SESSION['user_id'], date('Y-m-01', mktime(0, 0, 0, $month, 1, $year))]);
+            // Get tasks with date fields for visualization based on user role
+            if (($_SESSION['role'] ?? 'user') === 'user') {
+                $stmt = $db->prepare("
+                    SELECT t.*, u.name as assigned_user, d.name as department_name, p.name as project_name
+                    FROM tasks t 
+                    LEFT JOIN users u ON t.assigned_to = u.id 
+                    LEFT JOIN departments d ON t.department_id = d.id
+                    LEFT JOIN projects p ON t.project_id = p.id
+                    WHERE t.assigned_to = ? 
+                    AND (t.deadline IS NOT NULL OR t.planned_date IS NOT NULL OR t.created_at >= ?)
+                    ORDER BY COALESCE(t.deadline, t.planned_date, t.created_at) ASC
+                ");
+                $stmt->execute([$_SESSION['user_id'], date('Y-m-01', mktime(0, 0, 0, $month, 1, $year))]);
+            } else {
+                $stmt = $db->prepare("
+                    SELECT t.*, u.name as assigned_user, d.name as department_name, p.name as project_name
+                    FROM tasks t 
+                    LEFT JOIN users u ON t.assigned_to = u.id 
+                    LEFT JOIN departments d ON t.department_id = d.id
+                    LEFT JOIN projects p ON t.project_id = p.id
+                    WHERE (t.deadline IS NOT NULL OR t.planned_date IS NOT NULL OR t.created_at >= ?)
+                    ORDER BY COALESCE(t.deadline, t.planned_date, t.created_at) ASC
+                ");
+                $stmt->execute([date('Y-m-01', mktime(0, 0, 0, $month, 1, $year))]);
+            }
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Transform tasks for visualization

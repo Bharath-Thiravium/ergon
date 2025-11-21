@@ -63,78 +63,6 @@ ob_start();
     </div>
 </div>
 
-<?php if (($user_role ?? '') === 'admin' && $admin_attendance): ?>
-<div class="card" style="margin-bottom: 1.5rem;">
-    <div class="card__header">
-        <h2 class="card__title">
-            <span>💼</span> My Attendance (Admin)
-        </h2>
-    </div>
-    <div class="card__body">
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th class="col-title">Employee</th>
-                        <th class="col-assignment">Date & Status</th>
-                        <th class="col-progress">Working Hours</th>
-                        <th class="col-date">Check Times</th>
-                        <th class="col-actions">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <strong><?= htmlspecialchars($admin_attendance['user_name'] ?? 'Unknown') ?></strong>
-                            <br><small class="text-muted">Role: Admin</small>
-                        </td>
-                        <td>
-                            <div class="assignment-info">
-                                <div class="assigned-user"><?= date('M d, Y', strtotime($selected_date ?? 'now')) ?></div>
-                                <div class="priority-badge">
-                                    <?php 
-                                    $statusClass = match($admin_attendance['status'] ?? 'Absent') {
-                                        'Present' => 'success',
-                                        'On Leave' => 'warning',
-                                        'Absent' => 'danger',
-                                        default => 'danger'
-                                    };
-                                    ?>
-                                    <span class="badge badge--<?= $statusClass ?>"><?= $admin_attendance['status'] ?? 'Absent' ?></span>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="progress-container">
-                                <div class="progress-info">
-                                    <span class="progress-percentage"><?= $admin_attendance['working_hours'] ?? '0h 0m' ?></span>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="cell-meta">
-                                <div class="cell-primary">In: <?= $admin_attendance['check_in_time'] ?? '00:00' ?></div>
-                                <div class="cell-secondary">Out: <?= $admin_attendance['check_out_time'] ?? '00:00' ?></div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="ab-container">
-                                <a class="ab-btn ab-btn--view" href="/ergon/attendance/clock" title="Clock In/Out">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                        <circle cx="12" cy="12" r="10"/>
-                                        <polyline points="12,6 12,12 16,14"/>
-                                    </svg>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
-
 <div class="card">
     <div class="card__header">
         <h2 class="card__title">Attendance Records</h2>
@@ -175,22 +103,14 @@ ob_start();
                         <?php foreach ($attendance['admin'] as $record): ?>
                         <tr>
                             <td>
-                                <strong><?= htmlspecialchars($record['user_name'] ?? 'Unknown') ?></strong>
+                                <strong><?= htmlspecialchars($record['name'] ?? 'Unknown') ?></strong>
                                 <br><small class="text-muted">Role: Admin</small>
                             </td>
                             <td>
                                 <div class="assignment-info">
                                     <div class="assigned-user"><?= date('M d, Y') ?></div>
                                     <div class="priority-badge">
-                                        <?php 
-                                        $statusClass = match($record['status'] ?? 'Absent') {
-                                            'Present' => 'success',
-                                            'On Leave' => 'warning',
-                                            'Absent' => 'danger',
-                                            default => 'danger'
-                                        };
-                                        ?>
-                                        <span class="badge badge--<?= $statusClass ?>"><?= $record['status'] ?? 'Absent' ?></span>
+                                        <span class="badge badge--<?= $record['status'] === 'Present' ? 'success' : 'danger' ?>"><?= $record['status'] ?? 'Absent' ?></span>
                                     </div>
                                 </div>
                             </td>
@@ -210,22 +130,20 @@ ob_start();
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
                             <td>
                                 <div class="ab-container">
-                                    <a class="ab-btn ab-btn--view" data-action="view" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="View Details">
+                                    <button class="ab-btn ab-btn--view" onclick="viewAttendanceDetails(<?= $record['attendance_id'] ?? 0 ?>)" title="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                            <polyline points="14,2 14,8 20,8"/>
-                                            <line x1="16" y1="13" x2="8" y2="13"/>
-                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
                                         </svg>
-                                    </a>
-                                    <?php if ($user_role === 'owner'): ?>
-                                    <a class="ab-btn ab-btn--edit" href="/ergon/attendance/edit?id=<?= $record['attendance_id'] ?? 0 ?>&user_id=<?= $record['user_id'] ?>" title="Edit Record">
+                                    </button>
+                                    <button class="ab-btn ab-btn--edit" onclick="editAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, <?= $record['user_id'] ?>)" title="Edit Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                             <path d="M15 5l4 4"/>
                                         </svg>
-                                    </a>
-                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" data-name="<?= htmlspecialchars($record['user_name'] ?? 'Record', ENT_QUOTES) ?>" title="Delete Record">
+                                    </button>
+                                    <?php if ($user_role === 'owner'): ?>
+                                    <button class="ab-btn ab-btn--delete" onclick="deleteAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, '<?= htmlspecialchars($record['name'] ?? 'Record', ENT_QUOTES) ?>')" title="Delete Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M3 6h18"/>
                                             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -252,22 +170,14 @@ ob_start();
                         <?php foreach ($attendance['user'] as $record): ?>
                         <tr>
                             <td>
-                                <strong><?= htmlspecialchars($record['user_name'] ?? 'Unknown') ?></strong>
+                                <strong><?= htmlspecialchars($record['name'] ?? 'Unknown') ?></strong>
                                 <br><small class="text-muted">Role: Employee</small>
                             </td>
                             <td>
                                 <div class="assignment-info">
                                     <div class="assigned-user"><?= date('M d, Y') ?></div>
                                     <div class="priority-badge">
-                                        <?php 
-                                        $statusClass = match($record['status'] ?? 'Absent') {
-                                            'Present' => 'success',
-                                            'On Leave' => 'warning',
-                                            'Absent' => 'danger',
-                                            default => 'danger'
-                                        };
-                                        ?>
-                                        <span class="badge badge--<?= $statusClass ?>"><?= $record['status'] ?? 'Absent' ?></span>
+                                        <span class="badge badge--<?= $record['status'] === 'Present' ? 'success' : 'danger' ?>"><?= $record['status'] ?? 'Absent' ?></span>
                                     </div>
                                 </div>
                             </td>
@@ -287,21 +197,35 @@ ob_start();
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
                             <td>
                                 <div class="ab-container">
-                                    <a class="ab-btn ab-btn--view" data-action="view" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="View Details">
+                                    <button class="ab-btn ab-btn--view" onclick="viewAttendanceDetails(<?= $record['attendance_id'] ?? 0 ?>)" title="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                            <polyline points="14,2 14,8 20,8"/>
-                                            <line x1="16" y1="13" x2="8" y2="13"/>
-                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
                                         </svg>
-                                    </a>
-                                    <a class="ab-btn ab-btn--edit" href="/ergon/attendance/edit?id=<?= $record['attendance_id'] ?? 0 ?>&user_id=<?= $record['user_id'] ?>" title="Edit Record">
+                                    </button>
+                                    <?php if (empty($record['check_in'])): ?>
+                                    <button class="ab-btn ab-btn--success" onclick="clockInUser(<?= $record['user_id'] ?>)" title="Clock In User">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <polyline points="12,6 12,12 16,14"/>
+                                        </svg>
+                                    </button>
+                                    <?php elseif (empty($record['check_out'])): ?>
+                                    <button class="ab-btn ab-btn--warning" onclick="clockOutUser(<?= $record['user_id'] ?>)" title="Clock Out User">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <path d="M16 12l-4-4-4 4"/>
+                                        </svg>
+                                    </button>
+                                    <?php endif; ?>
+                                    <button class="ab-btn ab-btn--edit" onclick="editAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, <?= $record['user_id'] ?>)" title="Edit Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                             <path d="M15 5l4 4"/>
                                         </svg>
-                                    </a>
-                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" data-name="<?= htmlspecialchars($record['user_name'] ?? 'Record', ENT_QUOTES) ?>" title="Delete Record">
+                                    </button>
+                                    <?php if ($user_role === 'owner'): ?>
+                                    <button class="ab-btn ab-btn--delete" onclick="deleteAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, '<?= htmlspecialchars($record['name'] ?? 'Record', ENT_QUOTES) ?>')" title="Delete Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M3 6h18"/>
                                             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -310,6 +234,7 @@ ob_start();
                                             <line x1="14" y1="11" x2="14" y2="17"/>
                                         </svg>
                                     </button>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                             <?php endif; ?>
@@ -320,57 +245,108 @@ ob_start();
                         <?php foreach ($attendance as $record): ?>
                         <tr>
                             <td>
-                                <strong><?= htmlspecialchars($record['user_name'] ?? 'Unknown') ?></strong>
-                                <br><small class="text-muted">Role: <?= ucfirst($record['user_role'] ?? 'Employee') === 'User' ? 'Employee' : ucfirst($record['user_role'] ?? 'Employee') ?></small>
+                                <strong><?= htmlspecialchars($record['name'] ?? 'Unknown') ?></strong>
+                                <br><small class="text-muted">Role: <?= ($record['role'] ?? 'user') === 'user' ? 'Employee' : ucfirst($record['role'] ?? 'user') ?></small>
                             </td>
                             <td>
                                 <div class="assignment-info">
                                     <div class="assigned-user"><?= date('M d, Y') ?></div>
                                     <div class="priority-badge">
                                         <?php 
-                                        $statusClass = match($record['status'] ?? 'Absent') {
+                                        $statusClass = match($record['status'] ?? 'Present') {
                                             'Present' => 'success',
+                                            'present' => 'success', 
                                             'On Leave' => 'warning',
                                             'Absent' => 'danger',
-                                            default => 'danger'
+                                            default => 'success'
                                         };
                                         ?>
-                                        <span class="badge badge--<?= $statusClass ?>"><?= $record['status'] ?? 'Absent' ?></span>
+                                        <span class="badge badge--<?= $statusClass ?>"><?= $record['status'] ?? 'Present' ?></span>
                                     </div>
                                 </div>
                             </td>
                             <td>
                                 <div class="progress-container">
                                     <div class="progress-info">
-                                        <span class="progress-percentage"><?= $record['working_hours'] ?? '0h 0m' ?></span>
+                                        <?php
+                                        $workingHours = '0h 0m';
+                                        if (isset($record['total_hours']) && $record['total_hours'] > 0) {
+                                            $workingHours = number_format($record['total_hours'], 2) . 'h';
+                                        } elseif (isset($record['check_in']) && isset($record['check_out']) && $record['check_in'] && $record['check_out']) {
+                                            $clockIn = new DateTime($record['check_in']);
+                                            $clockOut = new DateTime($record['check_out']);
+                                            $diff = $clockIn->diff($clockOut);
+                                            $workingHours = $diff->format('%H:%I');
+                                        }
+                                        ?>
+                                        <span class="progress-percentage"><?= $workingHours ?></span>
                                     </div>
                                 </div>
                             </td>
                             <td>
                                 <div class="cell-meta">
-                                    <div class="cell-primary">In: <?= $record['check_in_time'] ?? '00:00' ?></div>
-                                    <div class="cell-secondary">Out: <?= $record['check_out_time'] ?? '00:00' ?></div>
+                                    <div class="cell-primary">In: <?= isset($record['check_in']) && $record['check_in'] ? date('H:i', strtotime($record['check_in'])) : '00:00' ?></div>
+                                    <div class="cell-secondary">Out: <?= isset($record['check_out']) && $record['check_out'] ? date('H:i', strtotime($record['check_out'])) : '00:00' ?></div>
                                 </div>
                             </td>
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
                             <td>
                                 <div class="ab-container">
-                                    <a class="ab-btn ab-btn--view" data-action="view" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" title="View Details">
+                                    <?php 
+                                    $isToday = date('Y-m-d') === date('Y-m-d');
+                                    $hasCheckedOut = isset($record['check_out']) && !empty($record['check_out']);
+                                    ?>
+                                    
+                                    <!-- View Details -->
+                                    <button class="ab-btn ab-btn--view" onclick="viewAttendanceDetails(<?= $record['attendance_id'] ?? 0 ?>)" title="View Details">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
+                                        </svg>
+                                    </button>
+                                    
+                                    <?php if ($isToday): ?>
+                                        <?php if (!isset($record['check_in']) || empty($record['check_in'])): ?>
+                                        <!-- Clock In -->
+                                        <button class="ab-btn ab-btn--success" onclick="clockInUser(<?= intval($record['user_id'] ?? 0) ?>)" title="Clock In User">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <polyline points="12,6 12,12 16,14"/>
+                                            </svg>
+                                        </button>
+                                        <?php elseif (!$hasCheckedOut): ?>
+                                        <!-- Clock Out -->
+                                        <button class="ab-btn ab-btn--warning" onclick="clockOutUser(<?= intval($record['user_id'] ?? 0) ?>)" title="Clock Out User">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <path d="M16 12l-4-4-4 4"/>
+                                            </svg>
+                                        </button>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                    
+                                    <!-- Edit Record -->
+                                    <button class="ab-btn ab-btn--edit" onclick="editAttendanceRecord(<?= intval($record['attendance_id'] ?? 0) ?>, <?= intval($record['user_id'] ?? 0) ?>)" title="Edit Record">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                            <path d="M15 5l4 4"/>
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- Generate Report -->
+                                    <button class="ab-btn ab-btn--info" onclick="generateUserReport(<?= intval($record['user_id'] ?? 0) ?>)" title="Generate Report">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                             <polyline points="14,2 14,8 20,8"/>
                                             <line x1="16" y1="13" x2="8" y2="13"/>
                                             <line x1="16" y1="17" x2="8" y2="17"/>
+                                            <polyline points="10,9 9,9 8,9"/>
                                         </svg>
-                                    </a>
-                                    <?php if (!(($user_role ?? '') === 'admin' && ($record['user_role'] ?? '') === 'admin')): ?>
-                                    <a class="ab-btn ab-btn--edit" href="/ergon/attendance/edit?id=<?= $record['attendance_id'] ?? 0 ?>&user_id=<?= $record['user_id'] ?>" title="Edit Record">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                            <path d="M15 5l4 4"/>
-                                        </svg>
-                                    </a>
-                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="attendance" data-id="<?= $record['attendance_id'] ?? 0 ?>" data-name="<?= htmlspecialchars($record['user_name'] ?? 'Record', ENT_QUOTES) ?>" title="Delete Record">
+                                    </button>
+                                    
+                                    <?php if ($user_role === 'owner'): ?>
+                                    <!-- Delete Record (Owner Only) -->
+                                    <button class="ab-btn ab-btn--delete" onclick="deleteAttendanceRecord(<?= intval($record['attendance_id'] ?? 0) ?>, '<?= htmlspecialchars($record['name'] ?? 'Record', ENT_QUOTES) ?>')" title="Delete Record">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M3 6h18"/>
                                             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -392,8 +368,6 @@ ob_start();
     </div>
 </div>
 
-<script src="/ergon/assets/js/table-utils.js"></script>
-
 <script>
 function filterAttendance(filter) {
     const currentDate = document.getElementById('dateFilter')?.value || '';
@@ -409,52 +383,344 @@ function filterByDate(selectedDate) {
     window.location.href = '/ergon/attendance?date=' + selectedDate + '&filter=' + currentFilter;
 }
 
-function checkOut(recordId) {
-    if (confirm('Are you sure you want to check out?')) {
-        fetch('/ergon/attendance/checkout', {
+function viewAttendanceDetails(attendanceId) {
+    if (!attendanceId || attendanceId == 0) {
+        alert('No attendance record found');
+        return;
+    }
+    
+    fetch('/ergon/api/simple_attendance.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ action: 'get_details', id: attendanceId })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            const record = data.record;
+            alert(`Attendance Details:\n\nEmployee: ${record.user_name}\nEmail: ${record.email}\nDate: ${record.date}\nStatus: ${record.status || 'Present'}\nCheck In: ${record.check_in || 'Not checked in'}\nCheck Out: ${record.check_out || 'Not checked out'}\nWorking Hours: ${record.working_hours_calculated || 'N/A'}`);
+        } else {
+            alert('Error: ' + (data.message || 'Failed to get attendance details'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while fetching attendance details.');
+    });
+}
+
+function clockInUser(userId) {
+    showAttendanceModal('Clock In User', 'clock_in', userId);
+}
+
+function clockOutUser(userId) {
+    showAttendanceModal('Clock Out User', 'clock_out', userId);
+}
+
+function showAttendanceModal(title, action, userId) {
+    document.getElementById('attendanceModalTitle').textContent = title;
+    document.getElementById('attendanceAction').value = action;
+    document.getElementById('attendanceUserId').value = userId;
+    document.getElementById('attendanceDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('attendanceTime').value = action === 'clock_in' ? '09:00' : '18:00';
+    document.getElementById('attendanceDialog').style.display = 'flex';
+}
+
+function closeAttendanceDialog() {
+    document.getElementById('attendanceDialog').style.display = 'none';
+}
+
+function submitAttendance() {
+    const action = document.getElementById('attendanceAction').value;
+    const userId = document.getElementById('attendanceUserId').value;
+    const date = document.getElementById('attendanceDate').value;
+    const time = document.getElementById('attendanceTime').value;
+    
+    if (!date || !time) {
+        alert('Please select both date and time');
+        return;
+    }
+    
+    fetch('/ergon/api/simple_attendance.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ action: action, user_id: userId, date: date, time: time })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Success: ' + data.message);
+            closeAttendanceDialog();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Operation failed'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred.');
+    });
+}
+
+function editAttendanceRecord(attendanceId, userId) {
+    if (!attendanceId || attendanceId == 0) {
+        alert('No attendance record found to edit');
+        return;
+    }
+    
+    // Fetch current record details
+    fetch('/ergon/api/simple_attendance.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ action: 'get_details', id: attendanceId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const record = data.record;
+            showEditModal(attendanceId, userId, record);
+        } else {
+            alert('Error: ' + (data.message || 'Failed to get attendance details'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while fetching attendance details.');
+    });
+}
+
+function showEditModal(attendanceId, userId, record) {
+    document.getElementById('editAttendanceId').value = attendanceId;
+    document.getElementById('editUserId').value = userId;
+    document.getElementById('editDate').value = record.date || '';
+    document.getElementById('editCheckIn').value = record.check_in ? record.check_in.substring(11, 16) : '';
+    document.getElementById('editCheckOut').value = record.check_out ? record.check_out.substring(11, 16) : '';
+    document.getElementById('editDialog').style.display = 'flex';
+}
+
+function closeEditDialog() {
+    document.getElementById('editDialog').style.display = 'none';
+}
+
+function submitEdit() {
+    const attendanceId = document.getElementById('editAttendanceId').value;
+    const userId = document.getElementById('editUserId').value;
+    const date = document.getElementById('editDate').value;
+    const checkIn = document.getElementById('editCheckIn').value;
+    const checkOut = document.getElementById('editCheckOut').value;
+    
+    if (!date) {
+        alert('Please select a date');
+        return;
+    }
+    
+    fetch('/ergon/api/simple_attendance.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ 
+            action: 'edit', 
+            id: attendanceId,
+            user_id: userId,
+            date: date, 
+            check_in: checkIn,
+            check_out: checkOut
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Success: ' + data.message);
+            closeEditDialog();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Operation failed'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred.');
+    });
+}
+
+function generateUserReport(userId) {
+    alert('Report generation not yet implemented.');
+}
+
+function deleteAttendanceRecord(attendanceId, userName) {
+    if (confirm(`Are you sure you want to delete the attendance record for ${userName}?\n\nThis action cannot be undone.`)) {
+        fetch('/ergon/api/simple_attendance.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             },
-            body: JSON.stringify({ record_id: recordId })
+            body: JSON.stringify({ action: 'delete', id: attendanceId })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                alert('Attendance record deleted successfully!');
                 location.reload();
             } else {
-                alert('Error: ' + (data.error || 'Failed to check out'));
+                alert('Error: ' + (data.message || 'Failed to delete attendance record'));
             }
         })
         .catch(error => {
-            console.error('Check out error:', error);
-            alert('An error occurred while checking out.');
+            console.error('Error:', error);
+            alert('An error occurred while deleting attendance record.');
         });
     }
 }
-
-// Standard action button handlers
-document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.ab-btn');
-    if (!btn) return;
-    
-    const action = btn.dataset.action;
-    const module = btn.dataset.module;
-    const id = btn.dataset.id;
-    const name = btn.dataset.name;
-    
-    if (action === 'view' && module && id) {
-        window.location.href = `/ergon/${module}/view/${id}`;
-    } else if (action === 'edit' && module && id) {
-        window.location.href = `/ergon/${module}/edit/${id}`;
-    } else if (action === 'delete' && module && id && name) {
-        deleteRecord(module, id, name);
-    }
-});
 </script>
 
+<!-- Fast Attendance Modal -->
+<div id="attendanceDialog" class="dialog" style="display: none;">
+    <div class="dialog-content">
+        <h4 id="attendanceModalTitle">Attendance</h4>
+        <form onsubmit="event.preventDefault(); submitAttendance();">
+            <input type="hidden" id="attendanceAction">
+            <input type="hidden" id="attendanceUserId">
+            
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="attendanceDate" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Time</label>
+                <input type="time" id="attendanceTime" class="form-control" required>
+            </div>
+        </form>
+        <div class="dialog-buttons">
+            <button onclick="closeAttendanceDialog()">Cancel</button>
+            <button onclick="submitAttendance()">Submit</button>
+        </div>
+    </div>
+</div>
 
+<!-- Edit Attendance Modal -->
+<div id="editDialog" class="dialog" style="display: none;">
+    <div class="dialog-content">
+        <h4>Edit Attendance Record</h4>
+        <form onsubmit="event.preventDefault(); submitEdit();">
+            <input type="hidden" id="editAttendanceId">
+            <input type="hidden" id="editUserId">
+            
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="editDate" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Check In Time</label>
+                <input type="time" id="editCheckIn" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label>Check Out Time</label>
+                <input type="time" id="editCheckOut" class="form-control">
+            </div>
+        </form>
+        <div class="dialog-buttons">
+            <button onclick="closeEditDialog()">Cancel</button>
+            <button onclick="submitEdit()">Update</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dialog-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    min-width: 300px;
+    max-width: 400px;
+}
+
+.dialog-content h4 {
+    margin: 0 0 1rem 0;
+    color: #1f2937;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    box-sizing: border-box;
+}
+
+.dialog-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+.dialog-buttons button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.dialog-buttons button:first-child {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.dialog-buttons button:last-child {
+    background: #3b82f6;
+    color: white;
+}
+
+.dialog-buttons button:hover {
+    opacity: 0.9;
+}
+</style>
 
 <?php
 $content = ob_get_clean();

@@ -12,12 +12,26 @@ $content = ob_start();
 <div class="page-header">
     <div class="page-title">
         <h1><i class="bi bi-calendar-day"></i> Daily Planner</h1>
-        <p>Advanced Task Execution Workflow - <?= date('l, F j, Y', strtotime($selected_date)) ?></p>
+        <p>Advanced Task Execution Workflow - <?= date('l, F j, Y', strtotime($selected_date)) ?>
+        <?php if ($selected_date < date('Y-m-d')): ?>
+            <span class="badge badge--muted" style="margin-left: 10px;"><i class="bi bi-archive"></i> Historical View Only</span>
+        <?php elseif ($selected_date > date('Y-m-d')): ?>
+            <span class="badge badge--info" style="margin-left: 10px;"><i class="bi bi-calendar-plus"></i> Planning Mode</span>
+        <?php else: ?>
+            <span class="badge badge--success" style="margin-left: 10px;"><i class="bi bi-play-circle"></i> Execution Mode</span>
+        <?php endif; ?>
+        </p>
+        <?php if (isset($_SESSION['sync_message'])): ?>
+            <div class="alert alert-info" style="margin: 10px 0; padding: 8px 12px; background: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px; color: #0c5460;">
+                <i class="bi bi-info-circle"></i> <?= $_SESSION['sync_message'] ?>
+            </div>
+            <?php unset($_SESSION['sync_message']); ?>
+        <?php endif; ?>
     </div>
     <div class="page-actions">
-        <input type="date" id="dateSelector" value="<?= $selected_date ?>" onchange="changeDate(this.value)" class="form-control">
-        <a href="/ergon/workflow/daily-planner/<?= $selected_date ?>?refresh=1" class="btn btn--info" title="Refresh tasks from Tasks module">
-            <i class="bi bi-arrow-clockwise"></i> Sync Tasks
+        <input type="date" id="dateSelector" value="<?= $selected_date ?>" max="<?= date('Y-m-d') ?>" onchange="changeDate(this.value)" class="form-control">
+        <a href="/ergon/workflow/daily-planner/<?= $selected_date ?>?refresh=1" class="btn btn--info" title="Add new tasks from Tasks module (preserves existing progress)">
+            <i class="bi bi-plus-circle"></i> Sync New Tasks
         </a>
         <a href="/ergon/tasks/create" class="btn btn--secondary">
             <i class="bi bi-plus"></i> Add Task
@@ -98,7 +112,11 @@ $content = ob_start();
                             $taskSource = 'self_assigned';
                         }
                         ?>
-                        <div class="task-card <?= $cssClass ?>" 
+                        <?php 
+                        $isPastDate = ($selected_date < date('Y-m-d'));
+                        $historicalClass = $isPastDate ? 'task-card--historical' : '';
+                        ?>
+                        <div class="task-card <?= $cssClass ?> <?= $historicalClass ?>" 
                              data-task-id="<?= $taskId ?>" 
                              data-original-task-id="<?= $task['task_id'] ?? '' ?>" 
                              data-sla-duration="<?= $slaDuration ?>" 
@@ -107,7 +125,8 @@ $content = ob_start();
                              data-task-source="<?= $taskSource ?>"
                              data-pause-time="<?= $task['pause_time'] ?? '' ?>"
                              data-active-seconds="<?= $task['active_seconds'] ?? 0 ?>"
-                             data-pause-duration="<?= $task['pause_duration'] ?? 0 ?>">
+                             data-pause-duration="<?= $task['pause_duration'] ?? 0 ?>"
+                             data-is-past="<?= $isPastDate ? 'true' : 'false' ?>">
                             
                             <div class="task-card__content">
                                 <div class="task-card__header">
@@ -170,12 +189,19 @@ $content = ob_start();
                                 </div>
                                 
                                 <?php 
-                                // Show creation info for postponed tasks
-                                if ($status === 'postponed'): 
+                                // Show creation info for postponed tasks and rolled-over tasks
+                                $isRolledOver = isset($task['postponed_from_date']) && $task['postponed_from_date'] && $task['postponed_from_date'] !== $selected_date;
+                                
+                                if ($status === 'postponed' || $isRolledOver): 
                                     $createdAt = $task['created_at'] ?? date('Y-m-d H:i:s');
                                 ?>
-                                    <div class="task-card__created-info">
-                                        <small class="text-muted"><i class="bi bi-calendar"></i> Created on: <?= date('d/m/Y', strtotime($createdAt)) ?></small>
+                                    <div class="task-card__created-info <?= $isRolledOver ? 'task-card__rollover-info' : '' ?>">
+                                        <?php if ($isRolledOver): ?>
+                                            <small class="text-info"><i class="bi bi-arrow-repeat"></i> Rolled over from: <?= date('d/m/Y', strtotime($task['postponed_from_date'])) ?></small>
+                                        <?php else: ?>
+                                            <small class="text-muted"><i class="bi bi-calendar"></i> Created on: <?= date('d/m/Y', strtotime($createdAt)) ?></small>
+                                        <?php endif; ?>
+                                        
                                         <?php if ($postponeContext === 'postponed_to_today' && isset($task['postponed_from_date']) && $task['postponed_from_date']): ?>
                                             <small class="text-muted"><i class="bi bi-arrow-right"></i> Postponed from: <?= date('d/m/Y', strtotime($task['postponed_from_date'])) ?></small>
                                         <?php elseif ($postponeContext === 'postponed_from_today' && isset($task['postponed_to_date']) && $task['postponed_to_date']): ?>
@@ -185,53 +211,66 @@ $content = ob_start();
                                 <?php endif; ?>
                                 
                                 <div class="task-card__actions" id="actions-<?= $taskId ?>">
-                                    <?php if ($status === 'postponed'): ?>
-                                        <?php 
-                                        $isCurrentDate = ($selected_date === date('Y-m-d'));
-                                        $isPostponedToToday = ($postponeContext === 'postponed_to_today');
-                                        $canStart = $isCurrentDate && $isPostponedToToday;
+                                    <?php 
+                                    $isCurrentDate = ($selected_date === date('Y-m-d'));
+                                    $isPastDate = ($selected_date < date('Y-m-d'));
+                                    
+                                    if ($isPastDate): 
+                                        // Past dates: Read-only historical view
+                                    ?>
+                                        <span class="badge badge--muted"><i class="bi bi-archive"></i> Historical View</span>
+                                        <?php if ($status === 'completed'): ?>
+                                            <span class="badge badge--success"><i class="bi bi-check-circle"></i> Completed</span>
+                                        <?php else: ?>
+                                            <span class="badge badge--info"><i class="bi bi-arrow-right"></i> Rolled Over</span>
+                                        <?php endif; ?>
+                                    <?php else: 
+                                        // Current/future dates: Full functionality
+                                        if ($status === 'postponed'): 
+                                            $isPostponedToToday = ($postponeContext === 'postponed_to_today');
+                                            $canStart = $isCurrentDate && $isPostponedToToday;
                                         ?>
-                                        
-                                        <?php if ($canStart): ?>
-                                            <button class="btn btn--sm btn--success" onclick="activatePostponedTask(<?= $taskId ?>)">
+                                            <?php if ($canStart): ?>
+                                                <button class="btn btn--sm btn--success" onclick="activatePostponedTask(<?= $taskId ?>)" title="Start this postponed task">
+                                                    <i class="bi bi-play"></i> Start
+                                                </button>
+                                            <?php else: ?>
+                                                <span class="badge badge--warning"><i class="bi bi-calendar-plus"></i> Postponed</span>
+                                            <?php endif; ?>
+                                            
+                                            <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)" title="Re-postpone to another date">
+                                                <i class="bi bi-calendar-plus"></i> Re-postpone
+                                            </button>
+                                        <?php elseif ($status === 'not_started' || $status === 'assigned'): ?>
+                                            <button class="btn btn--sm btn--success" onclick="startTask(<?= $taskId ?>)" title="Start working on this task">
                                                 <i class="bi bi-play"></i> Start
                                             </button>
-                                        <?php else: ?>
-                                            <span class="badge badge--warning"><i class="bi bi-calendar-plus"></i> Postponed</span>
+                                        <?php elseif ($status === 'in_progress'): ?>
+                                            <button class="btn btn--sm btn--warning" onclick="pauseTask(<?= $taskId ?>)" title="Take a break from this task">
+                                                <i class="bi bi-pause"></i> Break
+                                            </button>
+                                            <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')" title="Update task completion progress">
+                                                <i class="bi bi-percent"></i> Update Progress
+                                            </button>
+                                        <?php elseif ($status === 'on_break'): ?>
+                                            <button class="btn btn--sm btn--success" onclick="resumeTask(<?= $taskId ?>)" title="Resume working on this task">
+                                                <i class="bi bi-play"></i> Resume
+                                            </button>
+                                            <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')" title="Update task completion progress">
+                                                <i class="bi bi-percent"></i> Update Progress
+                                            </button>
+                                        <?php elseif ($status === 'completed'): ?>
+                                            <span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>
+                                        <?php elseif ($status === 'cancelled'): ?>
+                                            <span class="badge badge--danger"><i class="bi bi-x-circle"></i> Cancelled</span>
+                                        <?php elseif ($status === 'suspended'): ?>
+                                            <span class="badge badge--warning"><i class="bi bi-pause-circle"></i> Suspended</span>
                                         <?php endif; ?>
-                                        
-                                        <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)" title="Re-postpone to another date">
-                                            <i class="bi bi-calendar-plus"></i> Re-postpone
-                                        </button>
-                                    <?php elseif ($status === 'not_started' || $status === 'assigned'): ?>
-                                        <button class="btn btn--sm btn--success" onclick="startTask(<?= $taskId ?>)">
-                                            <i class="bi bi-play"></i> Start
-                                        </button>
-                                    <?php elseif ($status === 'in_progress'): ?>
-                                        <button class="btn btn--sm btn--warning" onclick="pauseTask(<?= $taskId ?>)">
-                                            <i class="bi bi-pause"></i> Break
-                                        </button>
-                                        <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')">
-                                            <i class="bi bi-percent"></i> Update Progress
-                                        </button>
-                                    <?php elseif ($status === 'on_break'): ?>
-                                        <button class="btn btn--sm btn--success" onclick="resumeTask(<?= $taskId ?>)">
-                                            <i class="bi bi-play"></i> Resume
-                                        </button>
-                                        <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')">
-                                            <i class="bi bi-percent"></i> Update Progress
-                                        </button>
-                                    <?php elseif ($status === 'completed'): ?>
-                                        <span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>
-                                    <?php elseif ($status === 'cancelled'): ?>
-                                        <span class="badge badge--danger"><i class="bi bi-x-circle"></i> Cancelled</span>
-                                    <?php elseif ($status === 'suspended'): ?>
-                                        <span class="badge badge--warning"><i class="bi bi-pause-circle"></i> Suspended</span>
-                                    <?php endif; ?>
-                                    <?php if (!in_array($status, ['completed', 'cancelled', 'suspended', 'postponed'])): ?>
-                                        <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)">
-                                            <i class="bi bi-calendar-plus"></i> Postpone
-                                        </button>
+                                        <?php if (!in_array($status, ['completed', 'cancelled', 'suspended', 'postponed']) && $isCurrentDate): ?>
+                                            <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)" title="Postpone task to another date">
+                                                <i class="bi bi-calendar-plus"></i> Postpone
+                                            </button>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -301,12 +340,24 @@ $content = ob_start();
                     <span class="metric-value sla-remaining-time">Loading...</span>
                 </div>
                 <div class="metric-row">
+                    <span class="metric-label">Velocity Index:</span>
+                    <span class="metric-value velocity-index">--</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Breach Risk:</span>
+                    <span class="metric-value breach-risk">Low</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Velocity Index:</span>
+                    <span class="metric-value velocity-index">--</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Breach Risk:</span>
+                    <span class="metric-value breach-risk">Low</span>
+                </div>
+                <div class="metric-row">
                     <span class="metric-label">Pause Duration:</span>
                     <span class="metric-value sla-pause-time">Loading...</span>
-                </div>
-                <div class="metric-row" style="display:none;">
-                    <span class="metric-label">Late Time:</span>
-                    <span class="metric-value sla-late-time text-danger">--</span>
                 </div>
             </div>
 
@@ -520,6 +571,22 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
     position: relative;
 }
 
+/* Historical view styling */
+.task-card--historical {
+    opacity: 0.8;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-left: 4px solid #6c757d;
+}
+
+.task-card--historical .task-card__actions {
+    pointer-events: none;
+}
+
+.task-card--historical .badge--muted {
+    background: #6c757d;
+    color: white;
+}
+
 .task-card--postponed {
     opacity: 0.7;
     background: #fef3c7;
@@ -552,6 +619,31 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
     background: rgba(59, 130, 246, 0.1);
     border-radius: 4px;
     border-left: 3px solid #3b82f6;
+}
+
+.task-card__rollover-info {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-left-color: #10b981 !important;
+}
+
+.task-card__rollover-info .text-info {
+    color: #059669 !important;
+    font-weight: 600;
+}
+
+/* Rollover task styling */
+.task-card[data-rollover="true"] {
+    border-left: 4px solid #10b981;
+    background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+}
+
+.task-card[data-rollover="true"]:before {
+    content: "🔄";
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 0.8em;
+    opacity: 0.7;
 }
 
 .task-card[data-task-source="from_others"]:before {
@@ -781,6 +873,51 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
     border-radius: 6px;
     border: 1px solid #e2e8f0;
     font-size: 0.75rem;
+}
+
+/* Button tooltip fixes for Daily Planner */
+.btn:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 99999 !important;
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: rgba(15, 23, 42, 0.95);
+    z-index: 99999 !important;
+}
+
+.btn {
+    position: relative;
+}
+
+/* Ensure task cards don't clip tooltips */
+.task-card {
+    overflow: visible !important;
+}
+
+.task-card__actions {
+    overflow: visible !important;
+    position: relative;
+    z-index: 1;
 }
 
 .timing-info {
@@ -1428,6 +1565,13 @@ function saveProgress() {
 }
 
 function changeDate(date) {
+    // Prevent navigation to future dates
+    const today = new Date().toISOString().split('T')[0];
+    if (date > today) {
+        alert('Cannot view future dates in Daily Planner');
+        document.getElementById('dateSelector').value = '<?= $selected_date ?>';
+        return;
+    }
     window.location.href = `/ergon/workflow/daily-planner/${date}`;
 }
 
@@ -1987,6 +2131,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php renderModalJS(); ?>
 <script src="/ergon/assets/js/task-progress-clean.js"></script>
 <script src="/ergon/assets/js/planner-access-control.js"></script>
+<script src="/ergon/SLA_PREDICTIVE_ENGINE.js"></script>
+<link rel="stylesheet" href="/ergon/SLA_DASHBOARD_2_STYLES.css">
 
 <?php
 $content = ob_get_clean();

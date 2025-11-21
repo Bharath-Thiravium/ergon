@@ -1,0 +1,41 @@
+/* Production Fixes CSS */
+
+/* Fix for missing elements */
+.text-info {
+  color: #0dcaf0 !important;
+}
+
+.text-muted {
+  color: #6c757d !important;
+}
+
+/* SLA Dashboard fixes */
+.sla-metrics {
+  display: block;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.5rem 0;
+}
+
+.metric-label {
+  font-weight: 500;
+}
+
+.metric-value {
+  font-weight: 600;
+  font-family: monospace;
+}
+
+/* Task rollover indicators */
+.task-card__rollover-info {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-left-color: #10b981 !important;
+}
+
+.task-card__rollover-info .text-info {
+  color: #059669 !important;
+  font-weight: 600;
+}

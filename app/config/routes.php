@@ -105,7 +105,7 @@ $router->get('/daily-planner/delayed-tasks-overview', 'DashboardController', 'de
 
 
 // Attendance - Using Unified Controller
-$router->get('/attendance', 'UnifiedAttendanceController', 'index');
+$router->get('/attendance', 'SimpleAttendanceController', 'index');
 $router->get('/attendance/clock', 'UnifiedAttendanceController', 'clock');
 $router->post('/attendance/clock', 'UnifiedAttendanceController', 'clock');
 $router->post('/attendance/manual', 'UnifiedAttendanceController', 'manual');

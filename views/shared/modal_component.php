@@ -1,7 +1,7 @@
 <?php
 /**
- * Standardized Modal Component
- * Based on the follow-ups modal pattern for consistency across the Ergon project
+ * Fast Dialog Component
+ * Instant display without animations for better performance
  * 
  * Usage:
  * include __DIR__ . '/../shared/modal_component.php';
@@ -10,49 +10,38 @@
 
 function renderModal($modalId, $title, $content = '', $footer = '', $options = []) {
     $defaults = [
-        'size' => 'medium', // small, medium, large, xlarge
+        'size' => 'medium',
         'closable' => true,
-        'backdrop' => true,
-        'icon' => '',
-        'zIndex' => 99999
+        'icon' => ''
     ];
     
     $options = array_merge($defaults, $options);
     
     $sizeClass = match($options['size']) {
-        'small' => 'modal-content--small',
-        'large' => 'modal-content--large', 
-        'xlarge' => 'modal-content--xlarge',
+        'small' => 'dialog-content--small',
+        'large' => 'dialog-content--large', 
+        'xlarge' => 'dialog-content--xlarge',
         default => ''
     };
     
-    $backdropClose = $options['backdrop'] ? 'onclick="closeModal(\'' . $modalId . '\')"' : '';
+    $closeBtn = $options['closable'] ? 
+        "<button class='dialog-close' onclick='closeModal(\"{$modalId}\")' title='Close'>&times;</button>" : '';
     
     echo <<<HTML
-<div id="{$modalId}" class="ergon-modal" style="display: none; position: fixed; z-index: {$options['zIndex']} !important; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);" {$backdropClose}>
-    <div class="ergon-modal-content {$sizeClass}" style="background: var(--bg-primary, white); margin: 5% auto; border-radius: var(--border-radius, 8px); width: 90%; max-width: 500px; box-shadow: var(--shadow-lg, 0 4px 20px rgba(0,0,0,0.15)); position: relative; z-index: {$options['zIndex']} !important; border: 1px solid var(--border-color, #e5e7eb);" onclick="event.stopPropagation();">
-        <div class="ergon-modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--border-color, #e5e7eb); background: var(--bg-secondary, #f8fafc);">
-            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--text-primary, #1f2937); display: flex; align-items: center; gap: 0.5rem;">
-                {$options['icon']} {$title}
-            </h3>
-HTML;
-
-    if ($options['closable']) {
-        echo <<<HTML
-            <button class="ergon-modal-close" onclick="closeModal('{$modalId}')" title="Close" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted, #6b7280); padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: var(--transition, all 0.2s ease);">&times;</button>
-HTML;
-    }
-
-    echo <<<HTML
+<div id="{$modalId}" class="dialog" style="display: none;">
+    <div class="dialog-content {$sizeClass}">
+        <div class="dialog-header">
+            <h4>{$options['icon']} {$title}</h4>
+            {$closeBtn}
         </div>
-        <div class="ergon-modal-body" style="padding: 1.5rem; background: var(--bg-primary, white); max-height: 70vh; overflow-y: auto;">
+        <div class="dialog-body">
             {$content}
         </div>
 HTML;
 
     if ($footer) {
         echo <<<HTML
-        <div class="ergon-modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1.5rem; border-top: 1px solid var(--border-color, #e5e7eb); background: var(--bg-secondary, #f8fafc);">
+        <div class="dialog-footer">
             {$footer}
         </div>
 HTML;
@@ -67,69 +56,67 @@ HTML;
 function renderModalCSS() {
     echo <<<CSS
 <style>
-/* Standardized Modal Styles - Based on Follow-ups Pattern */
-.ergon-modal {
+/* Fast Dialog Styles - No Animations */
+.dialog {
     position: fixed;
-    z-index: 99999 !important;
-    left: 0;
     top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    backdrop-filter: blur(2px);
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 100px;
 }
 
-.ergon-modal-content {
-    background-color: var(--bg-primary, white);
-    margin: 5% auto;
-    border-radius: var(--border-radius, 8px);
-    width: 90%;
+.dialog-content {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    min-width: 300px;
     max-width: 500px;
-    box-shadow: var(--shadow-lg, 0 4px 20px rgba(0,0,0,0.15));
-    position: relative;
-    z-index: 100000 !important;
-    border: 1px solid var(--border-color, #e5e7eb);
-    animation: modalSlideIn 0.3s ease-out;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
-.ergon-modal-content--small {
+.dialog-content--small {
     max-width: 400px;
 }
 
-.ergon-modal-content--large {
+.dialog-content--large {
     max-width: 700px;
 }
 
-.ergon-modal-content--xlarge {
+.dialog-content--xlarge {
     max-width: 900px;
     width: 95%;
 }
 
-.ergon-modal-header {
+.dialog-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 1.5rem;
-    border-bottom: 1px solid var(--border-color, #e5e7eb);
-    background: var(--bg-secondary, #f8fafc);
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
 }
 
-.ergon-modal-header h3 {
+.dialog-header h4 {
     margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--text-primary, #1f2937);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    color: #1f2937;
 }
 
-.ergon-modal-close {
+.dialog-close {
     background: none;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: var(--text-muted, #6b7280);
+    color: #6b7280;
     padding: 0;
     width: 32px;
     height: 32px;
@@ -137,155 +124,169 @@ function renderModalCSS() {
     align-items: center;
     justify-content: center;
     border-radius: 4px;
-    transition: var(--transition, all 0.2s ease);
 }
 
-.ergon-modal-close:hover {
-    color: var(--text-primary, #1f2937);
-    background: var(--bg-hover, rgba(0,0,0,0.05));
+.dialog-close:hover {
+    color: #1f2937;
+    background: #f3f4f6;
 }
 
-.ergon-modal-body {
+.dialog-body {
     padding: 1.5rem;
-    background: var(--bg-primary, white);
-    max-height: 70vh;
-    overflow-y: auto;
+    background: white;
 }
 
-.ergon-modal-footer {
+.dialog-footer {
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
     padding: 1.5rem;
-    border-top: 1px solid var(--border-color, #e5e7eb);
-    background: var(--bg-secondary, #f8fafc);
+    border-top: 1px solid #e5e7eb;
+    background: #f8fafc;
 }
 
-/* Modal Form Styles */
-.ergon-modal .form-group {
-    margin-bottom: 1.25rem;
+/* Form Styles */
+.dialog .form-group {
+    margin-bottom: 1rem;
 }
 
-.ergon-modal .form-label {
+.dialog .form-group label {
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 500;
-    color: var(--text-primary, #374151);
+    color: #374151;
     font-size: 0.875rem;
 }
 
-.ergon-modal .form-control {
+.dialog .form-control {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid var(--border-color, #d1d5db);
-    border-radius: var(--border-radius, 6px);
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
     font-size: 0.875rem;
-    background: var(--bg-primary, white);
-    color: var(--text-primary, #1f2937);
-    transition: var(--transition, all 0.2s ease);
+    background: white;
+    color: #1f2937;
+    box-sizing: border-box;
 }
 
-.ergon-modal .form-control:focus {
+.dialog .form-control:focus {
     outline: none;
-    border-color: var(--primary, #3b82f6);
+    border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.ergon-modal .form-control::placeholder {
-    color: var(--text-muted, #9ca3af);
-}
-
 /* Button Styles */
-.ergon-modal .btn {
+.dialog .btn {
     padding: 0.5rem 1rem;
     border-radius: 6px;
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
-    transition: var(--transition, all 0.2s ease);
     border: none;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.ergon-modal .btn--primary {
-    background: var(--primary, #3b82f6);
+.dialog .btn--primary {
+    background: #3b82f6;
     color: white;
 }
 
-.ergon-modal .btn--primary:hover {
-    background: var(--primary-dark, #2563eb);
+.dialog .btn--primary:hover {
+    background: #2563eb;
 }
 
-.ergon-modal .btn--secondary {
-    background: var(--bg-secondary, #f8fafc);
-    color: var(--text-secondary, #374151);
-    border: 1px solid var(--border-color, #d1d5db);
+.dialog .btn--secondary {
+    background: #f8fafc;
+    color: #374151;
+    border: 1px solid #d1d5db;
 }
 
-.ergon-modal .btn--secondary:hover {
-    background: var(--bg-hover, #f3f4f6);
+.dialog .btn--secondary:hover {
+    background: #f3f4f6;
 }
 
-.ergon-modal .btn--success {
-    background: var(--success, #10b981);
+.dialog .btn--success {
+    background: #10b981;
     color: white;
 }
 
-.ergon-modal .btn--success:hover {
-    background: var(--success-dark, #059669);
+.dialog .btn--success:hover {
+    background: #059669;
 }
 
-.ergon-modal .btn--warning {
-    background: var(--warning, #f59e0b);
+.dialog .btn--warning {
+    background: #f59e0b;
     color: white;
 }
 
-.ergon-modal .btn--warning:hover {
-    background: var(--warning-dark, #d97706);
+.dialog .btn--warning:hover {
+    background: #d97706;
 }
 
-.ergon-modal .btn--danger {
-    background: var(--danger, #ef4444);
+.dialog .btn--danger {
+    background: #ef4444;
     color: white;
 }
 
-.ergon-modal .btn--danger:hover {
-    background: var(--danger-dark, #dc2626);
+.dialog .btn--danger:hover {
+    background: #dc2626;
 }
 
-/* Animation */
-@keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-50px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+/* Dialog buttons (simple style) */
+.dialog-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+.dialog-buttons button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.dialog-buttons button:first-child {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.dialog-buttons button:last-child {
+    background: #3b82f6;
+    color: white;
+}
+
+.dialog-buttons button:hover {
+    opacity: 0.9;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-    .ergon-modal-content {
-        margin: 2% auto;
-        width: 95%;
+    .dialog {
+        padding: 1rem;
+        padding-top: 120px;
+    }
+    
+    .dialog-content {
+        width: 100%;
         max-width: none;
     }
     
-    .ergon-modal-header,
-    .ergon-modal-body,
-    .ergon-modal-footer {
+    .dialog-header,
+    .dialog-body,
+    .dialog-footer {
         padding: 1rem;
     }
     
-    .ergon-modal-footer {
+    .dialog-footer {
         flex-direction: column;
     }
     
-    .ergon-modal-footer .btn {
+    .dialog-footer .btn {
         width: 100%;
         justify-content: center;
     }
@@ -297,17 +298,17 @@ CSS;
 function renderModalJS() {
     echo <<<JS
 <script>
-// Standardized Modal JavaScript - Based on Follow-ups Pattern
+// Fast Dialog JavaScript - No Animations
 function showModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         
-        // Focus trap
-        const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        if (focusableElements.length > 0) {
-            focusableElements[0].focus();
+        // Focus first input
+        const firstInput = modal.querySelector('input, select, textarea');
+        if (firstInput) {
+            setTimeout(() => firstInput.focus(), 10);
         }
     }
 }
@@ -331,19 +332,19 @@ function toggleModal(modalId) {
     }
 }
 
-// Close modal on escape key
+// Close on escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-        const openModals = document.querySelectorAll('.ergon-modal[style*="display: block"]');
-        openModals.forEach(modal => {
-            closeModal(modal.id);
+        const openDialogs = document.querySelectorAll('.dialog[style*="display: flex"]');
+        openDialogs.forEach(dialog => {
+            closeModal(dialog.id);
         });
     }
 });
 
-// Close modal when clicking outside (handled by backdrop onclick in renderModal)
+// Close when clicking backdrop
 document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('ergon-modal')) {
+    if (e.target.classList.contains('dialog')) {
         closeModal(e.target.id);
     }
 });
