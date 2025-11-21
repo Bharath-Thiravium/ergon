@@ -256,19 +256,7 @@ class FinanceController extends Controller {
                 'pendingGSTAmount' => $pendingGSTAmount,
                 'pendingPOValue' => $pendingPOValue,
                 'claimableAmount' => $claimableAmount,
-                'conversionFunnel' => [
-                    'quotations' => count($invoiceResults),
-                    'quotationValue' => $totalInvoiceAmount,
-                    'purchaseOrders' => count($poResults),
-                    'poValue' => $pendingPOValue,
-                    'quotationToPO' => count($poResults) > 0 ? round((count($poResults) / max(count($invoiceResults), 1)) * 100) : 0,
-                    'invoices' => count($invoiceResults),
-                    'invoiceValue' => $totalInvoiceAmount,
-                    'poToInvoice' => count($invoiceResults) > 0 ? round((count($invoiceResults) / max(count($poResults), 1)) * 100) : 0,
-                    'payments' => 0,
-                    'paymentValue' => $invoiceReceived,
-                    'invoiceToPayment' => $totalInvoiceAmount > 0 ? round(($invoiceReceived / $totalInvoiceAmount) * 100) : 0
-                ],
+                'conversionFunnel' => $this->getConversionFunnel($db),
                 'cashFlow' => [
                     'expectedInflow' => $pendingInvoiceAmount,
                     'poCommitments' => $pendingPOValue
@@ -467,10 +455,10 @@ class FinanceController extends Controller {
             $invoices = [];
             foreach ($results as $row) {
                 $data = json_decode($row['data'], true);
-                $customerName = $data['customer_name'] ?? '';
+                $invoiceNumber = $data['invoice_number'] ?? '';
                 
-                // Filter only BKC companies
-                if (!str_starts_with($customerName, 'BKC')) continue;
+                // Filter only BKC prefix in invoice numbers
+                if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
                 
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
                 
@@ -479,8 +467,8 @@ class FinanceController extends Controller {
                     $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
                     
                     $invoices[] = [
-                        'invoice_number' => $data['invoice_number'] ?? 'N/A',
-                        'customer_name' => $customerName,
+                        'invoice_number' => $invoiceNumber,
+                        'customer_name' => $data['customer_name'] ?? 'Unknown',
                         'due_date' => $dueDate,
                         'outstanding_amount' => $outstanding,
                         'daysOverdue' => floor($daysOverdue),
@@ -511,14 +499,14 @@ class FinanceController extends Controller {
                 if ($count >= 5) break;
                 
                 $data = json_decode($row['data'], true);
-                $customerName = $data['customer_name'] ?? '';
+                $quotationNumber = $data['quotation_number'] ?? '';
                 
-                // Filter only BKC companies
-                if (!str_starts_with($customerName, 'BKC')) continue;
+                // Filter only BKC prefix in quotation numbers
+                if (!str_contains(strtoupper($quotationNumber), 'BKC')) continue;
                 
                 $quotations[] = [
-                    'quotation_number' => $data['quotation_number'] ?? 'N/A',
-                    'customer_name' => $customerName,
+                    'quotation_number' => $quotationNumber,
+                    'customer_name' => $data['customer_name'] ?? 'Unknown',
                     'total_amount' => floatval($data['total_amount'] ?? 0),
                     'valid_until' => $data['valid_until'] ?? 'N/A'
                 ];
@@ -549,10 +537,10 @@ class FinanceController extends Controller {
                 
                 foreach ($results as $row) {
                     $data = json_decode($row['data'], true);
-                    $customerName = $data['customer_name'] ?? '';
+                    $invoiceNumber = $data['invoice_number'] ?? '';
                     
-                    // Filter only BKC companies
-                    if (!str_starts_with($customerName, 'BKC')) continue;
+                    // Filter only BKC prefix in invoice numbers
+                    if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
                     
                     $outstanding = floatval($data['outstanding_amount'] ?? 0);
                     
@@ -560,8 +548,8 @@ class FinanceController extends Controller {
                         $dueDate = $data['due_date'] ?? date('Y-m-d');
                         $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
                         
-                        echo '"' . ($data['invoice_number'] ?? 'N/A') . '","' . 
-                             $customerName . '","' . 
+                        echo '"' . $invoiceNumber . '","' . 
+                             ($data['customer_name'] ?? 'Unknown') . '","' . 
                              $dueDate . '","' . 
                              $outstanding . '","' . 
                              floor($daysOverdue) . '","' . 
@@ -596,10 +584,10 @@ class FinanceController extends Controller {
             
             foreach ($invoiceResults as $row) {
                 $data = json_decode($row['data'], true);
-                $customerName = $data['customer_name'] ?? '';
+                $invoiceNumber = $data['invoice_number'] ?? '';
                 
-                // Filter only BKC companies
-                if (!str_starts_with($customerName, 'BKC')) continue;
+                // Filter only BKC prefix in invoice numbers
+                if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
                 
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
@@ -671,6 +659,74 @@ class FinanceController extends Controller {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX(table_name)
         )");
+    }
+    
+    private function getConversionFunnel($db) {
+        // Count BKC quotations
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+        $stmt->execute();
+        $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $quotationCount = 0;
+        $quotationValue = 0;
+        foreach ($quotationResults as $row) {
+            $data = json_decode($row['data'], true);
+            $quotationNumber = $data['quotation_number'] ?? '';
+            if (str_contains(strtoupper($quotationNumber), 'BKC')) {
+                $quotationCount++;
+                $quotationValue += floatval($data['total_amount'] ?? 0);
+            }
+        }
+        
+        // Count BKC POs
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $poCount = 0;
+        $poValue = 0;
+        foreach ($poResults as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
+            if (str_contains(strtoupper($poNumber), 'BKC')) {
+                $poCount++;
+                $poValue += floatval($data['total_amount'] ?? 0);
+            }
+        }
+        
+        // Count BKC invoices
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        $stmt->execute();
+        $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $invoiceCount = 0;
+        $invoiceValue = 0;
+        $paymentValue = 0;
+        foreach ($invoiceResults as $row) {
+            $data = json_decode($row['data'], true);
+            $invoiceNumber = $data['invoice_number'] ?? '';
+            if (str_contains(strtoupper($invoiceNumber), 'BKC')) {
+                $invoiceCount++;
+                $total = floatval($data['total_amount'] ?? 0);
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                $invoiceValue += $total;
+                $paymentValue += ($total - $outstanding);
+            }
+        }
+        
+        return [
+            'quotations' => $quotationCount,
+            'quotationValue' => $quotationValue,
+            'purchaseOrders' => $poCount,
+            'poValue' => $poValue,
+            'quotationToPO' => $quotationCount > 0 ? round(($poCount / $quotationCount) * 100) : 0,
+            'invoices' => $invoiceCount,
+            'invoiceValue' => $invoiceValue,
+            'poToInvoice' => $poCount > 0 ? round(($invoiceCount / $poCount) * 100) : 0,
+            'payments' => $paymentValue > 0 ? 1 : 0,
+            'paymentValue' => $paymentValue,
+            'invoiceToPayment' => $invoiceValue > 0 ? round(($paymentValue / $invoiceValue) * 100) : 0
+        ];
     }
     
     private function storeTableData($db, $tableName, $data) {
