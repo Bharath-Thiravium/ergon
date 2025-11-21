@@ -95,7 +95,7 @@ ob_start();
                         <span class="summary-label">Converted</span>
                     </div>
                 </div>
-                <canvas id="quotationsChart" height="150"></canvas>
+                <canvas id="quotationsChart" height="120"></canvas>
                 <div class="overview-progress">
                     <div class="progress-header">
                         <span class="progress-label">Conversion Rate</span>
@@ -103,6 +103,11 @@ ob_start();
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="conversionProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="data-list" id="quotationsList">
+                    <div class="form-group">
+                        <div class="form-label">📋 Loading quotations...</div>
                     </div>
                 </div>
             </div>
@@ -130,7 +135,7 @@ ob_start();
                         <span class="summary-label">Avg Order</span>
                     </div>
                 </div>
-                <canvas id="purchaseOrdersChart" height="150"></canvas>
+                <canvas id="purchaseOrdersChart" height="120"></canvas>
                 <div class="overview-stats">
                     <div class="stat-row">
                         <div class="stat-item-inline">
@@ -147,6 +152,11 @@ ob_start();
                                 <div class="stat-label-sm">Target</div>
                             </div>
                         </div>
+                    </div>
+                </div>
+                <div class="data-list" id="purchaseOrdersList">
+                    <div class="form-group">
+                        <div class="form-label">📦 Loading purchase orders...</div>
                     </div>
                 </div>
             </div>
@@ -190,6 +200,11 @@ ob_start();
                         <span class="progress-trend" id="collectionTrend">— No change</span>
                     </div>
                 </div>
+                <div class="data-list" id="invoicesList">
+                    <div class="form-group">
+                        <div class="form-label">💰 Loading invoices...</div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -224,6 +239,12 @@ ob_start();
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="data-list" id="paymentsList">
+                    <div class="form-group">
+                        <div class="form-label">💳 No payments yet</div>
+                        <p>Payment records will appear here</p>
                     </div>
                 </div>
             </div>
@@ -569,6 +590,7 @@ async function syncFinanceData() {
             loadFinanceStats();
             loadTables();
             updateCharts();
+            loadDetailedLists();
         }
     } catch (error) {
         alert('Sync failed: ' + error.message);
@@ -813,4 +835,98 @@ function showError(message) {
 $content = ob_get_clean();
 require_once __DIR__ . '/../layouts/dashboard.php';
 ?>
+
+<style>
+.data-list {
+    margin-top: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.list-item {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    background: var(--bg-primary);
+    transition: all 0.2s ease;
+}
+
+.list-item:hover {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+}
+
+.list-item--warning {
+    border-left: 4px solid var(--warning);
+    background: rgba(217, 119, 6, 0.05);
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.list-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.list-amount {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+.list-details {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.list-customer {
+    color: var(--text-secondary);
+}
+
+.list-status {
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+}
+
+.list-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.list-outstanding {
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--error);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .list-details {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .list-meta {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+}
+</style>
 
