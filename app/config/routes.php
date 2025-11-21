@@ -377,5 +377,6 @@ $router->get('/finance/stats', 'FinanceController', 'getFinanceStats');
 $router->get('/finance/chart', 'FinanceController', 'getChartData');
 $router->get('/finance/structure', 'FinanceController', 'getTableStructure');
 $router->post('/finance/sync', 'FinanceController', 'sync');
+$router->get('/finance/analyze', 'FinanceController', 'analyzeAllTables');
 
 ?>

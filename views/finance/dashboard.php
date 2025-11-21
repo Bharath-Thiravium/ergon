@@ -33,7 +33,8 @@ ob_start();
         <div class="col-md-3">
             <div class="card bg-warning text-white">
                 <div class="card-body">
-                    <button id="syncBtn" class="btn btn-light btn-sm w-100">Sync Finance Data</button>
+                    <button id="syncBtn" class="btn btn-light btn-sm w-100 mb-1">Sync Finance Data</button>
+                    <button id="analyzeBtn" class="btn btn-outline-light btn-sm w-100">Analyze All Tables</button>
                 </div>
             </div>
         </div>
@@ -124,6 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
     document.getElementById('structureBtn').addEventListener('click', showTableStructure);
     document.getElementById('loadData').addEventListener('click', loadTableData);
+    document.getElementById('analyzeBtn').addEventListener('click', analyzeAllTables);
 });
 
 function initCharts() {
@@ -246,6 +248,48 @@ function toggleStructure(header) {
 
 function closeStructureModal() {
     document.getElementById('structureModal').style.display = 'none';
+}
+
+async function analyzeAllTables() {
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    btn.textContent = 'Analyzing...';
+    
+    try {
+        const response = await fetch('/ergon/finance/analyze');
+        const data = await response.json();
+        
+        if (data.error) {
+            alert('Analysis failed: ' + data.error);
+            return;
+        }
+        
+        console.log('Database Analysis:', data.tables);
+        
+        // Display analysis in modal
+        const container = document.getElementById('structureContainer');
+        let html = '<div class="analysis-results">';
+        
+        data.tables.forEach(table => {
+            html += `
+                <div class="table-analysis">
+                    <h4>${table.name}</h4>
+                    <p>Columns: ${table.columns} | Rows: ${table.rows}</p>
+                    <pre>${JSON.stringify(table.sample, null, 2)}</pre>
+                </div>`;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+        document.getElementById('structureModal').style.display = 'flex';
+        
+    } catch (error) {
+        alert('Analysis failed: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Analyze All Tables';
+    }
 }
 
 async function syncFinanceData() {

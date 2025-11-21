@@ -8,6 +8,61 @@ class FinanceController extends Controller {
         $this->view('finance/dashboard');
     }
     
+    public function analyzeAllTables() {
+        header('Content-Type: application/json');
+        ob_clean();
+        
+        try {
+            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
+            
+            if (!$conn) {
+                echo json_encode(['error' => 'PostgreSQL connection failed']);
+                exit;
+            }
+            
+            // Get all tables
+            $result = pg_query($conn, "
+                SELECT table_name, 
+                       (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as column_count
+                FROM information_schema.tables t
+                WHERE table_schema = 'public' 
+                AND table_type = 'BASE TABLE'
+                ORDER BY table_name
+            ");
+            
+            $allTables = [];
+            while ($row = pg_fetch_assoc($result)) {
+                $tableName = $row['table_name'];
+                
+                // Get row count
+                $countResult = pg_query($conn, "SELECT COUNT(*) as row_count FROM \"$tableName\"");
+                $countRow = pg_fetch_assoc($countResult);
+                
+                // Get sample data
+                $sampleResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 3");
+                $sampleData = [];
+                while ($sample = pg_fetch_assoc($sampleResult)) {
+                    $sampleData[] = $sample;
+                }
+                
+                $allTables[] = [
+                    'name' => $tableName,
+                    'columns' => (int)$row['column_count'],
+                    'rows' => (int)$countRow['row_count'],
+                    'sample' => $sampleData
+                ];
+            }
+            
+            pg_close($conn);
+            echo json_encode(['tables' => $allTables]);
+            
+        } catch (Exception $e) {
+            ob_clean();
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
     public function getTableStructure() {
         header('Content-Type: application/json');
         
