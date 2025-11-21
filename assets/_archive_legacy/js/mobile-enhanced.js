@@ -160,6 +160,12 @@
                     closeMobileMenu();
                 }
                 
+                // Trigger user management persistence if on management page
+                if (window.location.pathname.includes('/admin/management') && window.userManagementPersistence) {
+                    window.userManagementPersistence.ensureDataInBothViews();
+                    window.userManagementPersistence.ensureProperVisibility();
+                }
+                
             }, 250);
         }
         

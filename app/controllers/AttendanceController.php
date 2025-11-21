@@ -351,10 +351,20 @@ class AttendanceController extends Controller {
             $stmt->execute([$_SESSION['user_id']]);
             $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
             
+            $onLeave = false;
+            try {
+                $stmt = $db->prepare("SELECT id FROM leaves WHERE user_id = ? AND status = 'approved' AND CURDATE() BETWEEN start_date AND end_date");
+                $stmt->execute([$_SESSION['user_id']]);
+                $onLeave = $stmt->fetch() ? true : false;
+            } catch (Exception $e) {
+                $onLeave = false;
+            }
+            
             echo json_encode([
                 'success' => true,
                 'attendance' => $todayAttendance,
-                'can_clock_in' => !$todayAttendance,
+                'on_leave' => $onLeave,
+                'can_clock_in' => !$todayAttendance && !$onLeave,
                 'can_clock_out' => $todayAttendance && !$todayAttendance['check_out']
             ]);
         } catch (Exception $e) {

@@ -27,6 +27,7 @@ class DailyPlanner {
                     completed_percentage INT DEFAULT 0,
                     start_time TIMESTAMP NULL,
                     pause_time TIMESTAMP NULL,
+                    pause_start_time TIMESTAMP NULL,
                     resume_time TIMESTAMP NULL,
                     completion_time TIMESTAMP NULL,
                     sla_end_time TIMESTAMP NULL,
@@ -58,6 +59,7 @@ class DailyPlanner {
         try {
             $columns = [
                 'pause_duration' => "ALTER TABLE daily_tasks ADD COLUMN pause_duration INT DEFAULT 0 AFTER active_seconds",
+                'pause_start_time' => "ALTER TABLE daily_tasks ADD COLUMN pause_start_time TIMESTAMP NULL AFTER pause_time",
                 'postponed_to_date' => "ALTER TABLE daily_tasks ADD COLUMN postponed_to_date DATE NULL AFTER postponed_from_date",
                 'original_task_id' => "ALTER TABLE daily_tasks ADD COLUMN original_task_id INT NULL AFTER task_id",
                 'source_field' => "ALTER TABLE daily_tasks ADD COLUMN source_field VARCHAR(50) NULL AFTER postponed_to_date",
@@ -135,7 +137,7 @@ class DailyPlanner {
                 ");
                 $stmt->execute([$userId, $date]);
             } else {
-                // Past date: show all tasks that were scheduled for that date
+                // Past date: show all tasks that were scheduled for that date with historical context
                 $stmt = $this->db->prepare("
                     SELECT 
                         dt.id, dt.title, dt.description, dt.priority, dt.status,
@@ -148,7 +150,8 @@ class DailyPlanner {
                             WHEN dt.rollover_source_date IS NOT NULL THEN CONCAT('🔄 Rolled over from: ', dt.rollover_source_date)
                             WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
                             ELSE '📜 Historical View'
-                        END as task_indicator
+                        END as task_indicator,
+                        'historical' as view_mode
                     FROM daily_tasks dt
                     LEFT JOIN tasks t ON dt.original_task_id = t.id
                     WHERE dt.user_id = ? AND dt.scheduled_date = ?
@@ -157,22 +160,25 @@ class DailyPlanner {
                             WHEN 'completed' THEN 1
                             WHEN 'in_progress' THEN 2 
                             WHEN 'not_started' THEN 3
-                            ELSE 4 
+                            WHEN 'postponed' THEN 4
+                            ELSE 5 
                         END, 
                         CASE dt.priority 
                             WHEN 'high' THEN 1 
                             WHEN 'medium' THEN 2 
                             WHEN 'low' THEN 3 
                             ELSE 4 
-                        END
+                        END,
+                        dt.created_at ASC
                 ");
                 $stmt->execute([$userId, $date]);
             }
             
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Log view access for audit trail
-            $this->logViewAccess($userId, $date, count($tasks));
+            // Log view access for audit trail with historical context
+            $viewType = ($date === date('Y-m-d')) ? 'current' : 'historical';
+            $this->logViewAccess($userId, $date, count($tasks), $viewType);
             
             return $tasks;
         } catch (Exception $e) {
@@ -267,6 +273,11 @@ class DailyPlanner {
             ");
             $result = $stmt->execute([$now, $taskId]);
             
+            if ($result && $stmt->rowCount() > 0) {
+                $this->logTaskHistory($taskId, $userId, 'started', 'not_started', 'in_progress', 'Task started at ' . $now);
+                $this->logTimeAction($taskId, $userId, 'start', $now);
+            }
+            
             return $result && $stmt->rowCount() > 0;
         } catch (Exception $e) {
             error_log("DailyPlanner startTask error: " . $e->getMessage());
@@ -276,31 +287,28 @@ class DailyPlanner {
     
     public function pauseTask($taskId, $userId) {
         try {
-            $this->db->beginTransaction();
-            
             $now = date('Y-m-d H:i:s');
             
             // Calculate active time since start/resume
             $activeTime = $this->calculateActiveTime($taskId);
             
-            // Update daily_tasks
+            // Update daily_tasks with pause start time
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
-                SET status = 'paused', pause_time = ?, 
+                SET status = 'on_break', pause_time = ?, pause_start_time = ?,
                     active_seconds = active_seconds + ?, updated_at = NOW()
-                WHERE id = ? AND user_id = ?
+                WHERE id = ?
             ");
-            $stmt->execute([$now, $activeTime, $taskId, $userId]);
+            $result = $stmt->execute([$now, $now, $activeTime, $taskId]);
             
-            // Log time action
-            $this->logTimeAction($taskId, $userId, 'pause', $now, $activeTime);
-            
-            $this->db->commit();
-            return true;
-        } catch (Exception $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollback();
+            if ($result && $stmt->rowCount() > 0) {
+                $this->logTimeAction($taskId, $userId, 'pause', $now, $activeTime);
+                $this->logTaskHistory($taskId, $userId, 'paused', 'in_progress', 'on_break', 'Task paused at ' . $now);
+                return true;
             }
+            
+            return false;
+        } catch (Exception $e) {
             error_log("DailyPlanner pauseTask error: " . $e->getMessage());
             return false;
         }
@@ -327,19 +335,30 @@ class DailyPlanner {
             }
             
             // Check if task can be resumed
-            if (!in_array($task['status'], ['paused', 'on_break'])) {
+            if (!in_array($task['status'], ['on_break'])) {
                 throw new Exception("Task cannot be resumed. Current status: " . $task['status']);
             }
             
             $now = date('Y-m-d H:i:s');
             
-            // Update task status - allow any user to resume any task
+            // Calculate pause duration if pause_start_time exists
+            $stmt = $this->db->prepare("SELECT pause_start_time, pause_duration FROM daily_tasks WHERE id = ?");
+            $stmt->execute([$taskId]);
+            $pauseData = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $additionalPauseDuration = 0;
+            if ($pauseData && $pauseData['pause_start_time']) {
+                $additionalPauseDuration = time() - strtotime($pauseData['pause_start_time']);
+            }
+            
+            // Update task status and add pause duration
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
-                SET status = 'in_progress', resume_time = ?, updated_at = NOW()
+                SET status = 'in_progress', resume_time = ?, 
+                    pause_duration = pause_duration + ?, pause_start_time = NULL, updated_at = NOW()
                 WHERE id = ?
             ");
-            $result = $stmt->execute([$now, $taskId]);
+            $result = $stmt->execute([$now, $additionalPauseDuration, $taskId]);
             
             if (!$result) {
                 throw new Exception("Failed to update task status");
@@ -354,8 +373,13 @@ class DailyPlanner {
             try {
                 $this->logTimeAction($taskId, $userId, 'resume', $now);
             } catch (Exception $e) {
-                // Log error but don't fail the resume operation
                 error_log("Failed to log time action: " . $e->getMessage());
+            }
+            
+            try {
+                $this->logTaskHistory($taskId, $userId, 'resumed', 'paused', 'in_progress', 'Task resumed at ' . $now);
+            } catch (Exception $e) {
+                error_log("Failed to log task history: " . $e->getMessage());
             }
             
             return true;
@@ -911,15 +935,22 @@ class DailyPlanner {
         }
     }
     
-    private function logViewAccess($userId, $date, $taskCount) {
+    private function logViewAccess($userId, $date, $taskCount, $viewType = 'current') {
         try {
             $this->ensureAuditTable();
+            $action = ($viewType === 'historical') ? 'historical_view_access' : 'view_access';
+            $details = json_encode([
+                'view_type' => $viewType,
+                'task_count' => $taskCount,
+                'date_accessed' => date('Y-m-d H:i:s')
+            ]);
+            
             $stmt = $this->db->prepare("
                 INSERT INTO daily_planner_audit 
-                (user_id, action, target_date, task_count, timestamp)
-                VALUES (?, 'view_access', ?, ?, NOW())
+                (user_id, action, target_date, task_count, details, timestamp)
+                VALUES (?, ?, ?, ?, ?, NOW())
             ");
-            $stmt->execute([$userId, $date, $taskCount]);
+            $stmt->execute([$userId, $action, $date, $taskCount, $details]);
         } catch (Exception $e) {
             error_log("logViewAccess error: " . $e->getMessage());
         }

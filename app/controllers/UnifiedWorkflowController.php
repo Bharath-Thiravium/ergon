@@ -11,10 +11,22 @@ class UnifiedWorkflowController extends Controller {
         
         $date = $date ?? date('Y-m-d');
         
+        // Validate date format
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            header('Location: /ergon/workflow/daily-planner/' . date('Y-m-d'));
+            exit;
+        }
+        
         // Restrict to current and past dates only
         if ($date > date('Y-m-d')) {
             header('Location: /ergon/workflow/daily-planner/' . date('Y-m-d'));
             exit;
+        }
+        
+        // Check if date is too far in the past (optional limit)
+        $earliestDate = date('Y-m-d', strtotime('-90 days'));
+        if ($date < $earliestDate) {
+            $_SESSION['error_message'] = 'Historical data is only available for the last 90 days.';
         }
         
         $currentUserId = $_SESSION['user_id'];

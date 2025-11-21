@@ -533,7 +533,7 @@ function submitAttendance() {
         if (data.success) {
             alert('Success: ' + data.message);
             closeAttendanceDialog();
-            location.reload();
+            window.location.reload();
         } else {
             alert('Error: ' + (data.message || 'Operation failed'));
         }
@@ -644,7 +644,7 @@ function submitEdit() {
         if (data.success) {
             alert('Success: ' + data.message);
             closeEditDialog();
-            location.reload();
+            window.location.reload();
         } else {
             alert('Error: ' + (data.message || 'Operation failed'));
         }
@@ -704,7 +704,7 @@ function deleteAttendanceRecord(attendanceId, userName) {
         .then(data => {
             if (data.success) {
                 alert('Attendance record deleted successfully!');
-                location.reload();
+                window.location.reload();
             } else {
                 alert('Error: ' + (data.message || 'Failed to delete attendance record'));
             }
@@ -939,6 +939,8 @@ function deleteAttendanceRecord(attendanceId, userName) {
     font-weight: 500;
 }
 </style>
+
+<script src="/ergon/assets/js/attendance-auto-refresh.js?v=<?= time() ?>"></script>
 
 <?php
 $content = ob_get_clean();

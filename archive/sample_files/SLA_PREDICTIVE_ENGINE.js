@@ -1,4 +1,7 @@
 // SLA Dashboard 2.0 - Predictive Performance Engine
+// Core Logic Modules for Real-Time Intelligence
+
+// 1. Core Logic Module: calculateVelocityIndex()
 function calculateVelocityIndex(data) {
     const completedTasks = data.completed_tasks || 0;
     const totalTasks = data.total_tasks || 1;
@@ -11,41 +14,79 @@ function calculateVelocityIndex(data) {
     return timeUtilization > 0 ? Math.round((completionRate / timeUtilization) * 100) : 0;
 }
 
+// 2. Core Logic Module: assessBreachRisk()
 function assessBreachRisk(velocityIndex, remainingSlaTime, taskPriority = 'medium') {
     const remainingHours = remainingSlaTime / 3600;
     
+    // Critical conditions
     if (remainingSlaTime <= 0) return { level: 'Critical', class: 'text-danger' };
     
-    if (remainingHours < 0.5 || (velocityIndex < 50 && taskPriority === 'high') || (velocityIndex < 25)) {
+    // High risk conditions
+    if (remainingHours < 0.5 || // < 30 mins
+        (velocityIndex < 50 && taskPriority === 'high') ||
+        (velocityIndex < 25)) {
         return { level: 'High', class: 'text-danger' };
     }
     
-    if (remainingHours < 2 || velocityIndex < 75) {
+    // Medium risk conditions
+    if (remainingHours < 2 || // < 2 hours
+        velocityIndex < 75) {
         return { level: 'Medium', class: 'text-warning' };
     }
     
     return { level: 'Low', class: 'text-success' };
 }
 
+// 3. Core Logic Module: generateAlerts()
 function generateAlerts(data) {
     const velocityIndex = calculateVelocityIndex(data);
     const remainingSeconds = data.remaining_seconds || 0;
     const completionRate = data.completion_rate || 0;
+    const pauseRatio = data.active_seconds > 0 ? (data.pause_seconds / data.active_seconds) : 0;
+    
     const alerts = [];
     
+    // Critical: SLA breach detected
     if (remainingSeconds <= 0) {
         alerts.push({
             type: 'critical',
             icon: '🔥',
             message: 'Critical: SLA breach detected!',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            taskIds: data.overdue_task_ids || []
         });
-    } else if (remainingSeconds < 1800 && completionRate < 80) {
+    }
+    
+    // Warning: SLA breach imminent
+    else if (remainingSeconds < 1800 && completionRate < 80) {
         alerts.push({
             type: 'warning',
             icon: '⚠️',
             message: 'Warning: SLA breach imminent in 30 minutes!',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            taskIds: data.at_risk_task_ids || []
+        });
+    }
+    
+    // Info: Low velocity detected
+    if (velocityIndex < 50 && completionRate < 50) {
+        alerts.push({
+            type: 'info',
+            icon: '⏳',
+            message: 'Low velocity detected. Prioritize high-impact tasks.',
+            timestamp: new Date().toISOString(),
+            taskIds: []
+        });
+    }
+    
+    // Info: High break ratio
+    if (pauseRatio > 0.3) {
+        alerts.push({
+            type: 'info',
+            icon: '☕',
+            message: 'High break ratio detected. Consider focused work sessions.',
+            timestamp: new Date().toISOString(),
+            taskIds: []
         });
     }
     
@@ -117,28 +158,37 @@ function updateSLADashboardPredictive(data) {
     });
 }
 
-// SLA Alert Functions
-function showSLAAlert(message, type) {
-    let alert = document.querySelector('.sla-alert');
-    if (!alert) {
-        alert = document.createElement('div');
-        alert.className = 'sla-alert';
-        const metricsContainer = document.querySelector('.sla-metrics') || document.body;
-        metricsContainer.appendChild(alert);
+// Dismiss SLA alert function
+function dismissSLAAlert() {
+    const alertContainer = document.querySelector('.sla-alert-container');
+    if (alertContainer) {
+        alertContainer.remove();
     }
-    
-    alert.innerHTML = `
-        <div class="alert-content alert-${type}">
-            <span class="alert-message">${message}</span>
-            <button onclick="dismissSLAAlert()" class="alert-dismiss">×</button>
-        </div>
-    `;
-    alert.style.display = 'block';
 }
 
-function dismissSLAAlert() {
-    const alert = document.querySelector('.sla-alert');
-    if (alert) alert.style.display = 'none';
+// Show SLA alert function
+function showSLAAlert(message, type) {
+    dismissSLAAlert();
+    
+    const alertContainer = document.createElement('div');
+    alertContainer.className = `sla-alert-container alert alert-${type === 'critical' ? 'danger' : type === 'warning' ? 'warning' : 'info'}`;
+    
+    // Create elements safely without innerHTML
+    const messageSpan = document.createElement('span');
+    messageSpan.textContent = message; // Use textContent to prevent XSS
+    
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'btn-close';
+    closeButton.addEventListener('click', dismissSLAAlert);
+    
+    alertContainer.appendChild(messageSpan);
+    alertContainer.appendChild(closeButton);
+    
+    const dashboard = document.querySelector('.sla-dashboard') || document.querySelector('.main-content');
+    if (dashboard) {
+        dashboard.insertBefore(alertContainer, dashboard.firstChild);
+    }
 }
 
 // Process and display alerts

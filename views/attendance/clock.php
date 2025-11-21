@@ -105,6 +105,12 @@ function updateClockButton(status) {
         icon.textContent = '🏖️';
         btn.className = 'btn btn--secondary';
         btn.disabled = true;
+    } else if (status.is_completed || (status.has_clocked_in && status.has_clocked_out)) {
+        // Completed state
+        text.textContent = 'Completed';
+        icon.textContent = '✅';
+        btn.className = 'btn btn--secondary';
+        btn.disabled = true;
     } else if (!status.has_clocked_in) {
         // Clock In state
         text.textContent = 'Clock In';
@@ -117,12 +123,6 @@ function updateClockButton(status) {
         icon.textContent = '⏹️';
         btn.className = 'btn btn--danger';
         btn.onclick = () => clockAction('out');
-    } else {
-        // Completed state
-        text.textContent = 'Completed';
-        icon.textContent = '✅';
-        btn.className = 'btn btn--secondary';
-        btn.disabled = true;
     }
     
     // Sync header button if available

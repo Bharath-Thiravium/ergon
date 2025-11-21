@@ -92,7 +92,8 @@ class UnifiedAttendanceController extends Controller {
             'has_clocked_out' => $todayAttendance && $todayAttendance['check_out'] ? true : false,
             'clock_in_time' => $todayAttendance ? $todayAttendance['check_in'] : null,
             'clock_out_time' => $todayAttendance ? $todayAttendance['check_out'] : null,
-            'on_leave' => $onLeave
+            'on_leave' => $onLeave,
+            'is_completed' => $todayAttendance && $todayAttendance['check_out'] ? true : false
         ];
         
         $this->view('attendance/clock', [
@@ -124,131 +125,16 @@ class UnifiedAttendanceController extends Controller {
         exit;
     }
     
-    public function edit() {
-        $this->requireAuth();
-        
-        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
-            header('HTTP/1.1 403 Forbidden');
-            exit('Access denied');
-        }
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            header('Content-Type: application/json');
-            
-            try {
-                $attendanceId = intval($_POST['attendance_id']);
-                $userId = intval($_POST['user_id']);
-                $date = $_POST['date'];
-                $clockIn = $_POST['clock_in'];
-                $clockOut = $_POST['clock_out'] ?? null;
-                $status = $_POST['status'];
-                $editReason = $_POST['edit_reason'] ?? '';
-                $editorId = $_SESSION['user_id'];
-                
-                // Admin role check - cannot edit admin users
-                if ($_SESSION['role'] === 'admin') {
-                    $stmt = $this->db->prepare("SELECT role FROM users WHERE id = ?");
-                    $stmt->execute([$userId]);
-                    $targetUser = $stmt->fetch();
-                    if ($targetUser && $targetUser['role'] === 'admin') {
-                        echo json_encode(['success' => false, 'error' => 'Cannot edit admin attendance']);
-                        exit;
-                    }
-                }
-                
-                // Calculate working hours
-                $workingHours = 0;
-                if ($clockIn && $clockOut) {
-                    $checkInTime = strtotime($date . ' ' . $clockIn);
-                    $checkOutTime = strtotime($date . ' ' . $clockOut);
-                    if ($checkOutTime > $checkInTime) {
-                        $workingHours = ($checkOutTime - $checkInTime) / 3600;
-                    }
-                }
-                
-                if ($attendanceId > 0) {
-                    // Update existing record
-                    $stmt = $this->db->prepare("
-                        UPDATE attendance SET 
-                        check_in = ?, check_out = ?, status = ?, working_hours = ?,
-                        manual_entry = 1, edited_by = ?, edit_reason = ?, updated_at = NOW()
-                        WHERE id = ?
-                    ");
-                    $stmt->execute([
-                        $date . ' ' . $clockIn,
-                        $clockOut ? $date . ' ' . $clockOut : null,
-                        $status,
-                        $workingHours,
-                        $editorId,
-                        $editReason,
-                        $attendanceId
-                    ]);
-                } else {
-                    // Create new record
-                    $stmt = $this->db->prepare("
-                        INSERT INTO attendance (user_id, check_in, check_out, status, working_hours, 
-                        manual_entry, edited_by, edit_reason, location_name, created_at) 
-                        VALUES (?, ?, ?, ?, ?, 1, ?, ?, 'Manual Entry', NOW())
-                    ");
-                    $stmt->execute([
-                        $userId,
-                        $date . ' ' . $clockIn,
-                        $clockOut ? $date . ' ' . $clockOut : null,
-                        $status,
-                        $workingHours,
-                        $editorId,
-                        $editReason
-                    ]);
-                }
-                
-                echo json_encode(['success' => true, 'message' => 'Attendance updated successfully']);
-                
-            } catch (Exception $e) {
-                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-            }
-            exit;
-        }
-        
-        // GET request - show edit form
-        $attendanceId = $_GET['id'] ?? 0;
-        $userId = $_GET['user_id'] ?? 0;
-        $record = null;
-        
-        if ($attendanceId > 0) {
-            $stmt = $this->db->prepare("
-                SELECT a.*, u.name as user_name, u.role as user_role
-                FROM attendance a 
-                JOIN users u ON a.user_id = u.id 
-                WHERE a.id = ?
-            ");
-            $stmt->execute([$attendanceId]);
-            $record = $stmt->fetch(PDO::FETCH_ASSOC);
-        } elseif ($userId > 0) {
-            $stmt = $this->db->prepare("SELECT id, name, role FROM users WHERE id = ?");
-            $stmt->execute([$userId]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($user) {
-                $record = [
-                    'user_id' => $user['id'],
-                    'user_name' => $user['name'],
-                    'user_role' => $user['role']
-                ];
-            }
-        }
-        
-        $this->view('attendance/edit', [
-            'record' => $record,
-            'attendance_id' => $attendanceId,
-            'active_page' => 'attendance'
-        ]);
-    }
-    
     private function clockIn($userId, $latitude, $longitude) {
         try {
-            // Check if already clocked in today
+            // Check if already has attendance today
             $existing = $this->getTodayAttendance($userId);
-            if ($existing && !$existing['check_out']) {
-                return ['success' => false, 'error' => 'Already clocked in today'];
+            if ($existing) {
+                if ($existing['check_out']) {
+                    return ['success' => false, 'error' => 'Already completed attendance for today'];
+                } else {
+                    return ['success' => false, 'error' => 'Already clocked in today'];
+                }
             }
             
             // Check if on approved leave
@@ -256,27 +142,7 @@ class UnifiedAttendanceController extends Controller {
                 return ['success' => false, 'error' => 'You are on approved leave today'];
             }
             
-            // Skip location validation for now
-            // $rules = $this->getAttendanceRules();
-            // if ($rules['is_gps_required'] && $latitude && $longitude) {
-            //     $distance = $this->calculateDistance(
-            //         $latitude, $longitude,
-            //         $rules['office_latitude'], $rules['office_longitude']
-            //     );
-            //     
-            //     if ($distance > $rules['office_radius_meters']) {
-            //         return [
-            //             'success' => false,
-            //             'error' => "You are {$distance}m away from office. Please move closer."
-            //         ];
-            //     }
-            // }
-            
-            // Determine status (on time or late)
-            $shift = $this->getUserShift($userId);
-            $status = $this->determineStatus($shift);
-            
-            // Insert attendance record with basic columns only
+            // Insert attendance record
             $stmt = $this->db->prepare("
                 INSERT INTO attendance (user_id, check_in, created_at) 
                 VALUES (?, NOW(), NOW())
@@ -285,15 +151,9 @@ class UnifiedAttendanceController extends Controller {
             $result = $stmt->execute([$userId]);
             
             if ($result) {
-                // Notify if late
-                if ($status === 'late') {
-                    $this->notifyLateArrival($userId);
-                }
-                
                 return [
                     'success' => true,
                     'message' => 'Clocked in successfully',
-                    'status' => $status,
                     'time' => date('H:i:s')
                 ];
             }
@@ -320,13 +180,7 @@ class UnifiedAttendanceController extends Controller {
                 return ['success' => false, 'error' => 'No clock in record found for today'];
             }
             
-            // Calculate total hours
-            $checkIn = new DateTime($attendance['check_in']);
-            $checkOut = new DateTime();
-            $interval = $checkOut->diff($checkIn);
-            $totalHours = (float)($interval->h + ($interval->i / 60.0) + ($interval->s / 3600.0));
-            
-            // Update attendance record with basic columns only
+            // Update attendance record
             $stmt = $this->db->prepare("
                 UPDATE attendance 
                 SET check_out = NOW() 
@@ -339,7 +193,6 @@ class UnifiedAttendanceController extends Controller {
                 return [
                     'success' => true,
                     'message' => 'Clocked out successfully',
-                    'total_hours' => number_format($totalHours, 2, '.', ''),
                     'time' => date('H:i:s')
                 ];
             }
@@ -662,14 +515,15 @@ class UnifiedAttendanceController extends Controller {
             if ($role === "admin") {
                 $userCondition = "AND u.role = 'user'";
             } else {
-                $userCondition = "AND u.role IN ('user', 'admin')";
+                $userCondition = "AND u.role IN ('user', 'admin') AND (u.status != 'removed' OR u.status IS NULL)";
             }
             
+            // Get all users with their attendance and leave status for selected date
             $stmt = $this->db->prepare("
                 SELECT 
                     u.id as user_id,
-                    u.name,
-                    u.email,
+                    u.name, 
+                    u.email, 
                     u.role,
                     a.id as attendance_id,
                     a.check_in,
@@ -698,8 +552,13 @@ class UnifiedAttendanceController extends Controller {
                 LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
                 LEFT JOIN leaves l ON u.id = l.user_id AND l.status = 'approved' 
                     AND ? BETWEEN DATE(l.start_date) AND DATE(l.end_date)
-                WHERE u.status != 'removed' $userCondition
-                ORDER BY u.role DESC, u.name
+                WHERE (u.status = 'active' OR u.status IS NULL) $userCondition
+                ORDER BY 
+                    CASE 
+                        WHEN u.role = 'admin' THEN 1
+                        WHEN u.role = 'user' THEN 2
+                        ELSE 3
+                    END, u.name
             ");
             $stmt->execute([$selectedDate, $selectedDate]);
             $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -717,6 +576,34 @@ class UnifiedAttendanceController extends Controller {
         } catch (Exception $e) {
             error_log('getAllAttendanceByDate error: ' . $e->getMessage());
             return [];
+        }
+    }
+    
+    private function getTodayAttendance($userId) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT * FROM attendance 
+                WHERE user_id = ? AND DATE(check_in) = CURDATE()
+            ");
+            $stmt->execute([$userId]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('getTodayAttendance error: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    private function checkIfOnLeave($userId) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT id FROM leaves 
+                WHERE user_id = ? AND status = 'approved' 
+                AND CURDATE() BETWEEN DATE(start_date) AND DATE(end_date)
+            ");
+            $stmt->execute([$userId]);
+            return $stmt->fetch() ? true : false;
+        } catch (Exception $e) {
+            return false;
         }
     }
     
@@ -798,77 +685,6 @@ class UnifiedAttendanceController extends Controller {
         ];
     }
     
-    private function notifyLateArrival($userId) {
-        try {
-            require_once __DIR__ . '/../helpers/NotificationHelper.php';
-            $stmt = $this->db->prepare("SELECT name FROM users WHERE id = ?");
-            $stmt->execute([$userId]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($user) {
-                NotificationHelper::notifyOwners(
-                    $userId,
-                    'attendance',
-                    'late_arrival',
-                    "{$user['name']} arrived late at " . date('H:i'),
-                    null
-                );
-            }
-        } catch (Exception $e) {
-            error_log('Late arrival notification error: ' . $e->getMessage());
-        }
-    }
-    
-    private function renderAttendanceTable($employees) {
-        header('Content-Type: text/html');
-        echo "<table class='table'><tbody>";
-        
-        if (empty($employees)) {
-            echo "<tr><td colspan='7' class='text-center text-muted py-4'>No employees found.</td></tr>";
-        } else {
-            foreach ($employees as $employee) {
-                echo "<tr>";
-                echo "<td>";
-                echo "<div style='display: flex; align-items: center; gap: 0.5rem;'>";
-                $bgColor = $employee['role'] === 'admin' ? '#8b5cf6' : ($employee['status'] === 'Present' ? '#22c55e' : '#ef4444');
-                $icon = $employee['role'] === 'admin' ? '👔' : strtoupper(substr($employee['name'], 0, 2));
-                echo "<div style='width: 32px; height: 32px; border-radius: 50%; background: $bgColor; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem; font-weight: bold;'>$icon</div>";
-                echo "<div><div style='font-weight: 500;'>" . htmlspecialchars($employee['name']) . "</div>";
-                echo "<div style='font-size: 0.75rem; color: #6b7280;'>" . htmlspecialchars($employee['email']) . "</div></div></div></td>";
-                echo "<td>" . htmlspecialchars($employee['department']) . "</td>";
-                
-                $statusBadge = $employee['status'] === 'Present' ? 'success' : 'danger';
-                $statusIcon = $employee['status'] === 'Present' ? '✅' : '❌';
-                if ($employee['status'] === 'On Leave') {
-                    echo "<td><span class='badge badge--warning'>🏖️ On Leave</span></td>";
-                } else {
-                    echo "<td><span class='badge badge--$statusBadge'>$statusIcon {$employee['status']}</span></td>";
-                }
-                
-                echo "<td>" . ($employee['check_in'] ? date('H:i', strtotime($employee['check_in'])) : '<span style="color: #6b7280;">-</span>') . "</td>";
-                
-                if ($employee['check_out']) {
-                    echo "<td><span style='color: #dc2626; font-weight: 500;'>" . date('H:i', strtotime($employee['check_out'])) . "</span></td>";
-                } elseif ($employee['check_in']) {
-                    echo "<td><span style='color: #f59e0b; font-weight: 500;'>Working...</span></td>";
-                } else {
-                    echo "<td><span style='color: #6b7280;'>-</span></td>";
-                }
-                
-                $totalHours = (float)($employee['total_hours'] ?? 0);
-                echo "<td>" . ($totalHours > 0 ? "<span style='color: #1f2937; font-weight: 500;'>" . number_format($totalHours, 2, '.', '') . "h</span>" : "<span style='color: #6b7280;'>0h</span>") . "</td>";
-                
-                echo "<td><div style='display: flex; gap: 0.25rem;'>";
-                echo "<button class='btn btn--sm btn--secondary' onclick='viewEmployeeDetails({$employee['id']})' title='View Details'><span>👁️</span></button>";
-                if ($employee['status'] === 'Absent') {
-                    echo "<button class='btn btn--sm btn--warning' onclick='markManualAttendance({$employee['id']})' title='Manual Entry'><span>✏️</span></button>";
-                }
-                echo "</div></td></tr>";
-            }
-        }
-        echo "</tbody></table>";
-    }
-    
     private function ensureAttendanceTable() {
         try {
             // Check if users table exists first
@@ -880,7 +696,7 @@ class UnifiedAttendanceController extends Controller {
             // Check if attendance table exists with proper structure
             $stmt = $this->db->query("SHOW TABLES LIKE 'attendance'");
             if (!$stmt->fetch()) {
-                // Table doesn't exist, create it without foreign key constraint for now
+                // Table doesn't exist, create it
                 $this->db->exec("
                     CREATE TABLE attendance (
                         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -891,10 +707,6 @@ class UnifiedAttendanceController extends Controller {
                         longitude DECIMAL(11, 8) NULL,
                         location_name VARCHAR(255) DEFAULT 'Office',
                         status VARCHAR(20) DEFAULT 'present',
-                        shift_id INT NULL,
-                        total_hours DECIMAL(5,2) NULL,
-                        ip_address VARCHAR(45) NULL,
-                        device_info TEXT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                         INDEX idx_user_id (user_id),

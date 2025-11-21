@@ -6,6 +6,7 @@ $content = ob_start();
 <link rel="stylesheet" href="/ergon/assets/css/daily-planner-modern.css">
 <link rel="stylesheet" href="/ergon/assets/css/planner-access-control.css">
 <link rel="stylesheet" href="/ergon/assets/css/production-fixes.css">
+<link rel="stylesheet" href="/ergon/assets/css/daily-planner-history-fix.css">
 
 <?php renderModalCSS(); ?>
 
@@ -27,15 +28,30 @@ $content = ob_start();
             </div>
             <?php unset($_SESSION['sync_message']); ?>
         <?php endif; ?>
+        <?php if (isset($_SESSION['error_message'])): ?>
+            <div class="alert alert-warning" style="margin: 10px 0; padding: 8px 12px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; color: #856404;">
+                <i class="bi bi-exclamation-triangle"></i> <?= $_SESSION['error_message'] ?>
+            </div>
+            <?php unset($_SESSION['error_message']); ?>
+        <?php endif; ?>
     </div>
     <div class="page-actions">
-        <input type="date" id="dateSelector" value="<?= $selected_date ?>" max="<?= date('Y-m-d') ?>" onchange="changeDate(this.value)" class="form-control">
-        <a href="/ergon/workflow/daily-planner/<?= $selected_date ?>?refresh=1" class="btn btn--info" title="Add new tasks from Tasks module (preserves existing progress)">
-            <i class="bi bi-plus-circle"></i> Sync New Tasks
-        </a>
-        <a href="/ergon/tasks/create" class="btn btn--secondary">
-            <i class="bi bi-plus"></i> Add Task
-        </a>
+        <div class="date-selector-group">
+            <label for="dateSelector" class="date-label">Select Date:</label>
+            <input type="date" id="dateSelector" value="<?= $selected_date ?>" max="<?= date('Y-m-d') ?>" onchange="changeDate(this.value)" class="form-control" title="Select a date to view daily planner (past dates show historical view)">
+        </div>
+        <?php if ($selected_date < date('Y-m-d')): ?>
+            <button class="btn btn--secondary" onclick="showHistoryInfo()" title="Information about historical view">
+                <i class="bi bi-info-circle"></i> History View Info
+            </button>
+        <?php else: ?>
+            <a href="/ergon/workflow/daily-planner/<?= $selected_date ?>?refresh=1" class="btn btn--info" title="Add new tasks from Tasks module (preserves existing progress)">
+                <i class="bi bi-plus-circle"></i> Sync New Tasks
+            </a>
+            <a href="/ergon/tasks/create" class="btn btn--secondary">
+                <i class="bi bi-plus"></i> Add Task
+            </a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -177,6 +193,10 @@ $content = ob_start();
                                     <div class="countdown-timer" id="countdown-<?= $taskId ?>">
                                         <div class="countdown-display"><?= $timeDisplay ?></div>
                                         <div class="countdown-label"><?= $status === 'in_progress' ? 'Remaining' : ($status === 'on_break' ? 'Paused' : 'SLA Time') ?></div>
+                                        <?php if ($status === 'on_break'): ?>
+                                            <div class="pause-timer" id="pause-timer-<?= $taskId ?>">00:00:00</div>
+                                            <div class="pause-timer-label">Break Time</div>
+                                        <?php endif; ?>
                                     </div>
                                     <div class="timing-info">
                                         <span class="timing-label">Time Used:</span>
@@ -219,6 +239,9 @@ $content = ob_start();
                                         // Past dates: Read-only historical view
                                     ?>
                                         <span class="badge badge--muted"><i class="bi bi-archive"></i> Historical View</span>
+                                        <button class="btn btn--sm btn--secondary" onclick="showTaskHistory(<?= $taskId ?>, '<?= htmlspecialchars($task['title']) ?>')" title="View this task's history and timeline">
+                                            <i class="bi bi-clock-history"></i> History
+                                        </button>
                                         <?php if ($status === 'completed'): ?>
                                             <span class="badge badge--success"><i class="bi bi-check-circle"></i> Completed</span>
                                         <?php else: ?>
@@ -338,22 +361,6 @@ $content = ob_start();
                 <div class="metric-row">
                     <span class="metric-label">Remaining Time:</span>
                     <span class="metric-value sla-remaining-time">Loading...</span>
-                </div>
-                <div class="metric-row">
-                    <span class="metric-label">Velocity Index:</span>
-                    <span class="metric-value velocity-index">--</span>
-                </div>
-                <div class="metric-row">
-                    <span class="metric-label">Breach Risk:</span>
-                    <span class="metric-value breach-risk">Low</span>
-                </div>
-                <div class="metric-row">
-                    <span class="metric-label">Velocity Index:</span>
-                    <span class="metric-value velocity-index">--</span>
-                </div>
-                <div class="metric-row">
-                    <span class="metric-label">Breach Risk:</span>
-                    <span class="metric-value breach-risk">Low</span>
                 </div>
                 <div class="metric-row">
                     <span class="metric-label">Pause Duration:</span>
@@ -709,6 +716,22 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
     animation: pulse-danger 1s infinite;
 }
 
+.pause-timer {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #f59e0b;
+    font-family: 'Courier New', monospace;
+    margin-top: 0.25rem;
+}
+
+.pause-timer-label {
+    font-size: 0.7rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.1rem;
+}
+
 @keyframes pulse-warning {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
@@ -877,7 +900,7 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
 
 /* Button tooltip fixes for Daily Planner */
 .btn:hover::after {
-    content: attr(title);
+    content: none;
     position: absolute;
     bottom: calc(100% + 8px);
     left: 50%;
@@ -1043,6 +1066,243 @@ window.closeModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.style.display = 'none';
 };
+
+/* History Info Modal Styles */
+.history-info-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.history-info-modal .modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.history-info-modal .modal-content {
+    position: relative;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.history-info-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+    border-radius: 8px 8px 0 0;
+}
+
+.history-info-modal .modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.history-info-modal .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.history-info-modal .modal-close:hover {
+    color: #1f2937;
+    background: #f3f4f6;
+}
+
+.history-info-modal .modal-body {
+    padding: 24px;
+}
+
+.history-info-modal .modal-body ul {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+}
+
+.history-info-modal .modal-body li {
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #374151;
+}
+
+.history-info-modal .modal-body li i {
+    color: #6b7280;
+    width: 16px;
+}
+
+.history-info-modal .modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* Date Selector Group Styles */
+.date-selector-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.date-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin: 0;
+}
+
+.loading-indicator {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: normal;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .page-actions {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+    
+    .date-selector-group {
+        align-items: center;
+    }
+    
+    .history-info-modal .modal-content {
+        margin: 20px;
+        width: calc(100% - 40px);
+    }
+    
+    .history-info-modal .modal-actions {
+        flex-direction: column;
+    }
+}
+
+/* Task History Timeline Styles */
+.task-history-timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.task-history-timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e5e7eb;
+}
+
+.history-timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -23px;
+    top: 5px;
+    width: 8px;
+    height: 8px;
+    background: #3b82f6;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.timeline-content {
+    background: #f8f9fa;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border-left: 3px solid #3b82f6;
+}
+
+.timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.timeline-action {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.timeline-date {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.timeline-progress {
+    font-size: 0.875rem;
+    color: #059669;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.timeline-notes {
+    font-size: 0.875rem;
+    color: #4b5563;
+    font-style: italic;
+}
+
+.no-history, .error-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+}
+
+.no-history i, .error-message i {
+    font-size: 2rem;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.error-message {
+    color: #dc2626;
+}
 </style>
 
 <script>
@@ -1112,8 +1372,9 @@ function updateSLADisplay(taskId) {
             // Update individual task timing display
             updateTaskTiming(taskId, data);
             
-            // Update countdown label based on status
+            // Update countdown label and pause timer based on status
             const label = document.querySelector(`#countdown-${taskId} .countdown-label`);
+            const pauseTimer = document.querySelector(`#pause-timer-${taskId}`);
             const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
             
             if (label && taskCard) {
@@ -1122,6 +1383,14 @@ function updateSLADisplay(taskId) {
                     label.textContent = 'Remaining';
                 } else if (status === 'on_break') {
                     label.textContent = 'Paused';
+                    // Update pause timer
+                    if (pauseTimer && data.pause_duration) {
+                        const pauseSeconds = Math.floor(data.pause_duration);
+                        const hours = Math.floor(pauseSeconds / 3600);
+                        const minutes = Math.floor((pauseSeconds % 3600) / 60);
+                        const secs = pauseSeconds % 60;
+                        pauseTimer.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    }
                 } else {
                     label.textContent = 'SLA Time';
                 }
@@ -1143,20 +1412,8 @@ function updateTaskTiming(taskId, data) {
         if (timeUsed) timeUsed.textContent = formatTimeHours(data.active_seconds);
         if (timeRemaining) timeRemaining.textContent = formatTimeHours(data.remaining_seconds);
         if (timePaused) {
-            // Calculate current pause duration for on_break tasks
-            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-            if (taskCard && taskCard.dataset.status === 'on_break') {
-                const pauseStart = taskCard.dataset.pauseStart;
-                if (pauseStart) {
-                    const currentPause = Math.floor((Date.now() - parseInt(pauseStart)) / 1000);
-                    const totalPause = (data.pause_duration || 0) + currentPause;
-                    timePaused.textContent = formatTimeHours(totalPause);
-                } else {
-                    timePaused.textContent = formatTimeHours(data.pause_duration || 0);
-                }
-            } else {
-                timePaused.textContent = formatTimeHours(data.pause_duration || 0);
-            }
+            // Use pause duration from API (includes live calculation)
+            timePaused.textContent = formatTimeHours(data.pause_duration || 0);
         }
     }
 }
@@ -1247,6 +1504,7 @@ function updateSLADashboardStats(stats) {
 let lastValidSLAData = null;
 let slaDebugMode = false; // Set to true for debugging
 let slaUpdateCount = 0;
+let slaUpdateTimeout = null;
 
 // Debug function to track SLA updates
 function debugSLA(message, data = null) {
@@ -1371,83 +1629,25 @@ function refreshSLADashboard() {
     const currentDate = '<?= $selected_date ?>';
     const currentUserId = <?= $current_user_id ?? $_SESSION['user_id'] ?? 1 ?>;
     
-    // Return promise for better handling
     return fetch(`/ergon/api/daily_planner_workflow.php?action=sla-dashboard&date=${currentDate}&user_id=${currentUserId}&t=${Date.now()}`, {
         method: 'GET',
-        credentials: 'same-origin',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Cache-Control': 'no-cache'
-        }
+        credentials: 'same-origin'
     })
-    .then(response => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
-        console.log('User SLA Dashboard:', data);
-        
         if (data.success && data.user_specific) {
-            debugSLA('Received valid SLA data', data);
-            
-            // Store valid data to prevent reversion
             lastValidSLAData = data;
-            
-            // Update SLA metrics for current user only
             updateSLADashboard(data);
-            
-            // Update task counts for current user
             updateSLADashboardStats({
                 total_tasks: data.total_tasks || 0,
                 completed_tasks: data.completed_tasks || 0,
                 in_progress_tasks: data.in_progress_tasks || 0,
                 postponed_tasks: data.postponed_tasks || 0
             });
-            
-            // Update completion rate for current user
-            const completionRateEl = document.querySelector('.metric-value');
-            if (completionRateEl) {
-                completionRateEl.textContent = (data.completion_rate || 0) + '%';
-            }
-            
-            console.log(`✓ SLA Dashboard updated for User ${data.current_user_id}: ${data.total_tasks} tasks, SLA Total: ${formatTimeHours(data.sla_total_seconds)}`);
-            
-            // Show user info in dashboard title
-            const dashboardTitle = document.querySelector('.card__title');
-            if (dashboardTitle && dashboardTitle.textContent.includes('SLA Dashboard')) {
-                dashboardTitle.innerHTML = `<i class="bi bi-speedometer2"></i> SLA Dashboard (User ${data.current_user_id})`;
-            }
-        } else {
-            debugSLA('Invalid SLA data received, using cached data', data);
-            console.error('Invalid user-specific SLA data, using last valid data:', data);
-            // Use last valid data instead of reverting to defaults
-            if (lastValidSLAData) {
-                debugSLA('Restoring from cache', lastValidSLAData);
-                updateSLADashboard(lastValidSLAData);
-                updateSLADashboardStats({
-                    total_tasks: lastValidSLAData.total_tasks || 0,
-                    completed_tasks: lastValidSLAData.completed_tasks || 0,
-                    in_progress_tasks: lastValidSLAData.in_progress_tasks || 0,
-                    postponed_tasks: lastValidSLAData.postponed_tasks || 0
-                });
-            }
         }
     })
     .catch(error => {
-        console.error('User SLA Dashboard error:', error);
-        // Use last valid data instead of reverting to defaults
-        if (lastValidSLAData) {
-            console.log('Using cached SLA data due to fetch error');
-            updateSLADashboard(lastValidSLAData);
-        } else {
-            // Only set fallback values if no valid data exists
-            updateSLADashboard({
-                sla_total_seconds: 0,
-                active_seconds: 0,
-                remaining_seconds: 0,
-                pause_seconds: 0
-            });
-        }
+        console.error('SLA Dashboard error:', error);
     });
 }
 
@@ -1565,6 +1765,13 @@ function saveProgress() {
 }
 
 function changeDate(date) {
+    // Validate date format
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        alert('Invalid date format');
+        document.getElementById('dateSelector').value = '<?= $selected_date ?>';
+        return;
+    }
+    
     // Prevent navigation to future dates
     const today = new Date().toISOString().split('T')[0];
     if (date > today) {
@@ -1572,7 +1779,129 @@ function changeDate(date) {
         document.getElementById('dateSelector').value = '<?= $selected_date ?>';
         return;
     }
+    
+    // Show loading indicator for history view
+    if (date < today) {
+        const pageTitle = document.querySelector('.page-title h1');
+        if (pageTitle) {
+            pageTitle.innerHTML = '<i class="bi bi-calendar-day"></i> Daily Planner <span class="loading-indicator">Loading history...</span>';
+        }
+    }
+    
+    // Navigate to selected date
     window.location.href = `/ergon/workflow/daily-planner/${date}`;
+}
+
+function showHistoryInfo() {
+    const modal = document.createElement('div');
+    modal.className = 'history-info-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeHistoryInfo()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="bi bi-info-circle"></i> Historical View Information</h3>
+                <button onclick="closeHistoryInfo()" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>You are viewing historical data for ` + new Date('<?= $selected_date ?>').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + `.</strong></p>
+                <ul>
+                    <li><i class="bi bi-eye"></i> This is a read-only view of past tasks</li>
+                    <li><i class="bi bi-clock-history"></i> Task statuses and progress are as they were on this date</li>
+                    <li><i class="bi bi-archive"></i> No actions can be performed on historical tasks</li>
+                    <li><i class="bi bi-calendar-check"></i> Use the date selector to view different dates</li>
+                    <li><i class="bi bi-arrow-left"></i> Return to today's planner to manage current tasks</li>
+                </ul>
+                <div class="modal-actions">
+                    <button onclick="goToToday()" class="btn btn--primary">
+                        <i class="bi bi-calendar-day"></i> Go to Today
+                    </button>
+                    <button onclick="closeHistoryInfo()" class="btn btn--secondary">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function closeHistoryInfo() {
+    const modal = document.querySelector('.history-info-modal');
+    if (modal) {
+        document.body.removeChild(modal);
+    }
+}
+
+function goToToday() {
+    window.location.href = '/ergon/workflow/daily-planner/' + new Date().toISOString().split('T')[0];
+}
+
+function showTaskHistory(taskId, taskTitle) {
+    const modal = document.createElement('div');
+    modal.className = 'history-info-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeTaskHistory()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="bi bi-clock-history"></i> Task History</h3>
+                <button onclick="closeTaskHistory()" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>${taskTitle}</strong></p>
+                <div id="taskHistoryContent">Loading task history...</div>
+            </div>
+            <div class="modal-actions">
+                <button onclick="closeTaskHistory()" class="btn btn--secondary">Close</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Load task history
+    fetch(`/ergon/api/daily_planner_workflow.php?action=task-history&task_id=${taskId}`)
+    .then(response => response.json())
+    .then(data => {
+        const content = document.getElementById('taskHistoryContent');
+        if (data.success && data.history && data.history.length > 0) {
+            content.innerHTML = `
+                <div class="task-history-timeline">
+                    ${data.history.map(item => `
+                        <div class="history-timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-header">
+                                    <span class="timeline-action">${item.action}</span>
+                                    <span class="timeline-date">${item.date}</span>
+                                </div>
+                                ${item.progress ? `<div class="timeline-progress">Progress: ${item.progress}%</div>` : ''}
+                                ${item.notes ? `<div class="timeline-notes">${item.notes}</div>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            content.innerHTML = `
+                <div class="no-history">
+                    <i class="bi bi-clock"></i>
+                    <p>No history available for this task.</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        document.getElementById('taskHistoryContent').innerHTML = `
+            <div class="error-message">
+                <i class="bi bi-exclamation-triangle"></i>
+                <p>Error loading task history.</p>
+            </div>
+        `;
+    });
+}
+
+function closeTaskHistory() {
+    const modal = document.querySelector('.history-info-modal');
+    if (modal) {
+        document.body.removeChild(modal);
+    }
 }
 
 function activatePostponedTask(taskId) {
@@ -1679,17 +2008,22 @@ function pauseTask(taskId) {
     .then(data => {
         if (data.success) {
             updateTaskUI(taskId, 'pause');
+            // Store pause start time and start pause timer
+            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+            if (taskCard) {
+                taskCard.dataset.pauseStart = data.pause_start ? data.pause_start * 1000 : Date.now();
+            }
             stopSLATimer(taskId);
+            startSLATimer(taskId); // Keep timer running to update pause duration
             refreshSLADashboard();
-            refreshTaskStatuses();
             showNotification('Task paused', 'info');
         } else {
-            alert('Error: ' + data.message);
+            showNotification('Failed to pause task: ' + data.message, 'error');
         }
     })
     .catch(error => {
         console.error('Pause task error:', error);
-        alert('Network error. Please refresh the page.');
+        showNotification('Network error occurred', 'error');
     });
 }
 
@@ -1895,6 +2229,12 @@ function updateTaskUI(taskId, action, data = {}) {
             statusBadge.className = 'badge badge--in_progress';
             taskCard.className = 'task-card task-card--active';
             delete taskCard.dataset.pauseStart; // Clear pause start time
+            delete taskCard.dataset.pauseTime;
+            // Remove pause timer
+            const pauseTimer = document.querySelector(`#pause-timer-${taskId}`);
+            const pauseLabel = document.querySelector(`#countdown-${taskId} .pause-timer-label`);
+            if (pauseTimer) pauseTimer.remove();
+            if (pauseLabel) pauseLabel.remove();
             newActions = `
                 <button class="btn btn--sm btn--warning" onclick="pauseTask(${taskId})">
                     <i class="bi bi-pause"></i> Break
@@ -1911,7 +2251,14 @@ function updateTaskUI(taskId, action, data = {}) {
             statusBadge.className = 'badge badge--on_break';
             taskCard.className = 'task-card task-card--break';
             taskCard.dataset.pauseStart = Date.now();
-            taskCard.dataset.pauseTime = new Date().toISOString(); // Store pause timestamp
+            // Add pause timer to countdown section
+            const countdownTimer = document.querySelector(`#countdown-${taskId}`);
+            if (countdownTimer && !countdownTimer.querySelector('.pause-timer')) {
+                countdownTimer.innerHTML += `
+                    <div class="pause-timer" id="pause-timer-${taskId}">00:00:00</div>
+                    <div class="pause-timer-label">Break Time</div>
+                `;
+            }
             newActions = `
                 <button class="btn btn--sm btn--success" onclick="resumeTask(${taskId})">
                     <i class="bi bi-play"></i> Resume
@@ -2013,16 +2360,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Auto-refresh every 1 second for real-time updates
+    // Auto-refresh every 5 seconds to prevent oscillation
     setInterval(() => {
         refreshSLADashboard();
-        refreshTaskStatuses();
         // Update all active task timers
         document.querySelectorAll('.task-card[data-status="in_progress"], .task-card[data-status="on_break"]').forEach(item => {
             const taskId = item.dataset.taskId;
             if (taskId) updateSLADisplay(taskId);
         });
-    }, 1000);
+    }, 5000);
     
     // Page visibility API to refresh when user returns to tab
     document.addEventListener('visibilitychange', function() {

@@ -20,6 +20,16 @@ class AdminManagementController extends Controller {
             $userModel = new User();
             $users = $userModel->getAll();
             
+            // Ensure users array is always valid
+            if (!is_array($users)) {
+                $users = [];
+            }
+            
+            // Add cache headers to prevent stale data
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+            
             $data = ['users' => $users];
             
             include __DIR__ . '/../../views/admin/management.php';
