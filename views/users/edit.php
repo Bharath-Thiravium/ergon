@@ -64,12 +64,16 @@ ob_start();
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Status</label>
-                    <select name="status" class="form-control">
+                    <select name="status" class="form-control" <?= ($user['status'] ?? '') === 'terminated' ? 'disabled' : '' ?>>
                         <option value="active" <?= ($user['status'] ?? '') === 'active' ? 'selected' : '' ?>>Active</option>
                         <option value="inactive" <?= ($user['status'] ?? '') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
                         <option value="suspended" <?= ($user['status'] ?? '') === 'suspended' ? 'selected' : '' ?>>Suspended</option>
                         <option value="terminated" <?= ($user['status'] ?? '') === 'terminated' ? 'selected' : '' ?>>Terminated</option>
                     </select>
+                    <?php if (($user['status'] ?? '') === 'terminated'): ?>
+                        <input type="hidden" name="status" value="terminated">
+                        <small class="form-text text-warning">Terminated users cannot have their status changed.</small>
+                    <?php endif; ?>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Designation</label>
@@ -146,7 +150,11 @@ ob_start();
             </div>
             
             <div class="form-actions">
-                <button type="submit" class="btn btn--primary">✨ Update User</button>
+                <?php if (($user['status'] ?? '') !== 'terminated'): ?>
+                    <button type="submit" class="btn btn--primary">✨ Update User</button>
+                <?php else: ?>
+                    <button type="button" class="btn btn--primary" disabled>✨ Update User (Terminated)</button>
+                <?php endif; ?>
                 <a href="<?= in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users' ?>" class="btn btn--secondary">❌ Cancel</a>
             </div>
         </form>
