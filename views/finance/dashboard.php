@@ -26,8 +26,7 @@ ob_start();
         <div class="col-md-3">
             <div class="card bg-info text-white">
                 <div class="card-body">
-                    <h5 id="invoiceCount">0</h5>
-                    <small>Invoices</small>
+                    <button id="structureBtn" class="btn btn-light btn-sm w-100">View Table Structure</button>
                 </div>
             </div>
         </div>
@@ -35,6 +34,21 @@ ob_start();
             <div class="card bg-warning text-white">
                 <div class="card-body">
                     <button id="syncBtn" class="btn btn-light btn-sm w-100">Sync Finance Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Structure Modal -->
+    <div class="modal fade" id="structureModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Finance Database Structure</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="structureContainer">Loading...</div>
                 </div>
             </div>
         </div>
@@ -95,6 +109,7 @@ ob_start();
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 let tablesChart, invoicesChart;
 
@@ -104,11 +119,11 @@ document.addEventListener('DOMContentLoaded', function() {
     loadTables();
     
     document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
+    document.getElementById('structureBtn').addEventListener('click', showTableStructure);
     document.getElementById('loadData').addEventListener('click', loadTableData);
 });
 
 function initCharts() {
-    // Tables Chart
     const tablesCtx = document.getElementById('tablesChart').getContext('2d');
     tablesChart = new Chart(tablesCtx, {
         type: 'bar',
@@ -128,7 +143,6 @@ function initCharts() {
         }
     });
 
-    // Invoices Chart
     const invoicesCtx = document.getElementById('invoicesChart').getContext('2d');
     invoicesChart = new Chart(invoicesCtx, {
         type: 'line',
@@ -148,6 +162,87 @@ function initCharts() {
             }
         }
     });
+}
+
+async function showTableStructure() {
+    const btn = document.getElementById('structureBtn');
+    btn.disabled = true;
+    btn.textContent = 'Loading...';
+    
+    try {
+        const response = await fetch('/ergon/finance/structure');
+        const data = await response.json();
+        
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+        
+        renderTableStructure(data.tables);
+        
+        const modal = new bootstrap.Modal(document.getElementById('structureModal'));
+        modal.show();
+        
+    } catch (error) {
+        alert('Failed to load structure: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'View Table Structure';
+    }
+}
+
+function renderTableStructure(tables) {
+    const container = document.getElementById('structureContainer');
+    
+    let html = '<div class="accordion" id="structureAccordion">';
+    
+    tables.forEach((table, index) => {
+        html += `
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}">
+                        <strong>${table.display_name}</strong>
+                        <span class="ms-auto me-3">
+                            <span class="badge bg-primary">${table.column_count} columns</span>
+                            <span class="badge bg-success">${table.actual_rows} rows</span>
+                        </span>
+                    </button>
+                </h2>
+                <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" data-bs-parent="#structureAccordion">
+                    <div class="accordion-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Column</th>
+                                        <th>Type</th>
+                                        <th>Nullable</th>
+                                        <th>Default</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+        
+        table.columns.forEach(col => {
+            html += `
+                <tr>
+                    <td><code>${col.name}</code></td>
+                    <td><span class="badge bg-secondary">${col.type}</span></td>
+                    <td>${col.nullable ? '✅' : '❌'}</td>
+                    <td><small>${col.default || '-'}</small></td>
+                </tr>`;
+        });
+        
+        html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 async function syncFinanceData() {
@@ -183,10 +278,6 @@ async function loadFinanceStats() {
         document.getElementById('totalTables').textContent = data.totalTables || 0;
         document.getElementById('totalRecords').textContent = data.totalRecords || 0;
         
-        // Count invoices
-        const invoiceTable = data.tables.find(t => t.table_name === 'finance_invoices');
-        document.getElementById('invoiceCount').textContent = invoiceTable ? invoiceTable.record_count : 0;
-        
     } catch (error) {
         console.error('Failed to load stats:', error);
     }
@@ -194,7 +285,6 @@ async function loadFinanceStats() {
 
 async function updateCharts() {
     try {
-        // Update tables chart
         const tablesResponse = await fetch('/ergon/finance/chart?type=tables');
         const tablesData = await tablesResponse.json();
         
@@ -202,7 +292,6 @@ async function updateCharts() {
         tablesChart.data.datasets[0].data = tablesData.data;
         tablesChart.update();
         
-        // Update invoices chart
         const invoicesResponse = await fetch('/ergon/finance/chart?type=invoices');
         const invoicesData = await invoicesResponse.json();
         

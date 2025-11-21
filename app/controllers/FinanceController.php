@@ -8,6 +8,80 @@ class FinanceController extends Controller {
         $this->view('finance/dashboard');
     }
     
+    public function getTableStructure() {
+        header('Content-Type: application/json');
+        
+        try {
+            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
+            
+            if (!$conn) {
+                throw new Exception('PostgreSQL connection failed');
+            }
+            
+            // Get all finance tables with structure
+            $result = pg_query($conn, "
+                SELECT 
+                    t.table_name,
+                    COUNT(c.column_name) as column_count,
+                    COALESCE(s.n_tup_ins, 0) as estimated_rows
+                FROM information_schema.tables t
+                LEFT JOIN information_schema.columns c ON t.table_name = c.table_name
+                LEFT JOIN pg_stat_user_tables s ON t.table_name = s.relname
+                WHERE t.table_schema = 'public' 
+                AND t.table_name LIKE 'finance_%'
+                GROUP BY t.table_name, s.n_tup_ins
+                ORDER BY t.table_name
+            ");
+            
+            $tables = [];
+            while ($row = pg_fetch_assoc($result)) {
+                $tableName = $row['table_name'];
+                
+                // Get column details
+                $colResult = pg_query($conn, "
+                    SELECT 
+                        column_name,
+                        data_type,
+                        is_nullable,
+                        column_default
+                    FROM information_schema.columns 
+                    WHERE table_name = '$tableName' 
+                    AND table_schema = 'public'
+                    ORDER BY ordinal_position
+                ");
+                
+                $columns = [];
+                while ($colRow = pg_fetch_assoc($colResult)) {
+                    $columns[] = [
+                        'name' => $colRow['column_name'],
+                        'type' => $colRow['data_type'],
+                        'nullable' => $colRow['is_nullable'] === 'YES',
+                        'default' => $colRow['column_default']
+                    ];
+                }
+                
+                // Get actual row count
+                $countResult = pg_query($conn, "SELECT COUNT(*) as actual_count FROM \"$tableName\"");
+                $countRow = pg_fetch_assoc($countResult);
+                
+                $tables[] = [
+                    'table_name' => $tableName,
+                    'display_name' => str_replace('finance_', '', $tableName),
+                    'column_count' => (int)$row['column_count'],
+                    'estimated_rows' => (int)$row['estimated_rows'],
+                    'actual_rows' => (int)$countRow['actual_count'],
+                    'columns' => $columns
+                ];
+            }
+            
+            pg_close($conn);
+            echo json_encode(['tables' => $tables]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+    
     public function syncPostgres() {
         header('Content-Type: application/json');
         
@@ -21,7 +95,6 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
-            // Only sync finance tables
             $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE 'finance_%' ORDER BY table_name");
             
             $syncCount = 0;
@@ -60,11 +133,9 @@ class FinanceController extends Controller {
         try {
             $db = Database::connect();
             
-            // Get finance table stats
             $stmt = $db->query("SELECT table_name, record_count FROM finance_tables WHERE table_name LIKE 'finance_%' ORDER BY record_count DESC");
             $tables = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Calculate totals
             $totalRecords = array_sum(array_column($tables, 'record_count'));
             $totalTables = count($tables);
             
@@ -88,7 +159,6 @@ class FinanceController extends Controller {
             $db = Database::connect();
             
             if ($type === 'tables') {
-                // Table record counts
                 $stmt = $db->query("SELECT table_name, record_count FROM finance_tables WHERE table_name LIKE 'finance_%' AND record_count > 0 ORDER BY record_count DESC LIMIT 10");
                 $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
@@ -99,7 +169,6 @@ class FinanceController extends Controller {
                 ]);
                 
             } elseif ($type === 'invoices') {
-                // Invoice data if available
                 $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' LIMIT 100");
                 $stmt->execute();
                 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
