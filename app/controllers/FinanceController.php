@@ -544,13 +544,8 @@ class FinanceController extends Controller {
                 $db = Database::connect();
                 $this->createTables($db);
                 
-                // Delete existing setting
-                $stmt = $db->prepare("DELETE FROM finance_data WHERE table_name = 'company_prefix_setting'");
-                $stmt->execute();
-                
-                // Insert new setting
-                $stmt = $db->prepare("INSERT INTO finance_data (table_name, data) VALUES ('company_prefix_setting', ?)");
-                $stmt->execute([json_encode(['prefix' => $prefix])]);
+                $stmt = $db->prepare("INSERT INTO finance_tables (table_name, record_count, company_prefix) VALUES ('settings', 0, ?) ON DUPLICATE KEY UPDATE company_prefix = ?");
+                $stmt->execute([$prefix, $prefix]);
                 
                 echo json_encode(['success' => true, 'prefix' => $prefix]);
             } catch (Exception $e) {
@@ -605,6 +600,13 @@ class FinanceController extends Controller {
             last_sync TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )");
         
+        // Add company_prefix column if it doesn't exist
+        try {
+            $db->exec("ALTER TABLE finance_tables ADD COLUMN company_prefix VARCHAR(10) DEFAULT 'BKC'");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
         $db->exec("CREATE TABLE IF NOT EXISTS finance_data (
             id INT AUTO_INCREMENT PRIMARY KEY,
             table_name VARCHAR(100),
@@ -613,12 +615,7 @@ class FinanceController extends Controller {
             INDEX(table_name)
         )");
         
-        $db->exec("CREATE TABLE IF NOT EXISTS settings (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            setting_key VARCHAR(100) UNIQUE,
-            setting_value TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )");
+
     }
     
     private function getQuotationsChart($db) {
@@ -782,14 +779,10 @@ class FinanceController extends Controller {
     private function getCompanyPrefix() {
         try {
             $db = Database::connect();
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'company_prefix_setting' LIMIT 1");
+            $stmt = $db->prepare("SELECT company_prefix FROM finance_tables WHERE table_name = 'settings' LIMIT 1");
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($result) {
-                $data = json_decode($result['data'], true);
-                return strtoupper($data['prefix'] ?? 'BKC');
-            }
-            return 'BKC';
+            return strtoupper($result['company_prefix'] ?? 'BKC');
         } catch (Exception $e) {
             return 'BKC';
         }
