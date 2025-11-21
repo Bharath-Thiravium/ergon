@@ -50,7 +50,7 @@ class FinanceController extends Controller {
                         $sampleData[] = json_encode($sample);
                     }
                     
-                    echo '"' . $tableName . '",YES,' . $rowCount . ',' . count($columns) . ',"' . implode('; ', $columns) . '","' . implode(' | ', $sampleData) . '"\n';
+                    echo '"' . $tableName . '",YES,' . $rowCount . ',' . count($columns) . ',"' . implode('; ', $columns) . '","' . implode(' | ', $sampleData) . "\"\n";
                 } else {
                     echo '"' . $tableName . '",NO,0,0,"",""\n';
                 }
@@ -218,55 +218,6 @@ class FinanceController extends Controller {
         }
     }
     
-    public function getChartData() {
-        header('Content-Type: application/json');
-        
-        $type = $_GET['type'] ?? 'tables';
-        
-        try {
-            $db = Database::connect();
-            
-            if ($type === 'tables') {
-                $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
-                $tableList = "'" . implode("','", $targetTables) . "'";
-                
-                $stmt = $db->query("SELECT table_name, record_count FROM finance_tables WHERE table_name IN ($tableList) AND record_count > 0 ORDER BY record_count DESC");
-                $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                echo json_encode([
-                    'labels' => array_column($data, 'table_name'),
-                    'data' => array_column($data, 'record_count'),
-                    'title' => 'Finance Tables by Record Count'
-                ]);
-                
-            } elseif ($type === 'invoices') {
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' LIMIT 100");
-                $stmt->execute();
-                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                $amounts = [];
-                $dates = [];
-                
-                foreach ($results as $row) {
-                    $invoice = json_decode($row['data'], true);
-                    if (isset($invoice['total_amount']) && isset($invoice['created_at'])) {
-                        $amounts[] = (float)$invoice['total_amount'];
-                        $dates[] = date('M Y', strtotime($invoice['created_at']));
-                    }
-                }
-                
-                echo json_encode([
-                    'labels' => $dates,
-                    'data' => $amounts,
-                    'title' => 'Invoice Amounts Over Time'
-                ]);
-            }
-            
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-    }
-    
     public function getTables() {
         header('Content-Type: application/json');
         
@@ -314,38 +265,6 @@ class FinanceController extends Controller {
             echo json_encode(['error' => $e->getMessage()]);
         }
     }
-    
-    private function createTables($db) {
-        $db->exec("CREATE TABLE IF NOT EXISTS finance_tables (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            table_name VARCHAR(100) UNIQUE,
-            record_count INT,
-            last_sync TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )");
-        
-        $db->exec("CREATE TABLE IF NOT EXISTS finance_data (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            table_name VARCHAR(100),
-            data JSON,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX(table_name)
-        )");
-    }
-    
-    private function storeTableData($db, $tableName, $data) {
-        $stmt = $db->prepare("DELETE FROM finance_data WHERE table_name = ?");
-        $stmt->execute([$tableName]);
-        
-        foreach ($data as $row) {
-            $stmt = $db->prepare("INSERT INTO finance_data (table_name, data) VALUES (?, ?)");
-            $stmt->execute([$tableName, json_encode($row)]);
-        }
-        
-        $stmt = $db->prepare("INSERT INTO finance_tables (table_name, record_count) VALUES (?, ?) 
-                             ON DUPLICATE KEY UPDATE record_count = ?, last_sync = NOW()");
-        $stmt->execute([$tableName, count($data), count($data)]);
-    }
-}
     
     public function getVisualizationData() {
         header('Content-Type: application/json');
@@ -468,3 +387,35 @@ class FinanceController extends Controller {
         }
         exit;
     }
+    
+    private function createTables($db) {
+        $db->exec("CREATE TABLE IF NOT EXISTS finance_tables (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            table_name VARCHAR(100) UNIQUE,
+            record_count INT,
+            last_sync TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+        
+        $db->exec("CREATE TABLE IF NOT EXISTS finance_data (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            table_name VARCHAR(100),
+            data JSON,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX(table_name)
+        )");
+    }
+    
+    private function storeTableData($db, $tableName, $data) {
+        $stmt = $db->prepare("DELETE FROM finance_data WHERE table_name = ?");
+        $stmt->execute([$tableName]);
+        
+        foreach ($data as $row) {
+            $stmt = $db->prepare("INSERT INTO finance_data (table_name, data) VALUES (?, ?)");
+            $stmt->execute([$tableName, json_encode($row)]);
+        }
+        
+        $stmt = $db->prepare("INSERT INTO finance_tables (table_name, record_count) VALUES (?, ?) 
+                             ON DUPLICATE KEY UPDATE record_count = ?, last_sync = NOW()");
+        $stmt->execute([$tableName, count($data), count($data)]);
+    }
+}
