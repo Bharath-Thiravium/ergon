@@ -7,50 +7,34 @@ ob_start();
 <div class="container-fluid">
     <!-- Stats Cards -->
     <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <h5 id="totalTables">0</h5>
-                    <small>Finance Tables</small>
-                </div>
-            </div>
+        <div class="kpi-card">
+            <div class="kpi-card__value" id="totalTables">0</div>
+            <div class="kpi-card__label">Finance Tables</div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <h5 id="totalRecords">0</h5>
-                    <small>Total Records</small>
-                </div>
-            </div>
+        <div class="kpi-card">
+            <div class="kpi-card__value" id="totalRecords">0</div>
+            <div class="kpi-card__label">Total Records</div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <button id="structureBtn" class="btn btn-light btn-sm w-100">View Table Structure</button>
-                </div>
-            </div>
+        <div class="kpi-card">
+            <button id="structureBtn" class="btn btn--primary btn--block">View Table Structure</button>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <button id="syncBtn" class="btn btn-light btn-sm w-100 mb-1">Sync Finance Data</button>
-                    <button id="analyzeBtn" class="btn btn-outline-light btn-sm w-100">Analyze All Tables</button>
-                </div>
-            </div>
+        <div class="kpi-card">
+            <button id="syncBtn" class="btn btn--warning btn--block">Sync Finance Data</button>
+            <button id="analyzeBtn" class="btn btn--secondary btn--block">Analyze All Tables</button>
         </div>
     </div>
 
-    <!-- Update Progress Modal -->
-    <div class="modal-overlay" id="structureModal" style="display: none;">
-        <div class="modal-container">
+    <!-- Database Structure Modal -->
+    <div class="modal" id="structureModal">
+        <div class="modal-content">
             <div class="modal-header">
                 <h3>📊 Database Structure</h3>
                 <button class="modal-close" onclick="closeStructureModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="structureContainer">
-                    <div class="loading-state">
-                        <div class="spinner"></div>
+                    <div class="empty-state">
+                        <div class="empty-icon">🔄</div>
                         <p>Loading structure...</p>
                     </div>
                 </div>
@@ -58,53 +42,82 @@ ob_start();
         </div>
     </div>
 
-    <!-- Charts -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">Finance Tables Overview</div>
-                <div class="card-body">
-                    <canvas id="tablesChart" width="400" height="200"></canvas>
-                </div>
+    <!-- Modular Finance Panels -->
+    <div class="dashboard-grid">
+        <!-- Quotations Panel -->
+        <div class="card">
+            <div class="card__header">
+                <h3 class="card__title">📋 Quotations Lifecycle</h3>
+                <button class="btn btn--secondary btn--sm" onclick="exportChart('quotations')">CSV</button>
+            </div>
+            <div class="card__body">
+                <canvas id="quotationsChart" height="200"></canvas>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">Invoice Trends</div>
-                <div class="card-body">
-                    <canvas id="invoicesChart" width="400" height="200"></canvas>
+        
+        <!-- Purchase Orders Panel -->
+        <div class="card">
+            <div class="card__header">
+                <h3 class="card__title">🛒 Purchase Orders Volume</h3>
+                <button class="btn btn--secondary btn--sm" onclick="exportChart('purchase_orders')">CSV</button>
+            </div>
+            <div class="card__body">
+                <canvas id="purchaseOrdersChart" height="200"></canvas>
+            </div>
+        </div>
+        
+        <!-- Invoices Panel -->
+        <div class="card">
+            <div class="card__header">
+                <h3 class="card__title">💰 Invoices Status</h3>
+                <button class="btn btn--secondary btn--sm" onclick="exportChart('invoices')">CSV</button>
+            </div>
+            <div class="card__body">
+                <canvas id="invoicesChart" height="200"></canvas>
+                <div id="outstandingAlert" class="alert alert--warning" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <!-- Payments Panel -->
+        <div class="card">
+            <div class="card__header">
+                <h3 class="card__title">💳 Payments Status</h3>
+            </div>
+            <div class="card__body">
+                <div class="empty-state">
+                    <div class="empty-icon">⚠️</div>
+                    <h5>No Payment Records</h5>
+                    <p class="text-muted">Payment data will appear here once records are available</p>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Data Tables -->
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">Finance Tables</div>
-                <div class="card-body">
-                    <div id="tablesContainer">Loading...</div>
-                </div>
+    <div class="dashboard-grid">
+        <div class="card">
+            <div class="card__header">
+                <h3 class="card__title">Finance Tables</h3>
+            </div>
+            <div class="card__body">
+                <div id="tablesContainer">Loading...</div>
             </div>
         </div>
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between">
-                    <span>Table Data</span>
-                    <div>
-                        <select id="tableSelect" class="form-select form-select-sm d-inline-block w-auto">
-                            <option value="">Select Table</option>
-                        </select>
-                        <button id="loadData" class="btn btn-success btn-sm ms-2">Load</button>
-                    </div>
+        <div class="card" style="grid-column: span 2;">
+            <div class="card__header">
+                <h3 class="card__title">Table Data</h3>
+                <div class="btn-group">
+                    <select id="tableSelect" class="form-control">
+                        <option value="">Select Table</option>
+                    </select>
+                    <button id="loadData" class="btn btn--primary btn--sm">Load</button>
                 </div>
-                <div class="card-body">
-                    <div id="dataContainer">
-                        <div class="text-center text-muted">
-                            <i class="bi bi-bar-chart"></i>
-                            <p>Select a finance table to view data</p>
-                        </div>
+            </div>
+            <div class="card__body">
+                <div id="dataContainer">
+                    <div class="empty-state">
+                        <div class="empty-icon">📈</div>
+                        <p>Select a finance table to view data</p>
                     </div>
                 </div>
             </div>
@@ -113,9 +126,8 @@ ob_start();
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-let tablesChart, invoicesChart;
+let quotationsChart, purchaseOrdersChart, invoicesChart;
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
@@ -129,41 +141,90 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initCharts() {
-    const tablesCtx = document.getElementById('tablesChart').getContext('2d');
-    tablesChart = new Chart(tablesCtx, {
-        type: 'bar',
+    // Quotations Status Pie Chart
+    const quotationsCtx = document.getElementById('quotationsChart').getContext('2d');
+    quotationsChart = new Chart(quotationsCtx, {
+        type: 'pie',
         data: {
-            labels: [],
+            labels: ['Draft', 'Revised', 'Converted'],
             datasets: [{
-                label: 'Records',
-                data: [],
-                backgroundColor: 'rgba(54, 162, 235, 0.8)'
+                data: [0, 0, 0],
+                backgroundColor: ['#ffc107', '#17a2b8', '#28a745']
             }]
         },
         options: {
             responsive: true,
-            scales: {
-                y: { beginAtZero: true }
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed + ' quotations';
+                        }
+                    }
+                }
             }
         }
     });
 
-    const invoicesCtx = document.getElementById('invoicesChart').getContext('2d');
-    invoicesChart = new Chart(invoicesCtx, {
-        type: 'line',
+    // Purchase Orders Monthly Bar Chart
+    const purchaseOrdersCtx = document.getElementById('purchaseOrdersChart').getContext('2d');
+    purchaseOrdersChart = new Chart(purchaseOrdersCtx, {
+        type: 'bar',
         data: {
             labels: [],
             datasets: [{
-                label: 'Amount',
+                label: 'Total Amount (₹)',
                 data: [],
-                borderColor: 'rgba(75, 192, 192, 1)',
-                fill: false
+                backgroundColor: '#007bff'
             }]
         },
         options: {
             responsive: true,
             scales: {
-                y: { beginAtZero: true }
+                y: { 
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value.toLocaleString();
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Amount: ₹' + context.parsed.y.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Invoices Payment Status Donut Chart
+    const invoicesCtx = document.getElementById('invoicesChart').getContext('2d');
+    invoicesChart = new Chart(invoicesCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Paid', 'Unpaid', 'Overdue'],
+            datasets: [{
+                data: [0, 0, 0],
+                backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ₹' + context.parsed.toLocaleString();
+                        }
+                    }
+                }
             }
         }
     });
@@ -185,7 +246,7 @@ async function showTableStructure() {
         
         renderTableStructure(data.tables);
         
-        document.getElementById('structureModal').style.display = 'flex';
+        document.getElementById('structureModal').style.display = 'block';
         
     } catch (error) {
         alert('Failed to load structure: ' + error.message);
@@ -198,32 +259,50 @@ async function showTableStructure() {
 function renderTableStructure(tables) {
     const container = document.getElementById('structureContainer');
     
-    let html = '<div class="structure-list">';
+    let html = '<div class="followups-modern">';
     
     tables.forEach((table, index) => {
         html += `
-            <div class="structure-item">
-                <div class="structure-header" onclick="toggleStructure(this)">
-                    <span class="structure-name">${table.display_name}</span>
-                    <div class="structure-badges">
-                        <span class="badge">${table.column_count} cols</span>
-                        <span class="badge">${table.actual_rows} rows</span>
+            <div class="followup-card">
+                <div class="followup-card__header">
+                    <div class="followup-icon task-linked">📋</div>
+                    <div class="followup-title-section">
+                        <h4 class="followup-title">${table.display_name}</h4>
+                        <div class="followup-badges">
+                            <span class="badge badge--info">${table.column_count} columns</span>
+                            <span class="badge badge--success">${table.actual_rows} rows</span>
+                        </div>
                     </div>
-                    <span class="expand-icon">▼</span>
+                    <button class="btn--modern btn--outline" onclick="toggleStructure(this)">
+                        <span class="expand-icon">▼</span>
+                    </button>
                 </div>
                 <div class="structure-details" style="display: ${index === 0 ? 'block' : 'none'}">
-                    <div class="columns-grid">`;
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Column</th>
+                                    <th>Type</th>
+                                    <th>Nullable</th>
+                                    <th>Default</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
         
         table.columns.forEach(col => {
             html += `
-                <div class="column-item">
-                    <div class="column-name">${col.name}</div>
-                    <div class="column-type">${col.type}</div>
-                    <div class="column-null">${col.nullable ? 'NULL' : 'NOT NULL'}</div>
-                </div>`;
+                <tr>
+                    <td><code>${col.name}</code></td>
+                    <td><span class="badge badge--info">${col.type}</span></td>
+                    <td>${col.nullable ? '✓' : '✗'}</td>
+                    <td>${col.default || '-'}</td>
+                </tr>`;
         });
         
         html += `
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>`;
@@ -233,9 +312,10 @@ function renderTableStructure(tables) {
     container.innerHTML = html;
 }
 
-function toggleStructure(header) {
-    const details = header.nextElementSibling;
-    const icon = header.querySelector('.expand-icon');
+function toggleStructure(button) {
+    const card = button.closest('.followup-card');
+    const details = card.querySelector('.structure-details');
+    const icon = button.querySelector('.expand-icon');
     
     if (details.style.display === 'none') {
         details.style.display = 'block';
@@ -309,23 +389,42 @@ async function loadFinanceStats() {
 
 async function updateCharts() {
     try {
-        const tablesResponse = await fetch('/ergon/finance/chart?type=tables');
-        const tablesData = await tablesResponse.json();
+        // Update Quotations Chart
+        const quotationsResponse = await fetch('/ergon/finance/visualization?type=quotations');
+        const quotationsData = await quotationsResponse.json();
         
-        tablesChart.data.labels = tablesData.labels.map(l => l.replace('finance_', ''));
-        tablesChart.data.datasets[0].data = tablesData.data;
-        tablesChart.update();
+        quotationsChart.data.datasets[0].data = quotationsData.data;
+        quotationsChart.update();
         
-        const invoicesResponse = await fetch('/ergon/finance/chart?type=invoices');
+        // Update Purchase Orders Chart
+        const poResponse = await fetch('/ergon/finance/visualization?type=purchase_orders');
+        const poData = await poResponse.json();
+        
+        purchaseOrdersChart.data.labels = poData.labels;
+        purchaseOrdersChart.data.datasets[0].data = poData.data;
+        purchaseOrdersChart.update();
+        
+        // Update Invoices Chart
+        const invoicesResponse = await fetch('/ergon/finance/visualization?type=invoices');
         const invoicesData = await invoicesResponse.json();
         
-        invoicesChart.data.labels = invoicesData.labels;
         invoicesChart.data.datasets[0].data = invoicesData.data;
         invoicesChart.update();
+        
+        // Show outstanding alert if needed
+        if (invoicesData.outstanding > 0) {
+            document.getElementById('outstandingAlert').style.display = 'block';
+            document.getElementById('outstandingAlert').innerHTML = 
+                `<strong>Alert:</strong> ₹${invoicesData.outstanding.toLocaleString()} in outstanding invoices`;
+        }
         
     } catch (error) {
         console.error('Failed to update charts:', error);
     }
+}
+
+function exportChart(type) {
+    window.open(`/ergon/finance/export?type=${type}`, '_blank');
 }
 
 async function loadTables() {
@@ -425,195 +524,3 @@ $content = ob_get_clean();
 require_once __DIR__ . '/../layouts/dashboard.php';
 ?>
 
-<style>
-/* Modal Styles - Similar to Task Management Update Progress */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-container {
-    background: white;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 800px;
-    max-height: 80vh;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    animation: modalSlideIn 0.3s ease;
-}
-
-@keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-50px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-    background: #f9fafb;
-}
-
-.modal-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #374151;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: #6b7280;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.modal-close:hover {
-    background: #e5e7eb;
-    color: #374151;
-}
-
-.modal-body {
-    padding: 1.5rem;
-    max-height: 60vh;
-    overflow-y: auto;
-}
-
-.loading-state {
-    text-align: center;
-    padding: 2rem;
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #e5e7eb;
-    border-top: 4px solid #3b82f6;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.structure-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.structure-item {
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.structure-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem 1rem;
-    background: #f9fafb;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.structure-header:hover {
-    background: #f3f4f6;
-}
-
-.structure-name {
-    font-weight: 500;
-    color: #374151;
-}
-
-.structure-badges {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.badge {
-    background: #3b82f6;
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.expand-icon {
-    color: #6b7280;
-    font-size: 0.875rem;
-    transition: transform 0.2s;
-}
-
-.structure-details {
-    padding: 1rem;
-    background: white;
-    border-top: 1px solid #e5e7eb;
-}
-
-.columns-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 0.5rem;
-}
-
-.column-item {
-    padding: 0.75rem;
-    background: #f9fafb;
-    border-radius: 4px;
-    border-left: 3px solid #3b82f6;
-}
-
-.column-name {
-    font-weight: 500;
-    color: #374151;
-    font-family: monospace;
-    margin-bottom: 0.25rem;
-}
-
-.column-type {
-    font-size: 0.75rem;
-    color: #6b7280;
-    background: #e5e7eb;
-    padding: 0.125rem 0.375rem;
-    border-radius: 3px;
-    display: inline-block;
-    margin-bottom: 0.25rem;
-}
-
-.column-null {
-    font-size: 0.75rem;
-    color: #6b7280;
-}
-</style>

@@ -346,3 +346,125 @@ class FinanceController extends Controller {
         $stmt->execute([$tableName, count($data), count($data)]);
     }
 }
+    
+    public function getVisualizationData() {
+        header('Content-Type: application/json');
+        ob_clean();
+        
+        $type = $_GET['type'] ?? 'quotations';
+        
+        try {
+            $db = Database::connect();
+            
+            switch ($type) {
+                case 'quotations':
+                    $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+                    $stmt->execute();
+                    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    $statusCount = ['draft' => 0, 'revised' => 0, 'converted' => 0];
+                    foreach ($results as $row) {
+                        $data = json_decode($row['data'], true);
+                        $status = strtolower($data['status'] ?? 'draft');
+                        if (isset($statusCount[$status])) {
+                            $statusCount[$status]++;
+                        }
+                    }
+                    
+                    echo json_encode(['data' => array_values($statusCount)]);
+                    break;
+                    
+                case 'purchase_orders':
+                    $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+                    $stmt->execute();
+                    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    $monthlyData = [];
+                    foreach ($results as $row) {
+                        $data = json_decode($row['data'], true);
+                        $month = date('M Y', strtotime($data['po_date'] ?? '2024-01-01'));
+                        $amount = floatval($data['total_amount'] ?? 0);
+                        
+                        if (!isset($monthlyData[$month])) {
+                            $monthlyData[$month] = 0;
+                        }
+                        $monthlyData[$month] += $amount;
+                    }
+                    
+                    echo json_encode([
+                        'labels' => array_keys($monthlyData),
+                        'data' => array_values($monthlyData)
+                    ]);
+                    break;
+                    
+                case 'invoices':
+                    $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+                    $stmt->execute();
+                    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    $paid = 0;
+                    $unpaid = 0;
+                    $outstanding = 0;
+                    
+                    foreach ($results as $row) {
+                        $data = json_decode($row['data'], true);
+                        $status = strtolower($data['payment_status'] ?? 'unpaid');
+                        $amount = floatval($data['total_amount'] ?? 0);
+                        $outstandingAmount = floatval($data['outstanding_amount'] ?? 0);
+                        
+                        if ($status === 'paid') {
+                            $paid += $amount;
+                        } else {
+                            $unpaid += $amount;
+                            $outstanding += $outstandingAmount;
+                        }
+                    }
+                    
+                    echo json_encode([
+                        'data' => [$paid, $unpaid, 0],
+                        'outstanding' => $outstanding
+                    ]);
+                    break;
+            }
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function exportData() {
+        $type = $_GET['type'] ?? 'quotations';
+        
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="finance_' . $type . '_' . date('Y-m-d') . '.csv"');
+        
+        try {
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = ?");
+            $stmt->execute(['finance_' . $type]);
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (empty($results)) {
+                echo "No data available for $type\n";
+                exit;
+            }
+            
+            // Get headers from first record
+            $firstRecord = json_decode($results[0]['data'], true);
+            echo implode(',', array_keys($firstRecord)) . "\n";
+            
+            // Output data
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $values = array_map(function($value) {
+                    return '"' . str_replace('"', '""', $value) . '"';
+                }, array_values($data));
+                echo implode(',', $values) . "\n";
+            }
+            
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n";
+        }
+        exit;
+    }
