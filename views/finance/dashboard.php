@@ -72,12 +72,38 @@ ob_start();
         </div>
     </div>
 
+    <!-- Charts Section -->
+    <div class="dashboard-grid">
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">📈 Finance Charts</h2>
+            </div>
+            <div class="card__body">
+                <div class="chart-tabs">
+                    <button class="chart-tab active" onclick="showChart('quotations')">Quotations</button>
+                    <button class="chart-tab" onclick="showChart('purchase_orders')">Purchase Orders</button>
+                    <button class="chart-tab" onclick="showChart('invoices')">Invoices</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="quotationsChart" class="chart-canvas active" height="200"></canvas>
+                    <canvas id="purchaseOrdersChart" class="chart-canvas" height="200"></canvas>
+                    <canvas id="invoicesChart" class="chart-canvas" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Views Section -->
     <div class="dashboard-grid">
         <div class="card">
             <div class="card__header">
                 <h2 class="card__title">📋 Quotations Overview</h2>
                 <div class="card-actions">
-                    <button class="btn btn--primary btn--sm" onclick="exportChart('quotations')">Export CSV</button>
+                    <div class="view-toggle">
+                        <button class="view-btn active" onclick="toggleView('quotations', 'list')">List</button>
+                        <button class="view-btn" onclick="toggleView('quotations', 'grid')">Grid</button>
+                    </div>
+                    <button class="btn btn--primary btn--sm" onclick="exportChart('quotations')">Export</button>
                 </div>
             </div>
             <div class="card__body">
@@ -95,19 +121,16 @@ ob_start();
                         <span class="summary-label">Converted</span>
                     </div>
                 </div>
-                <canvas id="quotationsChart" height="120"></canvas>
-                <div class="overview-progress">
-                    <div class="progress-header">
-                        <span class="progress-label">Conversion Rate</span>
-                        <span class="progress-value" id="conversionRate">0%</span>
+                <div class="data-view" id="quotationsView">
+                    <div class="data-list active" id="quotationsList">
+                        <div class="form-group">
+                            <div class="form-label">📋 Loading quotations...</div>
+                        </div>
                     </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="conversionProgress" style="width: 0%"></div>
-                    </div>
-                </div>
-                <div class="data-list" id="quotationsList">
-                    <div class="form-group">
-                        <div class="form-label">📋 Loading quotations...</div>
+                    <div class="data-grid" id="quotationsGrid">
+                        <div class="form-group">
+                            <div class="form-label">📋 Loading quotations...</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -117,7 +140,11 @@ ob_start();
             <div class="card__header">
                 <h2 class="card__title">🛒 Purchase Orders Analysis</h2>
                 <div class="card-actions">
-                    <button class="btn btn--primary btn--sm" onclick="exportChart('purchase_orders')">Export CSV</button>
+                    <div class="view-toggle">
+                        <button class="view-btn active" onclick="toggleView('purchase_orders', 'list')">List</button>
+                        <button class="view-btn" onclick="toggleView('purchase_orders', 'grid')">Grid</button>
+                    </div>
+                    <button class="btn btn--primary btn--sm" onclick="exportChart('purchase_orders')">Export</button>
                 </div>
             </div>
             <div class="card__body">
@@ -135,28 +162,16 @@ ob_start();
                         <span class="summary-label">Avg Order</span>
                     </div>
                 </div>
-                <canvas id="purchaseOrdersChart" height="120"></canvas>
-                <div class="overview-stats">
-                    <div class="stat-row">
-                        <div class="stat-item-inline">
-                            <div class="stat-icon">📈</div>
-                            <div>
-                                <div class="stat-value-sm" id="poGrowth">+0%</div>
-                                <div class="stat-label-sm">Growth</div>
-                            </div>
-                        </div>
-                        <div class="stat-item-inline">
-                            <div class="stat-icon">🎯</div>
-                            <div>
-                                <div class="stat-value-sm" id="poTarget">85%</div>
-                                <div class="stat-label-sm">Target</div>
-                            </div>
+                <div class="data-view" id="purchaseOrdersView">
+                    <div class="data-list active" id="purchaseOrdersList">
+                        <div class="form-group">
+                            <div class="form-label">📦 Loading purchase orders...</div>
                         </div>
                     </div>
-                </div>
-                <div class="data-list" id="purchaseOrdersList">
-                    <div class="form-group">
-                        <div class="form-label">📦 Loading purchase orders...</div>
+                    <div class="data-grid" id="purchaseOrdersGrid">
+                        <div class="form-group">
+                            <div class="form-label">📦 Loading purchase orders...</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -168,7 +183,11 @@ ob_start();
             <div class="card__header">
                 <h2 class="card__title">💰 Invoice Management</h2>
                 <div class="card-actions">
-                    <button class="btn btn--primary btn--sm" onclick="exportChart('invoices')">Export CSV</button>
+                    <div class="view-toggle">
+                        <button class="view-btn active" onclick="toggleView('invoices', 'list')">List</button>
+                        <button class="view-btn" onclick="toggleView('invoices', 'grid')">Grid</button>
+                    </div>
+                    <button class="btn btn--primary btn--sm" onclick="exportChart('invoices')">Export</button>
                 </div>
             </div>
             <div class="card__body">
@@ -186,23 +205,17 @@ ob_start();
                         <span class="summary-label">Overdue</span>
                     </div>
                 </div>
-                <canvas id="invoicesChart" height="150"></canvas>
                 <div id="outstandingAlert" class="alert alert--warning" style="display: none;"></div>
-                <div class="overview-progress">
-                    <div class="progress-header">
-                        <span class="progress-label">Collection Rate</span>
-                        <span class="progress-value" id="collectionRate">0%</span>
+                <div class="data-view" id="invoicesView">
+                    <div class="data-list active" id="invoicesList">
+                        <div class="form-group">
+                            <div class="form-label">💰 Loading invoices...</div>
+                        </div>
                     </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="collectionProgress" style="width: 0%"></div>
-                    </div>
-                    <div class="progress-footer">
-                        <span class="progress-trend" id="collectionTrend">— No change</span>
-                    </div>
-                </div>
-                <div class="data-list" id="invoicesList">
-                    <div class="form-group">
-                        <div class="form-label">💰 Loading invoices...</div>
+                    <div class="data-grid" id="invoicesGrid">
+                        <div class="form-group">
+                            <div class="form-label">💰 Loading invoices...</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -211,6 +224,13 @@ ob_start();
         <div class="card">
             <div class="card__header">
                 <h2 class="card__title">💳 Payment Processing</h2>
+                <div class="card-actions">
+                    <div class="view-toggle">
+                        <button class="view-btn active" onclick="toggleView('payments', 'list')">List</button>
+                        <button class="view-btn" onclick="toggleView('payments', 'grid')">Grid</button>
+                    </div>
+                    <button class="btn btn--primary btn--sm" onclick="exportChart('payments')">Export</button>
+                </div>
             </div>
             <div class="card__body">
                 <div class="overview-summary">
@@ -227,24 +247,18 @@ ob_start();
                         <span class="summary-label">Failed</span>
                     </div>
                 </div>
-                <div class="empty-state">
-                    <div class="empty-icon">💳</div>
-                    <h5>Payment System Ready</h5>
-                    <p class="text-muted">Payment records will appear here once transactions are processed</p>
-                </div>
-                <div class="overview-progress">
-                    <div class="progress-header">
-                        <span class="progress-label">Success Rate</span>
-                        <span class="progress-value">100%</span>
+                <div class="data-view" id="paymentsView">
+                    <div class="data-list active" id="paymentsList">
+                        <div class="form-group">
+                            <div class="form-label">💳 No payments yet</div>
+                            <p>Payment records will appear here</p>
+                        </div>
                     </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: 100%"></div>
-                    </div>
-                </div>
-                <div class="data-list" id="paymentsList">
-                    <div class="form-group">
-                        <div class="form-label">💳 No payments yet</div>
-                        <p>Payment records will appear here</p>
+                    <div class="data-grid" id="paymentsGrid">
+                        <div class="form-group">
+                            <div class="form-label">💳 No payments yet</div>
+                            <p>Payment records will appear here</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -255,12 +269,26 @@ ob_start();
         <div class="card">
             <div class="card__header">
                 <h2 class="card__title">📊 Data Tables Summary</h2>
+                <div class="card-actions">
+                    <div class="view-toggle">
+                        <button class="view-btn active" onclick="toggleView('tables', 'list')">List</button>
+                        <button class="view-btn" onclick="toggleView('tables', 'grid')">Grid</button>
+                    </div>
+                </div>
             </div>
             <div class="card__body">
-                <div id="tablesContainer">
-                    <div class="form-group">
-                        <div class="form-label">📋 Loading Tables...</div>
-                        <p>Fetching finance table information</p>
+                <div class="data-view" id="tablesView">
+                    <div class="data-list active" id="tablesContainer">
+                        <div class="form-group">
+                            <div class="form-label">📋 Loading Tables...</div>
+                            <p>Fetching finance table information</p>
+                        </div>
+                    </div>
+                    <div class="data-grid" id="tablesGrid">
+                        <div class="form-group">
+                            <div class="form-label">📋 Loading Tables...</div>
+                            <p>Fetching finance table information</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -701,6 +729,90 @@ function exportChart(type) {
     window.open(`/ergon/finance/export?type=${type}`, '_blank');
 }
 
+function toggleView(module, viewType) {
+    const viewContainer = document.getElementById(`${module}View`);
+    const listView = viewContainer.querySelector('.data-list');
+    const gridView = viewContainer.querySelector('.data-grid');
+    const buttons = viewContainer.parentElement.querySelectorAll('.view-btn');
+    
+    // Update button states
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Toggle views
+    if (viewType === 'list') {
+        listView.classList.add('active');
+        gridView.classList.remove('active');
+    } else {
+        listView.classList.remove('active');
+        gridView.classList.add('active');
+        
+        // Load grid data if not already loaded
+        loadGridView(module);
+    }
+}
+
+function showChart(chartType) {
+    const tabs = document.querySelectorAll('.chart-tab');
+    const charts = document.querySelectorAll('.chart-canvas');
+    
+    // Update tab states
+    tabs.forEach(tab => tab.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Show selected chart
+    charts.forEach(chart => chart.classList.remove('active'));
+    document.getElementById(`${chartType}Chart`).classList.add('active');
+}
+
+function loadGridView(module) {
+    const gridContainer = document.getElementById(`${module}Grid`);
+    
+    // Copy list data to grid format
+    const listContainer = document.getElementById(`${module}List` || `${module}Container`);
+    const listItems = listContainer.querySelectorAll('.list-item, .form-group');
+    
+    let gridHtml = '<div class="grid-container">';
+    
+    listItems.forEach(item => {
+        if (item.classList.contains('list-item')) {
+            const title = item.querySelector('.list-title')?.textContent || 'N/A';
+            const amount = item.querySelector('.list-amount')?.textContent || '';
+            const customer = item.querySelector('.list-customer')?.textContent || '';
+            const status = item.querySelector('.list-status')?.textContent || '';
+            
+            gridHtml += `
+                <div class="grid-item">
+                    <div class="grid-header">
+                        <h4>${title}</h4>
+                        <span class="grid-amount">${amount}</span>
+                    </div>
+                    <div class="grid-body">
+                        <p>${customer}</p>
+                        <span class="grid-status">${status}</span>
+                    </div>
+                </div>`;
+        } else {
+            // Handle form-group items
+            const label = item.querySelector('.form-label')?.textContent || '';
+            const text = item.querySelector('p')?.textContent || '';
+            
+            gridHtml += `
+                <div class="grid-item">
+                    <div class="grid-header">
+                        <h4>${label}</h4>
+                    </div>
+                    <div class="grid-body">
+                        <p>${text}</p>
+                    </div>
+                </div>`;
+        }
+    });
+    
+    gridHtml += '</div>';
+    gridContainer.innerHTML = gridHtml;
+}
+
 async function loadTables() {
     try {
         const response = await fetch('/ergon/finance/tables');
@@ -917,6 +1029,147 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     font-weight: 600;
 }
 
+/* View Toggle Styles */
+.view-toggle {
+    display: flex;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    padding: 2px;
+    margin-right: 0.5rem;
+}
+
+.view-btn {
+    padding: 0.25rem 0.75rem;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+/* Chart Tabs */
+.chart-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.chart-tab {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 4px 4px 0 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.chart-tab.active {
+    background: var(--primary);
+    color: white;
+}
+
+.chart-container {
+    position: relative;
+    height: 200px;
+}
+
+.chart-canvas {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.chart-canvas.active {
+    display: block;
+}
+
+/* Data View Styles */
+.data-view {
+    position: relative;
+}
+
+.data-list,
+.data-grid {
+    display: none;
+}
+
+.data-list.active,
+.data-grid.active {
+    display: block;
+}
+
+/* Grid Layout */
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.grid-item {
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    transition: all 0.2s ease;
+}
+
+.grid-item:hover {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
+}
+
+.grid-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.grid-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.grid-amount {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+.grid-body p {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.grid-status {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-radius: 12px;
+    font-size: 0.75rem;
+}
+
 @media (max-width: 768px) {
     .list-details {
         flex-direction: column;
@@ -925,6 +1178,19 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     
     .list-meta {
         flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .grid-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .view-toggle {
+        margin-bottom: 0.5rem;
+    }
+    
+    .chart-tabs {
+        flex-wrap: wrap;
         gap: 0.25rem;
     }
 }
