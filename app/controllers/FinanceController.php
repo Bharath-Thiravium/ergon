@@ -12,38 +12,80 @@ class FinanceController extends Controller {
         header('Content-Type: application/json');
         
         try {
-            // Use Heroku free app as bridge
-            $herokuUrl = 'https://postgres-bridge-free.herokuapp.com/bridge.php';
+            // Try different connection methods
+            $conn = $this->tryAllConnections();
             
-            $tables = $this->callExternalBridge($herokuUrl, ['action' => 'tables']);
-            
-            if (!isset($tables['tables'])) {
-                throw new Exception('No tables found or bridge error');
+            if (!$conn) {
+                throw new Exception('PostgreSQL connection failed. Contact Hostinger to whitelist IP 72.60.218.167 or enable outbound connections.');
             }
             
             $db = Database::connect();
             $this->createTables($db);
             
+            $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name LIMIT 20");
             $syncCount = 0;
-            foreach (array_slice($tables['tables'], 0, 5) as $tableName) {
-                $tableData = $this->callExternalBridge($herokuUrl, [
-                    'action' => 'data',
-                    'table' => $tableName,
-                    'limit' => 50
-                ]);
+            
+            while ($row = pg_fetch_assoc($result)) {
+                $tableName = $row['table_name'];
                 
-                if (isset($tableData['data'])) {
-                    $this->storeTableData($db, $tableName, $tableData['data']);
+                $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 100");
+                $data = [];
+                
+                while ($dataRow = pg_fetch_assoc($dataResult)) {
+                    $data[] = $dataRow;
+                }
+                
+                if (!empty($data)) {
+                    $this->storeTableData($db, $tableName, $data);
                     $syncCount++;
                 }
             }
             
-            echo json_encode(['status' => 'success', 'tables' => $syncCount, 'method' => 'heroku_bridge']);
+            pg_close($conn);
+            echo json_encode(['status' => 'success', 'tables' => $syncCount, 'method' => 'direct_postgres']);
             
         } catch (Exception $e) {
-            // Fallback: Create sample data
-            $this->createSampleData();
-            echo json_encode(['status' => 'success', 'tables' => 2, 'method' => 'sample_data', 'note' => 'Using sample data. Deploy bridge to get real PostgreSQL data.']);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+    
+    private function tryAllConnections() {
+        $configs = [
+            "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=30",
+            "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=require connect_timeout=30",
+            "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=prefer connect_timeout=30",
+            "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango application_name=hostinger_client",
+        ];
+        
+        foreach ($configs as $config) {
+            $conn = @pg_connect($config);
+            if ($conn && pg_connection_status($conn) === PGSQL_CONNECTION_OK) {
+                return $conn;
+            }
+        }
+        
+        return false;
+    }
+    
+    public function testConnection() {
+        header('Content-Type: application/json');
+        
+        // Test if port is accessible
+        $socket = @fsockopen('72.60.218.167', 5432, $errno, $errstr, 10);
+        if (!$socket) {
+            echo json_encode(['error' => "Port blocked: $errstr ($errno)"]);
+            return;
+        }
+        fclose($socket);
+        
+        // Test PostgreSQL connection
+        $conn = $this->tryAllConnections();
+        if ($conn) {
+            $version = pg_version($conn);
+            pg_close($conn);
+            echo json_encode(['success' => true, 'version' => $version]);
+        } else {
+            echo json_encode(['error' => 'PostgreSQL connection failed']);
         }
     }
     
@@ -89,58 +131,6 @@ class FinanceController extends Controller {
             echo json_encode(['data' => $data, 'columns' => $columns]);
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
-        }
-    }
-    
-    private function callExternalBridge($url, $data) {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($httpCode !== 200) {
-            throw new Exception('External bridge connection failed');
-        }
-        
-        return json_decode($response, true);
-    }
-    
-    private function createSampleData() {
-        $db = Database::connect();
-        $this->createTables($db);
-        
-        $sampleData = [
-            'sales_data' => [
-                ['date' => '2025-01-15', 'amount' => 25000, 'customer' => 'Tech Corp', 'product' => 'Software License'],
-                ['date' => '2025-01-14', 'amount' => 15000, 'customer' => 'ABC Industries', 'product' => 'Consulting'],
-                ['date' => '2025-01-13', 'amount' => 8500, 'customer' => 'XYZ Ltd', 'product' => 'Support'],
-            ],
-            'expense_data' => [
-                ['date' => '2025-01-15', 'amount' => 3500, 'category' => 'Office Rent', 'department' => 'Admin'],
-                ['date' => '2025-01-14', 'amount' => 1200, 'category' => 'Software Tools', 'department' => 'IT'],
-                ['date' => '2025-01-13', 'amount' => 800, 'category' => 'Utilities', 'department' => 'Admin'],
-            ]
-        ];
-        
-        foreach ($sampleData as $tableName => $data) {
-            $stmt = $db->prepare("DELETE FROM finance_data WHERE table_name = ?");
-            $stmt->execute([$tableName]);
-            
-            foreach ($data as $row) {
-                $stmt = $db->prepare("INSERT INTO finance_data (table_name, data) VALUES (?, ?)");
-                $stmt->execute([$tableName, json_encode($row)]);
-            }
-            
-            $stmt = $db->prepare("INSERT INTO finance_tables (table_name, record_count) VALUES (?, ?) 
-                                 ON DUPLICATE KEY UPDATE record_count = ?, last_sync = NOW()");
-            $stmt->execute([$tableName, count($data), count($data)]);
         }
     }
     

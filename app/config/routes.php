@@ -374,6 +374,6 @@ $router->get('/finance', 'FinanceController', 'dashboard');
 $router->get('/finance/tables', 'FinanceController', 'getTables');
 $router->get('/finance/data', 'FinanceController', 'getTableData');
 $router->post('/finance/sync', 'FinanceController', 'syncPostgres');
-$router->post('/finance/upload', 'FinanceController', 'uploadData');
+$router->get('/finance/test', 'FinanceController', 'testConnection');
 
 ?>
