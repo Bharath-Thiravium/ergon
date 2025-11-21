@@ -210,10 +210,10 @@ class FinanceController extends Controller {
             
             foreach ($invoiceResults as $row) {
                 $data = json_decode($row['data'], true);
-                $customerName = $data['customer_name'] ?? $data['customer'] ?? $data['client_name'] ?? $data['company_name'] ?? '';
+                $invoiceNumber = $data['invoice_number'] ?? '';
                 
-                // Filter only BKC companies
-                if (!str_contains(strtoupper($customerName), 'BKC')) continue;
+                // Filter only BKC prefix in invoice numbers
+                if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
                 
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
@@ -235,10 +235,10 @@ class FinanceController extends Controller {
             
             foreach ($poResults as $row) {
                 $data = json_decode($row['data'], true);
-                $vendorName = $data['vendor_name'] ?? $data['customer_name'] ?? $data['supplier_name'] ?? $data['company_name'] ?? '';
+                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
                 
-                // Filter only BKC companies
-                if (!str_contains(strtoupper($vendorName), 'BKC')) continue;
+                // Filter only BKC prefix in PO numbers
+                if (!str_contains(strtoupper($poNumber), 'BKC')) continue;
                 
                 $status = strtolower($data['status'] ?? 'pending');
                 $amount = floatval($data['total_amount'] ?? 0);
@@ -372,10 +372,10 @@ class FinanceController extends Controller {
                     $statusCount = ['draft' => 0, 'revised' => 0, 'converted' => 0];
                     foreach ($results as $row) {
                         $data = json_decode($row['data'], true);
-                        $customerName = $data['customer_name'] ?? '';
+                        $quotationNumber = $data['quotation_number'] ?? '';
                         
-                        // Filter only BKC companies
-                        if (!str_starts_with($customerName, 'BKC')) continue;
+                        // Filter only BKC prefix in quotation numbers
+                        if (!str_contains(strtoupper($quotationNumber), 'BKC')) continue;
                         
                         $status = strtolower($data['status'] ?? 'draft');
                         if (isset($statusCount[$status])) {
@@ -394,10 +394,10 @@ class FinanceController extends Controller {
                     $monthlyData = [];
                     foreach ($results as $row) {
                         $data = json_decode($row['data'], true);
-                        $vendorName = $data['vendor_name'] ?? $data['customer_name'] ?? '';
+                        $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
                         
-                        // Filter only BKC companies
-                        if (!str_starts_with($vendorName, 'BKC')) continue;
+                        // Filter only BKC prefix in PO numbers
+                        if (!str_contains(strtoupper($poNumber), 'BKC')) continue;
                         
                         $month = date('M Y', strtotime($data['po_date'] ?? '2024-01-01'));
                         $amount = floatval($data['total_amount'] ?? 0);
@@ -425,10 +425,10 @@ class FinanceController extends Controller {
                     
                     foreach ($results as $row) {
                         $data = json_decode($row['data'], true);
-                        $customerName = $data['customer_name'] ?? '';
+                        $invoiceNumber = $data['invoice_number'] ?? '';
                         
-                        // Filter only BKC companies
-                        if (!str_starts_with($customerName, 'BKC')) continue;
+                        // Filter only BKC prefix in invoice numbers
+                        if (!str_contains(strtoupper($invoiceNumber), 'BKC')) continue;
                         
                         $status = strtolower($data['payment_status'] ?? 'unpaid');
                         $amount = floatval($data['total_amount'] ?? 0);
