@@ -80,14 +80,12 @@ ob_start();
             </div>
             <div class="card__body">
                 <div class="chart-tabs">
-                    <button class="chart-tab active" onclick="showChart('quotations')">Quotations</button>
-                    <button class="chart-tab" onclick="showChart('purchase_orders')">Purchase Orders</button>
-                    <button class="chart-tab" onclick="showChart('invoices')">Invoices</button>
+                    <button class="chart-tab active" data-chart="quotations">Quotations</button>
+                    <button class="chart-tab" data-chart="purchase_orders">Purchase Orders</button>
+                    <button class="chart-tab" data-chart="invoices">Invoices</button>
                 </div>
-                <div class="chart-container">
-                    <canvas id="quotationsChart" class="chart-canvas active" height="200"></canvas>
-                    <canvas id="purchaseOrdersChart" class="chart-canvas" height="200"></canvas>
-                    <canvas id="invoicesChart" class="chart-canvas" height="200"></canvas>
+                <div class="chart-display">
+                    <canvas id="financeChart" width="400" height="200"></canvas>
                 </div>
             </div>
         </div>
@@ -380,7 +378,7 @@ ob_start();
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-let quotationsChart, purchaseOrdersChart, invoicesChart;
+let financeChart;
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
@@ -395,9 +393,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initCharts() {
-    // Quotations Status Pie Chart
-    const quotationsCtx = document.getElementById('quotationsChart').getContext('2d');
-    quotationsChart = new Chart(quotationsCtx, {
+    const ctx = document.getElementById('financeChart');
+    if (!ctx) return;
+    
+    financeChart = new Chart(ctx.getContext('2d'), {
         type: 'pie',
         data: {
             labels: ['Draft', 'Revised', 'Converted'],
@@ -409,78 +408,17 @@ function initCharts() {
         options: {
             responsive: true,
             plugins: {
-                legend: { position: 'bottom' },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ' + context.parsed + ' quotations';
-                        }
-                    }
-                }
+                legend: { position: 'bottom' }
             }
         }
     });
-
-    // Purchase Orders Monthly Bar Chart
-    const purchaseOrdersCtx = document.getElementById('purchaseOrdersChart').getContext('2d');
-    purchaseOrdersChart = new Chart(purchaseOrdersCtx, {
-        type: 'bar',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Total Amount (₹)',
-                data: [],
-                backgroundColor: '#007bff'
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { 
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return '₹' + value.toLocaleString();
-                        }
-                    }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return 'Amount: ₹' + context.parsed.y.toLocaleString();
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    // Invoices Payment Status Donut Chart
-    const invoicesCtx = document.getElementById('invoicesChart').getContext('2d');
-    invoicesChart = new Chart(invoicesCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Paid', 'Unpaid', 'Overdue'],
-            datasets: [{
-                data: [0, 0, 0],
-                backgroundColor: ['#28a745', '#ffc107', '#dc3545']
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'bottom' },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ₹' + context.parsed.toLocaleString();
-                        }
-                    }
-                }
-            }
-        }
+    
+    // Add event listeners to chart tabs
+    document.querySelectorAll('.chart-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            const chartType = this.dataset.chart;
+            showChart(chartType);
+        });
     });
 }
 
@@ -696,34 +634,15 @@ function updateDetailedStats(data) {
 }
 
 async function updateCharts() {
+    if (!financeChart) return;
+    
     try {
-        // Update Quotations Chart
-        const quotationsResponse = await fetch('/ergon/finance/visualization?type=quotations');
-        const quotationsData = await quotationsResponse.json();
+        const response = await fetch('/ergon/finance/visualization?type=quotations');
+        const data = await response.json();
         
-        quotationsChart.data.datasets[0].data = quotationsData.data;
-        quotationsChart.update();
-        
-        // Update Purchase Orders Chart
-        const poResponse = await fetch('/ergon/finance/visualization?type=purchase_orders');
-        const poData = await poResponse.json();
-        
-        purchaseOrdersChart.data.labels = poData.labels;
-        purchaseOrdersChart.data.datasets[0].data = poData.data;
-        purchaseOrdersChart.update();
-        
-        // Update Invoices Chart
-        const invoicesResponse = await fetch('/ergon/finance/visualization?type=invoices');
-        const invoicesData = await invoicesResponse.json();
-        
-        invoicesChart.data.datasets[0].data = invoicesData.data;
-        invoicesChart.update();
-        
-        // Show outstanding alert if needed
-        if (invoicesData.outstanding > 0) {
-            document.getElementById('outstandingAlert').style.display = 'block';
-            document.getElementById('outstandingAlert').innerHTML = 
-                `<strong>Alert:</strong> ₹${invoicesData.outstanding.toLocaleString()} in outstanding invoices`;
+        if (data.data) {
+            financeChart.data.datasets[0].data = data.data;
+            financeChart.update();
         }
         
     } catch (error) {
@@ -759,16 +678,32 @@ function toggleView(module, viewType) {
 }
 
 function showChart(chartType) {
+    if (!financeChart) return;
+    
     const tabs = document.querySelectorAll('.chart-tab');
-    const charts = document.querySelectorAll('.chart-canvas');
+    tabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.chart === chartType) {
+            tab.classList.add('active');
+        }
+    });
     
-    // Update tab states
-    tabs.forEach(tab => tab.classList.remove('active'));
-    event.target.classList.add('active');
+    // Update chart based on type
+    if (chartType === 'quotations') {
+        financeChart.config.type = 'pie';
+        financeChart.data.labels = ['Draft', 'Revised', 'Converted'];
+        financeChart.data.datasets[0].backgroundColor = ['#ffc107', '#17a2b8', '#28a745'];
+    } else if (chartType === 'purchase_orders') {
+        financeChart.config.type = 'bar';
+        financeChart.data.labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        financeChart.data.datasets[0].backgroundColor = '#007bff';
+    } else if (chartType === 'invoices') {
+        financeChart.config.type = 'doughnut';
+        financeChart.data.labels = ['Paid', 'Unpaid', 'Overdue'];
+        financeChart.data.datasets[0].backgroundColor = ['#28a745', '#ffc107', '#dc3545'];
+    }
     
-    // Show selected chart
-    charts.forEach(chart => chart.classList.remove('active'));
-    document.getElementById(`${chartType}Chart`).classList.add('active');
+    financeChart.update();
 }
 
 function loadGridView(module) {
