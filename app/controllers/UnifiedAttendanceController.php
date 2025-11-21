@@ -579,34 +579,6 @@ class UnifiedAttendanceController extends Controller {
         }
     }
     
-    private function getTodayAttendance($userId) {
-        try {
-            $stmt = $this->db->prepare("
-                SELECT * FROM attendance 
-                WHERE user_id = ? AND DATE(check_in) = CURDATE()
-            ");
-            $stmt->execute([$userId]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            error_log('getTodayAttendance error: ' . $e->getMessage());
-            return false;
-        }
-    }
-    
-    private function checkIfOnLeave($userId) {
-        try {
-            $stmt = $this->db->prepare("
-                SELECT id FROM leaves 
-                WHERE user_id = ? AND status = 'approved' 
-                AND CURDATE() BETWEEN DATE(start_date) AND DATE(end_date)
-            ");
-            $stmt->execute([$userId]);
-            return $stmt->fetch() ? true : false;
-        } catch (Exception $e) {
-            return false;
-        }
-    }
-    
     private function getAdminOwnAttendance($userId, $selectedDate) {
         try {
             $stmt = $this->db->prepare("
