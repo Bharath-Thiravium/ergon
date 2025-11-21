@@ -12,12 +12,14 @@ class FinanceController extends Controller {
         header('Content-Type: application/json');
         
         try {
-            // Try direct PostgreSQL connection first
-            if (function_exists('pg_connect')) {
-                $this->syncDirect();
+            // Try multiple connection methods
+            $conn = $this->connectPostgres();
+            
+            if ($conn) {
+                $this->syncDirect($conn);
             } else {
-                // Fallback to bridge API
-                $this->syncViaBridge();
+                // Use local bridge as fallback
+                $this->syncViaLocalBridge();
             }
             
         } catch (Exception $e) {
@@ -25,25 +27,34 @@ class FinanceController extends Controller {
         }
     }
     
-    private function syncDirect() {
-        $conn = pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango");
+    private function connectPostgres() {
+        $configs = [
+            "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable",
+            "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango connect_timeout=10",
+            "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=require",
+        ];
         
-        if (!$conn) {
-            throw new Exception('PostgreSQL connection failed');
+        foreach ($configs as $config) {
+            $conn = @pg_connect($config);
+            if ($conn) {
+                return $conn;
+            }
         }
         
+        return false;
+    }
+    
+    private function syncDirect($conn) {
         $db = Database::connect();
         $this->createTables($db);
         
-        // Get tables
         $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' LIMIT 10");
         $syncCount = 0;
         
         while ($row = pg_fetch_assoc($result)) {
             $tableName = $row['table_name'];
             
-            // Get table data
-            $dataResult = pg_query($conn, "SELECT * FROM $tableName LIMIT 100");
+            $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 100");
             $data = [];
             
             while ($dataRow = pg_fetch_assoc($dataResult)) {
@@ -58,13 +69,13 @@ class FinanceController extends Controller {
         echo json_encode(['status' => 'success', 'tables' => $syncCount, 'method' => 'direct']);
     }
     
-    private function syncViaBridge() {
-        $bridgeUrl = 'https://your-bridge-server.com/postgres_bridge.php'; // Update this URL
+    private function syncViaLocalBridge() {
+        // Use the local bridge file
+        $bridgeUrl = 'https://athenas.co.in/ergon/simple_bridge.php';
         
-        // Get tables via bridge
-        $tables = $this->callBridge(['action' => 'tables']);
+        $tables = $this->callBridge($bridgeUrl . '?action=tables');
         
-        if (isset($tables['error'])) {
+        if (!$tables['success']) {
             throw new Exception('Bridge error: ' . $tables['error']);
         }
         
@@ -72,20 +83,16 @@ class FinanceController extends Controller {
         $this->createTables($db);
         
         $syncCount = 0;
-        foreach (array_slice($tables['tables'], 0, 10) as $tableName) {
-            $tableData = $this->callBridge([
-                'action' => 'data',
-                'table' => $tableName,
-                'limit' => 100
-            ]);
+        foreach (array_slice($tables['tables'], 0, 5) as $tableName) {
+            $tableData = $this->callBridge($bridgeUrl . '?action=data&table=' . urlencode($tableName) . '&limit=50');
             
-            if (isset($tableData['data'])) {
+            if ($tableData['success']) {
                 $this->storeTableData($db, $tableName, $tableData['data']);
                 $syncCount++;
             }
         }
         
-        echo json_encode(['status' => 'success', 'tables' => $syncCount, 'method' => 'bridge']);
+        echo json_encode(['status' => 'success', 'tables' => $syncCount, 'method' => 'local_bridge']);
     }
     
     public function getTables() {
@@ -133,23 +140,19 @@ class FinanceController extends Controller {
         }
     }
     
-    private function callBridge($data) {
-        $bridgeUrl = 'https://your-bridge-server.com/postgres_bridge.php'; // Update this URL
-        
+    private function callBridge($url) {
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $bridgeUrl);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         
         if ($httpCode !== 200) {
-            throw new Exception('Bridge API connection failed');
+            throw new Exception('Bridge connection failed');
         }
         
         return json_decode($response, true);
