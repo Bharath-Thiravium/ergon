@@ -651,7 +651,38 @@ function submitEdit() {
 }
 
 function generateUserReport(userId) {
-    alert('Report generation not yet implemented.');
+    if (!userId) {
+        alert('Invalid user ID');
+        return;
+    }
+    
+    document.getElementById('reportUserId').value = userId;
+    document.getElementById('reportFromDate').value = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+    document.getElementById('reportToDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('reportDialog').style.display = 'flex';
+}
+
+function closeReportDialog() {
+    document.getElementById('reportDialog').style.display = 'none';
+}
+
+function submitReport() {
+    const userId = document.getElementById('reportUserId').value;
+    const fromDate = document.getElementById('reportFromDate').value;
+    const toDate = document.getElementById('reportToDate').value;
+    
+    if (!fromDate || !toDate) {
+        alert('Please select both start and end dates');
+        return;
+    }
+    
+    if (new Date(fromDate) > new Date(toDate)) {
+        alert('Start date cannot be after end date');
+        return;
+    }
+    
+    closeReportDialog();
+    window.open(`/ergon/attendance/export?user_id=${userId}&from=${fromDate}&to=${toDate}`, '_blank');
 }
 
 function deleteAttendanceRecord(attendanceId, userName) {
@@ -772,6 +803,30 @@ function deleteAttendanceRecord(attendanceId, userName) {
         <div class="dialog-buttons">
             <button onclick="closeEditDialog()">Cancel</button>
             <button onclick="submitEdit()">Update</button>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Report Modal -->
+<div id="reportDialog" class="dialog" style="display: none;">
+    <div class="dialog-content">
+        <h4>Generate Attendance Report</h4>
+        <form onsubmit="event.preventDefault(); submitReport();">
+            <input type="hidden" id="reportUserId">
+            
+            <div class="form-group">
+                <label>From Date</label>
+                <input type="date" id="reportFromDate" class="form-control" max="<?= date('Y-m-d') ?>" required>
+            </div>
+            
+            <div class="form-group">
+                <label>To Date</label>
+                <input type="date" id="reportToDate" class="form-control" max="<?= date('Y-m-d') ?>" required>
+            </div>
+        </form>
+        <div class="dialog-buttons">
+            <button onclick="closeReportDialog()">Cancel</button>
+            <button onclick="submitReport()">Generate Report</button>
         </div>
     </div>
 </div>

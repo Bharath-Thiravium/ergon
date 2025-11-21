@@ -461,6 +461,11 @@ class AttendanceController extends Controller {
             exit;
         }
         
+        // Check if this is a single user report
+        if (isset($_GET['user_id'])) {
+            return $this->exportUserReport();
+        }
+        
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
@@ -519,6 +524,73 @@ class AttendanceController extends Controller {
             exit;
         } catch (Exception $e) {
             error_log('Attendance export error: ' . $e->getMessage());
+            header('Location: /ergon/attendance?error=Export failed');
+            exit;
+        }
+    }
+    
+    private function exportUserReport() {
+        $userId = intval($_GET['user_id']);
+        $fromDate = $_GET['from'] ?? date('Y-m-01');
+        $toDate = $_GET['to'] ?? date('Y-m-d');
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Get user details
+            $stmt = $db->prepare("SELECT name, email FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                header('Location: /ergon/attendance?error=User not found');
+                exit;
+            }
+            
+            // Get attendance data
+            $stmt = $db->prepare("
+                SELECT 
+                    DATE(check_in) as date,
+                    TIME(check_in) as check_in_time,
+                    TIME(check_out) as check_out_time,
+                    CASE 
+                        WHEN check_in IS NOT NULL AND check_out IS NOT NULL THEN 
+                            ROUND(TIMESTAMPDIFF(MINUTE, check_in, check_out) / 60.0, 2)
+                        ELSE 0
+                    END as total_hours,
+                    status
+                FROM attendance 
+                WHERE user_id = ? AND DATE(check_in) BETWEEN ? AND ?
+                ORDER BY DATE(check_in)
+            ");
+            $stmt->execute([$userId, $fromDate, $toDate]);
+            $attendanceData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment; filename="' . $user['name'] . '_attendance_' . $fromDate . '_to_' . $toDate . '.csv"');
+            
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['Employee: ' . $user['name']]);
+            fputcsv($output, ['Email: ' . $user['email']]);
+            fputcsv($output, ['Period: ' . $fromDate . ' to ' . $toDate]);
+            fputcsv($output, []);
+            fputcsv($output, ['Date', 'Check In', 'Check Out', 'Total Hours', 'Status']);
+            
+            foreach ($attendanceData as $record) {
+                fputcsv($output, [
+                    $record['date'],
+                    $record['check_in_time'] ?? 'N/A',
+                    $record['check_out_time'] ?? 'N/A',
+                    $record['total_hours'],
+                    $record['status']
+                ]);
+            }
+            
+            fclose($output);
+            exit;
+        } catch (Exception $e) {
+            error_log('User report export error: ' . $e->getMessage());
             header('Location: /ergon/attendance?error=Export failed');
             exit;
         }
