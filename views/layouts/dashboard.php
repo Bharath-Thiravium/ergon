@@ -256,6 +256,10 @@ ob_end_clean();
                             <span class="dropdown-arrow">▼</span>
                         </button>
                         <div class="nav-dropdown-menu" id="analytics">
+                            <a href="/ergon/finance" class="nav-dropdown-item <?= ($active_page ?? '') === 'finance' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">💰</span>
+                                Finance
+                            </a>
                             <a href="/ergon/reports" class="nav-dropdown-item <?= ($active_page ?? '') === 'reports' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📈</span>
                                 Reports
@@ -493,6 +497,12 @@ ob_end_clean();
                 <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
                     <span class="sidebar__icon">📍</span>
                     Attendance
+                </a>
+                
+                <div class="sidebar__divider">Analytics</div>
+                <a href="/ergon/finance" class="sidebar__link <?= ($active_page ?? '') === 'finance' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💰</span>
+                    Finance
                 </a>
             <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
                 <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
