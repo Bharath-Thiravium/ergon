@@ -210,6 +210,11 @@ class FinanceController extends Controller {
             
             foreach ($invoiceResults as $row) {
                 $data = json_decode($row['data'], true);
+                $customerName = $data['customer_name'] ?? '';
+                
+                // Filter only BKC companies
+                if (!str_starts_with($customerName, 'BKC')) continue;
+                
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
                 $gstRate = floatval($data['gst_rate'] ?? 0.18);
@@ -230,6 +235,11 @@ class FinanceController extends Controller {
             
             foreach ($poResults as $row) {
                 $data = json_decode($row['data'], true);
+                $vendorName = $data['vendor_name'] ?? $data['customer_name'] ?? '';
+                
+                // Filter only BKC companies
+                if (!str_starts_with($vendorName, 'BKC')) continue;
+                
                 $status = strtolower($data['status'] ?? 'pending');
                 $amount = floatval($data['total_amount'] ?? 0);
                 
@@ -362,6 +372,11 @@ class FinanceController extends Controller {
                     $statusCount = ['draft' => 0, 'revised' => 0, 'converted' => 0];
                     foreach ($results as $row) {
                         $data = json_decode($row['data'], true);
+                        $customerName = $data['customer_name'] ?? '';
+                        
+                        // Filter only BKC companies
+                        if (!str_starts_with($customerName, 'BKC')) continue;
+                        
                         $status = strtolower($data['status'] ?? 'draft');
                         if (isset($statusCount[$status])) {
                             $statusCount[$status]++;
@@ -379,6 +394,11 @@ class FinanceController extends Controller {
                     $monthlyData = [];
                     foreach ($results as $row) {
                         $data = json_decode($row['data'], true);
+                        $vendorName = $data['vendor_name'] ?? $data['customer_name'] ?? '';
+                        
+                        // Filter only BKC companies
+                        if (!str_starts_with($vendorName, 'BKC')) continue;
+                        
                         $month = date('M Y', strtotime($data['po_date'] ?? '2024-01-01'));
                         $amount = floatval($data['total_amount'] ?? 0);
                         
@@ -405,6 +425,11 @@ class FinanceController extends Controller {
                     
                     foreach ($results as $row) {
                         $data = json_decode($row['data'], true);
+                        $customerName = $data['customer_name'] ?? '';
+                        
+                        // Filter only BKC companies
+                        if (!str_starts_with($customerName, 'BKC')) continue;
+                        
                         $status = strtolower($data['payment_status'] ?? 'unpaid');
                         $amount = floatval($data['total_amount'] ?? 0);
                         $outstandingAmount = floatval($data['outstanding_amount'] ?? 0);
@@ -442,6 +467,11 @@ class FinanceController extends Controller {
             $invoices = [];
             foreach ($results as $row) {
                 $data = json_decode($row['data'], true);
+                $customerName = $data['customer_name'] ?? '';
+                
+                // Filter only BKC companies
+                if (!str_starts_with($customerName, 'BKC')) continue;
+                
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
                 
                 if ($outstanding > 0) {
@@ -450,7 +480,7 @@ class FinanceController extends Controller {
                     
                     $invoices[] = [
                         'invoice_number' => $data['invoice_number'] ?? 'N/A',
-                        'customer_name' => $data['customer_name'] ?? 'Unknown',
+                        'customer_name' => $customerName,
                         'due_date' => $dueDate,
                         'outstanding_amount' => $outstanding,
                         'daysOverdue' => floor($daysOverdue),
@@ -471,19 +501,28 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' LIMIT 5");
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $quotations = [];
+            $count = 0;
             foreach ($results as $row) {
+                if ($count >= 5) break;
+                
                 $data = json_decode($row['data'], true);
+                $customerName = $data['customer_name'] ?? '';
+                
+                // Filter only BKC companies
+                if (!str_starts_with($customerName, 'BKC')) continue;
+                
                 $quotations[] = [
                     'quotation_number' => $data['quotation_number'] ?? 'N/A',
-                    'customer_name' => $data['customer_name'] ?? 'Unknown',
+                    'customer_name' => $customerName,
                     'total_amount' => floatval($data['total_amount'] ?? 0),
                     'valid_until' => $data['valid_until'] ?? 'N/A'
                 ];
+                $count++;
             }
             
             echo json_encode(['quotations' => $quotations]);
@@ -510,6 +549,11 @@ class FinanceController extends Controller {
                 
                 foreach ($results as $row) {
                     $data = json_decode($row['data'], true);
+                    $customerName = $data['customer_name'] ?? '';
+                    
+                    // Filter only BKC companies
+                    if (!str_starts_with($customerName, 'BKC')) continue;
+                    
                     $outstanding = floatval($data['outstanding_amount'] ?? 0);
                     
                     if ($outstanding > 0) {
@@ -517,7 +561,7 @@ class FinanceController extends Controller {
                         $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
                         
                         echo '"' . ($data['invoice_number'] ?? 'N/A') . '","' . 
-                             ($data['customer_name'] ?? 'Unknown') . '","' . 
+                             $customerName . '","' . 
                              $dueDate . '","' . 
                              $outstanding . '","' . 
                              floor($daysOverdue) . '","' . 
@@ -552,6 +596,11 @@ class FinanceController extends Controller {
             
             foreach ($invoiceResults as $row) {
                 $data = json_decode($row['data'], true);
+                $customerName = $data['customer_name'] ?? '';
+                
+                // Filter only BKC companies
+                if (!str_starts_with($customerName, 'BKC')) continue;
+                
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
                 
