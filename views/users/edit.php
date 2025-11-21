@@ -91,7 +91,7 @@ ob_start();
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Date of Birth</label>
-                    <input type="date" name="date_of_birth" class="form-control" value="<?= htmlspecialchars($user['date_of_birth'] ?? '') ?>">
+                    <input type="date" id="date_of_birth" name="date_of_birth" class="form-control" value="<?= htmlspecialchars($user['date_of_birth'] ?? '') ?>">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Gender</label>
@@ -206,9 +206,25 @@ function deleteDocument(filename) {
         });
     }
 }
+
+// calculate max selectable date = today - 17 years
+(function(){
+    const el = document.getElementById('date_of_birth');
+    if (!el) return;
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 17);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const maxDate = `${yyyy}-${mm}-${dd}`;
+    el.max = maxDate;
+
+    // Optional: if current value is after max, clear it
+    if (el.value && el.value > maxDate) {
+        el.value = '';
+    }
+})();
 </script>
-
-
 
 <?php
 $content = ob_get_clean();

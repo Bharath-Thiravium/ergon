@@ -17,7 +17,13 @@ class SimpleAttendanceController extends Controller {
         $selectedDate = $_GET['date'] ?? date('Y-m-d');
         
         // Query to get all users with their attendance data for the selected date
-        $roleFilter = ($role === 'admin') ? "AND u.role != 'owner'" : "";
+        if ($role === 'user') {
+            $roleFilter = "AND u.id = $userId";
+        } elseif ($role === 'admin') {
+            $roleFilter = "AND u.role != 'owner'";
+        } else {
+            $roleFilter = "";
+        }
         
         if ($selectedDate === date('Y-m-d')) {
             // For current date, show all users including those without attendance records
