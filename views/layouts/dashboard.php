@@ -5,6 +5,37 @@ require_once __DIR__ . '/../../app/helpers/Security.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) { header('Location: /ergon/login'); exit; }
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) { session_unset(); session_destroy(); header('Location: /ergon/login?timeout=1'); exit; }
+
+// Check if user is still active and role hasn't changed
+try {
+    require_once __DIR__ . '/../../app/config/database.php';
+    $db = Database::connect();
+    if (!$db) {
+        throw new Exception('Database connection failed');
+    }
+    $stmt = $db->prepare("SELECT status, role FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user || $user['status'] !== 'active') {
+        session_unset();
+        session_destroy();
+        header('Location: /ergon/login?deactivated=1');
+        exit;
+    }
+    if ($user['role'] !== $_SESSION['role']) {
+        session_unset();
+        session_destroy();
+        header('Location: /ergon/login?role_changed=1');
+        exit;
+    }
+} catch (Exception $e) {
+    error_log('User status check failed: ' . $e->getMessage());
+    // Redirect to login on database connection failure
+    session_unset();
+    session_destroy();
+    header('Location: /ergon/login?error=database');
+    exit;
+}
 $_SESSION['last_activity'] = time();
 $content = $content ?? '';
 $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' => 'en'];
@@ -15,7 +46,7 @@ ob_end_clean();
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
@@ -42,7 +73,7 @@ ob_end_clean();
     @keyframes pulse-red{0%,100%{box-shadow:0 4px 16px rgba(220,38,38,0.6)}50%{box-shadow:0 6px 20px rgba(220,38,38,0.8)}}
     </style>
     
-    <link href="/ergon/assets/css/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/ergon/assets/css/bootstrap-icons.min.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/ergon.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/theme-enhanced.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/utilities-new.css?v=1.0" rel="stylesheet">
@@ -50,15 +81,18 @@ ob_end_clean();
     <link href="/ergon/assets/css/global-tooltips.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/action-button-clean.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/user-management-mobile.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
     <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
     <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
     <?php endif; ?>
 
-    <script src="/ergon/assets/js/theme-switcher.js?v=<?= time() ?>" defer></script>
-    <script src="/ergon/assets/js/ergon-core.min.js?v=<?= time() ?>" defer></script>
-    <script src="/ergon/assets/js/action-button-clean.js?v=<?= time() ?>" defer></script>
-    <script src="/ergon/assets/js/mobile-enhanced.js?v=<?= time() ?>" defer></script>
-    <script src="/ergon/assets/js/mobile-table-cards.js?v=<?= time() ?>" defer></script>
+    <script src="/ergon/assets/js/theme-switcher.js?v=1.0" defer></script>
+    <script src="/ergon/assets/js/ergon-core.min.js?v=1.0" defer></script>
+    <script src="/ergon/assets/js/action-button-clean.js?v=1.0" defer></script>
+    <script src="/ergon/assets/js/mobile-enhanced.js?v=1.0" defer></script>
+    <script src="/ergon/assets/js/mobile-table-cards.js?v=1.0" defer></script>
+    <script src="/ergon/assets/js/user-status-check.js?v=1.0" defer></script>
 
     <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
     <script src="/ergon/assets/js/mobile-validation.js?v=<?= time() ?>" defer></script>

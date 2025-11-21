@@ -1,0 +1,266 @@
+/* User Management Mobile Styles */
+/* Ensures data persistence across view switches */
+
+/* Mobile-specific styles for user management */
+@media (max-width: 768px) {
+  /* Ensure both views are always rendered but only one visible */
+  #listView, #gridView {
+    display: block !important;
+  }
+  
+  #listView.view--hidden {
+    display: none !important;
+  }
+  
+  #gridView.view--hidden {
+    display: none !important;
+  }
+  
+  #listView.view--active {
+    display: block !important;
+  }
+  
+  #gridView.view--active {
+    display: block !important;
+  }
+  
+  /* Mobile table improvements */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .table {
+    min-width: 600px;
+    font-size: 12px;
+  }
+  
+  .table th,
+  .table td {
+    padding: 8px 4px;
+    white-space: nowrap;
+  }
+  
+  /* User info mobile styling */
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  
+  /* Action buttons mobile styling */
+  .ab-container {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  
+  .ab-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .ab-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  /* Grid view mobile improvements */
+  .user-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 8px;
+  }
+  
+  .user-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .user-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  
+  .user-card__name {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+  }
+  
+  .user-card__email {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 8px 0;
+  }
+  
+  .user-card__role {
+    font-size: 12px;
+    margin: 0 0 12px 0;
+  }
+  
+  .user-card__badges {
+    display: flex;
+    gap: 4px;
+  }
+  
+  /* Badge styling */
+  .badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  
+  .badge--success {
+    background: #dcfce7;
+    color: #166534;
+  }
+  
+  .badge--info {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+  
+  /* View toggle button mobile */
+  .card__actions {
+    margin-bottom: 16px;
+  }
+  
+  .btn--sm {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  /* KPI cards mobile */
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  
+  .kpi-card {
+    padding: 12px;
+    min-height: auto;
+  }
+  
+  .kpi-card__value {
+    font-size: 18px;
+  }
+  
+  .kpi-card__label {
+    font-size: 12px;
+  }
+  
+  /* Page header mobile */
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .page-actions .btn {
+    flex: 1;
+    min-width: 120px;
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+}
+
+/* Tablet specific adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .user-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .table {
+    font-size: 13px;
+  }
+}
+
+/* Prevent data loss during transitions */
+.view-transition {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.view-transition.loaded {
+  opacity: 1;
+}
+
+/* Loading state */
+.user-management-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #6b7280;
+}
+
+.user-management-loading::before {
+  content: "⏳";
+  margin-right: 8px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Dark mode support */
+[data-theme='dark'] .user-card {
+  background: #1f2937;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+[data-theme='dark'] .user-card__email {
+  color: #9ca3af;
+}
+
+[data-theme='dark'] .badge--success {
+  background: #065f46;
+  color: #d1fae5;
+}
+
+[data-theme='dark'] .badge--info {
+  background: #1e3a8a;
+  color: #dbeafe;
+}

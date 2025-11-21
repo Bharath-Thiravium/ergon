@@ -364,6 +364,8 @@ function deleteUser(userId, userName) {
 </script>
 
 <script src="/ergon/assets/js/table-utils.js"></script>
+<script src="/ergon/assets/js/user-management-persistence.js?v=<?= time() ?>"></script>
+<script src="/ergon/assets/js/management-fix.js?v=<?= time() ?>"></script>
 
 <?php
 $content = ob_get_clean();

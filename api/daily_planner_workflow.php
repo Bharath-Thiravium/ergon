@@ -21,6 +21,17 @@ try {
     switch ($action) {
         case 'sla-dashboard':
             $date = $_GET['date'] ?? date('Y-m-d');
+            
+            // Validate date format
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                throw new Exception('Invalid date format');
+            }
+            
+            // Prevent future dates
+            if ($date > date('Y-m-d')) {
+                throw new Exception('Cannot access future dates');
+            }
+            
             $stats = $planner->getDailyStats($userId, $date);
             
             // Calculate SLA totals
@@ -72,9 +83,9 @@ try {
                 SELECT dt.*, COALESCE(t.sla_hours, 1) as sla_hours
                 FROM daily_tasks dt
                 LEFT JOIN tasks t ON dt.task_id = t.id
-                WHERE dt.id = ? AND dt.user_id = ?
+                WHERE dt.id = ?
             ");
-            $stmt->execute([$taskId, $userId]);
+            $stmt->execute([$taskId]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$task) {
@@ -90,6 +101,12 @@ try {
                 $startTime = $task['resume_time'] ?: $task['start_time'];
                 $currentActive = time() - strtotime($startTime);
                 $activeSeconds += $currentActive;
+            }
+            
+            // Calculate current pause duration if on break
+            if ($task['status'] === 'on_break' && $task['pause_start_time']) {
+                $currentPause = time() - strtotime($task['pause_start_time']);
+                $pauseSeconds += $currentPause;
             }
             
             $remainingSeconds = max(0, $slaSeconds - $activeSeconds);
@@ -114,6 +131,32 @@ try {
             }
             
             if ($planner->startTask($taskId, $userId)) {
+                // Record in task history
+                try {
+                    // Ensure task_history table exists
+                    $db->exec("CREATE TABLE IF NOT EXISTS task_history (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        task_id INT NOT NULL,
+                        action VARCHAR(50) NOT NULL,
+                        old_value TEXT,
+                        new_value TEXT,
+                        notes TEXT,
+                        created_by INT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )");
+                    
+                    $stmt = $db->prepare("SELECT original_task_id FROM daily_tasks WHERE id = ?");
+                    $stmt->execute([$taskId]);
+                    $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($dailyTask && $dailyTask['original_task_id']) {
+                        $stmt = $db->prepare("INSERT INTO task_history (task_id, action, old_value, new_value, notes, created_by) VALUES (?, 'status_changed', 'not_started', 'in_progress', 'Task started via Daily Planner', ?)");
+                        $stmt->execute([$dailyTask['original_task_id'], $userId]);
+                    }
+                } catch (Exception $e) {
+                    error_log('Task history logging failed: ' . $e->getMessage());
+                }
+                
                 echo json_encode(['success' => true, 'message' => 'Task started']);
             } else {
                 throw new Exception('Failed to start task');
@@ -127,7 +170,21 @@ try {
             }
             
             if ($planner->pauseTask($taskId, $userId)) {
-                echo json_encode(['success' => true, 'message' => 'Task paused']);
+                // Record in task history
+                try {
+                    $stmt = $db->prepare("SELECT original_task_id FROM daily_tasks WHERE id = ?");
+                    $stmt->execute([$taskId]);
+                    $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($dailyTask && $dailyTask['original_task_id']) {
+                        $stmt = $db->prepare("INSERT INTO task_history (task_id, action, old_value, new_value, notes, created_by) VALUES (?, 'status_changed', 'in_progress', 'on_break', 'Task paused via Daily Planner', ?)");
+                        $stmt->execute([$dailyTask['original_task_id'], $userId]);
+                    }
+                } catch (Exception $e) {
+                    error_log('Task history logging failed: ' . $e->getMessage());
+                }
+                
+                echo json_encode(['success' => true, 'message' => 'Task paused', 'pause_start' => time()]);
             } else {
                 throw new Exception('Failed to pause task');
             }
@@ -140,6 +197,20 @@ try {
             }
             
             if ($planner->resumeTask($taskId, $userId)) {
+                // Record in task history
+                try {
+                    $stmt = $db->prepare("SELECT original_task_id FROM daily_tasks WHERE id = ?");
+                    $stmt->execute([$taskId]);
+                    $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($dailyTask && $dailyTask['original_task_id']) {
+                        $stmt = $db->prepare("INSERT INTO task_history (task_id, action, old_value, new_value, notes, created_by) VALUES (?, 'status_changed', 'on_break', 'in_progress', 'Task resumed via Daily Planner', ?)");
+                        $stmt->execute([$dailyTask['original_task_id'], $userId]);
+                    }
+                } catch (Exception $e) {
+                    error_log('Task history logging failed: ' . $e->getMessage());
+                }
+                
                 echo json_encode(['success' => true, 'message' => 'Task resumed']);
             } else {
                 throw new Exception('Failed to resume task');
@@ -157,6 +228,25 @@ try {
             }
             
             if ($planner->updateTaskProgress($taskId, $userId, $progress, $status)) {
+                // Record in task history
+                try {
+                    $stmt = $db->prepare("SELECT original_task_id FROM daily_tasks WHERE id = ?");
+                    $stmt->execute([$taskId]);
+                    $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($dailyTask && $dailyTask['original_task_id']) {
+                        $stmt = $db->prepare("INSERT INTO task_history (task_id, action, old_value, new_value, notes, created_by) VALUES (?, 'progress_updated', '', ?, ?, ?)");
+                        $stmt->execute([$dailyTask['original_task_id'], $progress . '%', 'Progress updated to ' . $progress . '% via Daily Planner', $userId]);
+                        
+                        if ($progress >= 100) {
+                            $stmt = $db->prepare("INSERT INTO task_history (task_id, action, old_value, new_value, notes, created_by) VALUES (?, 'status_changed', 'in_progress', 'completed', 'Task completed via Daily Planner', ?)");
+                            $stmt->execute([$dailyTask['original_task_id'], $userId]);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log('Task history logging failed: ' . $e->getMessage());
+                }
+                
                 echo json_encode([
                     'success' => true, 
                     'message' => 'Progress updated',
@@ -172,12 +262,27 @@ try {
             $input = json_decode(file_get_contents('php://input'), true);
             $taskId = $input['task_id'] ?? null;
             $newDate = $input['new_date'] ?? null;
+            $reason = $input['reason'] ?? 'Postponed via Daily Planner';
             
             if (!$taskId || !$newDate) {
                 throw new Exception('Task ID and new date required');
             }
             
             if ($planner->postponeTask($taskId, $userId, $newDate)) {
+                // Record in task history
+                try {
+                    $stmt = $db->prepare("SELECT original_task_id, scheduled_date FROM daily_tasks WHERE id = ?");
+                    $stmt->execute([$taskId]);
+                    $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($dailyTask && $dailyTask['original_task_id']) {
+                        $stmt = $db->prepare("INSERT INTO task_history (task_id, action, old_value, new_value, notes, created_by) VALUES (?, 'postponed', ?, ?, ?, ?)");
+                        $stmt->execute([$dailyTask['original_task_id'], $dailyTask['scheduled_date'], $newDate, $reason, $userId]);
+                    }
+                } catch (Exception $e) {
+                    error_log('Task history logging failed: ' . $e->getMessage());
+                }
+                
                 echo json_encode(['success' => true, 'message' => 'Task postponed']);
             } else {
                 throw new Exception('Failed to postpone task');

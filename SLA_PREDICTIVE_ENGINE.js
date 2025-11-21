@@ -158,6 +158,39 @@ function updateSLADashboardPredictive(data) {
     });
 }
 
+// Dismiss SLA alert function
+function dismissSLAAlert() {
+    const alertContainer = document.querySelector('.sla-alert-container');
+    if (alertContainer) {
+        alertContainer.remove();
+    }
+}
+
+// Show SLA alert function
+function showSLAAlert(message, type) {
+    dismissSLAAlert();
+    
+    const alertContainer = document.createElement('div');
+    alertContainer.className = `sla-alert-container alert alert-${type === 'critical' ? 'danger' : type === 'warning' ? 'warning' : 'info'}`;
+    
+    // Create elements safely without innerHTML
+    const messageSpan = document.createElement('span');
+    messageSpan.textContent = message; // Use textContent to prevent XSS
+    
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'btn-close';
+    closeButton.addEventListener('click', dismissSLAAlert);
+    
+    alertContainer.appendChild(messageSpan);
+    alertContainer.appendChild(closeButton);
+    
+    const dashboard = document.querySelector('.sla-dashboard') || document.querySelector('.main-content');
+    if (dashboard) {
+        dashboard.insertBefore(alertContainer, dashboard.firstChild);
+    }
+}
+
 // Process and display alerts
 function processAlerts(alerts) {
     dismissSLAAlert();

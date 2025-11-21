@@ -4,6 +4,11 @@
  */
 
 function convertTablesToCards() {
+  // Completely disable on user management page
+  if (window.location.pathname.includes('/admin/management')) {
+    return;
+  }
+  
   if (window.innerWidth > 768) return;
 
   const tables = document.querySelectorAll('.table-responsive');
@@ -148,6 +153,10 @@ setTimeout(() => {
 }, 1000);
 
 window.addEventListener('resize', () => {
+  if (window.location.pathname.includes('/admin/management')) {
+    return;
+  }
+  
   if (window.innerWidth > 768) {
     document.querySelectorAll('.mobile-card-container').forEach(container => {
       container.remove();
@@ -159,6 +168,9 @@ window.addEventListener('resize', () => {
 
 // Run on any table updates
 const observer = new MutationObserver(() => {
+  if (window.location.pathname.includes('/admin/management')) {
+    return;
+  }
   if (window.innerWidth <= 768) {
     setTimeout(convertTablesToCards, 100);
   }

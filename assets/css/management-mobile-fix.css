@@ -1,0 +1,66 @@
+/* Management Page Mobile Fix - CSS Only Solution */
+
+/* Force table to always be visible on management page */
+body[data-page="admin"] .table-responsive {
+  display: block !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body[data-page="admin"] .table {
+  display: table !important;
+  width: 100% !important;
+  min-width: 600px;
+}
+
+/* Ensure views are properly controlled */
+body[data-page="admin"] #listView.view--active {
+  display: block !important;
+}
+
+body[data-page="admin"] #listView.view--hidden {
+  display: none !important;
+}
+
+body[data-page="admin"] #gridView.view--active {
+  display: block !important;
+}
+
+body[data-page="admin"] #gridView.view--hidden {
+  display: none !important;
+}
+
+/* Mobile table styling for management page */
+@media (max-width: 768px) {
+  body[data-page="admin"] .table {
+    font-size: 11px;
+  }
+  
+  body[data-page="admin"] .table th,
+  body[data-page="admin"] .table td {
+    padding: 6px 4px;
+    white-space: nowrap;
+  }
+  
+  body[data-page="admin"] .user-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  body[data-page="admin"] .user-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+  
+  body[data-page="admin"] .ab-btn {
+    width: 24px;
+    height: 24px;
+  }
+  
+  body[data-page="admin"] .ab-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+}
