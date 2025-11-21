@@ -22,22 +22,29 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
-            $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name LIMIT 20");
+            $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name");
             $syncCount = 0;
             
             while ($row = pg_fetch_assoc($result)) {
                 $tableName = $row['table_name'];
                 
-                $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 100");
-                $data = [];
-                
-                while ($dataRow = pg_fetch_assoc($dataResult)) {
-                    $data[] = $dataRow;
-                }
-                
-                if (!empty($data)) {
+                try {
+                    $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 1000");
+                    $data = [];
+                    
+                    if ($dataResult) {
+                        while ($dataRow = pg_fetch_assoc($dataResult)) {
+                            $data[] = $dataRow;
+                        }
+                    }
+                    
+                    // Store table even if empty
                     $this->storeTableData($db, $tableName, $data);
                     $syncCount++;
+                    
+                } catch (Exception $e) {
+                    // Skip tables with errors but continue with others
+                    error_log("Error syncing table $tableName: " . $e->getMessage());
                 }
             }
             
