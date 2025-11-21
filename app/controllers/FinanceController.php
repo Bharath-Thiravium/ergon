@@ -245,7 +245,7 @@ class FinanceController extends Controller {
                 
                 if ($status !== 'invoiced') {
                     $pendingPOValue += $amount;
-                    $claimableAmount += $amount * 0.8; // Assume 80% claimable
+                    $claimableAmount += floatval($data['claimable_amount'] ?? $amount);
                 }
             }
             
