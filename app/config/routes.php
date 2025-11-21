@@ -376,6 +376,6 @@ $router->get('/finance/data', 'FinanceController', 'getTableData');
 $router->get('/finance/stats', 'FinanceController', 'getFinanceStats');
 $router->get('/finance/chart', 'FinanceController', 'getChartData');
 $router->get('/finance/structure', 'FinanceController', 'getTableStructure');
-$router->post('/finance/sync', 'FinanceController', 'syncPostgres');
+$router->post('/finance/sync', 'FinanceController', 'sync');
 
 ?>
