@@ -11,25 +11,34 @@ class FinanceController extends Controller {
     public function syncPostgres() {
         header('Content-Type: application/json');
         
+        $batch = (int)($_POST['batch'] ?? 0);
+        $batchSize = 20; // Process 20 tables at a time
+        
         try {
-            // Try different connection methods
             $conn = $this->tryAllConnections();
             
             if (!$conn) {
-                throw new Exception('PostgreSQL connection failed. Contact Hostinger to whitelist IP 72.60.218.167 or enable outbound connections.');
+                throw new Exception('PostgreSQL connection failed');
             }
             
             $db = Database::connect();
             $this->createTables($db);
             
+            // Get all tables
             $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name");
-            $syncCount = 0;
-            
+            $allTables = [];
             while ($row = pg_fetch_assoc($result)) {
-                $tableName = $row['table_name'];
-                
+                $allTables[] = $row['table_name'];
+            }
+            
+            $totalTables = count($allTables);
+            $offset = $batch * $batchSize;
+            $tablesToProcess = array_slice($allTables, $offset, $batchSize);
+            
+            $syncCount = 0;
+            foreach ($tablesToProcess as $tableName) {
                 try {
-                    $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 1000");
+                    $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 100");
                     $data = [];
                     
                     if ($dataResult) {
@@ -38,18 +47,27 @@ class FinanceController extends Controller {
                         }
                     }
                     
-                    // Store table even if empty
                     $this->storeTableData($db, $tableName, $data);
                     $syncCount++;
                     
                 } catch (Exception $e) {
-                    // Skip tables with errors but continue with others
                     error_log("Error syncing table $tableName: " . $e->getMessage());
                 }
             }
             
             pg_close($conn);
-            echo json_encode(['status' => 'success', 'tables' => $syncCount, 'method' => 'direct_postgres']);
+            
+            $hasMore = ($offset + $batchSize) < $totalTables;
+            $processed = min($offset + $syncCount, $totalTables);
+            
+            echo json_encode([
+                'status' => 'success', 
+                'batch' => $batch,
+                'processed' => $processed,
+                'total' => $totalTables,
+                'hasMore' => $hasMore,
+                'nextBatch' => $batch + 1
+            ]);
             
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
@@ -59,9 +77,6 @@ class FinanceController extends Controller {
     private function tryAllConnections() {
         $configs = [
             "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=30",
-            "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=require connect_timeout=30",
-            "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=prefer connect_timeout=30",
-            "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango application_name=hostinger_client",
         ];
         
         foreach ($configs as $config) {
@@ -72,28 +87,6 @@ class FinanceController extends Controller {
         }
         
         return false;
-    }
-    
-    public function testConnection() {
-        header('Content-Type: application/json');
-        
-        // Test if port is accessible
-        $socket = @fsockopen('72.60.218.167', 5432, $errno, $errstr, 10);
-        if (!$socket) {
-            echo json_encode(['error' => "Port blocked: $errstr ($errno)"]);
-            return;
-        }
-        fclose($socket);
-        
-        // Test PostgreSQL connection
-        $conn = $this->tryAllConnections();
-        if ($conn) {
-            $version = pg_version($conn);
-            pg_close($conn);
-            echo json_encode(['success' => true, 'version' => $version]);
-        } else {
-            echo json_encode(['error' => 'PostgreSQL connection failed']);
-        }
     }
     
     public function getTables() {

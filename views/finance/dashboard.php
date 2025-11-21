@@ -8,9 +8,16 @@ ob_start();
     <div class="card">
         <div class="card-header d-flex justify-content-between">
             <h4>Finance Data Sync</h4>
-            <button id="syncBtn" class="btn btn-primary">Sync PostgreSQL Data</button>
+            <button id="syncBtn" class="btn btn-primary">Sync All PostgreSQL Data</button>
         </div>
         <div class="card-body">
+            <div id="progressContainer" style="display:none;">
+                <div class="progress mb-3">
+                    <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+                </div>
+                <div id="progressText">Starting sync...</div>
+            </div>
+            
             <div class="row">
                 <div class="col-md-4">
                     <div class="card border-info">
@@ -35,7 +42,7 @@ ob_start();
                             <div id="dataContainer">
                                 <div class="text-center text-muted">
                                     <i class="bi bi-database"></i>
-                                    <p>Click "Sync PostgreSQL Data" to get started</p>
+                                    <p>Click "Sync All PostgreSQL Data" to get started</p>
                                 </div>
                             </div>
                         </div>
@@ -50,30 +57,68 @@ ob_start();
 document.addEventListener('DOMContentLoaded', function() {
     loadTables();
     
-    document.getElementById('syncBtn').addEventListener('click', syncData);
+    document.getElementById('syncBtn').addEventListener('click', startBatchSync);
     document.getElementById('loadData').addEventListener('click', loadTableData);
 });
 
-async function syncData() {
+async function startBatchSync() {
     const btn = document.getElementById('syncBtn');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    
     btn.disabled = true;
     btn.textContent = 'Syncing...';
+    progressContainer.style.display = 'block';
+    
+    let batch = 0;
+    let totalProcessed = 0;
+    let totalTables = 0;
     
     try {
-        const response = await fetch('/ergon/finance/sync', {method: 'POST'});
-        const result = await response.json();
+        do {
+            const formData = new FormData();
+            formData.append('batch', batch);
+            
+            const response = await fetch('/ergon/finance/sync', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            totalProcessed = result.processed;
+            totalTables = result.total;
+            
+            const percentage = Math.round((totalProcessed / totalTables) * 100);
+            progressBar.style.width = percentage + '%';
+            progressText.textContent = `Processed ${totalProcessed} of ${totalTables} tables (${percentage}%)`;
+            
+            if (result.hasMore) {
+                batch = result.nextBatch;
+                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between batches
+            } else {
+                break;
+            }
+            
+        } while (true);
         
-        if (result.error) {
-            alert('Sync failed: ' + result.error);
-        } else {
-            alert(`Synced ${result.tables} tables successfully (${result.method})`);
-            loadTables();
-        }
+        progressText.textContent = `✅ Successfully synced all ${totalTables} tables!`;
+        loadTables();
+        
     } catch (error) {
-        alert('Sync failed: ' + error.message);
+        progressText.textContent = `❌ Sync failed: ${error.message}`;
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Sync PostgreSQL Data';
+        btn.textContent = 'Sync All PostgreSQL Data';
+        
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+        }, 3000);
     }
 }
 
