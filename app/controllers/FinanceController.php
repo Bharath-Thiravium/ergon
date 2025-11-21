@@ -18,7 +18,10 @@ class FinanceController extends Controller {
                 throw new Exception('PostgreSQL connection failed');
             }
             
-            // Get all finance tables with structure
+            // Focus on specific finance tables only
+            $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
+            $tableList = "'" . implode("','", $targetTables) . "'";
+            
             $result = pg_query($conn, "
                 SELECT 
                     t.table_name,
@@ -28,7 +31,7 @@ class FinanceController extends Controller {
                 LEFT JOIN information_schema.columns c ON t.table_name = c.table_name
                 LEFT JOIN pg_stat_user_tables s ON t.table_name = s.relname
                 WHERE t.table_schema = 'public' 
-                AND t.table_name LIKE 'finance_%'
+                AND t.table_name IN ($tableList)
                 GROUP BY t.table_name, s.n_tup_ins
                 ORDER BY t.table_name
             ");
@@ -82,7 +85,7 @@ class FinanceController extends Controller {
         }
     }
     
-    public function syncPostgres() {
+    public function sync() {
         header('Content-Type: application/json');
         
         try {
@@ -95,7 +98,10 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
-            $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE 'finance_%' ORDER BY table_name");
+            $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
+            $tableList = "'" . implode("','", $targetTables) . "'";
+            
+            $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ($tableList) ORDER BY table_name");
             
             $syncCount = 0;
             while ($row = pg_fetch_assoc($result)) {
@@ -120,7 +126,7 @@ class FinanceController extends Controller {
             }
             
             pg_close($conn);
-            echo json_encode(['status' => 'success', 'tables' => $syncCount, 'method' => 'finance_only']);
+            echo json_encode(['status' => 'success', 'tables' => $syncCount]);
             
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
@@ -133,7 +139,10 @@ class FinanceController extends Controller {
         try {
             $db = Database::connect();
             
-            $stmt = $db->query("SELECT table_name, record_count FROM finance_tables WHERE table_name LIKE 'finance_%' ORDER BY record_count DESC");
+            $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
+            $tableList = "'" . implode("','", $targetTables) . "'";
+            
+            $stmt = $db->query("SELECT table_name, record_count FROM finance_tables WHERE table_name IN ($tableList) ORDER BY record_count DESC");
             $tables = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $totalRecords = array_sum(array_column($tables, 'record_count'));
@@ -159,7 +168,10 @@ class FinanceController extends Controller {
             $db = Database::connect();
             
             if ($type === 'tables') {
-                $stmt = $db->query("SELECT table_name, record_count FROM finance_tables WHERE table_name LIKE 'finance_%' AND record_count > 0 ORDER BY record_count DESC LIMIT 10");
+                $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
+                $tableList = "'" . implode("','", $targetTables) . "'";
+                
+                $stmt = $db->query("SELECT table_name, record_count FROM finance_tables WHERE table_name IN ($tableList) AND record_count > 0 ORDER BY record_count DESC");
                 $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 echo json_encode([
@@ -201,7 +213,10 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
-            $stmt = $db->query("SELECT table_name, record_count, last_sync FROM finance_tables WHERE table_name LIKE 'finance_%' ORDER BY record_count DESC");
+            $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
+            $tableList = "'" . implode("','", $targetTables) . "'";
+            
+            $stmt = $db->query("SELECT table_name, record_count, last_sync FROM finance_tables WHERE table_name IN ($tableList) ORDER BY record_count DESC");
             $tables = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             echo json_encode(['tables' => $tables]);
