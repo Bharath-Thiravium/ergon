@@ -386,6 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     loadFinanceStats();
     loadTables();
+    loadDetailedLists();
     
     document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
     document.getElementById('structureBtn').addEventListener('click', showTableStructure);
@@ -940,6 +941,99 @@ function showError(message) {
             <div class="form-label">❌ Error</div>
             <p>${message}</p>
         </div>`;
+}
+
+async function loadDetailedLists() {
+    try {
+        // Load quotations
+        const quotationsResponse = await fetch('/ergon/finance/data?table=finance_quotations&limit=10');
+        const quotationsData = await quotationsResponse.json();
+        if (quotationsData.data) {
+            renderModuleList('quotations', quotationsData.data);
+        }
+        
+        // Load purchase orders
+        const poResponse = await fetch('/ergon/finance/data?table=finance_purchase_orders&limit=10');
+        const poData = await poResponse.json();
+        if (poData.data) {
+            renderModuleList('purchaseOrders', poData.data);
+        }
+        
+        // Load invoices
+        const invoicesResponse = await fetch('/ergon/finance/data?table=finance_invoices&limit=10');
+        const invoicesData = await invoicesResponse.json();
+        if (invoicesData.data) {
+            renderModuleList('invoices', invoicesData.data);
+        }
+        
+    } catch (error) {
+        console.error('Failed to load detailed lists:', error);
+    }
+}
+
+function renderModuleList(module, data) {
+    const container = document.getElementById(`${module}List`);
+    if (!container || !data || data.length === 0) return;
+    
+    let html = '';
+    
+    data.slice(0, 5).forEach(item => {
+        if (module === 'quotations') {
+            html += `
+                <div class="list-item">
+                    <div class="list-header">
+                        <div class="list-title">${item.quotation_number || 'N/A'}</div>
+                        <div class="list-amount">₹${(item.total_amount || 0).toLocaleString()}</div>
+                    </div>
+                    <div class="list-details">
+                        <div class="list-customer">${item.customer_name || 'Unknown'}</div>
+                        <div class="list-status">${item.status || 'Draft'}</div>
+                    </div>
+                    <div class="list-meta">
+                        <span>Date: ${item.quotation_date || 'N/A'}</span>
+                        <span>Valid: ${item.valid_until || 'N/A'}</span>
+                    </div>
+                </div>`;
+        } else if (module === 'purchaseOrders') {
+            html += `
+                <div class="list-item">
+                    <div class="list-header">
+                        <div class="list-title">${item.po_number || 'N/A'}</div>
+                        <div class="list-amount">₹${(item.total_amount || 0).toLocaleString()}</div>
+                    </div>
+                    <div class="list-details">
+                        <div class="list-customer">${item.vendor_name || 'Unknown'}</div>
+                        <div class="list-status">${item.status || 'Pending'}</div>
+                    </div>
+                    <div class="list-meta">
+                        <span>Date: ${item.po_date || 'N/A'}</span>
+                        <span>Delivery: ${item.delivery_date || 'N/A'}</span>
+                    </div>
+                </div>`;
+        } else if (module === 'invoices') {
+            const isOverdue = item.status === 'Overdue' || item.payment_status === 'Overdue';
+            html += `
+                <div class="list-item ${isOverdue ? 'list-item--warning' : ''}">
+                    <div class="list-header">
+                        <div class="list-title">${item.invoice_number || 'N/A'}</div>
+                        <div class="list-amount">₹${(item.total_amount || 0).toLocaleString()}</div>
+                    </div>
+                    <div class="list-details">
+                        <div class="list-customer">${item.customer_name || 'Unknown'}</div>
+                        <div class="list-status">${item.payment_status || 'Pending'}</div>
+                    </div>
+                    <div class="list-meta">
+                        <span>Date: ${item.invoice_date || 'N/A'}</span>
+                        <span>Due: ${item.due_date || 'N/A'}</span>
+                    </div>
+                    ${isOverdue ? '<div class="list-outstanding">⚠️ Payment Overdue</div>' : ''}
+                </div>`;
+        }
+    });
+    
+    if (html) {
+        container.innerHTML = html;
+    }
 }
 </script>
 
