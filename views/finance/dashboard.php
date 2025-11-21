@@ -268,14 +268,16 @@ let quotationsChart, purchaseOrdersChart, invoicesChart, paymentsChart;
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
-    loadDashboardData();
     
     document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
     document.getElementById('exportBtn').addEventListener('click', exportDashboard);
     document.getElementById('updatePrefixBtn').addEventListener('click', updateCompanyPrefix);
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
     
-    loadCompanyPrefix();
+    // Load prefix first, then dashboard data
+    loadCompanyPrefix().then(() => {
+        loadDashboardData();
+    });
 });
 
 function initCharts() {
@@ -867,8 +869,10 @@ async function loadCompanyPrefix() {
         const response = await fetch('/ergon/finance/company-prefix');
         const data = await response.json();
         document.getElementById('companyPrefix').value = data.prefix || 'BKC';
+        return data.prefix || 'BKC';
     } catch (error) {
         console.error('Failed to load company prefix:', error);
+        return 'BKC';
     }
 }
 

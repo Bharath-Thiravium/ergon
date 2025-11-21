@@ -783,10 +783,22 @@ class FinanceController extends Controller {
     private function getCompanyPrefix() {
         try {
             $db = Database::connect();
+            $this->createTables($db);
+            
+            // Try to get existing prefix
             $stmt = $db->prepare("SELECT company_prefix FROM finance_tables WHERE table_name = 'settings' LIMIT 1");
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return strtoupper($result['company_prefix'] ?? 'BKC');
+            
+            if ($result) {
+                return strtoupper($result['company_prefix']);
+            }
+            
+            // Create default settings record if not exists
+            $stmt = $db->prepare("INSERT INTO finance_tables (table_name, record_count, company_prefix) VALUES ('settings', 0, 'BKC')");
+            $stmt->execute();
+            
+            return 'BKC';
         } catch (Exception $e) {
             return 'BKC';
         }
