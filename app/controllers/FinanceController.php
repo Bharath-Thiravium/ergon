@@ -192,6 +192,84 @@ class FinanceController extends Controller {
         exit;
     }
     
+    public function getDashboardStats() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            
+            // Get invoice data
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $totalInvoiceAmount = 0;
+            $invoiceReceived = 0;
+            $pendingInvoiceAmount = 0;
+            $pendingGSTAmount = 0;
+            
+            foreach ($invoiceResults as $row) {
+                $data = json_decode($row['data'], true);
+                $total = floatval($data['total_amount'] ?? 0);
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                $gstRate = floatval($data['gst_rate'] ?? 0.18);
+                
+                $totalInvoiceAmount += $total;
+                $invoiceReceived += ($total - $outstanding);
+                $pendingInvoiceAmount += $outstanding;
+                $pendingGSTAmount += ($outstanding * $gstRate);
+            }
+            
+            // Get PO data
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+            $stmt->execute();
+            $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $pendingPOValue = 0;
+            $claimableAmount = 0;
+            
+            foreach ($poResults as $row) {
+                $data = json_decode($row['data'], true);
+                $status = strtolower($data['status'] ?? 'pending');
+                $amount = floatval($data['total_amount'] ?? 0);
+                
+                if ($status !== 'invoiced') {
+                    $pendingPOValue += $amount;
+                    $claimableAmount += $amount * 0.8; // Assume 80% claimable
+                }
+            }
+            
+            echo json_encode([
+                'totalInvoiceAmount' => $totalInvoiceAmount,
+                'invoiceReceived' => $invoiceReceived,
+                'pendingInvoiceAmount' => $pendingInvoiceAmount,
+                'pendingGSTAmount' => $pendingGSTAmount,
+                'pendingPOValue' => $pendingPOValue,
+                'claimableAmount' => $claimableAmount,
+                'conversionFunnel' => [
+                    'quotations' => count($invoiceResults),
+                    'quotationValue' => $totalInvoiceAmount,
+                    'purchaseOrders' => count($poResults),
+                    'poValue' => $pendingPOValue,
+                    'quotationToPO' => count($poResults) > 0 ? round((count($poResults) / max(count($invoiceResults), 1)) * 100) : 0,
+                    'invoices' => count($invoiceResults),
+                    'invoiceValue' => $totalInvoiceAmount,
+                    'poToInvoice' => count($invoiceResults) > 0 ? round((count($invoiceResults) / max(count($poResults), 1)) * 100) : 0,
+                    'payments' => 0,
+                    'paymentValue' => $invoiceReceived,
+                    'invoiceToPayment' => $totalInvoiceAmount > 0 ? round(($invoiceReceived / $totalInvoiceAmount) * 100) : 0
+                ],
+                'cashFlow' => [
+                    'expectedInflow' => $pendingInvoiceAmount,
+                    'poCommitments' => $pendingPOValue
+                ]
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+    
     public function getFinanceStats() {
         header('Content-Type: application/json');
         
@@ -350,6 +428,69 @@ class FinanceController extends Controller {
             echo json_encode(['error' => $e->getMessage()]);
         }
         exit;
+    }
+    
+    public function getOutstandingInvoices() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $invoices = [];
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                
+                if ($outstanding > 0) {
+                    $dueDate = $data['due_date'] ?? date('Y-m-d');
+                    $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
+                    
+                    $invoices[] = [
+                        'invoice_number' => $data['invoice_number'] ?? 'N/A',
+                        'customer_name' => $data['customer_name'] ?? 'Unknown',
+                        'due_date' => $dueDate,
+                        'outstanding_amount' => $outstanding,
+                        'daysOverdue' => floor($daysOverdue),
+                        'status' => $daysOverdue > 0 ? 'Overdue' : 'Pending'
+                    ];
+                }
+            }
+            
+            echo json_encode(['invoices' => $invoices]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+    
+    public function getRecentQuotations() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' LIMIT 5");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $quotations = [];
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $quotations[] = [
+                    'quotation_number' => $data['quotation_number'] ?? 'N/A',
+                    'customer_name' => $data['customer_name'] ?? 'Unknown',
+                    'total_amount' => floatval($data['total_amount'] ?? 0),
+                    'valid_until' => $data['valid_until'] ?? 'N/A'
+                ];
+            }
+            
+            echo json_encode(['quotations' => $quotations]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
     }
     
     public function exportData() {
