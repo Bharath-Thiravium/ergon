@@ -210,10 +210,10 @@ class FinanceController extends Controller {
             
             foreach ($invoiceResults as $row) {
                 $data = json_decode($row['data'], true);
-                $customerName = $data['customer_name'] ?? '';
+                $customerName = $data['customer_name'] ?? $data['customer'] ?? $data['client_name'] ?? $data['company_name'] ?? '';
                 
                 // Filter only BKC companies
-                if (!str_starts_with($customerName, 'BKC')) continue;
+                if (!str_contains(strtoupper($customerName), 'BKC')) continue;
                 
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
@@ -235,10 +235,10 @@ class FinanceController extends Controller {
             
             foreach ($poResults as $row) {
                 $data = json_decode($row['data'], true);
-                $vendorName = $data['vendor_name'] ?? $data['customer_name'] ?? '';
+                $vendorName = $data['vendor_name'] ?? $data['customer_name'] ?? $data['supplier_name'] ?? $data['company_name'] ?? '';
                 
                 // Filter only BKC companies
-                if (!str_starts_with($vendorName, 'BKC')) continue;
+                if (!str_contains(strtoupper($vendorName), 'BKC')) continue;
                 
                 $status = strtolower($data['status'] ?? 'pending');
                 $amount = floatval($data['total_amount'] ?? 0);
