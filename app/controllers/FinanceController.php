@@ -12,45 +12,80 @@ class FinanceController extends Controller {
         header('Content-Type: application/json');
         
         try {
-            // Use cURL to call external API that connects to PostgreSQL
-            $apiUrl = 'https://api-bridge.example.com/postgres-data'; // You'll need to create this
-            
-            // Alternative: Manual data import via CSV/JSON upload
-            $this->createSampleData();
-            
-            echo json_encode(['status' => 'success', 'tables' => 3, 'message' => 'Sample data created. Upload your PostgreSQL export files.']);
+            // Try direct PostgreSQL connection first
+            if (function_exists('pg_connect')) {
+                $this->syncDirect();
+            } else {
+                // Fallback to bridge API
+                $this->syncViaBridge();
+            }
             
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
         }
     }
     
-    public function uploadData() {
-        header('Content-Type: application/json');
+    private function syncDirect() {
+        $conn = pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango");
         
-        if (!isset($_FILES['dataFile'])) {
-            echo json_encode(['error' => 'No file uploaded']);
-            return;
+        if (!$conn) {
+            throw new Exception('PostgreSQL connection failed');
         }
         
-        try {
-            $file = $_FILES['dataFile'];
-            $tableName = $_POST['tableName'] ?? 'imported_data';
+        $db = Database::connect();
+        $this->createTables($db);
+        
+        // Get tables
+        $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' LIMIT 10");
+        $syncCount = 0;
+        
+        while ($row = pg_fetch_assoc($result)) {
+            $tableName = $row['table_name'];
             
+            // Get table data
+            $dataResult = pg_query($conn, "SELECT * FROM $tableName LIMIT 100");
             $data = [];
-            if (pathinfo($file['name'], PATHINFO_EXTENSION) === 'csv') {
-                $data = $this->parseCSV($file['tmp_name']);
-            } elseif (pathinfo($file['name'], PATHINFO_EXTENSION) === 'json') {
-                $data = json_decode(file_get_contents($file['tmp_name']), true);
+            
+            while ($dataRow = pg_fetch_assoc($dataResult)) {
+                $data[] = $dataRow;
             }
             
-            $this->storeData($tableName, $data);
-            
-            echo json_encode(['status' => 'success', 'records' => count($data)]);
-            
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
+            $this->storeTableData($db, $tableName, $data);
+            $syncCount++;
         }
+        
+        pg_close($conn);
+        echo json_encode(['status' => 'success', 'tables' => $syncCount, 'method' => 'direct']);
+    }
+    
+    private function syncViaBridge() {
+        $bridgeUrl = 'https://your-bridge-server.com/postgres_bridge.php'; // Update this URL
+        
+        // Get tables via bridge
+        $tables = $this->callBridge(['action' => 'tables']);
+        
+        if (isset($tables['error'])) {
+            throw new Exception('Bridge error: ' . $tables['error']);
+        }
+        
+        $db = Database::connect();
+        $this->createTables($db);
+        
+        $syncCount = 0;
+        foreach (array_slice($tables['tables'], 0, 10) as $tableName) {
+            $tableData = $this->callBridge([
+                'action' => 'data',
+                'table' => $tableName,
+                'limit' => 100
+            ]);
+            
+            if (isset($tableData['data'])) {
+                $this->storeTableData($db, $tableName, $tableData['data']);
+                $syncCount++;
+            }
+        }
+        
+        echo json_encode(['status' => 'success', 'tables' => $syncCount, 'method' => 'bridge']);
     }
     
     public function getTables() {
@@ -98,9 +133,29 @@ class FinanceController extends Controller {
         }
     }
     
-    private function createSampleData() {
-        $db = Database::connect();
+    private function callBridge($data) {
+        $bridgeUrl = 'https://your-bridge-server.com/postgres_bridge.php'; // Update this URL
         
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $bridgeUrl);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode !== 200) {
+            throw new Exception('Bridge API connection failed');
+        }
+        
+        return json_decode($response, true);
+    }
+    
+    private function createTables($db) {
         $db->exec("CREATE TABLE IF NOT EXISTS finance_tables (
             id INT AUTO_INCREMENT PRIMARY KEY,
             table_name VARCHAR(100) UNIQUE,
@@ -115,70 +170,9 @@ class FinanceController extends Controller {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX(table_name)
         )");
-        
-        // Sample finance data
-        $sampleData = [
-            'sales' => [
-                ['date' => '2025-01-01', 'amount' => 15000, 'customer' => 'ABC Corp'],
-                ['date' => '2025-01-02', 'amount' => 8500, 'customer' => 'XYZ Ltd'],
-            ],
-            'expenses' => [
-                ['date' => '2025-01-01', 'amount' => 2500, 'category' => 'Rent'],
-                ['date' => '2025-01-02', 'amount' => 800, 'category' => 'Utilities'],
-            ]
-        ];
-        
-        foreach ($sampleData as $tableName => $data) {
-            $stmt = $db->prepare("DELETE FROM finance_data WHERE table_name = ?");
-            $stmt->execute([$tableName]);
-            
-            foreach ($data as $row) {
-                $stmt = $db->prepare("INSERT INTO finance_data (table_name, data) VALUES (?, ?)");
-                $stmt->execute([$tableName, json_encode($row)]);
-            }
-            
-            $stmt = $db->prepare("INSERT INTO finance_tables (table_name, record_count) VALUES (?, ?) 
-                                 ON DUPLICATE KEY UPDATE record_count = ?, last_sync = NOW()");
-            $stmt->execute([$tableName, count($data), count($data)]);
-        }
     }
     
-    private function parseCSV($filePath) {
-        $data = [];
-        $headers = [];
-        
-        if (($handle = fopen($filePath, 'r')) !== FALSE) {
-            $headers = fgetcsv($handle);
-            
-            while (($row = fgetcsv($handle)) !== FALSE) {
-                if (count($row) === count($headers)) {
-                    $data[] = array_combine($headers, $row);
-                }
-            }
-            fclose($handle);
-        }
-        
-        return $data;
-    }
-    
-    private function storeData($tableName, $data) {
-        $db = Database::connect();
-        
-        $db->exec("CREATE TABLE IF NOT EXISTS finance_tables (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            table_name VARCHAR(100) UNIQUE,
-            record_count INT,
-            last_sync TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )");
-        
-        $db->exec("CREATE TABLE IF NOT EXISTS finance_data (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            table_name VARCHAR(100),
-            data JSON,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX(table_name)
-        )");
-        
+    private function storeTableData($db, $tableName, $data) {
         $stmt = $db->prepare("DELETE FROM finance_data WHERE table_name = ?");
         $stmt->execute([$tableName]);
         
