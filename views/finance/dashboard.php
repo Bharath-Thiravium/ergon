@@ -649,44 +649,49 @@ async function loadFinanceStats() {
 function updateDetailedStats(data) {
     // Update quotations summary
     const quotationsData = data.quotations || { draft: 0, revised: 0, converted: 0 };
-    document.getElementById('quotationsDraft').innerHTML = `📝 ${quotationsData.draft}`;
-    document.getElementById('quotationsRevised').innerHTML = `🔄 ${quotationsData.revised}`;
-    document.getElementById('quotationsConverted').innerHTML = `✅ ${quotationsData.converted}`;
+    const quotationsDraft = document.getElementById('quotationsDraft');
+    const quotationsRevised = document.getElementById('quotationsRevised');
+    const quotationsConverted = document.getElementById('quotationsConverted');
     
-    // Calculate conversion rate
-    const total = quotationsData.draft + quotationsData.revised + quotationsData.converted;
-    const conversionRate = total > 0 ? Math.round((quotationsData.converted / total) * 100) : 0;
-    document.getElementById('conversionRate').textContent = `${conversionRate}%`;
-    document.getElementById('conversionProgress').style.width = `${conversionRate}%`;
+    if (quotationsDraft) quotationsDraft.innerHTML = `📝 ${quotationsData.draft}`;
+    if (quotationsRevised) quotationsRevised.innerHTML = `🔄 ${quotationsData.revised}`;
+    if (quotationsConverted) quotationsConverted.innerHTML = `✅ ${quotationsData.converted}`;
     
     // Update purchase orders
     const poData = data.purchaseOrders || { total: 0, value: 0 };
-    document.getElementById('poTotal').innerHTML = `📦 ${poData.total}`;
-    document.getElementById('poValue').innerHTML = `💰 ₹${(poData.value || 0).toLocaleString()}`;
-    document.getElementById('poAverage').innerHTML = `📊 ₹${poData.total > 0 ? Math.round(poData.value / poData.total).toLocaleString() : 0}`;
+    const poTotal = document.getElementById('poTotal');
+    const poValue = document.getElementById('poValue');
+    const poAverage = document.getElementById('poAverage');
+    
+    if (poTotal) poTotal.innerHTML = `📦 ${poData.total}`;
+    if (poValue) poValue.innerHTML = `💰 ₹${(poData.value || 0).toLocaleString()}`;
+    if (poAverage) poAverage.innerHTML = `📊 ₹${poData.total > 0 ? Math.round(poData.value / poData.total).toLocaleString() : 0}`;
     
     // Update invoices
     const invoiceData = data.invoices || { paid: 0, unpaid: 0, overdue: 0 };
-    document.getElementById('invoicesPaid').innerHTML = `✅ ₹${(invoiceData.paid || 0).toLocaleString()}`;
-    document.getElementById('invoicesUnpaid').innerHTML = `⏳ ₹${(invoiceData.unpaid || 0).toLocaleString()}`;
-    document.getElementById('invoicesOverdue').innerHTML = `🚨 ₹${(invoiceData.overdue || 0).toLocaleString()}`;
+    const invoicesPaid = document.getElementById('invoicesPaid');
+    const invoicesUnpaid = document.getElementById('invoicesUnpaid');
+    const invoicesOverdue = document.getElementById('invoicesOverdue');
     
-    // Calculate collection rate
-    const totalInvoices = invoiceData.paid + invoiceData.unpaid + invoiceData.overdue;
-    const collectionRate = totalInvoices > 0 ? Math.round((invoiceData.paid / totalInvoices) * 100) : 100;
-    document.getElementById('collectionRate').textContent = `${collectionRate}%`;
-    document.getElementById('collectionProgress').style.width = `${collectionRate}%`;
+    if (invoicesPaid) invoicesPaid.innerHTML = `✅ ₹${(invoiceData.paid || 0).toLocaleString()}`;
+    if (invoicesUnpaid) invoicesUnpaid.innerHTML = `⏳ ₹${(invoiceData.unpaid || 0).toLocaleString()}`;
+    if (invoicesOverdue) invoicesOverdue.innerHTML = `🚨 ₹${(invoiceData.overdue || 0).toLocaleString()}`;
     
     // Update outstanding amount
     const outstanding = invoiceData.unpaid + invoiceData.overdue;
-    document.getElementById('outstandingAmount').textContent = `₹${outstanding.toLocaleString()}`;
-    document.getElementById('totalInvoices').textContent = totalInvoices;
+    const outstandingAmount = document.getElementById('outstandingAmount');
+    const totalInvoices = document.getElementById('totalInvoices');
+    
+    if (outstandingAmount) outstandingAmount.textContent = `₹${outstanding.toLocaleString()}`;
+    if (totalInvoices) totalInvoices.textContent = invoiceData.paid + invoiceData.unpaid + invoiceData.overdue;
     
     // Show outstanding alert if needed
     if (outstanding > 0) {
         const alert = document.getElementById('outstandingAlert');
-        alert.style.display = 'block';
-        alert.innerHTML = `<strong>Alert:</strong> ₹${outstanding.toLocaleString()} in outstanding invoices requires attention`;
+        if (alert) {
+            alert.style.display = 'block';
+            alert.innerHTML = `<strong>Alert:</strong> ₹${outstanding.toLocaleString()} in outstanding invoices requires attention`;
+        }
     }
 }
 
@@ -972,7 +977,10 @@ async function loadDetailedLists() {
 }
 
 function renderModuleList(module, data) {
-    const container = document.getElementById(`${module}List`);
+    let containerId = `${module}List`;
+    if (module === 'purchaseOrders') containerId = 'purchaseOrdersList';
+    
+    const container = document.getElementById(containerId);
     if (!container || !data || data.length === 0) return;
     
     let html = '';
