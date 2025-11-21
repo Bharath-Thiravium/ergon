@@ -97,7 +97,7 @@ ob_start();
                             </td>
                             <td data-sort-value="<?= $user['email'] ?>"><?= htmlspecialchars($user['email']) ?></td>
                             <td data-sort-value="<?= $user['role'] ?>"><span class="badge badge--<?= $user['role'] === 'admin' ? 'success' : 'info' ?>"><?= ucfirst($user['role']) ?></span></td>
-                            <td data-sort-value="<?= $user['status'] ?>"><span class="badge badge--success"><?= ucfirst($user['status']) ?></span></td>
+                            <td data-sort-value="<?= $user['status'] ?>"><span class="badge badge--<?= $user['status'] === 'inactive' ? 'inactive' : ($user['status'] === 'suspended' ? 'suspended' : ($user['status'] === 'terminated' ? 'terminated' : 'success')) ?>"><?= ucfirst($user['status']) ?></span></td>
                             <td>
                                 <div class="ab-container">
                                     <button class="ab-btn ab-btn--view" onclick="viewUser(<?= $user['id'] ?>)" data-tooltip="View Details">
@@ -363,9 +363,7 @@ function deleteUser(userId, userName) {
 }
 </script>
 
-<script src="/ergon/assets/js/table-utils.js"></script>
-<script src="/ergon/assets/js/user-management-persistence.js?v=<?= time() ?>"></script>
-<script src="/ergon/assets/js/management-fix.js?v=<?= time() ?>"></script>
+
 
 <?php
 $content = ob_get_clean();

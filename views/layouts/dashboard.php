@@ -74,7 +74,7 @@ ob_end_clean();
     </style>
     
     <link href="/ergon/assets/css/bootstrap-icons.min.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/ergon.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
     <link href="/ergon/assets/css/theme-enhanced.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/utilities-new.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/instant-theme.css?v=1.0" rel="stylesheet">

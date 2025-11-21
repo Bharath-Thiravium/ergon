@@ -97,6 +97,16 @@ class UsersController extends Controller {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
                 
+                // Check if user is terminated before allowing updates
+                $checkStmt = $db->prepare("SELECT status FROM users WHERE id = ?");
+                $checkStmt->execute([$id]);
+                $currentUser = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($currentUser && $currentUser['status'] === 'terminated') {
+                    header('Location: /ergon/users/view/' . $id . '?error=Terminated users cannot be updated');
+                    exit;
+                }
+                
                 // Ensure all required columns exist
                 $this->ensureUserColumns($db);
                 
@@ -446,6 +456,12 @@ class UsersController extends Controller {
                 exit;
             }
             
+            // Prevent reactivation of terminated users
+            if ($user['status'] === 'terminated') {
+                echo json_encode(['success' => false, 'message' => 'Terminated users cannot be reactivated']);
+                exit;
+            }
+            
             $stmt = $db->prepare("UPDATE users SET status = 'active', updated_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$id]);
             
@@ -457,6 +473,82 @@ class UsersController extends Controller {
         } catch (Exception $e) {
             error_log('User activate error: ' . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Activation failed: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function suspend($id) {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // First check if user exists and current status
+            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
+            $checkStmt->execute([$id]);
+            $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
+            }
+            
+            $stmt = $db->prepare("UPDATE users SET status = 'suspended', updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
+            if ($result) {
+                $this->invalidateUserSessions($id);
+                error_log("User {$id} status changed from '{$user['status']}' to 'suspended'");
+            }
+            
+            echo json_encode(['success' => $result, 'message' => $result ? 'User suspended successfully' : 'Suspension failed']);
+        } catch (Exception $e) {
+            error_log('User suspend error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Suspension failed: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function terminate($id) {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
+            exit;
+        }
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // First check if user exists and current status
+            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
+            $checkStmt->execute([$id]);
+            $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
+            }
+            
+            $stmt = $db->prepare("UPDATE users SET status = 'terminated', updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
+            if ($result) {
+                $this->invalidateUserSessions($id);
+                error_log("User {$id} status changed from '{$user['status']}' to 'terminated'");
+            }
+            
+            echo json_encode(['success' => $result, 'message' => $result ? 'User terminated successfully' : 'Termination failed']);
+        } catch (Exception $e) {
+            error_log('User terminate error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Termination failed: ' . $e->getMessage()]);
         }
         exit;
     }

@@ -397,19 +397,27 @@ function changePassword(userId, userName) {
 }
 
 function deleteAdmin(adminId, adminName) {
-    if (confirm('Are you sure you want to permanently delete admin "' + adminName + '"? This action cannot be undone.')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/ergon/system-admin/delete';
+    if (confirm(`Are you sure you want to permanently delete admin "${adminName}"? This action cannot be undone and will remove all associated data.`)) {
+        const formData = new FormData();
+        formData.append('admin_id', adminId);
         
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'admin_id';
-        input.value = adminId;
-        
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
+        fetch('/ergon/system-admin/delete-admin', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to delete admin. Please try again.');
+        });
     }
 }
 
