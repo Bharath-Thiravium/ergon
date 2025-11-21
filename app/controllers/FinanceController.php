@@ -92,41 +92,41 @@ class FinanceController extends Controller {
             $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
             
             if (!$conn) {
-                throw new Exception('PostgreSQL connection failed');
+                echo json_encode(['error' => 'PostgreSQL connection failed']);
+                return;
             }
             
             $db = Database::connect();
             $this->createTables($db);
             
             $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
-            $tableList = "'" . implode("','", $targetTables) . "'";
-            
-            $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ($tableList) ORDER BY table_name");
-            
             $syncCount = 0;
-            while ($row = pg_fetch_assoc($result)) {
-                $tableName = $row['table_name'];
-                
+            
+            foreach ($targetTables as $tableName) {
                 try {
-                    $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 1000");
-                    $data = [];
+                    $checkResult = pg_query($conn, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '$tableName'");
+                    $exists = pg_fetch_row($checkResult)[0] > 0;
                     
-                    if ($dataResult) {
-                        while ($dataRow = pg_fetch_assoc($dataResult)) {
-                            $data[] = $dataRow;
+                    if ($exists) {
+                        $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 1000");
+                        $data = [];
+                        
+                        if ($dataResult) {
+                            while ($dataRow = pg_fetch_assoc($dataResult)) {
+                                $data[] = $dataRow;
+                            }
                         }
+                        
+                        $this->storeTableData($db, $tableName, $data);
+                        $syncCount++;
                     }
-                    
-                    $this->storeTableData($db, $tableName, $data);
-                    $syncCount++;
-                    
                 } catch (Exception $e) {
-                    error_log("Error syncing table $tableName: " . $e->getMessage());
+                    // Continue with other tables
                 }
             }
             
             pg_close($conn);
-            echo json_encode(['status' => 'success', 'tables' => $syncCount]);
+            echo json_encode(['tables' => $syncCount]);
             
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
