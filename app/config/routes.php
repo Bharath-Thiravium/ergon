@@ -369,5 +369,10 @@ $router->post('/followups/delete/{id}', 'FollowupController', 'delete');
 $router->get('/gamification/team-competition', 'GamificationController', 'teamCompetition');
 $router->get('/gamification/individual', 'GamificationController', 'individual');
 
+// Finance Module Routes
+$router->get('/finance', 'FinanceController', 'dashboard');
+$router->get('/finance/tables', 'FinanceController', 'getTables');
+$router->get('/finance/data', 'FinanceController', 'getTableData');
+$router->post('/finance/sync', 'FinanceController', 'syncPostgres');
 
 ?>
