@@ -72,21 +72,141 @@ ob_start();
         </div>
     </div>
 
-    <!-- Charts Section -->
+    <!-- Finance Analytics KPI Cards -->
     <div class="dashboard-grid">
-        <div class="card">
-            <div class="card__header">
-                <h2 class="card__title">📈 Finance Charts</h2>
+        <div class="kpi-stat-card">
+            <div class="kpi-stat-card__header">
+                <div class="kpi-stat-card__icon">📝</div>
+                <div class="kpi-stat-card__title">Quotations Analysis</div>
             </div>
-            <div class="card__body">
-                <div class="chart-tabs">
-                    <button class="chart-tab active" data-chart="quotations">Quotations</button>
-                    <button class="chart-tab" data-chart="purchase_orders">Purchase Orders</button>
-                    <button class="chart-tab" data-chart="invoices">Invoices</button>
+            <div class="kpi-stat-card__metrics">
+                <div class="metric">
+                    <div class="metric__value" id="quotationTotal">0</div>
+                    <div class="metric__label">Total</div>
                 </div>
-                <div class="chart-display">
-                    <canvas id="financeChart" width="400" height="200"></canvas>
+                <div class="metric">
+                    <div class="metric__value" id="quotationValue">₹0</div>
+                    <div class="metric__label">Value</div>
                 </div>
+                <div class="metric">
+                    <div class="metric__value" id="quotationRate">0%</div>
+                    <div class="metric__label">Conversion</div>
+                </div>
+            </div>
+            <div class="kpi-stat-card__chart">
+                <div class="mini-chart">
+                    <div class="chart-bar" data-value="30"></div>
+                    <div class="chart-bar" data-value="45"></div>
+                    <div class="chart-bar" data-value="25"></div>
+                    <div class="chart-bar" data-value="60"></div>
+                    <div class="chart-bar" data-value="40"></div>
+                </div>
+            </div>
+            <div class="kpi-stat-card__trend">
+                <span class="trend-indicator trend-up">↗ +12%</span>
+                <span class="trend-label">vs last month</span>
+            </div>
+        </div>
+        
+        <div class="kpi-stat-card">
+            <div class="kpi-stat-card__header">
+                <div class="kpi-stat-card__icon">🛒</div>
+                <div class="kpi-stat-card__title">Purchase Orders</div>
+            </div>
+            <div class="kpi-stat-card__metrics">
+                <div class="metric">
+                    <div class="metric__value" id="poCount">0</div>
+                    <div class="metric__label">Orders</div>
+                </div>
+                <div class="metric">
+                    <div class="metric__value" id="poAmount">₹0</div>
+                    <div class="metric__label">Amount</div>
+                </div>
+                <div class="metric">
+                    <div class="metric__value" id="poAvg">₹0</div>
+                    <div class="metric__label">Average</div>
+                </div>
+            </div>
+            <div class="kpi-stat-card__chart">
+                <div class="mini-chart">
+                    <div class="chart-bar" data-value="50"></div>
+                    <div class="chart-bar" data-value="35"></div>
+                    <div class="chart-bar" data-value="70"></div>
+                    <div class="chart-bar" data-value="45"></div>
+                    <div class="chart-bar" data-value="55"></div>
+                </div>
+            </div>
+            <div class="kpi-stat-card__trend">
+                <span class="trend-indicator trend-up">↗ +8%</span>
+                <span class="trend-label">vs last month</span>
+            </div>
+        </div>
+        
+        <div class="kpi-stat-card">
+            <div class="kpi-stat-card__header">
+                <div class="kpi-stat-card__icon">💰</div>
+                <div class="kpi-stat-card__title">Invoice Status</div>
+            </div>
+            <div class="kpi-stat-card__metrics">
+                <div class="metric">
+                    <div class="metric__value" id="invoicePaid">₹0</div>
+                    <div class="metric__label">Paid</div>
+                </div>
+                <div class="metric">
+                    <div class="metric__value" id="invoicePending">₹0</div>
+                    <div class="metric__label">Pending</div>
+                </div>
+                <div class="metric">
+                    <div class="metric__value" id="invoiceOverdue">₹0</div>
+                    <div class="metric__label">Overdue</div>
+                </div>
+            </div>
+            <div class="kpi-stat-card__chart">
+                <div class="progress-ring">
+                    <div class="ring-segment paid" data-percentage="60"></div>
+                    <div class="ring-segment pending" data-percentage="25"></div>
+                    <div class="ring-segment overdue" data-percentage="15"></div>
+                </div>
+            </div>
+            <div class="kpi-stat-card__trend">
+                <span class="trend-indicator trend-down">↘ -5%</span>
+                <span class="trend-label">overdue reduced</span>
+            </div>
+        </div>
+        
+        <div class="kpi-stat-card">
+            <div class="kpi-stat-card__header">
+                <div class="kpi-stat-card__icon">💳</div>
+                <div class="kpi-stat-card__title">Payment Flow</div>
+            </div>
+            <div class="kpi-stat-card__metrics">
+                <div class="metric">
+                    <div class="metric__value" id="paymentReceived">₹0</div>
+                    <div class="metric__label">Received</div>
+                </div>
+                <div class="metric">
+                    <div class="metric__value" id="paymentPending">₹0</div>
+                    <div class="metric__label">Pending</div>
+                </div>
+                <div class="metric">
+                    <div class="metric__value" id="paymentRate">0%</div>
+                    <div class="metric__label">Success Rate</div>
+                </div>
+            </div>
+            <div class="kpi-stat-card__chart">
+                <div class="wave-chart">
+                    <div class="wave-line">
+                        <span class="wave-point" data-value="40"></span>
+                        <span class="wave-point" data-value="60"></span>
+                        <span class="wave-point" data-value="35"></span>
+                        <span class="wave-point" data-value="75"></span>
+                        <span class="wave-point" data-value="50"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="kpi-stat-card__trend">
+                <span class="trend-indicator trend-up">↗ +15%</span>
+                <span class="trend-label">collection improved</span>
             </div>
         </div>
     </div>
@@ -378,7 +498,7 @@ ob_start();
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-let financeChart;
+
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
@@ -393,32 +513,30 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initCharts() {
-    const ctx = document.getElementById('financeChart');
-    if (!ctx) return;
-    
-    financeChart = new Chart(ctx.getContext('2d'), {
-        type: 'pie',
-        data: {
-            labels: ['Draft', 'Revised', 'Converted'],
-            datasets: [{
-                data: [0, 0, 0],
-                backgroundColor: ['#ffc107', '#17a2b8', '#28a745']
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'bottom' }
-            }
-        }
+    // Initialize mini charts
+    initMiniCharts();
+    initProgressRings();
+    initWaveCharts();
+}
+
+function initMiniCharts() {
+    document.querySelectorAll('.chart-bar').forEach(bar => {
+        const value = bar.dataset.value;
+        bar.style.height = value + '%';
     });
-    
-    // Add event listeners to chart tabs
-    document.querySelectorAll('.chart-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            const chartType = this.dataset.chart;
-            showChart(chartType);
-        });
+}
+
+function initProgressRings() {
+    document.querySelectorAll('.ring-segment').forEach(segment => {
+        const percentage = segment.dataset.percentage;
+        segment.style.setProperty('--percentage', percentage + '%');
+    });
+}
+
+function initWaveCharts() {
+    document.querySelectorAll('.wave-point').forEach(point => {
+        const value = point.dataset.value;
+        point.style.bottom = value + '%';
     });
 }
 
@@ -634,20 +752,42 @@ function updateDetailedStats(data) {
 }
 
 async function updateCharts() {
-    if (!financeChart) return;
-    
     try {
-        const response = await fetch('/ergon/finance/visualization?type=quotations');
+        const response = await fetch('/ergon/finance/stats');
         const data = await response.json();
         
-        if (data.data) {
-            financeChart.data.datasets[0].data = data.data;
-            financeChart.update();
-        }
+        updateKPICards(data);
         
     } catch (error) {
-        console.error('Failed to update charts:', error);
+        console.error('Failed to update KPI cards:', error);
     }
+}
+
+function updateKPICards(data) {
+    // Update quotations KPI
+    const quotationsData = data.quotations || {};
+    const quotationTotal = quotationsData.draft + quotationsData.revised + quotationsData.converted;
+    document.getElementById('quotationTotal').textContent = quotationTotal || 0;
+    document.getElementById('quotationValue').textContent = '₹' + (quotationsData.value || 0).toLocaleString();
+    document.getElementById('quotationRate').textContent = (quotationsData.conversionRate || 0) + '%';
+    
+    // Update purchase orders KPI
+    const poData = data.purchaseOrders || {};
+    document.getElementById('poCount').textContent = poData.total || 0;
+    document.getElementById('poAmount').textContent = '₹' + (poData.value || 0).toLocaleString();
+    document.getElementById('poAvg').textContent = '₹' + (poData.average || 0).toLocaleString();
+    
+    // Update invoices KPI
+    const invoiceData = data.invoices || {};
+    document.getElementById('invoicePaid').textContent = '₹' + (invoiceData.paid || 0).toLocaleString();
+    document.getElementById('invoicePending').textContent = '₹' + (invoiceData.unpaid || 0).toLocaleString();
+    document.getElementById('invoiceOverdue').textContent = '₹' + (invoiceData.overdue || 0).toLocaleString();
+    
+    // Update payments KPI
+    const paymentData = data.payments || {};
+    document.getElementById('paymentReceived').textContent = '₹' + (paymentData.received || 0).toLocaleString();
+    document.getElementById('paymentPending').textContent = '₹' + (paymentData.pending || 0).toLocaleString();
+    document.getElementById('paymentRate').textContent = (paymentData.successRate || 0) + '%';
 }
 
 function exportChart(type) {
@@ -677,34 +817,7 @@ function toggleView(module, viewType) {
     }
 }
 
-function showChart(chartType) {
-    if (!financeChart) return;
-    
-    const tabs = document.querySelectorAll('.chart-tab');
-    tabs.forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.dataset.chart === chartType) {
-            tab.classList.add('active');
-        }
-    });
-    
-    // Update chart based on type
-    if (chartType === 'quotations') {
-        financeChart.config.type = 'pie';
-        financeChart.data.labels = ['Draft', 'Revised', 'Converted'];
-        financeChart.data.datasets[0].backgroundColor = ['#ffc107', '#17a2b8', '#28a745'];
-    } else if (chartType === 'purchase_orders') {
-        financeChart.config.type = 'bar';
-        financeChart.data.labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-        financeChart.data.datasets[0].backgroundColor = '#007bff';
-    } else if (chartType === 'invoices') {
-        financeChart.config.type = 'doughnut';
-        financeChart.data.labels = ['Paid', 'Unpaid', 'Overdue'];
-        financeChart.data.datasets[0].backgroundColor = ['#28a745', '#ffc107', '#dc3545'];
-    }
-    
-    financeChart.update();
-}
+
 
 function loadGridView(module) {
     const gridContainer = document.getElementById(`${module}Grid`);
