@@ -11,11 +11,8 @@ class FinanceController extends Controller {
     public function syncPostgres() {
         header('Content-Type: application/json');
         
-        $batch = (int)($_POST['batch'] ?? 0);
-        $batchSize = 20; // Process 20 tables at a time
-        
         try {
-            $conn = $this->tryAllConnections();
+            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
             
             if (!$conn) {
                 throw new Exception('PostgreSQL connection failed');
@@ -24,21 +21,15 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
-            // Get all tables
-            $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name");
-            $allTables = [];
-            while ($row = pg_fetch_assoc($result)) {
-                $allTables[] = $row['table_name'];
-            }
-            
-            $totalTables = count($allTables);
-            $offset = $batch * $batchSize;
-            $tablesToProcess = array_slice($allTables, $offset, $batchSize);
+            // Only sync finance tables
+            $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE 'finance_%' ORDER BY table_name");
             
             $syncCount = 0;
-            foreach ($tablesToProcess as $tableName) {
+            while ($row = pg_fetch_assoc($result)) {
+                $tableName = $row['table_name'];
+                
                 try {
-                    $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 100");
+                    $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 1000");
                     $data = [];
                     
                     if ($dataResult) {
@@ -56,17 +47,31 @@ class FinanceController extends Controller {
             }
             
             pg_close($conn);
+            echo json_encode(['status' => 'success', 'tables' => $syncCount, 'method' => 'finance_only']);
             
-            $hasMore = ($offset + $batchSize) < $totalTables;
-            $processed = min($offset + $syncCount, $totalTables);
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+    
+    public function getFinanceStats() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            
+            // Get finance table stats
+            $stmt = $db->query("SELECT table_name, record_count FROM finance_tables WHERE table_name LIKE 'finance_%' ORDER BY record_count DESC");
+            $tables = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Calculate totals
+            $totalRecords = array_sum(array_column($tables, 'record_count'));
+            $totalTables = count($tables);
             
             echo json_encode([
-                'status' => 'success', 
-                'batch' => $batch,
-                'processed' => $processed,
-                'total' => $totalTables,
-                'hasMore' => $hasMore,
-                'nextBatch' => $batch + 1
+                'tables' => $tables,
+                'totalTables' => $totalTables,
+                'totalRecords' => $totalRecords
             ]);
             
         } catch (Exception $e) {
@@ -74,19 +79,52 @@ class FinanceController extends Controller {
         }
     }
     
-    private function tryAllConnections() {
-        $configs = [
-            "host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=30",
-        ];
+    public function getChartData() {
+        header('Content-Type: application/json');
         
-        foreach ($configs as $config) {
-            $conn = @pg_connect($config);
-            if ($conn && pg_connection_status($conn) === PGSQL_CONNECTION_OK) {
-                return $conn;
+        $type = $_GET['type'] ?? 'tables';
+        
+        try {
+            $db = Database::connect();
+            
+            if ($type === 'tables') {
+                // Table record counts
+                $stmt = $db->query("SELECT table_name, record_count FROM finance_tables WHERE table_name LIKE 'finance_%' AND record_count > 0 ORDER BY record_count DESC LIMIT 10");
+                $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                echo json_encode([
+                    'labels' => array_column($data, 'table_name'),
+                    'data' => array_column($data, 'record_count'),
+                    'title' => 'Finance Tables by Record Count'
+                ]);
+                
+            } elseif ($type === 'invoices') {
+                // Invoice data if available
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' LIMIT 100");
+                $stmt->execute();
+                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                $amounts = [];
+                $dates = [];
+                
+                foreach ($results as $row) {
+                    $invoice = json_decode($row['data'], true);
+                    if (isset($invoice['total_amount']) && isset($invoice['created_at'])) {
+                        $amounts[] = (float)$invoice['total_amount'];
+                        $dates[] = date('M Y', strtotime($invoice['created_at']));
+                    }
+                }
+                
+                echo json_encode([
+                    'labels' => $dates,
+                    'data' => $amounts,
+                    'title' => 'Invoice Amounts Over Time'
+                ]);
             }
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
         }
-        
-        return false;
     }
     
     public function getTables() {
@@ -94,7 +132,7 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
-            $stmt = $db->query("SELECT table_name, record_count, last_sync FROM finance_tables ORDER BY last_sync DESC");
+            $stmt = $db->query("SELECT table_name, record_count, last_sync FROM finance_tables WHERE table_name LIKE 'finance_%' ORDER BY record_count DESC");
             $tables = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             echo json_encode(['tables' => $tables]);

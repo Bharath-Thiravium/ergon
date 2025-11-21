@@ -373,7 +373,8 @@ $router->get('/gamification/individual', 'GamificationController', 'individual')
 $router->get('/finance', 'FinanceController', 'dashboard');
 $router->get('/finance/tables', 'FinanceController', 'getTables');
 $router->get('/finance/data', 'FinanceController', 'getTableData');
+$router->get('/finance/stats', 'FinanceController', 'getFinanceStats');
+$router->get('/finance/chart', 'FinanceController', 'getChartData');
 $router->post('/finance/sync', 'FinanceController', 'syncPostgres');
-$router->get('/finance/test', 'FinanceController', 'testConnection');
 
 ?>
