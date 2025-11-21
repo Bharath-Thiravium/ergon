@@ -20,23 +20,44 @@ class FinanceController extends Controller {
                 exit;
             }
             
-            // Get only table names and basic info
-            $result = pg_query($conn, "
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema = 'public' 
-                AND table_type = 'BASE TABLE'
-                ORDER BY table_name
-                LIMIT 50
-            ");
+            $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
+            $analysis = [];
             
-            $tables = [];
-            while ($row = pg_fetch_assoc($result)) {
-                $tables[] = $row['table_name'];
+            foreach ($targetTables as $tableName) {
+                // Check if table exists
+                $checkResult = pg_query($conn, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '$tableName'");
+                $exists = pg_fetch_row($checkResult)[0] > 0;
+                
+                if ($exists) {
+                    // Get row count
+                    $countResult = pg_query($conn, "SELECT COUNT(*) FROM \"$tableName\"");
+                    $rowCount = pg_fetch_row($countResult)[0];
+                    
+                    // Get column info
+                    $colResult = pg_query($conn, "SELECT column_name FROM information_schema.columns WHERE table_name = '$tableName' ORDER BY ordinal_position LIMIT 10");
+                    $columns = [];
+                    while ($col = pg_fetch_row($colResult)) {
+                        $columns[] = $col[0];
+                    }
+                    
+                    $analysis[] = [
+                        'name' => $tableName,
+                        'exists' => true,
+                        'rows' => (int)$rowCount,
+                        'columns' => $columns
+                    ];
+                } else {
+                    $analysis[] = [
+                        'name' => $tableName,
+                        'exists' => false,
+                        'rows' => 0,
+                        'columns' => []
+                    ];
+                }
             }
             
             pg_close($conn);
-            echo json_encode(['tables' => $tables, 'count' => count($tables)]);
+            echo json_encode(['tables' => $analysis]);
             
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);

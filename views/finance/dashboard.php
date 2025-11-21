@@ -264,18 +264,24 @@ async function analyzeAllTables() {
             return;
         }
         
-        console.log('All Tables:', data.tables);
+        console.log('Finance Tables Analysis:', data.tables);
         
-        // Display table list in modal
+        // Display finance table analysis
         const container = document.getElementById('structureContainer');
-        let html = `<div class="table-list"><h4>Found ${data.count} Tables:</h4><ul>`;
+        let html = '<div class="finance-analysis"><h4>Finance Tables Analysis:</h4>';
         
         data.tables.forEach(table => {
-            const isFinance = table.includes('finance');
-            html += `<li style="${isFinance ? 'font-weight: bold; color: #007bff;' : ''}">${table}</li>`;
+            const status = table.exists ? `✅ ${table.rows} rows` : '❌ Not found';
+            const color = table.exists ? (table.rows > 0 ? '#28a745' : '#ffc107') : '#dc3545';
+            
+            html += `
+                <div class="table-item" style="border-left: 4px solid ${color}; padding: 10px; margin: 5px 0; background: #f8f9fa;">
+                    <strong>${table.name.replace('finance_', '')}</strong> - ${status}
+                    ${table.exists && table.columns.length > 0 ? `<br><small>Columns: ${table.columns.slice(0, 5).join(', ')}${table.columns.length > 5 ? '...' : ''}</small>` : ''}
+                </div>`;
         });
         
-        html += '</ul></div>';
+        html += '</div>';
         container.innerHTML = html;
         
         document.getElementById('structureModal').style.display = 'flex';
