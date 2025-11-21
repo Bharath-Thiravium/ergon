@@ -1042,6 +1042,21 @@ code {
   color: #be185d;
 }
 
+.badge--inactive {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+.badge--suspended {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.badge--terminated {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
 /* Tables */
 .table-responsive {
   overflow-x: auto;

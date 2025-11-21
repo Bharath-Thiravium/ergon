@@ -37,7 +37,7 @@ ob_start();
             <div class="kpi-card__icon">✅</div>
             <div class="kpi-card__trend">↗ +5%</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($users ?? [], fn($u) => ($u['status'] ?? 'active') === 'active')) ?></div>
+        <div class="kpi-card__value"><?= count(array_filter($users ?? [], fn($u) => in_array(($u['status'] ?? 'active'), ['active', 'inactive', 'suspended', 'terminated']))) ?></div>
         <div class="kpi-card__label">Active Users</div>
         <div class="kpi-card__status">Online</div>
     </div>
@@ -146,7 +146,20 @@ ob_start();
                                                     <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
                                                 </svg>
                                             </button>
-                                        <?php elseif (($user['status'] ?? 'active') === 'inactive'): ?>
+                                            <button class="ab-btn ab-btn--danger" data-action="suspend" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Suspend User">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <circle cx="12" cy="12" r="10"/>
+                                                    <path d="M10 15l4-4 4 4"/>
+                                                </svg>
+                                            </button>
+                                            <button class="ab-btn ab-btn--delete" data-action="terminate" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Terminate User">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <circle cx="12" cy="12" r="10"/>
+                                                    <line x1="15" y1="9" x2="9" y2="15"/>
+                                                    <line x1="9" y1="9" x2="15" y2="15"/>
+                                                </svg>
+                                            </button>
+                                        <?php elseif (($user['status'] ?? 'active') === 'inactive' || ($user['status'] ?? 'active') === 'suspended'): ?>
                                             <button class="ab-btn ab-btn--success" data-action="activate" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Activate User">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                     <path d="M9 12l2 2 4-4"/>
@@ -155,7 +168,7 @@ ob_start();
                                             </button>
                                         <?php endif; ?>
                                     <?php else: ?>
-                                        <span class="text-muted">Terminated</span>
+                                        <span class="text-muted">No Actions Available</span>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -255,6 +268,52 @@ document.addEventListener('click', function(e) {
             .catch(error => {
                 console.error('Activate error:', error);
                 alert('Error activating user');
+            });
+        }
+    } else if (action === 'suspend' && module && id && name) {
+        if (confirm(`Suspend user ${name}? They will not be able to login.`)) {
+            fetch(`/ergon/${module}/suspend/${id}`, { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User suspended successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Suspension failed'));
+                }
+            })
+            .catch(error => {
+                console.error('Suspend error:', error);
+                alert('Error suspending user');
+            });
+        }
+    } else if (action === 'terminate' && module && id && name) {
+        if (confirm(`Terminate user ${name}? This action cannot be undone and they will not be able to login.`)) {
+            fetch(`/ergon/${module}/terminate/${id}`, { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User terminated successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Termination failed'));
+                }
+            })
+            .catch(error => {
+                console.error('Terminate error:', error);
+                alert('Error terminating user');
             });
         }
     } else if (action === 'reset' && module && id && name) {

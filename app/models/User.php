@@ -219,7 +219,7 @@ class User {
     public function getAll($page = 1, $limit = 20, $role = null) {
         try {
             $offset = ($page - 1) * $limit;
-            $whereClause = $role ? "WHERE role = ? AND status IN ('active', 'inactive')" : "WHERE status IN ('active', 'inactive')";
+            $whereClause = $role ? "WHERE role = ? AND status != 'deleted'" : "WHERE status != 'deleted'";
             $params = $role ? [$role, $limit, $offset] : [$limit, $offset];
             
             $stmt = $this->conn->prepare("
@@ -230,14 +230,16 @@ class User {
                     CASE 
                         WHEN status = 'active' THEN 1
                         WHEN status = 'inactive' THEN 2
-                        ELSE 3
+                        WHEN status = 'suspended' THEN 3
+                        WHEN status = 'terminated' THEN 4
+                        ELSE 5
                     END,
                     created_at DESC 
                 LIMIT ? OFFSET ?
             ");
             $stmt->execute($params);
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            error_log('Retrieved ' . count($users) . ' users (active/inactive only)');
+            error_log('Retrieved ' . count($users) . ' users (all statuses except deleted)');
             return $users;
         } catch (Exception $e) {
             error_log("Get users error: " . $e->getMessage());
@@ -283,7 +285,7 @@ class User {
             $stmt = $this->conn->prepare("
                 SELECT id, name, email, role, department, status 
                 FROM {$this->table} 
-                WHERE status IN ('active', 'inactive') 
+                WHERE status != 'deleted' 
                 ORDER BY name
             ");
             $stmt->execute();
