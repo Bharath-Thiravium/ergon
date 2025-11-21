@@ -493,6 +493,84 @@ class FinanceController extends Controller {
         }
     }
     
+    public function exportTable() {
+        $type = $_GET['type'] ?? 'outstanding';
+        
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="finance_' . $type . '_' . date('Y-m-d') . '.csv"');
+        
+        try {
+            if ($type === 'outstanding') {
+                echo "Invoice Number,Customer Name,Due Date,Outstanding Amount,Days Overdue,Status\n";
+                
+                $db = Database::connect();
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+                $stmt->execute();
+                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($results as $row) {
+                    $data = json_decode($row['data'], true);
+                    $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                    
+                    if ($outstanding > 0) {
+                        $dueDate = $data['due_date'] ?? date('Y-m-d');
+                        $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
+                        
+                        echo '"' . ($data['invoice_number'] ?? 'N/A') . '","' . 
+                             ($data['customer_name'] ?? 'Unknown') . '","' . 
+                             $dueDate . '","' . 
+                             $outstanding . '","' . 
+                             floor($daysOverdue) . '","' . 
+                             ($daysOverdue > 0 ? 'Overdue' : 'Pending') . "\"\n";
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n";
+        }
+        exit;
+    }
+    
+    public function exportDashboard() {
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="finance_dashboard_' . date('Y-m-d') . '.csv"');
+        
+        try {
+            $db = Database::connect();
+            
+            echo "Finance Dashboard Summary - " . date('Y-m-d H:i:s') . "\n\n";
+            echo "KPI,Value\n";
+            
+            // Get dashboard stats
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $totalInvoiceAmount = 0;
+            $invoiceReceived = 0;
+            $pendingInvoiceAmount = 0;
+            
+            foreach ($invoiceResults as $row) {
+                $data = json_decode($row['data'], true);
+                $total = floatval($data['total_amount'] ?? 0);
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                
+                $totalInvoiceAmount += $total;
+                $invoiceReceived += ($total - $outstanding);
+                $pendingInvoiceAmount += $outstanding;
+            }
+            
+            echo "Total Invoice Amount," . $totalInvoiceAmount . "\n";
+            echo "Invoice Amount Received," . $invoiceReceived . "\n";
+            echo "Pending Invoice Amount," . $pendingInvoiceAmount . "\n";
+            echo "Collection Rate," . ($totalInvoiceAmount > 0 ? round(($invoiceReceived / $totalInvoiceAmount) * 100, 2) : 0) . "%\n";
+            
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n";
+        }
+        exit;
+    }
+    
     public function exportData() {
         $type = $_GET['type'] ?? 'quotations';
         
