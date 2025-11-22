@@ -127,106 +127,108 @@
         </div>
     </div>
 
-    <!-- Charts Section - Row 1 -->
+    <!-- Charts Section -->
     <div class="dashboard-grid dashboard-grid--2-col">
-        <div class="kpi-card kpi-card--chart">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">📝</div>
-                <div class="kpi-card__trend" id="quotationsTrend">↗ +0%</div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">📝</div>
+                    <div class="chart-card__title">Quotations</div>
+                    <div class="chart-card__value" id="quotationsTotal">0</div>
+                </div>
+                <div class="chart-card__trend" id="quotationsTrend">+0%</div>
             </div>
-            <div class="kpi-card__value" id="quotationsTotal">0</div>
-            <div class="kpi-card__label">Quotations Overview</div>
-            <div class="kpi-card__meta">
+            <div class="chart-card__chart">
+                <canvas id="quotationsChart"></canvas>
+            </div>
+            <div class="chart-card__meta">
                 <span>Draft: <strong id="quotationsDraft">0</strong></span>
                 <span>Revised: <strong id="quotationsRevised">0</strong></span>
             </div>
-            <div class="kpi-card__chart">
-                <canvas id="quotationsChart" height="120"></canvas>
-            </div>
         </div>
         
-        <div class="kpi-card kpi-card--chart">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">🛒</div>
-                <div class="kpi-card__trend" id="poTrendChart">↗ +0%</div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">🛒</div>
+                    <div class="chart-card__title">Purchase Orders</div>
+                    <div class="chart-card__value" id="poTotal">0</div>
+                </div>
+                <div class="chart-card__trend" id="poTrendChart">+0%</div>
             </div>
-            <div class="kpi-card__value" id="poTotal">0</div>
-            <div class="kpi-card__label">Purchase Orders</div>
-            <div class="kpi-card__meta">
+            <div class="chart-card__chart">
+                <canvas id="purchaseOrdersChart"></canvas>
+            </div>
+            <div class="chart-card__meta">
                 <span>Largest: <strong id="largestPO">₹0</strong></span>
             </div>
-            <div class="kpi-card__chart">
-                <canvas id="purchaseOrdersChart" height="120"></canvas>
-            </div>
         </div>
-    </div>
-    
-    <!-- Charts Section - Row 2 -->
-    <div class="dashboard-grid dashboard-grid--2-col">
-        <div class="kpi-card kpi-card--chart">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">💰</div>
-                <div class="kpi-card__trend" id="invoicesTrendChart">— 0%</div>
+        
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">💰</div>
+                    <div class="chart-card__title">Invoice Status</div>
+                    <div class="chart-card__value" id="invoicesTotal">0</div>
+                </div>
+                <div class="chart-card__trend" id="invoicesTrendChart">0%</div>
             </div>
-            <div class="kpi-card__value" id="invoicesTotal">0</div>
-            <div class="kpi-card__label">Invoice Status</div>
-            <div class="kpi-card__meta">
+            <div class="chart-card__chart">
+                <canvas id="invoicesChart"></canvas>
+            </div>
+            <div class="chart-card__meta">
                 <span>Overdue: <strong id="overdueCount">0</strong></span>
             </div>
-            <div class="kpi-card__chart">
-                <canvas id="invoicesChart" height="120"></canvas>
+        </div>
+        
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">📋</div>
+                    <div class="chart-card__title">Outstanding</div>
+                    <div class="chart-card__value" id="outstandingTotal">₹0</div>
+                </div>
+                <div class="chart-card__trend" id="outstandingTrend">0%</div>
+            </div>
+            <div class="chart-card__chart">
+                <canvas id="outstandingByCustomerChart"></canvas>
+            </div>
+            <div class="chart-card__meta">
+                <span>Top: <strong id="topCustomer">-</strong></span>
             </div>
         </div>
         
-        <div class="kpi-card kpi-card--chart">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">📋</div>
-                <div class="kpi-card__trend" id="outstandingTrend">— 0%</div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">⏳</div>
+                    <div class="chart-card__title">Aging Buckets</div>
+                    <div class="chart-card__value" id="agingTotal">₹0</div>
+                </div>
+                <div class="chart-card__trend" id="agingTrend">0%</div>
             </div>
-            <div class="kpi-card__value" id="outstandingTotal">₹0</div>
-            <div class="kpi-card__label">Outstanding by Customer</div>
-            <div class="kpi-card__meta">
-                <span>Top Customer: <strong id="topCustomer">-</strong></span>
+            <div class="chart-card__chart">
+                <canvas id="agingBucketsChart"></canvas>
             </div>
-            <div class="kpi-card__chart">
-                <canvas id="outstandingByCustomerChart" height="120"></canvas>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Charts Section - Row 3 -->
-    <div class="dashboard-grid dashboard-grid--2-col">
-        <div class="kpi-card kpi-card--chart">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">⏳</div>
-                <div class="kpi-card__trend" id="agingTrend">— 0%</div>
-            </div>
-            <div class="kpi-card__value" id="agingTotal">₹0</div>
-            <div class="kpi-card__label">Aging Buckets</div>
-            <div class="kpi-card__meta">
+            <div class="chart-card__meta">
                 <span>Overdue: <strong id="agingOverdue">₹0</strong></span>
             </div>
-            <div class="kpi-card__chart">
-                <canvas id="agingBucketsChart" height="120"></canvas>
-            </div>
         </div>
         
-        <div class="kpi-card kpi-card--chart">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">💳</div>
-                <div class="kpi-card__trend" id="paymentsTrend">↗ +0%</div>
-            </div>
-            <div class="kpi-card__value" id="paymentsTotal">₹0</div>
-            <div class="kpi-card__label">Payments</div>
-            <div class="kpi-card__meta">
-                <span>This Month: <strong id="paymentsMonth">₹0</strong></span>
-            </div>
-            <div class="kpi-card__chart">
-                <div id="paymentsEmpty" class="empty-chart">
-                    <span>💳</span>
-                    <small>No Data</small>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">💳</div>
+                    <div class="chart-card__title">Payments</div>
+                    <div class="chart-card__value" id="paymentsTotal">₹0</div>
                 </div>
-                <canvas id="paymentsChart" height="120" style="display:none"></canvas>
+                <div class="chart-card__trend" id="paymentsTrend">+0%</div>
+            </div>
+            <div class="chart-card__chart">
+                <canvas id="paymentsChart"></canvas>
+            </div>
+            <div class="chart-card__meta">
+                <span>Month: <strong id="paymentsMonth">₹0</strong></span>
             </div>
         </div>
     </div>
@@ -335,10 +337,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initCharts() {
-    // Simple, consistent chart styles for dashboard
     const chartDefaults = {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         animation: { duration: 250 },
         plugins: {
             legend: { display: false },
@@ -351,6 +352,10 @@ function initCharts() {
                     }
                 }
             }
+        },
+        scales: {
+            x: { display: false },
+            y: { display: false }
         }
     };
 
@@ -360,7 +365,7 @@ function initCharts() {
         quotationsChart = new Chart(quotationsCtx.getContext('2d'), {
             type: 'pie',
             data: { labels: ['Draft','Revised','Converted'], datasets: [{ data: [0,0,0], backgroundColor: ['#3b82f6','#f59e0b','#10b981'] }] },
-            options: Object.assign({}, chartDefaults, { plugins: { legend: { display: false } } })
+            options: chartDefaults
         });
     }
 
@@ -370,7 +375,7 @@ function initCharts() {
         purchaseOrdersChart = new Chart(poCtx.getContext('2d'), {
             type: 'line',
             data: { labels: [], datasets: [{ label: 'PO Amount', data: [], borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.1)', fill: true, tension: 0.3 }] },
-            options: Object.assign({}, chartDefaults, { scales: { y: { display: false }, x: { display: false } } })
+            options: chartDefaults
         });
     }
 
@@ -380,7 +385,7 @@ function initCharts() {
         invoicesChart = new Chart(invoicesCtx.getContext('2d'), {
             type: 'doughnut',
             data: { labels: ['Paid','Unpaid','Overdue'], datasets: [{ data: [0,0,0], backgroundColor: ['#10b981','#f59e0b','#ef4444'] }] },
-            options: Object.assign({}, chartDefaults, { plugins: { legend: { display: false } }, cutout: '70%' })
+            options: { ...chartDefaults, cutout: '70%' }
         });
     }
 
@@ -390,7 +395,7 @@ function initCharts() {
         outstandingByCustomerChart = new Chart(outstandingCtx.getContext('2d'), {
             type: 'bar',
             data: { labels: [], datasets: [{ label: 'Outstanding', data: [], backgroundColor: '#ef4444' }] },
-            options: Object.assign({}, chartDefaults, { scales: { y: { display: false }, x: { display: false } } })
+            options: chartDefaults
         });
     }
 
@@ -400,7 +405,17 @@ function initCharts() {
         agingBucketsChart = new Chart(agingCtx.getContext('2d'), {
             type: 'doughnut',
             data: { labels: ['0-30 Days','31-60 Days','61-90 Days','90+ Days'], datasets: [{ data: [0,0,0,0], backgroundColor: ['#10b981','#f59e0b','#fb923c','#ef4444'] }] },
-            options: Object.assign({}, chartDefaults, { plugins: { legend: { display: false } }, cutout: '70%' })
+            options: { ...chartDefaults, cutout: '70%' }
+        });
+    }
+
+    // Payments Chart
+    const paymentsCtx = document.getElementById('paymentsChart');
+    if (paymentsCtx) {
+        paymentsChart = new Chart(paymentsCtx.getContext('2d'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ label: 'Payments', data: [], backgroundColor: '#3b82f6' }] },
+            options: chartDefaults
         });
     }
 }
@@ -1343,40 +1358,74 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     gap: 1.5rem;
 }
 
-/* KPI Card with Chart */
-.kpi-card--chart {
-    height: 280px;
+/* Chart Cards */
+.chart-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    height: 240px;
     display: flex;
     flex-direction: column;
 }
 
-.kpi-card__chart {
-    flex: 1;
-    margin-top: 1rem;
-    position: relative;
-}
-
-.kpi-card__meta {
+.chart-card__header {
     display: flex;
     justify-content: space-between;
-    margin-top: 0.5rem;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
 }
 
-.empty-chart {
+.chart-card__info {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 120px;
-    color: var(--text-muted);
-    font-size: 2rem;
+    gap: 0.25rem;
 }
 
-.empty-chart small {
+.chart-card__icon {
+    font-size: 1.25rem;
+}
+
+.chart-card__title {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.chart-card__value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.chart-card__trend {
     font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+}
+
+.chart-card__chart {
+    flex: 1;
+    position: relative;
+    margin: 0.5rem 0;
+}
+
+.chart-card__chart canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.chart-card__meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
     margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
 }
 
 /* Stat-card styles moved to assets/css/ergon.css */
