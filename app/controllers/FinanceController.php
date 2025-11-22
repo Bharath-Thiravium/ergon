@@ -728,8 +728,8 @@ class FinanceController extends Controller {
             $customerNames = [];
             foreach ($customerData as $row) {
                 $data = json_decode($row['data'], true);
-                $customerId = $data['id'] ?? '';
-                $companyName = $data['company_name'] ?? $data['name'] ?? '';
+                $customerId = $data['id'] ?? $data['customer_id'] ?? '';
+                $companyName = $data['company_name'] ?? $data['customer_name'] ?? $data['name'] ?? $data['business_name'] ?? '';
                 if ($customerId && $companyName) {
                     $customerNames[$customerId] = $companyName;
                 }
@@ -750,12 +750,14 @@ class FinanceController extends Controller {
                     if ($customerId) {
                         $customerKey = $customerId;
                         if (!isset($customers[$customerKey])) {
-                            $companyName = $customerNames[$customerId] ?? "Customer ID: {$customerId}";
-                            $customers[$customerKey] = [
-                                'id' => $customerId,
-                                'gstin' => $customerGstin,
-                                'display' => $companyName . ($customerGstin ? " (GST: {$customerGstin})" : '')
-                            ];
+                            $companyName = $customerNames[$customerId] ?? null;
+                            if ($companyName) {
+                                $customers[$customerKey] = [
+                                    'id' => $customerId,
+                                    'gstin' => $customerGstin,
+                                    'display' => $companyName . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                                ];
+                            }
                         }
                     }
                 }
