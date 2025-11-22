@@ -4,8 +4,21 @@ class Security {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
+        
+        // Hostinger-specific session handling
+        if (self::isHostinger()) {
+            // Force session write and restart for Hostinger
+            session_write_close();
+            session_start();
+        }
+        
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+            // Force session write for Hostinger
+            if (self::isHostinger()) {
+                session_write_close();
+                session_start();
+            }
         }
         return $_SESSION['csrf_token'];
     }
@@ -14,7 +27,21 @@ class Security {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+        
+        // Hostinger-specific session handling
+        if (self::isHostinger()) {
+            session_write_close();
+            session_start();
+        }
+        
+        $isValid = isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+        
+        // Log for debugging on Hostinger
+        if (self::isHostinger()) {
+            error_log('CSRF validation on Hostinger - Token exists: ' . (isset($_SESSION['csrf_token']) ? 'yes' : 'no') . ', Valid: ' . ($isValid ? 'yes' : 'no'));
+        }
+        
+        return $isValid;
     }
     
     public static function sanitizeString($input, $maxLength = 255) {
@@ -55,6 +82,15 @@ class Security {
         if ($lng < -180 || $lng > 180) return false;
         
         return ['lat' => $lat, 'lng' => $lng];
+    }
+    
+    public static function isHostinger() {
+        $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+        $serverName = $_SERVER['SERVER_NAME'] ?? '';
+        
+        return strpos($docRoot, '/home/') === 0 || 
+               strpos($serverName, 'hostinger') !== false ||
+               strpos($docRoot, '/public_html/') !== false;
     }
 }
 ?>
