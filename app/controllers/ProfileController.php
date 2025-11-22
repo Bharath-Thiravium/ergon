@@ -167,6 +167,12 @@ class ProfileController extends Controller {
     public function preferences() {
         AuthMiddleware::requireAuth();
         
+        // Restrict preferences to owner only
+        if ($_SESSION['role'] !== 'owner') {
+            header('Location: /ergon/profile?error=Access denied');
+            exit;
+        }
+        
         // Hostinger-specific session handling
         if (isHostingerEnvironment()) {
             hostingerSessionRestart();

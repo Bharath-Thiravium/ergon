@@ -243,8 +243,8 @@ class AttendanceController extends Controller {
                         // Continue with clock in if check fails
                     }
                     
-                    // Force user timezone
-                    $currentTime = TimezoneHelper::getCurrentTime($userId);
+                    // Force system timezone (owner's timezone)
+                    $currentTime = TimezoneHelper::getCurrentTime();
                     
                     // Clock in - handle both column name variations
                     $stmt = $db->query("SHOW COLUMNS FROM attendance");
@@ -288,9 +288,9 @@ class AttendanceController extends Controller {
                     }
                     
                 } elseif ($type === 'out') {
-                    // Force user timezone
-                    $currentTime = TimezoneHelper::getCurrentTime($userId);
-                    $currentDate = TimezoneHelper::getCurrentDate($userId);
+                    // Force system timezone (owner's timezone)
+                    $currentTime = TimezoneHelper::getCurrentTime();
+                    $currentDate = TimezoneHelper::getCurrentDate();
                     
                     // Find today's attendance record
                     $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");

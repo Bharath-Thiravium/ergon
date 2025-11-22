@@ -1,13 +1,14 @@
 <?php
 class TimezoneHelper {
     
-    public static function setUserTimezone($userId) {
+    public static function setSystemTimezone() {
         try {
             $db = Database::connect();
-            $stmt = $db->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
-            $stmt->execute([$userId]);
-            $userPrefs = $stmt->fetch();
-            $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
+            // Get owner's timezone as system timezone
+            $stmt = $db->prepare("SELECT up.timezone FROM user_preferences up JOIN users u ON up.user_id = u.id WHERE u.role = 'owner' LIMIT 1");
+            $stmt->execute();
+            $ownerPrefs = $stmt->fetch();
+            $timezone = $ownerPrefs['timezone'] ?? 'Asia/Kolkata';
             
             date_default_timezone_set($timezone);
             return $timezone;
@@ -17,13 +18,13 @@ class TimezoneHelper {
         }
     }
     
-    public static function getCurrentTime($userId) {
-        self::setUserTimezone($userId);
+    public static function getCurrentTime() {
+        self::setSystemTimezone();
         return date('Y-m-d H:i:s');
     }
     
-    public static function getCurrentDate($userId) {
-        self::setUserTimezone($userId);
+    public static function getCurrentDate() {
+        self::setSystemTimezone();
         return date('Y-m-d');
     }
 }
