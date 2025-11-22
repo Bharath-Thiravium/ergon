@@ -142,13 +142,13 @@ class FinanceController extends Controller {
     }
     
     public function sync() {
-        set_time_limit(300);
-        ini_set('memory_limit', '512M');
+        set_time_limit(0);
+        ini_set('memory_limit', '1G');
         
         header('Content-Type: application/json');
         
         try {
-            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=30");
+            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=60");
             
             if (!$conn) {
                 echo json_encode(['error' => 'PostgreSQL connection failed']);
@@ -158,16 +158,25 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
-            $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
-            $syncCount = 0;
+            // Get all tables from PostgreSQL
+            $tablesResult = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name");
+            $allTables = [];
+            while ($row = pg_fetch_assoc($tablesResult)) {
+                $allTables[] = $row['table_name'];
+            }
             
-            foreach ($targetTables as $tableName) {
+            $syncCount = 0;
+            $batchSize = 100;
+            
+            foreach ($allTables as $tableName) {
                 try {
-                    $checkResult = pg_query($conn, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '$tableName'");
-                    $exists = pg_fetch_row($checkResult)[0] > 0;
+                    // Get row count first
+                    $countResult = pg_query($conn, "SELECT COUNT(*) FROM \"$tableName\"");
+                    $rowCount = pg_fetch_row($countResult)[0];
                     
-                    if ($exists) {
-                        $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 500");
+                    if ($rowCount > 0) {
+                        $limit = min($batchSize, $rowCount);
+                        $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT $limit");
                         $data = [];
                         
                         if ($dataResult) {
@@ -187,7 +196,7 @@ class FinanceController extends Controller {
             }
             
             pg_close($conn);
-            echo json_encode(['success' => true, 'tables' => $syncCount]);
+            echo json_encode(['success' => true, 'tables' => $syncCount, 'total_available' => count($allTables)]);
             
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
