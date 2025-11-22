@@ -1,7 +1,9 @@
 <?php 
-$title = 'Finance Dashboard';
-$active_page = 'finance';
-ob_start(); 
+ $title = 'Finance Dashboard';
+ $active_page = 'finance';
+ ob_start(); 
+ // Finance-specific stylesheet
+ echo '<link rel="stylesheet" href="/ergon/assets/css/finance.css">';
 ?>
 
 <div class="container-fluid">
@@ -88,10 +90,10 @@ ob_start();
         <div class="card card--full-width">
             <div class="card__header">
                 <h2 class="card__title">🔄 Revenue Conversion Funnel</h2>
-                <select id="customerFilter" class="form-control" style="width: 200px;">
+                <select id="customerFilter" class="form-control customer-filter">
                     <option value="">All Customers</option>
                 </select>
-                <span id="customerLoader" style="margin-left:8px;display:none" aria-hidden="true"></span>
+                <span id="customerLoader" class="customer-loader" aria-hidden="true"></span>
             </div>
             <div class="card__body">
                 <div class="funnel-container">
@@ -232,9 +234,9 @@ ob_start();
                 <div id="paymentsEmpty" class="empty-state">
                     <div class="empty-icon">💳</div>
                     <h4>No Payments Recorded</h4>
-                    <p style="font-size:0.85rem">Payment data will appear here once transactions are recorded</p>
+                    <p class="payments-note">Payment data will appear here once transactions are recorded</p>
                 </div>
-                <canvas id="paymentsChart" height="200" style="display:none"></canvas>
+                <canvas id="paymentsChart" height="200" class="chart--hidden"></canvas>
             </div>
         </div>
     </div>
@@ -460,7 +462,7 @@ function renderTableStructure(tables) {
                         <span class="expand-icon">▼</span>
                     </button>
                 </div>
-                <div class="structure-details" style="display: ${index === 0 ? 'block' : 'none'}">
+                <div class="structure-details ${index === 0 ? 'is-open' : ''}">
                     <div class="table-responsive">
                         <table class="table">
                             <thead>
@@ -499,13 +501,13 @@ function toggleStructure(button) {
     const card = button.closest('.followup-card');
     const details = card.querySelector('.structure-details');
     const icon = button.querySelector('.expand-icon');
-    
-    if (details.style.display === 'none') {
-        details.style.display = 'block';
-        icon.textContent = '▲';
-    } else {
-        details.style.display = 'none';
+
+    if (details.classList.contains('is-open')) {
+        details.classList.remove('is-open');
         icon.textContent = '▼';
+    } else {
+        details.classList.add('is-open');
+        icon.textContent = '▲';
     }
 }
 
