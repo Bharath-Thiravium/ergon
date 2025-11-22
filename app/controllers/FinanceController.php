@@ -789,42 +789,40 @@ class FinanceController extends Controller {
             $customers = [];
             $customerNames = [];
             
-            // Search all tables for customer names
-            $stmt = $db->prepare("SELECT table_name, data FROM finance_data");
+            // Get customer names from finance_customers table
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
             $stmt->execute();
-            $allResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // First pass: collect all customer names from all tables
-            foreach ($allResults as $row) {
+            foreach ($customerResults as $row) {
                 $data = json_decode($row['data'], true);
-                $customerId = $data['customer_id'] ?? $data['id'] ?? '';
+                $customerId = $data['id'] ?? '';
+                $customerName = $data['name'] ?? '';
                 
-                $nameFields = ['customer_name', 'company_name', 'client_name', 'business_name', 'name', 'customer_company_name', 'party_name', 'vendor_name'];
-                foreach ($nameFields as $field) {
-                    if (!empty($data[$field]) && $customerId) {
-                        $customerNames[$customerId] = $data[$field];
-                        break;
-                    }
+                if ($customerId && $customerName) {
+                    $customerNames[$customerId] = $customerName;
                 }
             }
             
-            // Second pass: get customers from quotations with names
-            foreach ($allResults as $row) {
-                if ($row['table_name'] === 'finance_quotations') {
-                    $data = json_decode($row['data'], true);
-                    $quotationNumber = $data['quotation_number'] ?? '';
+            // Get customers from quotations with prefix filter
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($quotationResults as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? '';
+                
+                if (str_contains(strtoupper($quotationNumber), $prefix)) {
+                    $customerId = $data['customer_id'] ?? '';
+                    $customerGstin = $data['customer_gstin'] ?? '';
                     
-                    if (str_contains(strtoupper($quotationNumber), $prefix)) {
-                        $customerId = $data['customer_id'] ?? '';
-                        $customerGstin = $data['customer_gstin'] ?? '';
-                        
-                        if ($customerId && isset($customerNames[$customerId])) {
-                            $customers[$customerId] = [
-                                'id' => $customerId,
-                                'gstin' => $customerGstin,
-                                'display' => $customerNames[$customerId] . ($customerGstin ? " (GST: {$customerGstin})" : '')
-                            ];
-                        }
+                    if ($customerId && isset($customerNames[$customerId])) {
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $customerGstin,
+                            'display' => $customerNames[$customerId] . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                        ];
                     }
                 }
             }
@@ -928,20 +926,18 @@ class FinanceController extends Controller {
     private function getCustomerNamesMapping($db) {
         $customerNames = [];
         
-        $stmt = $db->prepare("SELECT table_name, data FROM finance_data");
+        // Get customer names from finance_customers table only
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
         $stmt->execute();
-        $allResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        foreach ($allResults as $row) {
+        foreach ($customerResults as $row) {
             $data = json_decode($row['data'], true);
-            $customerId = $data['customer_id'] ?? $data['id'] ?? '';
+            $customerId = $data['id'] ?? '';
+            $customerName = $data['name'] ?? '';
             
-            $nameFields = ['customer_name', 'company_name', 'client_name', 'business_name', 'name', 'party_name'];
-            foreach ($nameFields as $field) {
-                if (!empty($data[$field]) && $customerId && !isset($customerNames[$customerId])) {
-                    $customerNames[$customerId] = $data[$field];
-                    break;
-                }
+            if ($customerId && $customerName) {
+                $customerNames[$customerId] = $customerName;
             }
         }
         
