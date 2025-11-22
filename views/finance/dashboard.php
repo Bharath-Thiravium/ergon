@@ -344,16 +344,23 @@
         </div>
     </div>
     
-    <!-- Recent Quotations -->
+    <!-- Recent Activities -->
     <div class="dashboard-grid">
         <div class="card">
             <div class="card__header">
-                <h2 class="card__title">📝 Recent Quotations</h2>
+                <h2 class="card__title">📈 Recent Activities</h2>
+                <div class="activity-filters">
+                    <button class="filter-btn active" data-type="all">All</button>
+                    <button class="filter-btn" data-type="quotation">📝</button>
+                    <button class="filter-btn" data-type="po">🛒</button>
+                    <button class="filter-btn" data-type="invoice">💰</button>
+                    <button class="filter-btn" data-type="payment">💳</button>
+                </div>
             </div>
             <div class="card__body">
-                <div id="recentQuotations">
-                    <div class="form-group">
-                        <div class="form-label">Loading recent quotations...</div>
+                <div id="recentActivities">
+                    <div class="activity-item">
+                        <div class="activity-loading">Loading recent activities...</div>
                     </div>
                 </div>
             </div>
@@ -653,7 +660,7 @@ async function loadDashboardData() {
         updateConversionFunnel(data);
         updateCharts(data);
         loadOutstandingInvoices();
-        loadRecentQuotations();
+        loadRecentActivities();
         updateCashFlow(data);
         
     } catch (error) {
@@ -884,26 +891,45 @@ async function loadOutstandingByCustomer(limit = 10) {
 
 // (Server-side export used via /ergon/finance/export-outstanding)
 
-async function loadRecentQuotations() {
+async function loadRecentActivities(type = 'all') {
     try {
-        const response = await fetch('/ergon/finance/recent-quotations');
-        const data = await response.json();
+        const response = await fetch(`/ergon/finance/recent-activities?type=${type}`);
+        const activityText = await response.text();
+        const data = activityText ? JSON.parse(activityText) : {};
         
-        const container = document.getElementById('recentQuotations');
-        if (data.quotations && data.quotations.length > 0) {
-            container.innerHTML = data.quotations.map(quote => `
-                <div class="form-group">
-                    <div class="form-label">${quote.quotation_number}</div>
-                    <p>₹${quote.total_amount.toLocaleString()} - ${quote.customer_name}</p>
-                    <small>Expires: ${quote.valid_until}</small>
+        const container = document.getElementById('recentActivities');
+        if (data.activities && data.activities.length > 0) {
+            container.innerHTML = data.activities.map(activity => `
+                <div class="activity-item activity-item--${activity.type}">
+                    <div class="activity-icon">${getActivityIcon(activity.type)}</div>
+                    <div class="activity-content">
+                        <div class="activity-title">${activity.title}</div>
+                        <div class="activity-details">₹${activity.amount.toLocaleString()} - ${activity.customer}</div>
+                        <div class="activity-meta">
+                            <span class="activity-type">${activity.type_label}</span>
+                            <span class="activity-date">${activity.date}</span>
+                        </div>
+                    </div>
+                    <div class="activity-status activity-status--${activity.status}">${activity.status}</div>
                 </div>
             `).join('');
         } else {
-            container.innerHTML = '<div class="form-group"><div class="form-label">No recent quotations</div></div>';
+            container.innerHTML = '<div class="activity-item"><div class="activity-loading">No recent activities</div></div>';
         }
     } catch (error) {
-        console.error('Failed to load recent quotations:', error);
+        console.error('Failed to load recent activities:', error);
+        document.getElementById('recentActivities').innerHTML = '<div class="activity-item"><div class="activity-loading">Failed to load activities</div></div>';
     }
+}
+
+function getActivityIcon(type) {
+    const icons = {
+        'quotation': '📝',
+        'po': '🛒',
+        'invoice': '💰',
+        'payment': '💳'
+    };
+    return icons[type] || '📈';
 }
 
 function updateCashFlow(data) {
@@ -1831,6 +1857,106 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     font-size: 0.75rem;
 }
 
+/* Activity Filters */
+.activity-filters {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.filter-btn {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* Activity Items */
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    background: var(--bg-primary);
+    transition: all 0.2s ease;
+}
+
+.activity-item:hover {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+}
+
+.activity-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.activity-details {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+}
+
+.activity-meta {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.activity-type {
+    background: var(--bg-secondary);
+    padding: 0.1rem 0.4rem;
+    border-radius: 8px;
+}
+
+.activity-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.activity-status--pending {
+    background: rgba(217, 119, 6, 0.1);
+    color: var(--warning);
+}
+
+.activity-status--completed {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.activity-loading {
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 @media (max-width: 768px) {
     .funnel-container {
         flex-direction: column;
@@ -1860,6 +1986,10 @@ require_once __DIR__ . '/../layouts/dashboard.php';
         flex-direction: column;
         align-items: flex-start;
         gap: 0.25rem;
+    }
+    
+    .activity-filters {
+        flex-wrap: wrap;
     }
 }
 </style>
