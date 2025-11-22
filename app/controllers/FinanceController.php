@@ -720,7 +720,7 @@ class FinanceController extends Controller {
             
             $customers = [];
             
-            // Get customers from quotations
+            // Get customers from quotations with GST details
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -729,15 +729,25 @@ class FinanceController extends Controller {
                 $data = json_decode($row['data'], true);
                 $quotationNumber = $data['quotation_number'] ?? '';
                 if (str_contains(strtoupper($quotationNumber), $prefix)) {
-                    $customer = $data['customer_name'] ?? '';
-                    if ($customer && !in_array($customer, $customers)) {
-                        $customers[] = $customer;
+                    $customerId = $data['customer_id'] ?? '';
+                    $customerGstin = $data['customer_gstin'] ?? '';
+                    
+                    if ($customerId) {
+                        $customerKey = $customerId;
+                        if (!isset($customers[$customerKey])) {
+                            $customers[$customerKey] = [
+                                'id' => $customerId,
+                                'gstin' => $customerGstin,
+                                'display' => "Customer ID: {$customerId}" . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                            ];
+                        }
                     }
                 }
             }
             
-            sort($customers);
-            echo json_encode(['customers' => $customers]);
+            // Sort by customer ID
+            ksort($customers);
+            echo json_encode(['customers' => array_values($customers)]);
             
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
@@ -757,9 +767,9 @@ class FinanceController extends Controller {
         foreach ($quotationResults as $row) {
             $data = json_decode($row['data'], true);
             $quotationNumber = $data['quotation_number'] ?? '';
-            $customerName = $data['customer_name'] ?? '';
+            $customerId = $data['customer_id'] ?? '';
             if (str_contains(strtoupper($quotationNumber), $prefix) && 
-                ($customerFilter === '' || $customerName === $customerFilter)) {
+                ($customerFilter === '' || $customerId === $customerFilter)) {
                 $quotationCount++;
                 $quotationValue += floatval($data['total_amount'] ?? 0);
             }
@@ -775,9 +785,9 @@ class FinanceController extends Controller {
         foreach ($poResults as $row) {
             $data = json_decode($row['data'], true);
             $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
-            $customerName = $data['customer_name'] ?? '';
+            $customerId = $data['customer_id'] ?? '';
             if (str_contains(strtoupper($poNumber), $prefix) && 
-                ($customerFilter === '' || $customerName === $customerFilter)) {
+                ($customerFilter === '' || $customerId === $customerFilter)) {
                 $poCount++;
                 $poValue += floatval($data['total_amount'] ?? 0);
             }
@@ -794,9 +804,9 @@ class FinanceController extends Controller {
         foreach ($invoiceResults as $row) {
             $data = json_decode($row['data'], true);
             $invoiceNumber = $data['invoice_number'] ?? '';
-            $customerName = $data['customer_name'] ?? '';
+            $customerId = $data['customer_id'] ?? '';
             if (str_contains(strtoupper($invoiceNumber), $prefix) && 
-                ($customerFilter === '' || $customerName === $customerFilter)) {
+                ($customerFilter === '' || $customerId === $customerFilter)) {
                 $invoiceCount++;
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);

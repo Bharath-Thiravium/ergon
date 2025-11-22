@@ -940,7 +940,7 @@ async function loadCustomers() {
         
         if (data.customers) {
             data.customers.forEach(customer => {
-                select.innerHTML += `<option value="${customer}">${customer}</option>`;
+                select.innerHTML += `<option value="${customer.id}">${customer.display}</option>`;
             });
         }
     } catch (error) {
