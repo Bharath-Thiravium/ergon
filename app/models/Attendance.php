@@ -23,12 +23,15 @@ class Attendance {
                 }
             }
             
+            // Set IST timezone for correct time recording
+            date_default_timezone_set('Asia/Kolkata');
+            $currentTime = date('Y-m-d H:i:s');
             $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
             
             $query = "INSERT INTO attendance (user_id, check_in, latitude, longitude, location_name, status, client_uuid, distance_meters, is_valid, ip_address) 
-                      VALUES (?, NOW(), ?, ?, ?, 'present', ?, ?, ?, ?)";
+                      VALUES (?, ?, ?, ?, ?, 'present', ?, ?, ?, ?)";
             $stmt = $this->conn->prepare($query);
-            $result = $stmt->execute([$userId, $latitude, $longitude, $locationName, $clientUuid, $distance, $isValid ? 1 : 0, $ipAddress]);
+            $result = $stmt->execute([$userId, $currentTime, $latitude, $longitude, $locationName, $clientUuid, $distance, $isValid ? 1 : 0, $ipAddress]);
             
             if (!$isValid && $result) {
                 $this->createConflict($userId, $this->conn->lastInsertId(), 'location_mismatch', "Distance: {$distance}m");
@@ -43,10 +46,15 @@ class Attendance {
     
     public function checkOut($userId, $clientUuid = null) {
         try {
-            $query = "UPDATE attendance SET check_out = NOW() 
-                      WHERE user_id = ? AND DATE(check_in) = CURDATE() AND check_out IS NULL";
+            // Set IST timezone for correct time recording
+            date_default_timezone_set('Asia/Kolkata');
+            $currentTime = date('Y-m-d H:i:s');
+            $currentDate = date('Y-m-d');
+            
+            $query = "UPDATE attendance SET check_out = ? 
+                      WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL";
             $stmt = $this->conn->prepare($query);
-            $result = $stmt->execute([$userId]);
+            $result = $stmt->execute([$currentTime, $userId, $currentDate]);
             return $result && $stmt->rowCount() > 0;
         } catch (Exception $e) {
             error_log('CheckOut error: ' . $e->getMessage());
@@ -55,9 +63,13 @@ class Attendance {
     }
     
     public function getTodayAttendance($userId) {
-        $query = "SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE()";
+        // Set IST timezone for correct date comparison
+        date_default_timezone_set('Asia/Kolkata');
+        $currentDate = date('Y-m-d');
+        
+        $query = "SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?";
         $stmt = $this->conn->prepare($query);
-        $stmt->execute([$userId]);
+        $stmt->execute([$userId, $currentDate]);
         return $stmt->fetch();
     }
     
