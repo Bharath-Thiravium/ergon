@@ -126,74 +126,61 @@ ob_start();
         </div>
     </div>
 
-    <!-- Charts Section -->
-    <div class="dashboard-grid">
-        <!-- Quotations Panel -->
-        <div class="stat-card">
-            <div class="stat-card__header">
-                <div class="stat-card__title">
-                    <div class="stat-card__icon">📝</div>
-                    <div>
-                        <div class="stat-card__label">Quotations Overview</div>
-                        <div class="stat-card__sub">Trend & Status</div>
+    <!-- Charts Section - Row 1 -->
+    <div class="dashboard-grid dashboard-grid--2-col">
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">📝 Quotations Overview</h2>
+                <button class="btn btn--sm" onclick="exportChart('quotations')">Export</button>
+            </div>
+            <div class="card__body">
+                <canvas id="quotationsChart" height="200"></canvas>
+                <div class="chart-summary">
+                    <div class="summary-item">
+                        <span class="summary-label">Draft:</span>
+                        <span class="summary-value" id="quotationsDraft">0</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Revised:</span>
+                        <span class="summary-value" id="quotationsRevised">0</span>
                     </div>
                 </div>
-                <div class="stat-card__actions">
-                    <button class="btn btn--sm" onclick="exportChart('quotations')">Export</button>
-                </div>
-            </div>
-            <div class="stat-card__body">
-                <div class="stat-card__meta">
-                    <div><small>Draft</small><div id="quotationsDraft" class="stat-card__meta-value">0</div></div>
-                    <div><small>Revised</small><div id="quotationsRevised" class="stat-card__meta-value">0</div></div>
-                </div>
-                <div class="stat-card__chart"><canvas id="quotationsChart"></canvas></div>
             </div>
         </div>
         
-        <div class="stat-card">
-            <div class="stat-card__header">
-                <div class="stat-card__title">
-                    <div class="stat-card__icon">🛒</div>
-                    <div>
-                        <div class="stat-card__label">Purchase Orders</div>
-                        <div class="stat-card__sub">Monthly volume & GST split</div>
-                    </div>
-                </div>
-                <div class="stat-card__actions">
-                    <button class="btn btn--sm" onclick="exportChart('purchase_orders')">Export</button>
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">🛒 Purchase Orders</h2>
+                <button class="btn btn--sm" onclick="exportChart('purchase_orders')">Export</button>
+            </div>
+            <div class="card__body">
+                <canvas id="purchaseOrdersChart" height="200"></canvas>
+                <div class="highlight-card">
+                    <div class="highlight-label">Largest PO:</div>
+                    <div class="highlight-value" id="largestPO">₹0</div>
                 </div>
             </div>
-            <div class="stat-card__body">
-                <div class="stat-card__meta">
-                    <div><small>Largest PO</small><div id="largestPO" class="stat-card__meta-value">₹0</div></div>
+        </div>
+    </div>
+    
+    <!-- Charts Section - Row 2 -->
+    <div class="dashboard-grid dashboard-grid--2-col">
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">💰 Invoice Status</h2>
+                <button class="btn btn--sm" onclick="exportChart('invoices')">Export</button>
+            </div>
+            <div class="card__body">
+                <canvas id="invoicesChart" height="200"></canvas>
+                <div class="chart-summary">
+                    <div class="summary-item">
+                        <span class="summary-label">Overdue:</span>
+                        <span class="summary-value" id="overdueCount">0</span>
+                    </div>
                 </div>
-                <div class="stat-card__chart"><canvas id="purchaseOrdersChart"></canvas></div>
             </div>
         </div>
         
-        <div class="stat-card">
-            <div class="stat-card__header">
-                <div class="stat-card__title">
-                    <div class="stat-card__icon">💰</div>
-                    <div>
-                        <div class="stat-card__label">Invoice Status</div>
-                        <div class="stat-card__sub">Paid / Unpaid / Overdue</div>
-                    </div>
-                </div>
-                <div class="stat-card__actions">
-                    <button class="btn btn--sm" onclick="exportChart('invoices')">Export</button>
-                </div>
-            </div>
-            <div class="stat-card__body">
-                <div class="stat-card__meta">
-                    <div><small>Overdue</small><div id="overdueCount" class="stat-card__meta-value">0</div></div>
-                </div>
-                <div class="stat-card__chart"><canvas id="invoicesChart"></canvas></div>
-            </div>
-        </div>
-        
-        <!-- Outstanding by Customer Panel -->
         <div class="card">
             <div class="card__header">
                 <h2 class="card__title">📋 Outstanding by Customer</h2>
@@ -203,43 +190,32 @@ ob_start();
                 <canvas id="outstandingByCustomerChart" height="200"></canvas>
             </div>
         </div>
-
-        <!-- Aging Buckets Panel -->
+    </div>
+    
+    <!-- Charts Section - Row 3 -->
+    <div class="dashboard-grid dashboard-grid--2-col">
         <div class="card">
             <div class="card__header">
                 <h2 class="card__title">⏳ Aging Buckets</h2>
-                <button class="btn btn--sm" onclick="exportChart('outstanding')">Export</button>
+                <button class="btn btn--sm" onclick="exportChart('aging')">Export</button>
             </div>
             <div class="card__body">
                 <canvas id="agingBucketsChart" height="200"></canvas>
             </div>
         </div>
         
-        <div class="stat-card">
-            <div class="stat-card__header">
-                <div class="stat-card__title">
-                    <div class="stat-card__icon">💳</div>
-                    <div>
-                        <div class="stat-card__label">Payments</div>
-                        <div class="stat-card__sub">Collected vs Expected</div>
-                    </div>
-                </div>
-                <div class="stat-card__actions">
-                    <button class="btn btn--sm" onclick="exportChart('payments')">Export</button>
-                </div>
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">💳 Payments</h2>
+                <button class="btn btn--sm" onclick="exportChart('payments')">Export</button>
             </div>
-            <div class="stat-card__body">
-                <div class="stat-card__meta">
-                    <div><small>Received</small><div id="invoiceReceived" class="stat-card__meta-value">₹0</div></div>
+            <div class="card__body">
+                <div id="paymentsEmpty" class="empty-state">
+                    <div class="empty-icon">💳</div>
+                    <h4>No Payments Recorded</h4>
+                    <p style="font-size:0.85rem">Payment data will appear here once transactions are recorded</p>
                 </div>
-                <div class="stat-card__chart">
-                    <div id="paymentsEmpty" class="empty-state">
-                        <div class="empty-icon">💳</div>
-                        <h4>No Payments Recorded</h4>
-                        <p style="font-size:0.85rem">Payment data will appear here once transactions are recorded</p>
-                    </div>
-                    <canvas id="paymentsChart" style="display:none"></canvas>
-                </div>
+                <canvas id="paymentsChart" height="200" style="display:none"></canvas>
             </div>
         </div>
     </div>
@@ -1364,6 +1340,12 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 /* Full Width Card */
 .card--full-width {
     grid-column: 1 / -1;
+}
+
+/* 2-Column Grid Layout */
+.dashboard-grid--2-col {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
 }
 
 /* Data View Styles */
