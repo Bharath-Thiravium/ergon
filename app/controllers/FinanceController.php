@@ -10,6 +10,12 @@ class FinanceController extends Controller {
     
     public function analyzeAllTables() {
         if (ob_get_level() > 0) { ob_clean(); }
+        // If PHP does not have pg_connect (pgsql extension missing), output a CSV-friendly error
+        if (!function_exists('pg_connect')) {
+            header('Content-Type: text/csv');
+            echo "Error,PostgreSQL extension (pgsql) not enabled in PHP\n";
+            exit;
+        }
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="finance_tables_analysis_' . date('Y-m-d_H-i-s') . '.csv"');
         
@@ -68,6 +74,10 @@ class FinanceController extends Controller {
         header('Content-Type: application/json');
         
         try {
+            if (!function_exists('pg_connect')) {
+                echo json_encode(['error' => 'PostgreSQL extension (pgsql) not enabled in PHP']);
+                return;
+            }
             $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
             
             if (!$conn) {
@@ -149,6 +159,11 @@ class FinanceController extends Controller {
         header('Content-Type: application/json');
         
         try {
+            if (!function_exists('pg_connect')) {
+                if (ob_get_level() > 0) { ob_clean(); }
+                echo json_encode(['error' => 'PostgreSQL extension (pgsql) not enabled in PHP']);
+                exit;
+            }
             $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=60");
             
             if (!$conn) {
