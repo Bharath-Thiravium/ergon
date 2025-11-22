@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../helpers/TimezoneHelper.php';
 
 class AttendanceController extends Controller {
     
@@ -242,14 +243,8 @@ class AttendanceController extends Controller {
                         // Continue with clock in if check fails
                     }
                     
-                    // Get user's timezone preference
-                    $stmt = $db->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
-                    $stmt->execute([$userId]);
-                    $userPrefs = $stmt->fetch();
-                    $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
-                    
-                    date_default_timezone_set($timezone);
-                    $currentTime = date('Y-m-d H:i:s');
+                    // Force user timezone
+                    $currentTime = TimezoneHelper::getCurrentTime($userId);
                     
                     // Clock in - handle both column name variations
                     $stmt = $db->query("SHOW COLUMNS FROM attendance");
@@ -293,15 +288,9 @@ class AttendanceController extends Controller {
                     }
                     
                 } elseif ($type === 'out') {
-                    // Get user's timezone preference
-                    $stmt = $db->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
-                    $stmt->execute([$userId]);
-                    $userPrefs = $stmt->fetch();
-                    $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
-                    
-                    date_default_timezone_set($timezone);
-                    $currentDate = date('Y-m-d');
-                    $currentTime = date('Y-m-d H:i:s');
+                    // Force user timezone
+                    $currentTime = TimezoneHelper::getCurrentTime($userId);
+                    $currentDate = TimezoneHelper::getCurrentDate($userId);
                     
                     // Find today's attendance record
                     $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");

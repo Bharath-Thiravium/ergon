@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/TimezoneHelper.php';
 
 class Attendance {
     private $conn;
@@ -37,8 +38,7 @@ class Attendance {
                 }
             }
             
-            $this->setUserTimezone($userId);
-            $currentTime = date('Y-m-d H:i:s');
+            $currentTime = TimezoneHelper::getCurrentTime($userId);
             $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
             
             $query = "INSERT INTO attendance (user_id, check_in, latitude, longitude, location_name, status, client_uuid, distance_meters, is_valid, ip_address) 
@@ -59,9 +59,8 @@ class Attendance {
     
     public function checkOut($userId, $clientUuid = null) {
         try {
-            $this->setUserTimezone($userId);
-            $currentTime = date('Y-m-d H:i:s');
-            $currentDate = date('Y-m-d');
+            $currentTime = TimezoneHelper::getCurrentTime($userId);
+            $currentDate = TimezoneHelper::getCurrentDate($userId);
             
             $query = "UPDATE attendance SET check_out = ? 
                       WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL";
@@ -75,8 +74,7 @@ class Attendance {
     }
     
     public function getTodayAttendance($userId) {
-        $this->setUserTimezone($userId);
-        $currentDate = date('Y-m-d');
+        $currentDate = TimezoneHelper::getCurrentDate($userId);
         
         $query = "SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?";
         $stmt = $this->conn->prepare($query);
