@@ -53,7 +53,7 @@
             </div>
             <div class="kpi-card__value" id="totalInvoiceAmount">₹0</div>
             <div class="kpi-card__label">Total Invoice Amount</div>
-            <div class="kpi-card__status">Total Revenue Generated</div>
+            <div class="kpi-card__description">Total Revenue Generated</div>
             <div class="kpi-card__details">
                 <div class="detail-item">Count: <span id="totalInvoiceCount">0</span></div>
                 <div class="detail-item">Avg: <span id="avgInvoiceAmount">₹0</span></div>
@@ -66,8 +66,8 @@
                 <div class="kpi-card__trend" id="receivedTrend">↗ +0%</div>
             </div>
             <div class="kpi-card__value" id="invoiceReceived">₹0</div>
-            <div class="kpi-card__label">Invoice Amount Received</div>
-            <div class="kpi-card__status">Successfully Collected Revenue</div>
+            <div class="kpi-card__label">Amount Received</div>
+            <div class="kpi-card__description">Successfully Collected Revenue</div>
             <div class="kpi-card__details">
                 <div class="detail-item">Collection Rate: <span id="collectionRateKPI">0%</span></div>
                 <div class="detail-item">Paid Invoices: <span id="paidInvoiceCount">0</span></div>
@@ -80,8 +80,8 @@
                 <div class="kpi-card__trend" id="pendingTrend">— 0%</div>
             </div>
             <div class="kpi-card__value" id="pendingInvoiceAmount">₹0</div>
-            <div class="kpi-card__label">Pending Invoice Amount</div>
-            <div class="kpi-card__status">Awaiting Customer Payment</div>
+            <div class="kpi-card__label">Outstanding Amount</div>
+            <div class="kpi-card__description">Awaiting Customer Payment</div>
             <div class="kpi-card__details">
                 <div class="detail-item">Overdue: <span id="overdueAmount">₹0</span></div>
                 <div class="detail-item">Customers: <span id="pendingCustomers">0</span></div>
@@ -94,8 +94,8 @@
                 <div class="kpi-card__trend" id="gstTrend">— 0%</div>
             </div>
             <div class="kpi-card__value" id="pendingGSTAmount">₹0</div>
-            <div class="kpi-card__label">Pending GST Amount</div>
-            <div class="kpi-card__status">Tax Liability on Outstanding</div>
+            <div class="kpi-card__label">GST Liability</div>
+            <div class="kpi-card__description">Tax Liability on Outstanding</div>
             <div class="kpi-card__details">
                 <div class="detail-item">CGST: <span id="pendingCGST">₹0</span></div>
                 <div class="detail-item">SGST: <span id="pendingSGST">₹0</span></div>
@@ -108,8 +108,8 @@
                 <div class="kpi-card__trend" id="poTrend">↗ +0%</div>
             </div>
             <div class="kpi-card__value" id="pendingPOValue">₹0</div>
-            <div class="kpi-card__label">Pending PO Value</div>
-            <div class="kpi-card__status">Committed Purchase Orders</div>
+            <div class="kpi-card__label">PO Commitments</div>
+            <div class="kpi-card__description">Committed Purchase Orders</div>
             <div class="kpi-card__details">
                 <div class="detail-item">Open POs: <span id="openPOCount">0</span></div>
                 <div class="detail-item">Avg PO: <span id="avgPOValue">₹0</span></div>
@@ -122,8 +122,8 @@
                 <div class="kpi-card__trend" id="claimableTrend">— 0%</div>
             </div>
             <div class="kpi-card__value" id="claimableAmount">₹0</div>
-            <div class="kpi-card__label">Pending Claimable Amount in PO</div>
-            <div class="kpi-card__status">Available for Invoice Claims</div>
+            <div class="kpi-card__label">Claimable Amount</div>
+            <div class="kpi-card__description">Available for Invoice Claims</div>
             <div class="kpi-card__details">
                 <div class="detail-item">Claimable POs: <span id="claimablePOCount">0</span></div>
                 <div class="detail-item">Claim Rate: <span id="claimRate">0%</span></div>
@@ -704,63 +704,137 @@ async function updateCharts() {
     try {
         // Update Quotations Chart
         const quotationsResponse = await fetch('/ergon/finance/visualization?type=quotations');
-        const quotationsData = await quotationsResponse.json();
+        const quotationsText = await quotationsResponse.text();
+        const quotationsData = quotationsText ? JSON.parse(quotationsText) : {};
         
         if (quotationsChart && quotationsData.data) {
             quotationsChart.data.datasets[0].data = quotationsData.data;
             quotationsChart.update();
             
-            document.getElementById('quotationsDraft').textContent = quotationsData.draft || 0;
-            document.getElementById('quotationsRevised').textContent = quotationsData.revised || 0;
-            document.getElementById('quotationsTotal').textContent = (quotationsData.draft + quotationsData.revised) || 0;
+            const winRateEl = document.getElementById('quotationWinRate');
+            const avgEl = document.getElementById('quotationsAvg');
+            const pipelineEl = document.getElementById('pipelineValue');
+            const totalEl = document.getElementById('quotationsTotal');
+            
+            if (winRateEl) winRateEl.textContent = `${quotationsData.winRate || 0}%`;
+            if (avgEl) avgEl.textContent = `₹${(quotationsData.avgValue || 0).toLocaleString()}`;
+            if (pipelineEl) pipelineEl.textContent = `₹${(quotationsData.pipelineValue || 0).toLocaleString()}`;
+            if (totalEl) totalEl.textContent = quotationsData.total || 0;
         }
         
         // Update Purchase Orders Chart
         const poResponse = await fetch('/ergon/finance/visualization?type=purchase_orders');
-        const poData = await poResponse.json();
+        const poText = await poResponse.text();
+        const poData = poText ? JSON.parse(poText) : {};
         
-        if (purchaseOrdersChart && poData.labels) {
-            purchaseOrdersChart.data.labels = poData.labels;
-            purchaseOrdersChart.data.datasets[0].data = poData.data;
-            purchaseOrdersChart.update();
+        if (purchaseOrdersChart) {
+            if (poData.labels && poData.data) {
+                purchaseOrdersChart.data.labels = poData.labels;
+                purchaseOrdersChart.data.datasets[0].data = poData.data;
+                purchaseOrdersChart.update();
+            } else {
+                // Fallback data if no data available
+                purchaseOrdersChart.data.labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                purchaseOrdersChart.data.datasets[0].data = [0, 0, 0, 0, 0, 0];
+                purchaseOrdersChart.update();
+            }
             
-            document.getElementById('largestPO').textContent = `₹${(poData.largest || 0).toLocaleString()}`;
+            const fulfillmentEl = document.getElementById('poFulfillmentRate');
+            const leadTimeEl = document.getElementById('avgLeadTime');
+            const commitmentsEl = document.getElementById('openCommitments');
+            const poTotalEl = document.getElementById('poTotal');
+            
+            if (fulfillmentEl) fulfillmentEl.textContent = `${poData.fulfillmentRate || 0}%`;
+            if (leadTimeEl) leadTimeEl.textContent = `${poData.avgLeadTime || 0} days`;
+            if (commitmentsEl) commitmentsEl.textContent = `₹${(poData.openCommitments || 0).toLocaleString()}`;
+            if (poTotalEl) poTotalEl.textContent = poData.total || 0;
         }
         
         // Update Invoices Chart
         const invoicesResponse = await fetch('/ergon/finance/visualization?type=invoices');
-        const invoicesData = await invoicesResponse.json();
+        const invoicesText = await invoicesResponse.text();
+        const invoicesData = invoicesText ? JSON.parse(invoicesText) : {};
         
         if (invoicesChart && invoicesData.data) {
             invoicesChart.data.datasets[0].data = invoicesData.data;
             invoicesChart.update();
             
-            // Show overdue alert
-            if (invoicesData.overdueCount > 0) {
-                document.getElementById('overdueAlert').style.display = 'block';
-                document.getElementById('overdueCount').textContent = invoicesData.overdueCount;
-            }
+            const dsoEl = document.getElementById('dsoMetric');
+            const badDebtEl = document.getElementById('badDebtRisk');
+            const efficiencyEl = document.getElementById('collectionEfficiency');
+            const invoicesTotalEl = document.getElementById('invoicesTotal');
+            
+            if (dsoEl) dsoEl.textContent = `${invoicesData.dso || 0} days`;
+            if (badDebtEl) badDebtEl.textContent = `₹${(invoicesData.badDebtRisk || 0).toLocaleString()}`;
+            if (efficiencyEl) efficiencyEl.textContent = `${invoicesData.collectionEfficiency || 0}%`;
+            if (invoicesTotalEl) invoicesTotalEl.textContent = invoicesData.total || 0;
         }
+        
         // Update Outstanding by Customer Chart
-        try {
-            const topNEl = document.getElementById('outstandingTopN');
-            const limit = topNEl ? parseInt(topNEl.value || '10', 10) : 10;
-            await loadOutstandingByCustomer(limit);
-        } catch (err) {
-            console.error('Failed to load outstanding-by-customer:', err);
+        const outstandingResp = await fetch('/ergon/finance/outstanding-by-customer?limit=10');
+        const outstandingText = await outstandingResp.text();
+        const outstandingData = outstandingText ? JSON.parse(outstandingText) : {};
+        if (outstandingByCustomerChart && outstandingData.labels) {
+            outstandingByCustomerChart.data.labels = outstandingData.labels;
+            outstandingByCustomerChart.data.datasets[0].data = outstandingData.data;
+            outstandingByCustomerChart.update();
+            
+            const concentrationEl = document.getElementById('concentrationRisk');
+            const exposureEl = document.getElementById('top3Exposure');
+            const diversityEl = document.getElementById('customerDiversity');
+            const outTotalEl = document.getElementById('outstandingTotal');
+            
+            if (concentrationEl) concentrationEl.textContent = `${outstandingData.concentrationRisk || 0}%`;
+            if (exposureEl) exposureEl.textContent = `₹${(outstandingData.top3Exposure || 0).toLocaleString()}`;
+            if (diversityEl) diversityEl.textContent = outstandingData.customerCount || 0;
+            if (outTotalEl) outTotalEl.textContent = `₹${(outstandingData.total || 0).toLocaleString()}`;
         }
 
         // Update Aging Buckets Chart
-        try {
-            const agingResp = await fetch('/ergon/finance/aging-buckets');
-            const agingData = await agingResp.json();
-            if (agingBucketsChart && agingData.labels) {
-                agingBucketsChart.data.labels = agingData.labels;
-                agingBucketsChart.data.datasets[0].data = agingData.data;
-                agingBucketsChart.update();
+        const agingResp = await fetch('/ergon/finance/aging-buckets');
+        const agingText = await agingResp.text();
+        const agingData = agingText ? JSON.parse(agingText) : {};
+        if (agingBucketsChart && agingData.labels) {
+            agingBucketsChart.data.labels = agingData.labels;
+            agingBucketsChart.data.datasets[0].data = agingData.data;
+            agingBucketsChart.update();
+            
+            const provisionEl = document.getElementById('provisionRequired');
+            const recoveryEl = document.getElementById('recoveryRate');
+            const qualityEl = document.getElementById('creditQuality');
+            const agingTotalEl = document.getElementById('agingTotal');
+            
+            if (provisionEl) provisionEl.textContent = `₹${(agingData.provisionRequired || 0).toLocaleString()}`;
+            if (recoveryEl) recoveryEl.textContent = `${agingData.recoveryRate || 0}%`;
+            if (qualityEl) qualityEl.textContent = agingData.creditQuality || 'Good';
+            if (agingTotalEl) agingTotalEl.textContent = `₹${(agingData.total || 0).toLocaleString()}`;
+        }
+        
+        // Update Payments Chart
+        const paymentsResp = await fetch('/ergon/finance/visualization?type=payments');
+        const paymentsText = await paymentsResp.text();
+        const paymentsData = paymentsText ? JSON.parse(paymentsText) : {};
+        if (paymentsChart) {
+            if (paymentsData.labels && paymentsData.data) {
+                paymentsChart.data.labels = paymentsData.labels;
+                paymentsChart.data.datasets[0].data = paymentsData.data;
+                paymentsChart.update();
+            } else {
+                // Fallback data
+                paymentsChart.data.labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                paymentsChart.data.datasets[0].data = [0, 0, 0, 0, 0, 0];
+                paymentsChart.update();
             }
-        } catch (err) {
-            console.error('Failed to load aging-buckets:', err);
+            
+            const velocityEl = document.getElementById('paymentVelocity');
+            const accuracyEl = document.getElementById('forecastAccuracy');
+            const conversionEl = document.getElementById('cashConversion');
+            const paymentsTotalEl = document.getElementById('paymentsTotal');
+            
+            if (velocityEl) velocityEl.textContent = `₹${(paymentsData.velocity || 0).toLocaleString()}/day`;
+            if (accuracyEl) accuracyEl.textContent = `${paymentsData.forecastAccuracy || 0}%`;
+            if (conversionEl) conversionEl.textContent = `${paymentsData.cashConversion || 0} days`;
+            if (paymentsTotalEl) paymentsTotalEl.textContent = `₹${(paymentsData.total || 0).toLocaleString()}`;
         }
         
     } catch (error) {
@@ -1562,13 +1636,14 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     font-weight: 600;
 }
 
-.kpi-card__status {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    margin-top: 0.25rem;
-    line-height: 1.3;
-    text-transform: capitalize;
+.kpi-card__description {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    font-style: italic;
+    margin-top: 0.5rem;
+    line-height: 1.2;
+    opacity: 0.8;
 }
 
 .kpi-card__details {
