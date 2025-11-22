@@ -715,66 +715,31 @@ class FinanceController extends Controller {
         header('Content-Type: application/json');
         
         try {
-            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
-            
-            if (!$conn) {
-                throw new Exception('PostgreSQL connection failed');
-            }
-            
+            $db = Database::connect();
             $prefix = $this->getCompanyPrefix();
             $customers = [];
             
-            // First check what tables exist
-            $tableCheck = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '%customer%'");
-            $customerTable = null;
-            while ($row = pg_fetch_assoc($tableCheck)) {
-                $customerTable = $row['table_name'];
-                break;
-            }
+            // Get all finance data and extract customer info
+            $stmt = $db->prepare("SELECT data FROM finance_data");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            if ($customerTable) {
-                // Get column names for customer table
-                $colQuery = pg_query($conn, "SELECT column_name FROM information_schema.columns WHERE table_name = '$customerTable'");
-                $columns = [];
-                while ($col = pg_fetch_assoc($colQuery)) {
-                    $columns[] = $col['column_name'];
-                }
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $customerId = $data['customer_id'] ?? '';
+                $customerGstin = $data['customer_gstin'] ?? '';
                 
-                // Build query based on available columns
-                $nameField = in_array('company_name', $columns) ? 'company_name' : 
-                           (in_array('name', $columns) ? 'name' : 
-                           (in_array('customer_name', $columns) ? 'customer_name' : 'id'));
+                // Look for customer name in any possible field
+                $customerName = $data['customer_name'] ?? $data['company_name'] ?? $data['client_name'] ?? $data['business_name'] ?? $data['name'] ?? '';
                 
-                $query = "SELECT DISTINCT q.customer_id, q.customer_gstin, c.$nameField as customer_name 
-                         FROM finance_quotations q 
-                         LEFT JOIN $customerTable c ON q.customer_id = c.id 
-                         WHERE UPPER(q.quotation_number) LIKE '%{$prefix}%'";
-            } else {
-                // Fallback: get from quotations only
-                $query = "SELECT DISTINCT customer_id, customer_gstin 
-                         FROM finance_quotations 
-                         WHERE UPPER(quotation_number) LIKE '%{$prefix}%'";
-            }
-            
-            $result = pg_query($conn, $query);
-            
-            if ($result) {
-                while ($row = pg_fetch_assoc($result)) {
-                    $customerId = $row['customer_id'];
-                    $customerName = $row['customer_name'] ?? "Customer {$customerId}";
-                    $customerGstin = $row['customer_gstin'] ?? '';
-                    
-                    if ($customerId) {
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $customerGstin,
-                            'display' => $customerName . ($customerGstin ? " (GST: {$customerGstin})" : '')
-                        ];
-                    }
+                if ($customerId && $customerName && !isset($customers[$customerId])) {
+                    $customers[$customerId] = [
+                        'id' => $customerId,
+                        'gstin' => $customerGstin,
+                        'display' => $customerName . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                    ];
                 }
             }
-            
-            pg_close($conn);
             
             uasort($customers, function($a, $b) {
                 return strcmp($a['display'], $b['display']);
