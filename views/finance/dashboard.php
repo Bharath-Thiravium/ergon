@@ -7,18 +7,41 @@
 
 <div class="container-fluid">
     <!-- Header Actions -->
-    <div class="header-actions">
-        <button id="syncBtn" class="btn btn--primary">🔄 Sync Data</button>
-        <button id="exportBtn" class="btn btn--secondary">📥 Export Dashboard</button>
-        <button onclick="window.open('/ergon/finance/download-database', '_blank')" class="btn btn--info">💾 Download Database</button>
-        <input type="text" id="companyPrefix" class="form-control" placeholder="Company Prefix (e.g., BKC)" maxlength="10">
-        <button id="updatePrefixBtn" class="btn btn--secondary">🏢 Update Prefix</button>
-        <select id="dateFilter" class="form-control">
-            <option value="all">All Time</option>
-            <option value="30">Last 30 Days</option>
-            <option value="90">Last 90 Days</option>
-            <option value="365">Last Year</option>
-        </select>
+    <div class="dashboard-header">
+        <div class="dashboard-header__title">
+            <h1>Finance Dashboard</h1>
+            <p>Real-time financial insights and analytics</p>
+        </div>
+        <div class="dashboard-header__actions">
+            <div class="action-group">
+                <button id="syncBtn" class="btn btn--primary btn--sm">
+                    <span class="btn__icon">🔄</span>
+                    <span class="btn__text">Sync Data</span>
+                </button>
+                <button id="exportBtn" class="btn btn--secondary btn--sm">
+                    <span class="btn__icon">📥</span>
+                    <span class="btn__text">Export</span>
+                </button>
+                <button onclick="window.open('/ergon/finance/download-database', '_blank')" class="btn btn--info btn--sm">
+                    <span class="btn__icon">💾</span>
+                    <span class="btn__text">Download DB</span>
+                </button>
+            </div>
+            <div class="filter-group">
+                <div class="input-group">
+                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Company Prefix" maxlength="10">
+                    <button id="updatePrefixBtn" class="btn btn--secondary btn--sm">
+                        <span class="btn__icon">🏢</span>
+                    </button>
+                </div>
+                <select id="dateFilter" class="form-control form-control--sm">
+                    <option value="all">All Time</option>
+                    <option value="30">Last 30 Days</option>
+                    <option value="90">Last 90 Days</option>
+                    <option value="365">Last Year</option>
+                </select>
+            </div>
+        </div>
     </div>
 
     <!-- Top-Level KPI Cards -->
@@ -30,7 +53,11 @@
             </div>
             <div class="kpi-card__value" id="totalInvoiceAmount">₹0</div>
             <div class="kpi-card__label">Total Invoice Amount</div>
-            <div class="kpi-card__status">Revenue</div>
+            <div class="kpi-card__status">Total Revenue Generated</div>
+            <div class="kpi-card__details">
+                <div class="detail-item">Count: <span id="totalInvoiceCount">0</span></div>
+                <div class="detail-item">Avg: <span id="avgInvoiceAmount">₹0</span></div>
+            </div>
         </div>
         
         <div class="kpi-card kpi-card--success">
@@ -39,8 +66,12 @@
                 <div class="kpi-card__trend" id="receivedTrend">↗ +0%</div>
             </div>
             <div class="kpi-card__value" id="invoiceReceived">₹0</div>
-            <div class="kpi-card__label">Amount Received</div>
-            <div class="kpi-card__status">Collected</div>
+            <div class="kpi-card__label">Invoice Amount Received</div>
+            <div class="kpi-card__status">Successfully Collected Revenue</div>
+            <div class="kpi-card__details">
+                <div class="detail-item">Collection Rate: <span id="collectionRateKPI">0%</span></div>
+                <div class="detail-item">Paid Invoices: <span id="paidInvoiceCount">0</span></div>
+            </div>
         </div>
         
         <div class="kpi-card kpi-card--warning">
@@ -50,7 +81,11 @@
             </div>
             <div class="kpi-card__value" id="pendingInvoiceAmount">₹0</div>
             <div class="kpi-card__label">Pending Invoice Amount</div>
-            <div class="kpi-card__status kpi-card__status--pending">Outstanding</div>
+            <div class="kpi-card__status">Awaiting Customer Payment</div>
+            <div class="kpi-card__details">
+                <div class="detail-item">Overdue: <span id="overdueAmount">₹0</span></div>
+                <div class="detail-item">Customers: <span id="pendingCustomers">0</span></div>
+            </div>
         </div>
         
         <div class="kpi-card kpi-card--info">
@@ -60,7 +95,11 @@
             </div>
             <div class="kpi-card__value" id="pendingGSTAmount">₹0</div>
             <div class="kpi-card__label">Pending GST Amount</div>
-            <div class="kpi-card__status">Tax Liability</div>
+            <div class="kpi-card__status">Tax Liability on Outstanding</div>
+            <div class="kpi-card__details">
+                <div class="detail-item">CGST: <span id="pendingCGST">₹0</span></div>
+                <div class="detail-item">SGST: <span id="pendingSGST">₹0</span></div>
+            </div>
         </div>
         
         <div class="kpi-card kpi-card--primary">
@@ -70,7 +109,11 @@
             </div>
             <div class="kpi-card__value" id="pendingPOValue">₹0</div>
             <div class="kpi-card__label">Pending PO Value</div>
-            <div class="kpi-card__status">Commitments</div>
+            <div class="kpi-card__status">Committed Purchase Orders</div>
+            <div class="kpi-card__details">
+                <div class="detail-item">Open POs: <span id="openPOCount">0</span></div>
+                <div class="detail-item">Avg PO: <span id="avgPOValue">₹0</span></div>
+            </div>
         </div>
         
         <div class="kpi-card kpi-card--secondary">
@@ -79,8 +122,12 @@
                 <div class="kpi-card__trend" id="claimableTrend">— 0%</div>
             </div>
             <div class="kpi-card__value" id="claimableAmount">₹0</div>
-            <div class="kpi-card__label">Claimable Amount</div>
-            <div class="kpi-card__status">Recoverable</div>
+            <div class="kpi-card__label">Pending Claimable Amount in PO</div>
+            <div class="kpi-card__status">Available for Invoice Claims</div>
+            <div class="kpi-card__details">
+                <div class="detail-item">Claimable POs: <span id="claimablePOCount">0</span></div>
+                <div class="detail-item">Claim Rate: <span id="claimRate">0%</span></div>
+            </div>
         </div>
     </div>
 
@@ -135,22 +182,22 @@
                     <div class="chart-card__icon">📝</div>
                     <div class="chart-card__title">Quotations Overview</div>
                     <div class="chart-card__value" id="quotationsTotal">0</div>
-                    <div class="chart-card__subtitle">Total Active Quotes</div>
+                    <div class="chart-card__subtitle">Sales Pipeline Status Distribution</div>
                 </div>
                 <div class="chart-card__trend" id="quotationsTrend">+0%</div>
             </div>
             <div class="chart-card__chart">
                 <canvas id="quotationsChart"></canvas>
                 <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color" style="background:#3b82f6"></span>Draft</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Revised</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Converted</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#3b82f6"></span>Draft (Initial)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Revised (Updated)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Converted (Won)</div>
                 </div>
             </div>
             <div class="chart-card__meta">
-                <div class="meta-item"><span>Draft:</span><strong id="quotationsDraft">0</strong></div>
-                <div class="meta-item"><span>Revised:</span><strong id="quotationsRevised">0</strong></div>
-                <div class="meta-item"><span>Avg Value:</span><strong id="quotationsAvg">₹0</strong></div>
+                <div class="meta-item"><span>Win Rate:</span><strong id="quotationWinRate">0%</strong></div>
+                <div class="meta-item"><span>Avg Deal Size:</span><strong id="quotationsAvg">₹0</strong></div>
+                <div class="meta-item"><span>Pipeline Value:</span><strong id="pipelineValue">₹0</strong></div>
             </div>
         </div>
         
@@ -160,7 +207,7 @@
                     <div class="chart-card__icon">🛒</div>
                     <div class="chart-card__title">Purchase Orders</div>
                     <div class="chart-card__value" id="poTotal">0</div>
-                    <div class="chart-card__subtitle">Monthly Trend</div>
+                    <div class="chart-card__subtitle">Procurement Commitment Timeline</div>
                 </div>
                 <div class="chart-card__trend" id="poTrendChart">+0%</div>
             </div>
@@ -168,9 +215,9 @@
                 <canvas id="purchaseOrdersChart"></canvas>
             </div>
             <div class="chart-card__meta">
-                <div class="meta-item"><span>Largest:</span><strong id="largestPO">₹0</strong></div>
-                <div class="meta-item"><span>Pending:</span><strong id="pendingPOs">0</strong></div>
-                <div class="meta-item"><span>This Month:</span><strong id="monthlyPOs">0</strong></div>
+                <div class="meta-item"><span>Fulfillment Rate:</span><strong id="poFulfillmentRate">0%</strong></div>
+                <div class="meta-item"><span>Avg Lead Time:</span><strong id="avgLeadTime">0 days</strong></div>
+                <div class="meta-item"><span>Open Commitments:</span><strong id="openCommitments">₹0</strong></div>
             </div>
         </div>
         
@@ -180,22 +227,22 @@
                     <div class="chart-card__icon">💰</div>
                     <div class="chart-card__title">Invoice Status</div>
                     <div class="chart-card__value" id="invoicesTotal">0</div>
-                    <div class="chart-card__subtitle">Payment Status</div>
+                    <div class="chart-card__subtitle">Revenue Collection Health</div>
                 </div>
                 <div class="chart-card__trend" id="invoicesTrendChart">0%</div>
             </div>
             <div class="chart-card__chart">
                 <canvas id="invoicesChart"></canvas>
                 <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Paid</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Unpaid</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Overdue</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Paid (Collected)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Unpaid (Due)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Overdue (Risk)</div>
                 </div>
             </div>
             <div class="chart-card__meta">
-                <div class="meta-item"><span>Overdue:</span><strong id="overdueCount">0</strong></div>
-                <div class="meta-item"><span>Collection Rate:</span><strong id="collectionRate">0%</strong></div>
-                <div class="meta-item"><span>Avg Days:</span><strong id="avgDays">0</strong></div>
+                <div class="meta-item"><span>DSO:</span><strong id="dsoMetric">0 days</strong></div>
+                <div class="meta-item"><span>Bad Debt Risk:</span><strong id="badDebtRisk">₹0</strong></div>
+                <div class="meta-item"><span>Collection Efficiency:</span><strong id="collectionEfficiency">0%</strong></div>
             </div>
         </div>
         
@@ -203,9 +250,9 @@
             <div class="chart-card__header">
                 <div class="chart-card__info">
                     <div class="chart-card__icon">📋</div>
-                    <div class="chart-card__title">Outstanding</div>
+                    <div class="chart-card__title">Outstanding by Customer</div>
                     <div class="chart-card__value" id="outstandingTotal">₹0</div>
-                    <div class="chart-card__subtitle">By Customer</div>
+                    <div class="chart-card__subtitle">Receivables Concentration Risk</div>
                 </div>
                 <div class="chart-card__trend" id="outstandingTrend">0%</div>
             </div>
@@ -213,9 +260,9 @@
                 <canvas id="outstandingByCustomerChart"></canvas>
             </div>
             <div class="chart-card__meta">
-                <div class="meta-item"><span>Top Customer:</span><strong id="topCustomer">-</strong></div>
-                <div class="meta-item"><span>Customers:</span><strong id="totalCustomers">0</strong></div>
-                <div class="meta-item"><span>Avg Outstanding:</span><strong id="avgOutstanding">₹0</strong></div>
+                <div class="meta-item"><span>Concentration Risk:</span><strong id="concentrationRisk">0%</strong></div>
+                <div class="meta-item"><span>Top 3 Exposure:</span><strong id="top3Exposure">₹0</strong></div>
+                <div class="meta-item"><span>Customer Diversity:</span><strong id="customerDiversity">0</strong></div>
             </div>
         </div>
         
@@ -225,23 +272,23 @@
                     <div class="chart-card__icon">⏳</div>
                     <div class="chart-card__title">Aging Buckets</div>
                     <div class="chart-card__value" id="agingTotal">₹0</div>
-                    <div class="chart-card__subtitle">Days Outstanding</div>
+                    <div class="chart-card__subtitle">Credit Risk Assessment Matrix</div>
                 </div>
                 <div class="chart-card__trend" id="agingTrend">0%</div>
             </div>
             <div class="chart-card__chart">
                 <canvas id="agingBucketsChart"></canvas>
                 <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>0-30</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>31-60</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#fb923c"></span>61-90</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>90+</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Current (0-30)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Watch (31-60)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#fb923c"></span>Concern (61-90)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Critical (90+)</div>
                 </div>
             </div>
             <div class="chart-card__meta">
-                <div class="meta-item"><span>Critical (90+):</span><strong id="agingCritical">₹0</strong></div>
-                <div class="meta-item"><span>Avg Age:</span><strong id="avgAge">0 days</strong></div>
-                <div class="meta-item"><span>Risk Score:</span><strong id="riskScore">Low</strong></div>
+                <div class="meta-item"><span>Provision Req:</span><strong id="provisionRequired">₹0</strong></div>
+                <div class="meta-item"><span>Recovery Rate:</span><strong id="recoveryRate">0%</strong></div>
+                <div class="meta-item"><span>Credit Quality:</span><strong id="creditQuality">Good</strong></div>
             </div>
         </div>
         
@@ -251,7 +298,7 @@
                     <div class="chart-card__icon">💳</div>
                     <div class="chart-card__title">Payments</div>
                     <div class="chart-card__value" id="paymentsTotal">₹0</div>
-                    <div class="chart-card__subtitle">Monthly Collections</div>
+                    <div class="chart-card__subtitle">Cash Flow Realization Pattern</div>
                 </div>
                 <div class="chart-card__trend" id="paymentsTrend">+0%</div>
             </div>
@@ -259,9 +306,9 @@
                 <canvas id="paymentsChart"></canvas>
             </div>
             <div class="chart-card__meta">
-                <div class="meta-item"><span>This Month:</span><strong id="paymentsMonth">₹0</strong></div>
-                <div class="meta-item"><span>Last Month:</span><strong id="paymentsLastMonth">₹0</strong></div>
-                <div class="meta-item"><span>Growth:</span><strong id="paymentsGrowth">0%</strong></div>
+                <div class="meta-item"><span>Velocity:</span><strong id="paymentVelocity">₹0/day</strong></div>
+                <div class="meta-item"><span>Forecast Accuracy:</span><strong id="forecastAccuracy">0%</strong></div>
+                <div class="meta-item"><span>Cash Conversion:</span><strong id="cashConversion">0 days</strong></div>
             </div>
         </div>
     </div>
@@ -1513,6 +1560,125 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 .meta-item strong {
     font-size: 0.65rem;
     font-weight: 600;
+}
+
+.kpi-card__status {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-top: 0.25rem;
+    line-height: 1.3;
+    text-transform: capitalize;
+}
+
+.kpi-card__details {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.detail-item {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.detail-item span {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Dashboard Header */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.dashboard-header__title h1 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.dashboard-header__title p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.dashboard-header__actions {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.action-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.filter-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.input-group {
+    display: flex;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.input-group .form-control {
+    border: none;
+    border-radius: 0;
+    margin: 0;
+}
+
+.input-group .btn {
+    border-radius: 0;
+    border-left: 1px solid var(--border-color);
+}
+
+.btn--sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.btn__icon {
+    margin-right: 0.25rem;
+}
+
+.form-control--sm {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    min-width: 120px;
+}
+
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .dashboard-header__actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .action-group,
+    .filter-group {
+        flex-wrap: wrap;
+    }
 }
 
 /* Stat-card styles moved to assets/css/ergon.css */
