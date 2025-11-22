@@ -142,6 +142,7 @@ class FinanceController extends Controller {
     }
     
     public function sync() {
+        ob_clean();
         set_time_limit(0);
         ini_set('memory_limit', '1G');
         
@@ -166,12 +167,14 @@ class FinanceController extends Controller {
             }
             
             $syncCount = 0;
-            $batchSize = 100;
+            $batchSize = 50;
             
             foreach ($allTables as $tableName) {
                 try {
                     // Get row count first
                     $countResult = pg_query($conn, "SELECT COUNT(*) FROM \"$tableName\"");
+                    if (!$countResult) continue;
+                    
                     $rowCount = pg_fetch_row($countResult)[0];
                     
                     if ($rowCount > 0) {
@@ -196,11 +199,15 @@ class FinanceController extends Controller {
             }
             
             pg_close($conn);
-            echo json_encode(['success' => true, 'tables' => $syncCount, 'total_available' => count($allTables)]);
             
         } catch (Exception $e) {
+            ob_clean();
             echo json_encode(['error' => $e->getMessage()]);
+            exit;
         }
+        
+        ob_clean();
+        echo json_encode(['success' => true, 'tables' => $syncCount]);
         exit;
     }
     
