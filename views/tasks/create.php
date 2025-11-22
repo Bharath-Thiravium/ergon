@@ -305,6 +305,51 @@ $content = ob_start();
                             </label>
                         </div>
                     </div>
+                    
+                    <div class="option-card">
+                        <div class="option-header">
+                            <div class="option-icon">🔄</div>
+                            <div class="option-content">
+                                <h4>Recurring Task</h4>
+                                <p>Set task to repeat automatically</p>
+                            </div>
+                        </div>
+                        <div class="option-toggle">
+                            <input type="checkbox" id="is_recurring" name="is_recurring" class="toggle-switch" onchange="toggleRecurringFields()">
+                            <label for="is_recurring" class="toggle-label">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recurring Fields (Hidden by default) -->
+            <div id="recurringFields" class="form-section recurring-section" style="display: none;">
+                <h3>🔄 Recurring Schedule</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="recurrence_type">Repeat Frequency *</label>
+                        <select id="recurrence_type" name="recurrence_type">
+                            <option value="weekly">📅 Weekly</option>
+                            <option value="monthly">📆 Monthly</option>
+                            <option value="quarterly">📅 Quarterly (3 months)</option>
+                            <option value="half_yearly">📆 Half Yearly (6 months)</option>
+                            <option value="annually">📅 Annually (12 months)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="recurrence_interval">Repeat Every</label>
+                        <div class="interval-input">
+                            <input type="number" id="recurrence_interval" name="recurrence_interval" min="1" max="12" value="1">
+                            <span id="interval_label">week(s)</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="recurrence_end_date">End Recurrence</label>
+                        <input type="date" id="recurrence_end_date" name="recurrence_end_date" min="<?= date('Y-m-d', strtotime('+1 week')) ?>">
+                        <small class="field-hint">Optional: When to stop creating recurring tasks</small>
+                    </div>
                 </div>
             </div>
 
@@ -455,6 +500,63 @@ function handleAssignmentTypeChange() {
         });
         // Don't auto-select current user when delegating
         assignedToSelect.value = '';
+    }
+}
+
+// Toggle recurring fields
+function toggleRecurringFields() {
+    const checkbox = document.getElementById('is_recurring');
+    const recurringFields = document.getElementById('recurringFields');
+    
+    if (checkbox.checked) {
+        recurringFields.style.display = 'block';
+        recurringFields.style.animation = 'slideDown 0.3s ease';
+        
+        // Add required attribute to recurring fields
+        document.getElementById('recurrence_type').setAttribute('required', 'required');
+        
+        // Update interval label based on recurrence type
+        updateIntervalLabel();
+    } else {
+        recurringFields.style.display = 'none';
+        
+        // Remove required attribute
+        document.getElementById('recurrence_type').removeAttribute('required');
+        
+        // Clear values
+        document.getElementById('recurrence_type').value = 'weekly';
+        document.getElementById('recurrence_interval').value = '1';
+        document.getElementById('recurrence_end_date').value = '';
+    }
+}
+
+// Update interval label based on recurrence type
+function updateIntervalLabel() {
+    const type = document.getElementById('recurrence_type').value;
+    const label = document.getElementById('interval_label');
+    const intervalInput = document.getElementById('recurrence_interval');
+    
+    const labels = {
+        'weekly': 'week(s)',
+        'monthly': 'month(s)',
+        'quarterly': 'quarter(s)',
+        'half_yearly': 'half-year(s)',
+        'annually': 'year(s)'
+    };
+    
+    const maxValues = {
+        'weekly': 52,
+        'monthly': 12,
+        'quarterly': 4,
+        'half_yearly': 2,
+        'annually': 5
+    };
+    
+    label.textContent = labels[type] || 'period(s)';
+    intervalInput.max = maxValues[type] || 12;
+    
+    if (parseInt(intervalInput.value) > maxValues[type]) {
+        intervalInput.value = 1;
     }
 }
 
@@ -632,6 +734,13 @@ document.addEventListener('DOMContentLoaded', function() {
     followupRequiredFields.forEach(field => {
         if (field) field.removeAttribute('required');
     });
+    
+    // Initialize recurring fields
+    const recurringTypeSelect = document.getElementById('recurrence_type');
+    if (recurringTypeSelect) {
+        recurringTypeSelect.addEventListener('change', updateIntervalLabel);
+        recurringTypeSelect.removeAttribute('required');
+    }
     
     // Set minimum date for follow-up date field
     const followupDateInput = document.getElementById('follow_up_date');
@@ -1046,6 +1155,29 @@ document.addEventListener('DOMContentLoaded', function() {
     background: linear-gradient(135deg, var(--primary-light), var(--bg-secondary));
     border: 2px dashed var(--primary);
     animation: slideDown 0.3s ease;
+}
+
+.recurring-section {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), var(--bg-secondary));
+    border: 2px dashed #22c55e;
+    animation: slideDown 0.3s ease;
+}
+
+.interval-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.interval-input input {
+    width: 80px;
+    text-align: center;
+}
+
+.interval-input span {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
 }
 
 .form-label {
