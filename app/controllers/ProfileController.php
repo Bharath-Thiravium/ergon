@@ -157,6 +157,9 @@ class ProfileController extends Controller {
     public function preferences() {
         AuthMiddleware::requireAuth();
         
+        // Ensure table exists before any operations
+        $this->createUserPreferencesTable();
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $preferences = [
                 'theme' => Security::sanitizeString($_POST['theme'] ?? 'light'),
@@ -290,42 +293,45 @@ class ProfileController extends Controller {
     
     private function updateUserPreferences($userId, $preferences) {
         try {
-            // Ensure table exists
-            $this->createUserPreferencesTable();
+            // Check if record exists
+            $checkSql = "SELECT user_id FROM user_preferences WHERE user_id = ?";
+            $checkStmt = $this->db->prepare($checkSql);
+            $checkStmt->execute([$userId]);
+            $exists = $checkStmt->fetch();
             
-            // Debug log
-            error_log('Saving preferences for user ' . $userId . ': ' . json_encode($preferences));
-            
-            $sql = "INSERT INTO user_preferences (user_id, theme, dashboard_layout, language, timezone, notifications_email, notifications_browser) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE 
-                    theme = VALUES(theme),
-                    dashboard_layout = VALUES(dashboard_layout),
-                    language = VALUES(language),
-                    timezone = VALUES(timezone),
-                    notifications_email = VALUES(notifications_email),
-                    notifications_browser = VALUES(notifications_browser)";
-            
-            $stmt = $this->db->prepare($sql);
-            $result = $stmt->execute([
-                $userId,
-                $preferences['theme'],
-                $preferences['dashboard_layout'],
-                $preferences['language'],
-                $preferences['timezone'],
-                $preferences['notifications_email'],
-                $preferences['notifications_browser']
-            ]);
-            
-            // Verify save
-            if ($result) {
-                $checkSql = "SELECT * FROM user_preferences WHERE user_id = ?";
-                $checkStmt = $this->db->prepare($checkSql);
-                $checkStmt->execute([$userId]);
-                $saved = $checkStmt->fetch(PDO::FETCH_ASSOC);
-                error_log('Saved preferences: ' . json_encode($saved));
+            if ($exists) {
+                // Update existing record
+                $sql = "UPDATE user_preferences SET 
+                        theme = ?, dashboard_layout = ?, language = ?, timezone = ?, 
+                        notifications_email = ?, notifications_browser = ?, updated_at = NOW() 
+                        WHERE user_id = ?";
+                $stmt = $this->db->prepare($sql);
+                $result = $stmt->execute([
+                    $preferences['theme'],
+                    $preferences['dashboard_layout'],
+                    $preferences['language'],
+                    $preferences['timezone'],
+                    $preferences['notifications_email'],
+                    $preferences['notifications_browser'],
+                    $userId
+                ]);
+            } else {
+                // Insert new record
+                $sql = "INSERT INTO user_preferences (user_id, theme, dashboard_layout, language, timezone, notifications_email, notifications_browser) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?)";
+                $stmt = $this->db->prepare($sql);
+                $result = $stmt->execute([
+                    $userId,
+                    $preferences['theme'],
+                    $preferences['dashboard_layout'],
+                    $preferences['language'],
+                    $preferences['timezone'],
+                    $preferences['notifications_email'],
+                    $preferences['notifications_browser']
+                ]);
             }
             
+            error_log('Preferences save result: ' . ($result ? 'SUCCESS' : 'FAILED'));
             return $result;
         } catch (Exception $e) {
             error_log('updateUserPreferences error: ' . $e->getMessage());
@@ -335,7 +341,7 @@ class ProfileController extends Controller {
     
     private function createUserPreferencesTable() {
         try {
-            // Create table without foreign key constraint to avoid issues
+            // Simple table creation
             $sql = "CREATE TABLE IF NOT EXISTS user_preferences (
                 user_id INT PRIMARY KEY,
                 theme VARCHAR(20) DEFAULT 'light',
@@ -345,30 +351,20 @@ class ProfileController extends Controller {
                 notifications_email TINYINT(1) DEFAULT 1,
                 notifications_browser TINYINT(1) DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                updated_at TIMESTAMP NULL
             )";
             $this->db->exec($sql);
-            error_log('User preferences table created/verified successfully');
+            
+            // Verify table exists
+            $checkSql = "SHOW TABLES LIKE 'user_preferences'";
+            $result = $this->db->query($checkSql);
+            if ($result->rowCount() > 0) {
+                error_log('User preferences table verified successfully');
+            } else {
+                error_log('User preferences table creation failed - table not found');
+            }
         } catch (Exception $e) {
             error_log('createUserPreferencesTable error: ' . $e->getMessage());
-            // Try alternative approach without ON UPDATE
-            try {
-                $sql = "CREATE TABLE IF NOT EXISTS user_preferences (
-                    user_id INT PRIMARY KEY,
-                    theme VARCHAR(20) DEFAULT 'light',
-                    dashboard_layout VARCHAR(20) DEFAULT 'default',
-                    language VARCHAR(10) DEFAULT 'en',
-                    timezone VARCHAR(50) DEFAULT 'UTC',
-                    notifications_email TINYINT(1) DEFAULT 1,
-                    notifications_browser TINYINT(1) DEFAULT 1,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )";
-                $this->db->exec($sql);
-                error_log('User preferences table created with fallback SQL');
-            } catch (Exception $e2) {
-                error_log('Fallback table creation also failed: ' . $e2->getMessage());
-            }
         }
     }
 }
