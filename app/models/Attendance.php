@@ -23,8 +23,13 @@ class Attendance {
                 }
             }
             
-            // Set IST timezone for correct time recording
-            date_default_timezone_set('Asia/Kolkata');
+            // Get user's timezone preference
+            $stmt = $this->conn->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $userPrefs = $stmt->fetch();
+            $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
+            
+            date_default_timezone_set($timezone);
             $currentTime = date('Y-m-d H:i:s');
             $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
             
@@ -46,8 +51,13 @@ class Attendance {
     
     public function checkOut($userId, $clientUuid = null) {
         try {
-            // Set IST timezone for correct time recording
-            date_default_timezone_set('Asia/Kolkata');
+            // Get user's timezone preference
+            $stmt = $this->conn->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $userPrefs = $stmt->fetch();
+            $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
+            
+            date_default_timezone_set($timezone);
             $currentTime = date('Y-m-d H:i:s');
             $currentDate = date('Y-m-d');
             
@@ -63,8 +73,13 @@ class Attendance {
     }
     
     public function getTodayAttendance($userId) {
-        // Set IST timezone for correct date comparison
-        date_default_timezone_set('Asia/Kolkata');
+        // Get user's timezone preference
+        $stmt = $this->conn->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $userPrefs = $stmt->fetch();
+        $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
+        
+        date_default_timezone_set($timezone);
         $currentDate = date('Y-m-d');
         
         $query = "SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?";
