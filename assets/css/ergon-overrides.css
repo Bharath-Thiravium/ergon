@@ -1,0 +1,35 @@
+/* Overrides to ensure dashboard stat-card & KPI styles take precedence on deployments
+   Loaded last to override any compiled/minified CSS on the server. */
+
+/* Stat-card (layout + controls) */
+.dashboard-grid .stat-card {
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+.dashboard-grid .stat-card .stat-card__header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0.6rem 0.9rem !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+.dashboard-grid .stat-card .stat-card__title { font-size: 1rem !important; font-weight:600 !important; }
+.dashboard-grid .stat-card .stat-card__controls { display:flex !important; gap:0.5rem !important; }
+.dashboard-grid .stat-card .stat-card__body { padding: 0.9rem !important; }
+
+/* KPI tiles */
+.dashboard-grid .kpi-card { padding: 12px !important; border-radius: 10px !important; min-height: 100px !important; }
+.dashboard-grid .kpi-card__value { font-size: 1.15rem !important; font-weight:700 !important; }
+
+/* Small utility for the header icon buttons */
+.btn-icon { background: transparent !important; border: none !important; cursor: pointer !important; }
+
+/* Ensure canvas responsive behaviour */
+.dashboard-grid canvas { width: 100% !important; height: auto !important; }
+
+/* Higher specificity for mobile responsiveness */
+@media (max-width: 768px) {
+  .dashboard-grid { grid-template-columns: 1fr !important; }
+}
