@@ -9,7 +9,7 @@ class FinanceController extends Controller {
     }
     
     public function analyzeAllTables() {
-        ob_clean();
+        if (ob_get_level() > 0) { ob_clean(); }
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="finance_tables_analysis_' . date('Y-m-d_H-i-s') . '.csv"');
         
@@ -142,7 +142,7 @@ class FinanceController extends Controller {
     }
     
     public function sync() {
-        ob_clean();
+        if (ob_get_level() > 0) { ob_clean(); }
         set_time_limit(0);
         ini_set('memory_limit', '1G');
         
@@ -201,12 +201,12 @@ class FinanceController extends Controller {
             pg_close($conn);
             
         } catch (Exception $e) {
-            ob_clean();
+            if (ob_get_level() > 0) { ob_clean(); }
             echo json_encode(['error' => $e->getMessage()]);
             exit;
         }
         
-        ob_clean();
+        if (ob_get_level() > 0) { ob_clean(); }
         echo json_encode(['success' => true, 'tables' => $syncCount]);
         exit;
     }
@@ -363,7 +363,7 @@ class FinanceController extends Controller {
     
     public function getVisualizationData() {
         header('Content-Type: application/json');
-        ob_clean();
+        if (ob_get_level() > 0) { ob_clean(); }
         
         $type = $_GET['type'] ?? 'quotations';
         
