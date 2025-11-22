@@ -8,6 +8,20 @@ class Attendance {
         $this->conn = Database::connect();
     }
     
+    private function setUserTimezone($userId) {
+        try {
+            $stmt = $this->conn->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $userPrefs = $stmt->fetch();
+            $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
+            date_default_timezone_set($timezone);
+            return $timezone;
+        } catch (Exception $e) {
+            date_default_timezone_set('Asia/Kolkata');
+            return 'Asia/Kolkata';
+        }
+    }
+    
     public function checkIn($userId, $latitude, $longitude, $locationName, $clientUuid = null, $distance = 0, $isValid = true) {
         try {
             $existing = $this->getTodayAttendance($userId);
@@ -23,13 +37,7 @@ class Attendance {
                 }
             }
             
-            // Get user's timezone preference
-            $stmt = $this->conn->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
-            $stmt->execute([$userId]);
-            $userPrefs = $stmt->fetch();
-            $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
-            
-            date_default_timezone_set($timezone);
+            $this->setUserTimezone($userId);
             $currentTime = date('Y-m-d H:i:s');
             $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
             
@@ -51,13 +59,7 @@ class Attendance {
     
     public function checkOut($userId, $clientUuid = null) {
         try {
-            // Get user's timezone preference
-            $stmt = $this->conn->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
-            $stmt->execute([$userId]);
-            $userPrefs = $stmt->fetch();
-            $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
-            
-            date_default_timezone_set($timezone);
+            $this->setUserTimezone($userId);
             $currentTime = date('Y-m-d H:i:s');
             $currentDate = date('Y-m-d');
             
@@ -73,13 +75,7 @@ class Attendance {
     }
     
     public function getTodayAttendance($userId) {
-        // Get user's timezone preference
-        $stmt = $this->conn->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
-        $stmt->execute([$userId]);
-        $userPrefs = $stmt->fetch();
-        $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
-        
-        date_default_timezone_set($timezone);
+        $this->setUserTimezone($userId);
         $currentDate = date('Y-m-d');
         
         $query = "SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?";
