@@ -392,6 +392,8 @@ class FinanceController extends Controller {
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $invoices = [];
+            // Load customer name mapping to resolve customer_id -> display name
+            $customerNames = $this->getCustomerNamesMapping($db);
             foreach ($results as $row) {
                 $data = json_decode($row['data'], true);
                 $invoiceNumber = $data['invoice_number'] ?? '';
@@ -403,10 +405,20 @@ class FinanceController extends Controller {
                 if ($outstanding > 0) {
                     $dueDate = $data['due_date'] ?? date('Y-m-d');
                     $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
-                    
+
+                    $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
+                    $customerName = 'Unknown';
+                    if ($customerId && isset($customerNames[$customerId])) {
+                        $customerName = $customerNames[$customerId];
+                    } elseif (!empty($data['customer_name'])) {
+                        $customerName = $data['customer_name'];
+                    } elseif (!empty($data['customer_gstin'])) {
+                        $customerName = 'GST: ' . $data['customer_gstin'];
+                    }
+
                     $invoices[] = [
                         'invoice_number' => $invoiceNumber,
-                        'customer_name' => $data['customer_name'] ?? 'Unknown',
+                        'customer_name' => $customerName,
                         'due_date' => $dueDate,
                         'outstanding_amount' => $outstanding,
                         'daysOverdue' => floor($daysOverdue),
@@ -417,6 +429,75 @@ class FinanceController extends Controller {
             
             echo json_encode(['invoices' => $invoices]);
             
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+
+    public function getOutstandingByCustomer() {
+        header('Content-Type: application/json');
+
+        try {
+            $db = Database::connect();
+            $prefix = $this->getCompanyPrefix();
+
+            // Load all invoices
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // customerId => total outstanding
+            $map = [];
+            $customerNames = $this->getCustomerNamesMapping($db);
+
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+
+                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
+
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                if ($outstanding <= 0) continue;
+
+                $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
+                $customerName = null;
+                if ($customerId && isset($customerNames[$customerId])) {
+                    $customerName = $customerNames[$customerId];
+                } elseif (!empty($data['customer_name'])) {
+                    $customerName = $data['customer_name'];
+                } elseif (!empty($data['customer_gstin'])) {
+                    $customerName = 'GST: ' . $data['customer_gstin'];
+                } else {
+                    $customerName = 'Customer ' . ($customerId ?: 'Unknown');
+                }
+
+                if (!isset($map[$customerName])) $map[$customerName] = 0;
+                $map[$customerName] += $outstanding;
+            }
+
+            // sort descending
+            arsort($map);
+
+            // top 10 and aggregate others
+            $labels = [];
+            $data = [];
+            $others = 0;
+            $i = 0;
+            foreach ($map as $name => $amt) {
+                if ($i < 10) {
+                    $labels[] = $name;
+                    $data[] = $amt;
+                } else {
+                    $others += $amt;
+                }
+                $i++;
+            }
+            if ($others > 0) {
+                $labels[] = 'Others';
+                $data[] = $others;
+            }
+
+            echo json_encode(['labels' => $labels, 'data' => $data]);
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -474,6 +555,8 @@ class FinanceController extends Controller {
                 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 $prefix = $this->getCompanyPrefix();
+                // Load customer mapping
+                $customerNames = $this->getCustomerNamesMapping($db);
                 foreach ($results as $row) {
                     $data = json_decode($row['data'], true);
                     $invoiceNumber = $data['invoice_number'] ?? '';
@@ -485,9 +568,19 @@ class FinanceController extends Controller {
                     if ($outstanding > 0) {
                         $dueDate = $data['due_date'] ?? date('Y-m-d');
                         $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
+
+                        $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
+                        $customerName = 'Unknown';
+                        if ($customerId && isset($customerNames[$customerId])) {
+                            $customerName = $customerNames[$customerId];
+                        } elseif (!empty($data['customer_name'])) {
+                            $customerName = $data['customer_name'];
+                        } elseif (!empty($data['customer_gstin'])) {
+                            $customerName = 'GST: ' . $data['customer_gstin'];
+                        }
                         
                         echo '"' . $invoiceNumber . '","' . 
-                             ($data['customer_name'] ?? 'Unknown') . '","' . 
+                             str_replace('"', '""', $customerName) . '","' . 
                              $dueDate . '","' . 
                              $outstanding . '","' . 
                              floor($daysOverdue) . '","' . 
@@ -840,6 +933,72 @@ class FinanceController extends Controller {
                         ];
                     } else {
                         // No detailed customer record found — create readable fallback using GST if available
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $customerGstin,
+                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
+                        ];
+                    }
+                }
+            }
+
+            // Also aggregate customers referenced by Purchase Orders
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+            $stmt->execute();
+            $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($poResults as $row) {
+                $data = json_decode($row['data'], true);
+                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
+
+                if (!str_contains(strtoupper($poNumber), $prefix)) continue;
+
+                $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
+                $customerGstin = $data['customer_gstin'] ?? '';
+
+                if ($customerId && !isset($customers[$customerId])) {
+                    if (isset($customerNames[$customerId])) {
+                        $customerInfo = $customerNames[$customerId];
+                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $gstin,
+                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
+                        ];
+                    } else {
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $customerGstin,
+                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
+                        ];
+                    }
+                }
+            }
+
+            // Also aggregate customers referenced by Invoices
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($invoiceResults as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+
+                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
+
+                $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
+                $customerGstin = $data['customer_gstin'] ?? '';
+
+                if ($customerId && !isset($customers[$customerId])) {
+                    if (isset($customerNames[$customerId])) {
+                        $customerInfo = $customerNames[$customerId];
+                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $gstin,
+                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
+                        ];
+                    } else {
                         $customers[$customerId] = [
                             'id' => $customerId,
                             'gstin' => $customerGstin,

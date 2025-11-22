@@ -177,6 +177,17 @@ ob_start();
             </div>
         </div>
         
+        <!-- Outstanding by Customer Panel -->
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">📋 Outstanding by Customer</h2>
+                <button class="btn btn--sm" onclick="exportChart('outstanding')">Export</button>
+            </div>
+            <div class="card__body">
+                <canvas id="outstandingByCustomerChart" height="200"></canvas>
+            </div>
+        </div>
+        
         <!-- Payments Panel -->
         <div class="card">
             <div class="card__header">
@@ -269,6 +280,7 @@ ob_start();
 
 
 let quotationsChart, purchaseOrdersChart, invoicesChart, paymentsChart;
+let outstandingByCustomerChart;
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
@@ -344,6 +356,30 @@ function initCharts() {
             options: {
                 responsive: true,
                 plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+
+    // Outstanding by Customer Bar Chart
+    const outstandingCtx = document.getElementById('outstandingByCustomerChart');
+    if (outstandingCtx) {
+        outstandingByCustomerChart = new Chart(outstandingCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Outstanding Amount',
+                    data: [],
+                    backgroundColor: '#dc3545'
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { callback: function(value) { return '₹' + Number(value).toLocaleString(); } } }
+                }
             }
         });
     }
@@ -588,6 +624,18 @@ async function updateCharts() {
                 document.getElementById('overdueAlert').style.display = 'block';
                 document.getElementById('overdueCount').textContent = invoicesData.overdueCount;
             }
+        }
+        // Update Outstanding by Customer Chart
+        try {
+            const outstandingResp = await fetch('/ergon/finance/outstanding-by-customer');
+            const outstandingData = await outstandingResp.json();
+            if (outstandingByCustomerChart && outstandingData.labels) {
+                outstandingByCustomerChart.data.labels = outstandingData.labels;
+                outstandingByCustomerChart.data.datasets[0].data = outstandingData.data;
+                outstandingByCustomerChart.update();
+            }
+        } catch (err) {
+            console.error('Failed to load outstanding-by-customer:', err);
         }
         
     } catch (error) {
