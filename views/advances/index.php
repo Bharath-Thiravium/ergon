@@ -78,6 +78,7 @@ ob_start();
                         <th>Type</th>
                         <th>Amount</th>
                         <th>Reason</th>
+                        <th>Repayment Date</th>
                         <th>Status</th>
                         <th>Requested</th>
                         <th>Actions</th>
@@ -86,7 +87,7 @@ ob_start();
                 <tbody>
                     <?php if (empty($advances ?? [])): ?>
                     <tr>
-                        <td colspan="7" class="text-center">
+                        <td colspan="8" class="text-center">
                             <div class="empty-state">
                                 <div class="empty-icon">💳</div>
                                 <h3>No Advance Requests</h3>
@@ -111,6 +112,7 @@ ob_start();
                             <td><?= htmlspecialchars(!empty($advance['type']) ? $advance['type'] : 'General Advance') ?></td>
                             <td>₹<?= number_format($advance['amount'] ?? 0, 2) ?></td>
                             <td><?= htmlspecialchars($advance['reason'] ?? '') ?></td>
+                            <td><?= !empty($advance['repayment_date']) ? date('M d, Y', strtotime($advance['repayment_date'])) : 'N/A' ?></td>
                             <td>
                                 <?php 
                                 $advanceStatus = $advance['status'] ?? 'pending';

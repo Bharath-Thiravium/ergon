@@ -145,9 +145,7 @@ $content = ob_start();
                     <label for="assigned_for">👤 Assignment Type <span class="field-help" title="Who will be responsible for this task?">ℹ️</span></label>
                     <select id="assigned_for" name="assigned_for" onchange="handleAssignmentTypeChange()" required>
                         <option value="self" <?= ($task['assigned_to'] ?? '') == $_SESSION['user_id'] ? 'selected' : '' ?>>For Myself (I will do this)</option>
-                        <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
-                            <option value="other" <?= ($task['assigned_to'] ?? '') != $_SESSION['user_id'] ? 'selected' : '' ?>>For Others (Delegate to team member)</option>
-                        <?php endif; ?>
+                        <option value="other" <?= ($task['assigned_to'] ?? '') != $_SESSION['user_id'] ? 'selected' : '' ?>>For Others (Delegate to team member)</option>
                     </select>
                     <small class="field-hint">Choose "For Myself" for personal tasks, "For Others" to delegate (admin only)</small>
                 </div>
@@ -155,7 +153,7 @@ $content = ob_start();
                     <label for="assigned_to">🎯 Assign To *</label>
                     <select id="assigned_to" name="assigned_to" required>
                         <option value="<?= $_SESSION['user_id'] ?>" <?= ($task['assigned_to'] ?? '') == $_SESSION['user_id'] ? 'selected' : '' ?>><?= htmlspecialchars($_SESSION['user_name'] ?? 'You') ?></option>
-                        <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner']) && !empty($users)): ?>
+                        <?php if (!empty($users)): ?>
                             <?php foreach ($users as $user): ?>
                                 <?php if ($user['id'] != $_SESSION['user_id']): ?>
                                     <option value="<?= $user['id'] ?>" <?= ($task['assigned_to'] ?? '') == $user['id'] ? 'selected' : '' ?> style="<?= ($task['assigned_to'] ?? '') == $_SESSION['user_id'] ? 'display: none;' : '' ?>"><?= htmlspecialchars($user['name']) ?></option>

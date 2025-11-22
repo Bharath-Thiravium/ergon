@@ -1,6 +1,7 @@
 <?php
 $title = 'Admin - Attendance Management';
 $active_page = 'attendance';
+require_once __DIR__ . '/../../app/helpers/TimeHelper.php';
 ob_start();
 ?>
 
@@ -72,9 +73,9 @@ ob_start();
                     <div style="color: #6b7280; font-size: 0.875rem;">Administrator</div>
                     <?php if ($admin_attendance): ?>
                         <div style="color: #059669; font-size: 0.875rem; font-weight: 500;">
-                            In: <?= $admin_attendance['check_in'] ? date('H:i', strtotime($admin_attendance['check_in'])) : '-' ?>
+                            In: <?= $admin_attendance['check_in'] ? TimeHelper::formatToIST($admin_attendance['check_in']) : '-' ?>
                             <?php if ($admin_attendance['check_out']): ?>
-                                | Out: <?= date('H:i', strtotime($admin_attendance['check_out'])) ?>
+                                | Out: <?= TimeHelper::formatToIST($admin_attendance['check_out']) ?>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
@@ -182,7 +183,7 @@ ob_start();
                             <td>
                                 <?php if ($employee['check_in']): ?>
                                     <span style="color: #059669; font-weight: 500;">
-                                        <?= date('H:i', strtotime($employee['check_in'])) ?>
+                                        <?= TimeHelper::formatToIST($employee['check_in']) ?>
                                     </span>
                                 <?php else: ?>
                                     <span style="color: #6b7280;">-</span>
@@ -191,7 +192,7 @@ ob_start();
                             <td>
                                 <?php if ($employee['check_out']): ?>
                                     <span style="color: #dc2626; font-weight: 500;">
-                                        <?= date('H:i', strtotime($employee['check_out'])) ?>
+                                        <?= TimeHelper::formatToIST($employee['check_out']) ?>
                                     </span>
                                 <?php elseif ($employee['check_in']): ?>
                                     <span style="color: #f59e0b; font-weight: 500;">Working...</span>

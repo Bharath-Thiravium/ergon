@@ -131,10 +131,14 @@ class ContactFollowupController extends Controller {
         try {
             $db = Database::connect();
             
+            // Ensure tables exist
+            $this->ensureTablesExist($db);
+            
             $title = trim($_POST['title'] ?? '');
             $follow_up_date = $_POST['follow_up_date'] ?? date('Y-m-d');
             $description = trim($_POST['description'] ?? '');
             $task_id = !empty($_POST['task_id']) ? intval($_POST['task_id']) : null;
+            $contact_id = !empty($_POST['contact_id']) ? intval($_POST['contact_id']) : null;
             
             if (empty($title)) {
                 $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=Title required" : '/ergon/contacts/followups/create?error=Title required';
@@ -143,8 +147,7 @@ class ContactFollowupController extends Controller {
             }
             
             // Handle contact creation/selection
-            $contact_id = null;
-            if (!empty($_POST['contact_name']) || !empty($_POST['contact_company'])) {
+            if (!$contact_id && (!empty($_POST['contact_name']) || !empty($_POST['contact_company']))) {
                 $contact_id = $this->createOrFindContact($db, $_POST);
             }
             
@@ -156,7 +159,12 @@ class ContactFollowupController extends Controller {
             $result = $stmt->execute([$contact_id, $user_id, $task_id, $followup_type, $title, $description, $follow_up_date]);
             
             if ($result) {
-                $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?success=Follow-up added" : '/ergon/contacts/followups?success=Follow-up created';
+                $followup_id = $db->lastInsertId();
+                
+                // Log creation in history
+                $this->logHistory($followup_id, 'created', null, 'Follow-up created');
+                
+                $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?success=Follow-up added" : '/ergon/contacts/followups/view?success=Follow-up created';
                 header("Location: $redirectUrl");
             } else {
                 $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=Failed to add follow-up" : '/ergon/contacts/followups/create?error=Failed to create';
@@ -539,22 +547,51 @@ class ContactFollowupController extends Controller {
     private function logHistory($followupId, $action, $oldValue = null, $notes = null) {
         try {
             $db = Database::connect();
-            $this->ensureFollowupHistoryTable($db);
+            $this->ensureTablesExist($db);
             
-            $stmt = $db->query("SHOW TABLES LIKE 'followup_history'");
-            if ($stmt->rowCount() > 0) {
-                $stmt = $db->prepare("INSERT INTO followup_history (followup_id, action, old_value, notes, created_by) VALUES (?, ?, ?, ?, ?)");
-                return $stmt->execute([$followupId, $action, $oldValue, $notes, $_SESSION['user_id'] ?? null]);
-            }
-            return true;
+            $stmt = $db->prepare("INSERT INTO followup_history (followup_id, action, old_value, notes, created_by) VALUES (?, ?, ?, ?, ?)");
+            return $stmt->execute([$followupId, $action, $oldValue, $notes, $_SESSION['user_id'] ?? null]);
         } catch (Exception $e) {
             error_log('History log error: ' . $e->getMessage());
             return false;
         }
     }
     
-    private function ensureFollowupHistoryTable($db) {
+    private function ensureTablesExist($db) {
         try {
+            // Create contacts table
+            $db->exec("CREATE TABLE IF NOT EXISTS contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                phone VARCHAR(50),
+                email VARCHAR(255),
+                company VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            
+            // Create followups table
+            $db->exec("CREATE TABLE IF NOT EXISTS followups (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                contact_id INT,
+                task_id INT NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                followup_type ENUM('standalone', 'task') DEFAULT 'standalone',
+                follow_up_date DATE NOT NULL,
+                status ENUM('pending', 'in_progress', 'completed', 'cancelled', 'postponed') DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP NULL,
+                INDEX idx_user_id (user_id),
+                INDEX idx_contact_id (contact_id),
+                INDEX idx_task_id (task_id),
+                INDEX idx_follow_up_date (follow_up_date),
+                INDEX idx_status (status)
+            )");
+            
+            // Create followup_history table
             $db->exec("CREATE TABLE IF NOT EXISTS followup_history (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 followup_id INT NOT NULL,
@@ -566,7 +603,7 @@ class ContactFollowupController extends Controller {
                 INDEX idx_followup_id (followup_id)
             )");
         } catch (Exception $e) {
-            error_log('ensureFollowupHistoryTable error: ' . $e->getMessage());
+            error_log('ensureTablesExist error: ' . $e->getMessage());
         }
     }
     

@@ -87,9 +87,10 @@ ob_start();
                         <div class="admin-card__status">
                             <label class="toggle-switch">
                                 <input type="checkbox" <?= $admin['status'] === 'active' ? 'checked' : '' ?> 
-                                       onchange="toggleStatus(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>', this.checked)">
-                                <span class="toggle-slider"></span>
-                                <span class="toggle-label"><?= $admin['status'] === 'active' ? 'Active' : 'Inactive' ?></span>
+                                       <?= $admin['status'] === 'terminated' ? 'disabled' : '' ?>
+                                       onchange="toggleStatus(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>', this.checked, '<?= $admin['status'] ?>')">
+                                <span class="toggle-slider <?= $admin['status'] === 'terminated' ? 'toggle-slider--disabled' : '' ?>"></span>
+                                <span class="toggle-label"><?= ucfirst($admin['status']) ?></span>
                             </label>
                         </div>
                     </div>
@@ -166,6 +167,20 @@ ob_start();
     font-size: 12px;
     font-weight: 500;
     color: #6b7280;
+}
+.toggle-slider--disabled {
+    background-color: #f3f4f6 !important;
+    cursor: not-allowed !important;
+}
+.toggle-slider--disabled:before {
+    background-color: #d1d5db !important;
+}
+.toggle-switch input:disabled + .toggle-slider {
+    background-color: #f3f4f6 !important;
+    cursor: not-allowed !important;
+}
+.toggle-switch input:disabled + .toggle-slider:before {
+    background-color: #d1d5db !important;
 }
 #createAdminModal {
     position: fixed !important;
@@ -421,7 +436,14 @@ function deleteAdmin(adminId, adminName) {
     }
 }
 
-function toggleStatus(adminId, adminName, isActive) {
+function toggleStatus(adminId, adminName, isActive, currentStatus) {
+    // Check if user is terminated
+    if (currentStatus === 'terminated') {
+        alert('This user is terminated and cannot be reactivated.');
+        event.target.checked = false;
+        return;
+    }
+    
     const action = isActive ? 'activate' : 'deactivate';
     const message = `Are you sure you want to ${action} admin "${adminName}"?`;
     

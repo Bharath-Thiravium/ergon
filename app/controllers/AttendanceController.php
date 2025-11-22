@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../helpers/TimeHelper.php';
 
 class AttendanceController extends Controller {
     
@@ -140,9 +141,9 @@ class AttendanceController extends Controller {
                         } else {
                             echo "<td><span class='badge badge--$statusBadge'>$statusIcon {$employee['status']}</span></td>";
                         }
-                        echo "<td>" . ($employee['check_in'] ? date('H:i', strtotime($employee['check_in'])) : '<span style="color: #6b7280;">-</span>') . "</td>";
+                        echo "<td>" . ($employee['check_in'] ? TimeHelper::formatToIST($employee['check_in']) : '<span style="color: #6b7280;">-</span>') . "</td>";
                         if ($employee['check_out']) {
-                            echo "<td><span style='color: #dc2626; font-weight: 500;'>" . date('H:i', strtotime($employee['check_out'])) . "</span></td>";
+                            echo "<td><span style='color: #dc2626; font-weight: 500;'>" . TimeHelper::formatToIST($employee['check_out']) . "</span></td>";
                         } elseif ($employee['check_in']) {
                             echo "<td><span style='color: #f59e0b; font-weight: 500;'>Working...</span></td>";
                         } else {
@@ -523,8 +524,8 @@ class AttendanceController extends Controller {
                     $record['email'],
                     $record['department'],
                     $record['date'] ?? 'N/A',
-                    $record['check_in_time'] ?? 'N/A',
-                    $record['check_out_time'] ?? 'N/A',
+                    $record['check_in_time'] ? TimeHelper::formatToIST($record['date'] . ' ' . $record['check_in_time']) : 'N/A',
+                    $record['check_out_time'] ? TimeHelper::formatToIST($record['date'] . ' ' . $record['check_out_time']) : 'N/A',
                     $record['total_hours'],
                     $record['status']
                 ]);
@@ -590,8 +591,8 @@ class AttendanceController extends Controller {
             foreach ($attendanceData as $record) {
                 fputcsv($output, [
                     $record['date'],
-                    $record['check_in_time'] ?? 'N/A',
-                    $record['check_out_time'] ?? 'N/A',
+                    $record['check_in_time'] ? TimeHelper::formatToIST($record['date'] . ' ' . $record['check_in_time']) : 'N/A',
+                    $record['check_out_time'] ? TimeHelper::formatToIST($record['date'] . ' ' . $record['check_out_time']) : 'N/A',
                     $record['total_hours'],
                     $record['status']
                 ]);

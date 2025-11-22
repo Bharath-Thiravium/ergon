@@ -190,8 +190,8 @@ ob_start();
 </div>
 
 <!-- Rejection Modal -->
-<div id="rejectModal" class="modal" style="display: none;">
-    <div class="modal-content">
+<div id="rejectModal" class="modal" style="display: none; z-index: 99999; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;">
+    <div class="modal-content" style="position: relative; margin: 0; max-width: 500px; width: 90%;">
         <div class="modal-header">
             <h3>Reject Expense Claim</h3>
             <span class="close" onclick="closeRejectModal()">&times;</span>
@@ -216,7 +216,7 @@ ob_start();
 <script>
 function showRejectModal(expenseId) {
     document.getElementById('rejectForm').action = '/ergon/expenses/reject/' + expenseId;
-    document.getElementById('rejectModal').style.display = 'block';
+    document.getElementById('rejectModal').style.display = 'flex';
 }
 
 function closeRejectModal() {

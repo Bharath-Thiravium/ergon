@@ -13,7 +13,7 @@ class AdvanceController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Ensure table exists
+            // Ensure table exists with repayment_date column
             $db->exec("CREATE TABLE IF NOT EXISTS advances (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
@@ -21,6 +21,7 @@ class AdvanceController extends Controller {
                 amount DECIMAL(10,2) NOT NULL,
                 reason TEXT NOT NULL,
                 requested_date DATE NULL,
+                repayment_date DATE NULL,
                 repayment_months INT DEFAULT 1,
                 status VARCHAR(20) DEFAULT 'pending',
                 approved_by INT NULL,
@@ -30,6 +31,13 @@ class AdvanceController extends Controller {
                 rejected_by INT NULL,
                 rejected_at TIMESTAMP NULL
             )");
+            
+            // Add repayment_date column if it doesn't exist
+            try {
+                $db->exec("ALTER TABLE advances ADD COLUMN repayment_date DATE NULL");
+            } catch (Exception $e) {
+                // Column already exists, ignore error
+            }
             
             if ($role === 'user') {
                 $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id WHERE a.user_id = ? ORDER BY a.created_at DESC");
@@ -59,13 +67,14 @@ class AdvanceController extends Controller {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
                 
-                $stmt = $db->prepare("INSERT INTO advances (user_id, type, amount, reason, requested_date, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', NOW())");
+                $stmt = $db->prepare("INSERT INTO advances (user_id, type, amount, reason, requested_date, repayment_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())");
                 $result = $stmt->execute([
                     $_SESSION['user_id'],
                     trim($_POST['type'] ?? ''),
                     floatval($_POST['amount'] ?? 0),
                     trim($_POST['reason'] ?? ''),
-                    date('Y-m-d')
+                    date('Y-m-d'),
+                    $_POST['repayment_date'] ?? null
                 ]);
                 
                 if ($result) {
@@ -113,11 +122,12 @@ class AdvanceController extends Controller {
                     exit;
                 }
                 
-                $stmt = $db->prepare("UPDATE advances SET type = ?, amount = ?, reason = ? WHERE id = ?");
+                $stmt = $db->prepare("UPDATE advances SET type = ?, amount = ?, reason = ?, repayment_date = ? WHERE id = ?");
                 $result = $stmt->execute([
                     trim($_POST['type'] ?? ''),
                     floatval($_POST['amount'] ?? 0),
                     trim($_POST['reason'] ?? ''),
+                    $_POST['repayment_date'] ?? null,
                     $id
                 ]);
                 

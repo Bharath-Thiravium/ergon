@@ -1241,6 +1241,8 @@ class TasksController extends Controller {
                 $db->exec("ALTER TABLE tasks MODIFY COLUMN sla_hours DECIMAL(8,4) DEFAULT 0.25");
                 error_log('Updated sla_hours column to DECIMAL type');
             }
+            
+
         } catch (Exception $e) {
             error_log('ensureTasksTable error: ' . $e->getMessage());
         }
