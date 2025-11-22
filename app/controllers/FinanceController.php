@@ -719,19 +719,26 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             
             $customers = [];
-            
-            // Get customers from finance_customers table first
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
-            $stmt->execute();
-            $customerData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
             $customerNames = [];
-            foreach ($customerData as $row) {
-                $data = json_decode($row['data'], true);
-                $customerId = $data['id'] ?? $data['customer_id'] ?? '';
-                $companyName = $data['company_name'] ?? $data['customer_name'] ?? $data['name'] ?? $data['business_name'] ?? '';
-                if ($customerId && $companyName) {
-                    $customerNames[$customerId] = $companyName;
+            
+            // Search all finance tables for customer names
+            $tables = ['finance_customers', 'finance_quotations', 'finance_invoices', 'finance_purchase_orders'];
+            
+            foreach ($tables as $tableName) {
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = ?");
+                $stmt->execute([$tableName]);
+                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($results as $row) {
+                    $data = json_decode($row['data'], true);
+                    $customerId = $data['customer_id'] ?? $data['id'] ?? '';
+                    
+                    // Try multiple possible customer name fields
+                    $customerName = $data['customer_name'] ?? $data['company_name'] ?? $data['name'] ?? $data['business_name'] ?? $data['client_name'] ?? '';
+                    
+                    if ($customerId && $customerName && !isset($customerNames[$customerId])) {
+                        $customerNames[$customerId] = $customerName;
+                    }
                 }
             }
             
@@ -750,14 +757,12 @@ class FinanceController extends Controller {
                     if ($customerId) {
                         $customerKey = $customerId;
                         if (!isset($customers[$customerKey])) {
-                            $companyName = $customerNames[$customerId] ?? null;
-                            if ($companyName) {
-                                $customers[$customerKey] = [
-                                    'id' => $customerId,
-                                    'gstin' => $customerGstin,
-                                    'display' => $companyName . ($customerGstin ? " (GST: {$customerGstin})" : '')
-                                ];
-                            }
+                            $companyName = $customerNames[$customerId] ?? "Customer {$customerId}";
+                            $customers[$customerKey] = [
+                                'id' => $customerId,
+                                'gstin' => $customerGstin,
+                                'display' => $companyName . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                            ];
                         }
                     }
                 }
