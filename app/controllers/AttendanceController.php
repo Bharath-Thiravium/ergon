@@ -242,8 +242,13 @@ class AttendanceController extends Controller {
                         // Continue with clock in if check fails
                     }
                     
-                    // Set timezone to IST for correct time recording
-                    date_default_timezone_set('Asia/Kolkata');
+                    // Get user's timezone preference
+                    $stmt = $db->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
+                    $stmt->execute([$userId]);
+                    $userPrefs = $stmt->fetch();
+                    $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
+                    
+                    date_default_timezone_set($timezone);
                     $currentTime = date('Y-m-d H:i:s');
                     
                     // Clock in - handle both column name variations
