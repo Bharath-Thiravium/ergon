@@ -198,6 +198,7 @@ class FinanceController extends Controller {
         try {
             $db = Database::connect();
             $prefix = $this->getCompanyPrefix();
+            $customerFilter = $_GET['customer'] ?? '';
             
             // Get invoice data
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
@@ -255,7 +256,7 @@ class FinanceController extends Controller {
                 'pendingGSTAmount' => $pendingGSTAmount,
                 'pendingPOValue' => $pendingPOValue,
                 'claimableAmount' => $claimableAmount,
-                'conversionFunnel' => $this->getConversionFunnel($db),
+                'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
                 'cashFlow' => [
                     'expectedInflow' => $pendingInvoiceAmount,
                     'poCommitments' => $pendingPOValue
@@ -710,7 +711,40 @@ class FinanceController extends Controller {
         ];
     }
     
-    private function getConversionFunnel($db) {
+    public function getCustomers() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $prefix = $this->getCompanyPrefix();
+            
+            $customers = [];
+            
+            // Get customers from quotations
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? '';
+                if (str_contains(strtoupper($quotationNumber), $prefix)) {
+                    $customer = $data['customer_name'] ?? '';
+                    if ($customer && !in_array($customer, $customers)) {
+                        $customers[] = $customer;
+                    }
+                }
+            }
+            
+            sort($customers);
+            echo json_encode(['customers' => $customers]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+    
+    private function getConversionFunnel($db, $customerFilter = '') {
         $prefix = $this->getCompanyPrefix();
         
         // Count quotations
@@ -723,7 +757,9 @@ class FinanceController extends Controller {
         foreach ($quotationResults as $row) {
             $data = json_decode($row['data'], true);
             $quotationNumber = $data['quotation_number'] ?? '';
-            if (str_contains(strtoupper($quotationNumber), $prefix)) {
+            $customerName = $data['customer_name'] ?? '';
+            if (str_contains(strtoupper($quotationNumber), $prefix) && 
+                ($customerFilter === '' || $customerName === $customerFilter)) {
                 $quotationCount++;
                 $quotationValue += floatval($data['total_amount'] ?? 0);
             }
@@ -739,7 +775,9 @@ class FinanceController extends Controller {
         foreach ($poResults as $row) {
             $data = json_decode($row['data'], true);
             $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
-            if (str_contains(strtoupper($poNumber), $prefix)) {
+            $customerName = $data['customer_name'] ?? '';
+            if (str_contains(strtoupper($poNumber), $prefix) && 
+                ($customerFilter === '' || $customerName === $customerFilter)) {
                 $poCount++;
                 $poValue += floatval($data['total_amount'] ?? 0);
             }
@@ -756,7 +794,9 @@ class FinanceController extends Controller {
         foreach ($invoiceResults as $row) {
             $data = json_decode($row['data'], true);
             $invoiceNumber = $data['invoice_number'] ?? '';
-            if (str_contains(strtoupper($invoiceNumber), $prefix)) {
+            $customerName = $data['customer_name'] ?? '';
+            if (str_contains(strtoupper($invoiceNumber), $prefix) && 
+                ($customerFilter === '' || $customerName === $customerFilter)) {
                 $invoiceCount++;
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);

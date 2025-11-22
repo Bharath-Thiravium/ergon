@@ -389,5 +389,6 @@ $router->get('/finance/visualization', 'FinanceController', 'getVisualizationDat
 $router->get('/finance/export', 'FinanceController', 'exportData');
 $router->get('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
 $router->post('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
+$router->get('/finance/customers', 'FinanceController', 'getCustomers');
 
 ?>

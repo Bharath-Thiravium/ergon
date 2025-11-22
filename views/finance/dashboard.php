@@ -87,6 +87,9 @@ ob_start();
         <div class="card card--full-width">
             <div class="card__header">
                 <h2 class="card__title">🔄 Revenue Conversion Funnel</h2>
+                <select id="customerFilter" class="form-control" style="width: 200px;">
+                    <option value="">All Customers</option>
+                </select>
             </div>
             <div class="card__body">
                 <div class="funnel-container">
@@ -273,9 +276,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('exportBtn').addEventListener('click', exportDashboard);
     document.getElementById('updatePrefixBtn').addEventListener('click', updateCompanyPrefix);
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
+    document.getElementById('customerFilter').addEventListener('change', filterByCustomer);
     
     // Load prefix first, then dashboard data
     loadCompanyPrefix().then(() => {
+        loadCustomers();
         loadDashboardData();
     });
 });
@@ -487,7 +492,9 @@ async function syncFinanceData() {
 
 async function loadDashboardData() {
     try {
-        const response = await fetch('/ergon/finance/dashboard-stats');
+        const customerFilter = document.getElementById('customerFilter').value;
+        const url = customerFilter ? `/ergon/finance/dashboard-stats?customer=${encodeURIComponent(customerFilter)}` : '/ergon/finance/dashboard-stats';
+        const response = await fetch(url);
         const data = await response.json();
         
         updateKPICards(data);
@@ -915,8 +922,29 @@ async function updateCompanyPrefix() {
 function filterByDate() {
     const days = document.getElementById('dateFilter').value;
     if (days !== 'all') {
-        // Reload dashboard with date filter
         loadDashboardData();
+    }
+}
+
+function filterByCustomer() {
+    loadDashboardData();
+}
+
+async function loadCustomers() {
+    try {
+        const response = await fetch('/ergon/finance/customers');
+        const data = await response.json();
+        
+        const select = document.getElementById('customerFilter');
+        select.innerHTML = '<option value="">All Customers</option>';
+        
+        if (data.customers) {
+            data.customers.forEach(customer => {
+                select.innerHTML += `<option value="${customer}">${customer}</option>`;
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load customers:', error);
     }
 }
 </script>
