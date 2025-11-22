@@ -142,11 +142,13 @@ class FinanceController extends Controller {
     }
     
     public function sync() {
-        ob_clean();
+        set_time_limit(300);
+        ini_set('memory_limit', '512M');
+        
         header('Content-Type: application/json');
         
         try {
-            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
+            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=30");
             
             if (!$conn) {
                 echo json_encode(['error' => 'PostgreSQL connection failed']);
@@ -165,7 +167,7 @@ class FinanceController extends Controller {
                     $exists = pg_fetch_row($checkResult)[0] > 0;
                     
                     if ($exists) {
-                        $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 1000");
+                        $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 500");
                         $data = [];
                         
                         if ($dataResult) {
@@ -174,19 +176,20 @@ class FinanceController extends Controller {
                             }
                         }
                         
-                        $this->storeTableData($db, $tableName, $data);
-                        $syncCount++;
+                        if (!empty($data)) {
+                            $this->storeTableData($db, $tableName, $data);
+                            $syncCount++;
+                        }
                     }
                 } catch (Exception $e) {
-                    // Continue with other tables
+                    continue;
                 }
             }
             
             pg_close($conn);
-            echo json_encode(['tables' => $syncCount]);
+            echo json_encode(['success' => true, 'tables' => $syncCount]);
             
         } catch (Exception $e) {
-            ob_clean();
             echo json_encode(['error' => $e->getMessage()]);
         }
         exit;
@@ -719,25 +722,47 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customers = [];
             
-            // Get all finance data and extract customer info
-            $stmt = $db->prepare("SELECT data FROM finance_data");
+            // Debug: Get sample data to see structure
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' LIMIT 5");
+            $stmt->execute();
+            $sampleResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $debugData = [];
+            foreach ($sampleResults as $row) {
+                $data = json_decode($row['data'], true);
+                $debugData[] = array_keys($data); // Show available fields
+            }
+            
+            // Get quotations with prefix filter
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             foreach ($results as $row) {
                 $data = json_decode($row['data'], true);
-                $customerId = $data['customer_id'] ?? '';
-                $customerGstin = $data['customer_gstin'] ?? '';
+                $quotationNumber = $data['quotation_number'] ?? '';
                 
-                // Look for customer name in any possible field
-                $customerName = $data['customer_name'] ?? $data['company_name'] ?? $data['client_name'] ?? $data['business_name'] ?? $data['name'] ?? '';
-                
-                if ($customerId && $customerName && !isset($customers[$customerId])) {
-                    $customers[$customerId] = [
-                        'id' => $customerId,
-                        'gstin' => $customerGstin,
-                        'display' => $customerName . ($customerGstin ? " (GST: {$customerGstin})" : '')
-                    ];
+                if (str_contains(strtoupper($quotationNumber), $prefix)) {
+                    $customerId = $data['customer_id'] ?? '';
+                    $customerGstin = $data['customer_gstin'] ?? '';
+                    
+                    // Try all possible name fields
+                    $customerName = '';
+                    $nameFields = ['customer_name', 'company_name', 'client_name', 'business_name', 'name', 'customer_company_name'];
+                    foreach ($nameFields as $field) {
+                        if (!empty($data[$field])) {
+                            $customerName = $data[$field];
+                            break;
+                        }
+                    }
+                    
+                    if ($customerId && $customerName) {
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $customerGstin,
+                            'display' => $customerName . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                        ];
+                    }
                 }
             }
             
@@ -745,7 +770,11 @@ class FinanceController extends Controller {
                 return strcmp($a['display'], $b['display']);
             });
             
-            echo json_encode(['customers' => array_values($customers)]);
+            echo json_encode([
+                'customers' => array_values($customers),
+                'debug' => $debugData,
+                'total_records' => count($results)
+            ]);
             
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
