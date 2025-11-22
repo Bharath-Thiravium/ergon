@@ -293,8 +293,13 @@ class AttendanceController extends Controller {
                     }
                     
                 } elseif ($type === 'out') {
-                    // Set timezone to IST for correct time recording
-                    date_default_timezone_set('Asia/Kolkata');
+                    // Get user's timezone preference
+                    $stmt = $db->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
+                    $stmt->execute([$userId]);
+                    $userPrefs = $stmt->fetch();
+                    $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
+                    
+                    date_default_timezone_set($timezone);
                     $currentDate = date('Y-m-d');
                     $currentTime = date('Y-m-d H:i:s');
                     
