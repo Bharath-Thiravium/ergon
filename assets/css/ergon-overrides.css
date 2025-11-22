@@ -33,3 +33,16 @@
 @media (max-width: 768px) {
   .dashboard-grid { grid-template-columns: 1fr !important; }
 }
+
+/* Finance dashboard additions (migrated from assets/css/finance.css) */
+:root{ --finance-accent:#059669; }
+.customer-filter{ width:200px; }
+.customer-loader{ margin-left:8px; display:none; }
+.payments-note{ font-size:0.85rem; color:var(--muted,#666); }
+.chart--hidden{ display:none; }
+.structure-details{ display:none; }
+.structure-details.is-open{ display:block; }
+.followup-card{ border:1px solid #e6e6e6; border-radius:6px; margin-bottom:12px; background:#fff; }
+.followup-card__header{ display:flex; align-items:center; justify-content:space-between; padding:12px; }
+.structure-details .table{ width:100%; }
+.kpi-card__status--pending{ color:#f59e0b; }

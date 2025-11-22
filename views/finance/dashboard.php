@@ -2,8 +2,7 @@
  $title = 'Finance Dashboard';
  $active_page = 'finance';
  ob_start(); 
- // Finance-specific stylesheet
- echo '<link rel="stylesheet" href="/ergon/assets/css/finance.css">';
+ // Finance-specific styles are merged into `assets/css/ergon-overrides.css`
 ?>
 
 <div class="container-fluid">
