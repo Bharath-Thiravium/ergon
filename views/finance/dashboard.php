@@ -893,24 +893,25 @@ async function loadOutstandingByCustomer(limit = 10) {
 
 async function loadRecentActivities(type = 'all') {
     try {
-        const response = await fetch(`/ergon/finance/recent-activities?type=${type}`);
+        // Use existing quotations endpoint as fallback until backend is implemented
+        const response = await fetch('/ergon/finance/recent-quotations');
         const activityText = await response.text();
         const data = activityText ? JSON.parse(activityText) : {};
         
         const container = document.getElementById('recentActivities');
-        if (data.activities && data.activities.length > 0) {
-            container.innerHTML = data.activities.map(activity => `
-                <div class="activity-item activity-item--${activity.type}">
-                    <div class="activity-icon">${getActivityIcon(activity.type)}</div>
+        if (data.quotations && data.quotations.length > 0) {
+            container.innerHTML = data.quotations.map(quote => `
+                <div class="activity-item activity-item--quotation">
+                    <div class="activity-icon">📝</div>
                     <div class="activity-content">
-                        <div class="activity-title">${activity.title}</div>
-                        <div class="activity-details">₹${activity.amount.toLocaleString()} - ${activity.customer}</div>
+                        <div class="activity-title">${quote.quotation_number}</div>
+                        <div class="activity-details">₹${quote.total_amount.toLocaleString()} - ${quote.customer_name}</div>
                         <div class="activity-meta">
-                            <span class="activity-type">${activity.type_label}</span>
-                            <span class="activity-date">${activity.date}</span>
+                            <span class="activity-type">Quotation</span>
+                            <span class="activity-date">Expires: ${quote.valid_until}</span>
                         </div>
                     </div>
-                    <div class="activity-status activity-status--${activity.status}">${activity.status}</div>
+                    <div class="activity-status activity-status--pending">Active</div>
                 </div>
             `).join('');
         } else {
@@ -918,7 +919,7 @@ async function loadRecentActivities(type = 'all') {
         }
     } catch (error) {
         console.error('Failed to load recent activities:', error);
-        document.getElementById('recentActivities').innerHTML = '<div class="activity-item"><div class="activity-loading">Failed to load activities</div></div>';
+        document.getElementById('recentActivities').innerHTML = '<div class="activity-item"><div class="activity-loading">No activities available</div></div>';
     }
 }
 
