@@ -1363,17 +1363,21 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 1rem;
-    height: 240px;
+    padding: 0.75rem;
+    height: 220px;
+    width: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .chart-card__header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+    height: 50px;
+    flex-shrink: 0;
 }
 
 .chart-card__info {
@@ -1408,24 +1412,30 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 }
 
 .chart-card__chart {
-    flex: 1;
+    height: 100px;
+    width: 100%;
     position: relative;
-    margin: 0.5rem 0;
+    flex-shrink: 0;
+    overflow: hidden;
 }
 
 .chart-card__chart canvas {
+    max-width: 100% !important;
+    max-height: 100px !important;
     width: 100% !important;
-    height: 100% !important;
+    height: 100px !important;
 }
 
 .chart-card__meta {
     display: flex;
     justify-content: space-between;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: var(--text-secondary);
     margin-top: 0.5rem;
     padding-top: 0.5rem;
     border-top: 1px solid var(--border-color);
+    height: 30px;
+    flex-shrink: 0;
 }
 
 /* Stat-card styles moved to assets/css/ergon.css */
