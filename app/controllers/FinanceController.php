@@ -546,6 +546,63 @@ class FinanceController extends Controller {
         exit;
     }
     
+    public function downloadDatabase() {
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="complete_database_' . date('Y-m-d_H-i-s') . '.csv"');
+        
+        try {
+            $db = Database::connect();
+            
+            echo "Complete Database Export - " . date('Y-m-d H:i:s') . "\n\n";
+            
+            // Get all table names
+            $stmt = $db->prepare("SELECT DISTINCT table_name FROM finance_data ORDER BY table_name");
+            $stmt->execute();
+            $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            foreach ($tables as $tableName) {
+                echo "\n=== TABLE: {$tableName} ===\n";
+                
+                // Get sample records
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = ? LIMIT 3");
+                $stmt->execute([$tableName]);
+                $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (!empty($records)) {
+                    // Get all possible columns from all records
+                    $allColumns = [];
+                    foreach ($records as $record) {
+                        $data = json_decode($record['data'], true);
+                        if ($data) {
+                            $allColumns = array_merge($allColumns, array_keys($data));
+                        }
+                    }
+                    $allColumns = array_unique($allColumns);
+                    
+                    // Write headers
+                    echo implode(',', $allColumns) . "\n";
+                    
+                    // Write sample data
+                    foreach ($records as $record) {
+                        $data = json_decode($record['data'], true);
+                        $row = [];
+                        foreach ($allColumns as $col) {
+                            $value = $data[$col] ?? '';
+                            $row[] = '"' . str_replace('"', '""', $value) . '"';
+                        }
+                        echo implode(',', $row) . "\n";
+                    }
+                } else {
+                    echo "No data available\n";
+                }
+            }
+            
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n";
+        }
+        exit;
+    }
+    
     public function updateCompanyPrefix() {
         header('Content-Type: application/json');
         

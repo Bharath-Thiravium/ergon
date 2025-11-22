@@ -9,6 +9,7 @@ ob_start();
     <div class="header-actions">
         <button id="syncBtn" class="btn btn--primary">🔄 Sync Data</button>
         <button id="exportBtn" class="btn btn--secondary">📥 Export Dashboard</button>
+        <button onclick="window.open('/ergon/finance/download-database', '_blank')" class="btn btn--info">💾 Download Database</button>
         <input type="text" id="companyPrefix" class="form-control" placeholder="Company Prefix (e.g., BKC)" maxlength="10">
         <button id="updatePrefixBtn" class="btn btn--secondary">🏢 Update Prefix</button>
         <select id="dateFilter" class="form-control">
