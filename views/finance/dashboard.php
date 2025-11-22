@@ -133,17 +133,24 @@
             <div class="chart-card__header">
                 <div class="chart-card__info">
                     <div class="chart-card__icon">📝</div>
-                    <div class="chart-card__title">Quotations</div>
+                    <div class="chart-card__title">Quotations Overview</div>
                     <div class="chart-card__value" id="quotationsTotal">0</div>
+                    <div class="chart-card__subtitle">Total Active Quotes</div>
                 </div>
                 <div class="chart-card__trend" id="quotationsTrend">+0%</div>
             </div>
             <div class="chart-card__chart">
                 <canvas id="quotationsChart"></canvas>
+                <div class="chart-legend">
+                    <div class="legend-item"><span class="legend-color" style="background:#3b82f6"></span>Draft</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Revised</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Converted</div>
+                </div>
             </div>
             <div class="chart-card__meta">
-                <span>Draft: <strong id="quotationsDraft">0</strong></span>
-                <span>Revised: <strong id="quotationsRevised">0</strong></span>
+                <div class="meta-item"><span>Draft:</span><strong id="quotationsDraft">0</strong></div>
+                <div class="meta-item"><span>Revised:</span><strong id="quotationsRevised">0</strong></div>
+                <div class="meta-item"><span>Avg Value:</span><strong id="quotationsAvg">₹0</strong></div>
             </div>
         </div>
         
@@ -153,6 +160,7 @@
                     <div class="chart-card__icon">🛒</div>
                     <div class="chart-card__title">Purchase Orders</div>
                     <div class="chart-card__value" id="poTotal">0</div>
+                    <div class="chart-card__subtitle">Monthly Trend</div>
                 </div>
                 <div class="chart-card__trend" id="poTrendChart">+0%</div>
             </div>
@@ -160,7 +168,9 @@
                 <canvas id="purchaseOrdersChart"></canvas>
             </div>
             <div class="chart-card__meta">
-                <span>Largest: <strong id="largestPO">₹0</strong></span>
+                <div class="meta-item"><span>Largest:</span><strong id="largestPO">₹0</strong></div>
+                <div class="meta-item"><span>Pending:</span><strong id="pendingPOs">0</strong></div>
+                <div class="meta-item"><span>This Month:</span><strong id="monthlyPOs">0</strong></div>
             </div>
         </div>
         
@@ -170,14 +180,22 @@
                     <div class="chart-card__icon">💰</div>
                     <div class="chart-card__title">Invoice Status</div>
                     <div class="chart-card__value" id="invoicesTotal">0</div>
+                    <div class="chart-card__subtitle">Payment Status</div>
                 </div>
                 <div class="chart-card__trend" id="invoicesTrendChart">0%</div>
             </div>
             <div class="chart-card__chart">
                 <canvas id="invoicesChart"></canvas>
+                <div class="chart-legend">
+                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Paid</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Unpaid</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Overdue</div>
+                </div>
             </div>
             <div class="chart-card__meta">
-                <span>Overdue: <strong id="overdueCount">0</strong></span>
+                <div class="meta-item"><span>Overdue:</span><strong id="overdueCount">0</strong></div>
+                <div class="meta-item"><span>Collection Rate:</span><strong id="collectionRate">0%</strong></div>
+                <div class="meta-item"><span>Avg Days:</span><strong id="avgDays">0</strong></div>
             </div>
         </div>
         
@@ -187,6 +205,7 @@
                     <div class="chart-card__icon">📋</div>
                     <div class="chart-card__title">Outstanding</div>
                     <div class="chart-card__value" id="outstandingTotal">₹0</div>
+                    <div class="chart-card__subtitle">By Customer</div>
                 </div>
                 <div class="chart-card__trend" id="outstandingTrend">0%</div>
             </div>
@@ -194,7 +213,9 @@
                 <canvas id="outstandingByCustomerChart"></canvas>
             </div>
             <div class="chart-card__meta">
-                <span>Top: <strong id="topCustomer">-</strong></span>
+                <div class="meta-item"><span>Top Customer:</span><strong id="topCustomer">-</strong></div>
+                <div class="meta-item"><span>Customers:</span><strong id="totalCustomers">0</strong></div>
+                <div class="meta-item"><span>Avg Outstanding:</span><strong id="avgOutstanding">₹0</strong></div>
             </div>
         </div>
         
@@ -204,14 +225,23 @@
                     <div class="chart-card__icon">⏳</div>
                     <div class="chart-card__title">Aging Buckets</div>
                     <div class="chart-card__value" id="agingTotal">₹0</div>
+                    <div class="chart-card__subtitle">Days Outstanding</div>
                 </div>
                 <div class="chart-card__trend" id="agingTrend">0%</div>
             </div>
             <div class="chart-card__chart">
                 <canvas id="agingBucketsChart"></canvas>
+                <div class="chart-legend">
+                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>0-30</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>31-60</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#fb923c"></span>61-90</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>90+</div>
+                </div>
             </div>
             <div class="chart-card__meta">
-                <span>Overdue: <strong id="agingOverdue">₹0</strong></span>
+                <div class="meta-item"><span>Critical (90+):</span><strong id="agingCritical">₹0</strong></div>
+                <div class="meta-item"><span>Avg Age:</span><strong id="avgAge">0 days</strong></div>
+                <div class="meta-item"><span>Risk Score:</span><strong id="riskScore">Low</strong></div>
             </div>
         </div>
         
@@ -221,6 +251,7 @@
                     <div class="chart-card__icon">💳</div>
                     <div class="chart-card__title">Payments</div>
                     <div class="chart-card__value" id="paymentsTotal">₹0</div>
+                    <div class="chart-card__subtitle">Monthly Collections</div>
                 </div>
                 <div class="chart-card__trend" id="paymentsTrend">+0%</div>
             </div>
@@ -228,7 +259,9 @@
                 <canvas id="paymentsChart"></canvas>
             </div>
             <div class="chart-card__meta">
-                <span>Month: <strong id="paymentsMonth">₹0</strong></span>
+                <div class="meta-item"><span>This Month:</span><strong id="paymentsMonth">₹0</strong></div>
+                <div class="meta-item"><span>Last Month:</span><strong id="paymentsLastMonth">₹0</strong></div>
+                <div class="meta-item"><span>Growth:</span><strong id="paymentsGrowth">0%</strong></div>
             </div>
         </div>
     </div>
@@ -1426,16 +1459,60 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     height: 100px !important;
 }
 
+.chart-card__subtitle {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.chart-legend {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+}
+
+.legend-color {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+}
+
 .chart-card__meta {
     display: flex;
     justify-content: space-between;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     color: var(--text-secondary);
     margin-top: 0.5rem;
     padding-top: 0.5rem;
     border-top: 1px solid var(--border-color);
     height: 30px;
     flex-shrink: 0;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+}
+
+.meta-item span {
+    font-size: 0.55rem;
+    opacity: 0.8;
+}
+
+.meta-item strong {
+    font-size: 0.65rem;
+    font-weight: 600;
 }
 
 /* Stat-card styles moved to assets/css/ergon.css */
