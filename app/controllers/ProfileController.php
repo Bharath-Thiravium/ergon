@@ -176,15 +176,28 @@ class ProfileController extends Controller {
         $this->createUserPreferencesTable();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Validate CSRF token
-            $csrfToken = $_POST['csrf_token'] ?? '';
-            if (!Security::validateCSRFToken($csrfToken)) {
-                error_log('CSRF token validation failed for user ' . $_SESSION['user_id'] . '. Submitted: ' . $csrfToken . ', Expected: ' . ($_SESSION['csrf_token'] ?? 'none'));
+            // Simple validation - check if user is logged in
+            if (!isset($_SESSION['user_id'])) {
+                error_log('User not logged in during preferences save');
                 header('Location: /ergon/profile/preferences?error=1');
                 exit;
             }
             
-            error_log('CSRF token validation passed for user ' . $_SESSION['user_id']);
+            // Validate CSRF token with detailed logging
+            $csrfToken = $_POST['csrf_token'] ?? '';
+            $sessionToken = $_SESSION['csrf_token'] ?? '';
+            
+            error_log('CSRF Debug - Submitted: ' . $csrfToken . ', Session: ' . $sessionToken . ', User: ' . $_SESSION['user_id']);
+            
+            if (empty($csrfToken) || empty($sessionToken) || !hash_equals($sessionToken, $csrfToken)) {
+                error_log('CSRF validation failed - regenerating token and redirecting');
+                // Regenerate token for next attempt
+                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                header('Location: /ergon/profile/preferences?error=1');
+                exit;
+            }
+            
+            error_log('CSRF validation passed for user ' . $_SESSION['user_id']);
             
             $preferences = [
                 'theme' => Security::sanitizeString($_POST['theme'] ?? 'light'),
@@ -199,7 +212,10 @@ class ProfileController extends Controller {
             $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
                      strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
             
-            if ($this->updateUserPreferences($_SESSION['user_id'], $preferences)) {
+            $saveResult = $this->updateUserPreferences($_SESSION['user_id'], $preferences);
+            error_log('Preferences save result for user ' . $_SESSION['user_id'] . ': ' . ($saveResult ? 'SUCCESS' : 'FAILED'));
+            
+            if ($saveResult) {
                 if ($isAjax) {
                     header('Content-Type: application/json');
                     echo json_encode(['success' => true, 'message' => 'Preferences saved successfully']);
@@ -207,6 +223,7 @@ class ProfileController extends Controller {
                 }
                 header('Location: /ergon/profile/preferences?success=1');
             } else {
+                error_log('Database save failed for user ' . $_SESSION['user_id']);
                 if ($isAjax) {
                     header('Content-Type: application/json');
                     echo json_encode(['success' => false, 'message' => 'Failed to save preferences']);
