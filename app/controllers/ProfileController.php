@@ -335,6 +335,7 @@ class ProfileController extends Controller {
     
     private function createUserPreferencesTable() {
         try {
+            // Create table without foreign key constraint to avoid issues
             $sql = "CREATE TABLE IF NOT EXISTS user_preferences (
                 user_id INT PRIMARY KEY,
                 theme VARCHAR(20) DEFAULT 'light',
@@ -344,12 +345,30 @@ class ProfileController extends Controller {
                 notifications_email TINYINT(1) DEFAULT 1,
                 notifications_browser TINYINT(1) DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )";
             $this->db->exec($sql);
+            error_log('User preferences table created/verified successfully');
         } catch (Exception $e) {
             error_log('createUserPreferencesTable error: ' . $e->getMessage());
+            // Try alternative approach without ON UPDATE
+            try {
+                $sql = "CREATE TABLE IF NOT EXISTS user_preferences (
+                    user_id INT PRIMARY KEY,
+                    theme VARCHAR(20) DEFAULT 'light',
+                    dashboard_layout VARCHAR(20) DEFAULT 'default',
+                    language VARCHAR(10) DEFAULT 'en',
+                    timezone VARCHAR(50) DEFAULT 'UTC',
+                    notifications_email TINYINT(1) DEFAULT 1,
+                    notifications_browser TINYINT(1) DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )";
+                $this->db->exec($sql);
+                error_log('User preferences table created with fallback SQL');
+            } catch (Exception $e2) {
+                error_log('Fallback table creation also failed: ' . $e2->getMessage());
+            }
         }
     }
 }

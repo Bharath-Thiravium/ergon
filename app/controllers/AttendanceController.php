@@ -51,8 +51,12 @@ class AttendanceController extends Controller {
                 // Get date filter from query parameter
                 $filterDate = $_GET['date'] ?? date('Y-m-d');
                 
-                // Owner sees ALL users (admin + employees), Admin sees only employees
-                $roleFilter = ($role === 'owner') ? "u.role IN ('admin', 'user')" : "u.role = 'user'";
+                // Consistent role filtering: Owner sees all users, Admin sees users only
+                if ($role === 'owner') {
+                    $roleFilter = "u.role IN ('admin', 'user', 'owner')";
+                } else {
+                    $roleFilter = "u.role = 'user'";
+                }
                 
                 // Get users with attendance status for selected date
                 $stmt = $db->prepare("
@@ -77,7 +81,7 @@ class AttendanceController extends Controller {
                     FROM users u
                     LEFT JOIN departments d ON u.department_id = d.id
                     LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
-                    WHERE $roleFilter
+                    WHERE $roleFilter AND u.status = 'active'
                     ORDER BY u.role DESC, u.name
                 ");
                 $stmt->execute([$filterDate]);
