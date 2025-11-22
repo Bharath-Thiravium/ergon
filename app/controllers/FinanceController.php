@@ -787,42 +787,72 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $prefix = $this->getCompanyPrefix();
             $customers = [];
-            $customerNames = [];
             
-            // Get customer names from finance_customers table
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
+            // Check if finance_customers table has data
+            $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_customers'");
             $stmt->execute();
-            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $customerCount = $stmt->fetchColumn();
             
-            foreach ($customerResults as $row) {
-                $data = json_decode($row['data'], true);
-                $customerId = $data['id'] ?? '';
-                $customerName = $data['name'] ?? '';
+            if ($customerCount > 0) {
+                // Get customer names from finance_customers table
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
+                $stmt->execute();
+                $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
-                if ($customerId && $customerName) {
-                    $customerNames[$customerId] = $customerName;
-                }
-            }
-            
-            // Get customers from quotations with prefix filter
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-            $stmt->execute();
-            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($quotationResults as $row) {
-                $data = json_decode($row['data'], true);
-                $quotationNumber = $data['quotation_number'] ?? '';
-                
-                if (str_contains(strtoupper($quotationNumber), $prefix)) {
-                    $customerId = $data['customer_id'] ?? '';
-                    $customerGstin = $data['customer_gstin'] ?? '';
+                $customerNames = [];
+                foreach ($customerResults as $row) {
+                    $data = json_decode($row['data'], true);
+                    $customerId = $data['id'] ?? '';
+                    $customerName = $data['name'] ?? $data['company_name'] ?? $data['customer_name'] ?? '';
                     
-                    if ($customerId && isset($customerNames[$customerId])) {
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $customerGstin,
-                            'display' => $customerNames[$customerId] . ($customerGstin ? " (GST: {$customerGstin})" : '')
-                        ];
+                    if ($customerId && $customerName) {
+                        $customerNames[$customerId] = $customerName;
+                    }
+                }
+                
+                // Get customers from quotations
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+                $stmt->execute();
+                $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($quotationResults as $row) {
+                    $data = json_decode($row['data'], true);
+                    $quotationNumber = $data['quotation_number'] ?? '';
+                    
+                    if (str_contains(strtoupper($quotationNumber), $prefix)) {
+                        $customerId = $data['customer_id'] ?? '';
+                        $customerGstin = $data['customer_gstin'] ?? '';
+                        
+                        if ($customerId && isset($customerNames[$customerId])) {
+                            $customers[$customerId] = [
+                                'id' => $customerId,
+                                'gstin' => $customerGstin,
+                                'display' => $customerNames[$customerId] . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                            ];
+                        }
+                    }
+                }
+            } else {
+                // Fallback: get unique customer IDs from quotations and create basic entries
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+                $stmt->execute();
+                $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($quotationResults as $row) {
+                    $data = json_decode($row['data'], true);
+                    $quotationNumber = $data['quotation_number'] ?? '';
+                    
+                    if (str_contains(strtoupper($quotationNumber), $prefix)) {
+                        $customerId = $data['customer_id'] ?? '';
+                        $customerGstin = $data['customer_gstin'] ?? '';
+                        
+                        if ($customerId && !isset($customers[$customerId])) {
+                            $customers[$customerId] = [
+                                'id' => $customerId,
+                                'gstin' => $customerGstin,
+                                'display' => "Customer {$customerId}" . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                            ];
+                        }
                     }
                 }
             }
@@ -831,7 +861,13 @@ class FinanceController extends Controller {
                 return strcmp($a['display'], $b['display']);
             });
             
-            echo json_encode(['customers' => array_values($customers)]);
+            echo json_encode([
+                'customers' => array_values($customers),
+                'debug' => [
+                    'customer_table_records' => $customerCount,
+                    'prefix' => $prefix
+                ]
+            ]);
             
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
