@@ -441,6 +441,10 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $prefix = $this->getCompanyPrefix();
 
+            // optional limit parameter for top N customers
+            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+            if ($limit <= 0) $limit = 10;
+
             // Load all invoices
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
@@ -478,13 +482,13 @@ class FinanceController extends Controller {
             // sort descending
             arsort($map);
 
-            // top 10 and aggregate others
+            // top N and aggregate others
             $labels = [];
             $data = [];
             $others = 0;
             $i = 0;
             foreach ($map as $name => $amt) {
-                if ($i < 10) {
+                if ($i < $limit) {
                     $labels[] = $name;
                     $data[] = $amt;
                 } else {
@@ -498,6 +502,53 @@ class FinanceController extends Controller {
             }
 
             echo json_encode(['labels' => $labels, 'data' => $data]);
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+
+    public function getAgingBuckets() {
+        header('Content-Type: application/json');
+
+        try {
+            $db = Database::connect();
+            $prefix = $this->getCompanyPrefix();
+
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $buckets = [
+                '0-30' => 0,
+                '31-60' => 0,
+                '61-90' => 0,
+                '90+' => 0
+            ];
+
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+
+                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
+
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                if ($outstanding <= 0) continue;
+
+                $dueDate = $data['due_date'] ?? date('Y-m-d');
+                $days = max(0, floor((time() - strtotime($dueDate)) / (24 * 3600)));
+
+                if ($days <= 30) {
+                    $buckets['0-30'] += $outstanding;
+                } elseif ($days <= 60) {
+                    $buckets['31-60'] += $outstanding;
+                } elseif ($days <= 90) {
+                    $buckets['61-90'] += $outstanding;
+                } else {
+                    $buckets['90+'] += $outstanding;
+                }
+            }
+
+            echo json_encode(['labels' => array_keys($buckets), 'data' => array_values($buckets)]);
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
         }

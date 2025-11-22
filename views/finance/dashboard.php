@@ -187,6 +187,17 @@ ob_start();
                 <canvas id="outstandingByCustomerChart" height="200"></canvas>
             </div>
         </div>
+
+        <!-- Aging Buckets Panel -->
+        <div class="card">
+            <div class="card__header">
+                <h2 class="card__title">⏳ Aging Buckets</h2>
+                <button class="btn btn--sm" onclick="exportChart('outstanding')">Export</button>
+            </div>
+            <div class="card__body">
+                <canvas id="agingBucketsChart" height="200"></canvas>
+            </div>
+        </div>
         
         <!-- Payments Panel -->
         <div class="card">
@@ -281,6 +292,7 @@ ob_start();
 
 let quotationsChart, purchaseOrdersChart, invoicesChart, paymentsChart;
 let outstandingByCustomerChart;
+let agingBucketsChart;
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
@@ -380,6 +392,25 @@ function initCharts() {
                 scales: {
                     x: { ticks: { callback: function(value) { return '₹' + Number(value).toLocaleString(); } } }
                 }
+            }
+        });
+    }
+
+    // Aging Buckets Donut Chart
+    const agingCtx = document.getElementById('agingBucketsChart');
+    if (agingCtx) {
+        agingBucketsChart = new Chart(agingCtx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: ['#28a745', '#ffc107', '#fd7e14', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom' } }
             }
         });
     }
@@ -636,6 +667,19 @@ async function updateCharts() {
             }
         } catch (err) {
             console.error('Failed to load outstanding-by-customer:', err);
+        }
+
+        // Update Aging Buckets Chart
+        try {
+            const agingResp = await fetch('/ergon/finance/aging-buckets');
+            const agingData = await agingResp.json();
+            if (agingBucketsChart && agingData.labels) {
+                agingBucketsChart.data.labels = agingData.labels;
+                agingBucketsChart.data.datasets[0].data = agingData.data;
+                agingBucketsChart.update();
+            }
+        } catch (err) {
+            console.error('Failed to load aging-buckets:', err);
         }
         
     } catch (error) {
@@ -955,8 +999,14 @@ async function updateCompanyPrefix() {
         const result = await response.json();
         
         if (result.success) {
-            alert(`Company prefix updated to: ${result.prefix}`);
-            loadDashboardData(); // Reload dashboard with new prefix
+                alert(`Company prefix updated to: ${result.prefix}`);
+                // Refresh prefix and customer dropdown so filters reflect the new prefix
+                await loadCompanyPrefix();
+                await loadCustomers();
+                // Reset any selected customer filter when prefix changes
+                const select = document.getElementById('customerFilter');
+                if (select) select.value = '';
+                loadDashboardData(); // Reload dashboard with new prefix
         } else {
             alert('Failed to update prefix: ' + (result.error || 'Unknown error'));
         }
