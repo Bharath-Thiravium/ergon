@@ -242,18 +242,26 @@ class AttendanceController extends Controller {
                         // Continue with clock in if check fails
                     }
                     
+                    // Set timezone to IST for correct time recording
+                    date_default_timezone_set('Asia/Kolkata');
+                    $currentTime = date('Y-m-d H:i:s');
+                    
                     // Clock in - handle both column name variations
                     $stmt = $db->query("SHOW COLUMNS FROM attendance");
                     $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
                     
                     if (in_array('check_in', $columns)) {
-                        $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, created_at) VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+                        $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, created_at) VALUES (?, ?, ?)");
+                        $stmt->execute([$userId, $currentTime, $currentTime]);
                     } elseif (in_array('clock_in', $columns)) {
-                        $stmt = $db->prepare("INSERT INTO attendance (user_id, clock_in, date, created_at) VALUES (?, CURRENT_TIME, CURDATE(), CURRENT_TIMESTAMP)");
+                        $stmt = $db->prepare("INSERT INTO attendance (user_id, clock_in, date, created_at) VALUES (?, ?, ?, ?)");
+                        $stmt->execute([$userId, date('H:i:s'), date('Y-m-d'), $currentTime]);
                     } else {
-                        $stmt = $db->prepare("INSERT INTO attendance (user_id, created_at) VALUES (?, CURRENT_TIMESTAMP)");
+                        $stmt = $db->prepare("INSERT INTO attendance (user_id, created_at) VALUES (?, ?)");
+                        $stmt->execute([$userId, $currentTime]);
                     }
-                    $result = $stmt->execute([$userId]);
+                    $result = true; // Set result since we're handling execute manually
+                    // Remove this line since we're handling execute manually above
                     
                     if ($result) {
                         // Check if late arrival (after 9:30 AM) and notify owners
@@ -280,9 +288,14 @@ class AttendanceController extends Controller {
                     }
                     
                 } elseif ($type === 'out') {
+                    // Set timezone to IST for correct time recording
+                    date_default_timezone_set('Asia/Kolkata');
+                    $currentDate = date('Y-m-d');
+                    $currentTime = date('Y-m-d H:i:s');
+                    
                     // Find today's attendance record
-                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND check_out IS NULL");
-                    $stmt->execute([$userId]);
+                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");
+                    $stmt->execute([$userId, $currentDate]);
                     $attendance = $stmt->fetch();
                     
                     if (!$attendance) {
@@ -290,8 +303,8 @@ class AttendanceController extends Controller {
                         exit;
                     }
                     
-                    $stmt = $db->prepare("UPDATE attendance SET check_out = NOW() WHERE id = ?");
-                    $result = $stmt->execute([$attendance['id']]);
+                    $stmt = $db->prepare("UPDATE attendance SET check_out = ? WHERE id = ?");
+                    $result = $stmt->execute([$currentTime, $attendance['id']]);
                     
                     if ($result) {
                         echo json_encode(['success' => true, 'message' => 'Clocked out successfully']);
@@ -321,8 +334,12 @@ class AttendanceController extends Controller {
             $db = Database::connect();
             $this->ensureAttendanceTable($db);
             
-            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE()");
-            $stmt->execute([$_SESSION['user_id']]);
+            // Set timezone to IST for correct date comparison
+            date_default_timezone_set('Asia/Kolkata');
+            $currentDate = date('Y-m-d');
+            
+            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+            $stmt->execute([$_SESSION['user_id'], $currentDate]);
             $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Check if user is on approved leave today
@@ -351,8 +368,12 @@ class AttendanceController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE()");
-            $stmt->execute([$_SESSION['user_id']]);
+            // Set timezone to IST for correct date comparison
+            date_default_timezone_set('Asia/Kolkata');
+            $currentDate = date('Y-m-d');
+            
+            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+            $stmt->execute([$_SESSION['user_id'], $currentDate]);
             $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
             
             $onLeave = false;
