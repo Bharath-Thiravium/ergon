@@ -786,6 +786,9 @@ class FinanceController extends Controller {
     private function getConversionFunnel($db, $customerFilter = '') {
         $prefix = $this->getCompanyPrefix();
         
+        // Get customer names mapping first
+        $customerNames = $this->getCustomerNamesMapping($db);
+        
         // Count quotations
         $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
         $stmt->execute();
@@ -797,10 +800,12 @@ class FinanceController extends Controller {
             $data = json_decode($row['data'], true);
             $quotationNumber = $data['quotation_number'] ?? '';
             $customerId = $data['customer_id'] ?? '';
-            if (str_contains(strtoupper($quotationNumber), $prefix) && 
-                ($customerFilter === '' || $customerId === $customerFilter)) {
-                $quotationCount++;
-                $quotationValue += floatval($data['total_amount'] ?? 0);
+            
+            if (str_contains(strtoupper($quotationNumber), $prefix)) {
+                if ($customerFilter === '' || $customerId === $customerFilter) {
+                    $quotationCount++;
+                    $quotationValue += floatval($data['total_amount'] ?? 0);
+                }
             }
         }
         
@@ -815,10 +820,12 @@ class FinanceController extends Controller {
             $data = json_decode($row['data'], true);
             $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
             $customerId = $data['customer_id'] ?? '';
-            if (str_contains(strtoupper($poNumber), $prefix) && 
-                ($customerFilter === '' || $customerId === $customerFilter)) {
-                $poCount++;
-                $poValue += floatval($data['total_amount'] ?? 0);
+            
+            if (str_contains(strtoupper($poNumber), $prefix)) {
+                if ($customerFilter === '' || $customerId === $customerFilter) {
+                    $poCount++;
+                    $poValue += floatval($data['total_amount'] ?? 0);
+                }
             }
         }
         
@@ -834,13 +841,15 @@ class FinanceController extends Controller {
             $data = json_decode($row['data'], true);
             $invoiceNumber = $data['invoice_number'] ?? '';
             $customerId = $data['customer_id'] ?? '';
-            if (str_contains(strtoupper($invoiceNumber), $prefix) && 
-                ($customerFilter === '' || $customerId === $customerFilter)) {
-                $invoiceCount++;
-                $total = floatval($data['total_amount'] ?? 0);
-                $outstanding = floatval($data['outstanding_amount'] ?? 0);
-                $invoiceValue += $total;
-                $paymentValue += ($total - $outstanding);
+            
+            if (str_contains(strtoupper($invoiceNumber), $prefix)) {
+                if ($customerFilter === '' || $customerId === $customerFilter) {
+                    $invoiceCount++;
+                    $total = floatval($data['total_amount'] ?? 0);
+                    $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                    $invoiceValue += $total;
+                    $paymentValue += ($total - $outstanding);
+                }
             }
         }
         
@@ -857,6 +866,29 @@ class FinanceController extends Controller {
             'paymentValue' => $paymentValue,
             'invoiceToPayment' => $invoiceValue > 0 ? round(($paymentValue / $invoiceValue) * 100) : 0
         ];
+    }
+    
+    private function getCustomerNamesMapping($db) {
+        $customerNames = [];
+        
+        $stmt = $db->prepare("SELECT table_name, data FROM finance_data");
+        $stmt->execute();
+        $allResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($allResults as $row) {
+            $data = json_decode($row['data'], true);
+            $customerId = $data['customer_id'] ?? $data['id'] ?? '';
+            
+            $nameFields = ['customer_name', 'company_name', 'client_name', 'business_name', 'name', 'party_name'];
+            foreach ($nameFields as $field) {
+                if (!empty($data[$field]) && $customerId && !isset($customerNames[$customerId])) {
+                    $customerNames[$customerId] = $data[$field];
+                    break;
+                }
+            }
+        }
+        
+        return $customerNames;
     }
     
     private function getCompanyPrefix() {
