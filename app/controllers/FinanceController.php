@@ -720,6 +720,21 @@ class FinanceController extends Controller {
             
             $customers = [];
             
+            // Get customers from finance_customers table first
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
+            $stmt->execute();
+            $customerData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $customerNames = [];
+            foreach ($customerData as $row) {
+                $data = json_decode($row['data'], true);
+                $customerId = $data['id'] ?? '';
+                $companyName = $data['company_name'] ?? $data['name'] ?? '';
+                if ($customerId && $companyName) {
+                    $customerNames[$customerId] = $companyName;
+                }
+            }
+            
             // Get customers from quotations with GST details
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
             $stmt->execute();
@@ -735,18 +750,21 @@ class FinanceController extends Controller {
                     if ($customerId) {
                         $customerKey = $customerId;
                         if (!isset($customers[$customerKey])) {
+                            $companyName = $customerNames[$customerId] ?? "Customer ID: {$customerId}";
                             $customers[$customerKey] = [
                                 'id' => $customerId,
                                 'gstin' => $customerGstin,
-                                'display' => "Customer ID: {$customerId}" . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                                'display' => $companyName . ($customerGstin ? " (GST: {$customerGstin})" : '')
                             ];
                         }
                     }
                 }
             }
             
-            // Sort by customer ID
-            ksort($customers);
+            // Sort by company name
+            uasort($customers, function($a, $b) {
+                return strcmp($a['display'], $b['display']);
+            });
             echo json_encode(['customers' => array_values($customers)]);
             
         } catch (Exception $e) {
