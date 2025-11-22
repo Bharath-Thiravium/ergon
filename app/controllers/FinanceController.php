@@ -788,24 +788,24 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customers = [];
             
-            // Check if finance_customers table has data
-            $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_customers'");
+            // Check if finance_customer(s) table has data (handle both singular/plural)
+            $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
             $stmt->execute();
             $customerCount = $stmt->fetchColumn();
-            
+
+            // Get customer names from finance_customer(s) table if available
+            $customerNames = [];
             if ($customerCount > 0) {
-                // Get customer names from finance_customers table
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
                 $stmt->execute();
                 $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                $customerNames = [];
+
                 foreach ($customerResults as $row) {
                     $data = json_decode($row['data'], true);
-                    $customerId = $data['id'] ?? '';
+                    $customerId = isset($data['id']) ? (string)$data['id'] : '';
                     $customerName = $data['display_name'] ?? $data['name'] ?? '';
-                    $customerGstin = $data['gstin'] ?? '';
-                    
+                    $customerGstin = $data['gstin'] ?? $data['customer_gstin'] ?? '';
+
                     if ($customerId && $customerName) {
                         $customerNames[$customerId] = [
                             'name' => $customerName,
@@ -813,52 +813,38 @@ class FinanceController extends Controller {
                         ];
                     }
                 }
-                
-                // Get customers from quotations
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-                $stmt->execute();
-                $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                foreach ($quotationResults as $row) {
-                    $data = json_decode($row['data'], true);
-                    $quotationNumber = $data['quotation_number'] ?? '';
-                    
-                    if (str_contains(strtoupper($quotationNumber), $prefix)) {
-                        $customerId = $data['customer_id'] ?? '';
-                        $customerGstin = $data['customer_gstin'] ?? '';
-                        
-                        if ($customerId && isset($customerNames[$customerId])) {
-                            $customerInfo = $customerNames[$customerId];
-                            $gstin = $customerInfo['gstin'] ?: $customerGstin;
-                            $customers[$customerId] = [
-                                'id' => $customerId,
-                                'gstin' => $gstin,
-                                'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
-                            ];
-                        }
-                    }
-                }
-            } else {
-                // Fallback: get unique customer IDs from quotations and create basic entries
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-                $stmt->execute();
-                $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                foreach ($quotationResults as $row) {
-                    $data = json_decode($row['data'], true);
-                    $quotationNumber = $data['quotation_number'] ?? '';
-                    
-                    if (str_contains(strtoupper($quotationNumber), $prefix)) {
-                        $customerId = $data['customer_id'] ?? '';
-                        $customerGstin = $data['customer_gstin'] ?? '';
-                        
-                        if ($customerId && !isset($customers[$customerId])) {
-                            $customers[$customerId] = [
-                                'id' => $customerId,
-                                'gstin' => $customerGstin,
-                                'display' => "Customer {$customerId}" . ($customerGstin ? " (GST: {$customerGstin})" : '')
-                            ];
-                        }
+            }
+
+            // Get customers from quotations as the primary source of linked customers
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($quotationResults as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? '';
+
+                if (!str_contains(strtoupper($quotationNumber), $prefix)) continue;
+
+                $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
+                $customerGstin = $data['customer_gstin'] ?? '';
+
+                if ($customerId) {
+                    if (isset($customerNames[$customerId])) {
+                        $customerInfo = $customerNames[$customerId];
+                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $gstin,
+                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
+                        ];
+                    } else {
+                        // No detailed customer record found — create readable fallback using GST if available
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $customerGstin,
+                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
+                        ];
                     }
                 }
             }
