@@ -644,6 +644,72 @@ class FinanceController extends Controller {
         }
         exit;
     }
+
+    // Export top-N outstanding by customer as CSV
+    public function exportOutstanding() {
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+        if ($limit <= 0) $limit = 10;
+
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="outstanding_by_customer_top' . $limit . '_' . date('Y-m-d') . '.csv"');
+
+        try {
+            $db = Database::connect();
+            $prefix = $this->getCompanyPrefix();
+
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $map = [];
+            $customerNames = $this->getCustomerNamesMapping($db);
+
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
+
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                if ($outstanding <= 0) continue;
+
+                $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
+                $customerName = null;
+                if ($customerId && isset($customerNames[$customerId])) {
+                    $customerName = $customerNames[$customerId];
+                } elseif (!empty($data['customer_name'])) {
+                    $customerName = $data['customer_name'];
+                } elseif (!empty($data['customer_gstin'])) {
+                    $customerName = 'GST: ' . $data['customer_gstin'];
+                } else {
+                    $customerName = 'Customer ' . ($customerId ?: 'Unknown');
+                }
+
+                if (!isset($map[$customerName])) $map[$customerName] = 0;
+                $map[$customerName] += $outstanding;
+            }
+
+            arsort($map);
+
+            // Output CSV header
+            echo "Customer,Outstanding\n";
+            $i = 0; $others = 0;
+            foreach ($map as $name => $amt) {
+                if ($i < $limit) {
+                    echo '"' . str_replace('"', '""', $name) . '",' . $amt . "\n";
+                } else {
+                    $others += $amt;
+                }
+                $i++;
+            }
+            if ($others > 0) {
+                echo '"Others",' . $others . "\n";
+            }
+
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n";
+        }
+        exit;
+    }
     
     public function exportDashboard() {
         header('Content-Type: text/csv');

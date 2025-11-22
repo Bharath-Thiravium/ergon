@@ -126,14 +126,50 @@ ob_start();
         </div>
     </div>
 
-    <!-- Charts Section - Row 1 -->
+    <!-- Charts Section - Row 1 (Outstanding & Aging moved higher) -->
     <div class="dashboard-grid dashboard-grid--2-col">
-        <div class="card">
-            <div class="card__header">
-                <h2 class="card__title">📝 Quotations Overview</h2>
-                <button class="btn btn--sm" onclick="exportChart('quotations')">Export</button>
+        <div class="stat-card">
+            <div class="stat-card__header">
+                <h3 class="stat-card__title">📋 Outstanding by Customer</h3>
+                <div class="stat-card__controls">
+                    <label for="outstandingTopN" class="sr-only">Top N</label>
+                    <select id="outstandingTopN" class="form-control form-control--sm" title="Select top N customers">
+                        <option value="5">Top 5</option>
+                        <option value="10" selected>Top 10</option>
+                        <option value="20">Top 20</option>
+                        <option value="50">Top 50</option>
+                    </select>
+                    <button id="outstandingDownload" class="btn-icon" title="Download CSV: outstanding by customer">📥</button>
+                </div>
             </div>
-            <div class="card__body">
+            <div class="stat-card__body">
+                <canvas id="outstandingByCustomerChart" height="220"></canvas>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-card__header">
+                <h3 class="stat-card__title">⏳ Aging Buckets</h3>
+                <div class="stat-card__controls">
+                    <button class="btn-icon" title="Download CSV: aging buckets" onclick="exportChart('aging')">📥</button>
+                </div>
+            </div>
+            <div class="stat-card__body">
+                <canvas id="agingBucketsChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section - Row 2 (Quotations & Purchase Orders) -->
+    <div class="dashboard-grid dashboard-grid--2-col">
+        <div class="stat-card">
+            <div class="stat-card__header">
+                <h3 class="stat-card__title">📝 Quotations Overview</h3>
+                <div class="stat-card__controls">
+                    <button class="btn-icon" title="Download CSV: quotations" onclick="exportChart('quotations')">📥</button>
+                </div>
+            </div>
+            <div class="stat-card__body">
                 <canvas id="quotationsChart" height="200"></canvas>
                 <div class="chart-summary">
                     <div class="summary-item">
@@ -147,13 +183,15 @@ ob_start();
                 </div>
             </div>
         </div>
-        
-        <div class="card">
-            <div class="card__header">
-                <h2 class="card__title">🛒 Purchase Orders</h2>
-                <button class="btn btn--sm" onclick="exportChart('purchase_orders')">Export</button>
+
+        <div class="stat-card">
+            <div class="stat-card__header">
+                <h3 class="stat-card__title">🛒 Purchase Orders</h3>
+                <div class="stat-card__controls">
+                    <button class="btn-icon" title="Download CSV: purchase orders" onclick="exportChart('purchase_orders')">📥</button>
+                </div>
             </div>
-            <div class="card__body">
+            <div class="stat-card__body">
                 <canvas id="purchaseOrdersChart" height="200"></canvas>
                 <div class="highlight-card">
                     <div class="highlight-label">Largest PO:</div>
@@ -162,15 +200,17 @@ ob_start();
             </div>
         </div>
     </div>
-    
-    <!-- Charts Section - Row 2 -->
+
+    <!-- Charts Section - Row 3 (Invoices & Payments) -->
     <div class="dashboard-grid dashboard-grid--2-col">
-        <div class="card">
-            <div class="card__header">
-                <h2 class="card__title">💰 Invoice Status</h2>
-                <button class="btn btn--sm" onclick="exportChart('invoices')">Export</button>
+        <div class="stat-card">
+            <div class="stat-card__header">
+                <h3 class="stat-card__title">💰 Invoice Status</h3>
+                <div class="stat-card__controls">
+                    <button class="btn-icon" title="Download CSV: invoices" onclick="exportChart('invoices')">📥</button>
+                </div>
             </div>
-            <div class="card__body">
+            <div class="stat-card__body">
                 <canvas id="invoicesChart" height="200"></canvas>
                 <div class="chart-summary">
                     <div class="summary-item">
@@ -180,36 +220,15 @@ ob_start();
                 </div>
             </div>
         </div>
-        
-        <div class="card">
-            <div class="card__header">
-                <h2 class="card__title">📋 Outstanding by Customer</h2>
-                <button class="btn btn--sm" onclick="exportChart('outstanding')">Export</button>
+
+        <div class="stat-card">
+            <div class="stat-card__header">
+                <h3 class="stat-card__title">💳 Payments</h3>
+                <div class="stat-card__controls">
+                    <button class="btn-icon" title="Download CSV: payments" onclick="exportChart('payments')">📥</button>
+                </div>
             </div>
-            <div class="card__body">
-                <canvas id="outstandingByCustomerChart" height="200"></canvas>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Charts Section - Row 3 -->
-    <div class="dashboard-grid dashboard-grid--2-col">
-        <div class="card">
-            <div class="card__header">
-                <h2 class="card__title">⏳ Aging Buckets</h2>
-                <button class="btn btn--sm" onclick="exportChart('aging')">Export</button>
-            </div>
-            <div class="card__body">
-                <canvas id="agingBucketsChart" height="200"></canvas>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card__header">
-                <h2 class="card__title">💳 Payments</h2>
-                <button class="btn btn--sm" onclick="exportChart('payments')">Export</button>
-            </div>
-            <div class="card__body">
+            <div class="stat-card__body">
                 <div id="paymentsEmpty" class="empty-state">
                     <div class="empty-icon">💳</div>
                     <h4>No Payments Recorded</h4>
@@ -306,6 +325,15 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('updatePrefixBtn').addEventListener('click', updateCompanyPrefix);
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
     document.getElementById('customerFilter').addEventListener('change', filterByCustomer);
+    // Outstanding top-N control
+    const topN = document.getElementById('outstandingTopN');
+    if (topN) topN.addEventListener('change', () => loadOutstandingByCustomer(parseInt(topN.value, 10)));
+    const outDownload = document.getElementById('outstandingDownload');
+    if (outDownload) outDownload.addEventListener('click', () => {
+        const limit = parseInt(document.getElementById('outstandingTopN').value || '10', 10);
+        // Use server-side export endpoint which supports `limit`
+        window.open(`/ergon/finance/export-outstanding?limit=${limit}`, '_blank');
+    });
     
     // Load prefix first, then dashboard data
     loadCompanyPrefix().then(() => {
@@ -662,13 +690,9 @@ async function updateCharts() {
         }
         // Update Outstanding by Customer Chart
         try {
-            const outstandingResp = await fetch('/ergon/finance/outstanding-by-customer');
-            const outstandingData = await outstandingResp.json();
-            if (outstandingByCustomerChart && outstandingData.labels) {
-                outstandingByCustomerChart.data.labels = outstandingData.labels;
-                outstandingByCustomerChart.data.datasets[0].data = outstandingData.data;
-                outstandingByCustomerChart.update();
-            }
+            const topNEl = document.getElementById('outstandingTopN');
+            const limit = topNEl ? parseInt(topNEl.value || '10', 10) : 10;
+            await loadOutstandingByCustomer(limit);
         } catch (err) {
             console.error('Failed to load outstanding-by-customer:', err);
         }
@@ -716,6 +740,23 @@ async function loadOutstandingInvoices() {
     }
 }
 
+// Load outstanding-by-customer and update chart
+async function loadOutstandingByCustomer(limit = 10) {
+    try {
+        const resp = await fetch(`/ergon/finance/outstanding-by-customer?limit=${limit}`);
+        const data = await resp.json();
+        if (outstandingByCustomerChart && data.labels) {
+            outstandingByCustomerChart.data.labels = data.labels;
+            outstandingByCustomerChart.data.datasets[0].data = data.data;
+            outstandingByCustomerChart.update();
+        }
+    } catch (err) {
+        console.error('Failed to load outstanding by customer:', err);
+    }
+}
+
+// (Server-side export used via /ergon/finance/export-outstanding)
+
 async function loadRecentQuotations() {
     try {
         const response = await fetch('/ergon/finance/recent-quotations');
@@ -748,10 +789,6 @@ function updateCashFlow(data) {
     const netElement = document.getElementById('netCashFlow');
     netElement.textContent = `₹${netFlow.toLocaleString()}`;
     netElement.className = `flow-value ${netFlow >= 0 ? 'flow-positive' : 'flow-negative'}`;
-}
-
-function exportChart(type) {
-    window.open(`/ergon/finance/export?type=${type}`, '_blank');
 }
 
 function toggleView(module, viewType) {
@@ -1347,6 +1384,8 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
 }
+
+/* Stat-card styles moved to assets/css/ergon.css */
 
 /* Data View Styles */
 .data-view {
