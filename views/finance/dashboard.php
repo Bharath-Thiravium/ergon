@@ -127,115 +127,106 @@
         </div>
     </div>
 
-    <!-- Charts Section - Row 1 (Outstanding & Aging moved higher) -->
+    <!-- Charts Section - Row 1 -->
     <div class="dashboard-grid dashboard-grid--2-col">
-        <div class="stat-card">
-            <div class="stat-card__header">
-                <h3 class="stat-card__title">📋 Outstanding by Customer</h3>
-                <div class="stat-card__controls">
-                    <label for="outstandingTopN" class="sr-only">Top N</label>
-                    <select id="outstandingTopN" class="form-control form-control--sm" title="Select top N customers">
-                        <option value="5">Top 5</option>
-                        <option value="10" selected>Top 10</option>
-                        <option value="20">Top 20</option>
-                        <option value="50">Top 50</option>
-                    </select>
-                    <button id="outstandingDownload" class="btn-icon" title="Download CSV: outstanding by customer">📥</button>
-                </div>
+        <div class="kpi-card kpi-card--chart">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">📝</div>
+                <div class="kpi-card__trend" id="quotationsTrend">↗ +0%</div>
             </div>
-            <div class="stat-card__body">
-                <canvas id="outstandingByCustomerChart" height="220"></canvas>
+            <div class="kpi-card__value" id="quotationsTotal">0</div>
+            <div class="kpi-card__label">Quotations Overview</div>
+            <div class="kpi-card__meta">
+                <span>Draft: <strong id="quotationsDraft">0</strong></span>
+                <span>Revised: <strong id="quotationsRevised">0</strong></span>
+            </div>
+            <div class="kpi-card__chart">
+                <canvas id="quotationsChart" height="120"></canvas>
             </div>
         </div>
-
-        <div class="stat-card">
-            <div class="stat-card__header">
-                <h3 class="stat-card__title">⏳ Aging Buckets</h3>
-                <div class="stat-card__controls">
-                    <button class="btn-icon" title="Download CSV: aging buckets" onclick="exportChart('aging')">📥</button>
-                </div>
+        
+        <div class="kpi-card kpi-card--chart">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">🛒</div>
+                <div class="kpi-card__trend" id="poTrendChart">↗ +0%</div>
             </div>
-            <div class="stat-card__body">
-                <canvas id="agingBucketsChart" height="220"></canvas>
+            <div class="kpi-card__value" id="poTotal">0</div>
+            <div class="kpi-card__label">Purchase Orders</div>
+            <div class="kpi-card__meta">
+                <span>Largest: <strong id="largestPO">₹0</strong></span>
+            </div>
+            <div class="kpi-card__chart">
+                <canvas id="purchaseOrdersChart" height="120"></canvas>
             </div>
         </div>
     </div>
-
-    <!-- Charts Section - Row 2 (Quotations & Purchase Orders) -->
+    
+    <!-- Charts Section - Row 2 -->
     <div class="dashboard-grid dashboard-grid--2-col">
-        <div class="stat-card">
-            <div class="stat-card__header">
-                <h3 class="stat-card__title">📝 Quotations Overview</h3>
-                <div class="stat-card__controls">
-                    <button class="btn-icon" title="Download CSV: quotations" onclick="exportChart('quotations')">📥</button>
-                </div>
+        <div class="kpi-card kpi-card--chart">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">💰</div>
+                <div class="kpi-card__trend" id="invoicesTrendChart">— 0%</div>
             </div>
-            <div class="stat-card__body">
-                <canvas id="quotationsChart" height="200"></canvas>
-                <div class="chart-summary">
-                    <div class="summary-item">
-                        <span class="summary-label">Draft:</span>
-                        <span class="summary-value" id="quotationsDraft">0</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Revised:</span>
-                        <span class="summary-value" id="quotationsRevised">0</span>
-                    </div>
-                </div>
+            <div class="kpi-card__value" id="invoicesTotal">0</div>
+            <div class="kpi-card__label">Invoice Status</div>
+            <div class="kpi-card__meta">
+                <span>Overdue: <strong id="overdueCount">0</strong></span>
+            </div>
+            <div class="kpi-card__chart">
+                <canvas id="invoicesChart" height="120"></canvas>
             </div>
         </div>
-
-        <div class="stat-card">
-            <div class="stat-card__header">
-                <h3 class="stat-card__title">🛒 Purchase Orders</h3>
-                <div class="stat-card__controls">
-                    <button class="btn-icon" title="Download CSV: purchase orders" onclick="exportChart('purchase_orders')">📥</button>
-                </div>
+        
+        <div class="kpi-card kpi-card--chart">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">📋</div>
+                <div class="kpi-card__trend" id="outstandingTrend">— 0%</div>
             </div>
-            <div class="stat-card__body">
-                <canvas id="purchaseOrdersChart" height="200"></canvas>
-                <div class="highlight-card">
-                    <div class="highlight-label">Largest PO:</div>
-                    <div class="highlight-value" id="largestPO">₹0</div>
-                </div>
+            <div class="kpi-card__value" id="outstandingTotal">₹0</div>
+            <div class="kpi-card__label">Outstanding by Customer</div>
+            <div class="kpi-card__meta">
+                <span>Top Customer: <strong id="topCustomer">-</strong></span>
+            </div>
+            <div class="kpi-card__chart">
+                <canvas id="outstandingByCustomerChart" height="120"></canvas>
             </div>
         </div>
     </div>
-
-    <!-- Charts Section - Row 3 (Invoices & Payments) -->
+    
+    <!-- Charts Section - Row 3 -->
     <div class="dashboard-grid dashboard-grid--2-col">
-        <div class="stat-card">
-            <div class="stat-card__header">
-                <h3 class="stat-card__title">💰 Invoice Status</h3>
-                <div class="stat-card__controls">
-                    <button class="btn-icon" title="Download CSV: invoices" onclick="exportChart('invoices')">📥</button>
-                </div>
+        <div class="kpi-card kpi-card--chart">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">⏳</div>
+                <div class="kpi-card__trend" id="agingTrend">— 0%</div>
             </div>
-            <div class="stat-card__body">
-                <canvas id="invoicesChart" height="200"></canvas>
-                <div class="chart-summary">
-                    <div class="summary-item">
-                        <span class="summary-label">Overdue:</span>
-                        <span class="summary-value" id="overdueCount">0</span>
-                    </div>
-                </div>
+            <div class="kpi-card__value" id="agingTotal">₹0</div>
+            <div class="kpi-card__label">Aging Buckets</div>
+            <div class="kpi-card__meta">
+                <span>Overdue: <strong id="agingOverdue">₹0</strong></span>
+            </div>
+            <div class="kpi-card__chart">
+                <canvas id="agingBucketsChart" height="120"></canvas>
             </div>
         </div>
-
-        <div class="stat-card">
-            <div class="stat-card__header">
-                <h3 class="stat-card__title">💳 Payments</h3>
-                <div class="stat-card__controls">
-                    <button class="btn-icon" title="Download CSV: payments" onclick="exportChart('payments')">📥</button>
-                </div>
+        
+        <div class="kpi-card kpi-card--chart">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">💳</div>
+                <div class="kpi-card__trend" id="paymentsTrend">↗ +0%</div>
             </div>
-            <div class="stat-card__body">
-                <div id="paymentsEmpty" class="empty-state">
-                    <div class="empty-icon">💳</div>
-                    <h4>No Payments Recorded</h4>
-                    <p class="payments-note">Payment data will appear here once transactions are recorded</p>
+            <div class="kpi-card__value" id="paymentsTotal">₹0</div>
+            <div class="kpi-card__label">Payments</div>
+            <div class="kpi-card__meta">
+                <span>This Month: <strong id="paymentsMonth">₹0</strong></span>
+            </div>
+            <div class="kpi-card__chart">
+                <div id="paymentsEmpty" class="empty-chart">
+                    <span>💳</span>
+                    <small>No Data</small>
                 </div>
-                <canvas id="paymentsChart" height="200" class="chart--hidden"></canvas>
+                <canvas id="paymentsChart" height="120" style="display:none"></canvas>
             </div>
         </div>
     </div>
@@ -363,43 +354,43 @@ function initCharts() {
         }
     };
 
-    // Quotations Line Chart (simple line)
+    // Quotations Pie Chart
     const quotationsCtx = document.getElementById('quotationsChart');
     if (quotationsCtx) {
         quotationsChart = new Chart(quotationsCtx.getContext('2d'), {
-            type: 'line',
-            data: { labels: [], datasets: [{ label: 'Quotations', data: [], borderColor: '#1e40af', backgroundColor: 'rgba(30,64,175,0.08)', tension: 0.25, pointRadius: 2 }] },
+            type: 'pie',
+            data: { labels: ['Draft','Revised','Converted'], datasets: [{ data: [0,0,0], backgroundColor: ['#3b82f6','#f59e0b','#10b981'] }] },
             options: Object.assign({}, chartDefaults, { plugins: { legend: { display: false } } })
         });
     }
 
-    // Purchase Orders Bar Chart (monthly simple bars)
+    // Purchase Orders Area Chart
     const poCtx = document.getElementById('purchaseOrdersChart');
     if (poCtx) {
         purchaseOrdersChart = new Chart(poCtx.getContext('2d'), {
-            type: 'bar',
-            data: { labels: [], datasets: [{ label: 'PO Amount', data: [], backgroundColor: '#059669' }] },
-            options: Object.assign({}, chartDefaults, { scales: { y: { ticks: { callback: v => '₹' + Number(v).toLocaleString() } } } })
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'PO Amount', data: [], borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.1)', fill: true, tension: 0.3 }] },
+            options: Object.assign({}, chartDefaults, { scales: { y: { display: false }, x: { display: false } } })
         });
     }
 
-    // Invoices Donut Chart (clean palette)
+    // Invoices Donut Chart
     const invoicesCtx = document.getElementById('invoicesChart');
     if (invoicesCtx) {
         invoicesChart = new Chart(invoicesCtx.getContext('2d'), {
             type: 'doughnut',
-            data: { labels: ['Paid','Unpaid','Overdue'], datasets: [{ data: [0,0,0], backgroundColor: ['#059669','#f59e0b','#dc2626'] }] },
-            options: Object.assign({}, chartDefaults, { plugins: { legend: { position: 'bottom' } }, cutout: '60%' })
+            data: { labels: ['Paid','Unpaid','Overdue'], datasets: [{ data: [0,0,0], backgroundColor: ['#10b981','#f59e0b','#ef4444'] }] },
+            options: Object.assign({}, chartDefaults, { plugins: { legend: { display: false } }, cutout: '70%' })
         });
     }
 
-    // Outstanding by Customer Horizontal Bar
+    // Outstanding by Customer Bar Chart
     const outstandingCtx = document.getElementById('outstandingByCustomerChart');
     if (outstandingCtx) {
         outstandingByCustomerChart = new Chart(outstandingCtx.getContext('2d'), {
             type: 'bar',
             data: { labels: [], datasets: [{ label: 'Outstanding', data: [], backgroundColor: '#ef4444' }] },
-            options: Object.assign({}, chartDefaults, { indexAxis: 'y', scales: { x: { ticks: { callback: v => '₹' + Number(v).toLocaleString() } }, y: { ticks: { autoSkip: false } } } })
+            options: Object.assign({}, chartDefaults, { scales: { y: { display: false }, x: { display: false } } })
         });
     }
 
@@ -408,8 +399,8 @@ function initCharts() {
     if (agingCtx) {
         agingBucketsChart = new Chart(agingCtx.getContext('2d'), {
             type: 'doughnut',
-            data: { labels: [], datasets: [{ data: [], backgroundColor: ['#059669','#f59e0b','#fb923c','#dc2626'] }] },
-            options: Object.assign({}, chartDefaults, { plugins: { legend: { position: 'bottom' } }, cutout: '60%' })
+            data: { labels: ['0-30 Days','31-60 Days','61-90 Days','90+ Days'], datasets: [{ data: [0,0,0,0], backgroundColor: ['#10b981','#f59e0b','#fb923c','#ef4444'] }] },
+            options: Object.assign({}, chartDefaults, { plugins: { legend: { display: false } }, cutout: '70%' })
         });
     }
 }
@@ -626,6 +617,7 @@ async function updateCharts() {
             
             document.getElementById('quotationsDraft').textContent = quotationsData.draft || 0;
             document.getElementById('quotationsRevised').textContent = quotationsData.revised || 0;
+            document.getElementById('quotationsTotal').textContent = (quotationsData.draft + quotationsData.revised) || 0;
         }
         
         // Update Purchase Orders Chart
@@ -1349,6 +1341,42 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 .dashboard-grid--2-col {
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
+}
+
+/* KPI Card with Chart */
+.kpi-card--chart {
+    height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-card__chart {
+    flex: 1;
+    margin-top: 1rem;
+    position: relative;
+}
+
+.kpi-card__meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.empty-chart {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 120px;
+    color: var(--text-muted);
+    font-size: 2rem;
+}
+
+.empty-chart small {
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
 }
 
 /* Stat-card styles moved to assets/css/ergon.css */
