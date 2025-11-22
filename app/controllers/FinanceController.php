@@ -803,10 +803,14 @@ class FinanceController extends Controller {
                 foreach ($customerResults as $row) {
                     $data = json_decode($row['data'], true);
                     $customerId = $data['id'] ?? '';
-                    $customerName = $data['name'] ?? $data['company_name'] ?? $data['customer_name'] ?? '';
+                    $customerName = $data['display_name'] ?? $data['name'] ?? '';
+                    $customerGstin = $data['gstin'] ?? '';
                     
                     if ($customerId && $customerName) {
-                        $customerNames[$customerId] = $customerName;
+                        $customerNames[$customerId] = [
+                            'name' => $customerName,
+                            'gstin' => $customerGstin
+                        ];
                     }
                 }
                 
@@ -824,10 +828,12 @@ class FinanceController extends Controller {
                         $customerGstin = $data['customer_gstin'] ?? '';
                         
                         if ($customerId && isset($customerNames[$customerId])) {
+                            $customerInfo = $customerNames[$customerId];
+                            $gstin = $customerInfo['gstin'] ?: $customerGstin;
                             $customers[$customerId] = [
                                 'id' => $customerId,
-                                'gstin' => $customerGstin,
-                                'display' => $customerNames[$customerId] . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                                'gstin' => $gstin,
+                                'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
                             ];
                         }
                     }
