@@ -715,63 +715,46 @@ class FinanceController extends Controller {
         header('Content-Type: application/json');
         
         try {
-            $db = Database::connect();
-            $prefix = $this->getCompanyPrefix();
+            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
             
-            $customers = [];
-            $customerNames = [];
-            
-            // Search all finance tables for customer names
-            $tables = ['finance_customers', 'finance_quotations', 'finance_invoices', 'finance_purchase_orders'];
-            
-            foreach ($tables as $tableName) {
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = ?");
-                $stmt->execute([$tableName]);
-                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                foreach ($results as $row) {
-                    $data = json_decode($row['data'], true);
-                    $customerId = $data['customer_id'] ?? $data['id'] ?? '';
-                    
-                    // Try multiple possible customer name fields
-                    $customerName = $data['customer_name'] ?? $data['company_name'] ?? $data['name'] ?? $data['business_name'] ?? $data['client_name'] ?? '';
-                    
-                    if ($customerId && $customerName && !isset($customerNames[$customerId])) {
-                        $customerNames[$customerId] = $customerName;
-                    }
-                }
+            if (!$conn) {
+                throw new Exception('PostgreSQL connection failed');
             }
             
-            // Get customers from quotations with GST details
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-            $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $prefix = $this->getCompanyPrefix();
+            $customers = [];
             
-            foreach ($results as $row) {
-                $data = json_decode($row['data'], true);
-                $quotationNumber = $data['quotation_number'] ?? '';
-                if (str_contains(strtoupper($quotationNumber), $prefix)) {
-                    $customerId = $data['customer_id'] ?? '';
-                    $customerGstin = $data['customer_gstin'] ?? '';
+            // Get customers directly from PostgreSQL with quotation data
+            $query = "SELECT DISTINCT q.customer_id, q.customer_gstin, c.company_name, c.name 
+                     FROM finance_quotations q 
+                     LEFT JOIN finance_customers c ON q.customer_id = c.id 
+                     WHERE UPPER(q.quotation_number) LIKE '%{$prefix}%'";
+            
+            $result = pg_query($conn, $query);
+            
+            if ($result) {
+                while ($row = pg_fetch_assoc($result)) {
+                    $customerId = $row['customer_id'];
+                    $customerName = $row['company_name'] ?: $row['name'] ?: "Customer {$customerId}";
+                    $customerGstin = $row['customer_gstin'] ?: '';
                     
                     if ($customerId) {
-                        $customerKey = $customerId;
-                        if (!isset($customers[$customerKey])) {
-                            $companyName = $customerNames[$customerId] ?? "Customer {$customerId}";
-                            $customers[$customerKey] = [
-                                'id' => $customerId,
-                                'gstin' => $customerGstin,
-                                'display' => $companyName . ($customerGstin ? " (GST: {$customerGstin})" : '')
-                            ];
-                        }
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $customerGstin,
+                            'display' => $customerName . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                        ];
                     }
                 }
             }
+            
+            pg_close($conn);
             
             // Sort by company name
             uasort($customers, function($a, $b) {
                 return strcmp($a['display'], $b['display']);
             });
+            
             echo json_encode(['customers' => array_values($customers)]);
             
         } catch (Exception $e) {
