@@ -343,88 +343,62 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initCharts() {
-    // Quotations Line Chart
+    // Simple, consistent chart styles for dashboard
+    const chartDefaults = {
+        responsive: true,
+        maintainAspectRatio: true,
+        animation: { duration: 250 },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const v = context.raw || 0;
+                        if (typeof v === 'number') return '₹' + Number(v).toLocaleString();
+                        return String(v);
+                    }
+                }
+            }
+        }
+    };
+
+    // Quotations Line Chart (simple line)
     const quotationsCtx = document.getElementById('quotationsChart');
     if (quotationsCtx) {
         quotationsChart = new Chart(quotationsCtx.getContext('2d'), {
             type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Quotation Value',
-                    data: [],
-                    borderColor: '#007bff',
-                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } }
-            }
+            data: { labels: [], datasets: [{ label: 'Quotations', data: [], borderColor: '#1e40af', backgroundColor: 'rgba(30,64,175,0.08)', tension: 0.25, pointRadius: 2 }] },
+            options: Object.assign({}, chartDefaults, { plugins: { legend: { display: false } } })
         });
     }
-    
-    // Purchase Orders Bar Chart
+
+    // Purchase Orders Bar Chart (monthly simple bars)
     const poCtx = document.getElementById('purchaseOrdersChart');
     if (poCtx) {
         purchaseOrdersChart = new Chart(poCtx.getContext('2d'), {
             type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'PO Amount',
-                    data: [],
-                    backgroundColor: '#28a745'
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } }
-            }
+            data: { labels: [], datasets: [{ label: 'PO Amount', data: [], backgroundColor: '#059669' }] },
+            options: Object.assign({}, chartDefaults, { scales: { y: { ticks: { callback: v => '₹' + Number(v).toLocaleString() } } } })
         });
     }
-    
-    // Invoices Donut Chart
+
+    // Invoices Donut Chart (clean palette)
     const invoicesCtx = document.getElementById('invoicesChart');
     if (invoicesCtx) {
         invoicesChart = new Chart(invoicesCtx.getContext('2d'), {
             type: 'doughnut',
-            data: {
-                labels: ['Paid', 'Unpaid', 'Overdue'],
-                datasets: [{
-                    data: [0, 0, 0],
-                    backgroundColor: ['#28a745', '#ffc107', '#dc3545']
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { position: 'bottom' } }
-            }
+            data: { labels: ['Paid','Unpaid','Overdue'], datasets: [{ data: [0,0,0], backgroundColor: ['#059669','#f59e0b','#dc2626'] }] },
+            options: Object.assign({}, chartDefaults, { plugins: { legend: { position: 'bottom' } }, cutout: '60%' })
         });
     }
 
-    // Outstanding by Customer Bar Chart
+    // Outstanding by Customer Horizontal Bar
     const outstandingCtx = document.getElementById('outstandingByCustomerChart');
     if (outstandingCtx) {
         outstandingByCustomerChart = new Chart(outstandingCtx.getContext('2d'), {
             type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Outstanding Amount',
-                    data: [],
-                    backgroundColor: '#dc3545'
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { ticks: { callback: function(value) { return '₹' + Number(value).toLocaleString(); } } }
-                }
-            }
+            data: { labels: [], datasets: [{ label: 'Outstanding', data: [], backgroundColor: '#ef4444' }] },
+            options: Object.assign({}, chartDefaults, { indexAxis: 'y', scales: { x: { ticks: { callback: v => '₹' + Number(v).toLocaleString() } }, y: { ticks: { autoSkip: false } } } })
         });
     }
 
@@ -433,17 +407,8 @@ function initCharts() {
     if (agingCtx) {
         agingBucketsChart = new Chart(agingCtx.getContext('2d'), {
             type: 'doughnut',
-            data: {
-                labels: [],
-                datasets: [{
-                    data: [],
-                    backgroundColor: ['#28a745', '#ffc107', '#fd7e14', '#dc3545']
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { position: 'bottom' } }
-            }
+            data: { labels: [], datasets: [{ data: [], backgroundColor: ['#059669','#f59e0b','#fb923c','#dc2626'] }] },
+            options: Object.assign({}, chartDefaults, { plugins: { legend: { position: 'bottom' } }, cutout: '60%' })
         });
     }
 }
