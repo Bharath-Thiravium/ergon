@@ -77,8 +77,12 @@ class AuthController extends Controller {
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['user_email'] = $user['email'];
                 $_SESSION['role'] = $user['role'];
+                
+                // Set timezone to IST for Hostinger
+                date_default_timezone_set('Asia/Kolkata');
                 $_SESSION['login_time'] = time();
                 $_SESSION['last_activity'] = time();
+                $_SESSION['login_timestamp'] = date('Y-m-d H:i:s');
                 
                 $redirectUrl = $this->getRedirectUrl($user['role']);
                 
