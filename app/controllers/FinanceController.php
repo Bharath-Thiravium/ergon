@@ -724,19 +724,45 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customers = [];
             
-            // Get customers directly from PostgreSQL with quotation data
-            $query = "SELECT DISTINCT q.customer_id, q.customer_gstin, c.company_name, c.name 
-                     FROM finance_quotations q 
-                     LEFT JOIN finance_customers c ON q.customer_id = c.id 
-                     WHERE UPPER(q.quotation_number) LIKE '%{$prefix}%'";
+            // First check what tables exist
+            $tableCheck = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '%customer%'");
+            $customerTable = null;
+            while ($row = pg_fetch_assoc($tableCheck)) {
+                $customerTable = $row['table_name'];
+                break;
+            }
+            
+            if ($customerTable) {
+                // Get column names for customer table
+                $colQuery = pg_query($conn, "SELECT column_name FROM information_schema.columns WHERE table_name = '$customerTable'");
+                $columns = [];
+                while ($col = pg_fetch_assoc($colQuery)) {
+                    $columns[] = $col['column_name'];
+                }
+                
+                // Build query based on available columns
+                $nameField = in_array('company_name', $columns) ? 'company_name' : 
+                           (in_array('name', $columns) ? 'name' : 
+                           (in_array('customer_name', $columns) ? 'customer_name' : 'id'));
+                
+                $query = "SELECT DISTINCT q.customer_id, q.customer_gstin, c.$nameField as customer_name 
+                         FROM finance_quotations q 
+                         LEFT JOIN $customerTable c ON q.customer_id = c.id 
+                         WHERE UPPER(q.quotation_number) LIKE '%{$prefix}%'";
+            } else {
+                // Fallback: get from quotations only
+                $query = "SELECT DISTINCT customer_id, customer_gstin 
+                         FROM finance_quotations 
+                         WHERE UPPER(quotation_number) LIKE '%{$prefix}%'";
+            }
             
             $result = pg_query($conn, $query);
             
             if ($result) {
                 while ($row = pg_fetch_assoc($result)) {
                     $customerId = $row['customer_id'];
-                    $customerName = $row['company_name'] ?: $row['name'] ?: "Customer {$customerId}";
-                    $customerGstin = $row['customer_gstin'] ?: '';
+                    $customerName = $row['customer_name'] ?? "Customer {$customerId}";
+                    $customerGstin = $row['customer_gstin'] ?? '';
                     
                     if ($customerId) {
                         $customers[$customerId] = [
@@ -750,7 +776,6 @@ class FinanceController extends Controller {
             
             pg_close($conn);
             
-            // Sort by company name
             uasort($customers, function($a, $b) {
                 return strcmp($a['display'], $b['display']);
             });
