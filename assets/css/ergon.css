@@ -372,6 +372,47 @@ code {
   pointer-events: auto;
 }
 
+/* Finance Dashboard Enhancements */
+.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+.card { background: var(--bg-primary); border-radius: var(--border-radius); box-shadow: var(--shadow); padding: 16px; color: var(--text-primary); }
+.card__header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.card__title { font-size: var(--font-size-2xl); font-weight:600; color:var(--text-primary); }
+.kpi-card { padding: 14px; border-radius: 10px; display:flex; flex-direction:column; justify-content:space-between; gap:8px; min-height:110px; }
+.kpi-card__value { font-size: 1.25rem; font-weight:700; }
+.kpi-card__label { font-size: 0.775rem; color: var(--text-muted); }
+.header-actions { display:flex; gap:8px; align-items:center; margin-bottom:16px; }
+.header-actions .form-control { height:36px; padding:6px 8px; }
+
+/* Funnel and list improvements */
+.funnel-container { gap: 12px; }
+.funnel-stage { padding: 12px; }
+.funnel-number { font-size: 1.25rem; }
+
+/* Tables and lists */
+.table { background: transparent; }
+.table thead th { font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; }
+
+/* Dropdown sizing for customer filter */
+#customerFilter { min-width: 260px; max-width: 420px; }
+
+/* Chart container responsive tweaks */
+canvas { width: 100% !important; height: auto !important; }
+
+/* Small loading spinner for async actions */
+.mini-spinner { display:inline-block; width:18px; height:18px; border-radius:50%; border:2px solid rgba(0,0,0,0.08); border-top-color:var(--primary); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Small cards for highlight values */
+.highlight-card { margin-top:10px; padding:10px; background:var(--bg-secondary); border-radius:8px; display:inline-block; }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #customerFilter { min-width: 140px; }
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .kpi-card { min-height: 90px; }
+}
+
+
 .header__top {
   display: flex;
   align-items: center;

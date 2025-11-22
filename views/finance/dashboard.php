@@ -91,6 +91,7 @@ ob_start();
                 <select id="customerFilter" class="form-control" style="width: 200px;">
                     <option value="">All Customers</option>
                 </select>
+                <span id="customerLoader" style="margin-left:8px;display:none" aria-hidden="true"></span>
             </div>
             <div class="card__body">
                 <div class="funnel-container">
@@ -1030,13 +1031,16 @@ function filterByCustomer() {
 }
 
 async function loadCustomers() {
+    const select = document.getElementById('customerFilter');
+    const loader = document.getElementById('customerLoader');
     try {
+        if (loader) { loader.style.display = 'inline-block'; loader.innerHTML = '<span class="mini-spinner" aria-hidden="true"></span>'; }
+        if (select) { select.disabled = true; select.innerHTML = '<option value="">Loading customers...</option>'; }
+
         const response = await fetch('/ergon/finance/customers');
         const data = await response.json();
-        
-        const select = document.getElementById('customerFilter');
-        select.innerHTML = '<option value="">All Customers</option>';
-        
+
+        if (select) select.innerHTML = '<option value="">All Customers</option>';
         if (data.customers) {
             data.customers.forEach(customer => {
                 select.innerHTML += `<option value="${customer.id}">${customer.display}</option>`;
@@ -1044,6 +1048,10 @@ async function loadCustomers() {
         }
     } catch (error) {
         console.error('Failed to load customers:', error);
+        if (select) select.innerHTML = '<option value="">Failed to load</option>';
+    } finally {
+        if (loader) loader.style.display = 'none';
+        if (select) select.disabled = false;
     }
 }
 </script>
