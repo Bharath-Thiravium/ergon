@@ -730,47 +730,44 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $prefix = $this->getCompanyPrefix();
             $customers = [];
+            $customerNames = [];
             
-            // Debug: Get sample data to see structure
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' LIMIT 5");
+            // Search all tables for customer names
+            $stmt = $db->prepare("SELECT table_name, data FROM finance_data");
             $stmt->execute();
-            $sampleResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $allResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            $debugData = [];
-            foreach ($sampleResults as $row) {
+            // First pass: collect all customer names from all tables
+            foreach ($allResults as $row) {
                 $data = json_decode($row['data'], true);
-                $debugData[] = array_keys($data); // Show available fields
+                $customerId = $data['customer_id'] ?? $data['id'] ?? '';
+                
+                $nameFields = ['customer_name', 'company_name', 'client_name', 'business_name', 'name', 'customer_company_name', 'party_name', 'vendor_name'];
+                foreach ($nameFields as $field) {
+                    if (!empty($data[$field]) && $customerId) {
+                        $customerNames[$customerId] = $data[$field];
+                        break;
+                    }
+                }
             }
             
-            // Get quotations with prefix filter
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-            $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($results as $row) {
-                $data = json_decode($row['data'], true);
-                $quotationNumber = $data['quotation_number'] ?? '';
-                
-                if (str_contains(strtoupper($quotationNumber), $prefix)) {
-                    $customerId = $data['customer_id'] ?? '';
-                    $customerGstin = $data['customer_gstin'] ?? '';
+            // Second pass: get customers from quotations with names
+            foreach ($allResults as $row) {
+                if ($row['table_name'] === 'finance_quotations') {
+                    $data = json_decode($row['data'], true);
+                    $quotationNumber = $data['quotation_number'] ?? '';
                     
-                    // Try all possible name fields
-                    $customerName = '';
-                    $nameFields = ['customer_name', 'company_name', 'client_name', 'business_name', 'name', 'customer_company_name'];
-                    foreach ($nameFields as $field) {
-                        if (!empty($data[$field])) {
-                            $customerName = $data[$field];
-                            break;
+                    if (str_contains(strtoupper($quotationNumber), $prefix)) {
+                        $customerId = $data['customer_id'] ?? '';
+                        $customerGstin = $data['customer_gstin'] ?? '';
+                        
+                        if ($customerId && isset($customerNames[$customerId])) {
+                            $customers[$customerId] = [
+                                'id' => $customerId,
+                                'gstin' => $customerGstin,
+                                'display' => $customerNames[$customerId] . ($customerGstin ? " (GST: {$customerGstin})" : '')
+                            ];
                         }
-                    }
-                    
-                    if ($customerId && $customerName) {
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $customerGstin,
-                            'display' => $customerName . ($customerGstin ? " (GST: {$customerGstin})" : '')
-                        ];
                     }
                 }
             }
@@ -779,11 +776,7 @@ class FinanceController extends Controller {
                 return strcmp($a['display'], $b['display']);
             });
             
-            echo json_encode([
-                'customers' => array_values($customers),
-                'debug' => $debugData,
-                'total_records' => count($results)
-            ]);
+            echo json_encode(['customers' => array_values($customers)]);
             
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
