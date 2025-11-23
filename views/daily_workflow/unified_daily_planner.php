@@ -29,11 +29,11 @@ $content = ob_start();
         <h1><i class="bi bi-calendar-day"></i> Daily Planner</h1>
         <p>Advanced Task Execution Workflow - <?= date('l, F j, Y', strtotime($selected_date)) ?>
         <?php if ($selected_date < date('Y-m-d')): ?>
-            <span class="badge badge--muted" style="margin-left: 10px;"><i class="bi bi-archive"></i> Historical View Only</span>
+            <span class="badge badge--muted" style="margin-left: 10px;"><i class="bi bi-archive"></i> 📜 Historical View</span>
         <?php elseif ($selected_date > date('Y-m-d')): ?>
-            <span class="badge badge--info" style="margin-left: 10px;"><i class="bi bi-calendar-plus"></i> Planning Mode</span>
+            <span class="badge badge--info" style="margin-left: 10px;"><i class="bi bi-calendar-plus"></i> 📅 Planning Mode</span>
         <?php else: ?>
-            <span class="badge badge--success" style="margin-left: 10px;"><i class="bi bi-play-circle"></i> Execution Mode</span>
+            <span class="badge badge--success" style="margin-left: 10px;"><i class="bi bi-play-circle"></i> 🎯 Execution Mode</span>
         <?php endif; ?>
         </p>
         <?php if (isset($_SESSION['sync_message'])): ?>
@@ -72,7 +72,11 @@ $content = ob_start();
     </div>
 </div>
 
-<div class="planner-grid">
+<div class="planner-grid <?php 
+    if ($selected_date < date('Y-m-d')) echo 'historical-view';
+    elseif ($selected_date > date('Y-m-d')) echo 'planning-mode';
+    else echo 'execution-mode';
+?>">
     <!-- Task Execution Section -->
     <div class="card">
         <div class="card__header">
@@ -163,8 +167,12 @@ $content = ob_start();
                         // $isPastDate is used for historical view styling and action restrictions
                         $isPastDate = ($selected_date < date('Y-m-d'));
                         $historicalClass = $isPastDate ? 'task-card--historical' : '';
+                        $modeClass = '';
+                        if ($isPastDate) $modeClass = 'historical-view';
+                        elseif ($isFutureDate) $modeClass = 'planning-mode';
+                        else $modeClass = 'execution-mode';
                         ?>
-                        <div class="task-card <?= $cssClass ?> <?= $historicalClass ?>" 
+                        <div class="task-card <?= $cssClass ?> <?= $historicalClass ?> <?= $modeClass ?>" 
                              data-task-id="<?= $taskId ?>" 
                              data-original-task-id="<?= $task['task_id'] ?? '' ?>" 
                              data-sla-duration="<?= $slaDuration ?>" 
@@ -268,7 +276,7 @@ $content = ob_start();
                                     $isPastDate = ($selected_date < date('Y-m-d'));
                                     
                                     if ($isPastDate): 
-                                        // Past dates: Read-only historical view
+                                        // 📜 Historical View - Disable all execution buttons
                                     ?>
                                         <span class="badge badge--muted"><i class="bi bi-archive"></i> Historical View</span>
                                         <button class="btn btn--sm btn--secondary" onclick="showTaskHistory(<?= $taskId ?>, '<?= htmlspecialchars($task['title']) ?>')" title="View this task's history and timeline">
@@ -276,8 +284,12 @@ $content = ob_start();
                                         </button>
                                         <?php if ($status === 'completed'): ?>
                                             <span class="badge badge--success"><i class="bi bi-check-circle"></i> Completed</span>
+                                            <button class="btn btn--sm btn--info" onclick="showReadOnlyProgress(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 100 ?>)" title="View completion details (read-only)">
+                                                <i class="bi bi-percent"></i> Progress
+                                            </button>
                                         <?php else: ?>
-                                            <span class="badge badge--info"><i class="bi bi-arrow-right"></i> Rolled Over</span>
+                                            <span class="badge badge--warning"><i class="bi bi-arrow-repeat"></i> Rolled Over</span>
+                                            <small class="text-muted d-block">🔄 Execution moved to current date</small>
                                         <?php endif; ?>
                                     <?php else: 
                                         // Current/future dates: Full functionality
@@ -297,23 +309,47 @@ $content = ob_start();
                                                 <i class="bi bi-calendar-plus"></i> Re-postpone
                                             </button>
                                         <?php elseif ($status === 'not_started' || $status === 'assigned'): ?>
-                                            <button class="btn btn--sm btn--success" onclick="startTask(<?= $taskId ?>)" title="Start working on this task">
-                                                <i class="bi bi-play"></i> Start
-                                            </button>
+                                            <?php if ($isCurrentDate): ?>
+                                                <button class="btn btn--sm btn--success" onclick="startTask(<?= $taskId ?>)" title="Start working on this task">
+                                                    <i class="bi bi-play"></i> Start
+                                                </button>
+                                            <?php else: ?>
+                                                <button class="btn btn--sm btn--success" disabled title="🔒 Start disabled for past/future dates">
+                                                    <i class="bi bi-play"></i> Start
+                                                </button>
+                                            <?php endif; ?>
                                         <?php elseif ($status === 'in_progress'): ?>
-                                            <button class="btn btn--sm btn--warning" onclick="pauseTask(<?= $taskId ?>)" title="Take a break from this task">
-                                                <i class="bi bi-pause"></i> Break
-                                            </button>
-                                            <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')" title="Update task completion progress">
-                                                <i class="bi bi-percent"></i> Update Progress
-                                            </button>
+                                            <?php if ($isCurrentDate): ?>
+                                                <button class="btn btn--sm btn--warning" onclick="pauseTask(<?= $taskId ?>)" title="Take a break from this task">
+                                                    <i class="bi bi-pause"></i> Break
+                                                </button>
+                                                <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')" title="Update task completion progress">
+                                                    <i class="bi bi-percent"></i> Update Progress
+                                                </button>
+                                            <?php else: ?>
+                                                <button class="btn btn--sm btn--warning" disabled title="🔒 Pause disabled for past/future dates">
+                                                    <i class="bi bi-pause"></i> Break
+                                                </button>
+                                                <button class="btn btn--sm btn--primary" disabled title="🔒 Progress updates disabled for past/future dates">
+                                                    <i class="bi bi-percent"></i> Update Progress
+                                                </button>
+                                            <?php endif; ?>
                                         <?php elseif ($status === 'on_break'): ?>
-                                            <button class="btn btn--sm btn--success" onclick="resumeTask(<?= $taskId ?>)" title="Resume working on this task">
-                                                <i class="bi bi-play"></i> Resume
-                                            </button>
-                                            <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')" title="Update task completion progress">
-                                                <i class="bi bi-percent"></i> Update Progress
-                                            </button>
+                                            <?php if ($isCurrentDate): ?>
+                                                <button class="btn btn--sm btn--success" onclick="resumeTask(<?= $taskId ?>)" title="Resume working on this task">
+                                                    <i class="bi bi-play"></i> Resume
+                                                </button>
+                                                <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')" title="Update task completion progress">
+                                                    <i class="bi bi-percent"></i> Update Progress
+                                                </button>
+                                            <?php else: ?>
+                                                <button class="btn btn--sm btn--success" disabled title="🔒 Resume disabled for past/future dates">
+                                                    <i class="bi bi-play"></i> Resume
+                                                </button>
+                                                <button class="btn btn--sm btn--primary" disabled title="🔒 Progress updates disabled for past/future dates">
+                                                    <i class="bi bi-percent"></i> Update Progress
+                                                </button>
+                                            <?php endif; ?>
                                         <?php elseif ($status === 'completed'): ?>
                                             <span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>
                                         <?php elseif ($status === 'cancelled'): ?>
@@ -321,10 +357,16 @@ $content = ob_start();
                                         <?php elseif ($status === 'suspended'): ?>
                                             <span class="badge badge--warning"><i class="bi bi-pause-circle"></i> Suspended</span>
                                         <?php endif; ?>
-                                        <?php if (!in_array($status, ['completed', 'cancelled', 'suspended', 'postponed']) && $isCurrentDate): ?>
-                                            <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)" title="Postpone task to another date">
-                                                <i class="bi bi-calendar-plus"></i> Postpone
-                                            </button>
+                                        <?php if (!in_array($status, ['completed', 'cancelled', 'suspended', 'postponed'])): ?>
+                                            <?php if ($isCurrentDate): ?>
+                                                <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)" title="Postpone task to another date">
+                                                    <i class="bi bi-calendar-plus"></i> Postpone
+                                                </button>
+                                            <?php else: ?>
+                                                <button class="btn btn--sm btn--secondary" disabled title="🔒 Postpone disabled for past/future dates">
+                                                    <i class="bi bi-calendar-plus"></i> Postpone
+                                                </button>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
@@ -610,20 +652,90 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
     position: relative;
 }
 
-/* Historical view styling */
+/* 📜 Historical view styling */
 .task-card--historical {
     opacity: 0.8;
     background: linear-gradient(135deg, #f8f9fa, #e9ecef);
     border-left: 4px solid #6c757d;
+    border: 1px solid #dee2e6;
 }
 
 .task-card--historical .task-card__actions {
-    pointer-events: none;
+    /* Allow selective interactions for historical view */
 }
 
 .task-card--historical .badge--muted {
     background: #6c757d;
     color: white;
+}
+
+/* 🎯 Execution mode styling */
+.execution-mode .task-card {
+    border-left: 4px solid #28a745;
+    background: linear-gradient(135deg, #ffffff, #f8fff9);
+}
+
+/* 📅 Planning mode styling */
+.planning-mode .task-card {
+    border-left: 4px solid #17a2b8;
+    background: linear-gradient(135deg, #ffffff, #f0f9ff);
+}
+
+/* Visual distinction for different modes */
+.historical-view {
+    filter: grayscale(20%);
+}
+
+.execution-mode {
+    /* Full color and interactivity */
+}
+
+.planning-mode {
+    opacity: 0.9;
+}
+
+/* Disabled button styling for past/future dates */
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #e9ecef !important;
+    border-color: #dee2e6 !important;
+    color: #6c757d !important;
+}
+
+.btn:disabled:hover {
+    opacity: 0.5;
+    transform: none;
+}
+
+/* Past date specific styling */
+.task-card[data-is-past="true"] .btn:not(.btn--secondary):not([onclick*="showTaskHistory"]):not([onclick*="showReadOnlyProgress"]) {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* Read-only progress display */
+.progress-display {
+    text-align: center;
+    padding: 1rem;
+}
+
+.progress-display .progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.progress-display .progress-label {
+    font-weight: 600;
+    color: #374151;
+}
+
+.progress-display .progress-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #059669;
 }
 
 .task-card--postponed {
@@ -1729,6 +1841,26 @@ function refreshSLADashboard() {
     });
 }
 
+// Enforce past date button restrictions
+function enforcePastDateRestrictions() {
+    const selectedDate = '<?= $selected_date ?>';
+    const today = new Date().toISOString().split('T')[0];
+    const isPastDate = selectedDate < today;
+    
+    if (isPastDate) {
+        // Disable all execution buttons for past dates
+        document.querySelectorAll('.task-card').forEach(taskCard => {
+            const buttons = taskCard.querySelectorAll('button[onclick*="startTask"], button[onclick*="pauseTask"], button[onclick*="resumeTask"], button[onclick*="postponeTask"]');
+            buttons.forEach(btn => {
+                if (!btn.disabled) {
+                    btn.disabled = true;
+                    btn.title = '🔒 Action disabled for past dates';
+                }
+            });
+        });
+    }
+}
+
 // Prevent auto-refresh from overriding postponed tasks and SLA data
 function preservePostponedTasks() {
     if (window.postponedTasks) {
@@ -1748,6 +1880,9 @@ function preservePostponedTasks() {
             }
         });
     }
+    
+    // Re-enforce past date restrictions after any refresh
+    enforcePastDateRestrictions();
 }
 
 // Prevent SLA data reversion
@@ -1947,6 +2082,43 @@ function closeHistoryInfo() {
 function goToToday() {
     // Use configurable base URL constant
     window.location.href = '<?= DAILY_PLANNER_BASE_URL ?>' + new Date().toISOString().split('T')[0];
+}
+
+function showReadOnlyProgress(taskId, percentage) {
+    const modal = document.createElement('div');
+    modal.className = 'history-info-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeReadOnlyProgress()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="bi bi-percent"></i> Task Progress (Read-Only)</h3>
+                <button onclick="closeReadOnlyProgress()" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="progress-display">
+                    <div class="progress-info">
+                        <span class="progress-label">Completion Status</span>
+                        <span class="progress-value">${percentage}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${percentage}%"></div>
+                    </div>
+                    <p class="text-muted"><i class="bi bi-info-circle"></i> This is a historical view. Progress cannot be modified.</p>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button onclick="closeReadOnlyProgress()" class="btn btn--secondary">Close</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function closeReadOnlyProgress() {
+    const modal = document.querySelector('.history-info-modal');
+    if (modal) {
+        document.body.removeChild(modal);
+    }
 }
 
 function showTaskHistory(taskId, taskTitle) {
@@ -2466,6 +2638,9 @@ function closePostponeTaskModal() {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
+    // Enforce past date restrictions on page load
+    enforcePastDateRestrictions();
+    
     // Progress slider event listener
     var slider = document.getElementById('progressSlider');
     if (slider) {

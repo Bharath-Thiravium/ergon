@@ -3,6 +3,12 @@
 class DailyPlanner {
     private $db;
     
+    // ⚙️ Configuration Options
+    public $autoRollover = true;        // Default: auto rollover enabled
+    public $manualTrigger = true;       // Optional button in UI
+    public $preserveStatus = true;      // Retain original status
+    public $userOptOut = false;         // Allow user to disable per task
+    
     public function __construct() {
         $this->db = Database::connect();
         $this->ensureDailyTasksTable();
@@ -114,9 +120,11 @@ class DailyPlanner {
                 }
             }
             
-            // Step 3: Get tasks with audit trail and visual indicators
+            // 🖥️ Step 3: Display Tasks in UI
             if ($isCurrentDate) {
-                // Current date: show all tasks including rollovers
+                // Logic for Today's View:
+                // Show all tasks with scheduled_date = today
+                // Include rolled-over tasks (with rollover_source_date IS NOT NULL)
                 $stmt = $this->db->prepare("
                     SELECT 
                         dt.id, dt.title, dt.description, dt.priority, dt.status,
@@ -130,11 +138,13 @@ class DailyPlanner {
                             WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
                             WHEN t.assigned_by != t.assigned_to THEN '👥 From Others'
                             ELSE '👤 Self-Assigned'
-                        END as task_indicator
+                        END as task_indicator,
+                        'current_day' as view_type
                     FROM daily_tasks dt
                     LEFT JOIN tasks t ON dt.original_task_id = t.id
                     WHERE dt.user_id = ? AND dt.scheduled_date = ?
                     ORDER BY 
+                        CASE WHEN dt.rollover_source_date IS NOT NULL THEN 1 ELSE 0 END,
                         CASE dt.status 
                             WHEN 'in_progress' THEN 1 
                             WHEN 'on_break' THEN 2 
@@ -181,7 +191,10 @@ class DailyPlanner {
                 ");
                 $stmt->execute([$date, $userId, $date]);
             } else {
-                // Past date: show all tasks that were assigned to that specific date
+                // Logic for Past Dates:
+                // Show only tasks with scheduled_date = [past_date]
+                // Tasks completed on [past_date] (based on updated_at)
+                // Exclude rolled-over tasks from other dates
                 $stmt = $this->db->prepare("
                     SELECT 
                         dt.id, dt.title, dt.description, dt.priority, dt.status,
@@ -191,14 +204,19 @@ class DailyPlanner {
                         dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
                         COALESCE(t.sla_hours, 0.25) as sla_hours,
                         CASE 
-                            WHEN dt.rollover_source_date IS NOT NULL THEN CONCAT('🔄 Rolled over from: ', dt.rollover_source_date)
+                            WHEN dt.status = 'completed' AND DATE(dt.updated_at) = ? THEN '✅ Completed on this date'
                             WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
-                            ELSE '📜 Historical View'
+                            ELSE '📜 Historical View Only'
                         END as task_indicator,
-                        'historical' as view_mode
+                        'historical' as view_type
                     FROM daily_tasks dt
                     LEFT JOIN tasks t ON dt.original_task_id = t.id
-                    WHERE dt.user_id = ? AND dt.scheduled_date = ?
+                    WHERE dt.user_id = ? 
+                    AND (
+                        dt.scheduled_date = ? 
+                        OR (dt.status = 'completed' AND DATE(dt.updated_at) = ?)
+                    )
+                    AND (dt.rollover_source_date IS NULL OR dt.rollover_source_date = ?)
                     ORDER BY 
                         CASE dt.status 
                             WHEN 'completed' THEN 1
@@ -215,7 +233,7 @@ class DailyPlanner {
                         END,
                         dt.created_at ASC
                 ");
-                $stmt->execute([$userId, $date]);
+                $stmt->execute([$date, $userId, $date, $date, $date]);
             }
             
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1008,113 +1026,160 @@ class DailyPlanner {
         }
     }
     
-    public function rolloverUncompletedTasks($targetDate = null, $userId = null) {
+    /**
+     * 🔁 Step 1: Detect Eligible Tasks for Rollover
+     * Function: getRolloverTasks()
+     */
+    public function getRolloverTasks($userId = null) {
         try {
-            $yesterday = $targetDate ?: date('Y-m-d', strtotime('-1 day'));
             $today = date('Y-m-d');
             
-            // SECURITY FIX: Add user_id filter to prevent cross-user rollovers
-            // Get uncompleted tasks from yesterday only (exclude postponed tasks)
-            $whereClause = "scheduled_date = ? AND status IN ('not_started', 'in_progress', 'on_break') AND completed_percentage < 100";
-            $params = [$yesterday];
+            // Query daily_tasks where:
+            // - scheduled_date < today
+            // - status IN ('not_started', 'in_progress', 'on_break')
+            // - rollover_source_date IS NULL (not already rolled over)
+            $whereClause = "scheduled_date < ? AND status IN ('not_started', 'in_progress', 'on_break') AND completed_percentage < 100";
+            $params = [$today];
             
-            // CRITICAL: Always filter by user_id to prevent data leakage
+            // User-specific filtering
             if ($userId) {
                 $whereClause .= " AND user_id = ?";
                 $params[] = $userId;
-            } else {
-                // If no specific user, still require user context for security
-                throw new Exception('User ID required for rollover operations');
             }
+            
+            // Exclude tasks already rolled over
+            $whereClause .= " AND NOT EXISTS (
+                SELECT 1 FROM daily_tasks dt2 
+                WHERE dt2.original_task_id = daily_tasks.original_task_id 
+                AND dt2.scheduled_date = ? 
+                AND dt2.rollover_source_date IS NOT NULL
+            )";
+            $params[] = $today;
             
             $stmt = $this->db->prepare("SELECT * FROM daily_tasks WHERE {$whereClause}");
-            if (!$stmt->execute($params)) {
-                throw new Exception('Failed to fetch uncompleted tasks');
-            }
-            $uncompletedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt->execute($params);
+            $eligibleTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
+            // Audit Trail: Log detection
+            foreach ($eligibleTasks as $task) {
+                $this->logTaskHistory(
+                    $task['id'],
+                    $task['user_id'],
+                    'rollover_detected',
+                    $task['scheduled_date'],
+                    $today,
+                    "Task detected for rollover from {$task['scheduled_date']}"
+                );
+            }
+            
+            return $eligibleTasks;
+            
+        } catch (Exception $e) {
+            error_log("getRolloverTasks error: " . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * 📦 Step 2: Perform Rollover to Today
+     * Function: performRollover()
+     */
+    public function performRollover($eligibleTasks = null, $userId = null) {
+        try {
+            if ($eligibleTasks === null) {
+                $eligibleTasks = $this->getRolloverTasks($userId);
+            }
+            
+            $today = date('Y-m-d');
             $rolledOverCount = 0;
             
-            // Wrap rollover operations in transaction for atomicity
             $this->db->beginTransaction();
             
-            try {
-                foreach ($uncompletedTasks as $task) {
-                    // Check if this task is already rolled over to today to prevent duplicates
-                    $checkStmt = $this->db->prepare("
-                        SELECT COUNT(*) FROM daily_tasks 
-                        WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ? AND rollover_source_date = ?
+            foreach ($eligibleTasks as $task) {
+                // Check for duplicates
+                $checkStmt = $this->db->prepare("
+                    SELECT COUNT(*) FROM daily_tasks 
+                    WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ? AND rollover_source_date IS NOT NULL
+                ");
+                $checkStmt->execute([$task['user_id'], $task['original_task_id'] ?: $task['task_id'], $today]);
+                
+                if ($checkStmt->fetchColumn() == 0) {
+                    // Create new rollover entry
+                    $stmt = $this->db->prepare("
+                        INSERT INTO daily_tasks 
+                        (user_id, task_id, original_task_id, title, description, scheduled_date, 
+                         planned_start_time, planned_duration, priority, status, 
+                         completed_percentage, active_seconds, pause_duration,
+                         rollover_source_date, rollover_timestamp, source_field)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'rollover')
                     ");
-                    if (!$checkStmt->execute([$task['user_id'], $task['original_task_id'] ?: $task['task_id'], $today, $yesterday])) {
-                        throw new Exception('Failed to check for duplicate rollover');
-                    }
                     
-                    if ($checkStmt->fetchColumn() == 0) {
-                        // Create new rollover entry for today with error handling
-                        $stmt = $this->db->prepare("
-                            INSERT INTO daily_tasks 
-                            (user_id, task_id, original_task_id, title, description, scheduled_date, 
-                             planned_start_time, planned_duration, priority, status, 
-                             completed_percentage, active_seconds, pause_duration,
-                             rollover_source_date, rollover_timestamp, source_field)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, ?, ?, NOW(), 'rollover')
+                    // Preserve original data but reset status based on config
+                    $newStatus = $this->preserveStatus ? $task['status'] : 'not_started';
+                    
+                    $result = $stmt->execute([
+                        $task['user_id'],
+                        $task['task_id'],
+                        $task['original_task_id'] ?: $task['task_id'],
+                        $task['title'],
+                        $task['description'],
+                        $today,
+                        $task['planned_start_time'],
+                        $task['planned_duration'],
+                        $task['priority'],
+                        $newStatus,
+                        $task['completed_percentage'],
+                        $task['active_seconds'],
+                        $task['pause_duration'],
+                        $task['scheduled_date']
+                    ]);
+                    
+                    if ($result && $stmt->rowCount() > 0) {
+                        $newTaskId = $this->db->lastInsertId();
+                        
+                        // Update original task status (mark as rolled over)
+                        $updateStmt = $this->db->prepare("
+                            UPDATE daily_tasks 
+                            SET status = 'rolled_over', updated_at = NOW() 
+                            WHERE id = ?
                         ");
+                        $updateStmt->execute([$task['id']]);
                         
-                        $result = $stmt->execute([
+                        // Audit Trail: Log rollover action
+                        $this->logTaskHistory(
+                            $newTaskId,
                             $task['user_id'],
-                            $task['task_id'],
-                            $task['original_task_id'] ?: $task['task_id'],
-                            $task['title'],
-                            $task['description'],
-                            $today,
-                            $task['planned_start_time'],
-                            $task['planned_duration'],
-                            $task['priority'],
-                            $task['completed_percentage'],
-                            $task['active_seconds'],
-                            $task['pause_duration'],
-                            $yesterday
-                        ]);
+                            'rollover',
+                            $task['id'],
+                            $newTaskId,
+                            "🔄 Rolled over from: {$task['scheduled_date']}"
+                        );
                         
-                        if (!$result) {
-                            throw new Exception("Failed to insert rollover task for user {$task['user_id']}");
-                        }
-                        
-                        if ($stmt->rowCount() > 0) {
-                            $newTaskId = $this->db->lastInsertId();
-                            
-                            // Log rollover action in task history with error handling
-                            try {
-                                $this->logTaskHistory(
-                                    $newTaskId, 
-                                    $task['user_id'], 
-                                    'rolled_over', 
-                                    $yesterday, 
-                                    $today, 
-                                    "🔄 Rolled over from: {$yesterday}"
-                                );
-                            } catch (Exception $e) {
-                                error_log("Failed to log rollover history: " . $e->getMessage());
-                                // Don't fail the entire operation for logging issues
-                            }
-                            
-                            $rolledOverCount++;
-                        }
+                        $rolledOverCount++;
                     }
                 }
-                
-                $this->db->commit();
-            } catch (Exception $e) {
-                $this->db->rollback();
-                error_log("Rollover transaction failed: " . $e->getMessage());
-                throw $e;
             }
             
+            $this->db->commit();
             return $rolledOverCount;
+            
         } catch (Exception $e) {
-            error_log("rolloverUncompletedTasks error: " . $e->getMessage());
+            $this->db->rollback();
+            error_log("performRollover error: " . $e->getMessage());
             return 0;
         }
+    }
+    
+    /**
+     * Legacy method - now uses new rollover logic
+     */
+    public function rolloverUncompletedTasks($targetDate = null, $userId = null) {
+        if (!$userId) {
+            throw new Exception('User ID required for rollover operations');
+        }
+        
+        $eligibleTasks = $this->getRolloverTasks($userId);
+        return $this->performRollover($eligibleTasks, $userId);
     }
     
     private function logViewAccess($userId, $date, $taskCount, $viewType = 'current') {
@@ -1197,6 +1262,42 @@ class DailyPlanner {
         }
     }
     
+    /**
+     * 📋 Status Management Rules
+     */
+    public function isEligibleForRollover($status) {
+        $eligibleStatuses = ['not_started', 'in_progress', 'on_break'];
+        return in_array($status, $eligibleStatuses);
+    }
+    
+    /**
+     * Auto-rollover with configuration support
+     */
+    public function autoRollover($userId = null) {
+        if (!$this->autoRollover) {
+            return 0;
+        }
+        
+        $eligibleTasks = $this->getRolloverTasks($userId);
+        
+        if (!empty($eligibleTasks)) {
+            return $this->performRollover($eligibleTasks, $userId);
+        }
+        
+        return 0;
+    }
+    
+    /**
+     * Manual rollover trigger for UI
+     */
+    public function manualRolloverTrigger($userId) {
+        if (!$this->manualTrigger) {
+            throw new Exception('Manual rollover is disabled');
+        }
+        
+        return $this->autoRollover($userId);
+    }
+    
     public static function runDailyRollover() {
         try {
             $planner = new DailyPlanner();
@@ -1204,18 +1305,30 @@ class DailyPlanner {
             // Clean up duplicates first
             $cleanedCount = $planner->cleanupDuplicateTasks();
             
-            // Then rollover tasks
-            $count = $planner->rolloverUncompletedTasks();
+            // Get all eligible tasks for rollover
+            $eligibleTasks = $planner->getRolloverTasks();
             
-            // Log rollover completion
+            // Perform rollover
+            $rolledOverCount = $planner->performRollover($eligibleTasks);
+            
+            // Log rollover completion with audit compliance
             $planner->db->prepare("
                 INSERT INTO daily_planner_audit 
                 (user_id, action, task_count, details, timestamp)
                 VALUES (0, 'daily_rollover', ?, ?, NOW())
-            ")->execute([$count, "Automated midnight rollover. Cleaned {$cleanedCount} duplicates."]);
+            ")->execute([
+                $rolledOverCount, 
+                json_encode([
+                    'instruction_name' => 'AutoRolloverTasksToToday',
+                    'execution_context' => 'DailyPlanner → UnifiedWorkflowController',
+                    'cleaned_duplicates' => $cleanedCount,
+                    'rolled_over_tasks' => $rolledOverCount
+                ])
+            ]);
             
-            error_log("Daily rollover completed: {$count} tasks rolled over, {$cleanedCount} duplicates cleaned");
-            return $count;
+            error_log("Daily rollover completed: {$rolledOverCount} tasks rolled over, {$cleanedCount} duplicates cleaned");
+            return $rolledOverCount;
+            
         } catch (Exception $e) {
             error_log("Daily rollover failed: " . $e->getMessage());
             return 0;
