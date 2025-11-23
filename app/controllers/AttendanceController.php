@@ -21,7 +21,7 @@ class AttendanceController extends Controller {
                 // Calculate date range based on filter
                 $dateCondition = $this->getDateCondition($filter);
                 
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name, COALESCE(d.name, 'Not Assigned') as department FROM attendance a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN departments d ON u.department_id = d.id WHERE a.user_id = ? AND $dateCondition ORDER BY a.check_in DESC");
+                $stmt = $db->prepare("SELECT a.*, CONVERT_TZ(a.check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(a.check_out, '+00:00', '+05:30') as check_out, u.name as user_name, COALESCE(d.name, 'Not Assigned') as department FROM attendance a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN departments d ON u.department_id = d.id WHERE a.user_id = ? AND $dateCondition ORDER BY a.check_in DESC");
                 $stmt->execute([$_SESSION['user_id']]);
                 $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
@@ -70,8 +70,8 @@ class AttendanceController extends Controller {
                         u.email,
                         u.role,
                         COALESCE(d.name, 'Not Assigned') as department,
-                        a.check_in,
-                        a.check_out,
+                        CONVERT_TZ(a.check_in, '+00:00', '+05:30') as check_in,
+                        CONVERT_TZ(a.check_out, '+00:00', '+05:30') as check_out,
                         CASE 
                             WHEN a.location_name = 'On Approved Leave' THEN 'On Leave'
                             WHEN a.check_in IS NOT NULL THEN 'Present'
@@ -84,7 +84,7 @@ class AttendanceController extends Controller {
                         END as total_hours
                     FROM users u
                     LEFT JOIN departments d ON u.department_id = d.id
-                    LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
+                    LEFT JOIN attendance a ON u.id = a.user_id AND DATE(CONVERT_TZ(a.check_in, '+00:00', '+05:30')) = ?
                     WHERE $roleFilter AND u.status = 'active'
                     ORDER BY u.role DESC, u.name
                 ");
@@ -114,7 +114,7 @@ class AttendanceController extends Controller {
                 
                 // Get admin's own attendance for today
                 $adminAttendance = null;
-                $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+                $stmt = $db->prepare("SELECT *, CONVERT_TZ(check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(check_out, '+00:00', '+05:30') as check_out FROM attendance WHERE user_id = ? AND DATE(CONVERT_TZ(check_in, '+00:00', '+05:30')) = ?");
                 $stmt->execute([$_SESSION['user_id'], $filterDate]);
                 $adminAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
                 
@@ -148,11 +148,11 @@ class AttendanceController extends Controller {
                         } else {
                             echo "<td><span class='badge badge--$statusBadge'>$statusIcon {$employee['status']}</span></td>";
                         }
-                        // Display times converted from UTC to owner timezone
-                        $checkInTime = $employee['check_in'] ? TimezoneHelper::displayTime($employee['check_in']) : null;
+                        // Times are already converted to IST in the query
+                        $checkInTime = $employee['check_in'] ? date('H:i', strtotime($employee['check_in'])) : null;
                         echo "<td>" . ($checkInTime ? "<span style='color: #059669; font-weight: 500;'>$checkInTime</span>" : '<span style="color: #6b7280;">-</span>') . "</td>";
                         
-                        $checkOutTime = $employee['check_out'] ? TimezoneHelper::displayTime($employee['check_out']) : null;
+                        $checkOutTime = $employee['check_out'] ? date('H:i', strtotime($employee['check_out'])) : null;
                         if ($checkOutTime) {
                             echo "<td><span style='color: #dc2626; font-weight: 500;'>$checkOutTime</span></td>";
                         } elseif ($employee['check_in']) {
@@ -379,7 +379,7 @@ class AttendanceController extends Controller {
             // Use IST date for comparison
             $currentDate = TimezoneHelper::getCurrentDate();
             
-            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+            $stmt = $db->prepare("SELECT *, CONVERT_TZ(check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(check_out, '+00:00', '+05:30') as check_out FROM attendance WHERE user_id = ? AND DATE(CONVERT_TZ(check_in, '+00:00', '+05:30')) = ?");
             $stmt->execute([$_SESSION['user_id'], $currentDate]);
             $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
             
@@ -758,8 +758,8 @@ class AttendanceController extends Controller {
             // Get attendance history
             $stmt = $db->prepare("
                 SELECT 
-                    check_in,
-                    check_out,
+                    CONVERT_TZ(check_in, '+00:00', '+05:30') as check_in,
+                    CONVERT_TZ(check_out, '+00:00', '+05:30') as check_out,
                     status,
                     location_name,
                     created_at

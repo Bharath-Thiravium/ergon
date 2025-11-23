@@ -126,11 +126,9 @@ ob_start();
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php 
-                                require_once __DIR__ . '/../../app/helpers/TimezoneHelper.php';
-                                if ($employee['check_in']): ?>
+                                <?php if ($employee['check_in']): ?>
                                     <span style="color: #059669; font-weight: 500;">
-                                        <?= TimezoneHelper::displayTime($employee['check_in']) ?>
+                                        <?= date('H:i', strtotime($employee['check_in'])) ?>
                                     </span>
                                 <?php else: ?>
                                     <span style="color: #6b7280;">-</span>
@@ -139,7 +137,7 @@ ob_start();
                             <td>
                                 <?php if ($employee['check_out']): ?>
                                     <span style="color: #dc2626; font-weight: 500;">
-                                        <?= TimezoneHelper::displayTime($employee['check_out']) ?>
+                                        <?= date('H:i', strtotime($employee['check_out'])) ?>
                                     </span>
                                 <?php elseif ($employee['check_in']): ?>
                                     <span style="color: #f59e0b; font-weight: 500;">Working...</span>

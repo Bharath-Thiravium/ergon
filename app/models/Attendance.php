@@ -76,7 +76,7 @@ class Attendance {
     public function getTodayAttendance($userId) {
         $currentDate = TimezoneHelper::getCurrentDate();
         
-        $query = "SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?";
+        $query = "SELECT *, CONVERT_TZ(check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(check_out, '+00:00', '+05:30') as check_out FROM attendance WHERE user_id = ? AND DATE(CONVERT_TZ(check_in, '+00:00', '+05:30')) = ?";
         $stmt = $this->conn->prepare($query);
         $stmt->execute([$userId, $currentDate]);
         return $stmt->fetch();
@@ -84,7 +84,7 @@ class Attendance {
     
     public function getAll() {
         try {
-            $query = "SELECT a.*, u.name as user_name 
+            $query = "SELECT a.*, CONVERT_TZ(a.check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(a.check_out, '+00:00', '+05:30') as check_out, u.name as user_name 
                       FROM attendance a 
                       JOIN users u ON a.user_id = u.id 
                       ORDER BY a.created_at DESC";
@@ -99,7 +99,7 @@ class Attendance {
     
     public function getUserAttendance($userId) {
         try {
-            $query = "SELECT a.*, u.name as user_name FROM attendance a 
+            $query = "SELECT a.*, CONVERT_TZ(a.check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(a.check_out, '+00:00', '+05:30') as check_out, u.name as user_name FROM attendance a 
                       JOIN users u ON a.user_id = u.id 
                       WHERE a.user_id = ? 
                       ORDER BY a.created_at DESC LIMIT 30";

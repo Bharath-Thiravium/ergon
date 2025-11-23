@@ -58,11 +58,9 @@ ob_start();
                                 <br><small class="text-muted"><?= date('l', strtotime($record['check_in'])) ?></small>
                             </td>
                             <td>
-                                <?php 
-                                require_once __DIR__ . '/../../app/helpers/TimezoneHelper.php';
-                                if ($record['check_in']): ?>
+                                <?php if ($record['check_in']): ?>
                                     <span class="badge badge--success">
-                                        <?= TimezoneHelper::displayTime($record['check_in']) ?>
+                                        <?= date('H:i', strtotime($record['check_in'])) ?>
                                     </span>
                                 <?php else: ?>
                                     <span class="text-muted">-</span>
@@ -71,7 +69,7 @@ ob_start();
                             <td>
                                 <?php if ($record['check_out']): ?>
                                     <span class="badge badge--danger">
-                                        <?= TimezoneHelper::displayTime($record['check_out']) ?>
+                                        <?= date('H:i', strtotime($record['check_out'])) ?>
                                     </span>
                                 <?php elseif ($record['check_in']): ?>
                                     <span class="badge badge--warning">Working</span>
