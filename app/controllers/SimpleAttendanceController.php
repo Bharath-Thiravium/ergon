@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../helpers/TimezoneHelper.php';
 
 class SimpleAttendanceController extends Controller {
     private $db;
@@ -24,6 +25,9 @@ class SimpleAttendanceController extends Controller {
         } else {
             $roleFilter = "";
         }
+        
+        // Convert times from IST to display format (times are already in IST in database)
+        $this->db->exec("SET time_zone = '+05:30'");
         
         if ($selectedDate === date('Y-m-d')) {
             // For current date, show all users including those without attendance records
@@ -107,6 +111,131 @@ class SimpleAttendanceController extends Controller {
             'active_page' => 'attendance',
             'is_grouped' => $isGrouped
         ]);
+    }
+    
+    public function status() {
+        $this->requireAuth();
+        
+        header('Content-Type: application/json');
+        
+        try {
+            $currentDate = TimezoneHelper::getCurrentDate();
+            
+            $stmt = $this->db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+            $stmt->execute([$_SESSION['user_id'], $currentDate]);
+            $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            echo json_encode([
+                'success' => true,
+                'attendance' => $todayAttendance,
+                'on_leave' => false,
+                'can_clock_in' => !$todayAttendance,
+                'can_clock_out' => $todayAttendance && !$todayAttendance['check_out']
+            ]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function clock() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                $type = $_POST['type'] ?? '';
+                $userId = $_SESSION['user_id'];
+                
+                header('Content-Type: application/json');
+                
+                if ($type === 'in') {
+                    $currentTime = TimezoneHelper::nowIst();
+                    
+                    $stmt = $this->db->prepare("INSERT INTO attendance (user_id, check_in, created_at) VALUES (?, ?, ?)");
+                    $result = $stmt->execute([$userId, $currentTime, $currentTime]);
+                    
+                    if ($result) {
+                        echo json_encode(['success' => true, 'message' => 'Clocked in successfully']);
+                    } else {
+                        echo json_encode(['success' => false, 'error' => 'Failed to clock in']);
+                    }
+                    
+                } elseif ($type === 'out') {
+                    $currentTime = TimezoneHelper::nowIst();
+                    $currentDate = TimezoneHelper::getCurrentDate();
+                    
+                    $stmt = $this->db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");
+                    $stmt->execute([$userId, $currentDate]);
+                    $attendance = $stmt->fetch();
+                    
+                    if (!$attendance) {
+                        echo json_encode(['success' => false, 'error' => 'No clock in record found for today']);
+                        exit;
+                    }
+                    
+                    $stmt = $this->db->prepare("UPDATE attendance SET check_out = ? WHERE id = ?");
+                    $result = $stmt->execute([$currentTime, $attendance['id']]);
+                    
+                    if ($result) {
+                        echo json_encode(['success' => true, 'message' => 'Clocked out successfully']);
+                    } else {
+                        echo json_encode(['success' => false, 'error' => 'Failed to clock out']);
+                    }
+                }
+                exit;
+                
+            } catch (Exception $e) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
+                exit;
+            }
+        }
+        
+        // GET request - show clock page
+        $this->view('attendance/clock', ['active_page' => 'attendance']);
+    }
+    
+    public function manual() {
+        $this->requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('HTTP/1.1 403 Forbidden');
+            exit('Access denied');
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                $userId = intval($_POST['user_id']);
+                $checkIn = $_POST['check_in'] ?? null;
+                $checkOut = $_POST['check_out'] ?? null;
+                $date = $_POST['date'] ?? date('Y-m-d');
+                
+                // Store times in IST format
+                $checkInIST = $checkIn ? $date . ' ' . $checkIn : null;
+                $checkOutIST = $checkOut ? $date . ' ' . $checkOut : null;
+                
+                $stmt = $this->db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+                $stmt->execute([$userId, $date]);
+                $existing = $stmt->fetch();
+                
+                if ($existing) {
+                    $stmt = $this->db->prepare("UPDATE attendance SET check_in = ?, check_out = ? WHERE id = ?");
+                    $stmt->execute([$checkInIST, $checkOutIST, $existing['id']]);
+                } else {
+                    $stmt = $this->db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status, location_name, created_at) VALUES (?, ?, ?, 'present', 'Manual Entry', NOW())");
+                    $stmt->execute([$userId, $checkInIST, $checkOutIST]);
+                }
+                
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Manual attendance recorded']);
+                exit;
+                
+            } catch (Exception $e) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+                exit;
+            }
+        }
     }
 }
 ?>

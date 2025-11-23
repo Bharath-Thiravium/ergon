@@ -172,6 +172,93 @@ class AttendanceController extends Controller {
         exit;
     }
     
+    public function status() {
+        $this->requireAuth();
+        
+        header('Content-Type: application/json');
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $currentDate = TimezoneHelper::getCurrentDate();
+            
+            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+            $stmt->execute([$_SESSION['user_id'], $currentDate]);
+            $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $onLeave = false;
+            try {
+                $stmt = $db->prepare("SELECT id FROM leaves WHERE user_id = ? AND status = 'approved' AND CURDATE() BETWEEN start_date AND end_date");
+                $stmt->execute([$_SESSION['user_id']]);
+                $onLeave = $stmt->fetch() ? true : false;
+            } catch (Exception $e) {
+                $onLeave = false;
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'attendance' => $todayAttendance,
+                'on_leave' => $onLeave,
+                'can_clock_in' => !$todayAttendance && !$onLeave,
+                'can_clock_out' => $todayAttendance && !$todayAttendance['check_out']
+            ]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function manual() {
+        $this->requireAuth();
+        
+        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+            header('HTTP/1.1 403 Forbidden');
+            exit('Access denied');
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                
+                $userId = intval($_POST['user_id']);
+                $checkIn = $_POST['check_in'] ?? null;
+                $checkOut = $_POST['check_out'] ?? null;
+                $date = $_POST['date'] ?? date('Y-m-d');
+                
+                $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+                $stmt->execute([$userId, $date]);
+                $existing = $stmt->fetch();
+                
+                if ($existing) {
+                    $stmt = $db->prepare("UPDATE attendance SET check_in = ?, check_out = ?, updated_at = NOW() WHERE id = ?");
+                    $stmt->execute([
+                        $date . ' ' . $checkIn,
+                        $checkOut ? $date . ' ' . $checkOut : null,
+                        $existing['id']
+                    ]);
+                } else {
+                    $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status, location_name, created_at) VALUES (?, ?, ?, 'present', 'Manual Entry', NOW())");
+                    $stmt->execute([
+                        $userId,
+                        $date . ' ' . $checkIn,
+                        $checkOut ? $date . ' ' . $checkOut : null
+                    ]);
+                }
+                
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Manual attendance recorded']);
+                exit;
+                
+            } catch (Exception $e) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+                exit;
+            }
+        }
+    }
+    
     public function clock() {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
