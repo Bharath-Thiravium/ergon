@@ -22,14 +22,13 @@
 [data-tooltip]:hover::after {
   content: attr(data-tooltip);
   position: absolute;
-  top: calc(100% + 8px);
+  bottom: calc(100% + 18px);
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(12px);
+  background: #dbeafe;
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+  color: #1f2937;
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -44,11 +43,11 @@
 [data-tooltip]:hover::before {
   content: '';
   position: absolute;
-  top: calc(100% + 2px);
+  bottom: calc(100% + 2px);
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-bottom-color: rgba(15, 23, 42, 0.95);
+  border-top-color: rgba(15, 23, 42, 0.95);
   z-index: 10000;
 }
 
@@ -62,6 +61,19 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+}
+
+/* Header tooltips positioned below */
+.main-header [data-tooltip]:hover::after {
+  top: calc(100% + 18px);
+  bottom: auto;
+}
+
+.main-header [data-tooltip]:hover::before {
+  top: calc(100% + 2px);
+  bottom: auto;
+  border-top-color: transparent;
+  border-bottom-color: rgba(15, 23, 42, 0.95);
 }
 
 /* Responsive tooltip positioning */

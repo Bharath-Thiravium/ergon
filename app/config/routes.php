@@ -106,11 +106,12 @@ $router->get('/daily-planner/delayed-tasks-overview', 'DashboardController', 'de
 
 
 
-// Attendance - Using Simple Controller with IST
+// Attendance - Using SimpleAttendanceController (preserves original CSS styling)
 $router->get('/attendance', 'SimpleAttendanceController', 'index');
 $router->get('/attendance/clock', 'SimpleAttendanceController', 'clock');
 $router->post('/attendance/clock', 'SimpleAttendanceController', 'clock');
 $router->post('/attendance/manual', 'SimpleAttendanceController', 'manual');
+$router->post('/attendance/delete', 'SimpleAttendanceController', 'delete');
 $router->get('/attendance/status', 'SimpleAttendanceController', 'status');
 $router->get('/attendance/history/{id}', 'AttendanceController', 'history');
 $router->get('/attendance/export', 'AttendanceController', 'exportAttendance');

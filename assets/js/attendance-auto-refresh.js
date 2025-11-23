@@ -1,33 +1,31 @@
-// Simple attendance page auto-refresh
-if (window.location.pathname.includes('/attendance')) {
-    // Auto-refresh on viewport changes
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
-            window.location.reload();
-        }, 500);
-    });
+// Auto-refresh attendance data for admin/owner panels
+document.addEventListener('DOMContentLoaded', function() {
+    const userRole = document.body.getAttribute('data-user-role');
+    if (!userRole || !['admin', 'owner'].includes(userRole)) {
+        return;
+    }
     
-    // Auto-refresh on orientation change
-    window.addEventListener('orientationchange', function() {
-        setTimeout(function() {
-            window.location.reload();
-        }, 300);
-    });
-    
-    // Intercept all fetch requests and reload after success
-    const originalFetch = window.fetch;
-    window.fetch = function(...args) {
-        return originalFetch.apply(this, args).then(response => {
-            if (response.ok && args[0].includes('simple_attendance.php')) {
-                response.clone().json().then(data => {
-                    if (data.success) {
-                        setTimeout(() => window.location.reload(), 1000);
-                    }
-                }).catch(() => {});
-            }
-            return response;
-        });
-    };
-}
+    setInterval(function() {
+        const dateFilter = document.getElementById('dateFilter');
+        const today = new Date().toISOString().split('T')[0];
+        
+        if (dateFilter && dateFilter.value === today) {
+            fetch(window.location.href)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const newDoc = parser.parseFromString(html, 'text/html');
+                const newTable = newDoc.querySelector('.table tbody');
+                const currentTable = document.querySelector('.table tbody');
+                
+                if (newTable && currentTable && newTable.innerHTML !== currentTable.innerHTML) {
+                    currentTable.innerHTML = newTable.innerHTML;
+                    console.log('Attendance data refreshed');
+                }
+            })
+            .catch(error => {
+                console.log('Auto-refresh failed:', error);
+            });
+        }
+    }, 30000);
+});

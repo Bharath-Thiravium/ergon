@@ -2,7 +2,7 @@
 class TimeHelper {
     /**
      * Convert datetime to IST and format with AM/PM
-     * @param string $datetime - MySQL datetime string
+     * @param string $datetime - MySQL datetime string stored in IST
      * @return string - Formatted time in IST with AM/PM (hh:mm:ss AM/PM)
      */
     public static function formatToIST($datetime) {
@@ -11,13 +11,8 @@ class TimeHelper {
         }
         
         try {
-            // Create DateTime object from the input
-            $dt = new DateTime($datetime);
-            
-            // Set timezone to IST (UTC+5:30)
-            $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
-            
-            // Format as hh:mm:ss AM/PM
+            // Times are stored in IST, format them in IST timezone
+            $dt = new DateTime($datetime, new DateTimeZone('Asia/Kolkata'));
             return $dt->format('h:i:s A');
         } catch (Exception $e) {
             error_log('TimeHelper formatToIST error: ' . $e->getMessage());

@@ -24,7 +24,7 @@
             '/ergon/assets/css/utilities-new.css',
             '/ergon/assets/css/instant-theme.css',
             '/ergon/assets/css/global-tooltips.css',
-            '/ergon/assets/css/action-button-clean.css',
+
             '/ergon/assets/css/responsive-mobile.css',
             '/ergon/assets/css/mobile-critical-fixes.css',
             '/ergon/assets/css/nav-simple-fix.css'

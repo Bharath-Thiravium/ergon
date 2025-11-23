@@ -65,10 +65,11 @@ class Database {
                 $options
             );
             
-            // Force UTC timezone for consistent storage on Hostinger
-            if (!Environment::isDevelopment()) {
-                $this->conn->exec("SET time_zone = '+00:00'");
-            }
+            // Set timezone to IST for consistent storage
+            $this->conn->exec("SET time_zone = '+05:30'");
+            
+            // Set PHP timezone to IST as well
+            date_default_timezone_set('Asia/Kolkata');
         } catch(PDOException $e) {
             error_log("Connection error: " . $e->getMessage());
             throw new Exception("Database connection failed: " . $e->getMessage());

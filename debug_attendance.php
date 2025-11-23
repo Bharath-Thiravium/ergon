@@ -1,90 +1,67 @@
 <?php
-// Debug script for attendance issues
-session_start();
+require_once __DIR__ . '/app/config/database.php';
+require_once __DIR__ . '/app/helpers/TimezoneHelper.php';
 
-echo "<h1>Attendance Debug Information</h1>";
+$db = Database::connect();
 
-// Check session
-echo "<h2>Session Status</h2>";
-if (isset($_SESSION['user_id'])) {
-    echo "✅ User logged in: ID = " . $_SESSION['user_id'] . ", Role = " . ($_SESSION['role'] ?? 'unknown') . "<br>";
-} else {
-    echo "❌ No user session found<br>";
+// Check what's actually in the database
+echo "<h3>Raw Database Data:</h3>";
+
+// First check if table exists and has any data
+$stmt = $db->prepare("SELECT COUNT(*) as total FROM attendance");
+$stmt->execute();
+$count = $stmt->fetch();
+echo "Total attendance records: " . $count['total'] . "<br><br>";
+
+// Get all records (not just today)
+$stmt = $db->prepare("SELECT u.name, a.* FROM attendance a JOIN users u ON a.user_id = u.id ORDER BY a.id DESC LIMIT 10");
+$stmt->execute();
+$records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+echo "Found " . count($records) . " records:<br>";
+
+// Also check table structure
+echo "<h3>Table Structure:</h3>";
+$stmt = $db->prepare("DESCRIBE attendance");
+$stmt->execute();
+$structure = $stmt->fetchAll(PDO::FETCH_ASSOC);
+echo "<pre>";
+print_r($structure);
+echo "</pre>";
+
+echo "<pre>";
+foreach ($records as $record) {
+    echo "User: " . $record['name'] . "\n";
+    echo "Check In: " . var_export($record['check_in'], true) . "\n";
+    echo "Check Out: " . var_export($record['check_out'], true) . "\n";
+    echo "Created At: " . var_export($record['created_at'], true) . "\n";
+    echo "---\n";
 }
+echo "</pre>";
 
-// Check database connection
-echo "<h2>Database Connection</h2>";
-try {
-    require_once __DIR__ . '/app/config/database.php';
-    $db = Database::connect();
-    echo "✅ Database connected successfully<br>";
-    
-    // Check if attendance table exists
-    $stmt = $db->query("SHOW TABLES LIKE 'attendance'");
-    if ($stmt->fetch()) {
-        echo "✅ Attendance table exists<br>";
-        
-        // Check table structure
-        $stmt = $db->query("DESCRIBE attendance");
-        $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        echo "📋 Table columns:<br>";
-        foreach ($columns as $column) {
-            echo "- " . $column['Field'] . " (" . $column['Type'] . ")<br>";
-        }
-        
-        // Check if user has attendance today
-        if (isset($_SESSION['user_id'])) {
-            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE()");
-            $stmt->execute([$_SESSION['user_id']]);
-            $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($todayAttendance) {
-                echo "📅 Today's attendance found:<br>";
-                echo "- Check In: " . ($todayAttendance['check_in'] ?? 'NULL') . "<br>";
-                echo "- Check Out: " . ($todayAttendance['check_out'] ?? 'NULL') . "<br>";
-            } else {
-                echo "📅 No attendance record for today<br>";
-            }
-        }
-        
-    } else {
-        echo "❌ Attendance table does not exist<br>";
+// Test TimezoneHelper
+echo "<h3>TimezoneHelper Test:</h3>";
+$testTime = TimezoneHelper::nowIst();
+echo "Current IST: " . $testTime . "<br>";
+
+// Check users and their roles
+echo "<h3>Users in Database:</h3>";
+$stmt = $db->prepare("SELECT id, name, email, role, status FROM users ORDER BY role, name");
+$stmt->execute();
+$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+echo "<pre>";
+foreach ($users as $user) {
+    echo "ID: {$user['id']}, Name: {$user['name']}, Role: {$user['role']}, Status: {$user['status']}\n";
+}
+echo "</pre>";
+
+// Test TimeHelper
+require_once __DIR__ . '/app/helpers/TimeHelper.php';
+if (!empty($records)) {
+    $firstRecord = $records[0];
+    echo "TimeHelper format check_in: " . TimeHelper::formatToIST($firstRecord['check_in']) . "<br>";
+    if ($firstRecord['check_out']) {
+        echo "TimeHelper format check_out: " . TimeHelper::formatToIST($firstRecord['check_out']) . "<br>";
     }
-    
-} catch (Exception $e) {
-    echo "❌ Database error: " . $e->getMessage() . "<br>";
 }
-
-// Test POST endpoint
-echo "<h2>Test Clock In Endpoint</h2>";
-echo "<button onclick='testClockIn()'>Test Clock In</button>";
-echo "<div id='testResult'></div>";
-
 ?>
-
-<script>
-function testClockIn() {
-    const formData = new FormData();
-    formData.append('type', 'in');
-    formData.append('latitude', 0);
-    formData.append('longitude', 0);
-    
-    fetch('/ergon/attendance/clock', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
-        return response.text();
-    })
-    .then(data => {
-        console.log('Response data:', data);
-        document.getElementById('testResult').innerHTML = '<pre>' + data + '</pre>';
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        document.getElementById('testResult').innerHTML = '<pre>Error: ' + error.message + '</pre>';
-    });
-}
-</script>

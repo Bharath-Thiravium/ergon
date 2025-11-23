@@ -116,7 +116,7 @@ ob_start();
                             </td>
                             <td>
                                 <div class="assignment-info">
-                                    <div class="assigned-user"><?= $currentDateIST ?></div>
+                                    <div class="assigned-user"><?= date('M d, Y') ?></div>
                                     <div class="priority-badge">
                                         <span class="badge badge--<?= $record['status'] === 'Present' ? 'success' : 'danger' ?>"><?= $record['status'] ?? 'Absent' ?></span>
                                     </div>
@@ -203,7 +203,7 @@ ob_start();
                             </td>
                             <td>
                                 <div class="assignment-info">
-                                    <div class="assigned-user"><?= $currentDateIST ?></div>
+                                    <div class="assigned-user"><?= date('M d, Y') ?></div>
                                     <div class="priority-badge">
                                         <span class="badge badge--<?= $record['status'] === 'Present' ? 'success' : 'danger' ?>"><?= $record['status'] ?? 'Absent' ?></span>
                                     </div>
@@ -283,7 +283,7 @@ ob_start();
                             </td>
                             <td>
                                 <div class="assignment-info">
-                                    <div class="assigned-user"><?= $currentDateIST ?></div>
+                                    <div class="assigned-user"><?= date('M d, Y') ?></div>
                                     <div class="priority-badge">
                                         <span class="badge badge--<?= $record['status'] === 'Present' ? 'success' : 'danger' ?>"><?= $record['status'] ?? 'Present' ?></span>
                                     </div>

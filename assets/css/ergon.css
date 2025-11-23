@@ -1118,6 +1118,77 @@ canvas { width: 100% !important; height: auto !important; }
   color: white;
 }
 
+.ab-btn--warning {
+  color: #f59e0b;
+}
+
+.ab-btn--warning:hover {
+  background: #f59e0b;
+  color: white;
+}
+
+.ab-btn--success {
+  color: #10b981;
+}
+
+.ab-btn--success:hover {
+  background: #10b981;
+  color: white;
+}
+
+.ab-btn--approve {
+  color: #10b981;
+}
+
+.ab-btn--approve:hover {
+  background: #10b981;
+  color: white;
+}
+
+.ab-btn--reject {
+  color: #f43f5e;
+}
+
+.ab-btn--reject:hover {
+  background: #f43f5e;
+  color: white;
+}
+
+.ab-btn--reset {
+  color: #6366f1;
+}
+
+.ab-btn--reset:hover {
+  background: #6366f1;
+  color: white;
+}
+
+.ab-btn--info {
+  color: #3b82f6;
+}
+
+.ab-btn--info:hover {
+  background: #3b82f6;
+  color: white;
+}
+
+
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .ab-container {
+    gap: 4px;
+  }
+  .ab-btn {
+    width: 28px;
+    height: 28px;
+  }
+  .ab-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
 /* Badges */
 .badge {
   padding: 0.25rem 0.5rem;
@@ -1127,42 +1198,42 @@ canvas { width: 100% !important; height: auto !important; }
 }
 
 .badge--success {
-  background: #d1fae5;
+  /*background: #d1fae5;*/
   color: #059669;
 }
 
 .badge--warning {
-  background: #fef3c7;
+  /*background: #fef3c7;*/
   color: #d97706;
 }
 
 .badge--danger {
-  background: #fee2e2;
+  /*background: #fee2e2;*/
   color: #dc2626;
 }
 
 .badge--info {
-  background: #dbeafe;
+  /*background: #dbeafe;*/
   color: #1d4ed8;
 }
 
 .badge--pending {
-  background: #fce7f3;
+  /*background: #fce7f3;*/
   color: #be185d;
 }
 
 .badge--inactive {
-  background: #dbeafe !important;
+  /*background: #dbeafe !important;*/
   color: #1d4ed8 !important;
 }
 
 .badge--suspended {
-  background: #fef3c7 !important;
+  /*background: #fef3c7 !important;*/
   color: #92400e !important;
 }
 
 .badge--terminated {
-  background: #fee2e2 !important;
+  /*background: #fee2e2 !important;*/
   color: #dc2626 !important;
 }
 

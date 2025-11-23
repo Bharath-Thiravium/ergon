@@ -52,6 +52,15 @@ ob_end_clean();
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
     
     <script src="/ergon/assets/js/theme-preload.js"></script>
+    <script>
+    // Convert title attributes to data-tooltip for custom tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[title]').forEach(function(el) {
+            el.setAttribute('data-tooltip', el.getAttribute('title'));
+            el.removeAttribute('title');
+        });
+    });
+    </script>
     
     <style>
     /* Critical inline CSS to prevent FOUC and layout forcing */
@@ -79,7 +88,8 @@ ob_end_clean();
     <link href="/ergon/assets/css/utilities-new.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/instant-theme.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/css/global-tooltips.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/_archive_legacy/css/action-button-clean.css?v=1.0" rel="stylesheet">
+
+
     <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/_archive_legacy/css/user-management-mobile.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/_archive_legacy/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
@@ -100,7 +110,7 @@ ob_end_clean();
     <script src="/ergon/assets/js/mobile-validation.js?v=<?= time() ?>" defer></script>
     <?php endif; ?>
 </head>
-<body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>">
+<body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>" data-user-role="<?= $_SESSION['role'] ?? 'user' ?>">
     <header class="main-header">
         <div class="header__top">
             <div class="header__brand">
