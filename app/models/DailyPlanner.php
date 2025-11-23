@@ -98,9 +98,20 @@ class DailyPlanner {
             // CORRECTED COMMENT: fetchAssignedTasksForDate is called unconditionally to ensure data consistency
             $this->fetchAssignedTasksForDate($userId, $date);
             
-            // Step 2: Auto-rollover only for current date
+            // Step 2: Auto-rollover only for current date with user-specific filtering
             if ($isCurrentDate) {
-                $this->rolloverUncompletedTasks();
+                // Check if rollover has already been done today for this user
+                $stmt = $this->db->prepare("
+                    SELECT COUNT(*) FROM daily_tasks 
+                    WHERE user_id = ? AND scheduled_date = ? AND rollover_source_date = ?
+                ");
+                $yesterday = date('Y-m-d', strtotime('-1 day'));
+                $stmt->execute([$userId, $date, $yesterday]);
+                $alreadyRolledOver = $stmt->fetchColumn() > 0;
+                
+                if (!$alreadyRolledOver) {
+                    $this->rolloverUncompletedTasks($yesterday, $userId);
+                }
             }
             
             // Step 3: Get tasks with audit trail and visual indicators
@@ -1004,7 +1015,7 @@ class DailyPlanner {
             
             // SECURITY FIX: Add user_id filter to prevent cross-user rollovers
             // Get uncompleted tasks from yesterday only (exclude postponed tasks)
-            $whereClause = "scheduled_date = ? AND status IN ('not_started', 'in_progress') AND completed_percentage < 100";
+            $whereClause = "scheduled_date = ? AND status IN ('not_started', 'in_progress', 'on_break') AND completed_percentage < 100";
             $params = [$yesterday];
             
             // CRITICAL: Always filter by user_id to prevent data leakage
