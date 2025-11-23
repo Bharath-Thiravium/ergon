@@ -1101,12 +1101,12 @@ canvas { width: 100% !important; height: auto !important; }
 }
 
 .ab-btn--delete {
-  color: #ef4444;
+  color: #dc2626 !important;
 }
 
 .ab-btn--delete:hover {
-  background: #ef4444;
-  color: white;
+  background: #dc2626 !important;
+  color: white !important;
 }
 
 .ab-btn--progress {
