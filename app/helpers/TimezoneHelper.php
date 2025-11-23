@@ -1,44 +1,23 @@
 <?php
 class TimezoneHelper {
     
-    public static function getOwnerTimezone() {
-        try {
-            $db = Database::connect();
-            // Force UTC for database operations on Hostinger
-            $db->exec("SET time_zone = '+00:00'");
-            $stmt = $db->prepare("SELECT up.timezone FROM user_preferences up JOIN users u ON up.user_id = u.id WHERE u.role = 'owner' LIMIT 1");
-            $stmt->execute();
-            $ownerPrefs = $stmt->fetch();
-            return $ownerPrefs['timezone'] ?? 'Asia/Kolkata';
-        } catch (Exception $e) {
-            return 'Asia/Kolkata';
-        }
-    }
-    
-    public static function utcToOwner($utcDatetimeStr) {
-        if (!$utcDatetimeStr) return null;
-        try {
-            $dt = new DateTime($utcDatetimeStr, new DateTimeZone('UTC'));
-            $dt->setTimezone(new DateTimeZone(self::getOwnerTimezone()));
-            return $dt->format('Y-m-d H:i:s');
-        } catch (Exception $e) {
-            return $utcDatetimeStr;
-        }
+    public static function displayTime($dbTime) {
+        if (!$dbTime) return null;
+        
+        // Direct conversion: add 5.5 hours to database time for IST
+        $timestamp = strtotime($dbTime);
+        $istTimestamp = $timestamp + (5.5 * 3600); // Add 5.5 hours
+        return date('H:i', $istTimestamp);
     }
     
     public static function nowUtc() {
-        $dt = new DateTime('now', new DateTimeZone('UTC'));
-        return $dt->format('Y-m-d H:i:s');
-    }
-    
-    public static function displayTime($utcTime) {
-        if (!$utcTime) return null;
-        $ownerTime = self::utcToOwner($utcTime);
-        return date('H:i', strtotime($ownerTime));
+        return gmdate('Y-m-d H:i:s');
     }
     
     public static function getCurrentDate() {
-        return date('Y-m-d', strtotime(self::utcToOwner(self::nowUtc())));
+        // Get current IST date
+        $istTimestamp = time() + (5.5 * 3600);
+        return gmdate('Y-m-d', $istTimestamp);
     }
 }
 ?>

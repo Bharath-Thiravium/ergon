@@ -300,7 +300,7 @@ class AttendanceController extends Controller {
                 } elseif ($type === 'out') {
                     // Store in UTC
                     $currentTime = TimezoneHelper::nowUtc();
-                    $currentDate = date('Y-m-d', strtotime(TimezoneHelper::utcToOwner($currentTime)));
+                    $currentDate = TimezoneHelper::getCurrentDate();
                     
                     // Find today's attendance record
                     $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");
@@ -343,8 +343,8 @@ class AttendanceController extends Controller {
             $db = Database::connect();
             $this->ensureAttendanceTable($db);
             
-            // Use owner timezone for date comparison
-            $currentDate = date('Y-m-d', strtotime(TimezoneHelper::utcToOwner(TimezoneHelper::nowUtc())));
+            // Use IST date for comparison
+            $currentDate = TimezoneHelper::getCurrentDate();
             
             $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
             $stmt->execute([$_SESSION['user_id'], $currentDate]);
@@ -376,8 +376,8 @@ class AttendanceController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Use owner timezone for date comparison
-            $currentDate = date('Y-m-d', strtotime(TimezoneHelper::utcToOwner(TimezoneHelper::nowUtc())));
+            // Use IST date for comparison
+            $currentDate = TimezoneHelper::getCurrentDate();
             
             $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
             $stmt->execute([$_SESSION['user_id'], $currentDate]);
