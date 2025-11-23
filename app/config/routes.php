@@ -106,12 +106,12 @@ $router->get('/daily-planner/delayed-tasks-overview', 'DashboardController', 'de
 
 
 
-// Attendance - Using Unified Controller
-$router->get('/attendance', 'SimpleAttendanceController', 'index');
-$router->get('/attendance/clock', 'UnifiedAttendanceController', 'clock');
-$router->post('/attendance/clock', 'UnifiedAttendanceController', 'clock');
-$router->post('/attendance/manual', 'UnifiedAttendanceController', 'manual');
-$router->get('/attendance/status', 'UnifiedAttendanceController', 'status');
+// Attendance - Using Updated Controller
+$router->get('/attendance', 'AttendanceController', 'index');
+$router->get('/attendance/clock', 'AttendanceController', 'clock');
+$router->post('/attendance/clock', 'AttendanceController', 'clock');
+$router->post('/attendance/manual', 'AttendanceController', 'manual');
+$router->get('/attendance/status', 'AttendanceController', 'status');
 $router->get('/attendance/history/{id}', 'AttendanceController', 'history');
 $router->get('/attendance/export', 'AttendanceController', 'exportAttendance');
 $router->get('/attendance/conflicts', 'AttendanceController', 'conflicts');
