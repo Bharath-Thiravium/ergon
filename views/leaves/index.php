@@ -246,8 +246,8 @@ ob_start();
 </div>
 
 <!-- Rejection Modal -->
-<div id="rejectModal" class="modal" style="display: none;">
-    <div class="modal-content">
+<div id="rejectModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 99999; display: flex; align-items: center; justify-content: center;">
+    <div class="modal-content" style="background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header">
             <h3>Reject Leave Request</h3>
             <span class="close" onclick="closeRejectModal()">&times;</span>
@@ -277,7 +277,7 @@ function toggleLeaveFilters() {
 
 function showRejectModal(leaveId) {
     document.getElementById('rejectForm').action = '/ergon/leaves/reject/' + leaveId;
-    document.getElementById('rejectModal').style.display = 'block';
+    document.getElementById('rejectModal').style.display = 'flex';
 }
 
 function closeRejectModal() {

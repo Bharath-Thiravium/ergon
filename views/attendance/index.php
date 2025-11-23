@@ -1,6 +1,7 @@
 <?php
 $title = 'Attendance';
 $active_page = 'attendance';
+require_once __DIR__ . '/../../app/helpers/TimeHelper.php';
 ob_start();
 ?>
 
@@ -128,8 +129,8 @@ ob_start();
                             </td>
                             <td>
                                 <div class="cell-meta">
-                                    <div class="cell-primary">In: <?= $record['check_in_time'] ?? '00:00' ?></div>
-                                    <div class="cell-secondary">Out: <?= $record['check_out_time'] ?? '00:00' ?></div>
+                                    <div class="cell-primary">In: <?= isset($record['check_in']) && $record['check_in'] ? TimeHelper::formatToIST($record['check_in']) : '00:00:00 AM' ?></div>
+                                    <div class="cell-secondary">Out: <?= isset($record['check_out']) && $record['check_out'] ? TimeHelper::formatToIST($record['check_out']) : '00:00:00 AM' ?></div>
                                 </div>
                             </td>
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
@@ -217,8 +218,8 @@ ob_start();
                             </td>
                             <td>
                                 <div class="cell-meta">
-                                    <div class="cell-primary">In: <?= $record['check_in_time'] ?? '00:00' ?></div>
-                                    <div class="cell-secondary">Out: <?= $record['check_out_time'] ?? '00:00' ?></div>
+                                    <div class="cell-primary">In: <?= isset($record['check_in']) && $record['check_in'] ? TimeHelper::formatToIST($record['check_in']) : '00:00:00 AM' ?></div>
+                                    <div class="cell-secondary">Out: <?= isset($record['check_out']) && $record['check_out'] ? TimeHelper::formatToIST($record['check_out']) : '00:00:00 AM' ?></div>
                                 </div>
                             </td>
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
@@ -329,8 +330,8 @@ ob_start();
                             </td>
                             <td>
                                 <div class="cell-meta">
-                                    <div class="cell-primary">In: <?= isset($record['check_in']) && $record['check_in'] ? TimezoneHelper::displayTime($record['check_in']) : '00:00' ?></div>
-                                    <div class="cell-secondary">Out: <?= isset($record['check_out']) && $record['check_out'] ? TimezoneHelper::displayTime($record['check_out']) : '00:00' ?></div>
+                                    <div class="cell-primary">In: <?= isset($record['check_in']) && $record['check_in'] ? TimeHelper::formatToIST($record['check_in']) : '00:00:00 AM' ?></div>
+                                    <div class="cell-secondary">Out: <?= isset($record['check_out']) && $record['check_out'] ? TimeHelper::formatToIST($record['check_out']) : '00:00:00 AM' ?></div>
                                 </div>
                             </td>
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
@@ -492,7 +493,13 @@ function showAttendanceModal(title, action, userId) {
     document.getElementById('attendanceAction').value = action;
     document.getElementById('attendanceUserId').value = userId;
     document.getElementById('attendanceDate').value = new Date().toISOString().split('T')[0];
-    document.getElementById('attendanceTime').value = action === 'clock_in' ? '09:00' : '18:00';
+    
+    // Convert to IST and set default time in 24-hour format for input
+    const now = new Date();
+    const istTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    const defaultTime = action === 'clock_in' ? '09:00' : istTime.toTimeString().slice(0,5);
+    document.getElementById('attendanceTime').value = defaultTime;
+    
     document.getElementById('attendanceDialog').style.display = 'flex';
 }
 

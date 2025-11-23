@@ -50,14 +50,15 @@ class Advance {
     
     public function create($data) {
         $stmt = $this->db->prepare("
-            INSERT INTO {$this->table} (user_id, amount, reason, requested_date, status) 
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO {$this->table} (user_id, amount, reason, requested_date, repayment_date, status) 
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
         return $stmt->execute([
             $data['user_id'],
             $data['amount'],
             $data['reason'],
             $data['requested_date'],
+            $data['repayment_date'] ?? null,
             $data['status']
         ]);
     }
@@ -83,6 +84,7 @@ class Advance {
                     amount DECIMAL(10,2) NOT NULL,
                     reason TEXT NOT NULL,
                     requested_date DATE NULL,
+                    repayment_date DATE NULL,
                     status VARCHAR(20) DEFAULT 'pending',
                     approved_by INT NULL,
                     approved_at DATETIME NULL,
@@ -91,6 +93,13 @@ class Advance {
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 )";
                 $this->db->exec($sql);
+                
+            // Add repayment_date column if it doesn't exist in existing table
+            try {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN repayment_date DATE NULL");
+            } catch (Exception $e) {
+                // Column already exists, ignore error
+            }
             }
         } catch (Exception $e) {
             error_log('Table creation error: ' . $e->getMessage());

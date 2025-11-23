@@ -1,6 +1,7 @@
 <?php
 $title = 'Clock In/Out';
 $active_page = 'attendance';
+require_once __DIR__ . '/../../app/helpers/TimeHelper.php';
 ob_start();
 ?>
 
@@ -56,7 +57,15 @@ let currentPosition = null;
 
 function updateTime() {
     const now = new Date();
-    document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+    // Convert to IST and format with AM/PM
+    const istTime = now.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour12: true,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    document.getElementById('currentTime').textContent = istTime;
     document.getElementById('currentDate').textContent = now.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',

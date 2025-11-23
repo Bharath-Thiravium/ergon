@@ -20,6 +20,11 @@ ob_start();
         <button class="btn btn--accent" onclick="exportUserList()">
             <span>📊</span> Export
         </button>
+        <?php if (isset($_SESSION['new_credentials']) || isset($_SESSION['reset_credentials'])): ?>
+        <a href="/ergon/users/download-credentials" class="btn btn--success">
+            <span>📥</span> Download Credentials
+        </a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -127,14 +132,14 @@ ob_start();
                                             <path d="M15 5l4 4"/>
                                         </svg>
                                     </button>
-                                    <button class="ab-btn ab-btn--progress" onclick="changePassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Change Password">
+                                    <button class="ab-btn ab-btn--progress" onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Reset Password">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
                                             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                         </svg>
                                     </button>
                                     <?php if ($user['role'] !== 'owner'): ?>
-                                    <button class="ab-btn ab-btn--delete" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Delete User">
+                                    <button class="ab-btn ab-btn--delete" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Terminate User">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M3 6h18"/>
                                             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -193,14 +198,14 @@ ob_start();
                                 <path d="M15 5l4 4"/>
                             </svg>
                         </button>
-                        <button class="ab-btn ab-btn--progress" onclick="changePassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Change Password">
+                        <button class="ab-btn ab-btn--progress" onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Reset Password">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                             </svg>
                         </button>
                         <?php if ($user['role'] !== 'owner'): ?>
-                        <button class="ab-btn ab-btn--delete" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Delete User">
+                        <button class="ab-btn ab-btn--delete" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Terminate User">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <path d="M3 6h18"/>
                                 <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -298,36 +303,22 @@ function exportUserList() {
     window.location.href = '/ergon/admin/export';
 }
 
-function changePassword(userId, userName) {
-    const newPassword = prompt(`Enter new password for ${userName}:`);
-    if (!newPassword) return;
-    
-    if (newPassword.length < 6) {
-        alert('Password must be at least 6 characters long.');
-        return;
-    }
-    
-    const confirmPassword = prompt('Confirm new password:');
-    if (newPassword !== confirmPassword) {
-        alert('Passwords do not match.');
-        return;
-    }
-    
-    if (confirm(`Are you sure you want to change password for ${userName}?`)) {
+function resetPassword(userId, userName) {
+    if (confirm(`Are you sure you want to reset password for ${userName}? A new temporary password will be generated and available for download.`)) {
         const formData = new FormData();
         formData.append('user_id', userId);
-        formData.append('new_password', newPassword);
         
-        fetch('/ergon/admin/change-password', {
+        fetch('/ergon/users/reset-password', {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Password changed successfully!');
+                alert('Password reset successfully! The page will reload to show the download credentials button.');
+                location.reload();
             } else {
-                alert('Error: ' + (data.error || 'Failed to change password'));
+                alert('Error: ' + (data.message || 'Failed to reset password'));
             }
         })
         .catch(error => {
@@ -338,26 +329,25 @@ function changePassword(userId, userName) {
 }
 
 function deleteUser(userId, userName) {
-    if (confirm(`Are you sure you want to permanently delete user "${userName}"? This action cannot be undone and will remove all associated data.`)) {
-        const formData = new FormData();
-        formData.append('user_id', userId);
-        
-        fetch('/ergon/admin/delete-user', {
+    if (confirm(`Are you sure you want to terminate user "${userName}"? This will set their status to terminated and disable their access.`)) {
+        fetch(`/ergon/users/terminate/${userId}`, {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            }
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert(data.message);
+                alert('User terminated successfully!');
                 location.reload();
             } else {
-                alert('Error: ' + data.message);
+                alert('Error: ' + (data.message || 'Failed to terminate user'));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to delete user. Please try again.');
+            alert('Failed to terminate user. Please try again.');
         });
     }
 }

@@ -3,6 +3,7 @@ session_start();
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../app/config/database.php';
+require_once __DIR__ . '/../app/helpers/TimeHelper.php';
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
     echo json_encode(['success' => false, 'message' => 'Access denied']);
@@ -76,11 +77,24 @@ try {
             // Format date and calculate working hours
             $record['date'] = date('Y-m-d', strtotime($record['check_in']));
             
-            if ($record['check_in'] && $record['check_out']) {
-                $checkIn = new DateTime($record['check_in']);
-                $checkOut = new DateTime($record['check_out']);
-                $diff = $checkIn->diff($checkOut);
-                $record['working_hours_calculated'] = $diff->format('%H:%I');
+            // Format times to IST with AM/PM
+            $record['check_in'] = $record['check_in'] ? TimeHelper::formatToIST($record['check_in']) : 'Not checked in';
+            $record['check_out'] = $record['check_out'] ? TimeHelper::formatToIST($record['check_out']) : 'Not checked out';
+            
+            if ($record['check_in'] !== 'Not checked in' && $record['check_out'] !== 'Not checked out') {
+                // Calculate working hours using original datetime values
+                $stmt = $db->prepare("SELECT check_in, check_out FROM attendance WHERE id = ?");
+                $stmt->execute([$id]);
+                $timeRecord = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($timeRecord && $timeRecord['check_in'] && $timeRecord['check_out']) {
+                    $checkIn = new DateTime($timeRecord['check_in']);
+                    $checkOut = new DateTime($timeRecord['check_out']);
+                    $diff = $checkIn->diff($checkOut);
+                    $record['working_hours_calculated'] = $diff->format('%H:%I');
+                } else {
+                    $record['working_hours_calculated'] = 'N/A';
+                }
             } else {
                 $record['working_hours_calculated'] = 'N/A';
             }

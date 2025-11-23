@@ -65,11 +65,11 @@ ob_end_clean();
     .mobile-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9997;display:none}
     
     /* Smart Attendance Button States - Enhanced Visibility */
+    .btn--attendance-toggle{background:#10b981 !important;border:3px solid #059669 !important;color:#ffffff !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important;box-shadow:0 4px 12px rgba(16,185,129,0.4) !important;transition:all 0.3s ease;min-height:44px !important;padding:8px 16px !important;border-radius:8px !important}
     .btn--attendance-toggle.state-out{background:#10b981 !important;border:3px solid #059669 !important;color:#ffffff !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important;box-shadow:0 4px 12px rgba(16,185,129,0.4) !important}
     .btn--attendance-toggle.state-in{background:#dc2626 !important;color:#ffffff !important;border:3px solid #991b1b !important;box-shadow:0 4px 16px rgba(220,38,38,0.6) !important;font-weight:800 !important;text-shadow:0 2px 4px rgba(0,0,0,0.5) !important;animation:pulse-red 2s infinite}
     .btn--attendance-toggle.state-completed{background:#059669 !important;border:3px solid #047857 !important;color:#ffffff !important;opacity:1 !important;box-shadow:0 4px 12px rgba(5,150,105,0.4) !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important}
     .btn--attendance-toggle.state-leave{background:#f59e0b !important;border:3px solid #d97706 !important;color:#ffffff !important;opacity:1 !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important}
-    .btn--attendance-toggle{transition:all 0.3s ease;color:#ffffff !important;min-height:44px !important;padding:8px 16px !important;border-radius:8px !important}
     @keyframes pulse-red{0%,100%{box-shadow:0 4px 16px rgba(220,38,38,0.6)}50%{box-shadow:0 6px 20px rgba(220,38,38,0.8)}}
     </style>
     
