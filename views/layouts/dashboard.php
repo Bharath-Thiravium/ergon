@@ -104,6 +104,7 @@ ob_end_clean();
     <script src="/ergon/assets/_archive_legacy/js/action-button-clean.js?v=1.0" defer></script>
     <script src="/ergon/assets/_archive_legacy/js/mobile-enhanced.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/mobile-table-cards.js?v=1.0" defer></script>
+    <script src="/ergon/assets/js/table-utils.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/user-status-check.js?v=1.0" defer></script>
 
     <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
