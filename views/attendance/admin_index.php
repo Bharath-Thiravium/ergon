@@ -73,9 +73,9 @@ ob_start();
                     <div style="color: #6b7280; font-size: 0.875rem;">Administrator</div>
                     <?php if ($admin_attendance): ?>
                         <div style="color: #059669; font-size: 0.875rem; font-weight: 500;">
-                            In: <?= $admin_attendance['check_in'] ? TimezoneHelper::displayTime($admin_attendance['check_in']) : '-' ?>
+                            In: <?= $admin_attendance['check_in'] ? date('H:i', strtotime($admin_attendance['check_in']) + 19800) : '-' ?>
                             <?php if ($admin_attendance['check_out']): ?>
-                                | Out: <?= TimezoneHelper::displayTime($admin_attendance['check_out']) ?>
+                                | Out: <?= date('H:i', strtotime($admin_attendance['check_out']) + 19800) ?>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
@@ -155,7 +155,21 @@ ob_start();
                             error_log('Displaying ' . count($employees) . ' employees in admin view. Current user role: ' . ($_SESSION['role'] ?? 'unknown'));
                         }
                         
-                        foreach ($employees as $employee): ?>
+                        foreach ($employees as $employee): 
+                            // DIRECT IST CONVERSION IN VIEW
+                            if ($employee['check_in']) {
+                                $ts = strtotime($employee['check_in']);
+                                $employee['check_in_ist'] = date('H:i', $ts + 19800);
+                            } else {
+                                $employee['check_in_ist'] = '-';
+                            }
+                            if ($employee['check_out']) {
+                                $ts = strtotime($employee['check_out']);
+                                $employee['check_out_ist'] = date('H:i', $ts + 19800);
+                            } else {
+                                $employee['check_out_ist'] = $employee['check_in'] ? 'Working...' : '-';
+                            }
+                        ?>
                         <tr>
                             <td>
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -181,24 +195,14 @@ ob_start();
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($employee['check_in']): ?>
-                                    <span style="color: #059669; font-weight: 500;">
-                                        <?= TimezoneHelper::displayTime($employee['check_in']) ?>
-                                    </span>
-                                <?php else: ?>
-                                    <span style="color: #6b7280;">-</span>
-                                <?php endif; ?>
+                                <span style="color: <?= $employee['check_in'] ? '#059669' : '#6b7280' ?>; font-weight: 500;">
+                                    <?= $employee['check_in_ist'] ?>
+                                </span>
                             </td>
                             <td>
-                                <?php if ($employee['check_out']): ?>
-                                    <span style="color: #dc2626; font-weight: 500;">
-                                        <?= TimezoneHelper::displayTime($employee['check_out']) ?>
-                                    </span>
-                                <?php elseif ($employee['check_in']): ?>
-                                    <span style="color: #f59e0b; font-weight: 500;">Working...</span>
-                                <?php else: ?>
-                                    <span style="color: #6b7280;">-</span>
-                                <?php endif; ?>
+                                <span style="color: <?= $employee['check_out'] ? '#dc2626' : ($employee['check_in'] ? '#f59e0b' : '#6b7280') ?>; font-weight: 500;">
+                                    <?= $employee['check_out_ist'] ?>
+                                </span>
                             </td>
                             <td>
                                 <?php if ($employee['total_hours'] > 0): ?>
