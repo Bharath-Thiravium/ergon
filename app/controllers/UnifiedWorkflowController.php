@@ -17,8 +17,9 @@ class UnifiedWorkflowController extends Controller {
             exit;
         }
         
-        // Restrict to current and past dates only
-        if ($date > date('Y-m-d')) {
+        // Allow future dates for planning (up to 30 days ahead)
+        $maxFutureDate = date('Y-m-d', strtotime('+30 days'));
+        if ($date > $maxFutureDate) {
             header('Location: /ergon/workflow/daily-planner/' . date('Y-m-d'));
             exit;
         }

@@ -231,28 +231,40 @@ class DailyPlanner {
             $isFutureDate = ($date > date('Y-m-d'));
             
             if ($isPastDate) {
-                // REFINED: For past dates, only fetch tasks specifically assigned to that date
+                // FIXED: For past dates, show tasks that were planned/assigned for that specific date
                 $stmt = $this->db->prepare("
                     SELECT 
                         t.id, t.title, t.description, t.priority, t.status,
                         t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
-                        CASE 
-                            WHEN DATE(t.planned_date) = ? THEN 'planned_date'
-                            WHEN DATE(t.deadline) = ? THEN 'deadline'
-                            WHEN DATE(t.created_at) = ? THEN 'created_at'
-                            WHEN t.status = 'completed' AND DATE(t.updated_at) = ? THEN 'completed_on_date'
-                            ELSE 'other'
-                        END as source_field
+                        'planned_date' as source_field
                     FROM tasks t
                     WHERE t.assigned_to = ? 
-                    AND (
-                        DATE(t.planned_date) = ? OR
-                        (DATE(t.deadline) = ? AND t.planned_date IS NULL) OR
-                        (DATE(t.created_at) = ? AND t.planned_date IS NULL AND t.deadline IS NULL) OR
-                        (t.status = 'completed' AND DATE(t.updated_at) = ?)
-                    )
+                    AND t.planned_date = ?
+                    
+                    UNION ALL
+                    
+                    SELECT 
+                        t.id, t.title, t.description, t.priority, t.status,
+                        t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
+                        'deadline' as source_field
+                    FROM tasks t
+                    WHERE t.assigned_to = ? 
+                    AND DATE(t.deadline) = ?
+                    AND (t.planned_date IS NULL OR t.planned_date = '' OR t.planned_date = '0000-00-00')
+                    
+                    UNION ALL
+                    
+                    SELECT 
+                        t.id, t.title, t.description, t.priority, t.status,
+                        t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
+                        'created_at' as source_field
+                    FROM tasks t
+                    WHERE t.assigned_to = ? 
+                    AND DATE(t.created_at) = ?
+                    AND (t.planned_date IS NULL OR t.planned_date = '' OR t.planned_date = '0000-00-00')
+                    AND (t.deadline IS NULL OR DATE(t.deadline) != ?)
                 ");
-                $stmt->execute([$date, $date, $date, $date, $userId, $date, $date, $date, $date]);
+                $stmt->execute([$userId, $date, $userId, $date, $userId, $date, $date]);
             } elseif ($isFutureDate) {
                 // SIMPLIFIED: For future dates, prioritize planned_date matching
                 $stmt = $this->db->prepare("

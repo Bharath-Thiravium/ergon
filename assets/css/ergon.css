@@ -1375,11 +1375,6 @@ canvas { width: 100% !important; height: auto !important; }
   padding: 12px;
   min-width: 200px;
   display: none;
-}px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  padding: 12px;
-  min-width: 200px;
-  display: none;
 }
 
 .table-filter-dropdown--show {
@@ -1434,6 +1429,33 @@ canvas { width: 100% !important; height: auto !important; }
 
 .filter-btn:hover {
   background: var(--bg-hover);
+}
+
+.filter-options {
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 8px 0;
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.filter-option input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.filter-option:hover {
+  background: var(--bg-hover);
+  border-radius: 4px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 .table-header__cell--filtered {
