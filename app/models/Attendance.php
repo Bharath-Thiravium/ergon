@@ -1,11 +1,26 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/TimezoneHelper.php';
 
 class Attendance {
     private $conn;
     
     public function __construct() {
         $this->conn = Database::connect();
+    }
+    
+    private function setUserTimezone($userId) {
+        try {
+            $stmt = $this->conn->prepare("SELECT timezone FROM user_preferences WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $userPrefs = $stmt->fetch();
+            $timezone = $userPrefs['timezone'] ?? 'Asia/Kolkata';
+            date_default_timezone_set($timezone);
+            return $timezone;
+        } catch (Exception $e) {
+            date_default_timezone_set('Asia/Kolkata');
+            return 'Asia/Kolkata';
+        }
     }
     
     public function checkIn($userId, $latitude, $longitude, $locationName, $clientUuid = null, $distance = 0, $isValid = true) {
@@ -23,12 +38,13 @@ class Attendance {
                 }
             }
             
+            $currentTime = TimezoneHelper::nowUtc();
             $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
             
             $query = "INSERT INTO attendance (user_id, check_in, latitude, longitude, location_name, status, client_uuid, distance_meters, is_valid, ip_address) 
-                      VALUES (?, NOW(), ?, ?, ?, 'present', ?, ?, ?, ?)";
+                      VALUES (?, ?, ?, ?, ?, 'present', ?, ?, ?, ?)";
             $stmt = $this->conn->prepare($query);
-            $result = $stmt->execute([$userId, $latitude, $longitude, $locationName, $clientUuid, $distance, $isValid ? 1 : 0, $ipAddress]);
+            $result = $stmt->execute([$userId, $currentTime, $latitude, $longitude, $locationName, $clientUuid, $distance, $isValid ? 1 : 0, $ipAddress]);
             
             if (!$isValid && $result) {
                 $this->createConflict($userId, $this->conn->lastInsertId(), 'location_mismatch', "Distance: {$distance}m");
@@ -43,10 +59,13 @@ class Attendance {
     
     public function checkOut($userId, $clientUuid = null) {
         try {
-            $query = "UPDATE attendance SET check_out = NOW() 
-                      WHERE user_id = ? AND DATE(check_in) = CURDATE() AND check_out IS NULL";
+            $currentTime = TimezoneHelper::nowUtc();
+            $currentDate = date('Y-m-d', strtotime(TimezoneHelper::utcToOwner($currentTime)));
+            
+            $query = "UPDATE attendance SET check_out = ? 
+                      WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL";
             $stmt = $this->conn->prepare($query);
-            $result = $stmt->execute([$userId]);
+            $result = $stmt->execute([$currentTime, $userId, $currentDate]);
             return $result && $stmt->rowCount() > 0;
         } catch (Exception $e) {
             error_log('CheckOut error: ' . $e->getMessage());
@@ -55,15 +74,17 @@ class Attendance {
     }
     
     public function getTodayAttendance($userId) {
-        $query = "SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE()";
+        $currentDate = TimezoneHelper::getCurrentDate();
+        
+        $query = "SELECT *, CONVERT_TZ(check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(check_out, '+00:00', '+05:30') as check_out FROM attendance WHERE user_id = ? AND DATE(CONVERT_TZ(check_in, '+00:00', '+05:30')) = ?";
         $stmt = $this->conn->prepare($query);
-        $stmt->execute([$userId]);
+        $stmt->execute([$userId, $currentDate]);
         return $stmt->fetch();
     }
     
     public function getAll() {
         try {
-            $query = "SELECT a.*, u.name as user_name 
+            $query = "SELECT a.*, CONVERT_TZ(a.check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(a.check_out, '+00:00', '+05:30') as check_out, u.name as user_name 
                       FROM attendance a 
                       JOIN users u ON a.user_id = u.id 
                       ORDER BY a.created_at DESC";
@@ -78,7 +99,7 @@ class Attendance {
     
     public function getUserAttendance($userId) {
         try {
-            $query = "SELECT a.*, u.name as user_name FROM attendance a 
+            $query = "SELECT a.*, CONVERT_TZ(a.check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(a.check_out, '+00:00', '+05:30') as check_out, u.name as user_name FROM attendance a 
                       JOIN users u ON a.user_id = u.id 
                       WHERE a.user_id = ? 
                       ORDER BY a.created_at DESC LIMIT 30";

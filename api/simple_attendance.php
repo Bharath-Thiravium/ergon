@@ -18,8 +18,9 @@ try {
     switch ($action) {
         case 'clock_in':
             $userId = $input['user_id'] ?? null;
+            date_default_timezone_set('Asia/Kolkata');
             $date = $input['date'] ?? date('Y-m-d');
-            $time = $input['time'] ?? null;
+            $time = $input['time'] ?? date('H:i');
             if (!$userId || !$time) throw new Exception('User ID and time required');
             
             $datetime = $date . ' ' . $time . ':00';
@@ -40,8 +41,9 @@ try {
             
         case 'clock_out':
             $userId = $input['user_id'] ?? null;
+            date_default_timezone_set('Asia/Kolkata');
             $date = $input['date'] ?? date('Y-m-d');
-            $time = $input['time'] ?? null;
+            $time = $input['time'] ?? date('H:i');
             if (!$userId || !$time) throw new Exception('User ID and time required');
             
             $datetime = $date . ' ' . $time . ':00';

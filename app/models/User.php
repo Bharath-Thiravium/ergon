@@ -376,12 +376,16 @@ class User {
     
     private function updateLastLogin($id) {
         try {
+            // Set timezone to IST for correct login time
+            date_default_timezone_set('Asia/Kolkata');
+            $loginTime = date('Y-m-d H:i:s');
+            
             $stmt = $this->conn->prepare("
                 UPDATE {$this->table} 
-                SET last_login = NOW(), last_ip = ? 
+                SET last_login = ?, last_ip = ? 
                 WHERE id = ?
             ");
-            $stmt->execute([$_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', $id]);
+            $stmt->execute([$loginTime, $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', $id]);
         } catch (Exception $e) {
             error_log("Update last login error: " . $e->getMessage());
         }

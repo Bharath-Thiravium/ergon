@@ -3,12 +3,22 @@ require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../helpers/Security.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../../hostinger_optimizations.php';
 
 class ProfileController extends Controller {
     private $db;
     
     public function __construct() {
-        $this->db = Database::connect();
+        try {
+            if (isHostingerEnvironment()) {
+                $this->db = hostingerDatabaseConnect();
+            } else {
+                $this->db = Database::connect();
+            }
+        } catch (Exception $e) {
+            error_log('ProfileController database connection failed: ' . $e->getMessage());
+            throw new Exception('Database connection failed');
+        }
     }
     
     public function index() {
@@ -157,7 +167,44 @@ class ProfileController extends Controller {
     public function preferences() {
         AuthMiddleware::requireAuth();
         
+        // Restrict preferences to owner only
+        if ($_SESSION['role'] !== 'owner') {
+            header('Location: /ergon/profile?error=Access denied');
+            exit;
+        }
+        
+        // Hostinger-specific session handling
+        if (isHostingerEnvironment()) {
+            hostingerSessionRestart();
+        }
+        
+        // Ensure table exists before any operations
+        $this->createUserPreferencesTable();
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Simple validation - check if user is logged in
+            if (!isset($_SESSION['user_id'])) {
+                error_log('User not logged in during preferences save');
+                header('Location: /ergon/profile/preferences?error=1');
+                exit;
+            }
+            
+            // Validate CSRF token with detailed logging
+            $csrfToken = $_POST['csrf_token'] ?? '';
+            $sessionToken = $_SESSION['csrf_token'] ?? '';
+            
+            error_log('CSRF Debug - Submitted: ' . $csrfToken . ', Session: ' . $sessionToken . ', User: ' . $_SESSION['user_id']);
+            
+            if (empty($csrfToken) || empty($sessionToken) || !hash_equals($sessionToken, $csrfToken)) {
+                error_log('CSRF validation failed - regenerating token and redirecting');
+                // Regenerate token for next attempt
+                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                header('Location: /ergon/profile/preferences?error=1');
+                exit;
+            }
+            
+            error_log('CSRF validation passed for user ' . $_SESSION['user_id']);
+            
             $preferences = [
                 'theme' => Security::sanitizeString($_POST['theme'] ?? 'light'),
                 'dashboard_layout' => Security::sanitizeString($_POST['dashboard_layout'] ?? 'default'),
@@ -171,7 +218,10 @@ class ProfileController extends Controller {
             $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
                      strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
             
-            if ($this->updateUserPreferences($_SESSION['user_id'], $preferences)) {
+            $saveResult = $this->updateUserPreferences($_SESSION['user_id'], $preferences);
+            error_log('Preferences save result for user ' . $_SESSION['user_id'] . ': ' . ($saveResult ? 'SUCCESS' : 'FAILED'));
+            
+            if ($saveResult) {
                 if ($isAjax) {
                     header('Content-Type: application/json');
                     echo json_encode(['success' => true, 'message' => 'Preferences saved successfully']);
@@ -179,6 +229,7 @@ class ProfileController extends Controller {
                 }
                 header('Location: /ergon/profile/preferences?success=1');
             } else {
+                error_log('Database save failed for user ' . $_SESSION['user_id']);
                 if ($isAjax) {
                     header('Content-Type: application/json');
                     echo json_encode(['success' => false, 'message' => 'Failed to save preferences']);
@@ -290,40 +341,52 @@ class ProfileController extends Controller {
     
     private function updateUserPreferences($userId, $preferences) {
         try {
-            // Ensure table exists
-            $this->createUserPreferencesTable();
+            error_log('Attempting to save preferences for user ' . $userId . ': ' . json_encode($preferences));
             
-            // Debug log
-            error_log('Saving preferences for user ' . $userId . ': ' . json_encode($preferences));
+            // Check if record exists
+            $checkSql = "SELECT user_id FROM user_preferences WHERE user_id = ?";
+            $checkStmt = $this->db->prepare($checkSql);
+            $checkStmt->execute([$userId]);
+            $exists = $checkStmt->fetch();
             
-            $sql = "INSERT INTO user_preferences (user_id, theme, dashboard_layout, language, timezone, notifications_email, notifications_browser) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE 
-                    theme = VALUES(theme),
-                    dashboard_layout = VALUES(dashboard_layout),
-                    language = VALUES(language),
-                    timezone = VALUES(timezone),
-                    notifications_email = VALUES(notifications_email),
-                    notifications_browser = VALUES(notifications_browser)";
+            if ($exists) {
+                error_log('Updating existing preferences record for user ' . $userId);
+                // Update existing record
+                $sql = "UPDATE user_preferences SET 
+                        theme = ?, dashboard_layout = ?, language = ?, timezone = ?, 
+                        notifications_email = ?, notifications_browser = ?, updated_at = NOW() 
+                        WHERE user_id = ?";
+                $stmt = $this->db->prepare($sql);
+                $result = $stmt->execute([
+                    $preferences['theme'],
+                    $preferences['dashboard_layout'],
+                    $preferences['language'],
+                    $preferences['timezone'],
+                    $preferences['notifications_email'],
+                    $preferences['notifications_browser'],
+                    $userId
+                ]);
+            } else {
+                error_log('Creating new preferences record for user ' . $userId);
+                // Insert new record
+                $sql = "INSERT INTO user_preferences (user_id, theme, dashboard_layout, language, timezone, notifications_email, notifications_browser) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?)";
+                $stmt = $this->db->prepare($sql);
+                $result = $stmt->execute([
+                    $userId,
+                    $preferences['theme'],
+                    $preferences['dashboard_layout'],
+                    $preferences['language'],
+                    $preferences['timezone'],
+                    $preferences['notifications_email'],
+                    $preferences['notifications_browser']
+                ]);
+            }
             
-            $stmt = $this->db->prepare($sql);
-            $result = $stmt->execute([
-                $userId,
-                $preferences['theme'],
-                $preferences['dashboard_layout'],
-                $preferences['language'],
-                $preferences['timezone'],
-                $preferences['notifications_email'],
-                $preferences['notifications_browser']
-            ]);
-            
-            // Verify save
             if ($result) {
-                $checkSql = "SELECT * FROM user_preferences WHERE user_id = ?";
-                $checkStmt = $this->db->prepare($checkSql);
-                $checkStmt->execute([$userId]);
-                $saved = $checkStmt->fetch(PDO::FETCH_ASSOC);
-                error_log('Saved preferences: ' . json_encode($saved));
+                error_log('Preferences saved successfully for user ' . $userId);
+            } else {
+                error_log('Failed to save preferences for user ' . $userId . '. Error info: ' . json_encode($stmt->errorInfo()));
             }
             
             return $result;
@@ -335,6 +398,7 @@ class ProfileController extends Controller {
     
     private function createUserPreferencesTable() {
         try {
+            // Hostinger-optimized table creation
             $sql = "CREATE TABLE IF NOT EXISTS user_preferences (
                 user_id INT PRIMARY KEY,
                 theme VARCHAR(20) DEFAULT 'light',
@@ -344,12 +408,23 @@ class ProfileController extends Controller {
                 notifications_email TINYINT(1) DEFAULT 1,
                 notifications_browser TINYINT(1) DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )";
+                updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+            
             $this->db->exec($sql);
+            
+            // Verify table exists with Hostinger-compatible query
+            $checkSql = "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'user_preferences'";
+            $result = $this->db->query($checkSql);
+            $row = $result->fetch();
+            
+            if ($row['count'] > 0) {
+                error_log('User preferences table verified successfully on Hostinger');
+            } else {
+                error_log('User preferences table creation failed on Hostinger');
+            }
         } catch (Exception $e) {
-            error_log('createUserPreferencesTable error: ' . $e->getMessage());
+            error_log('createUserPreferencesTable error on Hostinger: ' . $e->getMessage());
         }
     }
 }

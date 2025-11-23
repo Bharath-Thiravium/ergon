@@ -25,6 +25,16 @@ class AttendanceController extends Controller {
                 $stmt->execute([$_SESSION['user_id']]);
                 $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
+                // Convert UTC times to IST in PHP
+                foreach ($attendance as &$record) {
+                    if ($record['check_in']) {
+                        $record['check_in'] = TimezoneHelper::utcToIst($record['check_in']);
+                    }
+                    if ($record['check_out']) {
+                        $record['check_out'] = TimezoneHelper::utcToIst($record['check_out']);
+                    }
+                }
+                
                 // Calculate stats for the filtered period
                 $stats = $this->calculateUserStats($attendance);
                 
@@ -47,13 +57,20 @@ class AttendanceController extends Controller {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
                 
+                // Force UTC timezone for Hostinger
+                $db->exec("SET time_zone = '+00:00'");
+                
                 $this->ensureAttendanceTable($db);
                 
                 // Get date filter from query parameter
                 $filterDate = $_GET['date'] ?? date('Y-m-d');
                 
-                // Owner sees ALL users (admin + employees), Admin sees only employees
-                $roleFilter = ($role === 'owner') ? "u.role IN ('admin', 'user')" : "u.role = 'user'";
+                // Consistent role filtering: Owner sees all users, Admin sees users only
+                if ($role === 'owner') {
+                    $roleFilter = "u.role IN ('admin', 'user', 'owner')";
+                } else {
+                    $roleFilter = "u.role = 'user'";
+                }
                 
                 // Get users with attendance status for selected date
                 $stmt = $db->prepare("
@@ -78,11 +95,21 @@ class AttendanceController extends Controller {
                     FROM users u
                     LEFT JOIN departments d ON u.department_id = d.id
                     LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
-                    WHERE $roleFilter
+                    WHERE $roleFilter AND u.status = 'active'
                     ORDER BY u.role DESC, u.name
                 ");
                 $stmt->execute([$filterDate]);
                 $employeeAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Convert UTC times to IST in PHP
+                foreach ($employeeAttendance as &$employee) {
+                    if ($employee['check_in']) {
+                        $employee['check_in'] = TimezoneHelper::utcToIst($employee['check_in']);
+                    }
+                    if ($employee['check_out']) {
+                        $employee['check_out'] = TimezoneHelper::utcToIst($employee['check_out']);
+                    }
+                }
                 
                 // Debug output
                 error_log("AttendanceController Debug:");
@@ -110,6 +137,16 @@ class AttendanceController extends Controller {
                 $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
                 $stmt->execute([$_SESSION['user_id'], $filterDate]);
                 $adminAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                // Convert UTC times to IST in PHP
+                if ($adminAttendance) {
+                    if ($adminAttendance['check_in']) {
+                        $adminAttendance['check_in'] = TimezoneHelper::utcToIst($adminAttendance['check_in']);
+                    }
+                    if ($adminAttendance['check_out']) {
+                        $adminAttendance['check_out'] = TimezoneHelper::utcToIst($adminAttendance['check_out']);
+                    }
+                }
                 
             } catch (Exception $e) {
                 error_log('Attendance error: ' . $e->getMessage());
@@ -185,6 +222,9 @@ class AttendanceController extends Controller {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
                 
+                // Force UTC timezone for Hostinger
+                $db->exec("SET time_zone = '+00:00'");
+                
                 $this->ensureAttendanceTable($db);
                 
                 $type = $_POST['type'] ?? '';
@@ -239,18 +279,25 @@ class AttendanceController extends Controller {
                         // Continue with clock in if check fails
                     }
                     
+                    // Store in UTC
+                    $currentTime = TimezoneHelper::nowUtc();
+                    
                     // Clock in - handle both column name variations
                     $stmt = $db->query("SHOW COLUMNS FROM attendance");
                     $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
                     
                     if (in_array('check_in', $columns)) {
-                        $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, created_at) VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+                        $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, created_at) VALUES (?, ?, ?)");
+                        $stmt->execute([$userId, $currentTime, $currentTime]);
                     } elseif (in_array('clock_in', $columns)) {
-                        $stmt = $db->prepare("INSERT INTO attendance (user_id, clock_in, date, created_at) VALUES (?, CURRENT_TIME, CURDATE(), CURRENT_TIMESTAMP)");
+                        $stmt = $db->prepare("INSERT INTO attendance (user_id, clock_in, date, created_at) VALUES (?, ?, ?, ?)");
+                        $stmt->execute([$userId, date('H:i:s'), date('Y-m-d'), $currentTime]);
                     } else {
-                        $stmt = $db->prepare("INSERT INTO attendance (user_id, created_at) VALUES (?, CURRENT_TIMESTAMP)");
+                        $stmt = $db->prepare("INSERT INTO attendance (user_id, created_at) VALUES (?, ?)");
+                        $stmt->execute([$userId, $currentTime]);
                     }
-                    $result = $stmt->execute([$userId]);
+                    $result = true; // Set result since we're handling execute manually
+                    // Remove this line since we're handling execute manually above
                     
                     if ($result) {
                         // Check if late arrival (after 9:30 AM) and notify owners
@@ -277,9 +324,13 @@ class AttendanceController extends Controller {
                     }
                     
                 } elseif ($type === 'out') {
+                    // Store in UTC
+                    $currentTime = TimezoneHelper::nowUtc();
+                    $currentDate = TimezoneHelper::getCurrentDate();
+                    
                     // Find today's attendance record
-                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND check_out IS NULL");
-                    $stmt->execute([$userId]);
+                    $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");
+                    $stmt->execute([$userId, $currentDate]);
                     $attendance = $stmt->fetch();
                     
                     if (!$attendance) {
@@ -287,8 +338,8 @@ class AttendanceController extends Controller {
                         exit;
                     }
                     
-                    $stmt = $db->prepare("UPDATE attendance SET check_out = NOW() WHERE id = ?");
-                    $result = $stmt->execute([$attendance['id']]);
+                    $stmt = $db->prepare("UPDATE attendance SET check_out = ? WHERE id = ?");
+                    $result = $stmt->execute([$currentTime, $attendance['id']]);
                     
                     if ($result) {
                         echo json_encode(['success' => true, 'message' => 'Clocked out successfully']);
@@ -318,8 +369,11 @@ class AttendanceController extends Controller {
             $db = Database::connect();
             $this->ensureAttendanceTable($db);
             
-            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE()");
-            $stmt->execute([$_SESSION['user_id']]);
+            // Use IST date for comparison
+            $currentDate = TimezoneHelper::getCurrentDate();
+            
+            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+            $stmt->execute([$_SESSION['user_id'], $currentDate]);
             $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Check if user is on approved leave today
@@ -348,8 +402,11 @@ class AttendanceController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE()");
-            $stmt->execute([$_SESSION['user_id']]);
+            // Use IST date for comparison
+            $currentDate = TimezoneHelper::getCurrentDate();
+            
+            $stmt = $db->prepare("SELECT *, CONVERT_TZ(check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(check_out, '+00:00', '+05:30') as check_out FROM attendance WHERE user_id = ? AND DATE(CONVERT_TZ(check_in, '+00:00', '+05:30')) = ?");
+            $stmt->execute([$_SESSION['user_id'], $currentDate]);
             $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
             
             $onLeave = false;
@@ -727,8 +784,8 @@ class AttendanceController extends Controller {
             // Get attendance history
             $stmt = $db->prepare("
                 SELECT 
-                    check_in,
-                    check_out,
+                    CONVERT_TZ(check_in, '+00:00', '+05:30') as check_in,
+                    CONVERT_TZ(check_out, '+00:00', '+05:30') as check_out,
                     status,
                     location_name,
                     created_at

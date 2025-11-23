@@ -374,7 +374,6 @@ class ExpenseController extends Controller {
         
         try {
             require_once __DIR__ . '/../config/database.php';
-            require_once __DIR__ . '/../helpers/AccountingHelper.php';
             $db = Database::connect();
             
             // Get expense details first
@@ -387,35 +386,32 @@ class ExpenseController extends Controller {
                 exit;
             }
             
-            $db->beginTransaction();
-            
-            // Update expense status with approval details
+            // Simple approval without accounting integration
             $stmt = $db->prepare("UPDATE expenses SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$_SESSION['user_id'], $id]);
             
             if ($result && $stmt->rowCount() > 0) {
-                // Record in accounting system
-                AccountingHelper::recordExpenseApproval(
-                    $id,
-                    $expense['amount'],
-                    $expense['category'],
-                    $expense['description'],
-                    $_SESSION['user_id'],
-                    $db
-                );
+                // Try accounting integration but don't fail if it doesn't work
+                try {
+                    require_once __DIR__ . '/../helpers/AccountingHelper.php';
+                    AccountingHelper::recordExpenseApproval(
+                        $id,
+                        $expense['amount'],
+                        $expense['category'],
+                        $expense['description'],
+                        $_SESSION['user_id']
+                    );
+                } catch (Exception $accountingError) {
+                    error_log('Accounting integration failed (non-critical): ' . $accountingError->getMessage());
+                }
                 
-                $db->commit();
-                header('Location: /ergon/expenses?success=Expense approved and recorded in accounts successfully');
+                header('Location: /ergon/expenses?success=Expense approved successfully');
             } else {
-                $db->rollback();
                 header('Location: /ergon/expenses?error=Failed to approve expense');
             }
         } catch (Exception $e) {
-            if ($db->inTransaction()) {
-                $db->rollback();
-            }
             error_log('Expense approval error: ' . $e->getMessage());
-            header('Location: /ergon/expenses?error=Approval failed: ' . $e->getMessage());
+            header('Location: /ergon/expenses?error=Approval failed');
         }
         exit;
     }

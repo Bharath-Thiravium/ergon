@@ -711,6 +711,7 @@ async function updateCharts() {
     try {
         // Update Quotations Chart
         const quotationsResponse = await fetch('/ergon/finance/visualization?type=quotations');
+        if (!quotationsResponse.ok) throw new Error('Quotations API not available');
         const quotationsText = await quotationsResponse.text();
         const quotationsData = quotationsText ? JSON.parse(quotationsText) : {};
         
@@ -731,6 +732,7 @@ async function updateCharts() {
         
         // Update Purchase Orders Chart
         const poResponse = await fetch('/ergon/finance/visualization?type=purchase_orders');
+        if (!poResponse.ok) throw new Error('PO API not available');
         const poText = await poResponse.text();
         const poData = poText ? JSON.parse(poText) : {};
         
@@ -759,6 +761,7 @@ async function updateCharts() {
         
         // Update Invoices Chart
         const invoicesResponse = await fetch('/ergon/finance/visualization?type=invoices');
+        if (!invoicesResponse.ok) throw new Error('Invoices API not available');
         const invoicesText = await invoicesResponse.text();
         const invoicesData = invoicesText ? JSON.parse(invoicesText) : {};
         
@@ -779,6 +782,7 @@ async function updateCharts() {
         
         // Update Outstanding by Customer Chart
         const outstandingResp = await fetch('/ergon/finance/outstanding-by-customer?limit=10');
+        if (!outstandingResp.ok) throw new Error('Outstanding API not available');
         const outstandingText = await outstandingResp.text();
         const outstandingData = outstandingText ? JSON.parse(outstandingText) : {};
         if (outstandingByCustomerChart && outstandingData.labels) {
@@ -799,6 +803,7 @@ async function updateCharts() {
 
         // Update Aging Buckets Chart
         const agingResp = await fetch('/ergon/finance/aging-buckets');
+        if (!agingResp.ok) throw new Error('Aging API not available');
         const agingText = await agingResp.text();
         const agingData = agingText ? JSON.parse(agingText) : {};
         if (agingBucketsChart && agingData.labels) {
@@ -819,6 +824,7 @@ async function updateCharts() {
         
         // Update Payments Chart
         const paymentsResp = await fetch('/ergon/finance/visualization?type=payments');
+        if (!paymentsResp.ok) throw new Error('Payments API not available');
         const paymentsText = await paymentsResp.text();
         const paymentsData = paymentsText ? JSON.parse(paymentsText) : {};
         if (paymentsChart) {
@@ -845,13 +851,26 @@ async function updateCharts() {
         }
         
     } catch (error) {
-        console.error('Failed to update charts:', error);
+        console.warn('Charts not available:', error.message);
+        // Initialize charts with empty data
+        if (quotationsChart) {
+            quotationsChart.data.datasets[0].data = [0,0,0];
+            quotationsChart.update();
+        }
+        if (purchaseOrdersChart) {
+            purchaseOrdersChart.data.labels = ['No Data'];
+            purchaseOrdersChart.data.datasets[0].data = [0];
+            purchaseOrdersChart.update();
+        }
     }
 }
 
 async function loadOutstandingInvoices() {
     try {
         const response = await fetch('/ergon/finance/outstanding-invoices');
+        if (!response.ok) {
+            throw new Error('Outstanding invoices API not available');
+        }
         const data = await response.json();
         
         const tbody = document.querySelector('#outstandingTable tbody');
@@ -895,6 +914,9 @@ async function loadRecentActivities(type = 'all') {
     try {
         // Use existing quotations endpoint as fallback until backend is implemented
         const response = await fetch('/ergon/finance/recent-quotations');
+        if (!response.ok) {
+            throw new Error('Recent activities API not available');
+        }
         const activityText = await response.text();
         const data = activityText ? JSON.parse(activityText) : {};
         

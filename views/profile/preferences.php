@@ -13,6 +13,10 @@ ob_start();
 <div class="alert alert--success">Preferences updated successfully!</div>
 <?php endif; ?>
 
+<?php if (isset($_GET['error'])): ?>
+<div class="alert alert--error">Failed to save preferences. Please try again.</div>
+<?php endif; ?>
+
 <?php if (isset($data['error'])): ?>
 <div class="alert alert--error"><?= htmlspecialchars($data['error']) ?></div>
 <?php endif; ?>
