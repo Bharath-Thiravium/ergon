@@ -1,37 +1,38 @@
 <?php
 class TimezoneHelper {
     
-    public static function setSystemTimezone() {
+    public static function getOwnerTimezone() {
         try {
             $db = Database::connect();
-            // Get owner's timezone as system timezone
             $stmt = $db->prepare("SELECT up.timezone FROM user_preferences up JOIN users u ON up.user_id = u.id WHERE u.role = 'owner' LIMIT 1");
             $stmt->execute();
             $ownerPrefs = $stmt->fetch();
-            $timezone = $ownerPrefs['timezone'] ?? 'Asia/Kolkata';
-            
-            date_default_timezone_set($timezone);
-            return $timezone;
+            return $ownerPrefs['timezone'] ?? 'Asia/Kolkata';
         } catch (Exception $e) {
-            date_default_timezone_set('Asia/Kolkata');
             return 'Asia/Kolkata';
         }
     }
     
-    public static function getCurrentTime() {
-        self::setSystemTimezone();
-        return date('Y-m-d H:i:s');
+    public static function utcToOwner($utcDatetimeStr) {
+        if (!$utcDatetimeStr) return null;
+        try {
+            $dt = new DateTime($utcDatetimeStr, new DateTimeZone('UTC'));
+            $dt->setTimezone(new DateTimeZone(self::getOwnerTimezone()));
+            return $dt->format('Y-m-d H:i:s');
+        } catch (Exception $e) {
+            return $utcDatetimeStr;
+        }
     }
     
-    public static function getCurrentDate() {
-        self::setSystemTimezone();
-        return date('Y-m-d');
+    public static function nowUtc() {
+        $dt = new DateTime('now', new DateTimeZone('UTC'));
+        return $dt->format('Y-m-d H:i:s');
     }
     
-    public static function convertToDisplayTime($utcTime) {
+    public static function displayTime($utcTime) {
         if (!$utcTime) return null;
-        // Convert UTC stored time to IST for display
-        return date('H:i', strtotime($utcTime . ' +5 hours 30 minutes'));
+        $ownerTime = self::utcToOwner($utcTime);
+        return date('H:i', strtotime($ownerTime));
     }
 }
 ?>

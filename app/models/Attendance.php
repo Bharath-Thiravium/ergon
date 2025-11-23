@@ -38,7 +38,7 @@ class Attendance {
                 }
             }
             
-            $currentTime = TimezoneHelper::getCurrentTime();
+            $currentTime = TimezoneHelper::nowUtc();
             $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
             
             $query = "INSERT INTO attendance (user_id, check_in, latitude, longitude, location_name, status, client_uuid, distance_meters, is_valid, ip_address) 
@@ -59,8 +59,8 @@ class Attendance {
     
     public function checkOut($userId, $clientUuid = null) {
         try {
-            $currentTime = TimezoneHelper::getCurrentTime();
-            $currentDate = TimezoneHelper::getCurrentDate();
+            $currentTime = TimezoneHelper::nowUtc();
+            $currentDate = date('Y-m-d', strtotime(TimezoneHelper::utcToOwner($currentTime)));
             
             $query = "UPDATE attendance SET check_out = ? 
                       WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL";
