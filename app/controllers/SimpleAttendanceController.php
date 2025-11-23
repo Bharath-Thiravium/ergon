@@ -18,11 +18,8 @@ class SimpleAttendanceController extends Controller {
         $userId = $_SESSION['user_id'];
         $selectedDate = $_GET['date'] ?? TimezoneHelper::getCurrentDate();
         
-        // Debug: Check what's happening
-        error_log('Selected date: ' . $selectedDate . ', Current IST date: ' . TimezoneHelper::getCurrentDate());
-        error_log('Role filter: ' . $roleFilter);
-        
         // Query to get all users with their attendance data for the selected date
+        $roleFilter = '';
         if ($role === 'user') {
             $roleFilter = "AND u.id = $userId";
         } elseif ($role === 'admin') {

@@ -52,7 +52,7 @@ $content = ob_start();
     <div class="page-actions">
         <div class="date-selector-group">
             <label for="dateSelector" class="date-label">Select Date:</label>
-            <input type="date" id="dateSelector" value="<?= $selected_date ?>" max="<?= date('Y-m-d') ?>" onchange="changeDate(this.value)" class="form-control" title="Select a date to view daily planner (past dates show historical view)">
+            <input type="date" id="dateSelector" value="<?= $selected_date ?>" min="<?= date('Y-m-d', strtotime('-90 days')) ?>" max="<?= date('Y-m-d', strtotime('+30 days')) ?>" onchange="changeDate(this.value)" class="form-control" title="Select a date to view daily planner (past dates show historical view, future dates for planning)">
         </div>
         <?php if ($selected_date < date('Y-m-d')): ?>
             <button class="btn btn--secondary" onclick="showHistoryInfo()" title="Information about historical view">
@@ -1869,19 +1869,36 @@ function changeDate(date) {
         return;
     }
     
-    // Prevent navigation to future dates
+    // Allow future dates for planning (up to 30 days ahead)
     const today = new Date().toISOString().split('T')[0];
-    if (date > today) {
-        alert('Cannot view future dates in Daily Planner');
+    const maxFutureDate = new Date();
+    maxFutureDate.setDate(maxFutureDate.getDate() + 30);
+    const maxDateStr = maxFutureDate.toISOString().split('T')[0];
+    
+    if (date > maxDateStr) {
+        alert('Cannot view dates more than 30 days in the future');
         document.getElementById('dateSelector').value = '<?= $selected_date ?>';
         return;
     }
     
-    // Show loading indicator for history view
-    if (date < today) {
-        const pageTitle = document.querySelector('.page-title h1');
-        if (pageTitle) {
+    // Check minimum date (90 days in the past)
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() - 90);
+    const minDateStr = minDate.toISOString().split('T')[0];
+    
+    if (date < minDateStr) {
+        alert('Cannot view dates more than 90 days in the past');
+        document.getElementById('dateSelector').value = '<?= $selected_date ?>';
+        return;
+    }
+    
+    // Show loading indicator for history view or planning mode
+    const pageTitle = document.querySelector('.page-title h1');
+    if (pageTitle) {
+        if (date < today) {
             pageTitle.innerHTML = '<i class="bi bi-calendar-day"></i> Daily Planner <span class="loading-indicator">Loading history...</span>';
+        } else if (date > today) {
+            pageTitle.innerHTML = '<i class="bi bi-calendar-day"></i> Daily Planner <span class="loading-indicator">Loading planning mode...</span>';
         }
     }
     

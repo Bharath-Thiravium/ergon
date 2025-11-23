@@ -92,6 +92,7 @@ class DailyPlanner {
         try {
             $isCurrentDate = ($date === date('Y-m-d'));
             $isPastDate = ($date < date('Y-m-d'));
+            $isFutureDate = ($date > date('Y-m-d'));
             
             // Step 1: Fetch assigned/planned tasks for the specified date
             // CORRECTED COMMENT: fetchAssignedTasksForDate is called unconditionally to ensure data consistency
@@ -138,6 +139,36 @@ class DailyPlanner {
                         END
                 ");
                 $stmt->execute([$userId, $date]);
+            } elseif ($isFutureDate) {
+                // Future date: show only tasks specifically planned for that date (planning mode)
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        dt.id, dt.title, dt.description, dt.priority, dt.status,
+                        dt.completed_percentage, dt.start_time, dt.active_seconds,
+                        dt.planned_duration, dt.task_id, dt.original_task_id, dt.pause_duration,
+                        dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
+                        dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
+                        COALESCE(t.sla_hours, 0.25) as sla_hours,
+                        CASE 
+                            WHEN dt.source_field = 'planned_date' THEN '📅 Planned for this date'
+                            WHEN dt.source_field = 'deadline' THEN '⏰ Deadline on this date'
+                            WHEN dt.postponed_to_date = ? THEN '🔄 Postponed to this date'
+                            ELSE '📋 Planning Mode'
+                        END as task_indicator,
+                        'planning' as view_mode
+                    FROM daily_tasks dt
+                    LEFT JOIN tasks t ON dt.original_task_id = t.id
+                    WHERE dt.user_id = ? AND dt.scheduled_date = ?
+                    ORDER BY 
+                        CASE dt.priority 
+                            WHEN 'high' THEN 1 
+                            WHEN 'medium' THEN 2 
+                            WHEN 'low' THEN 3 
+                            ELSE 4 
+                        END,
+                        dt.created_at ASC
+                ");
+                $stmt->execute([$date, $userId, $date]);
             } else {
                 // Past date: show only assigned tasks for that date and completed tasks
                 $stmt = $this->db->prepare("
@@ -182,8 +213,8 @@ class DailyPlanner {
             
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Log view access for audit trail with historical context
-            $viewType = ($date === date('Y-m-d')) ? 'current' : 'historical';
+            // Log view access for audit trail with context
+            $viewType = $isCurrentDate ? 'current' : ($isFutureDate ? 'planning' : 'historical');
             $this->logViewAccess($userId, $date, count($tasks), $viewType);
             
             return $tasks;
@@ -197,10 +228,10 @@ class DailyPlanner {
         try {
             $isCurrentDate = ($date === date('Y-m-d'));
             $isPastDate = ($date < date('Y-m-d'));
+            $isFutureDate = ($date > date('Y-m-d'));
             
             if ($isPastDate) {
-                // REFINED: For past dates, avoid unintended completed tasks for historical dates
-                // Only fetch tasks specifically assigned to that date or completed on that exact date
+                // REFINED: For past dates, only fetch tasks specifically assigned to that date
                 $stmt = $this->db->prepare("
                     SELECT 
                         t.id, t.title, t.description, t.priority, t.status,
@@ -215,15 +246,40 @@ class DailyPlanner {
                     FROM tasks t
                     WHERE t.assigned_to = ? 
                     AND (
-                        (DATE(t.planned_date) = ? AND t.status != 'completed') OR
-                        (DATE(t.deadline) = ? AND t.status != 'completed') OR
-                        (DATE(t.created_at) = ? AND t.status != 'completed') OR
+                        DATE(t.planned_date) = ? OR
+                        (DATE(t.deadline) = ? AND t.planned_date IS NULL) OR
+                        (DATE(t.created_at) = ? AND t.planned_date IS NULL AND t.deadline IS NULL) OR
                         (t.status = 'completed' AND DATE(t.updated_at) = ?)
                     )
                 ");
                 $stmt->execute([$date, $date, $date, $date, $userId, $date, $date, $date, $date]);
+            } elseif ($isFutureDate) {
+                // SIMPLIFIED: For future dates, prioritize planned_date matching
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        t.id, t.title, t.description, t.priority, t.status,
+                        t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
+                        'planned_date' as source_field
+                    FROM tasks t
+                    WHERE t.assigned_to = ? 
+                    AND t.status NOT IN ('completed', 'cancelled', 'deleted')
+                    AND t.planned_date = ?
+                    
+                    UNION ALL
+                    
+                    SELECT 
+                        t.id, t.title, t.description, t.priority, t.status,
+                        t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
+                        'deadline' as source_field
+                    FROM tasks t
+                    WHERE t.assigned_to = ? 
+                    AND t.status NOT IN ('completed', 'cancelled', 'deleted')
+                    AND DATE(t.deadline) = ?
+                    AND (t.planned_date IS NULL OR t.planned_date = '' OR t.planned_date = '0000-00-00')
+                ");
+                $stmt->execute([$userId, $date, $userId, $date]);
             } else {
-                // For current/future dates: fetch unstarted and uncompleted tasks
+                // FIXED: For current date, prioritize planned_date and only show tasks on their specific planned date
                 $stmt = $this->db->prepare("
                     SELECT 
                         t.id, t.title, t.description, t.priority, t.status,
@@ -237,13 +293,15 @@ class DailyPlanner {
                         END as source_field
                     FROM tasks t
                     WHERE t.assigned_to = ? 
-                    AND (
-                        DATE(t.planned_date) = ? OR
-                        DATE(t.deadline) = ? OR
-                        DATE(t.created_at) = ? OR
-                        DATE(t.updated_at) = ?
-                    )
                     AND t.status NOT IN ('completed')
+                    AND (
+                        -- PRIORITY 1: Tasks with planned_date matching the requested date
+                        DATE(t.planned_date) = ? OR
+                        -- PRIORITY 2: Tasks with deadline on this date but no planned_date
+                        (DATE(t.deadline) = ? AND t.planned_date IS NULL) OR
+                        -- PRIORITY 3: Tasks created today with no planned_date or deadline (only for current date)
+                        (? = CURDATE() AND DATE(t.created_at) = ? AND t.planned_date IS NULL AND t.deadline IS NULL)
+                    )
                 ");
                 $stmt->execute([$date, $date, $date, $date, $userId, $date, $date, $date, $date]);
             }
@@ -251,55 +309,50 @@ class DailyPlanner {
             $relevantTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $addedCount = 0;
             
-            // Use transaction for batch inserts with proper error handling
-            $this->db->beginTransaction();
-            
-            try {
-                foreach ($relevantTasks as $task) {
-                    // Check if task already exists in daily_tasks for this date
-                    $checkStmt = $this->db->prepare("
-                        SELECT COUNT(*) FROM daily_tasks 
-                        WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ?
-                    ");
-                    if (!$checkStmt->execute([$userId, $task['id'], $date])) {
-                        throw new Exception('Failed to check for existing task');
+            // Process each relevant task
+            foreach ($relevantTasks as $task) {
+                // Check if task already exists in daily_tasks for this date
+                $checkStmt = $this->db->prepare("
+                    SELECT COUNT(*) FROM daily_tasks 
+                    WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ?
+                ");
+                $checkStmt->execute([$userId, $task['id'], $date]);
+                
+                if ($checkStmt->fetchColumn() == 0) {
+                    // Set initial status based on task status and date
+                    $initialStatus = 'not_started';
+                    if ($isPastDate && $task['status'] === 'completed') {
+                        $initialStatus = 'completed';
+                    } elseif ($isFutureDate) {
+                        // Future tasks are always not_started initially
+                        $initialStatus = 'not_started';
                     }
                     
-                    if ($checkStmt->fetchColumn() == 0) {
-                        // Insert into daily_tasks with audit trail and error handling
-                        $insertStmt = $this->db->prepare("
-                            INSERT INTO daily_tasks 
-                            (user_id, task_id, original_task_id, title, description, scheduled_date, 
-                             priority, status, planned_duration, source_field, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                        ");
-                        
-                        // Set initial status based on task status and date
-                        $initialStatus = 'not_started';
-                        if ($isPastDate && $task['status'] === 'completed') {
-                            $initialStatus = 'completed';
-                        }
-                        
-                        $result = $insertStmt->execute([
-                            $userId,
-                            $task['id'],
-                            $task['id'],
-                            $task['title'],
-                            $task['description'],
-                            $date,
-                            $task['priority'],
-                            $initialStatus,
-                            $task['estimated_duration'] ?: 60,
-                            $task['source_field']
-                        ]);
-                        
-                        if (!$result) {
-                            throw new Exception('Failed to insert daily task');
-                        }
-                        
+                    // Insert into daily_tasks
+                    $insertStmt = $this->db->prepare("
+                        INSERT INTO daily_tasks 
+                        (user_id, task_id, original_task_id, title, description, scheduled_date, 
+                         priority, status, planned_duration, source_field, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    ");
+                    
+                    $result = $insertStmt->execute([
+                        $userId,
+                        $task['id'],
+                        $task['id'],
+                        $task['title'],
+                        $task['description'],
+                        $date,
+                        $task['priority'],
+                        $initialStatus,
+                        $task['estimated_duration'] ?: 60,
+                        $task['source_field']
+                    ]);
+                    
+                    if ($result) {
                         $addedCount++;
                         
-                        // Log audit trail with error handling
+                        // Log audit trail (optional, don't fail if this fails)
                         try {
                             $this->logTaskHistory(
                                 $this->db->lastInsertId(), 
@@ -311,21 +364,17 @@ class DailyPlanner {
                             );
                         } catch (Exception $e) {
                             error_log('Failed to log task history: ' . $e->getMessage());
-                            // Don't fail the entire operation for logging issues
                         }
+                    } else {
+                        error_log('Failed to insert daily task for task ID: ' . $task['id']);
                     }
                 }
-                
-                $this->db->commit();
-                return $addedCount;
-                
-            } catch (Exception $e) {
-                $this->db->rollback();
-                error_log('Batch insert transaction failed: ' . $e->getMessage());
-                throw $e;
             }
+            
+            return $addedCount;
         } catch (Exception $e) {
             error_log("fetchAssignedTasksForDate error: " . $e->getMessage());
+            error_log("Error details - User: {$userId}, Date: {$date}");
             return 0;
         }
     }
@@ -777,7 +826,6 @@ class DailyPlanner {
                 VALUES (?, ?, ?, ?, ?)
             ");
             $result = $stmt->execute([$taskId, $userId, $action, $timestamp, $duration]);
-            error_log("DEBUG: logTimeAction result: " . ($result ? 'success' : 'failed'));
         } catch (Exception $e) {
             error_log("logTimeAction error: " . $e->getMessage());
             // Don't throw exception to avoid breaking the main operation

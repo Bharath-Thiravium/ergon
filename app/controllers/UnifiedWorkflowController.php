@@ -1111,17 +1111,22 @@ class UnifiedWorkflowController extends Controller {
             $isCurrentDate = ($date === date('Y-m-d'));
             
             if ($isCurrentDate) {
-                // Current date: include rollover tasks from previous days
+                // FIXED: Current date - prioritize planned_date and only include rollover for tasks without planned_date
                 $stmt = $db->prepare("
                     SELECT *, COALESCE(sla_hours, 1.0) as sla_hours FROM tasks t
                     WHERE assigned_to = ? 
                     AND status != 'completed'
                     AND (
+                        -- PRIORITY 1: Tasks specifically planned for today
                         planned_date = ? OR 
-                        DATE(deadline) = ? OR
-                        (planned_date IS NULL AND DATE(created_at) = ?) OR
+                        -- PRIORITY 2: Tasks with deadline today but no planned_date
+                        (DATE(deadline) = ? AND planned_date IS NULL) OR
+                        -- PRIORITY 3: Tasks created today with no planned_date or deadline
+                        (planned_date IS NULL AND deadline IS NULL AND DATE(created_at) = ?) OR
+                        -- PRIORITY 4: In-progress tasks (regardless of date)
                         (status = 'in_progress') OR
-                        (planned_date < ? AND status IN ('assigned', 'not_started', 'in_progress'))
+                        -- PRIORITY 5: Rollover only for tasks without planned_date
+                        (planned_date IS NULL AND planned_date < ? AND status IN ('assigned', 'not_started', 'in_progress'))
                     )
                     ORDER BY 
                         CASE WHEN assigned_by != assigned_to THEN 1 ELSE 2 END,
@@ -1129,14 +1134,18 @@ class UnifiedWorkflowController extends Controller {
                 ");
                 $stmt->execute([$userId, $date, $date, $date, $date]);
             } else {
-                // Past date: only tasks specific to that date + completed on that date
+                // FIXED: Past date - only tasks specifically assigned to that date
                 $stmt = $db->prepare("
                     SELECT *, COALESCE(sla_hours, 1.0) as sla_hours FROM tasks t
                     WHERE assigned_to = ? 
                     AND (
+                        -- Tasks specifically planned for this date
                         planned_date = ? OR 
-                        DATE(deadline) = ? OR
-                        (planned_date IS NULL AND DATE(created_at) = ?) OR
+                        -- Tasks with deadline on this date but no planned_date
+                        (DATE(deadline) = ? AND planned_date IS NULL) OR
+                        -- Tasks created on this date with no planned_date or deadline
+                        (planned_date IS NULL AND deadline IS NULL AND DATE(created_at) = ?) OR
+                        -- Tasks completed on this date
                         (status = 'completed' AND DATE(updated_at) = ?)
                     )
                     ORDER BY 
@@ -1148,7 +1157,7 @@ class UnifiedWorkflowController extends Controller {
             
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Create daily tasks
+            // Create daily tasks with proper date handling
             foreach ($tasks as $task) {
                 // Check if already exists
                 $stmt = $db->prepare("SELECT COUNT(*) FROM daily_tasks WHERE user_id = ? AND task_id = ? AND scheduled_date = ?");
@@ -1161,18 +1170,33 @@ class UnifiedWorkflowController extends Controller {
                     
                     $plannedDuration = floatval($task['sla_hours']) * 60;
                     
+                    // FIXED: Use the requested date as scheduled_date, respecting planned_date
+                    $scheduledDate = $date;
+                    
+                    // If task has a planned_date, ensure it matches the requested date
+                    if (!empty($task['planned_date']) && $task['planned_date'] !== $date) {
+                        // Skip this task as it belongs to a different date
+                        continue;
+                    }
+                    
                     $stmt = $db->prepare("
                         INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', NOW())
                     ");
                     $stmt->execute([
-                        $userId, $task['id'], $date, $taskTitle, 
+                        $userId, $task['id'], $scheduledDate, $taskTitle, 
                         $task['description'], $plannedDuration, $task['priority'] ?? 'medium'
                     ]);
                 }
             }
             
             return count($tasks);
+            
+        } catch (Exception $e) {
+            error_log('Ensure daily tasks exist error: ' . $e->getMessage());
+            return 0;
+        }
+    }
         } catch (Exception $e) {
             error_log('Ensure daily tasks exist error: ' . $e->getMessage());
             return 0;
@@ -1191,7 +1215,7 @@ class UnifiedWorkflowController extends Controller {
             $stmt->execute([$userId, $date]);
             $existingTaskIds = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'original_task_id');
             
-            // Get new unstarted and uncompleted tasks from tasks table that aren't in daily_tasks yet
+            // FIXED: Get new tasks that specifically belong to this date, respecting planned_date
             if ($existingTaskIds) {
                 $placeholders = str_repeat('?,', count($existingTaskIds) - 1) . '?';
                 $stmt = $db->prepare("
@@ -1199,10 +1223,14 @@ class UnifiedWorkflowController extends Controller {
                     WHERE assigned_to = ? 
                     AND status NOT IN ('completed')
                     AND (
+                        -- PRIORITY 1: Tasks specifically planned for today
                         planned_date = ? OR 
-                        DATE(deadline) = ? OR
-                        (planned_date IS NULL AND DATE(created_at) = ?) OR
-                        DATE(updated_at) = ?
+                        -- PRIORITY 2: Tasks with deadline today but no planned_date
+                        (DATE(deadline) = ? AND planned_date IS NULL) OR
+                        -- PRIORITY 3: Tasks created today with no planned_date or deadline
+                        (planned_date IS NULL AND deadline IS NULL AND DATE(created_at) = ?) OR
+                        -- PRIORITY 4: Tasks updated today (but only if no planned_date)
+                        (planned_date IS NULL AND DATE(updated_at) = ?)
                     )
                     AND t.id NOT IN ($placeholders)
                     ORDER BY 
@@ -1216,10 +1244,14 @@ class UnifiedWorkflowController extends Controller {
                     WHERE assigned_to = ? 
                     AND status NOT IN ('completed')
                     AND (
+                        -- PRIORITY 1: Tasks specifically planned for today
                         planned_date = ? OR 
-                        DATE(deadline) = ? OR
-                        (planned_date IS NULL AND DATE(created_at) = ?) OR
-                        DATE(updated_at) = ?
+                        -- PRIORITY 2: Tasks with deadline today but no planned_date
+                        (DATE(deadline) = ? AND planned_date IS NULL) OR
+                        -- PRIORITY 3: Tasks created today with no planned_date or deadline
+                        (planned_date IS NULL AND deadline IS NULL AND DATE(created_at) = ?) OR
+                        -- PRIORITY 4: Tasks updated today (but only if no planned_date)
+                        (planned_date IS NULL AND DATE(updated_at) = ?)
                     )
                     ORDER BY 
                         CASE WHEN assigned_by != assigned_to THEN 1 ELSE 2 END,
@@ -1231,9 +1263,14 @@ class UnifiedWorkflowController extends Controller {
             $stmt->execute($params);
             $newTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Add only new tasks
+            // Add only new tasks that belong to this specific date
             $addedCount = 0;
             foreach ($newTasks as $task) {
+                // FIXED: Skip tasks that have a planned_date different from the current date
+                if (!empty($task['planned_date']) && $task['planned_date'] !== $date) {
+                    continue;
+                }
+                
                 // Double-check to prevent duplicates
                 $checkStmt = $db->prepare("SELECT COUNT(*) FROM daily_tasks WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ?");
                 $checkStmt->execute([$userId, $task['id'], $date]);
