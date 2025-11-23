@@ -1,6 +1,7 @@
 <?php
 $title = 'Admin - Attendance Management';
 $active_page = 'attendance';
+require_once __DIR__ . '/../../app/helpers/TimezoneHelper.php';
 ob_start();
 ?>
 
@@ -180,23 +181,18 @@ ob_start();
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php 
-                                require_once __DIR__ . '/../../app/helpers/TimezoneHelper.php';
-                                $checkInTime = $employee['check_in'] ? TimezoneHelper::displayTime($employee['check_in']) : null;
-                                if ($checkInTime): ?>
+                                <?php if ($employee['check_in']): ?>
                                     <span style="color: #059669; font-weight: 500;">
-                                        <?= $checkInTime ?>
+                                        <?= TimezoneHelper::displayTime($employee['check_in']) ?>
                                     </span>
                                 <?php else: ?>
                                     <span style="color: #6b7280;">-</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php 
-                                $checkOutTime = $employee['check_out'] ? TimezoneHelper::displayTime($employee['check_out']) : null;
-                                if ($checkOutTime): ?>
+                                <?php if ($employee['check_out']): ?>
                                     <span style="color: #dc2626; font-weight: 500;">
-                                        <?= $checkOutTime ?>
+                                        <?= TimezoneHelper::displayTime($employee['check_out']) ?>
                                     </span>
                                 <?php elseif ($employee['check_in']): ?>
                                     <span style="color: #f59e0b; font-weight: 500;">Working...</span>
