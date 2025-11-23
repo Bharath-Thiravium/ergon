@@ -1197,11 +1197,6 @@ class UnifiedWorkflowController extends Controller {
             return 0;
         }
     }
-        } catch (Exception $e) {
-            error_log('Ensure daily tasks exist error: ' . $e->getMessage());
-            return 0;
-        }
-    }
     
     private function syncNewTasksOnly($db, $userId, $date) {
         try {
