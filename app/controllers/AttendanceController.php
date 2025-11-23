@@ -31,12 +31,12 @@ class AttendanceController extends Controller {
             $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Convert times to IST
-            foreach ($attendance as &$record) {
-                if ($record['check_in']) {
-                    $record['check_in'] = TimezoneHelper::toIst($record['check_in']);
+            for ($i = 0; $i < count($attendance); $i++) {
+                if ($attendance[$i]['check_in']) {
+                    $attendance[$i]['check_in'] = TimezoneHelper::toIst($attendance[$i]['check_in']);
                 }
-                if ($record['check_out']) {
-                    $record['check_out'] = TimezoneHelper::toIst($record['check_out']);
+                if ($attendance[$i]['check_out']) {
+                    $attendance[$i]['check_out'] = TimezoneHelper::toIst($attendance[$i]['check_out']);
                 }
             }
             
@@ -101,12 +101,12 @@ class AttendanceController extends Controller {
             $employeeAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Convert times to IST
-            foreach ($employeeAttendance as &$employee) {
-                if ($employee['check_in']) {
-                    $employee['check_in'] = TimezoneHelper::toIst($employee['check_in']);
+            for ($i = 0; $i < count($employeeAttendance); $i++) {
+                if ($employeeAttendance[$i]['check_in']) {
+                    $employeeAttendance[$i]['check_in'] = TimezoneHelper::toIst($employeeAttendance[$i]['check_in']);
                 }
-                if ($employee['check_out']) {
-                    $employee['check_out'] = TimezoneHelper::toIst($employee['check_out']);
+                if ($employeeAttendance[$i]['check_out']) {
+                    $employeeAttendance[$i]['check_out'] = TimezoneHelper::toIst($employeeAttendance[$i]['check_out']);
                 }
             }
             
