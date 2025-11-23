@@ -103,7 +103,7 @@ class TasksController extends Controller {
             'planned_date' => !empty($_POST['planned_date']) ? $_POST['planned_date'] : null,
             'status' => $_POST['status'] ?? 'assigned',
             'progress' => intval($_POST['progress'] ?? 0),
-            'sla_hours' => floatval($_POST['sla_hours'] ?? 0.25),
+            'sla_hours' => max(0.01, floatval($_POST['sla_hours'] ?? 0.25)),
             'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
             'task_category' => trim($_POST['task_category'] ?? ''),
             'project_id' => !empty($_POST['project_id']) ? intval($_POST['project_id']) : null
@@ -216,7 +216,7 @@ class TasksController extends Controller {
                 'deadline' => !empty($_POST['deadline']) ? $_POST['deadline'] : null,
                 'status' => $_POST['status'] ?? 'assigned',
                 'progress' => intval($_POST['progress'] ?? 0),
-                'sla_hours' => floatval($_POST['sla_hours'] ?? 0.25),
+                'sla_hours' => max(0.01, floatval($_POST['sla_hours'] ?? 0.25)),
                 'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
                 'task_category' => trim($_POST['task_category'] ?? ''),
                 'project_id' => !empty($_POST['project_id']) ? intval($_POST['project_id']) : null,

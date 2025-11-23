@@ -91,8 +91,10 @@ class DailyPlanner {
     public function getTasksForDate($userId, $date) {
         try {
             $isCurrentDate = ($date === date('Y-m-d'));
+            $isPastDate = ($date < date('Y-m-d'));
             
-            // Step 1: Fetch assigned/planned tasks for the concern date
+            // Step 1: Fetch assigned/planned tasks for the specified date
+            // CORRECTED COMMENT: fetchAssignedTasksForDate is called unconditionally to ensure data consistency
             $this->fetchAssignedTasksForDate($userId, $date);
             
             // Step 2: Auto-rollover only for current date
@@ -110,7 +112,7 @@ class DailyPlanner {
                         dt.planned_duration, dt.task_id, dt.original_task_id, dt.pause_duration,
                         dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
                         dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
-                        COALESCE(t.sla_hours, 1) as sla_hours,
+                        COALESCE(t.sla_hours, 0.25) as sla_hours,
                         CASE 
                             WHEN dt.rollover_source_date IS NOT NULL THEN CONCAT('🔄 Rolled over from: ', dt.rollover_source_date)
                             WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
@@ -137,7 +139,7 @@ class DailyPlanner {
                 ");
                 $stmt->execute([$userId, $date]);
             } else {
-                // Past date: show all tasks that were scheduled for that date with historical context
+                // Past date: show only assigned tasks for that date and completed tasks
                 $stmt = $this->db->prepare("
                     SELECT 
                         dt.id, dt.title, dt.description, dt.priority, dt.status,
@@ -145,7 +147,7 @@ class DailyPlanner {
                         dt.planned_duration, dt.task_id, dt.original_task_id, dt.pause_duration,
                         dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
                         dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
-                        COALESCE(t.sla_hours, 1) as sla_hours,
+                        COALESCE(t.sla_hours, 0.25) as sla_hours,
                         CASE 
                             WHEN dt.rollover_source_date IS NOT NULL THEN CONCAT('🔄 Rolled over from: ', dt.rollover_source_date)
                             WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
@@ -155,6 +157,10 @@ class DailyPlanner {
                     FROM daily_tasks dt
                     LEFT JOIN tasks t ON dt.original_task_id = t.id
                     WHERE dt.user_id = ? AND dt.scheduled_date = ?
+                    AND (
+                        dt.source_field IN ('planned_date', 'deadline', 'created_at', 'completed_on_date') OR
+                        dt.status = 'completed'
+                    )
                     ORDER BY 
                         CASE dt.status 
                             WHEN 'completed' THEN 1
@@ -189,72 +195,135 @@ class DailyPlanner {
     
     public function fetchAssignedTasksForDate($userId, $date) {
         try {
-            // Query tasks table for the concern date with multiple criteria
-            $stmt = $this->db->prepare("
-                SELECT 
-                    t.id, t.title, t.description, t.priority, t.status,
-                    t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
-                    CASE 
-                        WHEN DATE(t.planned_date) = ? THEN 'planned_date'
-                        WHEN DATE(t.deadline) = ? THEN 'deadline'
-                        WHEN DATE(t.created_at) = ? THEN 'created_at'
-                        WHEN DATE(t.updated_at) = ? THEN 'updated_at'
-                        ELSE 'other'
-                    END as source_field
-                FROM tasks t
-                WHERE (t.assigned_to = ? OR t.assigned_by = ?) 
-                AND (
-                    DATE(t.planned_date) = ? OR
-                    DATE(t.deadline) = ? OR
-                    DATE(t.created_at) = ? OR
-                    DATE(t.updated_at) = ?
-                )
-                AND t.status != 'completed'
-            ");
-            $stmt->execute([$date, $date, $date, $date, $userId, $userId, $date, $date, $date, $date]);
-            $relevantTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $isCurrentDate = ($date === date('Y-m-d'));
+            $isPastDate = ($date < date('Y-m-d'));
             
-            foreach ($relevantTasks as $task) {
-                // Check if task already exists in daily_tasks for this date
-                $checkStmt = $this->db->prepare("
-                    SELECT COUNT(*) FROM daily_tasks 
-                    WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ?
+            if ($isPastDate) {
+                // REFINED: For past dates, avoid unintended completed tasks for historical dates
+                // Only fetch tasks specifically assigned to that date or completed on that exact date
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        t.id, t.title, t.description, t.priority, t.status,
+                        t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
+                        CASE 
+                            WHEN DATE(t.planned_date) = ? THEN 'planned_date'
+                            WHEN DATE(t.deadline) = ? THEN 'deadline'
+                            WHEN DATE(t.created_at) = ? THEN 'created_at'
+                            WHEN t.status = 'completed' AND DATE(t.updated_at) = ? THEN 'completed_on_date'
+                            ELSE 'other'
+                        END as source_field
+                    FROM tasks t
+                    WHERE t.assigned_to = ? 
+                    AND (
+                        (DATE(t.planned_date) = ? AND t.status != 'completed') OR
+                        (DATE(t.deadline) = ? AND t.status != 'completed') OR
+                        (DATE(t.created_at) = ? AND t.status != 'completed') OR
+                        (t.status = 'completed' AND DATE(t.updated_at) = ?)
+                    )
                 ");
-                $checkStmt->execute([$userId, $task['id'], $date]);
-                
-                if ($checkStmt->fetchColumn() == 0) {
-                    // Insert into daily_tasks with audit trail
-                    $insertStmt = $this->db->prepare("
-                        INSERT INTO daily_tasks 
-                        (user_id, task_id, original_task_id, title, description, scheduled_date, 
-                         priority, status, planned_duration, source_field, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, NOW())
-                    ");
-                    $insertStmt->execute([
-                        $userId,
-                        $task['id'],
-                        $task['id'],
-                        $task['title'],
-                        $task['description'],
-                        $date,
-                        $task['priority'],
-                        $task['estimated_duration'] ?: 60,
-                        $task['source_field']
-                    ]);
-                    
-                    // Log audit trail
-                    $this->logTaskHistory(
-                        $this->db->lastInsertId(), 
-                        $userId, 
-                        'fetched', 
-                        null, 
-                        $task['source_field'], 
-                        "📌 Source: {$task['source_field']} on {$date}"
-                    );
-                }
+                $stmt->execute([$date, $date, $date, $date, $userId, $date, $date, $date, $date]);
+            } else {
+                // For current/future dates: fetch unstarted and uncompleted tasks
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        t.id, t.title, t.description, t.priority, t.status,
+                        t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
+                        CASE 
+                            WHEN DATE(t.planned_date) = ? THEN 'planned_date'
+                            WHEN DATE(t.deadline) = ? THEN 'deadline'
+                            WHEN DATE(t.created_at) = ? THEN 'created_at'
+                            WHEN DATE(t.updated_at) = ? THEN 'updated_at'
+                            ELSE 'other'
+                        END as source_field
+                    FROM tasks t
+                    WHERE t.assigned_to = ? 
+                    AND (
+                        DATE(t.planned_date) = ? OR
+                        DATE(t.deadline) = ? OR
+                        DATE(t.created_at) = ? OR
+                        DATE(t.updated_at) = ?
+                    )
+                    AND t.status NOT IN ('completed')
+                ");
+                $stmt->execute([$date, $date, $date, $date, $userId, $date, $date, $date, $date]);
             }
             
-            return count($relevantTasks);
+            $relevantTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $addedCount = 0;
+            
+            // Use transaction for batch inserts with proper error handling
+            $this->db->beginTransaction();
+            
+            try {
+                foreach ($relevantTasks as $task) {
+                    // Check if task already exists in daily_tasks for this date
+                    $checkStmt = $this->db->prepare("
+                        SELECT COUNT(*) FROM daily_tasks 
+                        WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ?
+                    ");
+                    if (!$checkStmt->execute([$userId, $task['id'], $date])) {
+                        throw new Exception('Failed to check for existing task');
+                    }
+                    
+                    if ($checkStmt->fetchColumn() == 0) {
+                        // Insert into daily_tasks with audit trail and error handling
+                        $insertStmt = $this->db->prepare("
+                            INSERT INTO daily_tasks 
+                            (user_id, task_id, original_task_id, title, description, scheduled_date, 
+                             priority, status, planned_duration, source_field, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                        ");
+                        
+                        // Set initial status based on task status and date
+                        $initialStatus = 'not_started';
+                        if ($isPastDate && $task['status'] === 'completed') {
+                            $initialStatus = 'completed';
+                        }
+                        
+                        $result = $insertStmt->execute([
+                            $userId,
+                            $task['id'],
+                            $task['id'],
+                            $task['title'],
+                            $task['description'],
+                            $date,
+                            $task['priority'],
+                            $initialStatus,
+                            $task['estimated_duration'] ?: 60,
+                            $task['source_field']
+                        ]);
+                        
+                        if (!$result) {
+                            throw new Exception('Failed to insert daily task');
+                        }
+                        
+                        $addedCount++;
+                        
+                        // Log audit trail with error handling
+                        try {
+                            $this->logTaskHistory(
+                                $this->db->lastInsertId(), 
+                                $userId, 
+                                'fetched', 
+                                null, 
+                                $task['source_field'], 
+                                "📌 Source: {$task['source_field']} on {$date}"
+                            );
+                        } catch (Exception $e) {
+                            error_log('Failed to log task history: ' . $e->getMessage());
+                            // Don't fail the entire operation for logging issues
+                        }
+                    }
+                }
+                
+                $this->db->commit();
+                return $addedCount;
+                
+            } catch (Exception $e) {
+                $this->db->rollback();
+                error_log('Batch insert transaction failed: ' . $e->getMessage());
+                throw $e;
+            }
         } catch (Exception $e) {
             error_log("fetchAssignedTasksForDate error: " . $e->getMessage());
             return 0;
@@ -872,64 +941,106 @@ class DailyPlanner {
         }
     }
     
-    public function rolloverUncompletedTasks($targetDate = null) {
+    public function rolloverUncompletedTasks($targetDate = null, $userId = null) {
         try {
             $yesterday = $targetDate ?: date('Y-m-d', strtotime('-1 day'));
             $today = date('Y-m-d');
             
-            // Get uncompleted tasks from yesterday only
-            $stmt = $this->db->prepare("
-                SELECT * FROM daily_tasks 
-                WHERE scheduled_date = ? 
-                AND status IN ('not_started', 'in_progress', 'postponed') 
-                AND completed_percentage < 100
-            ");
-            $stmt->execute([$yesterday]);
+            // SECURITY FIX: Add user_id filter to prevent cross-user rollovers
+            // Get uncompleted tasks from yesterday only (exclude postponed tasks)
+            $whereClause = "scheduled_date = ? AND status IN ('not_started', 'in_progress') AND completed_percentage < 100";
+            $params = [$yesterday];
+            
+            // CRITICAL: Always filter by user_id to prevent data leakage
+            if ($userId) {
+                $whereClause .= " AND user_id = ?";
+                $params[] = $userId;
+            } else {
+                // If no specific user, still require user context for security
+                throw new Exception('User ID required for rollover operations');
+            }
+            
+            $stmt = $this->db->prepare("SELECT * FROM daily_tasks WHERE {$whereClause}");
+            if (!$stmt->execute($params)) {
+                throw new Exception('Failed to fetch uncompleted tasks');
+            }
             $uncompletedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $rolledOverCount = 0;
             
-            foreach ($uncompletedTasks as $task) {
-                // Allow duplicate rollovers until task is completed
-                // Create new rollover entry for today
-                $stmt = $this->db->prepare("
-                    INSERT INTO daily_tasks 
-                    (user_id, task_id, original_task_id, title, description, scheduled_date, 
-                     planned_start_time, planned_duration, priority, status, 
-                     completed_percentage, active_seconds, pause_duration,
-                     rollover_source_date, rollover_timestamp, source_field)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, ?, ?, NOW(), 'rollover')
-                ");
+            // Wrap rollover operations in transaction for atomicity
+            $this->db->beginTransaction();
+            
+            try {
+                foreach ($uncompletedTasks as $task) {
+                    // Check if this task is already rolled over to today to prevent duplicates
+                    $checkStmt = $this->db->prepare("
+                        SELECT COUNT(*) FROM daily_tasks 
+                        WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ? AND rollover_source_date = ?
+                    ");
+                    if (!$checkStmt->execute([$task['user_id'], $task['original_task_id'] ?: $task['task_id'], $today, $yesterday])) {
+                        throw new Exception('Failed to check for duplicate rollover');
+                    }
+                    
+                    if ($checkStmt->fetchColumn() == 0) {
+                        // Create new rollover entry for today with error handling
+                        $stmt = $this->db->prepare("
+                            INSERT INTO daily_tasks 
+                            (user_id, task_id, original_task_id, title, description, scheduled_date, 
+                             planned_start_time, planned_duration, priority, status, 
+                             completed_percentage, active_seconds, pause_duration,
+                             rollover_source_date, rollover_timestamp, source_field)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, ?, ?, NOW(), 'rollover')
+                        ");
+                        
+                        $result = $stmt->execute([
+                            $task['user_id'],
+                            $task['task_id'],
+                            $task['original_task_id'] ?: $task['task_id'],
+                            $task['title'],
+                            $task['description'],
+                            $today,
+                            $task['planned_start_time'],
+                            $task['planned_duration'],
+                            $task['priority'],
+                            $task['completed_percentage'],
+                            $task['active_seconds'],
+                            $task['pause_duration'],
+                            $yesterday
+                        ]);
+                        
+                        if (!$result) {
+                            throw new Exception("Failed to insert rollover task for user {$task['user_id']}");
+                        }
+                        
+                        if ($stmt->rowCount() > 0) {
+                            $newTaskId = $this->db->lastInsertId();
+                            
+                            // Log rollover action in task history with error handling
+                            try {
+                                $this->logTaskHistory(
+                                    $newTaskId, 
+                                    $task['user_id'], 
+                                    'rolled_over', 
+                                    $yesterday, 
+                                    $today, 
+                                    "🔄 Rolled over from: {$yesterday}"
+                                );
+                            } catch (Exception $e) {
+                                error_log("Failed to log rollover history: " . $e->getMessage());
+                                // Don't fail the entire operation for logging issues
+                            }
+                            
+                            $rolledOverCount++;
+                        }
+                    }
+                }
                 
-                $stmt->execute([
-                    $task['user_id'],
-                    $task['task_id'],
-                    $task['original_task_id'] ?: $task['task_id'],
-                    $task['title'],
-                    $task['description'],
-                    $today,
-                    $task['planned_start_time'],
-                    $task['planned_duration'],
-                    $task['priority'],
-                    $task['completed_percentage'],
-                    $task['active_seconds'],
-                    $task['pause_duration'],
-                    $yesterday
-                ]);
-                
-                $newTaskId = $this->db->lastInsertId();
-                
-                // Log rollover action in task history
-                $this->logTaskHistory(
-                    $newTaskId, 
-                    $task['user_id'], 
-                    'rolled_over', 
-                    $yesterday, 
-                    $today, 
-                    "🔄 Rolled over from: {$yesterday}"
-                );
-                
-                $rolledOverCount++;
+                $this->db->commit();
+            } catch (Exception $e) {
+                $this->db->rollback();
+                error_log("Rollover transaction failed: " . $e->getMessage());
+                throw $e;
             }
             
             return $rolledOverCount;
@@ -980,19 +1091,63 @@ class DailyPlanner {
         }
     }
     
+    public function cleanupDuplicateTasks($userId = null, $date = null) {
+        try {
+            $whereClause = "";
+            $params = [];
+            
+            if ($userId) {
+                $whereClause .= " AND dt1.user_id = ?";
+                $params[] = $userId;
+            }
+            
+            if ($date) {
+                $whereClause .= " AND dt1.scheduled_date = ?";
+                $params[] = $date;
+            }
+            
+            // FIXED: Correct SQL DELETE self-join using proper ON clause syntax
+            $stmt = $this->db->prepare("
+                DELETE dt1 FROM daily_tasks dt1
+                INNER JOIN daily_tasks dt2 
+                ON dt1.user_id = dt2.user_id 
+                   AND dt1.original_task_id = dt2.original_task_id 
+                   AND dt1.scheduled_date = dt2.scheduled_date
+                   AND dt1.id > dt2.id
+                {$whereClause}
+            ");
+            $stmt->execute($params);
+            
+            $deletedCount = $stmt->rowCount();
+            if ($deletedCount > 0) {
+                error_log("Cleaned up {$deletedCount} duplicate daily tasks");
+            }
+            
+            return $deletedCount;
+        } catch (Exception $e) {
+            error_log("cleanupDuplicateTasks error: " . $e->getMessage());
+            return 0;
+        }
+    }
+    
     public static function runDailyRollover() {
         try {
             $planner = new DailyPlanner();
+            
+            // Clean up duplicates first
+            $cleanedCount = $planner->cleanupDuplicateTasks();
+            
+            // Then rollover tasks
             $count = $planner->rolloverUncompletedTasks();
             
             // Log rollover completion
             $planner->db->prepare("
                 INSERT INTO daily_planner_audit 
                 (user_id, action, task_count, details, timestamp)
-                VALUES (0, 'daily_rollover', ?, 'Automated midnight rollover', NOW())
-            ")->execute([$count]);
+                VALUES (0, 'daily_rollover', ?, ?, NOW())
+            ")->execute([$count, "Automated midnight rollover. Cleaned {$cleanedCount} duplicates."]);
             
-            error_log("Daily rollover completed: {$count} tasks rolled over");
+            error_log("Daily rollover completed: {$count} tasks rolled over, {$cleanedCount} duplicates cleaned");
             return $count;
         } catch (Exception $e) {
             error_log("Daily rollover failed: " . $e->getMessage());

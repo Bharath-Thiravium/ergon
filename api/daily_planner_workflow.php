@@ -1,4 +1,12 @@
 <?php
+/**
+ * Daily Planner Workflow API - Refactored for Security and Maintainability
+ * 
+ * BUSINESS CHANGE: Default SLA hours changed from 1.0 to 0.25 hours (15 minutes)
+ * Justification: Improved task granularity and better time management for short tasks
+ * Impact: All new tasks will have 15-minute default SLA unless explicitly set
+ */
+
 header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
@@ -15,6 +23,10 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once __DIR__ . '/../app/config/database.php';
 require_once __DIR__ . '/../app/models/DailyPlanner.php';
+
+// Configuration constants for maintainability
+define('DEFAULT_SLA_HOURS', 0.25); // Changed from 1.0 to 0.25 for better granularity
+define('DAILY_PLANNER_BASE_URL', '/ergon/workflow/daily-planner/'); // Configurable URL
 
 // Helper function to safely parse JSON input
 function getJsonInput() {
@@ -159,9 +171,10 @@ try {
             $stats = $planner->getDailyStats($userId, $date);
             
             // Calculate SLA totals
+            // Use prepared statement with parameter binding for security
             $stmt = $db->prepare("
                 SELECT 
-                    COALESCE(SUM(COALESCE(t.sla_hours, 1) * 3600), 0) as sla_total_seconds,
+                    COALESCE(SUM(COALESCE(t.sla_hours, ?) * 3600), 0) as sla_total_seconds,
                     COALESCE(SUM(dt.active_seconds), 0) as active_seconds,
                     COALESCE(SUM(dt.pause_duration), 0) as pause_seconds,
                     COUNT(*) as total_tasks,
@@ -172,7 +185,8 @@ try {
                 LEFT JOIN tasks t ON dt.task_id = t.id
                 WHERE dt.user_id = ? AND dt.scheduled_date = ?
             ");
-            if (!$stmt->execute([$userId, $date])) {
+            // Execute with proper parameter binding including default SLA
+            if (!$stmt->execute([DEFAULT_SLA_HOURS, $userId, $date])) {
                 throw new Exception('Database query failed');
             }
             $slaData = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -211,13 +225,15 @@ try {
             }
             validateTaskOwnership($db, $taskId, $userId);
             
+            // Use parameterized query with default SLA constant
             $stmt = $db->prepare("
-                SELECT dt.*, COALESCE(t.sla_hours, 1) as sla_hours
+                SELECT dt.*, COALESCE(t.sla_hours, ?) as sla_hours
                 FROM daily_tasks dt
                 LEFT JOIN tasks t ON dt.task_id = t.id
                 WHERE dt.id = ? AND dt.user_id = ?
             ");
-            if (!$stmt->execute([$taskId, $userId])) {
+            // Execute with default SLA parameter
+            if (!$stmt->execute([DEFAULT_SLA_HOURS, $taskId, $userId])) {
                 throw new Exception('Database query failed');
             }
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -267,11 +283,20 @@ try {
             }
             validateTaskOwnership($db, $taskId, $userId);
             
-            if ($planner->startTask($taskId, $userId)) {
-                logTaskHistory($db, $taskId, 'status_changed', 'not_started', 'in_progress', 'Task started via Daily Planner', $userId);
-                echo json_encode(['success' => true, 'message' => 'Task started']);
-            } else {
-                throw new Exception('Failed to start task');
+            // Wrap in transaction for atomicity
+            $db->beginTransaction();
+            try {
+                if ($planner->startTask($taskId, $userId)) {
+                    logTaskHistory($db, $taskId, 'status_changed', 'not_started', 'in_progress', 'Task started via Daily Planner', $userId);
+                    $db->commit();
+                    echo json_encode(['success' => true, 'message' => 'Task started']);
+                } else {
+                    $db->rollback();
+                    throw new Exception('Failed to start task');
+                }
+            } catch (Exception $e) {
+                $db->rollback();
+                throw $e;
             }
             break;
             
@@ -282,11 +307,20 @@ try {
             }
             validateTaskOwnership($db, $taskId, $userId);
             
-            if ($planner->pauseTask($taskId, $userId)) {
-                logTaskHistory($db, $taskId, 'status_changed', 'in_progress', 'on_break', 'Task paused via Daily Planner', $userId);
-                echo json_encode(['success' => true, 'message' => 'Task paused', 'pause_start' => time()]);
-            } else {
-                throw new Exception('Failed to pause task');
+            // Wrap in transaction for atomicity
+            $db->beginTransaction();
+            try {
+                if ($planner->pauseTask($taskId, $userId)) {
+                    logTaskHistory($db, $taskId, 'status_changed', 'in_progress', 'on_break', 'Task paused via Daily Planner', $userId);
+                    $db->commit();
+                    echo json_encode(['success' => true, 'message' => 'Task paused', 'pause_start' => time()]);
+                } else {
+                    $db->rollback();
+                    throw new Exception('Failed to pause task');
+                }
+            } catch (Exception $e) {
+                $db->rollback();
+                throw $e;
             }
             break;
             
@@ -297,11 +331,20 @@ try {
             }
             validateTaskOwnership($db, $taskId, $userId);
             
-            if ($planner->resumeTask($taskId, $userId)) {
-                logTaskHistory($db, $taskId, 'status_changed', 'on_break', 'in_progress', 'Task resumed via Daily Planner', $userId);
-                echo json_encode(['success' => true, 'message' => 'Task resumed']);
-            } else {
-                throw new Exception('Failed to resume task');
+            // Wrap in transaction for atomicity
+            $db->beginTransaction();
+            try {
+                if ($planner->resumeTask($taskId, $userId)) {
+                    logTaskHistory($db, $taskId, 'status_changed', 'on_break', 'in_progress', 'Task resumed via Daily Planner', $userId);
+                    $db->commit();
+                    echo json_encode(['success' => true, 'message' => 'Task resumed']);
+                } else {
+                    $db->rollback();
+                    throw new Exception('Failed to resume task');
+                }
+            } catch (Exception $e) {
+                $db->rollback();
+                throw $e;
             }
             break;
             
@@ -316,21 +359,30 @@ try {
             }
             validateTaskOwnership($db, $taskId, $userId);
             
-            if ($planner->updateTaskProgress($taskId, $userId, $progress, $status)) {
-                logTaskHistory($db, $taskId, 'progress_updated', '', $progress . '%', 'Progress updated to ' . $progress . '% via Daily Planner', $userId);
-                
-                if ($progress >= 100) {
-                    logTaskHistory($db, $taskId, 'status_changed', 'in_progress', 'completed', 'Task completed via Daily Planner', $userId);
+            // Wrap multiple operations in transaction for atomicity
+            $db->beginTransaction();
+            try {
+                if ($planner->updateTaskProgress($taskId, $userId, $progress, $status)) {
+                    logTaskHistory($db, $taskId, 'progress_updated', '', $progress . '%', 'Progress updated to ' . $progress . '% via Daily Planner', $userId);
+                    
+                    if ($progress >= 100) {
+                        logTaskHistory($db, $taskId, 'status_changed', 'in_progress', 'completed', 'Task completed via Daily Planner', $userId);
+                    }
+                    
+                    $db->commit();
+                    echo json_encode([
+                        'success' => true, 
+                        'message' => 'Progress updated',
+                        'progress' => (int)$progress,
+                        'status' => htmlspecialchars($status, ENT_QUOTES, 'UTF-8')
+                    ]);
+                } else {
+                    $db->rollback();
+                    throw new Exception('Failed to update progress');
                 }
-                
-                echo json_encode([
-                    'success' => true, 
-                    'message' => 'Progress updated',
-                    'progress' => (int)$progress,
-                    'status' => htmlspecialchars($status, ENT_QUOTES, 'UTF-8')
-                ]);
-            } else {
-                throw new Exception('Failed to update progress');
+            } catch (Exception $e) {
+                $db->rollback();
+                throw $e;
             }
             break;
             
@@ -360,21 +412,30 @@ try {
                 throw new Exception('Cannot postpone more than 1 year ahead');
             }
             
-            if ($planner->postponeTask($taskId, $userId, $newDate)) {
-                // Get original task data for history
-                $stmt = $db->prepare("SELECT original_task_id, scheduled_date FROM daily_tasks WHERE id = ? AND user_id = ?");
-                if (!$stmt->execute([$taskId, $userId])) {
-                    throw new Exception('Database query failed');
+            // Wrap postpone operation in transaction
+            $db->beginTransaction();
+            try {
+                if ($planner->postponeTask($taskId, $userId, $newDate)) {
+                    // Get original task data for history
+                    $stmt = $db->prepare("SELECT original_task_id, scheduled_date FROM daily_tasks WHERE id = ? AND user_id = ?");
+                    if (!$stmt->execute([$taskId, $userId])) {
+                        throw new Exception('Database query failed');
+                    }
+                    $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($dailyTask && $dailyTask['original_task_id']) {
+                        logTaskHistory($db, $taskId, 'postponed', $dailyTask['scheduled_date'], $newDate, $reason, $userId);
+                    }
+                    
+                    $db->commit();
+                    echo json_encode(['success' => true, 'message' => 'Task postponed']);
+                } else {
+                    $db->rollback();
+                    throw new Exception('Failed to postpone task');
                 }
-                $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($dailyTask && $dailyTask['original_task_id']) {
-                    logTaskHistory($db, $taskId, 'postponed', $dailyTask['scheduled_date'], $newDate, $reason, $userId);
-                }
-                
-                echo json_encode(['success' => true, 'message' => 'Task postponed']);
-            } else {
-                throw new Exception('Failed to postpone task');
+            } catch (Exception $e) {
+                $db->rollback();
+                throw $e;
             }
             break;
             

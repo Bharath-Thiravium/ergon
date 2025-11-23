@@ -43,9 +43,14 @@ class UnifiedWorkflowController extends Controller {
             $planner = new DailyPlanner();
             
             if ($date === date('Y-m-d')) {
-                $rolledCount = $planner->rolloverUncompletedTasks();
-                if ($rolledCount > 0) {
-                    error_log("Rolled over {$rolledCount} tasks for user {$currentUserId}");
+                // Clean up any duplicate tasks first
+                $cleanedCount = $planner->cleanupDuplicateTasks($currentUserId, $date);
+                
+                // Then rollover uncompleted tasks for this user only
+                $rolledCount = $planner->rolloverUncompletedTasks(null, $currentUserId);
+                
+                if ($rolledCount > 0 || $cleanedCount > 0) {
+                    error_log("Daily planner maintenance for user {$currentUserId}: {$rolledCount} tasks rolled over, {$cleanedCount} duplicates cleaned");
                 }
             }
             
@@ -67,8 +72,8 @@ class UnifiedWorkflowController extends Controller {
                 $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
             
-            // Stable refresh - only sync new tasks without deleting existing ones
-            if (isset($_GET['refresh']) && $_GET['refresh'] === '1') {
+            // Stable refresh - only sync new tasks without deleting existing ones (only for current date)
+            if (isset($_GET['refresh']) && $_GET['refresh'] === '1' && $date === date('Y-m-d')) {
                 $syncedCount = $this->syncNewTasksOnly($db, $currentUserId, $date);
                 
                 // Store sync result for display
@@ -80,6 +85,8 @@ class UnifiedWorkflowController extends Controller {
                 $stmt = $db->prepare("SELECT * FROM daily_tasks WHERE user_id = ? AND scheduled_date = ?");
                 $stmt->execute([$currentUserId, $date]);
                 $dailyTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } elseif (isset($_GET['refresh']) && $_GET['refresh'] === '1' && $date < date('Y-m-d')) {
+                $_SESSION['error_message'] = "Cannot refresh tasks for past dates. Historical data is read-only.";
             }
             
             // Use DailyPlanner model for both tasks and stats
@@ -1174,80 +1181,84 @@ class UnifiedWorkflowController extends Controller {
     
     private function syncNewTasksOnly($db, $userId, $date) {
         try {
-            $isCurrentDate = ($date === date('Y-m-d'));
-            
-            // Get existing daily task IDs
-            $stmt = $db->prepare("SELECT task_id FROM daily_tasks WHERE user_id = ? AND scheduled_date = ? AND task_id IS NOT NULL");
-            $stmt->execute([$userId, $date]);
-            $existingTaskIds = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'task_id');
-            
-            // Get new tasks from tasks table that aren't in daily_tasks yet
-            $placeholders = $existingTaskIds ? str_repeat('?,', count($existingTaskIds) - 1) . '?' : '';
-            $excludeClause = $existingTaskIds ? "AND t.id NOT IN ($placeholders)" : '';
-            
-            if ($isCurrentDate) {
-                // Current date: include rollover tasks
-                $stmt = $db->prepare("
-                    SELECT *, COALESCE(sla_hours, 1.0) as sla_hours FROM tasks t
-                    WHERE assigned_to = ? 
-                    AND status != 'completed'
-                    AND (
-                        planned_date = ? OR 
-                        DATE(deadline) = ? OR
-                        (planned_date IS NULL AND DATE(created_at) = ?) OR
-                        (planned_date < ? AND status IN ('assigned', 'not_started', 'in_progress'))
-                    )
-                    $excludeClause
-                    ORDER BY 
-                        CASE WHEN assigned_by != assigned_to THEN 1 ELSE 2 END,
-                        CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END
-                ");
-                $params = [$userId, $date, $date, $date, $date];
-            } else {
-                // Past date: only date-specific tasks + completed on that date
-                $stmt = $db->prepare("
-                    SELECT *, COALESCE(sla_hours, 1.0) as sla_hours FROM tasks t
-                    WHERE assigned_to = ? 
-                    AND (
-                        planned_date = ? OR 
-                        DATE(deadline) = ? OR
-                        (planned_date IS NULL AND DATE(created_at) = ?) OR
-                        (status = 'completed' AND DATE(updated_at) = ?)
-                    )
-                    $excludeClause
-                    ORDER BY 
-                        CASE WHEN assigned_by != assigned_to THEN 1 ELSE 2 END,
-                        CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END
-                ");
-                $params = [$userId, $date, $date, $date, $date];
+            // Only allow sync for current date
+            if ($date !== date('Y-m-d')) {
+                return 0;
             }
             
+            // Get existing daily task original_task_ids to prevent duplicates
+            $stmt = $db->prepare("SELECT DISTINCT original_task_id FROM daily_tasks WHERE user_id = ? AND scheduled_date = ? AND original_task_id IS NOT NULL");
+            $stmt->execute([$userId, $date]);
+            $existingTaskIds = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'original_task_id');
+            
+            // Get new unstarted and uncompleted tasks from tasks table that aren't in daily_tasks yet
             if ($existingTaskIds) {
-                $params = array_merge($params, $existingTaskIds);
+                $placeholders = str_repeat('?,', count($existingTaskIds) - 1) . '?';
+                $stmt = $db->prepare("
+                    SELECT *, COALESCE(sla_hours, 0.25) as sla_hours FROM tasks t
+                    WHERE assigned_to = ? 
+                    AND status NOT IN ('completed')
+                    AND (
+                        planned_date = ? OR 
+                        DATE(deadline) = ? OR
+                        (planned_date IS NULL AND DATE(created_at) = ?) OR
+                        DATE(updated_at) = ?
+                    )
+                    AND t.id NOT IN ($placeholders)
+                    ORDER BY 
+                        CASE WHEN assigned_by != assigned_to THEN 1 ELSE 2 END,
+                        CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END
+                ");
+                $params = array_merge([$userId, $date, $date, $date, $date], $existingTaskIds);
+            } else {
+                $stmt = $db->prepare("
+                    SELECT *, COALESCE(sla_hours, 0.25) as sla_hours FROM tasks t
+                    WHERE assigned_to = ? 
+                    AND status NOT IN ('completed')
+                    AND (
+                        planned_date = ? OR 
+                        DATE(deadline) = ? OR
+                        (planned_date IS NULL AND DATE(created_at) = ?) OR
+                        DATE(updated_at) = ?
+                    )
+                    ORDER BY 
+                        CASE WHEN assigned_by != assigned_to THEN 1 ELSE 2 END,
+                        CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END
+                ");
+                $params = [$userId, $date, $date, $date, $date];
             }
             
             $stmt->execute($params);
             $newTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Add only new tasks
+            $addedCount = 0;
             foreach ($newTasks as $task) {
-                $taskTitle = ($task['assigned_by'] != $task['assigned_to']) 
-                    ? "[From Others] " . $task['title']
-                    : "[Self] " . $task['title'];
+                // Double-check to prevent duplicates
+                $checkStmt = $db->prepare("SELECT COUNT(*) FROM daily_tasks WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ?");
+                $checkStmt->execute([$userId, $task['id'], $date]);
                 
-                $plannedDuration = floatval($task['sla_hours']) * 60;
-                
-                $stmt = $db->prepare("
-                    INSERT INTO daily_tasks (user_id, task_id, scheduled_date, title, description, planned_duration, priority, status, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 'not_started', NOW())
-                ");
-                $stmt->execute([
-                    $userId, $task['id'], $date, $taskTitle, 
-                    $task['description'], $plannedDuration, $task['priority'] ?? 'medium'
-                ]);
+                if ($checkStmt->fetchColumn() == 0) {
+                    $taskTitle = ($task['assigned_by'] != $task['assigned_to']) 
+                        ? "[From Others] " . $task['title']
+                        : "[Self] " . $task['title'];
+                    
+                    $plannedDuration = floatval($task['sla_hours']) * 60;
+                    
+                    $stmt = $db->prepare("
+                        INSERT INTO daily_tasks (user_id, task_id, original_task_id, scheduled_date, title, description, planned_duration, priority, status, source_field, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'not_started', 'sync_refresh', NOW())
+                    ");
+                    $stmt->execute([
+                        $userId, $task['id'], $task['id'], $date, $taskTitle, 
+                        $task['description'], $plannedDuration, $task['priority'] ?? 'medium'
+                    ]);
+                    
+                    $addedCount++;
+                }
             }
             
-            return count($newTasks);
+            return $addedCount;
         } catch (Exception $e) {
             error_log('Sync new tasks error: ' . $e->getMessage());
             return 0;

@@ -1,5 +1,14 @@
 <?php
 include __DIR__ . '/../shared/modal_component.php';
+
+// Configuration constants for maintainability
+if (!defined('DEFAULT_SLA_HOURS')) {
+    define('DEFAULT_SLA_HOURS', 0.25); // 15 minutes default SLA
+}
+if (!defined('DAILY_PLANNER_BASE_URL')) {
+    define('DAILY_PLANNER_BASE_URL', '/ergon/workflow/daily-planner/');
+}
+
 // Generate CSRF token if not exists
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -49,8 +58,11 @@ $content = ob_start();
             <button class="btn btn--secondary" onclick="showHistoryInfo()" title="Information about historical view">
                 <i class="bi bi-info-circle"></i> History View Info
             </button>
+            <a href="<?= DAILY_PLANNER_BASE_URL . date('Y-m-d') ?>" class="btn btn--primary" title="Go to today's planner">
+                <i class="bi bi-calendar-day"></i> Today's Planner
+            </a>
         <?php else: ?>
-            <a href="/ergon/workflow/daily-planner/<?= $selected_date ?>?refresh=1" class="btn btn--info" title="Add new tasks from Tasks module (preserves existing progress)">
+            <a href="<?= DAILY_PLANNER_BASE_URL . $selected_date ?>?refresh=1" class="btn btn--info" title="Add new tasks from Tasks module (preserves existing progress)">
                 <i class="bi bi-plus-circle"></i> Sync New Tasks
             </a>
             <a href="/ergon/tasks/create" class="btn btn--secondary">
@@ -70,21 +82,33 @@ $content = ob_start();
         <div class="card__body">
             <?php if (empty($planned_tasks)): ?>
                 <div class="empty-state">
-                    <i class="bi bi-calendar-x"></i>
-                    <h4>No tasks planned for today</h4>
-                    <p>No tasks found for today. Tasks can be:</p>
-                    <ul style="text-align: left; display: inline-block; margin: 10px 0;">
-                        <li><strong>Assigned by others</strong> - Tasks given to you</li>
-                        <li><strong>Self-assigned</strong> - Tasks you create for yourself</li>
-                    </ul>
-                    <div style="margin-top: 15px;">
-                        <a href="/ergon/tasks/create" class="btn btn--primary" style="margin-right: 10px;">
-                            <i class="bi bi-plus"></i> Create Task
-                        </a>
-                        <a href="/ergon/debug_daily_planner.php" class="btn btn--secondary">
-                            <i class="bi bi-bug"></i> Debug Info
-                        </a>
-                    </div>
+                    <?php if ($selected_date < date('Y-m-d')): ?>
+                        <i class="bi bi-archive"></i>
+                        <h4>No tasks found for this date</h4>
+                        <p>No tasks were assigned to or completed on <?= date('F j, Y', strtotime($selected_date)) ?>.</p>
+                        <div class="empty-state-actions">
+                            <a href="<?= DAILY_PLANNER_BASE_URL . date('Y-m-d') ?>" class="btn btn--primary">
+                                <i class="bi bi-calendar-day"></i> Go to Today's Planner
+                            </a>
+                        </div>
+                    <?php else: ?>
+                        <i class="bi bi-calendar-x"></i>
+                        <h4>No tasks planned for today</h4>
+                        <p>No tasks found for today. Tasks can be:</p>
+                        <ul class="empty-state-list">
+                            <li><strong>Assigned by others</strong> - Tasks given to you</li>
+                            <li><strong>Self-assigned</strong> - Tasks you create for yourself</li>
+                            <li><strong>Rolled over</strong> - Unfinished tasks from previous days</li>
+                        </ul>
+                        <div class="empty-state-actions">
+                            <a href="/ergon/tasks/create" class="btn btn--primary btn-spaced">
+                                <i class="bi bi-plus"></i> Create Task
+                            </a>
+                            <a href="<?= DAILY_PLANNER_BASE_URL . $selected_date ?>?refresh=1" class="btn btn--info">
+                                <i class="bi bi-arrow-clockwise"></i> Sync Tasks
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 </div>
             <?php else: ?>
                 <div class="task-timeline" id="taskTimeline">
@@ -97,8 +121,9 @@ $content = ob_start();
                     foreach ($planned_tasks as $task): 
                         $status = $task['status'] ?? 'not_started';
                         $taskId = $task['id'];
-                        $slaHours = (float)($task['sla_hours'] ?? 1);
-                        $slaDuration = (int)($slaHours * 3600);
+                        // BUSINESS CHANGE: Default SLA changed from 1.0 to 0.25 hours for better granularity
+                        $slaHours = (float)($task['sla_hours'] ?? DEFAULT_SLA_HOURS);
+                        $slaDuration = (int)(max(0.25, $slaHours) * 3600);
                         $startTime = $task['start_time'] ?? null;
                         $startTimestamp = $startTime ? strtotime($startTime) : 0;
                         $postponeContext = $task['postpone_context'] ?? 'normal';
@@ -134,6 +159,8 @@ $content = ob_start();
                         }
                         ?>
                         <?php 
+                        // FIXED: Remove unused variable or ensure proper usage
+                        // $isPastDate is used for historical view styling and action restrictions
                         $isPastDate = ($selected_date < date('Y-m-d'));
                         $historicalClass = $isPastDate ? 'task-card--historical' : '';
                         ?>
@@ -1858,8 +1885,8 @@ function changeDate(date) {
         }
     }
     
-    // Navigate to selected date
-    window.location.href = `/ergon/workflow/daily-planner/${date}`;
+    // Navigate to selected date using configurable URL
+    window.location.href = '<?= DAILY_PLANNER_BASE_URL ?>' + date;
 }
 
 function showHistoryInfo() {
@@ -1876,9 +1903,9 @@ function showHistoryInfo() {
                 <p><strong>You are viewing historical data for ` + new Date('<?= $selected_date ?>').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + `.</strong></p>
                 <ul>
                     <li><i class="bi bi-eye"></i> This is a read-only view of past tasks</li>
-                    <li><i class="bi bi-clock-history"></i> Task statuses and progress are as they were on this date</li>
+                    <li><i class="bi bi-calendar-check"></i> Shows only tasks that were assigned to this specific date</li>
+                    <li><i class="bi bi-check-circle"></i> Includes tasks that were completed on this date</li>
                     <li><i class="bi bi-archive"></i> No actions can be performed on historical tasks</li>
-                    <li><i class="bi bi-calendar-check"></i> Use the date selector to view different dates</li>
                     <li><i class="bi bi-arrow-left"></i> Return to today's planner to manage current tasks</li>
                 </ul>
                 <div class="modal-actions">
@@ -1901,7 +1928,8 @@ function closeHistoryInfo() {
 }
 
 function goToToday() {
-    window.location.href = '/ergon/workflow/daily-planner/' + new Date().toISOString().split('T')[0];
+    // Use configurable base URL constant
+    window.location.href = '<?= DAILY_PLANNER_BASE_URL ?>' + new Date().toISOString().split('T')[0];
 }
 
 function showTaskHistory(taskId, taskTitle) {

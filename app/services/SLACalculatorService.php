@@ -27,7 +27,7 @@ class SLACalculatorService {
         
         foreach ($tasks as $task) {
             // SLA calculation
-            $slaSeconds = floatval($task['sla_hours']) * 3600;
+            $slaSeconds = max(900, floatval($task['sla_hours']) * 3600);
             $totalSlaSeconds += $slaSeconds;
             
             // Active time calculation (including current session)

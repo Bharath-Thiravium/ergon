@@ -84,8 +84,7 @@
 /* Reset */
 * {
   margin: 0;
-  padding: px;
-/*margin-bottom: var(--space-3);*/
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -126,7 +125,6 @@ table {
 table td,
 table th {
   overflow-wrap: break-word;
-  overflow-wrap: break-word;
   max-width: 0;
 }
 
@@ -147,7 +145,6 @@ textarea {
 pre,
 code {
   white-space: pre-wrap;
-  overflow-wrap: break-word;
   overflow-wrap: break-word;
 }
 
@@ -1378,6 +1375,11 @@ canvas { width: 100% !important; height: auto !important; }
   padding: 12px;
   min-width: 200px;
   display: none;
+}px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  padding: 12px;
+  min-width: 200px;
+  display: none;
 }
 
 .table-filter-dropdown--show {
@@ -1606,7 +1608,7 @@ canvas { width: 100% !important; height: auto !important; }
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: var(--space-);
+  margin-bottom: var(--space-6);
   gap: var(--space-4);
 }
 
@@ -1731,6 +1733,21 @@ canvas { width: 100% !important; height: auto !important; }
 .empty-icon {
   font-size: 4rem;
   margin-bottom: 1rem;
+}
+
+/* Empty State Components - Replacing inline styles */
+.empty-state-actions {
+  margin-top: 15px;
+}
+
+.empty-state-list {
+  text-align: left;
+  display: inline-block;
+  margin: 10px 0;
+}
+
+.btn-spaced {
+  margin-right: 10px;
 }
 
 /* Utility Classes */
@@ -3246,12 +3263,11 @@ canvas { width: 100% !important; height: auto !important; }
 
 .followup-card:nth-child(1)::after {
   content: '⭐ Priority';
-  position: initial;
+  position: absolute;
   top: 8px;
   right: 8px;
-
-  /* background: var(--primary);
-  color: white; */
+  background: var(--primary);
+  color: white;
   padding: 2px 4px;
   border-radius: 4px;
   font-size: 12px;
