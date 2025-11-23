@@ -180,23 +180,23 @@ ob_start();
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($employee['check_in']): 
-                                    require_once __DIR__ . '/../../app/helpers/TimezoneHelper.php';
-                                    TimezoneHelper::setSystemTimezone();
-                                ?>
+                                <?php 
+                                require_once __DIR__ . '/../../app/helpers/TimezoneHelper.php';
+                                $checkInTime = TimezoneHelper::convertToDisplayTime($employee['check_in']);
+                                if ($checkInTime): ?>
                                     <span style="color: #059669; font-weight: 500;">
-                                        <?= date('H:i', strtotime($employee['check_in'])) ?>
+                                        <?= $checkInTime ?>
                                     </span>
                                 <?php else: ?>
                                     <span style="color: #6b7280;">-</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($employee['check_out']): 
-                                    TimezoneHelper::setSystemTimezone();
-                                ?>
+                                <?php 
+                                $checkOutTime = TimezoneHelper::convertToDisplayTime($employee['check_out']);
+                                if ($checkOutTime): ?>
                                     <span style="color: #dc2626; font-weight: 500;">
-                                        <?= date('H:i', strtotime($employee['check_out'])) ?>
+                                        <?= $checkOutTime ?>
                                     </span>
                                 <?php elseif ($employee['check_in']): ?>
                                     <span style="color: #f59e0b; font-weight: 500;">Working...</span>

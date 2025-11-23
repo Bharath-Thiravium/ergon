@@ -27,5 +27,11 @@ class TimezoneHelper {
         self::setSystemTimezone();
         return date('Y-m-d');
     }
+    
+    public static function convertToDisplayTime($utcTime) {
+        if (!$utcTime) return null;
+        // Convert UTC stored time to IST for display
+        return date('H:i', strtotime($utcTime . ' +5 hours 30 minutes'));
+    }
 }
 ?>

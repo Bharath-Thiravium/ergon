@@ -145,18 +145,12 @@ class AttendanceController extends Controller {
                         } else {
                             echo "<td><span class='badge badge--$statusBadge'>$statusIcon {$employee['status']}</span></td>";
                         }
-                        // Display times in owner's timezone
-                        if ($employee['check_in']) {
-                            TimezoneHelper::setSystemTimezone();
-                            $checkInTime = date('H:i', strtotime($employee['check_in']));
-                            echo "<td>$checkInTime</td>";
-                        } else {
-                            echo "<td><span style='color: #6b7280;'>-</span></td>";
-                        }
+                        // Display times converted from UTC to IST
+                        $checkInTime = TimezoneHelper::convertToDisplayTime($employee['check_in']);
+                        echo "<td>" . ($checkInTime ? $checkInTime : '<span style="color: #6b7280;">-</span>') . "</td>";
                         
-                        if ($employee['check_out']) {
-                            TimezoneHelper::setSystemTimezone();
-                            $checkOutTime = date('H:i', strtotime($employee['check_out']));
+                        $checkOutTime = TimezoneHelper::convertToDisplayTime($employee['check_out']);
+                        if ($checkOutTime) {
                             echo "<td><span style='color: #dc2626; font-weight: 500;'>$checkOutTime</span></td>";
                         } elseif ($employee['check_in']) {
                             echo "<td><span style='color: #f59e0b; font-weight: 500;'>Working...</span></td>";
