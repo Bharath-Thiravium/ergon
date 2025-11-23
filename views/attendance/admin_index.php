@@ -180,7 +180,10 @@ ob_start();
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($employee['check_in']): ?>
+                                <?php if ($employee['check_in']): 
+                                    require_once __DIR__ . '/../../app/helpers/TimezoneHelper.php';
+                                    TimezoneHelper::setSystemTimezone();
+                                ?>
                                     <span style="color: #059669; font-weight: 500;">
                                         <?= date('H:i', strtotime($employee['check_in'])) ?>
                                     </span>
@@ -189,7 +192,9 @@ ob_start();
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($employee['check_out']): ?>
+                                <?php if ($employee['check_out']): 
+                                    TimezoneHelper::setSystemTimezone();
+                                ?>
                                     <span style="color: #dc2626; font-weight: 500;">
                                         <?= date('H:i', strtotime($employee['check_out'])) ?>
                                     </span>
