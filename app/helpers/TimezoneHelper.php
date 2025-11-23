@@ -10,6 +10,15 @@ class TimezoneHelper {
         return date('H:i', $istTimestamp);
     }
     
+    public static function utcToIst($utcTime) {
+        if (!$utcTime) return null;
+        
+        // Convert UTC datetime to IST datetime
+        $timestamp = strtotime($utcTime);
+        $istTimestamp = $timestamp + (5.5 * 3600); // Add 5.5 hours
+        return date('Y-m-d H:i:s', $istTimestamp);
+    }
+    
     public static function nowUtc() {
         return gmdate('Y-m-d H:i:s');
     }

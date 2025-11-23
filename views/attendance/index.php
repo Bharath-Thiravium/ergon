@@ -329,8 +329,8 @@ ob_start();
                             </td>
                             <td>
                                 <div class="cell-meta">
-                                    <div class="cell-primary">In: <?= isset($record['check_in']) && $record['check_in'] ? date('H:i', strtotime($record['check_in'])) : '00:00' ?></div>
-                                    <div class="cell-secondary">Out: <?= isset($record['check_out']) && $record['check_out'] ? date('H:i', strtotime($record['check_out'])) : '00:00' ?></div>
+                                    <div class="cell-primary">In: <?= isset($record['check_in']) && $record['check_in'] ? TimezoneHelper::displayTime($record['check_in']) : '00:00' ?></div>
+                                    <div class="cell-secondary">Out: <?= isset($record['check_out']) && $record['check_out'] ? TimezoneHelper::displayTime($record['check_out']) : '00:00' ?></div>
                                 </div>
                             </td>
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>

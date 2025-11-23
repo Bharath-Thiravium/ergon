@@ -21,9 +21,19 @@ class AttendanceController extends Controller {
                 // Calculate date range based on filter
                 $dateCondition = $this->getDateCondition($filter);
                 
-                $stmt = $db->prepare("SELECT a.*, CONVERT_TZ(a.check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(a.check_out, '+00:00', '+05:30') as check_out, u.name as user_name, COALESCE(d.name, 'Not Assigned') as department FROM attendance a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN departments d ON u.department_id = d.id WHERE a.user_id = ? AND $dateCondition ORDER BY a.check_in DESC");
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name, COALESCE(d.name, 'Not Assigned') as department FROM attendance a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN departments d ON u.department_id = d.id WHERE a.user_id = ? AND $dateCondition ORDER BY a.check_in DESC");
                 $stmt->execute([$_SESSION['user_id']]);
                 $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Convert UTC times to IST in PHP
+                foreach ($attendance as &$record) {
+                    if ($record['check_in']) {
+                        $record['check_in'] = TimezoneHelper::utcToIst($record['check_in']);
+                    }
+                    if ($record['check_out']) {
+                        $record['check_out'] = TimezoneHelper::utcToIst($record['check_out']);
+                    }
+                }
                 
                 // Calculate stats for the filtered period
                 $stats = $this->calculateUserStats($attendance);
@@ -70,8 +80,8 @@ class AttendanceController extends Controller {
                         u.email,
                         u.role,
                         COALESCE(d.name, 'Not Assigned') as department,
-                        CONVERT_TZ(a.check_in, '+00:00', '+05:30') as check_in,
-                        CONVERT_TZ(a.check_out, '+00:00', '+05:30') as check_out,
+                        a.check_in,
+                        a.check_out,
                         CASE 
                             WHEN a.location_name = 'On Approved Leave' THEN 'On Leave'
                             WHEN a.check_in IS NOT NULL THEN 'Present'
@@ -84,12 +94,22 @@ class AttendanceController extends Controller {
                         END as total_hours
                     FROM users u
                     LEFT JOIN departments d ON u.department_id = d.id
-                    LEFT JOIN attendance a ON u.id = a.user_id AND DATE(CONVERT_TZ(a.check_in, '+00:00', '+05:30')) = ?
+                    LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
                     WHERE $roleFilter AND u.status = 'active'
                     ORDER BY u.role DESC, u.name
                 ");
                 $stmt->execute([$filterDate]);
                 $employeeAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Convert UTC times to IST in PHP
+                foreach ($employeeAttendance as &$employee) {
+                    if ($employee['check_in']) {
+                        $employee['check_in'] = TimezoneHelper::utcToIst($employee['check_in']);
+                    }
+                    if ($employee['check_out']) {
+                        $employee['check_out'] = TimezoneHelper::utcToIst($employee['check_out']);
+                    }
+                }
                 
                 // Debug output
                 error_log("AttendanceController Debug:");
@@ -114,9 +134,19 @@ class AttendanceController extends Controller {
                 
                 // Get admin's own attendance for today
                 $adminAttendance = null;
-                $stmt = $db->prepare("SELECT *, CONVERT_TZ(check_in, '+00:00', '+05:30') as check_in, CONVERT_TZ(check_out, '+00:00', '+05:30') as check_out FROM attendance WHERE user_id = ? AND DATE(CONVERT_TZ(check_in, '+00:00', '+05:30')) = ?");
+                $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
                 $stmt->execute([$_SESSION['user_id'], $filterDate]);
                 $adminAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                // Convert UTC times to IST in PHP
+                if ($adminAttendance) {
+                    if ($adminAttendance['check_in']) {
+                        $adminAttendance['check_in'] = TimezoneHelper::utcToIst($adminAttendance['check_in']);
+                    }
+                    if ($adminAttendance['check_out']) {
+                        $adminAttendance['check_out'] = TimezoneHelper::utcToIst($adminAttendance['check_out']);
+                    }
+                }
                 
             } catch (Exception $e) {
                 error_log('Attendance error: ' . $e->getMessage());
@@ -148,11 +178,11 @@ class AttendanceController extends Controller {
                         } else {
                             echo "<td><span class='badge badge--$statusBadge'>$statusIcon {$employee['status']}</span></td>";
                         }
-                        // Times are already converted to IST in the query
-                        $checkInTime = $employee['check_in'] ? date('H:i', strtotime($employee['check_in'])) : null;
+                        // Convert UTC to IST and display time
+                        $checkInTime = $employee['check_in'] ? TimezoneHelper::displayTime($employee['check_in']) : null;
                         echo "<td>" . ($checkInTime ? "<span style='color: #059669; font-weight: 500;'>$checkInTime</span>" : '<span style="color: #6b7280;">-</span>') . "</td>";
                         
-                        $checkOutTime = $employee['check_out'] ? date('H:i', strtotime($employee['check_out'])) : null;
+                        $checkOutTime = $employee['check_out'] ? TimezoneHelper::displayTime($employee['check_out']) : null;
                         if ($checkOutTime) {
                             echo "<td><span style='color: #dc2626; font-weight: 500;'>$checkOutTime</span></td>";
                         } elseif ($employee['check_in']) {
