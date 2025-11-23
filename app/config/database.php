@@ -64,6 +64,11 @@ class Database {
                 $this->password ?? '',
                 $options
             );
+            
+            // Force UTC timezone for consistent storage on Hostinger
+            if (!Environment::isDevelopment()) {
+                $this->conn->exec("SET time_zone = '+00:00'");
+            }
         } catch(PDOException $e) {
             error_log("Connection error: " . $e->getMessage());
             throw new Exception("Database connection failed: " . $e->getMessage());

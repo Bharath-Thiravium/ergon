@@ -4,6 +4,8 @@ class TimezoneHelper {
     public static function getOwnerTimezone() {
         try {
             $db = Database::connect();
+            // Force UTC for database operations on Hostinger
+            $db->exec("SET time_zone = '+00:00'");
             $stmt = $db->prepare("SELECT up.timezone FROM user_preferences up JOIN users u ON up.user_id = u.id WHERE u.role = 'owner' LIMIT 1");
             $stmt->execute();
             $ownerPrefs = $stmt->fetch();

@@ -47,6 +47,9 @@ class AttendanceController extends Controller {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
                 
+                // Force UTC timezone for Hostinger
+                $db->exec("SET time_zone = '+00:00'");
+                
                 $this->ensureAttendanceTable($db);
                 
                 // Get date filter from query parameter
@@ -192,6 +195,9 @@ class AttendanceController extends Controller {
             try {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
+                
+                // Force UTC timezone for Hostinger
+                $db->exec("SET time_zone = '+00:00'");
                 
                 $this->ensureAttendanceTable($db);
                 
