@@ -182,7 +182,7 @@ ob_start();
                             <td>
                                 <?php 
                                 require_once __DIR__ . '/../../app/helpers/TimezoneHelper.php';
-                                $checkInTime = TimezoneHelper::displayTime($employee['check_in']);
+                                $checkInTime = $employee['check_in'] ? TimezoneHelper::displayTime($employee['check_in']) : null;
                                 if ($checkInTime): ?>
                                     <span style="color: #059669; font-weight: 500;">
                                         <?= $checkInTime ?>
@@ -193,7 +193,7 @@ ob_start();
                             </td>
                             <td>
                                 <?php 
-                                $checkOutTime = TimezoneHelper::displayTime($employee['check_out']);
+                                $checkOutTime = $employee['check_out'] ? TimezoneHelper::displayTime($employee['check_out']) : null;
                                 if ($checkOutTime): ?>
                                     <span style="color: #dc2626; font-weight: 500;">
                                         <?= $checkOutTime ?>

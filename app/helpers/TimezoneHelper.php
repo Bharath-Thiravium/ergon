@@ -34,5 +34,9 @@ class TimezoneHelper {
         $ownerTime = self::utcToOwner($utcTime);
         return date('H:i', strtotime($ownerTime));
     }
+    
+    public static function getCurrentDate() {
+        return date('Y-m-d', strtotime(self::utcToOwner(self::nowUtc())));
+    }
 }
 ?>

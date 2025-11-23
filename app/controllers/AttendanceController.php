@@ -146,10 +146,10 @@ class AttendanceController extends Controller {
                             echo "<td><span class='badge badge--$statusBadge'>$statusIcon {$employee['status']}</span></td>";
                         }
                         // Display times converted from UTC to owner timezone
-                        $checkInTime = TimezoneHelper::displayTime($employee['check_in']);
-                        echo "<td>" . ($checkInTime ? $checkInTime : '<span style="color: #6b7280;">-</span>') . "</td>";
+                        $checkInTime = $employee['check_in'] ? TimezoneHelper::displayTime($employee['check_in']) : null;
+                        echo "<td>" . ($checkInTime ? "<span style='color: #059669; font-weight: 500;'>$checkInTime</span>" : '<span style="color: #6b7280;">-</span>') . "</td>";
                         
-                        $checkOutTime = TimezoneHelper::displayTime($employee['check_out']);
+                        $checkOutTime = $employee['check_out'] ? TimezoneHelper::displayTime($employee['check_out']) : null;
                         if ($checkOutTime) {
                             echo "<td><span style='color: #dc2626; font-weight: 500;'>$checkOutTime</span></td>";
                         } elseif ($employee['check_in']) {
@@ -247,8 +247,8 @@ class AttendanceController extends Controller {
                         // Continue with clock in if check fails
                     }
                     
-                    // Force system timezone (owner's timezone)
-                    $currentTime = TimezoneHelper::getCurrentTime();
+                    // Store in UTC
+                    $currentTime = TimezoneHelper::nowUtc();
                     
                     // Clock in - handle both column name variations
                     $stmt = $db->query("SHOW COLUMNS FROM attendance");
@@ -292,9 +292,9 @@ class AttendanceController extends Controller {
                     }
                     
                 } elseif ($type === 'out') {
-                    // Force system timezone (owner's timezone)
-                    $currentTime = TimezoneHelper::getCurrentTime();
-                    $currentDate = TimezoneHelper::getCurrentDate();
+                    // Store in UTC
+                    $currentTime = TimezoneHelper::nowUtc();
+                    $currentDate = date('Y-m-d', strtotime(TimezoneHelper::utcToOwner($currentTime)));
                     
                     // Find today's attendance record
                     $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");
@@ -337,9 +337,8 @@ class AttendanceController extends Controller {
             $db = Database::connect();
             $this->ensureAttendanceTable($db);
             
-            // Set timezone to IST for correct date comparison
-            date_default_timezone_set('Asia/Kolkata');
-            $currentDate = date('Y-m-d');
+            // Use owner timezone for date comparison
+            $currentDate = date('Y-m-d', strtotime(TimezoneHelper::utcToOwner(TimezoneHelper::nowUtc())));
             
             $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
             $stmt->execute([$_SESSION['user_id'], $currentDate]);
@@ -371,9 +370,8 @@ class AttendanceController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Set timezone to IST for correct date comparison
-            date_default_timezone_set('Asia/Kolkata');
-            $currentDate = date('Y-m-d');
+            // Use owner timezone for date comparison
+            $currentDate = date('Y-m-d', strtotime(TimezoneHelper::utcToOwner(TimezoneHelper::nowUtc())));
             
             $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
             $stmt->execute([$_SESSION['user_id'], $currentDate]);
