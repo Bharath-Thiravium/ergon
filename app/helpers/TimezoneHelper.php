@@ -1,22 +1,14 @@
 <?php
 class TimezoneHelper {
     
-    public static function displayTime($dbTime) {
-        if (!$dbTime) return null;
-        
-        // Direct conversion: add 5.5 hours to database time for IST
-        $timestamp = strtotime($dbTime);
-        $istTimestamp = $timestamp + (5.5 * 3600); // Add 5.5 hours
-        return date('H:i', $istTimestamp);
+    public static function toIst($utcTime) {
+        if (!$utcTime || $utcTime === '0000-00-00 00:00:00') return null;
+        return date('Y-m-d H:i:s', strtotime($utcTime) + 19800);
     }
     
-    public static function utcToIst($utcTime) {
-        if (!$utcTime) return null;
-        
-        // Convert UTC datetime to IST datetime
-        $timestamp = strtotime($utcTime);
-        $istTimestamp = $timestamp + (5.5 * 3600); // Add 5.5 hours
-        return date('Y-m-d H:i:s', $istTimestamp);
+    public static function displayTime($utcTime) {
+        if (!$utcTime || $utcTime === '0000-00-00 00:00:00') return null;
+        return date('H:i', strtotime($utcTime) + 19800);
     }
     
     public static function nowUtc() {
@@ -24,9 +16,7 @@ class TimezoneHelper {
     }
     
     public static function getCurrentDate() {
-        // Get current IST date
-        $istTimestamp = time() + (5.5 * 3600);
-        return gmdate('Y-m-d', $istTimestamp);
+        return date('Y-m-d', time() + 19800);
     }
 }
 ?>

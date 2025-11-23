@@ -1,7 +1,6 @@
 <?php
 $title = 'Admin - Attendance Management';
 $active_page = 'attendance';
-require_once __DIR__ . '/../../app/helpers/TimezoneHelper.php';
 ob_start();
 ?>
 
@@ -48,8 +47,6 @@ ob_start();
         <div class="kpi-card__label">Absent Today</div>
         <div class="kpi-card__status">Not Checked</div>
     </div>
-    
-
 </div>
 
 <!-- Admin Personal Attendance Card -->
@@ -73,9 +70,12 @@ ob_start();
                     <div style="color: #6b7280; font-size: 0.875rem;">Administrator</div>
                     <?php if ($admin_attendance): ?>
                         <div style="color: #059669; font-size: 0.875rem; font-weight: 500;">
-                            In: <?= $admin_attendance['check_in'] ? date('H:i', strtotime($admin_attendance['check_in']) + 19800) : '-' ?>
+                            <?php
+                            require_once __DIR__ . '/../../app/helpers/TimezoneHelper.php';
+                            ?>
+                            In: <?= $admin_attendance['check_in'] ? TimezoneHelper::displayTime($admin_attendance['check_in']) : '-' ?>
                             <?php if ($admin_attendance['check_out']): ?>
-                                | Out: <?= date('H:i', strtotime($admin_attendance['check_out']) + 19800) ?>
+                                | Out: <?= TimezoneHelper::displayTime($admin_attendance['check_out']) ?>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
@@ -108,29 +108,11 @@ ob_start();
         </div>
     </div>
     <div class="card__body">
-        <?php 
-        // Debug output
-        echo "<!-- DEBUG: employees count = " . count($employees ?? []) . " -->";
-        if (isset($employees) && !empty($employees)) {
-            echo "<!-- DEBUG: employees data exists, count = " . count($employees) . " -->";
-        } else {
-            echo "<!-- DEBUG: employees is empty or not set -->";
-        }
-        ?>
         <?php if (empty($employees)): ?>
             <div class="empty-state">
                 <div class="empty-icon">👥</div>
                 <h3>No Employees Found</h3>
-                <p>No employees are registered in the system. This could mean:</p>
-                <ul style="text-align: left; margin: 1rem 0;">
-                    <li>No users with role 'user' exist in the database</li>
-                    <li>Database connection issues</li>
-                    <li>Users table is empty</li>
-                </ul>
-                <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
-                    <a href="/ergon/fix_no_employees.php" class="btn btn--primary">🔧 Fix & Create Users</a>
-                    <a href="/ergon/debug_attendance_users.php" class="btn btn--secondary">🔍 Debug</a>
-                </div>
+                <p>No employees are registered in the system.</p>
             </div>
         <?php else: ?>
             <div class="table-responsive">
@@ -147,29 +129,7 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php 
-                        // Debug output
-                        if (empty($employees)) {
-                            error_log('No employees data passed to view. Current user role: ' . ($_SESSION['role'] ?? 'unknown'));
-                        } else {
-                            error_log('Displaying ' . count($employees) . ' employees in admin view. Current user role: ' . ($_SESSION['role'] ?? 'unknown'));
-                        }
-                        
-                        foreach ($employees as $employee): 
-                            // DIRECT IST CONVERSION IN VIEW
-                            if ($employee['check_in']) {
-                                $ts = strtotime($employee['check_in']);
-                                $employee['check_in_ist'] = date('H:i', $ts + 19800);
-                            } else {
-                                $employee['check_in_ist'] = '-';
-                            }
-                            if ($employee['check_out']) {
-                                $ts = strtotime($employee['check_out']);
-                                $employee['check_out_ist'] = date('H:i', $ts + 19800);
-                            } else {
-                                $employee['check_out_ist'] = $employee['check_in'] ? 'Working...' : '-';
-                            }
-                        ?>
+                        <?php foreach ($employees as $employee): ?>
                         <tr>
                             <td>
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -185,9 +145,7 @@ ob_start();
                             <td><?= htmlspecialchars($employee['department'] ?? 'General') ?></td>
                             <td>
                                 <?php if ($employee['status'] === 'On Leave'): ?>
-                                    <span class="badge badge--warning">
-                                        🏖️ On Leave
-                                    </span>
+                                    <span class="badge badge--warning">🏖️ On Leave</span>
                                 <?php else: ?>
                                     <span class="badge badge--<?= $employee['status'] === 'Present' ? 'success' : 'danger' ?>">
                                         <?= $employee['status'] === 'Present' ? '✅ Present' : '❌ Absent' ?>
@@ -195,14 +153,24 @@ ob_start();
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <span style="color: <?= $employee['check_in'] ? '#059669' : '#6b7280' ?>; font-weight: 500;">
-                                    <?= $employee['check_in_ist'] ?>
-                                </span>
+                                <?php if ($employee['check_in']): ?>
+                                    <span style="color: #059669; font-weight: 500;">
+                                        <?= TimezoneHelper::displayTime($employee['check_in']) ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span style="color: #6b7280;">-</span>
+                                <?php endif; ?>
                             </td>
                             <td>
-                                <span style="color: <?= $employee['check_out'] ? '#dc2626' : ($employee['check_in'] ? '#f59e0b' : '#6b7280') ?>; font-weight: 500;">
-                                    <?= $employee['check_out_ist'] ?>
-                                </span>
+                                <?php if ($employee['check_out']): ?>
+                                    <span style="color: #dc2626; font-weight: 500;">
+                                        <?= TimezoneHelper::displayTime($employee['check_out']) ?>
+                                    </span>
+                                <?php elseif ($employee['check_in']): ?>
+                                    <span style="color: #f59e0b; font-weight: 500;">Working...</span>
+                                <?php else: ?>
+                                    <span style="color: #6b7280;">-</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($employee['total_hours'] > 0): ?>
@@ -242,17 +210,11 @@ ob_start();
 
 <script>
 function refreshAttendance() {
-    // Use AJAX to refresh the employee table without full page reload
     const currentDate = document.getElementById('attendanceDate').value;
     const url = `/ergon/attendance?ajax=1${currentDate ? '&date=' + currentDate : ''}`;
     
     fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.text();
-        })
+        .then(response => response.text())
         .then(html => {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
@@ -261,27 +223,22 @@ function refreshAttendance() {
             
             if (newTableBody && currentTableBody) {
                 currentTableBody.innerHTML = newTableBody.innerHTML;
-                console.log('Attendance table refreshed successfully');
             } else {
-                console.log('Table elements not found, doing full reload');
                 window.location.reload();
             }
         })
         .catch(error => {
             console.error('Refresh error:', error);
-            // Fallback to full page reload on error
             window.location.reload();
         });
 }
 
 function filterByDate(date) {
-    // Redirect with date parameter
     window.location.href = '/ergon/attendance?date=' + date;
 }
 
 function viewEmployeeDetails(employeeId) {
     alert('Employee details view - Employee ID: ' + employeeId);
-    // TODO: Implement employee details modal or page
 }
 
 function markManualAttendance(employeeId) {
@@ -301,22 +258,7 @@ function markManualAttendance(employeeId) {
         method: 'POST',
         body: formData
     })
-    .then(response => {
-        console.log('Response status:', response.status);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-            return response.json();
-        } else {
-            return response.text().then(text => {
-                throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
-            });
-        }
-    })
+    .then(response => response.json())
     .then(data => {
         if (data.success) {
             alert('Manual attendance recorded successfully!');
@@ -327,17 +269,11 @@ function markManualAttendance(employeeId) {
     })
     .catch(error => {
         console.error('Fetch error:', error);
-        if (error.message.includes('404')) {
-            alert('Route not found. Please check if the manual attendance route is configured.');
-        } else {
-            alert('Server error: ' + error.message);
-        }
+        alert('Server error occurred');
     });
 }
 
-// Admin clock in/out functionality
 function adminClockAction(type) {
-    // Get location if available
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             function(position) {
@@ -364,12 +300,7 @@ function performAdminClock(type, latitude, longitude) {
         method: 'POST',
         body: formData
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         if (data.success) {
             alert(`Admin clocked ${type} successfully!`);
@@ -383,11 +314,6 @@ function performAdminClock(type, latitude, longitude) {
         alert('Server error occurred');
     });
 }
-
-// Simple page refresh every 15 seconds for guaranteed updates
-setInterval(function() {
-    window.location.reload();
-}, 15000);
 </script>
 
 <style>
