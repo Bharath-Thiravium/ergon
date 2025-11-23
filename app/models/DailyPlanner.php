@@ -170,7 +170,7 @@ class DailyPlanner {
                 ");
                 $stmt->execute([$date, $userId, $date]);
             } else {
-                // Past date: show only assigned tasks for that date and completed tasks
+                // Past date: show all tasks that were assigned to that specific date
                 $stmt = $this->db->prepare("
                     SELECT 
                         dt.id, dt.title, dt.description, dt.priority, dt.status,
@@ -188,10 +188,6 @@ class DailyPlanner {
                     FROM daily_tasks dt
                     LEFT JOIN tasks t ON dt.original_task_id = t.id
                     WHERE dt.user_id = ? AND dt.scheduled_date = ?
-                    AND (
-                        dt.source_field IN ('planned_date', 'deadline', 'created_at', 'completed_on_date') OR
-                        dt.status = 'completed'
-                    )
                     ORDER BY 
                         CASE dt.status 
                             WHEN 'completed' THEN 1
