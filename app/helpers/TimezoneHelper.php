@@ -1,32 +1,15 @@
 <?php
 class TimezoneHelper {
     
-    public static function toIst($utcTime) {
-        if (!$utcTime || $utcTime === '0000-00-00 00:00:00') return null;
-        
-        // Force UTC interpretation for Hostinger
-        $timestamp = strtotime($utcTime . ' UTC');
-        if ($timestamp === false) {
-            // Fallback if strtotime fails
-            $timestamp = strtotime($utcTime);
-        }
-        return date('Y-m-d H:i:s', $timestamp + 19800);
+    public static function nowIst() {
+        // Return current IST time directly
+        return date('Y-m-d H:i:s', time() + 19800);
     }
     
-    public static function displayTime($utcTime) {
-        if (!$utcTime || $utcTime === '0000-00-00 00:00:00') return null;
-        
-        // Force UTC interpretation for Hostinger
-        $timestamp = strtotime($utcTime . ' UTC');
-        if ($timestamp === false) {
-            // Fallback if strtotime fails
-            $timestamp = strtotime($utcTime);
-        }
-        return date('H:i', $timestamp + 19800);
-    }
-    
-    public static function nowUtc() {
-        return gmdate('Y-m-d H:i:s');
+    public static function displayTime($istTime) {
+        if (!$istTime || $istTime === '0000-00-00 00:00:00') return null;
+        // Time is already in IST, just format it
+        return date('H:i', strtotime($istTime));
     }
     
     public static function getCurrentDate() {

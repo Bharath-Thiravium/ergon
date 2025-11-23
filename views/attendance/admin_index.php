@@ -70,9 +70,9 @@ ob_start();
                     <div style="color: #6b7280; font-size: 0.875rem;">Administrator</div>
                     <?php if ($admin_attendance): ?>
                         <div style="color: #059669; font-size: 0.875rem; font-weight: 500;">
-                            In: <?= $admin_attendance['check_in'] ? date('H:i', strtotime($admin_attendance['check_in'] . ' UTC') + 19800) : '-' ?>
+                            In: <?= $admin_attendance['check_in'] ? TimezoneHelper::displayTime($admin_attendance['check_in']) : '-' ?>
                             <?php if ($admin_attendance['check_out']): ?>
-                                | Out: <?= date('H:i', strtotime($admin_attendance['check_out'] . ' UTC') + 19800) ?>
+                                | Out: <?= TimezoneHelper::displayTime($admin_attendance['check_out']) ?>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
@@ -126,11 +126,7 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($employees as $employee): 
-                            // FORCE IST CONVERSION IN VIEW
-                            $checkInIst = $employee['check_in'] ? date('H:i', strtotime($employee['check_in'] . ' UTC') + 19800) : null;
-                            $checkOutIst = $employee['check_out'] ? date('H:i', strtotime($employee['check_out'] . ' UTC') + 19800) : null;
-                        ?>
+                        <?php foreach ($employees as $employee): ?>
                         <tr>
                             <td>
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -154,20 +150,20 @@ ob_start();
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($checkInIst): ?>
+                                <?php if ($employee['check_in']): ?>
                                     <span style="color: #059669; font-weight: 500;">
-                                        <?= $checkInIst ?>
+                                        <?= TimezoneHelper::displayTime($employee['check_in']) ?>
                                     </span>
                                 <?php else: ?>
                                     <span style="color: #6b7280;">-</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($checkOutIst): ?>
+                                <?php if ($employee['check_out']): ?>
                                     <span style="color: #dc2626; font-weight: 500;">
-                                        <?= $checkOutIst ?>
+                                        <?= TimezoneHelper::displayTime($employee['check_out']) ?>
                                     </span>
-                                <?php elseif ($checkInIst): ?>
+                                <?php elseif ($employee['check_in']): ?>
                                     <span style="color: #f59e0b; font-weight: 500;">Working...</span>
                                 <?php else: ?>
                                     <span style="color: #6b7280;">-</span>

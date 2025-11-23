@@ -30,15 +30,7 @@ class AttendanceController extends Controller {
             $stmt->execute([$_SESSION['user_id']]);
             $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Convert times to IST
-            for ($i = 0; $i < count($attendance); $i++) {
-                if ($attendance[$i]['check_in']) {
-                    $attendance[$i]['check_in'] = TimezoneHelper::toIst($attendance[$i]['check_in']);
-                }
-                if ($attendance[$i]['check_out']) {
-                    $attendance[$i]['check_out'] = TimezoneHelper::toIst($attendance[$i]['check_out']);
-                }
-            }
+            // Times are already in IST, no conversion needed
             
             $stats = $this->calculateUserStats($attendance);
             
@@ -100,29 +92,14 @@ class AttendanceController extends Controller {
             $stmt->execute([$filterDate]);
             $employeeAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Convert times to IST
-            for ($i = 0; $i < count($employeeAttendance); $i++) {
-                if ($employeeAttendance[$i]['check_in']) {
-                    $employeeAttendance[$i]['check_in'] = TimezoneHelper::toIst($employeeAttendance[$i]['check_in']);
-                }
-                if ($employeeAttendance[$i]['check_out']) {
-                    $employeeAttendance[$i]['check_out'] = TimezoneHelper::toIst($employeeAttendance[$i]['check_out']);
-                }
-            }
+            // Times are already in IST, no conversion needed
             
             // Get admin's own attendance
             $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
             $stmt->execute([$_SESSION['user_id'], $filterDate]);
             $adminAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($adminAttendance) {
-                if ($adminAttendance['check_in']) {
-                    $adminAttendance['check_in'] = TimezoneHelper::toIst($adminAttendance['check_in']);
-                }
-                if ($adminAttendance['check_out']) {
-                    $adminAttendance['check_out'] = TimezoneHelper::toIst($adminAttendance['check_out']);
-                }
-            }
+            // Times are already in IST, no conversion needed
             
         } catch (Exception $e) {
             error_log('Attendance error: ' . $e->getMessage());
@@ -250,8 +227,8 @@ class AttendanceController extends Controller {
             return;
         }
         
-        // Store in UTC
-        $currentTime = TimezoneHelper::nowUtc();
+        // Store in IST
+        $currentTime = TimezoneHelper::nowIst();
         
         $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, created_at) VALUES (?, ?, ?)");
         $result = $stmt->execute([$userId, $currentTime, $currentTime]);
@@ -264,7 +241,7 @@ class AttendanceController extends Controller {
     }
     
     private function handleClockOut($db, $userId) {
-        $currentTime = TimezoneHelper::nowUtc();
+        $currentTime = TimezoneHelper::nowIst();
         $currentDate = TimezoneHelper::getCurrentDate();
         
         $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");
@@ -301,14 +278,7 @@ class AttendanceController extends Controller {
             $stmt->execute([$_SESSION['user_id'], $currentDate]);
             $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($todayAttendance) {
-                if ($todayAttendance['check_in']) {
-                    $todayAttendance['check_in'] = TimezoneHelper::toIst($todayAttendance['check_in']);
-                }
-                if ($todayAttendance['check_out']) {
-                    $todayAttendance['check_out'] = TimezoneHelper::toIst($todayAttendance['check_out']);
-                }
-            }
+            // Times are already in IST, no conversion needed
             
         } catch (Exception $e) {
             error_log('Today attendance fetch error: ' . $e->getMessage());
