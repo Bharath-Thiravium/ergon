@@ -4,8 +4,9 @@
  */
 
 function convertTablesToCards() {
-  // Completely disable on user management page
-  if (window.location.pathname.includes('/admin/management')) {
+  // Completely disable on incompatible pages
+  if (window.location.pathname.includes('/admin/management') || 
+      window.location.pathname.includes('/workflow/daily-planner')) {
     return;
   }
   
@@ -153,7 +154,8 @@ setTimeout(() => {
 }, 1000);
 
 window.addEventListener('resize', () => {
-  if (window.location.pathname.includes('/admin/management')) {
+  if (window.location.pathname.includes('/admin/management') || 
+      window.location.pathname.includes('/workflow/daily-planner')) {
     return;
   }
   
@@ -168,7 +170,8 @@ window.addEventListener('resize', () => {
 
 // Run on any table updates
 const observer = new MutationObserver(() => {
-  if (window.location.pathname.includes('/admin/management')) {
+  if (window.location.pathname.includes('/admin/management') || 
+      window.location.pathname.includes('/workflow/daily-planner')) {
     return;
   }
   if (window.innerWidth <= 768) {
