@@ -344,48 +344,61 @@
         </div>
     </div>
     
-    <!-- Recent Activities -->
-    <div class="dashboard-grid">
-        <div class="card card--full-width">
-            <div class="card__header">
+    <!-- Recent Activities & Cash Flow Split Layout -->
+    <div class="dashboard-grid dashboard-grid--split">
+        <div class="card card--activities">
+            <div class="card__header card__header--compact">
                 <h2 class="card__title">📈 Recent Activities</h2>
-                <div class="activity-filters">
-                    <button class="filter-btn active" data-type="all">All</button>
-                    <button class="filter-btn" data-type="quotation">📝 Quotations</button>
-                    <button class="filter-btn" data-type="po">🛒 Purchase Orders</button>
-                    <button class="filter-btn" data-type="invoice">💰 Invoices</button>
-                    <button class="filter-btn" data-type="payment">💳 Payments</button>
+                <div class="activity-filters activity-filters--compact">
+                    <button class="filter-btn filter-btn--mini active" data-type="all">All</button>
+                    <button class="filter-btn filter-btn--mini" data-type="quotation">📝</button>
+                    <button class="filter-btn filter-btn--mini" data-type="po">🛒</button>
+                    <button class="filter-btn filter-btn--mini" data-type="invoice">💰</button>
+                    <button class="filter-btn filter-btn--mini" data-type="payment">💳</button>
                 </div>
             </div>
-            <div class="card__body">
-                <div id="recentActivities">
-                    <div class="activity-item">
-                        <div class="activity-loading">Loading recent activities...</div>
-                    </div>
+            <div class="card__body card__body--compact">
+                <div id="recentActivities" class="activities-compact">
+                    <div class="activity-loading">Loading recent activities...</div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Cash Flow Projection -->
-    <div class="dashboard-grid">
-        <div class="card">
-            <div class="card__header">
+        
+        <div class="card card--cashflow">
+            <div class="card__header card__header--compact">
                 <h2 class="card__title">💰 Cash Flow Projection</h2>
             </div>
-            <div class="card__body">
-                <div class="cash-flow-summary">
-                    <div class="flow-item">
-                        <div class="flow-label">Expected Inflow:</div>
-                        <div class="flow-value flow-positive" id="expectedInflow">₹0</div>
+            <div class="card__body card__body--compact">
+                <div class="cash-flow-advanced">
+                    <div class="flow-metric flow-metric--inflow">
+                        <div class="flow-icon">📈</div>
+                        <div class="flow-content">
+                            <div class="flow-label">Expected Inflow</div>
+                            <div class="flow-value" id="expectedInflow">₹0</div>
+                        </div>
                     </div>
-                    <div class="flow-item">
-                        <div class="flow-label">PO Commitments:</div>
-                        <div class="flow-value flow-negative" id="poCommitments">₹0</div>
+                    <div class="flow-metric flow-metric--outflow">
+                        <div class="flow-icon">📉</div>
+                        <div class="flow-content">
+                            <div class="flow-label">PO Commitments</div>
+                            <div class="flow-value" id="poCommitments">₹0</div>
+                        </div>
                     </div>
-                    <div class="flow-item">
-                        <div class="flow-label">Net Cash Flow:</div>
-                        <div class="flow-value" id="netCashFlow">₹0</div>
+                    <div class="flow-metric flow-metric--net">
+                        <div class="flow-icon">💎</div>
+                        <div class="flow-content">
+                            <div class="flow-label">Net Cash Flow</div>
+                            <div class="flow-value" id="netCashFlow">₹0</div>
+                        </div>
+                    </div>
+                    <div class="flow-chart">
+                        <div class="flow-bar">
+                            <div class="flow-bar-fill" id="flowBarFill"></div>
+                        </div>
+                        <div class="flow-indicators">
+                            <span class="flow-indicator flow-indicator--positive">Positive</span>
+                            <span class="flow-indicator flow-indicator--negative">Negative</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -682,8 +695,28 @@ async function loadDashboardData() {
         loadRecentActivities('all');
         updateCashFlow(data);
         
+        // Update cash flow metrics styling
+        setTimeout(() => {
+            const netElement = document.getElementById('netCashFlow');
+            if (netElement) {
+                const netValue = parseFloat(netElement.textContent.replace(/[₹,]/g, ''));
+                const netMetric = netElement.closest('.flow-metric--net');
+                if (netMetric) {
+                    if (netValue >= 0) {
+                        netMetric.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                        netMetric.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(5, 150, 105, 0.05))';
+                    } else {
+                        netMetric.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                        netMetric.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.05))';
+                    }
+                }
+            }
+        }, 100);
+        
     } catch (error) {
         console.error('Failed to load dashboard data:', error);
+        // Initialize with default cash flow data
+        updateCashFlow({ cashFlow: { expectedInflow: 0, poCommitments: 0 } });
     }
 }
 
@@ -963,30 +996,26 @@ async function loadRecentActivities(type = 'all') {
             
             container.innerHTML = filteredActivities.map(activity => {
                 const icon = getActivityIcon(activity.type);
-                const typeLabel = getActivityTypeLabel(activity.type);
+                const statusClass = getActivityStatusClass(activity.status);
                 
                 return `
-                    <div class="activity-item-minimal">
-                        <div class="activity-main">
-                            <div class="activity-document">${activity.document_number}</div>
-                            <div class="activity-customer">${activity.customer_name}</div>
-                            <div class="activity-amount">₹${activity.total_amount.toLocaleString()}</div>
+                    <div class="activity-row">
+                        <div class="activity-icon-compact">${icon}</div>
+                        <div class="activity-info">
+                            <div class="activity-doc">${activity.document_number}</div>
+                            <div class="activity-customer-compact">${activity.customer_name}</div>
                         </div>
-                        <div class="activity-secondary">
-                            <span class="activity-type-small">${icon} ${typeLabel}</span>
-                            <span class="activity-date-small">${new Date(activity.date).toLocaleDateString()}</span>
-                            <span class="activity-location-small">${activity.dispatch_location}</span>
-                            <span class="activity-status-small activity-status--${getActivityStatusClass(activity.status)}">${activity.status}</span>
-                        </div>
+                        <div class="activity-amount-compact">₹${activity.total_amount.toLocaleString()}</div>
+                        <div class="activity-status-compact status--${statusClass}">${activity.status}</div>
                     </div>
                 `;
             }).join('');
         } else {
-            container.innerHTML = '<div class="activity-item"><div class="activity-loading">No recent activities</div></div>';
+            container.innerHTML = '<div class="activity-loading">No recent activities</div>';
         }
     } catch (error) {
         console.error('Failed to load recent activities:', error);
-        document.getElementById('recentActivities').innerHTML = '<div class="activity-item"><div class="activity-loading">No activities available</div></div>';
+        document.getElementById('recentActivities').innerHTML = '<div class="activity-loading">No activities available</div>';
     }
 }
 
@@ -1028,14 +1057,27 @@ function getActivityTypeLabel(type) {
 
 function updateCashFlow(data) {
     const cashFlow = data.cashFlow || {};
+    const inflow = cashFlow.expectedInflow || 0;
+    const outflow = cashFlow.poCommitments || 0;
+    const netFlow = inflow - outflow;
     
-    document.getElementById('expectedInflow').textContent = `₹${(cashFlow.expectedInflow || 0).toLocaleString()}`;
-    document.getElementById('poCommitments').textContent = `₹${(cashFlow.poCommitments || 0).toLocaleString()}`;
+    document.getElementById('expectedInflow').textContent = `₹${inflow.toLocaleString()}`;
+    document.getElementById('poCommitments').textContent = `₹${outflow.toLocaleString()}`;
     
-    const netFlow = (cashFlow.expectedInflow || 0) - (cashFlow.poCommitments || 0);
     const netElement = document.getElementById('netCashFlow');
     netElement.textContent = `₹${netFlow.toLocaleString()}`;
-    netElement.className = `flow-value ${netFlow >= 0 ? 'flow-positive' : 'flow-negative'}`;
+    netElement.style.color = netFlow >= 0 ? 'var(--success)' : 'var(--error)';
+    
+    // Update flow bar
+    const flowBar = document.getElementById('flowBarFill');
+    if (flowBar) {
+        const total = Math.max(inflow, outflow, Math.abs(netFlow));
+        const percentage = total > 0 ? Math.min((Math.abs(netFlow) / total) * 100, 100) : 0;
+        flowBar.style.width = `${percentage}%`;
+        flowBar.style.background = netFlow >= 0 
+            ? 'linear-gradient(90deg, var(--success), #047857)' 
+            : 'linear-gradient(90deg, var(--error), #dc2626)';
+    }
 }
 
 function toggleView(module, viewType) {
@@ -2368,7 +2410,286 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     border: 1px solid currentColor;
 }
 
+/* Split Layout for Activities & Cash Flow */
+.dashboard-grid--split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    height: 50vh;
+    min-height: 400px;
+}
+
+.card--activities,
+.card--cashflow {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.card__header--compact {
+    padding: 1rem 1rem 0.75rem 1rem;
+    border-bottom: 2px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.card__body--compact {
+    padding: 0;
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Compact Activity Filters */
+.activity-filters--compact {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+.filter-btn--mini {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.7rem;
+    border-radius: 4px;
+    min-width: auto;
+}
+
+/* Compact Activities List */
+.activities-compact {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.activity-row {
+    display: grid;
+    grid-template-columns: 30px 1fr auto 80px;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    min-height: 60px;
+}
+
+.activity-row:hover {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.03), rgba(16, 185, 129, 0.03));
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+    transform: translateX(2px);
+}
+
+.activity-icon-compact {
+    font-size: 1.2rem;
+    text-align: center;
+    background: linear-gradient(135deg, var(--bg-secondary), #f8fafc);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+}
+
+.activity-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.activity-doc {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.activity-customer-compact {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.activity-amount-compact {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--success);
+    text-align: right;
+    background: rgba(16, 185, 129, 0.1);
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.activity-status-compact {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 0.3rem 0.4rem;
+    border-radius: 4px;
+    text-align: center;
+    border: 1px solid currentColor;
+}
+
+.status--draft { background: rgba(107, 114, 128, 0.1); color: #6b7280; }
+.status--revised { background: rgba(217, 119, 6, 0.1); color: #d97706; }
+.status--pending { background: rgba(217, 119, 6, 0.1); color: #d97706; }
+.status--completed { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.status--overdue { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+/* Advanced Cash Flow */
+.cash-flow-advanced {
+    padding: 1rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.flow-metric {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.flow-metric:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.flow-metric--inflow {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(5, 150, 105, 0.05));
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.flow-metric--outflow {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.05));
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.flow-metric--net {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(37, 99, 235, 0.05));
+    border-color: rgba(59, 130, 246, 0.2);
+    border-width: 2px;
+}
+
+.flow-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.flow-content {
+    flex: 1;
+}
+
+.flow-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+
+.flow-value {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.flow-chart {
+    margin-top: auto;
+    padding-top: 1rem;
+}
+
+.flow-bar {
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.flow-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success), var(--primary));
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    width: 60%;
+}
+
+.flow-indicators {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+}
+
+.flow-indicator {
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.flow-indicator--positive {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.flow-indicator--negative {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+}
+
 @media (max-width: 768px) {
+    .dashboard-grid--split {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: auto;
+    }
+    
+    .card--activities,
+    .card--cashflow {
+        height: 300px;
+    }
+    
+    .activity-row {
+        grid-template-columns: 25px 1fr auto;
+        gap: 0.5rem;
+    }
+    
+    .activity-status-compact {
+        grid-column: 2 / 4;
+        margin-top: 0.25rem;
+        justify-self: start;
+    }
+    
     .activities-grid {
         grid-template-columns: 1fr;
     }
