@@ -1894,8 +1894,8 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--success), var(--warning));
-    border-radius: 12px 12px 0 0;
+    /*background: linear-gradient(90deg, var(--primary), var(--success), var(--warning));
+    border-radius: 12px 12px 0 0;*/
 }
 
 .dashboard-header__title h1 {

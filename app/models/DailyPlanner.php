@@ -975,6 +975,32 @@ class DailyPlanner {
         }
     }
     
+    private function ensureDailyPerformanceTable() {
+        try {
+            $this->db->exec("
+                CREATE TABLE IF NOT EXISTS daily_performance (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    date DATE NOT NULL,
+                    total_planned_minutes INT DEFAULT 0,
+                    total_active_minutes DECIMAL(10,2) DEFAULT 0,
+                    total_tasks INT DEFAULT 0,
+                    completed_tasks INT DEFAULT 0,
+                    in_progress_tasks INT DEFAULT 0,
+                    postponed_tasks INT DEFAULT 0,
+                    completion_percentage DECIMAL(5,2) DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_user_date (user_id, date),
+                    INDEX idx_user_id (user_id),
+                    INDEX idx_date (date)
+                )
+            ");
+        } catch (Exception $e) {
+            error_log('ensureDailyPerformanceTable error: ' . $e->getMessage());
+        }
+    }
+    
     private function formatActionText($action) {
         return match($action) {
             'created' => 'Task Created',
