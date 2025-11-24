@@ -160,24 +160,35 @@ try {
     switch ($action) {
         case 'sla-dashboard':
             $date = filter_var($_GET['date'] ?? date('Y-m-d'), FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            $requestedUserId = filter_var($_GET['user_id'] ?? $userId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             
             // Validate date format and range
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !strtotime($date)) {
                 throw new Exception('Invalid date format');
             }
             
-            $dateObj = new DateTime($date);
-            $today = new DateTime();
-            $minDate = new DateTime('-1 year');
-            
-            if ($dateObj > $today) {
-                throw new Exception('Cannot access future dates');
+            // Security: Only allow users to view their own data unless they're admin/owner
+            if ($requestedUserId !== $userId) {
+                $stmt = $db->prepare("SELECT role FROM users WHERE id = ?");
+                $stmt->execute([$userId]);
+                $userRole = $stmt->fetchColumn();
+                if (!in_array($userRole, ['admin', 'owner'])) {
+                    throw new Exception('Access denied');
+                }
             }
+            
+            $dateObj = new DateTime($date);
+            $minDate = new DateTime('-1 year');
+            $maxDate = new DateTime('+1 year');
+            
             if ($dateObj < $minDate) {
                 throw new Exception('Date too far in the past');
             }
+            if ($dateObj > $maxDate) {
+                throw new Exception('Date too far in the future');
+            }
             
-            $stats = $planner->getDailyStats($userId, $date);
+            $stats = $planner->getDailyStats($requestedUserId, $date);
             
             // Calculate SLA totals
             // Use prepared statement with parameter binding for security
@@ -195,7 +206,7 @@ try {
                 WHERE dt.user_id = ? AND dt.scheduled_date = ?
             ");
             // Execute with proper parameter binding including default SLA
-            if (!$stmt->execute([DEFAULT_SLA_HOURS, $userId, $date])) {
+            if (!$stmt->execute([DEFAULT_SLA_HOURS, $requestedUserId, $date])) {
                 throw new Exception('Database query failed');
             }
             $slaData = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -212,7 +223,7 @@ try {
             $response = [
                 'success' => true,
                 'user_specific' => true,
-                'current_user_id' => (int)$userId,
+                'current_user_id' => (int)$requestedUserId,
                 'sla_total_seconds' => (int)$slaTotal,
                 'active_seconds' => (int)$activeSeconds,
                 'remaining_seconds' => (int)$remainingSeconds,

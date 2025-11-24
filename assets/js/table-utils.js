@@ -1,6 +1,7 @@
 /**
  * Modular Table Filter and Sort Utilities
  */
+if (typeof window.TableUtils === 'undefined') {
 class TableUtils {
     constructor(tableSelector) {
         this.table = document.querySelector(tableSelector);
@@ -367,6 +368,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Export for manual initialization
 window.TableUtils = TableUtils;
+}
 
 // Global delete function for records
 function deleteRecord(type, id, name) {

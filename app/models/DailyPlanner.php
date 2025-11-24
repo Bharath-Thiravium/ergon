@@ -160,6 +160,7 @@ class DailyPlanner {
                         CASE 
                             WHEN dt.source_field = 'planned_date' THEN '📅 Planned for this date'
                             WHEN dt.source_field = 'deadline' THEN '⏰ Deadline on this date'
+                            WHEN dt.source_field = 'postponed' THEN '🔄 Postponed to this date'
                             WHEN dt.postponed_to_date = ? THEN '🔄 Postponed to this date'
                             ELSE '📋 Planning Mode'
                         END as task_indicator,
@@ -301,7 +302,6 @@ class DailyPlanner {
             $isFutureDate = ($date > date('Y-m-d'));
             
             if ($isPastDate) {
-                // FIXED: For past dates, show tasks that were planned/assigned for that specific date
                 $stmt = $this->db->prepare("
                     SELECT 
                         t.id, t.title, t.description, t.priority, t.status,
@@ -336,7 +336,6 @@ class DailyPlanner {
                 ");
                 $stmt->execute([$userId, $date, $userId, $date, $userId, $date, $date]);
             } elseif ($isFutureDate) {
-                // FIXED: For future dates, only show tasks with explicit planned_date
                 $stmt = $this->db->prepare("
                     SELECT 
                         t.id, t.title, t.description, t.priority, t.status,
@@ -352,7 +351,6 @@ class DailyPlanner {
                 ");
                 $stmt->execute([$userId, $date]);
             } else {
-                // FIXED: For current date, prioritize planned_date and only show tasks on their specific planned date
                 $stmt = $this->db->prepare("
                     SELECT 
                         t.id, t.title, t.description, t.priority, t.status,
@@ -366,14 +364,11 @@ class DailyPlanner {
                         END as source_field
                     FROM tasks t
                     WHERE t.assigned_to = ? 
-                    AND t.status NOT IN ('completed')
+                    AND t.status NOT IN ('completed', 'cancelled', 'deleted')
                     AND (
-                        -- PRIORITY 1: Tasks with planned_date matching the requested date
                         DATE(t.planned_date) = ? OR
-                        -- PRIORITY 2: Tasks with deadline on this date but no planned_date
                         (DATE(t.deadline) = ? AND t.planned_date IS NULL) OR
-                        -- PRIORITY 3: Tasks created today with no planned_date or deadline (only when viewing today)
-                        (? = CURDATE() AND DATE(t.created_at) = CURDATE() AND (t.planned_date IS NULL OR t.planned_date = '' OR t.planned_date = '0000-00-00') AND t.deadline IS NULL)
+                        (? = CURDATE() AND ? = CURDATE() AND DATE(t.created_at) = ? AND (t.planned_date IS NULL OR t.planned_date = '' OR t.planned_date = '0000-00-00') AND t.deadline IS NULL)
                     )
                 ");
                 $stmt->execute([$date, $date, $date, $date, $userId, $date, $date, $date]);
@@ -382,26 +377,23 @@ class DailyPlanner {
             $relevantTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $addedCount = 0;
             
-            // Process each relevant task
             foreach ($relevantTasks as $task) {
-                // Check if task already exists in daily_tasks for this date
+                // Check for exact duplicates only - must match BOTH task_id AND original_task_id
                 $checkStmt = $this->db->prepare("
                     SELECT COUNT(*) FROM daily_tasks 
-                    WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ?
+                    WHERE user_id = ? AND scheduled_date = ? 
+                    AND task_id = ? AND original_task_id = ?
                 ");
-                $checkStmt->execute([$userId, $task['id'], $date]);
+                $checkStmt->execute([$userId, $date, $task['id'], $task['id']]);
                 
                 if ($checkStmt->fetchColumn() == 0) {
-                    // Set initial status based on task status and date
                     $initialStatus = 'not_started';
                     if ($isPastDate && $task['status'] === 'completed') {
                         $initialStatus = 'completed';
                     } elseif ($isFutureDate) {
-                        // Future tasks are always not_started initially
                         $initialStatus = 'not_started';
                     }
                     
-                    // Insert into daily_tasks
                     $insertStmt = $this->db->prepare("
                         INSERT INTO daily_tasks 
                         (user_id, task_id, original_task_id, title, description, scheduled_date, 
@@ -425,7 +417,6 @@ class DailyPlanner {
                     if ($result) {
                         $addedCount++;
                         
-                        // Log audit trail (optional, don't fail if this fails)
                         try {
                             $this->logTaskHistory(
                                 $this->db->lastInsertId(), 
@@ -701,15 +692,14 @@ class DailyPlanner {
     
     public function postponeTask($taskId, $userId, $newDate) {
         try {
-            // Add missing columns first
             $this->addPostponeColumns();
-            
             $now = date('Y-m-d H:i:s');
-            $currentDate = date('Y-m-d');
             
-            // Get current task data
-            $stmt = $this->db->prepare("SELECT scheduled_date, postponed_to_date, status FROM daily_tasks WHERE id = ?");
-            $stmt->execute([$taskId]);
+            // Get current task data with all fields
+            $stmt = $this->db->prepare("
+                SELECT * FROM daily_tasks WHERE id = ? AND user_id = ?
+            ");
+            $stmt->execute([$taskId, $userId]);
             $currentTask = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$currentTask) {
@@ -721,37 +711,70 @@ class DailyPlanner {
                 throw new Exception('This task is already postponed to this date.');
             }
             
-            // Check if task already exists on target date to prevent duplicates
+            // Check if task already exists on target date
             $stmt = $this->db->prepare("
                 SELECT COUNT(*) FROM daily_tasks 
-                WHERE task_id = (SELECT task_id FROM daily_tasks WHERE id = ?) 
-                AND scheduled_date = ? AND user_id = ?
+                WHERE original_task_id = ? AND scheduled_date = ? AND user_id = ?
             ");
-            $stmt->execute([$taskId, $newDate, $userId]);
+            $stmt->execute([$currentTask['original_task_id'] ?: $currentTask['task_id'], $newDate, $userId]);
             if ($stmt->fetchColumn() > 0) {
                 throw new Exception('A task with this content already exists on the target date.');
             }
             
-            $originalDate = $currentTask['scheduled_date'];
+            $this->db->beginTransaction();
             
-            // Update the task with postponed status but keep on original date
+            // Update original task as postponed
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
                 SET status = 'postponed', postponed_from_date = ?, postponed_to_date = ?, updated_at = NOW()
                 WHERE id = ?
             ");
-            $result = $stmt->execute([$originalDate, $newDate, $taskId]);
+            $stmt->execute([$currentTask['scheduled_date'], $newDate, $taskId]);
+            
+            // Create new entry for the future date with preserved data
+            $stmt = $this->db->prepare("
+                INSERT INTO daily_tasks 
+                (user_id, task_id, original_task_id, title, description, scheduled_date, 
+                 planned_start_time, planned_duration, priority, status, 
+                 completed_percentage, active_seconds, pause_duration,
+                 postponed_from_date, source_field, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, ?, ?, 'postponed', NOW())
+            ");
+            
+            $result = $stmt->execute([
+                $currentTask['user_id'],
+                $currentTask['task_id'],
+                $currentTask['original_task_id'] ?: $currentTask['task_id'],
+                $currentTask['title'],
+                $currentTask['description'],
+                $newDate,
+                $currentTask['planned_start_time'],
+                $currentTask['planned_duration'],
+                $currentTask['priority'],
+                $currentTask['completed_percentage'],
+                $currentTask['active_seconds'],
+                $currentTask['pause_duration'],
+                $currentTask['scheduled_date']
+            ]);
             
             if ($result) {
+                $newTaskId = $this->db->lastInsertId();
                 $this->logTimeAction($taskId, $userId, 'postpone', $now);
-                $this->logTaskHistory($taskId, $userId, 'postponed', $originalDate, $newDate, 'Task postponed to ' . $newDate);
-                $this->updateDailyPerformance($userId, $originalDate);
+                $this->logTaskHistory($taskId, $userId, 'postponed', $currentTask['scheduled_date'], $newDate, 'Task postponed to ' . $newDate);
+                $this->logTaskHistory($newTaskId, $userId, 'created', null, 'postponed_entry', 'Postponed task entry created for ' . $newDate);
+                $this->updateDailyPerformance($userId, $currentTask['scheduled_date']);
+                $this->db->commit();
+                return true;
+            } else {
+                $this->db->rollback();
+                throw new Exception('Failed to create postponed task entry');
             }
-            
-            return $result;
         } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollback();
+            }
             error_log("DailyPlanner postponeTask error: " . $e->getMessage());
-            throw $e; // Re-throw to show specific error message
+            throw $e;
         }
     }
     

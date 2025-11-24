@@ -241,8 +241,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<script src="/ergon/assets/js/table-utils.js"></script>
-
 <script>
 // Global action button handler
 document.addEventListener('click', function(e) {

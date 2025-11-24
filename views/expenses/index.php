@@ -233,8 +233,6 @@ window.onclick = function(event) {
 }
 </script>
 
-<script src="/ergon/assets/js/table-utils.js"></script>
-
 <script>
 // Global action button handler
 document.addEventListener('click', function(e) {

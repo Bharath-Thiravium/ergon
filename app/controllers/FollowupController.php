@@ -23,7 +23,8 @@ class FollowupController extends Controller {
                 FROM followups f 
                 LEFT JOIN contacts c ON f.contact_id = c.id 
                 LEFT JOIN users u ON f.user_id = u.id
-                WHERE 1=1
+                LEFT JOIN tasks t ON f.task_id = t.id
+                WHERE (f.task_id IS NULL OR t.id IS NOT NULL)
             ";
             
             // Filter by user if not admin/owner

@@ -114,8 +114,6 @@ ob_start();
     </div>
 </div>
 
-<script src="/ergon/assets/js/table-utils.js"></script>
-
 <script>
 // Global action button handler
 document.addEventListener('click', function(e) {

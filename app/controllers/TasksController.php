@@ -416,7 +416,7 @@ class TasksController extends Controller {
             // Get followups data including postponed/rescheduled
             $followups = [];
             try {
-                $stmt = $db->prepare("SELECT f.*, u.name as assigned_user FROM followups f LEFT JOIN users u ON f.user_id = u.id WHERE f.user_id = ? AND f.status IN ('pending', 'in_progress', 'postponed', 'rescheduled') ORDER BY f.follow_up_date ASC");
+                $stmt = $db->prepare("SELECT f.*, u.name as assigned_user FROM followups f LEFT JOIN users u ON f.user_id = u.id LEFT JOIN tasks t ON f.task_id = t.id WHERE f.user_id = ? AND f.status IN ('pending', 'in_progress', 'postponed', 'rescheduled') AND (f.task_id IS NULL OR t.id IS NOT NULL) ORDER BY f.follow_up_date ASC");
                 $stmt->execute([$_SESSION['user_id']]);
                 $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } catch (Exception $e) {
@@ -816,11 +816,23 @@ class TasksController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
+            $db->beginTransaction();
+            
+            // Delete from daily_tasks first (cascade delete)
+            $stmt = $db->prepare("DELETE FROM daily_tasks WHERE task_id = ? OR original_task_id = ?");
+            $stmt->execute([$id, $id]);
+            
+            // Delete from tasks table
             $stmt = $db->prepare("DELETE FROM tasks WHERE id = ?");
             $result = $stmt->execute([$id]);
             
+            $db->commit();
+            
             echo json_encode(['success' => $result, 'message' => $result ? 'Task deleted successfully' : 'Delete failed']);
         } catch (Exception $e) {
+            if ($db->inTransaction()) {
+                $db->rollback();
+            }
             echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $e->getMessage()]);
         }
         exit;
