@@ -996,17 +996,22 @@ async function loadRecentActivities(type = 'all') {
             
             container.innerHTML = filteredActivities.map(activity => {
                 const icon = getActivityIcon(activity.type);
+                const typeLabel = getActivityTypeLabel(activity.type);
                 const statusClass = getActivityStatusClass(activity.status);
                 
                 return `
                     <div class="activity-row">
                         <div class="activity-icon-compact">${icon}</div>
-                        <div class="activity-info">
+                        <div class="activity-main-info">
+                            <div class="activity-title">${typeLabel}</div>
                             <div class="activity-doc">${activity.document_number}</div>
-                            <div class="activity-customer-compact">${activity.customer_name}</div>
                         </div>
-                        <div class="activity-amount-compact">₹${activity.total_amount.toLocaleString()}</div>
-                        <div class="activity-status-compact status--${statusClass}">${activity.status}</div>
+                        <div class="activity-customer-info">
+                            <div class="activity-customer">${activity.customer_name}</div>
+                            <div class="activity-address">${activity.dispatch_location}</div>
+                        </div>
+                        <div class="activity-amount">₹${activity.total_amount.toLocaleString()}</div>
+                        <div class="activity-status status--${statusClass}">${activity.status}</div>
                     </div>
                 `;
             }).join('');
@@ -2462,93 +2467,177 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     padding: 0.5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.4rem;
 }
 
 .activity-row {
     display: grid;
-    grid-template-columns: 30px 1fr auto 80px;
+    grid-template-columns: 30px 1fr 1fr auto 80px;
     gap: 0.75rem;
     align-items: center;
     padding: 0.75rem;
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    transition: all 0.2s ease;
-    min-height: 60px;
+    border-radius: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 65px;
+    position: relative;
+    overflow: hidden;
+}
+
+.activity-row::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.05), transparent);
+    transition: left 0.5s ease;
 }
 
 .activity-row:hover {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.03), rgba(16, 185, 129, 0.03));
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.02), rgba(16, 185, 129, 0.02));
     border-color: var(--primary);
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
-    transform: translateX(2px);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px) scale(1.002);
+}
+
+.activity-row:hover::before {
+    left: 100%;
+}
+
+.activity-row:hover .activity-amount {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.18));
+    border-color: rgba(16, 185, 129, 0.25);
+    transform: scale(1.02);
+}
+
+.activity-row:hover .activity-status {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .activity-icon-compact {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     text-align: center;
     background: linear-gradient(135deg, var(--bg-secondary), #f8fafc);
-    border-radius: 50%;
+    border-radius: 8px;
     width: 30px;
     height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
 }
 
-.activity-info {
+.activity-row:hover .activity-icon-compact {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
+    border-color: var(--primary);
+    transform: rotate(5deg) scale(1.1);
+}
+
+.activity-main-info {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.15rem;
     min-width: 0;
 }
 
-.activity-doc {
-    font-weight: 700;
-    font-size: 0.85rem;
-    color: var(--primary);
+.activity-title {
+    font-weight: 500;
+    font-size: 0.7rem;
+    color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.8px;
+    opacity: 0.8;
 }
 
-.activity-customer-compact {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 500;
+.activity-doc {
+    font-weight: 300;
+    font-size: 0.85rem;
+    color: var(--primary);
+    letter-spacing: 0.2px;
+    font-family: 'Courier New', monospace;
+}
+
+.activity-customer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.activity-customer {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.activity-amount-compact {
-    font-weight: 700;
-    font-size: 0.8rem;
-    color: var(--success);
-    text-align: right;
-    background: rgba(16, 185, 129, 0.1);
-    padding: 0.3rem 0.5rem;
-    border-radius: 4px;
-    border: 1px solid rgba(16, 185, 129, 0.2);
+.activity-address {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-style: italic;
 }
 
-.activity-status-compact {
+.activity-amount {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--success);
+    text-align: right;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(5, 150, 105, 0.12));
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.3px;
+}
+
+.activity-status {
     font-size: 0.65rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
-    padding: 0.3rem 0.4rem;
-    border-radius: 4px;
+    letter-spacing: 0.4px;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
     text-align: center;
     border: 1px solid currentColor;
+    transition: all 0.2s ease;
 }
 
-.status--draft { background: rgba(107, 114, 128, 0.1); color: #6b7280; }
-.status--revised { background: rgba(217, 119, 6, 0.1); color: #d97706; }
-.status--pending { background: rgba(217, 119, 6, 0.1); color: #d97706; }
-.status--completed { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.status--overdue { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.status--draft { 
+    background: linear-gradient(135deg, rgba(107, 114, 128, 0.08), rgba(75, 85, 99, 0.12)); 
+    color: #6b7280; 
+    border-color: rgba(107, 114, 128, 0.2);
+}
+.status--revised { 
+    background: linear-gradient(135deg, rgba(217, 119, 6, 0.08), rgba(180, 83, 9, 0.12)); 
+    color: #d97706; 
+    border-color: rgba(217, 119, 6, 0.2);
+}
+.status--pending { 
+    background: linear-gradient(135deg, rgba(217, 119, 6, 0.08), rgba(180, 83, 9, 0.12)); 
+    color: #d97706; 
+    border-color: rgba(217, 119, 6, 0.2);
+}
+.status--completed { 
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(5, 150, 105, 0.12)); 
+    color: #10b981; 
+    border-color: rgba(16, 185, 129, 0.2);
+}
+.status--overdue { 
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(220, 38, 38, 0.12)); 
+    color: #ef4444; 
+    border-color: rgba(239, 68, 68, 0.2);
+}
 
 /* Advanced Cash Flow */
 .cash-flow-advanced {
@@ -2680,14 +2769,26 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     }
     
     .activity-row {
-        grid-template-columns: 25px 1fr auto;
+        grid-template-columns: 25px 1fr;
         gap: 0.5rem;
+        padding: 0.6rem;
     }
     
-    .activity-status-compact {
-        grid-column: 2 / 4;
-        margin-top: 0.25rem;
+    .activity-main-info,
+    .activity-customer-info {
+        grid-column: 2;
+    }
+    
+    .activity-amount,
+    .activity-status {
+        grid-column: 2;
         justify-self: start;
+        margin-top: 0.25rem;
+    }
+    
+    .activity-amount {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.4rem;
     }
     
     .activities-grid {
