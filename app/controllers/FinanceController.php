@@ -816,7 +816,7 @@ class FinanceController extends Controller {
             return $customerNames[$customerId];
         }
         
-        // Check all possible name fields in order of preference
+        // Check all possible name fields in order of preference (same as Revenue Conversion Funnel)
         $nameFields = [
             'company_name', 'customer_company_name', 'client_name', 'client_company_name',
             'display_name', 'customer_display_name', 'name', 'customer_name', 
@@ -824,7 +824,7 @@ class FinanceController extends Controller {
         ];
         
         foreach ($nameFields as $field) {
-            if (!empty($data[$field]) && $data[$field] !== $data['customer_gstin']) {
+            if (!empty($data[$field]) && $data[$field] !== ($data['customer_gstin'] ?? '')) {
                 return $data[$field];
             }
         }
@@ -837,7 +837,7 @@ class FinanceController extends Controller {
     }
     
     private function resolveDispatchLocation($data) {
-        // Check all possible address fields in order of preference
+        // Check all possible address fields in order of preference (same as Revenue Conversion Funnel)
         $addressFields = [
             'delivery_address', 'shipping_address', 'dispatch_address', 'dispatch_location',
             'customer_address', 'client_address', 'billing_address', 'site_address',
