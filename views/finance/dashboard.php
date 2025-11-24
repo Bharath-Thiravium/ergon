@@ -350,11 +350,11 @@
             <div class="card__header card__header--compact">
                 <h2 class="card__title">📈 Recent Activities</h2>
                 <div class="activity-filters activity-filters--compact">
-                    <button class="filter-btn filter-btn--mini active" data-type="all">All</button>
-                    <button class="filter-btn filter-btn--mini" data-type="quotation">📝</button>
-                    <button class="filter-btn filter-btn--mini" data-type="po">🛒</button>
-                    <button class="filter-btn filter-btn--mini" data-type="invoice">💰</button>
-                    <button class="filter-btn filter-btn--mini" data-type="payment">💳</button>
+                    <button class="filter-btn filter-btn--mini active" data-type="all" title="Show all activities">All</button>
+                    <button class="filter-btn filter-btn--mini" data-type="quotation" title="Show quotations only">📝</button>
+                    <button class="filter-btn filter-btn--mini" data-type="po" title="Show purchase orders only">🛒</button>
+                    <button class="filter-btn filter-btn--mini" data-type="invoice" title="Show invoices only">💰</button>
+                    <button class="filter-btn filter-btn--mini" data-type="payment" title="Show payments only">💳</button>
                 </div>
             </div>
             <div class="card__body card__body--compact">

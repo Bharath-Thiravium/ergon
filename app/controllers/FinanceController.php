@@ -875,7 +875,16 @@ class FinanceController extends Controller {
     }
     
     private function resolveDispatchLocation($data) {
-        // First try to get address from linked customer record
+        // First try to get address using shipping_address_id
+        $shippingAddressId = $data['shipping_address_id'] ?? '';
+        if ($shippingAddressId) {
+            $shippingAddress = $this->getCustomerAddress('', $shippingAddressId);
+            if ($shippingAddress !== 'Not specified') {
+                return $shippingAddress;
+            }
+        }
+        
+        // Fallback to customer_id based address lookup
         $customerId = $data['customer_id'] ?? '';
         if ($customerId) {
             $customerAddress = $this->getCustomerAddress($customerId);
@@ -884,11 +893,10 @@ class FinanceController extends Controller {
             }
         }
         
-        // Check all possible address fields in order of preference
+        // Check document-level address fields
         $addressFields = [
             'delivery_address', 'shipping_address', 'dispatch_address', 'dispatch_location',
-            'customer_address', 'client_address', 'billing_address', 'site_address',
-            'project_address', 'installation_address', 'service_address', 'address'
+            'customer_address', 'client_address', 'billing_address', 'site_address'
         ];
         
         foreach ($addressFields as $field) {
@@ -900,7 +908,7 @@ class FinanceController extends Controller {
         return 'Not specified';
     }
     
-    private function getCustomerAddress($customerId) {
+    private function getCustomerAddress($customerId = '', $shippingAddressId = '') {
         try {
             $db = Database::connect();
             
@@ -911,32 +919,56 @@ class FinanceController extends Controller {
             
             foreach ($addressResults as $row) {
                 $data = json_decode($row['data'], true);
-                if (($data['customer_id'] ?? '') === $customerId) {
-                    $address = trim(($data['address_line1'] ?? '') . ' ' . ($data['city'] ?? '') . ' ' . ($data['state'] ?? '') . ' ' . ($data['pincode'] ?? ''));
-                    if ($address !== '') {
-                        return $address;
+                
+                // Match by shipping_address_id first (more specific)
+                if ($shippingAddressId && ($data['id'] ?? '') === $shippingAddressId) {
+                    $addressParts = array_filter([
+                        $data['label'] ?? '',
+                        $data['address_line1'] ?? '',
+                        $data['city'] ?? '',
+                        $data['state'] ?? '',
+                        $data['pincode'] ?? ''
+                    ]);
+                    if (!empty($addressParts)) {
+                        return implode(', ', $addressParts);
+                    }
+                }
+                
+                // Fallback to customer_id match
+                if ($customerId && ($data['customer_id'] ?? '') === $customerId) {
+                    $addressParts = array_filter([
+                        $data['label'] ?? '',
+                        $data['address_line1'] ?? '',
+                        $data['city'] ?? '',
+                        $data['state'] ?? '',
+                        $data['pincode'] ?? ''
+                    ]);
+                    if (!empty($addressParts)) {
+                        return implode(', ', $addressParts);
                     }
                 }
             }
             
             // Fallback to finance_customer billing address
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
-            $stmt->execute();
-            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($customerResults as $row) {
-                $data = json_decode($row['data'], true);
-                if (($data['id'] ?? '') === $customerId) {
-                    $addressFields = ['billing_address', 'address', 'location'];
-                    foreach ($addressFields as $field) {
-                        if (!empty($data[$field])) {
-                            return $data[$field];
+            if ($customerId) {
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
+                $stmt->execute();
+                $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($customerResults as $row) {
+                    $data = json_decode($row['data'], true);
+                    if (($data['id'] ?? '') === $customerId) {
+                        $addressFields = ['billing_address', 'address', 'location'];
+                        foreach ($addressFields as $field) {
+                            if (!empty($data[$field])) {
+                                return $data[$field];
+                            }
                         }
                     }
                 }
             }
         } catch (Exception $e) {
-            // Fallback to document-level address
+            // Fallback gracefully
         }
         
         return 'Not specified';
