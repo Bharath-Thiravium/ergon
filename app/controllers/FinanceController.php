@@ -430,14 +430,7 @@ class FinanceController extends Controller {
                     $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
 
                     $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                    $customerName = 'Unknown';
-                    if ($customerId && isset($customerNames[$customerId])) {
-                        $customerName = $customerNames[$customerId];
-                    } elseif (!empty($data['customer_name'])) {
-                        $customerName = $data['customer_name'];
-                    } elseif (!empty($data['customer_gstin'])) {
-                        $customerName = 'GST: ' . $data['customer_gstin'];
-                    }
+                    $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
 
                     $invoices[] = [
                         'invoice_number' => $invoiceNumber,
@@ -882,14 +875,7 @@ class FinanceController extends Controller {
                         $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
 
                         $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                        $customerName = 'Unknown';
-                        if ($customerId && isset($customerNames[$customerId])) {
-                            $customerName = $customerNames[$customerId];
-                        } elseif (!empty($data['customer_name'])) {
-                            $customerName = $data['customer_name'];
-                        } elseif (!empty($data['customer_gstin'])) {
-                            $customerName = 'GST: ' . $data['customer_gstin'];
-                        }
+                        $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
                         
                         echo '"' . $invoiceNumber . '","' . 
                              str_replace('"', '""', $customerName) . '","' . 
@@ -934,16 +920,7 @@ class FinanceController extends Controller {
                 if ($outstanding <= 0) continue;
 
                 $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                $customerName = null;
-                if ($customerId && isset($customerNames[$customerId])) {
-                    $customerName = $customerNames[$customerId];
-                } elseif (!empty($data['customer_name'])) {
-                    $customerName = $data['customer_name'];
-                } elseif (!empty($data['customer_gstin'])) {
-                    $customerName = 'GST: ' . $data['customer_gstin'];
-                } else {
-                    $customerName = 'Customer ' . ($customerId ?: 'Unknown');
-                }
+                $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
 
                 if (!isset($map[$customerName])) $map[$customerName] = 0;
                 $map[$customerName] += $outstanding;
