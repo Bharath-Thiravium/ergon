@@ -966,18 +966,18 @@ async function loadRecentActivities(type = 'all') {
                 const typeLabel = getActivityTypeLabel(activity.type);
                 
                 return `
-                    <div class="activity-item">
-                        <div class="activity-icon">${icon}</div>
-                        <div class="activity-content">
-                            <div class="activity-title">${activity.document_number}</div>
-                            <div class="activity-details">₹${activity.taxable_amount.toLocaleString()} + ₹${activity.tax_amount.toLocaleString()} = ₹${activity.total_amount.toLocaleString()} • ${activity.customer_name}</div>
-                            <div class="activity-meta">
-                                <span class="activity-type">${typeLabel}</span>
-                                <span class="activity-date">${new Date(activity.date).toLocaleDateString()}</span>
-                                <span class="activity-location">${activity.dispatch_location}</span>
-                            </div>
+                    <div class="activity-item-minimal">
+                        <div class="activity-main">
+                            <div class="activity-document">${activity.document_number}</div>
+                            <div class="activity-customer">${activity.customer_name}</div>
+                            <div class="activity-amount">₹${activity.total_amount.toLocaleString()}</div>
                         </div>
-                        <div class="activity-status activity-status--${getActivityStatusClass(activity.status)}">${activity.status}</div>
+                        <div class="activity-secondary">
+                            <span class="activity-type-small">${icon} ${typeLabel}</span>
+                            <span class="activity-date-small">${new Date(activity.date).toLocaleDateString()}</span>
+                            <span class="activity-location-small">${activity.dispatch_location}</span>
+                            <span class="activity-status-small activity-status--${getActivityStatusClass(activity.status)}">${activity.status}</span>
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -2252,9 +2252,121 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     margin-top: 1rem;
 }
 
+/* Minimalist Activity Items */
+.activity-item-minimal {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    background: var(--bg-primary);
+    transition: all 0.2s ease;
+}
+
+.activity-item-minimal:hover {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+    border-color: var(--primary-light);
+}
+
+.activity-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.activity-document {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--primary);
+    background: rgba(59, 130, 246, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border-left: 3px solid var(--primary);
+}
+
+.activity-customer {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    flex: 1;
+    margin: 0 1rem;
+    text-align: center;
+}
+
+.activity-amount {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border-right: 3px solid var(--success);
+}
+
+.activity-secondary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.activity-type-small {
+    background: var(--bg-secondary);
+    padding: 0.2rem 0.4rem;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.activity-date-small {
+    color: var(--text-secondary);
+}
+
+.activity-location-small {
+    color: var(--text-muted);
+    font-style: italic;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.activity-status-small {
+    padding: 0.2rem 0.4rem;
+    border-radius: 8px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
 @media (max-width: 768px) {
     .activities-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .activity-main {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .activity-customer {
+        margin: 0;
+        text-align: left;
+    }
+    
+    .activity-secondary {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .activity-location-small {
+        max-width: 100%;
     }
 }
 

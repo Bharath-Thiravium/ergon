@@ -903,21 +903,31 @@ class FinanceController extends Controller {
     private function getCustomerAddress($customerId) {
         try {
             $db = Database::connect();
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
+            
+            // First check finance_customershippingaddress table
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customershippingaddress'");
+            $stmt->execute();
+            $addressResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($addressResults as $row) {
+                $data = json_decode($row['data'], true);
+                if (($data['customer_id'] ?? '') === $customerId) {
+                    $address = trim(($data['address_line1'] ?? '') . ' ' . ($data['city'] ?? '') . ' ' . ($data['state'] ?? '') . ' ' . ($data['pincode'] ?? ''));
+                    if ($address !== '') {
+                        return $address;
+                    }
+                }
+            }
+            
+            // Fallback to finance_customer billing address
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
             $stmt->execute();
             $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             foreach ($customerResults as $row) {
                 $data = json_decode($row['data'], true);
-                $id = $data['id'] ?? '';
-                
-                if ($id === $customerId) {
-                    // Check customer address fields in order of preference
-                    $addressFields = [
-                        'delivery_address', 'shipping_address', 'dispatch_address', 'address',
-                        'billing_address', 'customer_address', 'site_address', 'location'
-                    ];
-                    
+                if (($data['id'] ?? '') === $customerId) {
+                    $addressFields = ['billing_address', 'address', 'location'];
                     foreach ($addressFields as $field) {
                         if (!empty($data[$field])) {
                             return $data[$field];
@@ -1337,11 +1347,11 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customers = [];
             
-            // Get customer names mapping
+            // Get customer names mapping from finance_customer table
             $customerNames = $this->getCustomerNamesMapping($db);
             $customerCount = count($customerNames);
 
-            // Get customers from quotations as the primary source of linked customers
+            // Get customers from finance_quotations table
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
             $stmt->execute();
             $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1365,7 +1375,7 @@ class FinanceController extends Controller {
                 }
             }
 
-            // Also aggregate customers referenced by Purchase Orders
+            // Also aggregate customers from finance_purchase_orders table
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
             $stmt->execute();
             $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1389,7 +1399,7 @@ class FinanceController extends Controller {
                 }
             }
 
-            // Also aggregate customers referenced by Invoices
+            // Also aggregate customers from finance_invoices table
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1520,8 +1530,8 @@ class FinanceController extends Controller {
     private function getCustomerNamesMapping($db) {
         $customerNames = [];
         
-        // Get customer names from both finance_customers and finance_customer tables
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
+        // Get customer names from finance_customer table (correct table name from DB analysis)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
         $stmt->execute();
         $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
