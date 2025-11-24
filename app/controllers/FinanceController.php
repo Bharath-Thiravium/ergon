@@ -1408,8 +1408,10 @@ class FinanceController extends Controller {
             ]);
             
         } catch (Exception $e) {
+            if (ob_get_level() > 0) { ob_clean(); }
             echo json_encode(['error' => $e->getMessage()]);
         }
+        exit;
     }
     
     private function getConversionFunnel($db, $customerFilter = '') {
