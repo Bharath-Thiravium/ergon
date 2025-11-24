@@ -601,6 +601,58 @@ class FinanceController extends Controller {
         }
     }
     
+    public function showAllTables() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            // Get all available tables
+            $stmt = $db->query("SELECT DISTINCT table_name FROM finance_data ORDER BY table_name");
+            $tableNames = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            $tablesData = [];
+            
+            foreach ($tableNames as $tableName) {
+                $stmt = $db->prepare("SELECT COUNT(*) as count FROM finance_data WHERE table_name = ?");
+                $stmt->execute([$tableName]);
+                $count = $stmt->fetchColumn();
+                
+                // Get sample data
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = ? LIMIT 2");
+                $stmt->execute([$tableName]);
+                $samples = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                $sampleData = [];
+                $allFields = [];
+                
+                foreach ($samples as $sample) {
+                    $data = json_decode($sample['data'], true);
+                    if ($data) {
+                        $sampleData[] = $data;
+                        $allFields = array_merge($allFields, array_keys($data));
+                    }
+                }
+                
+                $tablesData[] = [
+                    'table_name' => $tableName,
+                    'record_count' => $count,
+                    'fields' => array_unique($allFields),
+                    'sample_data' => $sampleData
+                ];
+            }
+            
+            echo json_encode([
+                'available_tables' => $tablesData,
+                'message' => 'Select which tables to use for customer name resolution'
+            ], JSON_PRETTY_PRINT);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+    
     public function analyzeFinanceFields() {
         header('Content-Type: text/plain');
         
@@ -1235,10 +1287,12 @@ class FinanceController extends Controller {
     }
     
     public function getCustomers() {
+        if (ob_get_level() > 0) { ob_clean(); }
         header('Content-Type: application/json');
         
         try {
             $db = Database::connect();
+            $this->createTables($db);
             $prefix = $this->getCompanyPrefix();
             $customers = [];
             
