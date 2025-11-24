@@ -358,7 +358,7 @@
                 </div>
             </div>
             <div class="card__body">
-                <div id="recentActivities" class="activities-grid">
+                <div id="recentActivities">
                     <div class="activity-item">
                         <div class="activity-loading">Loading recent activities...</div>
                     </div>
@@ -963,67 +963,21 @@ async function loadRecentActivities(type = 'all') {
             
             container.innerHTML = filteredActivities.map(activity => {
                 const icon = getActivityIcon(activity.type);
-                const statusClass = getActivityStatusClass(activity.status);
                 const typeLabel = getActivityTypeLabel(activity.type);
                 
                 return `
-                    <div class="activity-card activity-card--${activity.type}">
-                        <div class="activity-card__header">
-                            <div class="activity-card__icon">${icon}</div>
-                            <div class="activity-card__title">
-                                <h4>${activity.document_number}</h4>
-                                <span class="activity-card__type">${typeLabel}</span>
-                            </div>
-                            <div class="activity-card__status activity-status--${statusClass}">${activity.status}</div>
-                        </div>
-                        
-                        <div class="activity-card__amounts">
-                            <div class="amount-row">
-                                <span class="amount-label">Total Amount:</span>
-                                <span class="amount-value">₹${activity.total_amount.toLocaleString()}</span>
-                            </div>
-                            <div class="amount-row">
-                                <span class="amount-label">Taxable Amount:</span>
-                                <span class="amount-value">₹${activity.taxable_amount.toLocaleString()}</span>
-                            </div>
-                            <div class="amount-row">
-                                <span class="amount-label">Tax Amount:</span>
-                                <span class="amount-value">₹${activity.tax_amount.toLocaleString()}</span>
+                    <div class="activity-item">
+                        <div class="activity-icon">${icon}</div>
+                        <div class="activity-content">
+                            <div class="activity-title">${activity.document_number}</div>
+                            <div class="activity-details">₹${activity.taxable_amount.toLocaleString()} + ₹${activity.tax_amount.toLocaleString()} = ₹${activity.total_amount.toLocaleString()} • ${activity.customer_name}</div>
+                            <div class="activity-meta">
+                                <span class="activity-type">${typeLabel}</span>
+                                <span class="activity-date">${new Date(activity.date).toLocaleDateString()}</span>
+                                <span class="activity-location">${activity.dispatch_location}</span>
                             </div>
                         </div>
-                        
-                        <div class="activity-card__details">
-                            <div class="detail-row">
-                                <span class="detail-label">Customer:</span>
-                                <span class="detail-value">${activity.customer_name}</span>
-                            </div>
-                            ${activity.customer_gstin ? `
-                            <div class="detail-row">
-                                <span class="detail-label">GSTIN:</span>
-                                <span class="detail-value">${activity.customer_gstin}</span>
-                            </div>
-                            ` : ''}
-                            <div class="detail-row">
-                                <span class="detail-label">Dispatch Location:</span>
-                                <span class="detail-value">${activity.dispatch_location}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Date:</span>
-                                <span class="detail-value">${new Date(activity.date).toLocaleDateString()}</span>
-                            </div>
-                            ${activity.due_date && activity.due_date !== 'N/A' ? `
-                            <div class="detail-row">
-                                <span class="detail-label">Due Date:</span>
-                                <span class="detail-value">${new Date(activity.due_date).toLocaleDateString()}</span>
-                            </div>
-                            ` : ''}
-                            ${activity.outstanding_amount > 0 ? `
-                            <div class="detail-row detail-row--highlight">
-                                <span class="detail-label">Outstanding:</span>
-                                <span class="detail-value">₹${activity.outstanding_amount.toLocaleString()}</span>
-                            </div>
-                            ` : ''}
-                        </div>
+                        <div class="activity-status activity-status--${getActivityStatusClass(activity.status)}">${activity.status}</div>
                     </div>
                 `;
             }).join('');
@@ -2081,6 +2035,11 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     background: var(--bg-secondary);
     padding: 0.1rem 0.4rem;
     border-radius: 8px;
+}
+
+.activity-location {
+    color: var(--text-muted);
+    font-style: italic;
 }
 
 .activity-status {

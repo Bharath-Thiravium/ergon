@@ -646,10 +646,10 @@ class FinanceController extends Controller {
                     'document_number' => $quotationNumber,
                     'customer_name' => $customerName,
                     'customer_gstin' => $data['customer_gstin'] ?? '',
-                    'total_amount' => $totalAmount,
-                    'tax_amount' => $taxAmount,
                     'taxable_amount' => $taxableAmount,
-                    'dispatch_location' => $data['dispatch_location'] ?? $data['delivery_address'] ?? 'Not specified',
+                    'tax_amount' => $taxAmount,
+                    'total_amount' => $totalAmount,
+                    'dispatch_location' => $data['delivery_address'] ?? $data['shipping_address'] ?? $data['dispatch_address'] ?? $data['dispatch_location'] ?? 'Not specified',
                     'date' => $data['quotation_date'] ?? $data['created_date'] ?? date('Y-m-d'),
                     'status' => $data['status'] ?? 'draft',
                     'valid_until' => $data['valid_until'] ?? 'N/A'
@@ -680,10 +680,10 @@ class FinanceController extends Controller {
                     'document_number' => $poNumber,
                     'customer_name' => $customerName,
                     'customer_gstin' => $data['customer_gstin'] ?? '',
-                    'total_amount' => $totalAmount,
-                    'tax_amount' => $taxAmount,
                     'taxable_amount' => $taxableAmount,
-                    'dispatch_location' => $data['dispatch_location'] ?? $data['delivery_address'] ?? 'Not specified',
+                    'tax_amount' => $taxAmount,
+                    'total_amount' => $totalAmount,
+                    'dispatch_location' => $data['delivery_address'] ?? $data['shipping_address'] ?? $data['dispatch_address'] ?? $data['dispatch_location'] ?? 'Not specified',
                     'date' => $data['po_date'] ?? $data['created_date'] ?? date('Y-m-d'),
                     'status' => $data['status'] ?? 'pending'
                 ];
@@ -713,10 +713,10 @@ class FinanceController extends Controller {
                     'document_number' => $invoiceNumber,
                     'customer_name' => $customerName,
                     'customer_gstin' => $data['customer_gstin'] ?? '',
-                    'total_amount' => $totalAmount,
-                    'tax_amount' => $taxAmount,
                     'taxable_amount' => $taxableAmount,
-                    'dispatch_location' => $data['dispatch_location'] ?? $data['delivery_address'] ?? 'Not specified',
+                    'tax_amount' => $taxAmount,
+                    'total_amount' => $totalAmount,
+                    'dispatch_location' => $data['delivery_address'] ?? $data['shipping_address'] ?? $data['dispatch_address'] ?? $data['dispatch_location'] ?? 'Not specified',
                     'date' => $data['invoice_date'] ?? $data['created_date'] ?? date('Y-m-d'),
                     'status' => $data['payment_status'] ?? 'unpaid',
                     'due_date' => $data['due_date'] ?? 'N/A',
@@ -740,15 +740,27 @@ class FinanceController extends Controller {
     }
     
     private function resolveCustomerName($customerId, $data, $customerNames) {
+        // First try to get actual customer name from database
         if ($customerId && isset($customerNames[$customerId])) {
             return $customerNames[$customerId];
-        } elseif (!empty($data['customer_name'])) {
-            return $data['customer_name'];
-        } elseif (!empty($data['customer_gstin'])) {
-            return 'GST: ' . $data['customer_gstin'];
-        } else {
-            return 'Customer ' . ($customerId ?: 'Unknown');
         }
+        // Then try customer_name field in data
+        if (!empty($data['customer_name']) && $data['customer_name'] !== $data['customer_gstin']) {
+            return $data['customer_name'];
+        }
+        // Try display_name field
+        if (!empty($data['display_name'])) {
+            return $data['display_name'];
+        }
+        // Try name field
+        if (!empty($data['name'])) {
+            return $data['name'];
+        }
+        // Last resort - use GST number
+        if (!empty($data['customer_gstin'])) {
+            return 'GST: ' . $data['customer_gstin'];
+        }
+        return 'Customer ' . ($customerId ?: 'Unknown');
     }
     
     public function exportTable() {
