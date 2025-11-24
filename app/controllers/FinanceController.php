@@ -1296,32 +1296,9 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customers = [];
             
-            // Check if finance_customer(s) table has data (handle both singular/plural)
-            $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
-            $stmt->execute();
-            $customerCount = $stmt->fetchColumn();
-
-            // Get customer names from finance_customer(s) table if available
-            $customerNames = [];
-            if ($customerCount > 0) {
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
-                $stmt->execute();
-                $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                foreach ($customerResults as $row) {
-                    $data = json_decode($row['data'], true);
-                    $customerId = isset($data['id']) ? (string)$data['id'] : '';
-                    $customerName = $data['display_name'] ?? $data['name'] ?? '';
-                    $customerGstin = $data['gstin'] ?? $data['customer_gstin'] ?? '';
-
-                    if ($customerId && $customerName) {
-                        $customerNames[$customerId] = [
-                            'name' => $customerName,
-                            'gstin' => $customerGstin
-                        ];
-                    }
-                }
-            }
+            // Get customer names mapping
+            $customerNames = $this->getCustomerNamesMapping($db);
+            $customerCount = count($customerNames);
 
             // Get customers from quotations as the primary source of linked customers
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
@@ -1502,15 +1479,15 @@ class FinanceController extends Controller {
     private function getCustomerNamesMapping($db) {
         $customerNames = [];
         
-        // Get customer names from finance_customers table only
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
+        // Get customer names from both finance_customers and finance_customer tables
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
         $stmt->execute();
         $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         foreach ($customerResults as $row) {
             $data = json_decode($row['data'], true);
             $customerId = $data['id'] ?? '';
-            $customerName = $data['name'] ?? '';
+            $customerName = $data['display_name'] ?? $data['name'] ?? '';
             
             if ($customerId && $customerName) {
                 $customerNames[$customerId] = $customerName;
