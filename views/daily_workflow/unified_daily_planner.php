@@ -1458,12 +1458,24 @@ let slaTimers = {};
 var currentTaskId;
 
 // Define functions early to prevent undefined errors
+function startTask(taskId) {
+    return window.startTask ? window.startTask(taskId) : console.error('startTask not ready');
+}
+
 function pauseTask(taskId) {
     return window.pauseTask ? window.pauseTask(taskId) : console.error('pauseTask not ready');
 }
 
 function resumeTask(taskId) {
     return window.resumeTask ? window.resumeTask(taskId) : console.error('resumeTask not ready');
+}
+
+function postponeTask(taskId) {
+    return window.postponeTask ? window.postponeTask(taskId) : console.error('postponeTask not ready');
+}
+
+function openProgressModal(taskId, progress, status) {
+    return window.openProgressModal ? window.openProgressModal(taskId, progress, status) : console.error('openProgressModal not ready');
 }
 
 // SLA Timer Functions
@@ -1561,9 +1573,9 @@ function updateLocalCountdown(taskId) {
     }
     
     // Sync with server every 30 seconds for accuracy
-    const now = Date.now();
-    if (!lastServerSync[taskId] || (now - lastServerSync[taskId]) > TIMER_SYNC_INTERVAL) {
-        lastServerSync[taskId] = now;
+    const currentTime = Date.now();
+    if (!lastServerSync[taskId] || (currentTime - lastServerSync[taskId]) > TIMER_SYNC_INTERVAL) {
+        lastServerSync[taskId] = currentTime;
         syncTimerWithServer(taskId);
     }
 }
