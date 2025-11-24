@@ -183,8 +183,6 @@ ob_start();
 
 
 
-<script src="/ergon/assets/js/table-utils.js"></script>
-
 <script>
 // Dropdown functions
 function showDropdown(element) {

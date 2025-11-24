@@ -42,7 +42,8 @@ class ContactFollowupController extends Controller {
                        'standalone' as followup_type
                 FROM followups f 
                 LEFT JOIN contacts c ON f.contact_id = c.id 
-                WHERE 1=1
+                LEFT JOIN tasks t ON f.task_id = t.id
+                WHERE (f.task_id IS NULL OR t.id IS NOT NULL)
             ";
             
             if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
@@ -410,8 +411,10 @@ class ContactFollowupController extends Controller {
                 SELECT f.*, c.name as contact_name, c.phone as contact_phone 
                 FROM followups f 
                 LEFT JOIN contacts c ON f.contact_id = c.id 
+                LEFT JOIN tasks t ON f.task_id = t.id
                 WHERE f.follow_up_date = CURDATE() 
                 AND f.status IN ('pending', 'in_progress')
+                AND (f.task_id IS NULL OR t.id IS NOT NULL)
             ");
             $stmt->execute();
             $reminders = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -471,6 +474,8 @@ class ContactFollowupController extends Controller {
                    MAX(f.follow_up_date) as next_followup_date
             FROM contacts c
             LEFT JOIN followups f ON c.id = f.contact_id
+            LEFT JOIN tasks t ON f.task_id = t.id
+            WHERE (f.task_id IS NULL OR t.id IS NOT NULL)
         ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
@@ -490,7 +495,8 @@ class ContactFollowupController extends Controller {
             SELECT f.*, 
                    'standalone' as followup_type
             FROM followups f 
-            WHERE f.contact_id = ?
+            LEFT JOIN tasks t ON f.task_id = t.id
+            WHERE f.contact_id = ? AND (f.task_id IS NULL OR t.id IS NOT NULL)
         ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {

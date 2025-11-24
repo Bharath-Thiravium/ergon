@@ -52,7 +52,7 @@ class DailyPlanner {
                     INDEX idx_original_task_id (original_task_id),
                     INDEX idx_status (status),
                     INDEX idx_rollover_source (rollover_source_date),
-                    UNIQUE KEY unique_task_date (user_id, original_task_id, scheduled_date)
+                    INDEX idx_user_task_date (user_id, original_task_id, scheduled_date)
                 )
             ");
             
@@ -65,13 +65,16 @@ class DailyPlanner {
     private function addMissingColumns() {
         try {
             $columns = [
-                'pause_duration' => "ALTER TABLE daily_tasks ADD COLUMN pause_duration INT DEFAULT 0 AFTER active_seconds",
-                'pause_start_time' => "ALTER TABLE daily_tasks ADD COLUMN pause_start_time TIMESTAMP NULL AFTER pause_time",
-                'postponed_to_date' => "ALTER TABLE daily_tasks ADD COLUMN postponed_to_date DATE NULL AFTER postponed_from_date",
-                'original_task_id' => "ALTER TABLE daily_tasks ADD COLUMN original_task_id INT NULL AFTER task_id",
-                'source_field' => "ALTER TABLE daily_tasks ADD COLUMN source_field VARCHAR(50) NULL AFTER postponed_to_date",
-                'rollover_source_date' => "ALTER TABLE daily_tasks ADD COLUMN rollover_source_date DATE NULL AFTER source_field",
-                'rollover_timestamp' => "ALTER TABLE daily_tasks ADD COLUMN rollover_timestamp TIMESTAMP NULL AFTER rollover_source_date"
+                'pause_duration' => "ALTER TABLE daily_tasks ADD COLUMN pause_duration INT DEFAULT 0",
+                'pause_start_time' => "ALTER TABLE daily_tasks ADD COLUMN pause_start_time TIMESTAMP NULL",
+                'sla_end_time' => "ALTER TABLE daily_tasks ADD COLUMN sla_end_time TIMESTAMP NULL",
+                'resume_time' => "ALTER TABLE daily_tasks ADD COLUMN resume_time TIMESTAMP NULL",
+                'active_seconds' => "ALTER TABLE daily_tasks ADD COLUMN active_seconds INT DEFAULT 0",
+                'postponed_to_date' => "ALTER TABLE daily_tasks ADD COLUMN postponed_to_date DATE NULL",
+                'original_task_id' => "ALTER TABLE daily_tasks ADD COLUMN original_task_id INT NULL",
+                'source_field' => "ALTER TABLE daily_tasks ADD COLUMN source_field VARCHAR(50) NULL",
+                'rollover_source_date' => "ALTER TABLE daily_tasks ADD COLUMN rollover_source_date DATE NULL",
+                'rollover_timestamp' => "ALTER TABLE daily_tasks ADD COLUMN rollover_timestamp TIMESTAMP NULL"
             ];
             
             foreach ($columns as $column => $sql) {
@@ -82,11 +85,11 @@ class DailyPlanner {
                 }
             }
             
-            // Add indexes if missing
+            // Add indexes for timer queries
             try {
-                $this->db->exec("ALTER TABLE daily_tasks ADD INDEX idx_original_task_id (original_task_id)");
-                $this->db->exec("ALTER TABLE daily_tasks ADD INDEX idx_rollover_source (rollover_source_date)");
-                $this->db->exec("ALTER TABLE daily_tasks ADD UNIQUE KEY unique_task_date (user_id, original_task_id, scheduled_date)");
+                $this->db->exec("ALTER TABLE daily_tasks ADD INDEX idx_status_timer (status, start_time)");
+                $this->db->exec("ALTER TABLE daily_tasks ADD INDEX idx_sla_end_time (sla_end_time)");
+                $this->db->exec("ALTER TABLE daily_tasks ADD INDEX idx_pause_start_time (pause_start_time)");
             } catch (Exception $e) {
                 // Indexes may already exist, ignore errors
             }
@@ -97,198 +100,47 @@ class DailyPlanner {
     
     public function getTasksForDate($userId, $date) {
         try {
-            $isCurrentDate = ($date === date('Y-m-d'));
-            $isPastDate = ($date < date('Y-m-d'));
-            $isFutureDate = ($date > date('Y-m-d'));
-            
-            // Step 1: Fetch assigned/planned tasks for the specified date
-            // CORRECTED COMMENT: fetchAssignedTasksForDate is called unconditionally to ensure data consistency
+            // Step 1: Fetch assigned tasks first
             $this->fetchAssignedTasksForDate($userId, $date);
             
-            // REMOVED: The auto-rollover logic is now handled exclusively and correctly in the UnifiedWorkflowController.
-            
-            // 🖥️ Step 3: Display Tasks in UI
-            /* REFACTORED to use a single dynamic query builder
-             if ($isCurrentDate) {
-                // Logic for Today's View:
-                // Show all tasks with scheduled_date = today
-                // Include rolled-over tasks (with rollover_source_date IS NOT NULL)
-                $stmt = $this->db->prepare("
-                    SELECT 
-                        dt.id, dt.title, dt.description, dt.priority, dt.status,
-                        dt.completed_percentage, dt.start_time, dt.active_seconds,
-                        dt.planned_duration, dt.task_id, dt.original_task_id, dt.pause_duration,
-                        dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
-                        dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
-                        COALESCE(t.sla_hours, 0.25) as sla_hours,
-                        CASE 
-                            WHEN dt.rollover_source_date IS NOT NULL THEN CONCAT('🔄 Rolled over from: ', dt.rollover_source_date)
-                            WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
-                            WHEN t.assigned_by != t.assigned_to THEN '👥 From Others'
-                            ELSE '👤 Self-Assigned'
-                        END as task_indicator,
-                        'current_day' as view_type
-                    FROM daily_tasks dt
-                    LEFT JOIN tasks t ON dt.original_task_id = t.id
-                    WHERE dt.user_id = ? AND dt.scheduled_date = ?
-                    ORDER BY 
-                        CASE WHEN dt.rollover_source_date IS NOT NULL THEN 1 ELSE 0 END,
-                        CASE dt.status 
-                            WHEN 'in_progress' THEN 1 
-                            WHEN 'on_break' THEN 2 
-                            WHEN 'not_started' THEN 3
-                            WHEN 'postponed' THEN 5
-                            ELSE 4 
-                        END, 
-                        CASE dt.priority 
-                            WHEN 'high' THEN 1 
-                            WHEN 'medium' THEN 2 
-                            WHEN 'low' THEN 3 
-                            ELSE 4 
-                        END
-                ");
-                $stmt->execute([$userId, $date]);
-            } elseif ($isFutureDate) {
-                // Future date: show only tasks specifically planned for that date (planning mode)
-                $stmt = $this->db->prepare("
-                    SELECT 
-                        dt.id, dt.title, dt.description, dt.priority, dt.status,
-                        dt.completed_percentage, dt.start_time, dt.active_seconds,
-                        dt.planned_duration, dt.task_id, dt.original_task_id, dt.pause_duration,
-                        dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
-                        dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
-                        COALESCE(t.sla_hours, 0.25) as sla_hours,
-                        CASE 
-                            WHEN dt.source_field = 'planned_date' THEN '📅 Planned for this date'
-                            WHEN dt.source_field = 'deadline' THEN '⏰ Deadline on this date'
-                            WHEN dt.postponed_to_date = ? THEN '🔄 Postponed to this date'
-                            ELSE '📋 Planning Mode'
-                        END as task_indicator,
-                        'planning' as view_mode
-                    FROM daily_tasks dt
-                    LEFT JOIN tasks t ON dt.original_task_id = t.id
-                    WHERE dt.user_id = ? AND dt.scheduled_date = ?
-                    ORDER BY 
-                        CASE dt.priority 
-                            WHEN 'high' THEN 1 
-                            WHEN 'medium' THEN 2 
-                            WHEN 'low' THEN 3 
-                            ELSE 4 
-                        END,
-                        dt.created_at ASC
-                ");
-                $stmt->execute([$date, $userId, $date]);
-            } else {
-                // Logic for Past Dates:
-                // Show only tasks with scheduled_date = [past_date]
-                // Tasks completed on [past_date] (based on updated_at)
-                // Exclude rolled-over tasks from other dates
-                $stmt = $this->db->prepare("
-                    SELECT 
-                        dt.id, dt.title, dt.description, dt.priority, dt.status,
-                        dt.completed_percentage, dt.start_time, dt.active_seconds,
-                        dt.planned_duration, dt.task_id, dt.original_task_id, dt.pause_duration,
-                        dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
-                        dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
-                        COALESCE(t.sla_hours, 0.25) as sla_hours,
-                        CASE 
-                            WHEN dt.status = 'completed' AND DATE(dt.updated_at) = ? THEN '✅ Completed on this date'
-                            WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
-                            ELSE '📜 Historical View Only'
-                        END as task_indicator,
-                        'historical' as view_type
-                    FROM daily_tasks dt
-                    LEFT JOIN tasks t ON dt.original_task_id = t.id
-                    WHERE dt.user_id = ? 
-                    AND (
-                        dt.scheduled_date = ? 
-                        OR (dt.status = 'completed' AND DATE(dt.updated_at) = ?)
-                    )
-                    AND (dt.rollover_source_date IS NULL OR dt.rollover_source_date = ?)
-                    ORDER BY 
-                        CASE dt.status 
-                            WHEN 'completed' THEN 1
-                            WHEN 'in_progress' THEN 2 
-                            WHEN 'not_started' THEN 3
-                            WHEN 'postponed' THEN 4
-                            ELSE 5 
-                        END, 
-                        CASE dt.priority 
-                            WHEN 'high' THEN 1 
-                            WHEN 'medium' THEN 2 
-                            WHEN 'low' THEN 3 
-                            ELSE 4 
-                        END,
-                        dt.created_at ASC
-                ");
-                $stmt->execute([$date, $userId, $date, $date, $date]);
-            } */
-
-            // ✅ REFACTORED LOGIC: Use a single base query and build conditions dynamically.
-            $baseQuery = "
+            // Step 2: Simple query to get tasks
+            $stmt = $this->db->prepare("
                 SELECT 
                     dt.id, dt.title, dt.description, dt.priority, dt.status,
                     dt.completed_percentage, dt.start_time, dt.active_seconds,
                     dt.planned_duration, dt.task_id, dt.original_task_id, dt.pause_duration,
                     dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
                     dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
+                    dt.pause_start_time, dt.pause_time, dt.resume_time,
                     COALESCE(t.sla_hours, 0.25) as sla_hours,
-                    %s AS task_indicator,
-                    '%s' as view_type
+                    CASE 
+                        WHEN dt.rollover_source_date IS NOT NULL THEN CONCAT('🔄 Rolled over from: ', dt.rollover_source_date)
+                        WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
+                        WHEN t.assigned_by != t.assigned_to THEN '👥 From Others'
+                        ELSE '👤 Self-Assigned'
+                    END as task_indicator,
+                    'current_day' as view_type
                 FROM daily_tasks dt
                 LEFT JOIN tasks t ON dt.original_task_id = t.id
-            ";
-
-            $whereClause = "WHERE dt.user_id = ?";
-            $orderByClause = "";
-            $params = [$userId];
-
-            if ($isCurrentDate) {
-                $indicatorCase = "CASE 
-                    WHEN dt.rollover_source_date IS NOT NULL THEN CONCAT('🔄 Rolled over from: ', dt.rollover_source_date)
-                    WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
-                    WHEN t.assigned_by != t.assigned_to THEN '👥 From Others'
-                    ELSE '👤 Self-Assigned'
-                END";
-                $viewType = 'current_day';
-                $whereClause .= " AND dt.scheduled_date = ?";
-                $params[] = $date;
-                $orderByClause = "ORDER BY CASE WHEN dt.rollover_source_date IS NOT NULL THEN 0 ELSE 1 END, CASE dt.status WHEN 'in_progress' THEN 1 WHEN 'on_break' THEN 2 WHEN 'not_started' THEN 3 ELSE 4 END, CASE dt.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END";
-            } elseif ($isFutureDate) {
-                $indicatorCase = "CASE 
-                    WHEN dt.source_field = 'planned_date' THEN '📅 Planned for this date'
-                    WHEN dt.source_field = 'deadline' THEN '⏰ Deadline on this date'
-                    WHEN dt.postponed_to_date = ? THEN '🔄 Postponed to this date'
-                    ELSE '📋 Planning Mode'
-                END";
-                $viewType = 'planning';
-                $whereClause .= " AND dt.scheduled_date = ?";
-                array_unshift($params, $date); // Add to the beginning for the CASE statement
-                $params[] = $date;
-                $orderByClause = "ORDER BY CASE dt.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, dt.created_at ASC";
-            } else { // isPastDate
-                $indicatorCase = "CASE 
-                    WHEN dt.status = 'completed' AND DATE(dt.updated_at) = ? THEN '✅ Completed on this date'
-                    WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
-                    ELSE '📜 Historical View Only'
-                END";
-                $viewType = 'historical';
-                $whereClause .= " AND (dt.scheduled_date = ? OR (dt.status = 'completed' AND DATE(dt.updated_at) = ?)) AND (dt.rollover_source_date IS NULL OR dt.rollover_source_date = ?)";
-                array_unshift($params, $date); // Add to the beginning for the CASE statement
-                $params = array_merge($params, [$date, $date, $date]);
-                $orderByClause = "ORDER BY CASE dt.status WHEN 'completed' THEN 1 ELSE 2 END, CASE dt.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, dt.created_at ASC";
-            }
-
-            $finalQuery = sprintf($baseQuery, $indicatorCase, $viewType) . $whereClause . $orderByClause;
-            $stmt = $this->db->prepare($finalQuery);
-            $stmt->execute($params);
-            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Log view access for audit trail with context
-            $viewType = $isCurrentDate ? 'current' : ($isFutureDate ? 'planning' : 'historical');
-            $this->logViewAccess($userId, $date, count($tasks), $viewType);
-            
-            return $tasks;
+                WHERE dt.user_id = ? AND dt.scheduled_date = ?
+                ORDER BY 
+                    CASE WHEN dt.rollover_source_date IS NOT NULL THEN 0 ELSE 1 END,
+                    CASE dt.status 
+                        WHEN 'in_progress' THEN 1 
+                        WHEN 'on_break' THEN 2 
+                        WHEN 'not_started' THEN 3
+                        WHEN 'postponed' THEN 5
+                        ELSE 4 
+                    END, 
+                    CASE dt.priority 
+                        WHEN 'high' THEN 1 
+                        WHEN 'medium' THEN 2 
+                        WHEN 'low' THEN 3 
+                        ELSE 4 
+                    END
+            ");
+            $stmt->execute([$userId, $date]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             error_log("DailyPlanner getTasksForDate error: " . $e->getMessage());
             return [];
@@ -302,107 +154,67 @@ class DailyPlanner {
             $isFutureDate = ($date > date('Y-m-d'));
             
             if ($isPastDate) {
-                // FIXED: For past dates, show tasks that were planned/assigned for that specific date
                 $stmt = $this->db->prepare("
                     SELECT 
                         t.id, t.title, t.description, t.priority, t.status,
-                        t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
+                        t.deadline, t.estimated_duration, t.assigned_to, t.assigned_by,
                         'planned_date' as source_field
                     FROM tasks t
                     WHERE t.assigned_to = ? 
                     AND t.planned_date = ?
-                    
-                    UNION ALL
-                    
-                    SELECT 
-                        t.id, t.title, t.description, t.priority, t.status,
-                        t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
-                        'deadline' as source_field
-                    FROM tasks t
-                    WHERE t.assigned_to = ? 
-                    AND DATE(t.deadline) = ?
-                    AND (t.planned_date IS NULL OR t.planned_date = '' OR t.planned_date = '0000-00-00')
-                    
-                    UNION ALL
-                    
-                    SELECT 
-                        t.id, t.title, t.description, t.priority, t.status,
-                        t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
-                        'created_at' as source_field
-                    FROM tasks t
-                    WHERE t.assigned_to = ? 
-                    AND DATE(t.created_at) = ?
-                    AND (t.planned_date IS NULL OR t.planned_date = '' OR t.planned_date = '0000-00-00')
-                    AND (t.deadline IS NULL OR DATE(t.deadline) != ?)
                 ");
-                $stmt->execute([$userId, $date, $userId, $date, $userId, $date, $date]);
+                $stmt->execute([$userId, $date]);
             } elseif ($isFutureDate) {
-                // FIXED: For future dates, only show tasks with explicit planned_date
                 $stmt = $this->db->prepare("
                     SELECT 
                         t.id, t.title, t.description, t.priority, t.status,
-                        t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
+                        t.deadline, t.estimated_duration, t.assigned_to, t.assigned_by,
                         'planned_date' as source_field
                     FROM tasks t
                     WHERE t.assigned_to = ? 
                     AND t.status NOT IN ('completed', 'cancelled', 'deleted')
                     AND t.planned_date = ?
-                    AND t.planned_date IS NOT NULL 
-                    AND t.planned_date != '' 
-                    AND t.planned_date != '0000-00-00'
                 ");
                 $stmt->execute([$userId, $date]);
             } else {
-                // FIXED: For current date, prioritize planned_date and only show tasks on their specific planned date
+                // Current date - fetch ONLY tasks with planned_date = today
                 $stmt = $this->db->prepare("
                     SELECT 
                         t.id, t.title, t.description, t.priority, t.status,
-                        t.deadline, t.estimated_duration, t.sla_hours, t.assigned_to, t.created_by,
-                        CASE 
-                            WHEN DATE(t.planned_date) = ? THEN 'planned_date'
-                            WHEN DATE(t.deadline) = ? THEN 'deadline'
-                            WHEN DATE(t.created_at) = ? THEN 'created_at'
-                            WHEN DATE(t.updated_at) = ? THEN 'updated_at'
-                            ELSE 'other'
-                        END as source_field
+                        t.deadline, t.estimated_duration, t.assigned_to, t.assigned_by,
+                        'planned_date' as source_field
                     FROM tasks t
                     WHERE t.assigned_to = ? 
-                    AND t.status NOT IN ('completed')
-                    AND (
-                        -- PRIORITY 1: Tasks with planned_date matching the requested date
-                        DATE(t.planned_date) = ? OR
-                        -- PRIORITY 2: Tasks with deadline on this date but no planned_date
-                        (DATE(t.deadline) = ? AND t.planned_date IS NULL) OR
-                        -- PRIORITY 3: Tasks created today with no planned_date or deadline (only when viewing today)
-                        (? = CURDATE() AND DATE(t.created_at) = CURDATE() AND (t.planned_date IS NULL OR t.planned_date = '' OR t.planned_date = '0000-00-00') AND t.deadline IS NULL)
-                    )
+                    AND t.status NOT IN ('completed', 'cancelled', 'deleted')
+                    AND t.planned_date = ?
+                    ORDER BY 
+                        CASE WHEN t.assigned_by != t.assigned_to THEN 1 ELSE 2 END,
+                        CASE t.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+                        t.created_at DESC
                 ");
-                $stmt->execute([$date, $date, $date, $date, $userId, $date, $date, $date]);
+                $stmt->execute([$userId, $date]);
             }
             
             $relevantTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $addedCount = 0;
             
-            // Process each relevant task
             foreach ($relevantTasks as $task) {
-                // Check if task already exists in daily_tasks for this date
+                // Check for exact duplicates only
                 $checkStmt = $this->db->prepare("
                     SELECT COUNT(*) FROM daily_tasks 
-                    WHERE user_id = ? AND original_task_id = ? AND scheduled_date = ?
+                    WHERE user_id = ? AND scheduled_date = ? 
+                    AND (original_task_id = ? OR (task_id = ? AND original_task_id IS NULL))
                 ");
-                $checkStmt->execute([$userId, $task['id'], $date]);
+                $checkStmt->execute([$userId, $date, $task['id'], $task['id']]);
                 
                 if ($checkStmt->fetchColumn() == 0) {
-                    // Set initial status based on task status and date
                     $initialStatus = 'not_started';
                     if ($isPastDate && $task['status'] === 'completed') {
                         $initialStatus = 'completed';
                     } elseif ($isFutureDate) {
-                        // Future tasks are always not_started initially
                         $initialStatus = 'not_started';
                     }
                     
-                    // Insert into daily_tasks
                     $insertStmt = $this->db->prepare("
                         INSERT INTO daily_tasks 
                         (user_id, task_id, original_task_id, title, description, scheduled_date, 
@@ -426,7 +238,6 @@ class DailyPlanner {
                     if ($result) {
                         $addedCount++;
                         
-                        // Log audit trail (optional, don't fail if this fails)
                         try {
                             $this->logTaskHistory(
                                 $this->db->lastInsertId(), 
@@ -455,23 +266,48 @@ class DailyPlanner {
     
     public function startTask($taskId, $userId) {
         try {
-            $now = date('Y-m-d H:i:s');
+            $this->db->beginTransaction();
             
-            // Simple update without transaction for debugging
+            // Get SLA hours for proper end time calculation
+            $stmt = $this->db->prepare("
+                SELECT dt.*, COALESCE(t.sla_hours, 0.25) as sla_hours 
+                FROM daily_tasks dt 
+                LEFT JOIN tasks t ON dt.original_task_id = t.id 
+                WHERE dt.id = ?
+            ");
+            $stmt->execute([$taskId]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$task) {
+                $this->db->rollback();
+                return false;
+            }
+            
+            $now = date('Y-m-d H:i:s');
+            $slaEndTime = date('Y-m-d H:i:s', strtotime($now . ' +' . $task['sla_hours'] . ' hours'));
+            
+            // Update with proper SLA end time calculation
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
-                SET status = 'in_progress', start_time = ?
+                SET status = 'in_progress', start_time = ?, sla_end_time = ?, 
+                    resume_time = NULL, pause_start_time = NULL
                 WHERE id = ?
             ");
-            $result = $stmt->execute([$now, $taskId]);
+            $result = $stmt->execute([$now, $slaEndTime, $taskId]);
             
             if ($result && $stmt->rowCount() > 0) {
                 $this->logTaskHistory($taskId, $userId, 'started', 'not_started', 'in_progress', 'Task started at ' . $now);
                 $this->logTimeAction($taskId, $userId, 'start', $now);
+                $this->db->commit();
+                return true;
             }
             
-            return $result && $stmt->rowCount() > 0;
+            $this->db->rollback();
+            return false;
         } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollback();
+            }
             error_log("DailyPlanner startTask error: " . $e->getMessage());
             return false;
         }
@@ -479,28 +315,48 @@ class DailyPlanner {
     
     public function pauseTask($taskId, $userId) {
         try {
+            $this->db->beginTransaction();
+            
             $now = date('Y-m-d H:i:s');
+            
+            // Get current task state
+            $stmt = $this->db->prepare("
+                SELECT start_time, resume_time, active_seconds, status 
+                FROM daily_tasks WHERE id = ?
+            ");
+            $stmt->execute([$taskId]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$task || $task['status'] !== 'in_progress') {
+                $this->db->rollback();
+                return false;
+            }
             
             // Calculate active time since start/resume
             $activeTime = $this->calculateActiveTime($taskId);
             
-            // Update daily_tasks with pause start time
+            // Update with pause start time and accumulated active seconds
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
-                SET status = 'on_break', pause_time = ?, pause_start_time = ?,
+                SET status = 'on_break', pause_start_time = ?, 
                     active_seconds = active_seconds + ?, updated_at = NOW()
                 WHERE id = ?
             ");
-            $result = $stmt->execute([$now, $now, $activeTime, $taskId]);
+            $result = $stmt->execute([$now, $activeTime, $taskId]);
             
             if ($result && $stmt->rowCount() > 0) {
                 $this->logTimeAction($taskId, $userId, 'pause', $now, $activeTime);
                 $this->logTaskHistory($taskId, $userId, 'paused', 'in_progress', 'on_break', 'Task paused at ' . $now);
+                $this->db->commit();
                 return true;
             }
             
+            $this->db->rollback();
             return false;
         } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollback();
+            }
             error_log("DailyPlanner pauseTask error: " . $e->getMessage());
             return false;
         }
@@ -508,42 +364,30 @@ class DailyPlanner {
     
     public function resumeTask($taskId, $userId) {
         try {
-            // Validate inputs
-            if (!$taskId || !$userId) {
-                throw new Exception("Task ID and User ID are required");
-            }
+            $this->db->beginTransaction();
             
-            // Check if task exists - allow any user to resume any task
+            // Get current task state
             $stmt = $this->db->prepare("
-                SELECT id, status, title 
-                FROM daily_tasks 
-                WHERE id = ?
+                SELECT pause_start_time, pause_duration, status, sla_end_time, active_seconds
+                FROM daily_tasks WHERE id = ?
             ");
             $stmt->execute([$taskId]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if (!$task) {
-                throw new Exception("Task not found or access denied");
-            }
-            
-            // Check if task can be resumed
-            if (!in_array($task['status'], ['on_break'])) {
-                throw new Exception("Task cannot be resumed. Current status: " . $task['status']);
+            if (!$task || $task['status'] !== 'on_break') {
+                $this->db->rollback();
+                throw new Exception("Task cannot be resumed. Current status: " . ($task['status'] ?? 'not found'));
             }
             
             $now = date('Y-m-d H:i:s');
             
-            // Calculate pause duration if pause_start_time exists
-            $stmt = $this->db->prepare("SELECT pause_start_time, pause_duration FROM daily_tasks WHERE id = ?");
-            $stmt->execute([$taskId]);
-            $pauseData = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+            // Calculate pause duration
             $additionalPauseDuration = 0;
-            if ($pauseData && $pauseData['pause_start_time']) {
-                $additionalPauseDuration = time() - strtotime($pauseData['pause_start_time']);
+            if ($task['pause_start_time']) {
+                $additionalPauseDuration = time() - strtotime($task['pause_start_time']);
             }
             
-            // Update task status and add pause duration
+            // Update task status, add pause duration, set resume time
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
                 SET status = 'in_progress', resume_time = ?, 
@@ -552,34 +396,22 @@ class DailyPlanner {
             ");
             $result = $stmt->execute([$now, $additionalPauseDuration, $taskId]);
             
-            if (!$result) {
-                throw new Exception("Failed to update task status");
-            }
-            
-            // Verify the update was successful
-            if ($stmt->rowCount() === 0) {
-                throw new Exception("No rows were updated. Task may not exist or belong to user.");
-            }
-            
-            // Log the action (with error handling)
-            try {
+            if ($result && $stmt->rowCount() > 0) {
                 $this->logTimeAction($taskId, $userId, 'resume', $now);
-            } catch (Exception $e) {
-                error_log("Failed to log time action: " . $e->getMessage());
+                $this->logTaskHistory($taskId, $userId, 'resumed', 'on_break', 'in_progress', 'Task resumed at ' . $now);
+                $this->db->commit();
+                return true;
             }
             
-            try {
-                $this->logTaskHistory($taskId, $userId, 'resumed', 'paused', 'in_progress', 'Task resumed at ' . $now);
-            } catch (Exception $e) {
-                error_log("Failed to log task history: " . $e->getMessage());
-            }
-            
-            return true;
-            
+            $this->db->rollback();
+            return false;
             
         } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollback();
+            }
             error_log("DailyPlanner resumeTask error: " . $e->getMessage());
-            throw $e; // Re-throw to provide specific error message
+            throw $e;
         }
     }
     
@@ -702,57 +534,84 @@ class DailyPlanner {
     
     public function postponeTask($taskId, $userId, $newDate) {
         try {
-            // Add missing columns first
             $this->addPostponeColumns();
-            
             $now = date('Y-m-d H:i:s');
-            $currentDate = date('Y-m-d');
             
-            // Get current task data
-            $stmt = $this->db->prepare("SELECT scheduled_date, postponed_to_date, status FROM daily_tasks WHERE id = ?");
-            $stmt->execute([$taskId]);
+            // Get current task data with all fields
+            $stmt = $this->db->prepare("
+                SELECT * FROM daily_tasks WHERE id = ? AND user_id = ?
+            ");
+            $stmt->execute([$taskId, $userId]);
             $currentTask = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$currentTask) {
                 throw new Exception('Task not found');
             }
             
-            // Check if already postponed to the same date
-            if ($currentTask['postponed_to_date'] === $newDate) {
-                throw new Exception('This task is already postponed to this date.');
-            }
-            
-            // Check if task already exists on target date to prevent duplicates
+            // Check if task already exists on target date (excluding postponed tasks)
             $stmt = $this->db->prepare("
                 SELECT COUNT(*) FROM daily_tasks 
-                WHERE task_id = (SELECT task_id FROM daily_tasks WHERE id = ?) 
-                AND scheduled_date = ? AND user_id = ?
+                WHERE original_task_id = ? AND scheduled_date = ? AND user_id = ? AND status != 'postponed'
             ");
-            $stmt->execute([$taskId, $newDate, $userId]);
+            $stmt->execute([$currentTask['original_task_id'] ?: $currentTask['task_id'], $newDate, $userId]);
             if ($stmt->fetchColumn() > 0) {
                 throw new Exception('A task with this content already exists on the target date.');
             }
             
-            $originalDate = $currentTask['scheduled_date'];
+            $this->db->beginTransaction();
             
-            // Update the task with postponed status but keep on original date
+            // Update original task as postponed
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
                 SET status = 'postponed', postponed_from_date = ?, postponed_to_date = ?, updated_at = NOW()
                 WHERE id = ?
             ");
-            $result = $stmt->execute([$originalDate, $newDate, $taskId]);
+            $stmt->execute([$currentTask['scheduled_date'], $newDate, $taskId]);
+            
+            // Create new entry for the future date with preserved data
+            $stmt = $this->db->prepare("
+                INSERT INTO daily_tasks 
+                (user_id, task_id, original_task_id, title, description, scheduled_date, 
+                 planned_start_time, planned_duration, priority, status, 
+                 completed_percentage, active_seconds, pause_duration,
+                 postponed_from_date, source_field, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_started', ?, ?, ?, ?, 'postponed', NOW())
+            ");
+            
+            $result = $stmt->execute([
+                $currentTask['user_id'],
+                $currentTask['task_id'],
+                $currentTask['original_task_id'] ?: $currentTask['task_id'],
+                $currentTask['title'],
+                $currentTask['description'],
+                $newDate,
+                $currentTask['planned_start_time'],
+                $currentTask['planned_duration'],
+                $currentTask['priority'],
+                $currentTask['completed_percentage'],
+                $currentTask['active_seconds'],
+                $currentTask['pause_duration'],
+                $currentTask['scheduled_date']
+            ]);
             
             if ($result) {
+                $newTaskId = $this->db->lastInsertId();
                 $this->logTimeAction($taskId, $userId, 'postpone', $now);
-                $this->logTaskHistory($taskId, $userId, 'postponed', $originalDate, $newDate, 'Task postponed to ' . $newDate);
-                $this->updateDailyPerformance($userId, $originalDate);
+                $this->logTaskHistory($taskId, $userId, 'postponed', $currentTask['scheduled_date'], $newDate, 'Task postponed to ' . $newDate);
+                $this->logTaskHistory($newTaskId, $userId, 'created', null, 'postponed_entry', 'Postponed task entry created for ' . $newDate);
+                $this->updateDailyPerformance($userId, $currentTask['scheduled_date']);
+                $this->db->commit();
+                return true;
+            } else {
+                $this->db->rollback();
+                throw new Exception('Failed to create postponed task entry');
             }
-            
-            return $result;
         } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollback();
+            }
             error_log("DailyPlanner postponeTask error: " . $e->getMessage());
-            throw $e; // Re-throw to show specific error message
+            throw $e;
         }
     }
     
@@ -871,19 +730,25 @@ class DailyPlanner {
     private function calculateActiveTime($taskId) {
         try {
             $stmt = $this->db->prepare("
-                SELECT start_time, resume_time, status 
+                SELECT start_time, resume_time, status, active_seconds
                 FROM daily_tasks 
                 WHERE id = ?
             ");
             $stmt->execute([$taskId]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if (!$task || $task['status'] === 'paused') return 0;
+            if (!$task || !in_array($task['status'], ['in_progress', 'on_break'])) {
+                return 0;
+            }
             
-            $startTime = $task['resume_time'] ?: $task['start_time'];
-            if (!$startTime) return 0;
+            // Use resume_time if available, otherwise start_time
+            $referenceTime = $task['resume_time'] ?: $task['start_time'];
+            if (!$referenceTime) return 0;
             
-            return time() - strtotime($startTime);
+            // Calculate time since last start/resume
+            $currentSessionTime = time() - strtotime($referenceTime);
+            
+            return max(0, $currentSessionTime);
         } catch (Exception $e) {
             error_log("calculateActiveTime error: " . $e->getMessage());
             return 0;

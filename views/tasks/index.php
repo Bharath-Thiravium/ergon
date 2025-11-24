@@ -290,8 +290,6 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
 }
 </style>
 
-<script src="/ergon/assets/js/table-utils.js"></script>
-
 <script>
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.ab-btn');
