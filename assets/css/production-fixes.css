@@ -1,41 +1,62 @@
-/* Production Fixes CSS */
-
-/* Fix for missing elements */
-.text-info {
-  color: #0dcaf0 !important;
+/* Production Environment Fixes */
+.btn-spaced {
+    margin-right: 8px;
 }
 
-.text-muted {
-  color: #6c757d !important;
+.text-success { color: #10b981; }
+.text-primary { color: #3b82f6; }
+.text-warning { color: #f59e0b; }
+.text-muted { color: #6b7280; }
+.text-info { color: #06b6d4; }
+
+.d-block { display: block; }
+
+.task-source {
+    font-size: 16px;
+    margin-right: 4px;
 }
 
-/* SLA Dashboard fixes */
-.sla-metrics {
-  display: block;
+.task-source--others { color: #3b82f6; }
+.task-source--self { color: #10b981; }
+
+.task-card__created-info {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
 }
 
-.metric-row {
-  display: flex;
-  justify-content: space-between;
-  margin: 0.5rem 0;
-}
-
-.metric-label {
-  font-weight: 500;
-}
-
-.metric-value {
-  font-weight: 600;
-  font-family: monospace;
-}
-
-/* Task rollover indicators */
 .task-card__rollover-info {
-  background: rgba(16, 185, 129, 0.1) !important;
-  border-left-color: #10b981 !important;
+    background: #fef3c7;
+    padding: 8px;
+    border-radius: 4px;
+    margin-top: 8px;
 }
 
-.task-card__rollover-info .text-info {
-  color: #059669 !important;
-  font-weight: 600;
+.empty-state-list {
+    text-align: left;
+    max-width: 300px;
+    margin: 16px auto;
+}
+
+.empty-state-list li {
+    margin: 8px 0;
+}
+
+@media (max-width: 768px) {
+    .planner-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .page-actions {
+        flex-wrap: wrap;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
