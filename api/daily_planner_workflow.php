@@ -114,12 +114,21 @@ if ($userId <= 0) {
 
 // Helper function to validate task ownership
 function validateTaskOwnership($db, $taskId, $userId) {
-    $stmt = $db->prepare("SELECT user_id FROM daily_tasks WHERE id = ? AND user_id = ?");
+    $stmt = $db->prepare("SELECT user_id, scheduled_date FROM daily_tasks WHERE id = ? AND user_id = ?");
     if (!$stmt->execute([$taskId, $userId])) {
         throw new Exception('Database query failed');
     }
-    if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
+    $task = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$task) {
         throw new Exception('Task not found or access denied');
+    }
+
+    // NEW: Enforce past date restrictions on the server-side
+    $isPastDate = ($task['scheduled_date'] < date('Y-m-d'));
+    $action = $_GET['action'] ?? '';
+    $allowedInPast = ['timer', 'sla-dashboard']; // Actions that are read-only
+    if ($isPastDate && !in_array($action, $allowedInPast)) {
+        throw new Exception('Execution actions are disabled for past dates.');
     }
     return true;
 }

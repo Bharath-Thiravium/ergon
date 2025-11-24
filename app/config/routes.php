@@ -266,17 +266,6 @@ $router->post('/api/update-task-status-direct', 'UnifiedWorkflowController', 'up
 $router->get('/api/tasks-for-date', 'UnifiedWorkflowController', 'getTasksForDate');
 $router->post('/api/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
 
-// Advanced Daily Planner Workflow API Routes
-$router->post('/workflow/start-task', 'UnifiedWorkflowController', 'startTask');
-$router->post('/workflow/pause-task', 'UnifiedWorkflowController', 'pauseTask');
-$router->post('/workflow/resume-task', 'UnifiedWorkflowController', 'resumeTask');
-$router->post('/workflow/complete-task', 'UnifiedWorkflowController', 'completeTask');
-$router->post('/workflow/postpone-task', 'UnifiedWorkflowController', 'postponeTask');
-$router->post('/workflow/update-task-status', 'UnifiedWorkflowController', 'updateTaskStatus');
-$router->get('/workflow/task-timer', 'UnifiedWorkflowController', 'getTaskTimer');
-$router->get('/workflow/task-history', 'UnifiedWorkflowController', 'getTaskHistory');
-$router->post('/workflow/quick-add-task', 'UnifiedWorkflowController', 'quickAddTask');
-
 // Mobile API Routes
 $router->post('/api/register_device', 'ApiController', 'registerDevice');
 $router->post('/api/sync', 'ApiController', 'syncOfflineData');

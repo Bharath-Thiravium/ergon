@@ -3,18 +3,14 @@ require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../helpers/Security.php';
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../../hostinger_optimizations.php';
+// require_once __DIR__ . '/../../hostinger_optimizations.php'; // File not found
 
 class ProfileController extends Controller {
     private $db;
     
     public function __construct() {
         try {
-            if (isHostingerEnvironment()) {
-                $this->db = hostingerDatabaseConnect();
-            } else {
-                $this->db = Database::connect();
-            }
+            $this->db = Database::connect();
         } catch (Exception $e) {
             error_log('ProfileController database connection failed: ' . $e->getMessage());
             throw new Exception('Database connection failed');
@@ -173,10 +169,7 @@ class ProfileController extends Controller {
             exit;
         }
         
-        // Hostinger-specific session handling
-        if (isHostingerEnvironment()) {
-            hostingerSessionRestart();
-        }
+        // Session handling
         
         // Ensure table exists before any operations
         $this->createUserPreferencesTable();
