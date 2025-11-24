@@ -4,12 +4,14 @@
  */
 
 // Early exit for incompatible pages
-if (window.location.pathname.includes('/workflow/daily-planner') || 
-    window.location.pathname.includes('/admin/management')) {
-  console.log('Mobile table cards disabled for this page');
-  // Stop all execution
-  return;
-}
+(function() {
+  if (window.location.pathname.includes('/workflow/daily-planner') || 
+      window.location.pathname.includes('/admin/management')) {
+    console.log('Mobile table cards disabled for this page');
+    return; // Exit the IIFE
+  }
+
+  // Rest of the script only runs if not on excluded pages
 
 function convertTablesToCards() {
   // Completely disable on incompatible pages
@@ -215,3 +217,5 @@ removeElementByXPath('/html/body/main/div[3]/div[2]/div/div/div[1]/div[3]/div');
 // Export for manual triggering
 window.convertTablesToCards = convertTablesToCards;
 window.removeElementByXPath = removeElementByXPath;
+
+})(); // Close the IIFE
