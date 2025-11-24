@@ -2472,7 +2472,7 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 
 .activity-row {
     display: grid;
-    grid-template-columns: 30px 1fr 1fr auto 80px;
+    grid-template-columns: 30px .4fr 1fr auto 60px;
     gap: 0.75rem;
     align-items: center;
     padding: 0.75rem;
@@ -2480,7 +2480,7 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     border: 1px solid var(--border-color);
     border-radius: 8px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    min-height: 65px;
+    min-height: 100px;
     position: relative;
     overflow: hidden;
 }
