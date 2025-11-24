@@ -875,12 +875,10 @@ class FinanceController extends Controller {
     }
     
     private function resolveDispatchLocation($data) {
-        // First try to get address using shipping_address_id (proper join)
+        // First try to get address from linked customer record
         $customerId = $data['customer_id'] ?? '';
-        $shippingAddressId = $data['shipping_address_id'] ?? '';
-        
         if ($customerId) {
-            $customerAddress = $this->getCustomerAddress($customerId, $shippingAddressId);
+            $customerAddress = $this->getCustomerAddress($customerId);
             if ($customerAddress !== 'Not specified') {
                 return $customerAddress;
             }
@@ -902,35 +900,11 @@ class FinanceController extends Controller {
         return 'Not specified';
     }
     
-    private function getCustomerAddress($customerId, $shippingAddressId = null) {
+    private function getCustomerAddress($customerId) {
         try {
             $db = Database::connect();
             
-            // First try to get address using shipping_address_id if provided
-            if ($shippingAddressId) {
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customershippingaddress'");
-                $stmt->execute();
-                $addressResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                foreach ($addressResults as $row) {
-                    $data = json_decode($row['data'], true);
-                    if (($data['id'] ?? '') === $shippingAddressId) {
-                        $addressParts = array_filter([
-                            $data['label'] ?? '',
-                            $data['address_line1'] ?? '',
-                            $data['city'] ?? '',
-                            $data['state'] ?? '',
-                            $data['pincode'] ?? '',
-                            $data['country'] ?? ''
-                        ]);
-                        if (!empty($addressParts)) {
-                            return implode(', ', $addressParts);
-                        }
-                    }
-                }
-            }
-            
-            // Then check by customer_id in shipping addresses
+            // First check finance_customershippingaddress table
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customershippingaddress'");
             $stmt->execute();
             $addressResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -938,15 +912,9 @@ class FinanceController extends Controller {
             foreach ($addressResults as $row) {
                 $data = json_decode($row['data'], true);
                 if (($data['customer_id'] ?? '') === $customerId) {
-                    $addressParts = array_filter([
-                        $data['label'] ?? '',
-                        $data['address_line1'] ?? '',
-                        $data['city'] ?? '',
-                        $data['state'] ?? '',
-                        $data['pincode'] ?? ''
-                    ]);
-                    if (!empty($addressParts)) {
-                        return implode(', ', $addressParts);
+                    $address = trim(($data['address_line1'] ?? '') . ' ' . ($data['city'] ?? '') . ' ' . ($data['state'] ?? '') . ' ' . ($data['pincode'] ?? ''));
+                    if ($address !== '') {
+                        return $address;
                     }
                 }
             }
@@ -1562,38 +1530,15 @@ class FinanceController extends Controller {
     private function getCustomerNamesMapping($db) {
         $customerNames = [];
         
-        // Get customer names from finance_customer table with company names from authentication_company
+        // Get customer names from finance_customer table (correct table name from DB analysis)
         $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
         $stmt->execute();
         $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Also get company names for enhanced resolution
-        $companyNames = [];
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'authentication_company'");
-        $stmt->execute();
-        $companyResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        foreach ($companyResults as $row) {
-            $data = json_decode($row['data'], true);
-            $companyId = $data['id'] ?? '';
-            $companyName = $data['name'] ?? '';
-            if ($companyId && $companyName) {
-                $companyNames[$companyId] = $companyName;
-            }
-        }
-        
         foreach ($customerResults as $row) {
             $data = json_decode($row['data'], true);
             $customerId = $data['id'] ?? '';
-            $companyId = $data['company_id'] ?? '';
-            
-            // Priority: company name > display_name > name
-            $customerName = '';
-            if ($companyId && isset($companyNames[$companyId])) {
-                $customerName = $companyNames[$companyId];
-            } else {
-                $customerName = $data['display_name'] ?? $data['name'] ?? '';
-            }
+            $customerName = $data['display_name'] ?? $data['name'] ?? '';
             
             if ($customerId && $customerName) {
                 $customerNames[$customerId] = $customerName;
