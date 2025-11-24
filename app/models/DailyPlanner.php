@@ -13,6 +13,7 @@ class DailyPlanner {
         $this->db = Database::connect();
         $this->ensureDailyTasksTable();
         $this->ensureTaskHistoryTable();
+        $this->ensureDailyPerformanceTable(); // ✅ ADD THIS CALL
     }
     
     private function ensureDailyTasksTable() {

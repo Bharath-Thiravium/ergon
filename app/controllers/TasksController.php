@@ -1182,7 +1182,7 @@ class TasksController extends Controller {
                 priority ENUM('low','medium','high') DEFAULT 'medium',
                 deadline DATETIME DEFAULT NULL,
                 progress INT DEFAULT 0,
-                status ENUM('assigned','in_progress','completed','cancelled','suspended') DEFAULT 'assigned',
+                status ENUM('assigned','not_started','in_progress','completed','cancelled','suspended') DEFAULT 'assigned',
                 due_date DATE DEFAULT NULL,
                 depends_on_task_id INT DEFAULT NULL,
                 sla_hours DECIMAL(8,4) DEFAULT 0.25,
