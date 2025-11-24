@@ -413,6 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Activity filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', function() {
+            console.log('Filter button clicked:', this.getAttribute('data-type'));
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             const filterType = this.getAttribute('data-type');
@@ -433,6 +434,11 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCompanyPrefix().then(() => {
         loadCustomers();
         loadDashboardData();
+        // Also load activities directly as a fallback
+        setTimeout(() => {
+            console.log('Loading activities as fallback...');
+            loadRecentActivities('all');
+        }, 2000);
     });
 });
 
@@ -673,7 +679,7 @@ async function loadDashboardData() {
         updateConversionFunnel(data);
         updateCharts(data);
         loadOutstandingInvoices();
-        loadRecentActivities();
+        loadRecentActivities('all');
         updateCashFlow(data);
         
     } catch (error) {
@@ -924,15 +930,21 @@ async function loadOutstandingByCustomer(limit = 10) {
 // (Server-side export used via /ergon/finance/export-outstanding)
 
 async function loadRecentActivities(type = 'all') {
+    console.log('Loading recent activities with type:', type);
     try {
-        const response = await fetch('/ergon/finance/recent-activities');
+        const response = await fetch('/ergon/finance/recent-activities?t=' + Date.now());
+        console.log('Response status:', response.status);
         if (!response.ok) {
             throw new Error('Recent activities API not available');
         }
         const activityText = await response.text();
+        console.log('Response text length:', activityText.length);
         const data = activityText ? JSON.parse(activityText) : {};
         
         const container = document.getElementById('recentActivities');
+        console.log('Container found:', !!container);
+        console.log('Activities data:', data.activities ? data.activities.length : 'No activities');
+        
         if (data.activities && data.activities.length > 0) {
             let filteredActivities = data.activities;
             
