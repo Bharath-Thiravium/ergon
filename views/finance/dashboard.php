@@ -14,27 +14,27 @@
         </div>
         <div class="dashboard-header__actions">
             <div class="action-group">
-                <button id="syncBtn" class="btn btn--primary btn--sm">
+                <button id="syncBtn" class="btn btn--primary btn--sm" title="Synchronize finance data from external sources">
                     <span class="btn__icon">🔄</span>
                     <span class="btn__text">Sync Data</span>
                 </button>
-                <button id="exportBtn" class="btn btn--secondary btn--sm">
+                <button id="exportBtn" class="btn btn--secondary btn--sm" title="Export dashboard data to CSV format">
                     <span class="btn__icon">📥</span>
                     <span class="btn__text">Export</span>
                 </button>
-                <button onclick="window.open('/ergon/finance/download-database', '_blank')" class="btn btn--info btn--sm">
+                <button onclick="window.open('/ergon/finance/download-database', '_blank')" class="btn btn--info btn--sm" title="Download complete database backup as CSV">
                     <span class="btn__icon">💾</span>
                     <span class="btn__text">Download DB</span>
                 </button>
             </div>
             <div class="filter-group">
                 <div class="input-group">
-                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Company Prefix" maxlength="10">
-                    <button id="updatePrefixBtn" class="btn btn--secondary btn--sm">
+                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Company Prefix" maxlength="10" title="Enter company prefix to filter documents">
+                    <button id="updatePrefixBtn" class="btn btn--secondary btn--sm" title="Update company prefix for document filtering">
                         <span class="btn__icon">🏢</span>
                     </button>
                 </div>
-                <select id="dateFilter" class="form-control form-control--sm">
+                <select id="dateFilter" class="form-control form-control--sm" title="Filter data by date range">
                     <option value="all">All Time</option>
                     <option value="30">Last 30 Days</option>
                     <option value="90">Last 90 Days</option>
@@ -136,7 +136,7 @@
         <div class="card card--full-width">
             <div class="card__header">
                 <h2 class="card__title">🔄 Revenue Conversion Funnel</h2>
-                <select id="customerFilter" class="form-control customer-filter">
+                <select id="customerFilter" class="form-control customer-filter" title="Filter data by specific customer">
                     <option value="">All Customers</option>
                 </select>
                 <span id="customerLoader" class="customer-loader" aria-hidden="true"></span>
@@ -318,7 +318,7 @@
         <div class="card card--full-width">
             <div class="card__header">
                 <h2 class="card__title">⚠️ Outstanding Invoices</h2>
-                <button class="btn btn--sm" onclick="exportTable('outstanding')">Export</button>
+                <button class="btn btn--sm" onclick="exportTable('outstanding')" title="Export outstanding invoices to CSV">Export</button>
             </div>
             <div class="card__body">
                 <div class="table-responsive">
