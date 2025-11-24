@@ -613,8 +613,79 @@ class FinanceController extends Controller {
         }
     }
     
+    public function analyzeFinanceFields() {
+        header('Content-Type: text/plain');
+        
+        try {
+            $db = Database::connect();
+            echo "=== FINANCE DATABASE FIELD ANALYSIS ===\n\n";
+            
+            $tables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_customers'];
+            
+            foreach ($tables as $tableName) {
+                echo "TABLE: $tableName\n";
+                echo str_repeat("-", 50) . "\n";
+                
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = ? LIMIT 3");
+                $stmt->execute([$tableName]);
+                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (empty($results)) {
+                    echo "No data found\n\n";
+                    continue;
+                }
+                
+                $allFields = [];
+                foreach ($results as $i => $row) {
+                    $data = json_decode($row['data'], true);
+                    if ($data) {
+                        echo "Sample " . ($i + 1) . ":\n";
+                        foreach ($data as $key => $value) {
+                            $allFields[] = $key;
+                            if (stripos($key, 'name') !== false || 
+                                stripos($key, 'company') !== false || 
+                                stripos($key, 'customer') !== false || 
+                                stripos($key, 'address') !== false || 
+                                stripos($key, 'location') !== false || 
+                                stripos($key, 'delivery') !== false || 
+                                stripos($key, 'shipping') !== false || 
+                                stripos($key, 'dispatch') !== false) {
+                                echo "  $key: " . (is_string($value) ? substr($value, 0, 100) : json_encode($value)) . "\n";
+                            }
+                        }
+                        echo "\n";
+                    }
+                }
+                
+                $allFields = array_unique($allFields);
+                echo "All fields: " . implode(", ", $allFields) . "\n\n";
+            }
+            
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n";
+        }
+    }
+    
     public function getRecentActivities() {
         header('Content-Type: application/json');
+        
+        // Debug mode - show raw data structure
+        if (isset($_GET['debug'])) {
+            try {
+                $db = Database::connect();
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' LIMIT 1");
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($result) {
+                    $data = json_decode($result['data'], true);
+                    echo json_encode(['debug' => 'Raw quotation data', 'fields' => array_keys($data), 'sample' => $data], JSON_PRETTY_PRINT);
+                    return;
+                }
+            } catch (Exception $e) {
+                echo json_encode(['debug_error' => $e->getMessage()]);
+                return;
+            }
+        }
         
         try {
             $db = Database::connect();
@@ -649,7 +720,7 @@ class FinanceController extends Controller {
                     'taxable_amount' => $taxableAmount,
                     'tax_amount' => $taxAmount,
                     'total_amount' => $totalAmount,
-                    'dispatch_location' => $data['delivery_address'] ?? $data['shipping_address'] ?? $data['dispatch_address'] ?? $data['dispatch_location'] ?? 'Not specified',
+                    'dispatch_location' => $this->resolveDispatchLocation($data),
                     'date' => $data['quotation_date'] ?? $data['created_date'] ?? date('Y-m-d'),
                     'status' => $data['status'] ?? 'draft',
                     'valid_until' => $data['valid_until'] ?? 'N/A'
@@ -683,7 +754,7 @@ class FinanceController extends Controller {
                     'taxable_amount' => $taxableAmount,
                     'tax_amount' => $taxAmount,
                     'total_amount' => $totalAmount,
-                    'dispatch_location' => $data['delivery_address'] ?? $data['shipping_address'] ?? $data['dispatch_address'] ?? $data['dispatch_location'] ?? 'Not specified',
+                    'dispatch_location' => $this->resolveDispatchLocation($data),
                     'date' => $data['po_date'] ?? $data['created_date'] ?? date('Y-m-d'),
                     'status' => $data['status'] ?? 'pending'
                 ];
@@ -716,7 +787,7 @@ class FinanceController extends Controller {
                     'taxable_amount' => $taxableAmount,
                     'tax_amount' => $taxAmount,
                     'total_amount' => $totalAmount,
-                    'dispatch_location' => $data['delivery_address'] ?? $data['shipping_address'] ?? $data['dispatch_address'] ?? $data['dispatch_location'] ?? 'Not specified',
+                    'dispatch_location' => $this->resolveDispatchLocation($data),
                     'date' => $data['invoice_date'] ?? $data['created_date'] ?? date('Y-m-d'),
                     'status' => $data['payment_status'] ?? 'unpaid',
                     'due_date' => $data['due_date'] ?? 'N/A',
@@ -744,23 +815,42 @@ class FinanceController extends Controller {
         if ($customerId && isset($customerNames[$customerId])) {
             return $customerNames[$customerId];
         }
-        // Then try customer_name field in data
-        if (!empty($data['customer_name']) && $data['customer_name'] !== $data['customer_gstin']) {
-            return $data['customer_name'];
+        
+        // Check all possible name fields in order of preference
+        $nameFields = [
+            'company_name', 'customer_company_name', 'client_name', 'client_company_name',
+            'display_name', 'customer_display_name', 'name', 'customer_name', 
+            'company', 'customer_company', 'organization_name', 'firm_name'
+        ];
+        
+        foreach ($nameFields as $field) {
+            if (!empty($data[$field]) && $data[$field] !== $data['customer_gstin']) {
+                return $data[$field];
+            }
         }
-        // Try display_name field
-        if (!empty($data['display_name'])) {
-            return $data['display_name'];
-        }
-        // Try name field
-        if (!empty($data['name'])) {
-            return $data['name'];
-        }
+        
         // Last resort - use GST number
         if (!empty($data['customer_gstin'])) {
             return 'GST: ' . $data['customer_gstin'];
         }
         return 'Customer ' . ($customerId ?: 'Unknown');
+    }
+    
+    private function resolveDispatchLocation($data) {
+        // Check all possible address fields in order of preference
+        $addressFields = [
+            'delivery_address', 'shipping_address', 'dispatch_address', 'dispatch_location',
+            'customer_address', 'client_address', 'billing_address', 'site_address',
+            'project_address', 'installation_address', 'service_address', 'address'
+        ];
+        
+        foreach ($addressFields as $field) {
+            if (!empty($data[$field])) {
+                return $data[$field];
+            }
+        }
+        
+        return 'Not specified';
     }
     
     public function exportTable() {
