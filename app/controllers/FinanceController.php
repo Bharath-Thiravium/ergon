@@ -673,14 +673,11 @@ class FinanceController extends Controller {
         if (isset($_GET['debug'])) {
             try {
                 $db = Database::connect();
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' LIMIT 1");
-                $stmt->execute();
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
-                if ($result) {
-                    $data = json_decode($result['data'], true);
-                    echo json_encode(['debug' => 'Raw quotation data', 'fields' => array_keys($data), 'sample' => $data], JSON_PRETTY_PRINT);
-                    return;
-                }
+                $this->createTables($db);
+                $stmt = $db->query("SELECT * FROM finance_data LIMIT 3");
+                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                echo json_encode(['debug' => 'finance_data structure', 'sample_records' => $results], JSON_PRETTY_PRINT);
+                return;
             } catch (Exception $e) {
                 echo json_encode(['debug_error' => $e->getMessage()]);
                 return;
@@ -689,6 +686,7 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
+            $this->createTables($db);
             $prefix = $this->getCompanyPrefix();
             $customerNames = $this->getCustomerNamesMapping($db);
             $activities = [];
@@ -1149,15 +1147,26 @@ class FinanceController extends Controller {
             // Column already exists
         }
         
-        $db->exec("CREATE TABLE IF NOT EXISTS finance_data (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            table_name VARCHAR(100),
-            data JSON,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX(table_name)
-        )");
-        
-
+        // Check if finance_data table exists with correct structure
+        $stmt = $db->query("SHOW TABLES LIKE 'finance_data'");
+        if ($stmt->rowCount() == 0) {
+            $db->exec("CREATE TABLE finance_data (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                table_name VARCHAR(100),
+                data JSON,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX(table_name)
+            )");
+        } else {
+            // Check if table_name column exists
+            try {
+                $db->query("SELECT table_name FROM finance_data LIMIT 1");
+            } catch (Exception $e) {
+                // Add missing column
+                $db->exec("ALTER TABLE finance_data ADD COLUMN table_name VARCHAR(100)");
+                $db->exec("ALTER TABLE finance_data ADD INDEX(table_name)");
+            }
+        }
     }
     
     private function getQuotationsChart($db) {
