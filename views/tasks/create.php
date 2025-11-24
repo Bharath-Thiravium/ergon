@@ -370,7 +370,7 @@ $content = ob_start();
                     <div class="form-group">
                         <label class="form-label" for="contact_id">Contact</label>
                         <select name="contact_id" id="contact_id" class="form-control">
-                            <option value="">Select a contact</option>
+                        <option value="">-- Select or type to search --</option>
                         </select>
                         <small class="form-help">Select existing contact or leave empty for manual entry</small>
                     </div>
@@ -378,7 +378,7 @@ $content = ob_start();
                     <div class="form-group">
                         <label class="form-label" for="follow_up_date">Follow-up Date *</label>
                         <input type="date" name="follow_up_date" id="follow_up_date" class="form-control">
-                        <small class="form-help">When should this follow-up be done?</small>
+                    <small class="form-help">When should this follow-up be performed?</small>
                     </div>
                 </div>
                 
@@ -485,18 +485,13 @@ function handleAssignmentTypeChange() {
     if (assignmentType === 'self') {
         // Show only current user
         options.forEach(option => {
-            if (option.value === '<?= $_SESSION['user_id'] ?>') {
-                option.style.display = 'block';
-                option.selected = true;
-            } else {
-                option.style.display = 'none';
-                option.selected = false;
-            }
+            option.hidden = (option.value !== '<?= $_SESSION['user_id'] ?>');
         });
+        assignedToSelect.value = '<?= $_SESSION['user_id'] ?>';
     } else {
         // Show all users for delegation
         options.forEach(option => {
-            option.style.display = 'block';
+            option.hidden = false;
         });
         // Don't auto-select current user when delegating
         assignedToSelect.value = '';
@@ -504,7 +499,7 @@ function handleAssignmentTypeChange() {
 }
 
 // Toggle recurring fields
-function toggleRecurringFields() {
+function toggleRecurringFields(isInitial = false) {
     const checkbox = document.getElementById('is_recurring');
     const recurringFields = document.getElementById('recurringFields');
     
@@ -512,7 +507,9 @@ function toggleRecurringFields() {
         recurringFields.style.display = 'block';
         recurringFields.style.animation = 'slideDown 0.3s ease';
         
-        // Add required attribute to recurring fields
+        if (!isInitial) {
+            recurringFields.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         document.getElementById('recurrence_type').setAttribute('required', 'required');
         
         // Update interval label based on recurrence type
@@ -561,7 +558,7 @@ function updateIntervalLabel() {
 }
 
 // Toggle follow-up fields
-function toggleFollowupFields() {
+function toggleFollowupFields(isInitial = false) {
     const checkbox = document.getElementById('followup_required');
     const followupFields = document.getElementById('followupFields');
     
@@ -575,6 +572,9 @@ function toggleFollowupFields() {
     if (checkbox.checked) {
         followupFields.style.display = 'block';
         followupFields.style.animation = 'slideDown 0.3s ease';
+        if (!isInitial) {
+            followupFields.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         
         // Add required attribute to follow-up fields
         followupRequiredFields.forEach(field => {
@@ -641,12 +641,14 @@ let followupData = [];
 
 // Load contacts for the dropdown
 function loadContacts() {
+    const contactSelect = document.getElementById('contact_id');
+    if (contactSelect.length > 1) return; // Already loaded
+
     fetch('/ergon/api/contact-persons')
         .then(response => response.json())
         .then(data => {
-            const contactSelect = document.getElementById('contact_id');
             if (data.success && data.contacts) {
-                data.contacts.forEach(contact => {
+                data.contacts.forEach(contact => { // ✅ REBUILT: Prevents duplicate options
                     const option = document.createElement('option');
                     option.value = contact.id || '';
                     option.textContent = contact.name + (contact.company ? ' - ' + contact.company : '');
@@ -717,6 +719,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('sla_hours_part').addEventListener('input', updateSLAHours);
     document.getElementById('sla_minutes_part').addEventListener('input', updateSLAHours);
     
+    // Initial state setup
+    toggleFollowupFields(true);
+    toggleRecurringFields(true);
+
     // Initialize SLA time calculation
     updateSLAHours();
     

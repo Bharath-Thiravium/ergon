@@ -51,16 +51,6 @@ ob_start();
         <div class="kpi-card__label">Pending Review</div>
         <div class="kpi-card__status kpi-card__status--pending">Under Review</div>
     </div>
-    
-    <div class="kpi-card">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">✅</div>
-            <div class="kpi-card__trend">↗ +18%</div>
-        </div>
-        <div class="kpi-card__value">₹<?= number_format(array_sum(array_map(fn($a) => $a['amount'] ?? 0, array_filter($advances ?? [], fn($a) => ($a['status'] ?? 'pending') === 'approved'))), 2) ?></div>
-        <div class="kpi-card__label">Approved Amount</div>
-        <div class="kpi-card__status">Processed</div>
-    </div>
 </div>
 
 <div class="card">

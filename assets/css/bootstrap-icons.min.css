@@ -3,13 +3,22 @@
   src: url('/ergon/assets/fonts/bootstrap-icons.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
+  font-display: swap;
+}
+
+/* Fallback for when font fails to load */
+@font-face {
+  font-family: 'bootstrap-icons-fallback';
+  src: url('data:font/woff2;base64,') format('woff2');
+  font-weight: normal;
+  font-style: normal;
   font-display: block;
 }
 .bi::before,
 [class^='bi-']::before,
 [class*=' bi-']::before {
   display: inline-block;
-  font-family: 'bootstrap-icons' !important;
+  font-family: 'bootstrap-icons', 'bootstrap-icons-fallback', monospace !important;
   font-style: normal;
   font-weight: normal !important;
   font-variant: normal;
@@ -17,6 +26,7 @@
   line-height: 1;
   vertical-align: -0.125em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 .bi-list::before {
   content: '\f479';

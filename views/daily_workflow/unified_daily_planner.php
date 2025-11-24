@@ -1988,11 +1988,20 @@ Object.defineProperty(Element.prototype, 'innerHTML', {
 });
 
 function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    const bgColor = type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8';
-    notification.innerHTML = `<div style="position:fixed;top:20px;right:20px;background:${bgColor};color:white;padding:10px 20px;border-radius:5px;z-index:9999;">${message}</div>`;
-    document.body.appendChild(notification);
-    setTimeout(() => document.body.removeChild(notification), 3000);
+    const notification = document.createElement('div');    
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        info: '#17a2b8'
+    };
+    const bgColor = colors[type] || colors.info;
+    notification.innerHTML = `<div style="position:fixed;top:20px;right:20px;background:${bgColor};color:white;padding:10px 20px;border-radius:5px;z-index:9999;box-shadow: 0 2px 10px rgba(0,0,0,0.2);">${message}</div>`;
+    document.body.appendChild(notification);    
+    setTimeout(() => {
+        if (document.body.contains(notification)) {
+            document.body.removeChild(notification);
+        }
+    }, 3000);
 }
 
 // Define openProgressModal function globally
@@ -2321,6 +2330,7 @@ window.startTask = function(taskId) {
     if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
     slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
     showNotification('Task started', 'success');
+    // showNotification('Task started', 'success'); // Removed for better UX, UI change is enough feedback.
     
     // Send to server
     fetch('/ergon/api/daily_planner_workflow.php?action=start', {
@@ -2329,24 +2339,6 @@ window.startTask = function(taskId) {
         body: JSON.stringify({ task_id: parseInt(taskId) })
     }).catch(() => {});
 }
-
-// Define pauseTask function globally
-window.pauseTask = function(taskId) {
-    // Update UI immediately
-    updateTaskUI(taskId, 'pause');
-    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-    if (taskCard) taskCard.dataset.pauseStart = Date.now();
-    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
-    slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
-    showNotification('Task paused', 'info');
-    
-    // Send to server
-    fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task_id: parseInt(taskId) })
-    }).catch(() => {});
-};
 
 // Also define as regular function for compatibility
 function pauseTask(taskId) {
@@ -2362,6 +2354,7 @@ window.resumeTask = function(taskId) {
     if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
     slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
     showNotification('Task resumed', 'success');
+    // showNotification('Task resumed', 'success'); // Removed for better UX
     
     // Send to server
     fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
@@ -2791,13 +2784,52 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // CRITICAL: Make all functions globally accessible for HTML onclick attributes
-function startTask(taskId) { return window.startTask(taskId); }
-function pauseTask(taskId) { return window.pauseTask(taskId); }
-function resumeTask(taskId) { return window.resumeTask(taskId); }
-function postponeTask(taskId) { return window.postponeTask(taskId); }
-function openProgressModal(taskId, progress, status) { return window.openProgressModal(taskId, progress, status); }
+function startTask(taskId) {
+    const button = event.target.closest('button');
+    setButtonLoadingState(button, true);
+    updateTaskUI(taskId, 'in_progress');
+    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+    slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+    fetch('/ergon/api/daily_planner_workflow.php?action=start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: parseInt(taskId) })
+    }).catch(() => {});
+}
 
-// FINAL FIX: Override any remaining alert/console.error functions to prevent interruptions
+function pauseTask(taskId) {
+    const button = event.target.closest('button');
+    setButtonLoadingState(button, true);
+    updateTaskUI(taskId, 'on_break');
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (taskCard) taskCard.dataset.pauseStart = Date.now();
+    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+    slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+    fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: parseInt(taskId) })
+    }).catch(() => {});
+}
+
+function resumeTask(taskId) {
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (!taskCard) return;
+
+    const button = event.target.closest('button');
+    setButtonLoadingState(button, true);
+    updateTaskUI(taskId, 'in_progress');
+    
+    delete taskCard.dataset.pauseStart;
+    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+    slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+
+    fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: parseInt(taskId) })
+    }).catch(() => {});
+}
 (function() {
     // Store original functions
     const originalAlert = window.alert;
@@ -2821,6 +2853,109 @@ function openProgressModal(taskId, progress, status) { return window.openProgres
     // window.restoreAlerts = () => { window.alert = originalAlert; console.error = originalConsoleError; };
 })();
 
+function updateTaskUI(taskId, newStatus, data = {}) {
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (!taskCard) return;
+
+    const statusBadge = taskCard.querySelector(`#status-${taskId}`);
+    const actionsDiv = taskCard.querySelector(`#actions-${taskId}`);
+    const countdownLabel = taskCard.querySelector(`#countdown-${taskId} .countdown-label`);
+
+    // Update task card dataset
+    taskCard.dataset.status = newStatus;
+
+    // Define all possible action buttons
+    const buttons = {
+        start: actionsDiv.querySelector('[onclick*="startTask"]'),
+        pause: actionsDiv.querySelector('[onclick*="pauseTask"]'),
+        resume: actionsDiv.querySelector('[onclick*="resumeTask"]'),
+        update: actionsDiv.querySelector('[onclick*="openProgressModal"]'),
+        postpone: actionsDiv.querySelector('[onclick*="postponeTask"]'),
+        activate: actionsDiv.querySelector('[onclick*="activatePostponedTask"]')
+    };
+
+    // Hide all buttons initially
+    Object.values(buttons).forEach(btn => {
+        if (btn) btn.style.display = 'none';
+    });
+
+    // Reset loading states on all buttons
+    Object.values(buttons).forEach(btn => setButtonLoadingState(btn, false));
+
+    let statusText = newStatus.replace('_', ' ');
+    let statusClass = `badge--${newStatus}`;
+    let cardClass = `task-card--${newStatus}`;
+
+    switch (newStatus) {
+        case 'in_progress':
+            statusText = 'In Progress';
+            cardClass = 'task-card--active';
+            if (countdownLabel) countdownLabel.textContent = 'Remaining';
+            if (buttons.pause) buttons.pause.style.display = 'inline-block';
+            if (buttons.update) buttons.update.style.display = 'inline-block';
+            if (buttons.postpone) buttons.postpone.style.display = 'inline-block';
+            
+            // Remove pause timer if it exists
+            const pauseTimer = taskCard.querySelector(`#pause-timer-${taskId}`);
+            if (pauseTimer) pauseTimer.parentElement.removeChild(pauseTimer.nextElementSibling); // remove label
+            if (pauseTimer) pauseTimer.parentElement.removeChild(pauseTimer);
+            break;
+
+        case 'on_break':
+            statusText = 'On Break';
+            cardClass = 'task-card--break';
+            if (countdownLabel) countdownLabel.textContent = 'Paused';
+            if (buttons.resume) buttons.resume.style.display = 'inline-block';
+            if (buttons.update) buttons.update.style.display = 'inline-block';
+            if (buttons.postpone) buttons.postpone.style.display = 'inline-block';
+
+            // Add pause timer if it doesn't exist
+            const countdownDiv = taskCard.querySelector(`#countdown-${taskId}`);
+            if (countdownDiv && !countdownDiv.querySelector(`#pause-timer-${taskId}`)) {
+                countdownDiv.insertAdjacentHTML('beforeend', `
+                    <div class="pause-timer" id="pause-timer-${taskId}">00:00:00</div>
+                    <div class="pause-timer-label">Break Time</div>
+                `);
+            }
+            break;
+
+        case 'not_started':
+        case 'assigned':
+            statusText = 'Not Started';
+            statusClass = 'badge--not_started';
+            if (buttons.start) buttons.start.style.display = 'inline-block';
+            if (buttons.postpone) buttons.postpone.style.display = 'inline-block';
+            break;
+
+        case 'completed':
+            statusText = 'Completed';
+            actionsDiv.innerHTML = `<span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>`;
+            break;
+
+        case 'postponed':
+            statusText = 'Postponed';
+            if (buttons.activate) buttons.activate.style.display = 'inline-block';
+            if (buttons.postpone) {
+                buttons.postpone.style.display = 'inline-block';
+                buttons.postpone.innerHTML = '<i class="bi bi-calendar-plus"></i> Re-postpone';
+            }
+            break;
+
+        default:
+            actionsDiv.innerHTML = `<span class="badge badge--muted">${statusText}</span>`;
+            break;
+    }
+
+    // Update status badge
+    if (statusBadge) {
+        statusBadge.textContent = statusText.charAt(0).toUpperCase() + statusText.slice(1);
+        statusBadge.className = `badge ${statusClass}`;
+    }
+
+    // Update task card class
+    taskCard.className = taskCard.className.replace(/task-card--\w+/g, '') + ` ${cardClass}`;
+}
+
 console.log('✅ Daily Planner loaded successfully - All alerts and console errors disabled');
 </script>
 
@@ -2833,3 +2968,11 @@ $title = 'Daily Planner';
 $active_page = 'daily-planner';
 include __DIR__ . '/../layouts/dashboard.php';
 ?>
+
+<style>
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.spinner { animation: spin 1s linear infinite; }
+</style>
