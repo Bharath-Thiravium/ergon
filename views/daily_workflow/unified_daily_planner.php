@@ -2358,20 +2358,15 @@ window.startTask = function(taskId) {
     
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     
-    const requestData = {
-        task_id: parseInt(taskId),
-        action: 'start',
-        csrf_token: csrfToken
-    };
-    
-    fetch('/ergon/api/daily_planner_workflow.php', {
+    fetch('/ergon/api/daily_planner_workflow.php?action=start', {
         method: 'POST',
         headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
+            'Content-Type': 'application/json'
         },
         credentials: 'same-origin',
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({ 
+            task_id: parseInt(taskId)
+        })
     })
     .then(response => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -2412,20 +2407,15 @@ window.startTask = function(taskId) {
 window.pauseTask = function(taskId) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     
-    const requestData = {
-        task_id: parseInt(taskId),
-        action: 'pause',
-        csrf_token: csrfToken
-    };
-    
-    fetch('/ergon/api/daily_planner_workflow.php', {
+    fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
         method: 'POST',
         headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
+            'Content-Type': 'application/json'
         },
         credentials: 'same-origin',
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({ 
+            task_id: parseInt(taskId)
+        })
     })
     .then(response => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -2467,20 +2457,15 @@ function pauseTask(taskId) {
 window.resumeTask = function(taskId) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     
-    const requestData = {
-        task_id: parseInt(taskId),
-        action: 'resume',
-        csrf_token: csrfToken
-    };
-    
-    fetch('/ergon/api/daily_planner_workflow.php', {
+    fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
         method: 'POST',
         headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
+            'Content-Type': 'application/json'
         },
         credentials: 'same-origin',
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({ 
+            task_id: parseInt(taskId)
+        })
     })
     .then(response => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
