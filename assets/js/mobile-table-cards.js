@@ -3,6 +3,14 @@
  * Automatically converts tables to mobile-friendly cards on small screens
  */
 
+// Early exit for incompatible pages
+if (window.location.pathname.includes('/workflow/daily-planner') || 
+    window.location.pathname.includes('/admin/management')) {
+  console.log('Mobile table cards disabled for this page');
+  // Stop all execution
+  return;
+}
+
 function convertTablesToCards() {
   // Completely disable on incompatible pages
   if (window.location.pathname.includes('/admin/management') || 
@@ -126,6 +134,11 @@ function getPriorityFromRow(cells) {
 
 // Debug function
 function debugTables() {
+  // Skip debug on excluded pages
+  if (window.location.pathname.includes('/workflow/daily-planner') || 
+      window.location.pathname.includes('/admin/management')) {
+    return;
+  }
   console.log('Screen width:', window.innerWidth);
   console.log('Tables found:', document.querySelectorAll('.table-responsive').length);
   console.log('Mobile cards found:', document.querySelectorAll('.mobile-card-container').length);
