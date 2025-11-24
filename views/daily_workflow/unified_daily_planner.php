@@ -1457,6 +1457,15 @@ let timers = {};
 let slaTimers = {};
 var currentTaskId;
 
+// Define functions early to prevent undefined errors
+function pauseTask(taskId) {
+    return window.pauseTask ? window.pauseTask(taskId) : console.error('pauseTask not ready');
+}
+
+function resumeTask(taskId) {
+    return window.resumeTask ? window.resumeTask(taskId) : console.error('resumeTask not ready');
+}
+
 // SLA Timer Functions
 function startSLATimer(taskId) {
     if (slaTimers[taskId]) {
