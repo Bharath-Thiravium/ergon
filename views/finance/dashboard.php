@@ -1679,17 +1679,43 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     gap: 1.5rem;
 }
 
-/* Chart Cards */
+/* Enhanced Chart Cards */
 .chart-card {
-    background: var(--bg-primary);
+    background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(255, 255, 255, 0.9) 100%);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 0.75rem;
-    height: 220px;
+    border-radius: 16px;
+    padding: 1rem;
+    height: 240px;
     width: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    position: relative;
+}
+
+.chart-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+    border-radius: 16px 16px 0 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.chart-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.chart-card:hover::before {
+    opacity: 1;
 }
 
 .chart-card__header {
@@ -1708,7 +1734,16 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 }
 
 .chart-card__icon {
-    font-size: 1.25rem;
+    font-size: 1.4rem;
+    padding: 0.4rem;
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.1);
+    transition: all 0.2s ease;
+}
+
+.chart-card:hover .chart-card__icon {
+    transform: scale(1.1);
+    background: rgba(59, 130, 246, 0.15);
 }
 
 .chart-card__title {
@@ -1718,9 +1753,15 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 }
 
 .chart-card__value {
-    font-size: 1.1rem;
-    font-weight: 700;
+    font-size: 1.25rem;
+    font-weight: 800;
     color: var(--text-primary);
+    letter-spacing: -0.3px;
+    transition: all 0.2s ease;
+}
+
+.chart-card:hover .chart-card__value {
+    transform: scale(1.02);
 }
 
 .chart-card__trend {
@@ -1838,22 +1879,43 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     align-items: flex-start;
     margin-bottom: 2rem;
     padding: 1.5rem;
-    background: var(--bg-primary);
+    background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(59, 130, 246, 0.02) 100%);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+.dashboard-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--success), var(--warning));
+    border-radius: 12px 12px 0 0;
 }
 
 .dashboard-header__title h1 {
     margin: 0 0 0.25rem 0;
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 1.75rem;
+    font-weight: 800;
     color: var(--text-primary);
+    background: linear-gradient(135deg, var(--primary), var(--success));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
 }
 
 .dashboard-header__title p {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     color: var(--text-secondary);
+    font-weight: 500;
+    opacity: 0.8;
 }
 
 .dashboard-header__actions {
@@ -1876,50 +1938,236 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 .input-group {
     display: flex;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    /*overflow: hidden;*/
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg-primary);
+    transition: all 0.2s ease;
+}
+
+.input-group:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .input-group .form-control {
     border: none;
     border-radius: 0;
     margin: 0;
+    background: transparent;
 }
 
 .input-group .btn {
     border-radius: 0;
     border-left: 1px solid var(--border-color);
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.input-group .btn:hover {
+    background: rgba(59, 130, 246, 0.1);
 }
 
 .btn--sm {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.8rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn--sm:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn--sm::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn--sm:hover::before {
+    left: 100%;
 }
 
 .btn__icon {
-    margin-right: 0.25rem;
+    margin-right: 0.4rem;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    transition: transform 0.2s ease;
+}
+
+.btn--sm:hover .btn__icon {
+    transform: scale(1.1);
 }
 
 .form-control--sm {
-    padding: 0.5rem;
-    font-size: 0.8rem;
-    min-width: 120px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    min-width: 140px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.form-control--sm:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    background: rgba(59, 130, 246, 0.02);
+}
+
+/* Enhanced Tooltip Styles */
+[title] {
+    position: relative;
+    cursor: help;
+}
+
+[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: tooltipFadeIn 0.2s ease;
+}
+
+[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(1px);
+    border: 4px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.9);
+    z-index: 1001;
+    animation: tooltipFadeIn 0.2s ease;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Button specific tooltip positioning */
+.btn[title]:hover::after {
+    bottom: calc(100% + 8px);
+}
+
+.btn[title]:hover::before {
+    bottom: calc(100% + 4px);
+}
+
+/* Enhanced Loading States */
+.activity-loading {
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 2rem;
+    background: rgba(59, 130, 246, 0.02);
+    border-radius: 12px;
+    border: 2px dashed rgba(59, 130, 246, 0.1);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+.customer-loader .mini-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @media (max-width: 768px) {
     .dashboard-header {
         flex-direction: column;
-        gap: 1rem;
+        gap: 1.5rem;
+        padding: 1.25rem;
+    }
+    
+    .dashboard-header__title h1 {
+        font-size: 1.5rem;
     }
     
     .dashboard-header__actions {
         flex-direction: column;
         width: 100%;
+        gap: 1rem;
     }
     
     .action-group,
     .filter-group {
         flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .btn--sm {
+        padding: 0.7rem 1.2rem;
+        font-size: 0.9rem;
+    }
+    
+    .form-control--sm {
+        min-width: 160px;
+        padding: 0.7rem 0.9rem;
+    }
+    
+    .chart-card {
+        height: 220px;
+        padding: 0.9rem;
+    }
+    
+    .dashboard-grid--split {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: auto;
+        gap: 1.5rem;
+    }
+    
+    .card--activities,
+    .card--cashflow {
+        height: 350px;
     }
 }
 
@@ -1998,37 +2246,66 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     font-size: 0.75rem;
 }
 
-/* Activity Filters */
+/* Enhanced Activity Filters */
 .activity-filters {
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+    padding: 0.5rem;
+    background: rgba(59, 130, 246, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(59, 130, 246, 0.1);
 }
 
 .filter-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 1.2rem;
     border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
     color: var(--text-secondary);
-    border-radius: 6px;
+    border-radius: 10px;
     font-size: 0.8rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.filter-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+    transition: left 0.5s ease;
 }
 
 .filter-btn:hover {
-    background: var(--primary-light);
+    background: rgba(59, 130, 246, 0.05);
     border-color: var(--primary);
     color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.filter-btn:hover::before {
+    left: 100%;
 }
 
 .filter-btn.active {
-    background: var(--primary);
+    background: linear-gradient(135deg, var(--primary), #1e40af);
     color: white;
     border-color: var(--primary);
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    transform: translateY(-1px);
+}
+
+.filter-btn.active::before {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
 }
 
 /* Activity Items */
@@ -2303,20 +2580,39 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 .activity-item-minimal {
     display: flex;
     flex-direction: column;
-    padding: 1rem;
+    padding: 1.25rem;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    margin-bottom: 0.75rem;
-    background: var(--bg-primary);
-    transition: all 0.3s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(255, 255, 255, 0.9) 100%);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+.activity-item-minimal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+    border-radius: 12px 12px 0 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .activity-item-minimal:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    transform: translateY(-2px);
-    border-color: var(--primary);
-    background: rgba(59, 130, 246, 0.02);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    transform: translateY(-4px);
+    border-color: rgba(59, 130, 246, 0.3);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(255, 255, 255, 0.95) 100%);
+}
+
+.activity-item-minimal:hover::before {
+    opacity: 1;
 }
 
 .activity-main {
@@ -2415,13 +2711,13 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     border: 1px solid currentColor;
 }
 
-/* Split Layout for Activities & Cash Flow */
+/* Enhanced Split Layout for Activities & Cash Flow */
 .dashboard-grid--split {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    height: 50vh;
-    min-height: 400px;
+    gap: 2rem;
+    height: 55vh;
+    min-height: 450px;
 }
 
 .card--activities,
@@ -2430,12 +2726,34 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+    background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(255, 255, 255, 0.9) 100%);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.card--activities:hover,
+.card--cashflow:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
 }
 
 .card__header--compact {
-    padding: 1rem 1rem 0.75rem 1rem;
-    border-bottom: 2px solid var(--border-color);
+    padding: 1.25rem 1.25rem 1rem 1.25rem;
+    border-bottom: 2px solid rgba(59, 130, 246, 0.1);
     flex-shrink: 0;
+    background: rgba(59, 130, 246, 0.02);
+    border-radius: 16px 16px 0 0;
+}
+
+.card__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.3px;
 }
 
 .card__body--compact {
@@ -2449,15 +2767,27 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 /* Compact Activity Filters */
 .activity-filters--compact {
     display: flex;
-    gap: 0.25rem;
-    margin-top: 0.5rem;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    padding: 0.4rem;
+    background: rgba(59, 130, 246, 0.02);
+    border-radius: 10px;
+    border: 1px solid rgba(59, 130, 246, 0.08);
 }
 
 .filter-btn--mini {
-    padding: 0.3rem 0.6rem;
+    padding: 0.4rem 0.8rem;
     font-size: 0.7rem;
-    border-radius: 4px;
+    border-radius: 8px;
     min-width: auto;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    transition: all 0.2s ease;
+}
+
+.filter-btn--mini:hover {
+    transform: scale(1.05);
 }
 
 /* Compact Activities List */
@@ -2756,16 +3086,63 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     color: var(--error);
 }
 
-@media (max-width: 768px) {
-    .dashboard-grid--split {
-        grid-template-columns: 1fr;
-        height: auto;
-        min-height: auto;
+/* Additional Responsive Improvements */
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
     }
     
-    .card--activities,
-    .card--cashflow {
-        height: 300px;
+    .dashboard-grid--2-col {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 992px) {
+    .funnel-container {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .funnel-arrow {
+        transform: rotate(90deg);
+        margin: 0.5rem 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard-header {
+        padding: 1rem;
+    }
+    
+    .dashboard-header__title h1 {
+        font-size: 1.25rem;
+    }
+    
+    .chart-card {
+        height: 180px;
+        padding: 0.75rem;
+    }
+    
+    .btn--sm {
+        padding: 0.6rem 1rem;
+        font-size: 0.8rem;
+    }
+    
+    .form-control--sm {
+        min-width: 120px;
+        padding: 0.6rem 0.75rem;
+    }
+    
+    .activity-filters--compact {
+        gap: 0.3rem;
+        padding: 0.3rem;
+    }
+    
+    .filter-btn--mini {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.65rem;
     }
     
     .activity-row {
@@ -2789,30 +3166,6 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     .activity-amount {
         font-size: 0.75rem;
         padding: 0.25rem 0.4rem;
-    }
-    
-    .activities-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .activity-main {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-    
-    .activity-customer {
-        margin: 0;
-        text-align: left;
-    }
-    
-    .activity-secondary {
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    
-    .activity-location-small {
-        max-width: 100%;
     }
 }
 

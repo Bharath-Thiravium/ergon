@@ -1,21 +1,208 @@
 :root{
-    --finance-accent:#059669;
+    --finance-accent: #059669;
+    --finance-primary: #3b82f6;
+    --finance-success: #10b981;
+    --finance-warning: #f59e0b;
+    --finance-error: #ef4444;
+    --finance-info: #06b6d4;
+    --finance-gradient: linear-gradient(135deg, var(--finance-primary), var(--finance-success));
 }
 
-/* Small finance-specific utility styles moved from inline attributes */
-.customer-filter{ width:200px; }
-.customer-loader{ margin-left:8px; display:none; }
-.payments-note{ font-size:0.85rem; color:var(--muted,#666); }
-.chart--hidden{ display:none; }
+/* Enhanced finance-specific utility styles */
+.customer-filter{ 
+    width: 220px; 
+    transition: all 0.2s ease;
+    border-radius: 8px;
+}
 
-/* Structure details (collapsed/expanded) */
-.structure-details{ display:none; }
-.structure-details.is-open{ display:block; }
+.customer-filter:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: var(--finance-primary);
+}
 
-/* A few small helpers used in the finance dashboard */
-.followup-card{ border:1px solid #e6e6e6; border-radius:6px; margin-bottom:12px; background:#fff; }
-.followup-card__header{ display:flex; align-items:center; justify-content:space-between; padding:12px; }
-.structure-details .table{ width:100%; }
+.customer-loader{ 
+    margin-left: 12px; 
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
 
-/* Keep visuals consistent with project styles */
-.kpi-card__status--pending{ color:#f59e0b; }
+.payments-note{ 
+    font-size: 0.85rem; 
+    color: var(--muted, #666);
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.chart--hidden{ display: none; }
+
+/* Enhanced structure details */
+.structure-details{ 
+    display: none;
+    animation: slideDown 0.3s ease;
+}
+
+.structure-details.is-open{ 
+    display: block;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Enhanced followup cards */
+.followup-card{ 
+    border: 1px solid rgba(59, 130, 246, 0.1); 
+    border-radius: 12px; 
+    margin-bottom: 16px; 
+    background: linear-gradient(135deg, #fff 0%, rgba(59, 130, 246, 0.01) 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s ease;
+}
+
+.followup-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.followup-card__header{ 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    padding: 16px;
+    background: rgba(59, 130, 246, 0.02);
+    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.structure-details .table{ 
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Enhanced KPI status indicators */
+.kpi-card__status--pending{ 
+    color: var(--finance-warning);
+    background: rgba(245, 158, 11, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.kpi-card__status--completed {
+    color: var(--finance-success);
+    background: rgba(16, 185, 129, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.kpi-card__status--overdue {
+    color: var(--finance-error);
+    background: rgba(239, 68, 68, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Finance-specific button enhancements */
+.btn--finance {
+    background: var(--finance-gradient);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.btn--finance:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+/* Enhanced table styling for finance */
+.finance-table {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.finance-table th {
+    background: var(--finance-gradient);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.8rem;
+    padding: 1rem;
+}
+
+.finance-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+    transition: background-color 0.2s ease;
+}
+
+.finance-table tr:hover td {
+    background: rgba(59, 130, 246, 0.02);
+}
+
+/* Finance-specific badges */
+.finance-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.finance-badge--success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--finance-success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.finance-badge--warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--finance-warning);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.finance-badge--error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--finance-error);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.finance-badge--info {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--finance-info);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+}

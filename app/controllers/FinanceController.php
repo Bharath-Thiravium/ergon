@@ -920,22 +920,10 @@ class FinanceController extends Controller {
             foreach ($addressResults as $row) {
                 $data = json_decode($row['data'], true);
                 
-                // Match by shipping_address_id first (more specific)
-                if ($shippingAddressId && ($data['id'] ?? '') === $shippingAddressId) {
-                    $addressParts = array_filter([
-                        $data['label'] ?? '',
-                        $data['address_line1'] ?? '',
-                        $data['city'] ?? '',
-                        $data['state'] ?? '',
-                        $data['pincode'] ?? ''
-                    ]);
-                    if (!empty($addressParts)) {
-                        return implode(', ', $addressParts);
-                    }
-                }
-                
-                // Fallback to customer_id match
-                if ($customerId && ($data['customer_id'] ?? '') === $customerId) {
+                // Match by shipping_address_id AND customer_id (both must match for accuracy)
+                if ($shippingAddressId && $customerId && 
+                    ($data['id'] ?? '') === $shippingAddressId && 
+                    ($data['customer_id'] ?? '') === $customerId) {
                     $addressParts = array_filter([
                         $data['label'] ?? '',
                         $data['address_line1'] ?? '',
@@ -949,8 +937,25 @@ class FinanceController extends Controller {
                 }
             }
             
-            // Fallback to finance_customer billing address
+            // Fallback: Match only by customer_id if shipping_address_id doesn't match
             if ($customerId) {
+                foreach ($addressResults as $row) {
+                    $data = json_decode($row['data'], true);
+                    if (($data['customer_id'] ?? '') === $customerId) {
+                        $addressParts = array_filter([
+                            $data['label'] ?? '',
+                            $data['address_line1'] ?? '',
+                            $data['city'] ?? '',
+                            $data['state'] ?? '',
+                            $data['pincode'] ?? ''
+                        ]);
+                        if (!empty($addressParts)) {
+                            return implode(', ', $addressParts);
+                        }
+                    }
+                }
+                
+                // Final fallback to finance_customer billing address
                 $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
                 $stmt->execute();
                 $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
