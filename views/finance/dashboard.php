@@ -1877,7 +1877,7 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     display: flex;
     border: 1px solid var(--border-color);
     border-radius: 6px;
-    overflow: hidden;
+    /*overflow: hidden;*/
 }
 
 .input-group .form-control {
