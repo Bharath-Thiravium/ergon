@@ -178,11 +178,12 @@ $content = ob_start();
                              data-original-task-id="<?= $task['task_id'] ?? '' ?>" 
                              data-sla-duration="<?= $slaDuration ?>" 
                              data-start-time="<?= $startTimestamp ?>" 
-                             data-status="<?= $status ?>"
-                             data-task-source="<?= $taskSource ?>"
-                             data-pause-time="<?= $task['pause_time'] ?? '' ?>"
-                             data-active-seconds="<?= $task['active_seconds'] ?? 0 ?>"
-                             data-pause-duration="<?= $task['pause_duration'] ?? 0 ?>"
+                             data-status="<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>"
+                             data-task-source="<?= htmlspecialchars($taskSource, ENT_QUOTES, 'UTF-8') ?>"
+                             data-pause-time="<?= htmlspecialchars($task['pause_time'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                             data-pause-start-time="<?= htmlspecialchars($task['pause_start_time'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                             data-active-seconds="<?= (int)($task['active_seconds'] ?? 0) ?>"
+                             data-pause-duration="<?= (int)($task['pause_duration'] ?? 0) ?>"
                              data-is-past="<?= $isPastDate ? 'true' : 'false' ?>">
                             
                             <div class="task-card__content">
@@ -383,9 +384,10 @@ $content = ob_start();
     <div class="card">
         <div class="card__header">
             <h3 class="card__title"><i class="bi bi-speedometer2"></i> SLA Dashboard</h3>
-            <button class="btn btn--sm btn--secondary" onclick="forceSLARefresh()" title="Refresh SLA Data">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
+            <button class="btn btn--sm btn--secondary" onclick="forceSLARefresh()" title="Manual refresh - automatic updates disabled to prevent rate limiting">
+                <i class="bi bi-arrow-clockwise"></i> Manual Refresh
             </button>
+            <small class="text-muted" style="display: block; margin-top: 5px;">⚡ Auto-refresh disabled to prevent rate limiting</small>
         </div>
         <div class="card__body">
             <?php
@@ -1466,8 +1468,7 @@ function startSLATimer(taskId) {
         updateLocalCountdown(taskId);
     }, 1000);
     
-    // Initial server sync
-    updateSLADisplay(taskId);
+    // DISABLED - No initial server sync to prevent 429 errors
 }
 
 function stopSLATimer(taskId) {
@@ -1477,10 +1478,16 @@ function stopSLATimer(taskId) {
     }
 }
 
-// Rate limiting for server calls
+// Enhanced rate limiting for server calls
 let lastTimerCall = {};
-const TIMER_THROTTLE = 10000; // 10 seconds between server calls per task
 let taskTimerData = {}; // Store timer data locally
+let globalTimerQueue = []; // Queue for timer requests
+let isProcessingQueue = false;
+
+// Aggressive rate limiting: 15 seconds between server calls per task, max 2 concurrent requests
+const TIMER_THROTTLE = 15000; // 15 seconds between server calls per task
+const MAX_CONCURRENT_REQUESTS = 2;
+let activeRequests = 0;
 
 // Local countdown update (runs every second)
 function updateLocalCountdown(taskId) {
@@ -1513,6 +1520,12 @@ function updateLocalCountdown(taskId) {
                 const seconds = overdue % 60;
                 display.textContent = `OVERDUE: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 display.className = 'countdown-display countdown-display--expired';
+                
+                // Update countdown label to show overdue timer
+                const label = document.querySelector(`#countdown-${taskId} .countdown-label`);
+                if (label) {
+                    label.textContent = 'Overdue Timer';
+                }
             } else {
                 const hours = Math.floor(remaining / 3600);
                 const minutes = Math.floor((remaining % 3600) / 60);
@@ -1522,8 +1535,15 @@ function updateLocalCountdown(taskId) {
             }
         }
     } else if (status === 'on_break' && pauseTimer) {
-        // Update pause timer
-        const pauseStart = parseInt(taskCard.dataset.pauseStart) || now;
+        // Update pause timer - use server-side pause start time if available
+        let pauseStart;
+        const pauseStartTime = taskCard.dataset.pauseStartTime;
+        if (pauseStartTime && pauseStartTime !== '') {
+            pauseStart = new Date(pauseStartTime).getTime();
+        } else {
+            pauseStart = parseInt(taskCard.dataset.pauseStart) || now;
+        }
+        
         const pauseElapsed = Math.floor((now - pauseStart) / 1000);
         const hours = Math.floor(pauseElapsed / 3600);
         const minutes = Math.floor((pauseElapsed % 3600) / 60);
@@ -1531,24 +1551,66 @@ function updateLocalCountdown(taskId) {
         pauseTimer.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
     
-    // Sync with server every 10 seconds
-    if (!lastTimerCall[taskId] || (now - lastTimerCall[taskId]) >= TIMER_THROTTLE) {
-        updateSLADisplay(taskId);
+    // Sync with server every 30 seconds for accuracy
+    const now = Date.now();
+    if (!lastServerSync[taskId] || (now - lastServerSync[taskId]) > TIMER_SYNC_INTERVAL) {
+        lastServerSync[taskId] = now;
+        syncTimerWithServer(taskId);
     }
 }
 
-function updateSLADisplay(taskId) {
-    const now = Date.now();
-    lastTimerCall[taskId] = now;
-    
-    fetch(`/ergon/api/daily_planner_workflow.php?action=timer&task_id=${taskId}`, {
+function syncTimerWithServer(taskId) {
+    return fetch(`/ergon/api/daily_planner_workflow.php?action=timer&task_id=${taskId}`, {
         method: 'GET',
         credentials: 'same-origin'
     })
     .then(response => {
         if (!response.ok) {
             if (response.status === 429) {
-                console.log(`Rate limited for task ${taskId}, will retry later`);
+                console.log(`Rate limited for task ${taskId}`);
+                return null;
+            }
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (!data || !data.success) return;
+        
+        // Update local task data with server values
+        const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (taskCard) {
+            taskCard.dataset.activeSeconds = data.active_seconds || 0;
+            taskCard.dataset.pauseDuration = data.pause_duration || 0;
+            
+            if (data.pause_start_time) {
+                taskCard.dataset.pauseStartTime = data.pause_start_time;
+            }
+            
+            // Update timing display
+            updateTaskTiming(taskId, data);
+        }
+    })
+    .catch(error => {
+        console.log(`Timer sync failed for task ${taskId}:`, error.message);
+    });
+}
+
+function updateSLADisplay(taskId) {
+    const currentTime = Date.now();
+    lastTimerCall[taskId] = currentTime;
+    activeRequests++;
+    
+    return fetch(`/ergon/api/daily_planner_workflow.php?action=timer&task_id=${taskId}`, {
+        method: 'GET',
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok) {
+            if (response.status === 429) {
+                console.log(`Rate limited for task ${taskId}, will retry in 15 seconds`);
+                // Schedule retry after rate limit period
+                setTimeout(() => queueTimerRequest(taskId), 15000);
                 return null;
             }
             throw new Error(`HTTP ${response.status}`);
@@ -1586,10 +1648,16 @@ function updateSLADisplay(taskId) {
         }
     })
     .catch(error => {
-        // Silently handle errors to prevent console spam
-        if (!error.message.includes('429')) {
+        // Handle rate limiting gracefully
+        if (error.message.includes('429')) {
+            console.log(`Rate limited for task ${taskId}, scheduling retry`);
+            setTimeout(() => queueTimerRequest(taskId), 20000);
+        } else {
             console.log(`Timer unavailable for task ${taskId}:`, error.message);
         }
+    })
+    .finally(() => {
+        activeRequests--;
     });
 }
 
@@ -1730,7 +1798,7 @@ window.checkSLAStatus = function() {
 };
 
 window.forceSLARefresh = function() {
-    console.log('Forcing SLA Dashboard refresh...');
+    console.log('Manual SLA Dashboard refresh...');
     
     // Show loading state
     const refreshBtn = document.querySelector('.card__header button');
@@ -1739,17 +1807,14 @@ window.forceSLARefresh = function() {
         refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i> Refreshing...';
     }
     
-    // Force refresh both SLA and task statuses
-    Promise.all([
-        refreshSLADashboard(),
-        refreshTaskStatuses()
-    ]).finally(() => {
+    // Only refresh SLA dashboard - no timer calls
+    refreshSLADashboard().finally(() => {
         // Reset button state
         if (refreshBtn) {
             refreshBtn.disabled = false;
             refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
         }
-        showNotification('SLA Dashboard refreshed', 'success');
+        showNotification('SLA Dashboard refreshed (manual)', 'success');
     });
 };
 
@@ -1934,11 +1999,17 @@ function showNotification(message, type = 'info') {
     setTimeout(() => document.body.removeChild(notification), 3000);
 }
 
-function openProgressModal(taskId, progress, status) {
+// Define openProgressModal function globally
+window.openProgressModal = function(taskId, progress, status) {
     currentTaskId = taskId;
     document.getElementById('progressSlider').value = progress;
     document.getElementById('progressValue').textContent = progress;
     document.getElementById('progressDialog').style.display = 'flex';
+};
+
+// Also define as regular function for compatibility
+function openProgressModal(taskId, progress, status) {
+    return window.openProgressModal(taskId, progress, status);
 }
 
 function closeDialog() {
@@ -2250,7 +2321,8 @@ function activatePostponedTask(taskId) {
     });
 }
 
-function startTask(taskId) {
+// Define startTask function globally
+window.startTask = function(taskId) {
     if (!taskId) {
         alert('Error: Task ID is missing');
         return;
@@ -2285,9 +2357,18 @@ function startTask(taskId) {
                 taskCard.dataset.startTime = data.start_time;
             }
             updateTaskUI(taskId, 'start');
-            startSLATimer(taskId);
-            refreshSLADashboard();
-            refreshTaskStatuses();
+            // Start local timer with server sync
+            if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+            slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+            
+            // Update task card with server data
+            if (data.start_time) {
+                taskCard.dataset.startTime = Math.floor(new Date(data.start_time).getTime() / 1000);
+            }
+            if (data.sla_end_time) {
+                taskCard.dataset.slaEndTime = Math.floor(new Date(data.sla_end_time).getTime() / 1000);
+            }
+            
             showNotification('Task started', 'success');
         } else {
             alert('Error: ' + data.message);
@@ -2299,7 +2380,8 @@ function startTask(taskId) {
     });
 }
 
-function pauseTask(taskId) {
+// Define pauseTask function globally
+window.pauseTask = function(taskId) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
         method: 'POST',
@@ -2317,15 +2399,20 @@ function pauseTask(taskId) {
     .then(data => {
         if (data.success) {
             updateTaskUI(taskId, 'pause');
-            // Store pause start time and start pause timer
+            // Store pause start time from server response
             const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
             if (taskCard) {
-                taskCard.dataset.pauseStart = data.pause_start ? data.pause_start * 1000 : Date.now();
+                const pauseStartTime = data.pause_start ? data.pause_start * 1000 : Date.now();
+                taskCard.dataset.pauseStart = pauseStartTime;
+                // Also store the server timestamp for accuracy
+                if (data.pause_start_time) {
+                    taskCard.dataset.pauseStartTime = data.pause_start_time;
+                }
             }
-            stopSLATimer(taskId);
-            startSLATimer(taskId); // Keep timer running to update pause duration
-            refreshSLADashboard();
-            showNotification('Task paused', 'info');
+            // Keep local timer running for break duration
+            if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+            slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+            showNotification('Task paused - break timer started', 'info');
         } else {
             showNotification('Failed to pause task: ' + data.message, 'error');
         }
@@ -2334,9 +2421,15 @@ function pauseTask(taskId) {
         console.error('Pause task error:', error);
         showNotification('Network error occurred', 'error');
     });
+};
+
+// Also define as regular function for compatibility
+function pauseTask(taskId) {
+    return window.pauseTask(taskId);
 }
 
-function resumeTask(taskId) {
+// Define resumeTask function globally  
+window.resumeTask = function(taskId) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
         method: 'POST',
@@ -2353,16 +2446,28 @@ function resumeTask(taskId) {
     })
     .then(data => {
         if (data.success) {
-            // Update task card with resume time for accurate countdown
+            // Update task card with resume time and clear pause data
             const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-            if (taskCard && data.resume_time) {
-                taskCard.dataset.startTime = data.resume_time;
+            if (taskCard) {
+                if (data.resume_time) {
+                    taskCard.dataset.startTime = data.resume_time;
+                }
+                // Clear pause-related data
+                delete taskCard.dataset.pauseStart;
+                delete taskCard.dataset.pauseStartTime;
+                taskCard.dataset.pauseTime = '';
             }
             updateTaskUI(taskId, 'resume');
-            startSLATimer(taskId);
-            refreshSLADashboard();
-            refreshTaskStatuses();
-            showNotification('Task resumed', 'success');
+            // Start local timer and sync with server
+            if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+            slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+            
+            // Update task card with resume time
+            if (data.start_time) {
+                taskCard.dataset.startTime = Math.floor(new Date(data.start_time).getTime() / 1000);
+            }
+            
+            showNotification('Task resumed - break time saved', 'success');
         } else {
             alert('Error: ' + data.message);
         }
@@ -2432,7 +2537,8 @@ function completeTask(taskId) {
     updateProgressTask(taskId);
 }
 
-function postponeTask(taskId) {
+// Define postponeTask function globally
+window.postponeTask = function(taskId) {
     document.getElementById('postponeTaskId').value = taskId;
     document.getElementById('postponeForm').style.display = 'block';
     document.getElementById('postponeOverlay').style.display = 'block';
@@ -2645,6 +2751,11 @@ function closePostponeTaskModal() {
     closeModal('postponeTaskModal');
 }
 
+// Enable controlled timer requests with proper rate limiting
+let timerRequestsDisabled = false;
+const TIMER_SYNC_INTERVAL = 30000; // 30 seconds between server syncs
+let lastServerSync = {};
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
     // Enforce past date restrictions on page load
@@ -2657,58 +2768,60 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('progressValue').textContent = this.value;
         }
     }
-    // Initialize SLA timers for active tasks immediately
+    
+    // Initialize timers with server sync
     document.querySelectorAll('.task-card').forEach(item => {
         const taskId = item.dataset.taskId;
         const status = item.dataset.status;
         
         if (status === 'in_progress' || status === 'on_break') {
-            startSLATimer(taskId);
+            // Start local countdown
+            if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+            slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+            
+            // Initial server sync for active tasks
+            if (!timerRequestsDisabled) {
+                syncTimerWithServer(taskId);
+            }
         }
         
-        // Set pause start time for tasks on break from pause_time
+        // Set pause start time for tasks on break
         if (status === 'on_break') {
-            const pauseTime = item.dataset.pauseTime;
-            if (pauseTime) {
-                item.dataset.pauseStart = new Date(pauseTime).getTime();
+            const pauseStartTime = item.dataset.pauseStartTime;
+            if (pauseStartTime && pauseStartTime !== '') {
+                item.dataset.pauseStart = new Date(pauseStartTime).getTime();
             } else {
-                item.dataset.pauseStart = Date.now();
+                const pauseTime = item.dataset.pauseTime;
+                if (pauseTime) {
+                    item.dataset.pauseStart = new Date(pauseTime).getTime();
+                } else {
+                    item.dataset.pauseStart = Date.now();
+                }
             }
         }
     });
     
-    // Initialize SLA Dashboard and force refresh all task data immediately
+    // Initialize SLA Dashboard ONCE only
     refreshSLADashboard();
     
-    // Force update all task timings on page load
-    document.querySelectorAll('.task-card').forEach(item => {
-        const taskId = item.dataset.taskId;
-        if (taskId) {
-            updateSLADisplay(taskId);
-        }
-    });
-    
-    // Auto-refresh every 10 seconds to prevent rate limiting
-    setInterval(() => {
-        // Update all active and paused task timers every 10 seconds
-        document.querySelectorAll('.task-card[data-status="in_progress"], .task-card[data-status="on_break"]').forEach(item => {
-            const taskId = item.dataset.taskId;
-            if (taskId) updateSLADisplay(taskId);
-        });
-    }, 10000);
-    
-    // Refresh SLA dashboard every 30 seconds
+    // Periodic SLA dashboard refresh and timer sync
     setInterval(() => {
         refreshSLADashboard();
-    }, 30000);
-    
-    // Page visibility API to refresh when user returns to tab
-    document.addEventListener('visibilitychange', function() {
-        if (!document.hidden) {
-            refreshSLADashboard();
-            refreshTaskStatuses();
+        
+        // Sync active timers with server every 2 minutes
+        if (!timerRequestsDisabled) {
+            document.querySelectorAll('.task-card').forEach(item => {
+                const taskId = item.dataset.taskId;
+                const status = item.dataset.status;
+                if (status === 'in_progress' || status === 'on_break') {
+                    syncTimerWithServer(taskId);
+                }
+            });
         }
-    });
+    }, 120000); // 2 minutes
+    
+    // DISABLED - Page visibility refresh to prevent timer calls
+    // Users can manually refresh if needed
     
     // Percentage selection
     document.querySelectorAll('.percentage-btn').forEach(btn => {
@@ -2790,10 +2903,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     message += ' - Task continues in progress';
                 }
                 
-                // Immediate refresh after progress update
-                refreshSLADashboard();
-                refreshTaskStatuses();
-                showNotification(message, 'success');
+                // Manual refresh only - no automatic calls
+                showNotification(message + ' (refresh manually if needed)', 'success');
             } else {
                 alert('Failed to update progress: ' + data.message);
             }
@@ -2806,6 +2917,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
 
 });
+
+// Ensure all timer functions are globally accessible
+window.startTask = window.startTask || function(taskId) { return startTask(taskId); };
+window.pauseTask = window.pauseTask || function(taskId) { return pauseTask(taskId); };
+window.resumeTask = window.resumeTask || function(taskId) { return resumeTask(taskId); };
+window.postponeTask = window.postponeTask || function(taskId) { return postponeTask(taskId); };
+window.openProgressModal = window.openProgressModal || function(taskId, progress, status) { return openProgressModal(taskId, progress, status); };
+
+// Additional compatibility assignments
+if (typeof startTask === 'function') window.startTask = startTask;
+if (typeof pauseTask === 'function') window.pauseTask = pauseTask;
+if (typeof resumeTask === 'function') window.resumeTask = resumeTask;
+if (typeof postponeTask === 'function') window.postponeTask = postponeTask;
+if (typeof openProgressModal === 'function') window.openProgressModal = openProgressModal;
 </script>
 
 <?php renderModalJS(); ?>

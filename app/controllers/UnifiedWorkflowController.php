@@ -292,11 +292,13 @@ class UnifiedWorkflowController extends Controller {
                 return;
             }
             
+            $db->beginTransaction();
+            
             // Calculate SLA end time
             $slaEndTime = date('Y-m-d H:i:s', strtotime($now . ' +' . $task['sla_hours'] . ' hours'));
             
             // Start the task with full SLA support
-            $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', start_time = ?, sla_end_time = ?, resume_time = NULL WHERE id = ?");
+            $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', start_time = ?, sla_end_time = ?, resume_time = NULL, pause_start_time = NULL WHERE id = ?");
             $result = $stmt->execute([$now, $slaEndTime, $taskId]);
             
             if ($result && $stmt->rowCount() > 0) {
@@ -308,18 +310,25 @@ class UnifiedWorkflowController extends Controller {
                     error_log('SLA history log error: ' . $e->getMessage());
                 }
                 
+                $db->commit();
+                
                 echo json_encode([
                     'success' => true,
                     'message' => 'Task started successfully',
-                    'task_id' => $taskId,
+                    'task_id' => (int)$taskId,
                     'status' => 'in_progress',
                     'start_time' => $now,
-                    'sla_end_time' => $slaEndTime
+                    'sla_end_time' => $slaEndTime,
+                    'sla_seconds' => (int)($task['sla_hours'] * 3600)
                 ]);
             } else {
+                $db->rollback();
                 echo json_encode(['success' => false, 'message' => 'Failed to start task']);
             }
         } catch (Exception $e) {
+            if ($db && $db->inTransaction()) {
+                $db->rollback();
+            }
             error_log('Start task error: ' . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         }
@@ -343,24 +352,46 @@ class UnifiedWorkflowController extends Controller {
             
             // Ensure table exists
             $this->ensureDailyTasksTable($db);
+            $db->beginTransaction();
             
+            // Get current task state
+            $stmt = $db->prepare("SELECT start_time, resume_time, active_seconds, status FROM daily_tasks WHERE id = ?");
+            $stmt->execute([$taskId]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$task || $task['status'] !== 'in_progress') {
+                $db->rollback();
+                echo json_encode(['success' => false, 'message' => 'Task not found or not in progress']);
+                return;
+            }
+            
+            // Calculate active time since start/resume
+            $referenceTime = $task['resume_time'] ?: $task['start_time'];
+            $activeTime = $referenceTime ? time() - strtotime($referenceTime) : 0;
+            
+            $now = date('Y-m-d H:i:s');
             $status = $this->validateStatus('on_break');
             
-            try {
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, pause_time = NOW() WHERE id = ?");
-                $result = $stmt->execute([$status, $taskId]);
-            } catch (Exception $e) {
-                // Fallback for missing columns
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ? WHERE id = ?");
-                $result = $stmt->execute([$status, $taskId]);
-            }
+            // Update with pause start time and accumulated active seconds
+            $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, pause_start_time = ?, active_seconds = active_seconds + ? WHERE id = ?");
+            $result = $stmt->execute([$status, $now, max(0, $activeTime), $taskId]);
             
             if ($result && $stmt->rowCount() > 0) {
-                echo json_encode(['success' => true, 'message' => 'Task paused successfully']);
+                $db->commit();
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'Task paused successfully',
+                    'pause_start' => time(),
+                    'pause_start_time' => $now
+                ]);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Task not found or not in progress']);
+                $db->rollback();
+                echo json_encode(['success' => false, 'message' => 'Failed to pause task']);
             }
         } catch (Exception $e) {
+            if ($db && $db->inTransaction()) {
+                $db->rollback();
+            }
             error_log('Pause task error: ' . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         }
@@ -383,27 +414,48 @@ class UnifiedWorkflowController extends Controller {
             $db = Database::connect();
             
             $this->ensureDailyTasksTable($db);
-            $status = $this->validateStatus('in_progress');
+            $db->beginTransaction();
             
-            try {
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, resume_time = NOW() WHERE id = ?");
-                $result = $stmt->execute([$status, $taskId]);
-            } catch (Exception $e) {
-                // Fallback for missing columns
-                $stmt = $db->prepare("UPDATE daily_tasks SET status = ? WHERE id = ?");
-                $result = $stmt->execute([$status, $taskId]);
+            // Get current task state
+            $stmt = $db->prepare("SELECT pause_start_time, pause_duration, status FROM daily_tasks WHERE id = ?");
+            $stmt->execute([$taskId]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$task || $task['status'] !== 'on_break') {
+                $db->rollback();
+                echo json_encode(['success' => false, 'message' => 'Task not found or not paused']);
+                return;
             }
             
+            // Calculate pause duration
+            $additionalPauseDuration = 0;
+            if ($task['pause_start_time']) {
+                $additionalPauseDuration = time() - strtotime($task['pause_start_time']);
+            }
+            
+            $now = date('Y-m-d H:i:s');
+            $status = $this->validateStatus('in_progress');
+            
+            // Update task status, add pause duration, set resume time
+            $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, resume_time = ?, pause_duration = pause_duration + ?, pause_start_time = NULL WHERE id = ?");
+            $result = $stmt->execute([$status, $now, $additionalPauseDuration, $taskId]);
+            
             if ($result && $stmt->rowCount() > 0) {
+                $db->commit();
                 echo json_encode([
                     'success' => true, 
                     'message' => 'Task resumed - timer restarted',
-                    'start_time' => date('Y-m-d H:i:s')
+                    'start_time' => $now,
+                    'resume_time' => $now
                 ]);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Task not found or not paused']);
+                $db->rollback();
+                echo json_encode(['success' => false, 'message' => 'Failed to resume task']);
             }
         } catch (Exception $e) {
+            if ($db && $db->inTransaction()) {
+                $db->rollback();
+            }
             error_log('Resume task error: ' . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         }
@@ -1251,11 +1303,11 @@ class UnifiedWorkflowController extends Controller {
                     continue;
                 }
                 
-                // Check for exact duplicates only - must match BOTH task_id AND original_task_id
+                // Check for exact duplicates only
                 $checkStmt = $db->prepare("
                     SELECT COUNT(*) FROM daily_tasks 
                     WHERE user_id = ? AND scheduled_date = ? 
-                    AND task_id = ? AND original_task_id = ?
+                    AND (original_task_id = ? OR (task_id = ? AND original_task_id IS NULL))
                 ");
                 $checkStmt->execute([$userId, $date, $task['id'], $task['id']]);
                 
