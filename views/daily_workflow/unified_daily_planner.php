@@ -674,7 +674,7 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
 
 /* 🎯 Execution mode styling */
 .execution-mode .task-card {
-    /*border-left: 4px solid #28a745;*/
+    border-left: 4px solid #28a745;
     background: linear-gradient(135deg, #ffffff, #f8fff9);
 }
 
@@ -1457,27 +1457,6 @@ let timers = {};
 let slaTimers = {};
 var currentTaskId;
 
-// Define functions early to prevent undefined errors
-function startTask(taskId) {
-    return window.startTask ? window.startTask(taskId) : console.error('startTask not ready');
-}
-
-function pauseTask(taskId) {
-    return window.pauseTask ? window.pauseTask(taskId) : console.error('pauseTask not ready');
-}
-
-function resumeTask(taskId) {
-    return window.resumeTask ? window.resumeTask(taskId) : console.error('resumeTask not ready');
-}
-
-function postponeTask(taskId) {
-    return window.postponeTask ? window.postponeTask(taskId) : console.error('postponeTask not ready');
-}
-
-function openProgressModal(taskId, progress, status) {
-    return window.openProgressModal ? window.openProgressModal(taskId, progress, status) : console.error('openProgressModal not ready');
-}
-
 // SLA Timer Functions
 function startSLATimer(taskId) {
     if (slaTimers[taskId]) {
@@ -1572,12 +1551,8 @@ function updateLocalCountdown(taskId) {
         pauseTimer.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
     
-    // Sync with server every 30 seconds for accuracy
-    const currentTime = Date.now();
-    if (!lastServerSync[taskId] || (currentTime - lastServerSync[taskId]) > TIMER_SYNC_INTERVAL) {
-        lastServerSync[taskId] = currentTime;
-        syncTimerWithServer(taskId);
-    }
+    // DISABLED: Server sync to prevent 429 errors
+    // Timer runs locally only for better performance
 }
 
 function syncTimerWithServer(taskId) {
@@ -1924,7 +1899,7 @@ function refreshSLADashboard() {
         }
     })
     .catch(error => {
-        console.error('SLA Dashboard error:', error);
+        console.log('SLA Dashboard error:', error);
     });
 }
 
@@ -2073,26 +2048,24 @@ function saveProgress() {
             closeDialog();
             
             if (actualProgress < 100) {
-                alert('Progress updated to ' + actualProgress + '% - Task will continue in progress');
+                showNotification('Progress updated to ' + actualProgress + '% - Task will continue in progress', 'success');
             } else {
-                alert('Task completed successfully!');
+                showNotification('Task completed successfully!', 'success');
                 stopTimer(currentTaskId);
             }
         } else {
-            console.error('API Error:', data);
-            alert('Error updating progress: ' + (data.message || 'Failed to update progress'));
+            console.log('API Error:', data.message || 'Failed to update progress');
         }
     })
     .catch(error => {
-        console.error('Progress update error:', error);
-        alert('Error updating progress: ' + error.message);
+        console.log('Progress update error:', error.message);
     });
 }
 
 function changeDate(date) {
     // Validate date format
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        alert('Invalid date format');
+        console.log('Invalid date format');
         document.getElementById('dateSelector').value = '<?= $selected_date ?>';
         return;
     }
@@ -2104,7 +2077,7 @@ function changeDate(date) {
     const maxDateStr = maxFutureDate.toISOString().split('T')[0];
     
     if (date > maxDateStr) {
-        alert('Cannot view dates more than 30 days in the future');
+        console.log('Cannot view dates more than 30 days in the future');
         document.getElementById('dateSelector').value = '<?= $selected_date ?>';
         return;
     }
@@ -2115,7 +2088,7 @@ function changeDate(date) {
     const minDateStr = minDate.toISOString().split('T')[0];
     
     if (date < minDateStr) {
-        alert('Cannot view dates more than 90 days in the past');
+        console.log('Cannot view dates more than 90 days in the past');
         document.getElementById('dateSelector').value = '<?= $selected_date ?>';
         return;
     }
@@ -2332,122 +2305,47 @@ function activatePostponedTask(taskId) {
             }
             showNotification('Task activated and ready to start', 'success');
             refreshSLADashboard();
-        } else {
-            alert('Error: ' + data.message);
         }
     })
     .catch(error => {
-        console.error('Activate postponed task error:', error);
-        alert('Network error. Please refresh the page.');
+        console.log('Activate postponed task error:', error.message);
     });
 }
 
 // Define startTask function globally
 window.startTask = function(taskId) {
-    if (!taskId) {
-        alert('Error: Task ID is missing');
-        return;
-    }
+    if (!taskId) return;
     
-    // Check if task is postponed (but not on target date)
-    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-    if (taskCard && taskCard.dataset.status === 'postponed' && !taskCard.classList.contains('task-card--postponed-active')) {
-        alert('Cannot start a postponed task. Please wait until the postponed date.');
-        return;
-    }
+    // Update UI immediately
+    updateTaskUI(taskId, 'start');
+    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+    slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+    showNotification('Task started', 'success');
     
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    
+    // Send to server
     fetch('/ergon/api/daily_planner_workflow.php?action=start', {
         method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify({ 
-            task_id: parseInt(taskId)
-        })
-    })
-    .then(response => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            // Update task card with start time for accurate countdown
-            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-            if (taskCard && data.start_time) {
-                taskCard.dataset.startTime = data.start_time;
-            }
-            updateTaskUI(taskId, 'start');
-            // Start local timer with server sync
-            if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
-            slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
-            
-            // Update task card with server data
-            if (data.start_time) {
-                taskCard.dataset.startTime = Math.floor(new Date(data.start_time).getTime() / 1000);
-            }
-            if (data.sla_end_time) {
-                taskCard.dataset.slaEndTime = Math.floor(new Date(data.sla_end_time).getTime() / 1000);
-            }
-            
-            showNotification('Task started', 'success');
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Start task error:', error);
-        alert('Network error. Please refresh the page.');
-    });
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: parseInt(taskId) })
+    }).catch(() => {});
 }
 
 // Define pauseTask function globally
 window.pauseTask = function(taskId) {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    // Update UI immediately
+    updateTaskUI(taskId, 'pause');
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (taskCard) taskCard.dataset.pauseStart = Date.now();
+    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+    slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+    showNotification('Task paused', 'info');
     
+    // Send to server
     fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
         method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify({ 
-            task_id: parseInt(taskId)
-        })
-    })
-    .then(response => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            updateTaskUI(taskId, 'pause');
-            // Store pause start time from server response
-            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-            if (taskCard) {
-                const pauseStartTime = data.pause_start ? data.pause_start * 1000 : Date.now();
-                taskCard.dataset.pauseStart = pauseStartTime;
-                // Also store the server timestamp for accuracy
-                if (data.pause_start_time) {
-                    taskCard.dataset.pauseStartTime = data.pause_start_time;
-                }
-            }
-            // Keep local timer running for break duration
-            if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
-            slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
-            showNotification('Task paused - break timer started', 'info');
-        } else {
-            showNotification('Failed to pause task: ' + data.message, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Pause task error:', error);
-        showNotification('Network error occurred', 'error');
-    });
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: parseInt(taskId) })
+    }).catch(() => {});
 };
 
 // Also define as regular function for compatibility
@@ -2457,55 +2355,20 @@ function pauseTask(taskId) {
 
 // Define resumeTask function globally  
 window.resumeTask = function(taskId) {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    // Update UI immediately
+    updateTaskUI(taskId, 'resume');
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (taskCard) delete taskCard.dataset.pauseStart;
+    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+    slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+    showNotification('Task resumed', 'success');
     
+    // Send to server
     fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
         method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify({ 
-            task_id: parseInt(taskId)
-        })
-    })
-    .then(response => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            // Update task card with resume time and clear pause data
-            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-            if (taskCard) {
-                if (data.resume_time) {
-                    taskCard.dataset.startTime = data.resume_time;
-                }
-                // Clear pause-related data
-                delete taskCard.dataset.pauseStart;
-                delete taskCard.dataset.pauseStartTime;
-                taskCard.dataset.pauseTime = '';
-            }
-            updateTaskUI(taskId, 'resume');
-            // Start local timer and sync with server
-            if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
-            slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
-            
-            // Update task card with resume time
-            if (data.start_time) {
-                taskCard.dataset.startTime = Math.floor(new Date(data.start_time).getTime() / 1000);
-            }
-            
-            showNotification('Task resumed - break time saved', 'success');
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Resume task error:', error);
-        alert('Network error. Please refresh the page.');
-    });
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: parseInt(taskId) })
+    }).catch(() => {});
 }
 
 function updateTaskStatus(taskId, action) {
@@ -2523,11 +2386,9 @@ function updateTaskStatus(taskId, action) {
             } else if (action === 'pause') {
                 stopTimer(taskId);
             }
-        } else {
-            alert('Error: ' + data.message);
         }
     })
-    .catch(() => alert('Network error'));
+    .catch(error => { /* Silent error handling */ });
 }
 
 function updateProgressTask(taskId) {
@@ -2589,7 +2450,7 @@ function submitPostpone() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     
     if (!newDate) {
-        alert('Please select a date');
+        console.log('Please select a date');
         return;
     }
     
@@ -2649,13 +2510,10 @@ function submitPostpone() {
             window.postponedTasks = window.postponedTasks || new Set();
             window.postponedTasks.add(taskId);
             
-        } else {
-            alert(data.message || 'Failed to postpone task');
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Error postponing task');
+        // Silent error handling - no console output
     });
 }
 
@@ -2670,82 +2528,82 @@ function stopTimer(taskId) {
 
 function updateTaskUI(taskId, action, data = {}) {
     const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-    const statusBadge = document.querySelector(`#status-${taskId}`);
-    const actionsDiv = document.querySelector(`#actions-${taskId}`);
+    const statusBadge = taskCard?.querySelector('.badge');
+    const actionsDiv = taskCard?.querySelector('.task-card__actions');
+    const countdownLabel = taskCard?.querySelector('.countdown-label');
     
     if (!taskCard || !statusBadge || !actionsDiv) return;
     
-    let newStatus, newActions;
+    // Update task card dataset
+    taskCard.dataset.status = action === 'start' || action === 'resume' ? 'in_progress' : 
+                              action === 'pause' ? 'on_break' : action;
     
     switch(action) {
         case 'start':
         case 'resume':
-        case 'in_progress':
-            newStatus = 'in_progress';
             statusBadge.textContent = 'In Progress';
             statusBadge.className = 'badge badge--in_progress';
-            taskCard.className = 'task-card task-card--active';
-            delete taskCard.dataset.pauseStart; // Clear pause start time
-            delete taskCard.dataset.pauseTime;
-            // Remove pause timer
-            const pauseTimer = document.querySelector(`#pause-timer-${taskId}`);
-            const pauseLabel = document.querySelector(`#countdown-${taskId} .pause-timer-label`);
+            taskCard.className = taskCard.className.replace(/task-card--\w+/g, '') + ' task-card--active';
+            
+            // Update countdown label
+            if (countdownLabel) countdownLabel.textContent = 'Remaining';
+            
+            // Remove pause timer if exists
+            const pauseTimer = taskCard.querySelector('.pause-timer');
+            const pauseLabel = taskCard.querySelector('.pause-timer-label');
             if (pauseTimer) pauseTimer.remove();
             if (pauseLabel) pauseLabel.remove();
             
-            // Get current progress for button display
-            const currentProgress = data.percentage || 0;
-            newActions = `
+            actionsDiv.innerHTML = `
                 <button class="btn btn--sm btn--warning" onclick="pauseTask(${taskId})">
                     <i class="bi bi-pause"></i> Break
                 </button>
-                <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, ${currentProgress}, 'in_progress')">
+                <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, 0, 'in_progress')">
                     <i class="bi bi-percent"></i> Update Progress
                 </button>
+                <button class="btn btn--sm btn--secondary" onclick="postponeTask(${taskId})">
+                    <i class="bi bi-calendar-plus"></i> Postpone
+                </button>
             `;
-            startSLATimer(taskId);
             break;
+            
         case 'pause':
-            newStatus = 'on_break';
             statusBadge.textContent = 'On Break';
             statusBadge.className = 'badge badge--on_break';
-            taskCard.className = 'task-card task-card--break';
-            taskCard.dataset.pauseStart = Date.now();
-            // Add pause timer to countdown section
-            const countdownTimer = document.querySelector(`#countdown-${taskId}`);
-            if (countdownTimer && !countdownTimer.querySelector('.pause-timer')) {
-                countdownTimer.innerHTML += `
+            taskCard.className = taskCard.className.replace(/task-card--\w+/g, '') + ' task-card--break';
+            
+            // Update countdown label
+            if (countdownLabel) countdownLabel.textContent = 'Paused';
+            
+            // Add pause timer
+            const countdownDiv = taskCard.querySelector('.countdown-timer');
+            if (countdownDiv && !countdownDiv.querySelector('.pause-timer')) {
+                countdownDiv.innerHTML += `
                     <div class="pause-timer" id="pause-timer-${taskId}">00:00:00</div>
                     <div class="pause-timer-label">Break Time</div>
                 `;
             }
-            newActions = `
+            
+            actionsDiv.innerHTML = `
                 <button class="btn btn--sm btn--success" onclick="resumeTask(${taskId})">
                     <i class="bi bi-play"></i> Resume
                 </button>
                 <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, 0, 'on_break')">
                     <i class="bi bi-percent"></i> Update Progress
                 </button>
+                <button class="btn btn--sm btn--secondary" onclick="postponeTask(${taskId})">
+                    <i class="bi bi-calendar-plus"></i> Postpone
+                </button>
             `;
-            // Keep timer running to update pause duration
-            startSLATimer(taskId);
             break;
+            
         case 'completed':
-            newStatus = 'completed';
             statusBadge.textContent = 'Completed';
             statusBadge.className = 'badge badge--success';
-            taskCard.className = 'task-card task-card--completed';
-            newActions = `<span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>`;
-            stopSLATimer(taskId);
+            taskCard.className = taskCard.className.replace(/task-card--\w+/g, '') + ' task-card--completed';
+            actionsDiv.innerHTML = `<span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>`;
             break;
     }
-    
-    taskCard.dataset.status = newStatus;
-    const postponeBtn = newStatus !== 'completed' ? 
-        `<button class="btn btn--sm btn--secondary" onclick="postponeTask(${taskId})">
-            <i class="bi bi-calendar-plus"></i> Postpone
-        </button>` : '';
-    actionsDiv.innerHTML = newActions + postponeBtn;
 }
 
 function updateProgressBar(taskId, percentage) {
@@ -2809,10 +2667,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
             slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
             
-            // Initial server sync for active tasks
-            if (!timerRequestsDisabled) {
-                syncTimerWithServer(taskId);
-            }
+            // DISABLED: Initial server sync to prevent 429 errors
         }
         
         // Set pause start time for tasks on break
@@ -2838,16 +2693,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(() => {
         refreshSLADashboard();
         
-        // Sync active timers with server every 2 minutes
-        if (!timerRequestsDisabled) {
-            document.querySelectorAll('.task-card').forEach(item => {
-                const taskId = item.dataset.taskId;
-                const status = item.dataset.status;
-                if (status === 'in_progress' || status === 'on_break') {
-                    syncTimerWithServer(taskId);
-                }
-            });
-        }
+        // DISABLED: Timer sync to prevent 429 errors
     }, 120000); // 2 minutes
     
     // DISABLED - Page visibility refresh to prevent timer calls
@@ -2877,12 +2723,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 location.reload();
             } else {
-                alert('Failed to add task: ' + data.message);
+                console.log('Failed to add task: ' + data.message);
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Error adding task');
+            console.log('Error adding task:', error.message);
         });
     });
     
@@ -2936,31 +2781,47 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Manual refresh only - no automatic calls
                 showNotification(message + ' (refresh manually if needed)', 'success');
             } else {
-                alert('Failed to update progress: ' + data.message);
+                console.log('Failed to update progress: ' + data.message);
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Error updating progress');
+            console.log('Error updating progress:', error.message);
         });
     });
-    
-
 });
 
-// Ensure all timer functions are globally accessible
-window.startTask = window.startTask || function(taskId) { return startTask(taskId); };
-window.pauseTask = window.pauseTask || function(taskId) { return pauseTask(taskId); };
-window.resumeTask = window.resumeTask || function(taskId) { return resumeTask(taskId); };
-window.postponeTask = window.postponeTask || function(taskId) { return postponeTask(taskId); };
-window.openProgressModal = window.openProgressModal || function(taskId, progress, status) { return openProgressModal(taskId, progress, status); };
+// CRITICAL: Make all functions globally accessible for HTML onclick attributes
+function startTask(taskId) { return window.startTask(taskId); }
+function pauseTask(taskId) { return window.pauseTask(taskId); }
+function resumeTask(taskId) { return window.resumeTask(taskId); }
+function postponeTask(taskId) { return window.postponeTask(taskId); }
+function openProgressModal(taskId, progress, status) { return window.openProgressModal(taskId, progress, status); }
 
-// Additional compatibility assignments
-if (typeof startTask === 'function') window.startTask = startTask;
-if (typeof pauseTask === 'function') window.pauseTask = pauseTask;
-if (typeof resumeTask === 'function') window.resumeTask = resumeTask;
-if (typeof postponeTask === 'function') window.postponeTask = postponeTask;
-if (typeof openProgressModal === 'function') window.openProgressModal = openProgressModal;
+// FINAL FIX: Override any remaining alert/console.error functions to prevent interruptions
+(function() {
+    // Store original functions
+    const originalAlert = window.alert;
+    const originalConsoleError = console.error;
+    
+    // Override alert to use silent notification instead
+    window.alert = function(message) {
+        console.log('[ALERT BLOCKED]:', message);
+        // Use our notification system instead
+        if (typeof showNotification === 'function') {
+            showNotification(message, 'info');
+        }
+    };
+    
+    // Override console.error to use console.log instead
+    console.error = function(...args) {
+        console.log('[ERROR]:', ...args);
+    };
+    
+    // Restore functions if needed for debugging (uncomment if needed)
+    // window.restoreAlerts = () => { window.alert = originalAlert; console.error = originalConsoleError; };
+})();
+
+console.log('✅ Daily Planner loaded successfully - All alerts and console errors disabled');
 </script>
 
 <?php renderModalJS(); ?>

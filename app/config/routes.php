@@ -366,7 +366,6 @@ $router->get('/finance', 'FinanceController', 'dashboard');
 $router->get('/finance/dashboard-stats', 'FinanceController', 'getDashboardStats');
 $router->get('/finance/outstanding-invoices', 'FinanceController', 'getOutstandingInvoices');
 $router->get('/finance/recent-quotations', 'FinanceController', 'getRecentQuotations');
-$router->get('/finance/recent-activities', 'FinanceController', 'getRecentActivities');
 $router->get('/finance/export-table', 'FinanceController', 'exportTable');
 $router->get('/finance/export-dashboard', 'FinanceController', 'exportDashboard');
 $router->get('/finance/tables', 'FinanceController', 'getTables');
@@ -386,6 +385,5 @@ $router->get('/finance/download-database', 'FinanceController', 'downloadDatabas
 $router->get('/finance/outstanding-by-customer', 'FinanceController', 'getOutstandingByCustomer');
 $router->get('/finance/aging-buckets', 'FinanceController', 'getAgingBuckets');
 $router->get('/finance/export-outstanding', 'FinanceController', 'exportOutstanding');
-$router->get('/finance/analyze-fields', 'FinanceController', 'analyzeFinanceFields');
 
 ?>

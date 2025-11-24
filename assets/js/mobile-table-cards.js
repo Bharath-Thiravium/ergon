@@ -3,18 +3,9 @@
  * Automatically converts tables to mobile-friendly cards on small screens
  */
 
-// Complete script wrapper with early exit for incompatible pages
-(function() {
-  if (window.location.pathname.includes('/workflow/daily-planner') || 
-      window.location.pathname.includes('/admin/management')) {
-    console.log('Mobile table cards disabled for this page');
-    return; // Exit completely
-  }
-
-  function convertTablesToCards() {
-  // Completely disable on incompatible pages
-  if (window.location.pathname.includes('/admin/management') || 
-      window.location.pathname.includes('/workflow/daily-planner')) {
+function convertTablesToCards() {
+  // Completely disable on user management page
+  if (window.location.pathname.includes('/admin/management')) {
     return;
   }
   
@@ -49,7 +40,7 @@
   });
 }
 
-  function createCard(headers, cells) {
+function createCard(headers, cells) {
   const card = document.createElement('div');
   card.className = 'task-card';
   
@@ -99,7 +90,7 @@
   return card;
 }
 
-  function getStatusFromRow(cells) {
+function getStatusFromRow(cells) {
   // Look for status in common column positions or badge elements
   for (let cell of cells) {
     const badge = cell.querySelector('.badge, .status, [class*="status"]');
@@ -113,7 +104,7 @@
   return 'pending';
 }
 
-  function getPriorityFromRow(cells) {
+function getPriorityFromRow(cells) {
   // Look for priority indicators
   for (let cell of cells) {
     const text = cell.textContent.trim().toLowerCase();
@@ -132,20 +123,15 @@
   return 'medium';
 }
 
-  // Debug function
-  function debugTables() {
-  // Skip debug on excluded pages
-  if (window.location.pathname.includes('/workflow/daily-planner') || 
-      window.location.pathname.includes('/admin/management')) {
-    return;
-  }
+// Debug function
+function debugTables() {
   console.log('Screen width:', window.innerWidth);
   console.log('Tables found:', document.querySelectorAll('.table-responsive').length);
   console.log('Mobile cards found:', document.querySelectorAll('.mobile-card-container').length);
 }
 
-  // Initialize immediately and on events
-  if (document.readyState === 'loading') {
+// Initialize immediately and on events
+if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     debugTables();
     convertTablesToCards();
@@ -155,20 +141,19 @@
   convertTablesToCards();
 }
 
-  // Also run after delays to catch dynamically loaded content
-  setTimeout(() => {
+// Also run after delays to catch dynamically loaded content
+setTimeout(() => {
   debugTables();
   convertTablesToCards();
 }, 500);
 
-  setTimeout(() => {
-    debugTables();
-    convertTablesToCards();
-  }, 1000);
+setTimeout(() => {
+  debugTables();
+  convertTablesToCards();
+}, 1000);
 
-  window.addEventListener('resize', () => {
-  if (window.location.pathname.includes('/admin/management') || 
-      window.location.pathname.includes('/workflow/daily-planner')) {
+window.addEventListener('resize', () => {
+  if (window.location.pathname.includes('/admin/management')) {
     return;
   }
   
@@ -179,25 +164,24 @@
   } else {
     setTimeout(convertTablesToCards, 100);
   }
-  });
+});
 
-  // Run on any table updates
-  const observer = new MutationObserver(() => {
-  if (window.location.pathname.includes('/admin/management') || 
-      window.location.pathname.includes('/workflow/daily-planner')) {
+// Run on any table updates
+const observer = new MutationObserver(() => {
+  if (window.location.pathname.includes('/admin/management')) {
     return;
   }
   if (window.innerWidth <= 768) {
     setTimeout(convertTablesToCards, 100);
   }
-  });
+});
 
-  if (document.body) {
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
+if (document.body) {
+  observer.observe(document.body, { childList: true, subtree: true });
+}
 
-  // Function to remove element by XPath
-  function removeElementByXPath(xpath) {
+// Function to remove element by XPath
+function removeElementByXPath(xpath) {
   const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
   const element = result.singleNodeValue;
   if (element) {
@@ -207,13 +191,11 @@
   }
   console.log('Element not found:', xpath);
   return false;
-  }
+}
 
-  // Remove the specific element
-  removeElementByXPath('/html/body/main/div[3]/div[2]/div/div/div[1]/div[3]/div');
+// Remove the specific element
+removeElementByXPath('/html/body/main/div[3]/div[2]/div/div/div[1]/div[3]/div');
 
-  // Export for manual triggering
-  window.convertTablesToCards = convertTablesToCards;
-  window.removeElementByXPath = removeElementByXPath;
-
-})(); // Close the complete script IIFE
+// Export for manual triggering
+window.convertTablesToCards = convertTablesToCards;
+window.removeElementByXPath = removeElementByXPath;

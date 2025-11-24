@@ -430,7 +430,14 @@ class FinanceController extends Controller {
                     $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
 
                     $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                    $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
+                    $customerName = 'Unknown';
+                    if ($customerId && isset($customerNames[$customerId])) {
+                        $customerName = $customerNames[$customerId];
+                    } elseif (!empty($data['customer_name'])) {
+                        $customerName = $data['customer_name'];
+                    } elseif (!empty($data['customer_gstin'])) {
+                        $customerName = 'GST: ' . $data['customer_gstin'];
+                    }
 
                     $invoices[] = [
                         'invoice_number' => $invoiceNumber,
@@ -480,7 +487,16 @@ class FinanceController extends Controller {
                 if ($outstanding <= 0) continue;
 
                 $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
+                $customerName = null;
+                if ($customerId && isset($customerNames[$customerId])) {
+                    $customerName = $customerNames[$customerId];
+                } elseif (!empty($data['customer_name'])) {
+                    $customerName = $data['customer_name'];
+                } elseif (!empty($data['customer_gstin'])) {
+                    $customerName = 'GST: ' . $data['customer_gstin'];
+                } else {
+                    $customerName = 'Customer ' . ($customerId ?: 'Unknown');
+                }
 
                 if (!isset($map[$customerName])) $map[$customerName] = 0;
                 $map[$customerName] += $outstanding;
@@ -581,13 +597,9 @@ class FinanceController extends Controller {
                 
                 if (!str_contains(strtoupper($quotationNumber), $prefix)) continue;
                 
-                $customerId = $data['customer_id'] ?? '';
-                $customerNames = $this->getCustomerNamesMapping($db);
-                $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
-                
                 $quotations[] = [
                     'quotation_number' => $quotationNumber,
-                    'customer_name' => $customerName,
+                    'customer_name' => $data['customer_name'] ?? 'Unknown',
                     'total_amount' => floatval($data['total_amount'] ?? 0),
                     'valid_until' => $data['valid_until'] ?? 'N/A'
                 ];
@@ -599,384 +611,6 @@ class FinanceController extends Controller {
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
         }
-    }
-    
-    public function showAllTables() {
-        header('Content-Type: application/json');
-        
-        try {
-            $db = Database::connect();
-            $this->createTables($db);
-            
-            // Get all available tables
-            $stmt = $db->query("SELECT DISTINCT table_name FROM finance_data ORDER BY table_name");
-            $tableNames = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            $tablesData = [];
-            
-            foreach ($tableNames as $tableName) {
-                $stmt = $db->prepare("SELECT COUNT(*) as count FROM finance_data WHERE table_name = ?");
-                $stmt->execute([$tableName]);
-                $count = $stmt->fetchColumn();
-                
-                // Get sample data
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = ? LIMIT 2");
-                $stmt->execute([$tableName]);
-                $samples = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                $sampleData = [];
-                $allFields = [];
-                
-                foreach ($samples as $sample) {
-                    $data = json_decode($sample['data'], true);
-                    if ($data) {
-                        $sampleData[] = $data;
-                        $allFields = array_merge($allFields, array_keys($data));
-                    }
-                }
-                
-                $tablesData[] = [
-                    'table_name' => $tableName,
-                    'record_count' => $count,
-                    'fields' => array_unique($allFields),
-                    'sample_data' => $sampleData
-                ];
-            }
-            
-            echo json_encode([
-                'available_tables' => $tablesData,
-                'message' => 'Select which tables to use for customer name resolution'
-            ], JSON_PRETTY_PRINT);
-            
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-    }
-    
-    public function analyzeFinanceFields() {
-        header('Content-Type: text/plain');
-        
-        try {
-            $db = Database::connect();
-            echo "=== FINANCE DATABASE FIELD ANALYSIS ===\n\n";
-            
-            $tables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_customers'];
-            
-            foreach ($tables as $tableName) {
-                echo "TABLE: $tableName\n";
-                echo str_repeat("-", 50) . "\n";
-                
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = ? LIMIT 3");
-                $stmt->execute([$tableName]);
-                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                if (empty($results)) {
-                    echo "No data found\n\n";
-                    continue;
-                }
-                
-                $allFields = [];
-                foreach ($results as $i => $row) {
-                    $data = json_decode($row['data'], true);
-                    if ($data) {
-                        echo "Sample " . ($i + 1) . ":\n";
-                        foreach ($data as $key => $value) {
-                            $allFields[] = $key;
-                            if (stripos($key, 'name') !== false || 
-                                stripos($key, 'company') !== false || 
-                                stripos($key, 'customer') !== false || 
-                                stripos($key, 'address') !== false || 
-                                stripos($key, 'location') !== false || 
-                                stripos($key, 'delivery') !== false || 
-                                stripos($key, 'shipping') !== false || 
-                                stripos($key, 'dispatch') !== false) {
-                                echo "  $key: " . (is_string($value) ? substr($value, 0, 100) : json_encode($value)) . "\n";
-                            }
-                        }
-                        echo "\n";
-                    }
-                }
-                
-                $allFields = array_unique($allFields);
-                echo "All fields: " . implode(", ", $allFields) . "\n\n";
-            }
-            
-        } catch (Exception $e) {
-            echo "Error: " . $e->getMessage() . "\n";
-        }
-    }
-    
-    public function getRecentActivities() {
-        header('Content-Type: application/json');
-        
-        // Debug mode - show raw data structure
-        if (isset($_GET['debug'])) {
-            try {
-                $db = Database::connect();
-                $this->createTables($db);
-                $stmt = $db->query("SELECT * FROM finance_data LIMIT 3");
-                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                echo json_encode(['debug' => 'finance_data structure', 'sample_records' => $results], JSON_PRETTY_PRINT);
-                return;
-            } catch (Exception $e) {
-                echo json_encode(['debug_error' => $e->getMessage()]);
-                return;
-            }
-        }
-        
-        try {
-            $db = Database::connect();
-            $this->createTables($db);
-            $prefix = $this->getCompanyPrefix();
-            $customerNames = $this->getCustomerNamesMapping($db);
-            $activities = [];
-            
-            // Get recent quotations
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 10");
-            $stmt->execute();
-            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($quotationResults as $row) {
-                $data = json_decode($row['data'], true);
-                $quotationNumber = $data['quotation_number'] ?? '';
-                
-                if (!str_contains(strtoupper($quotationNumber), $prefix)) continue;
-                
-                $customerId = $data['customer_id'] ?? '';
-                $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
-                
-                $totalAmount = floatval($data['total_amount'] ?? 0);
-                $taxRate = floatval($data['tax_rate'] ?? $data['gst_rate'] ?? 0.18);
-                $taxAmount = $totalAmount * $taxRate;
-                $taxableAmount = $totalAmount - $taxAmount;
-                
-                $activities[] = [
-                    'type' => 'quotation',
-                    'document_number' => $quotationNumber,
-                    'customer_name' => $customerName,
-                    'customer_gstin' => $data['customer_gstin'] ?? '',
-                    'taxable_amount' => $taxableAmount,
-                    'tax_amount' => $taxAmount,
-                    'total_amount' => $totalAmount,
-                    'dispatch_location' => $this->resolveDispatchLocation($data),
-                    'date' => $data['quotation_date'] ?? $data['created_date'] ?? date('Y-m-d'),
-                    'status' => $data['status'] ?? 'draft',
-                    'valid_until' => $data['valid_until'] ?? 'N/A'
-                ];
-            }
-            
-            // Get recent purchase orders
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders' ORDER BY id DESC LIMIT 10");
-            $stmt->execute();
-            $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($poResults as $row) {
-                $data = json_decode($row['data'], true);
-                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
-                
-                if (!str_contains(strtoupper($poNumber), $prefix)) continue;
-                
-                $customerId = $data['customer_id'] ?? '';
-                $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
-                
-                $totalAmount = floatval($data['total_amount'] ?? 0);
-                $taxRate = floatval($data['tax_rate'] ?? $data['gst_rate'] ?? 0.18);
-                $taxAmount = $totalAmount * $taxRate;
-                $taxableAmount = $totalAmount - $taxAmount;
-                
-                $activities[] = [
-                    'type' => 'purchase_order',
-                    'document_number' => $poNumber,
-                    'customer_name' => $customerName,
-                    'customer_gstin' => $data['customer_gstin'] ?? '',
-                    'taxable_amount' => $taxableAmount,
-                    'tax_amount' => $taxAmount,
-                    'total_amount' => $totalAmount,
-                    'dispatch_location' => $this->resolveDispatchLocation($data),
-                    'date' => $data['po_date'] ?? $data['created_date'] ?? date('Y-m-d'),
-                    'status' => $data['status'] ?? 'pending'
-                ];
-            }
-            
-            // Get recent invoices
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' ORDER BY id DESC LIMIT 10");
-            $stmt->execute();
-            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($invoiceResults as $row) {
-                $data = json_decode($row['data'], true);
-                $invoiceNumber = $data['invoice_number'] ?? '';
-                
-                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
-                
-                $customerId = $data['customer_id'] ?? '';
-                $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
-                
-                $totalAmount = floatval($data['total_amount'] ?? 0);
-                $taxRate = floatval($data['tax_rate'] ?? $data['gst_rate'] ?? 0.18);
-                $taxAmount = $totalAmount * $taxRate;
-                $taxableAmount = $totalAmount - $taxAmount;
-                
-                $activities[] = [
-                    'type' => $data['invoice_type'] === 'proforma' ? 'proforma_invoice' : 'invoice',
-                    'document_number' => $invoiceNumber,
-                    'customer_name' => $customerName,
-                    'customer_gstin' => $data['customer_gstin'] ?? '',
-                    'taxable_amount' => $taxableAmount,
-                    'tax_amount' => $taxAmount,
-                    'total_amount' => $totalAmount,
-                    'dispatch_location' => $this->resolveDispatchLocation($data),
-                    'date' => $data['invoice_date'] ?? $data['created_date'] ?? date('Y-m-d'),
-                    'status' => $data['payment_status'] ?? 'unpaid',
-                    'due_date' => $data['due_date'] ?? 'N/A',
-                    'outstanding_amount' => floatval($data['outstanding_amount'] ?? 0)
-                ];
-            }
-            
-            // Sort activities by date (most recent first)
-            usort($activities, function($a, $b) {
-                return strtotime($b['date']) - strtotime($a['date']);
-            });
-            
-            // Limit to 15 most recent activities
-            $activities = array_slice($activities, 0, 15);
-            
-            echo json_encode(['activities' => $activities]);
-            
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-    }
-    
-    private function resolveCustomerName($customerId, $data, $customerNames) {
-        // First try to get actual customer name from database
-        if ($customerId && isset($customerNames[$customerId])) {
-            return $customerNames[$customerId];
-        }
-        
-        // Check all possible name fields in order of preference (same as Revenue Conversion Funnel)
-        $nameFields = [
-            'company_name', 'customer_company_name', 'client_name', 'client_company_name',
-            'display_name', 'customer_display_name', 'name', 'customer_name', 
-            'company', 'customer_company', 'organization_name', 'firm_name'
-        ];
-        
-        foreach ($nameFields as $field) {
-            if (!empty($data[$field]) && $data[$field] !== ($data['customer_gstin'] ?? '')) {
-                return $data[$field];
-            }
-        }
-        
-        // Last resort - use GST number
-        if (!empty($data['customer_gstin'])) {
-            return 'GST: ' . $data['customer_gstin'];
-        }
-        return 'Customer ' . ($customerId ?: 'Unknown');
-    }
-    
-    private function resolveDispatchLocation($data) {
-        // First try to get address using shipping_address_id
-        $shippingAddressId = $data['shipping_address_id'] ?? '';
-        if ($shippingAddressId) {
-            $shippingAddress = $this->getCustomerAddress('', $shippingAddressId);
-            if ($shippingAddress !== 'Not specified') {
-                return $shippingAddress;
-            }
-        }
-        
-        // Fallback to customer_id based address lookup
-        $customerId = $data['customer_id'] ?? '';
-        if ($customerId) {
-            $customerAddress = $this->getCustomerAddress($customerId);
-            if ($customerAddress !== 'Not specified') {
-                return $customerAddress;
-            }
-        }
-        
-        // Check document-level address fields
-        $addressFields = [
-            'delivery_address', 'shipping_address', 'dispatch_address', 'dispatch_location',
-            'customer_address', 'client_address', 'billing_address', 'site_address'
-        ];
-        
-        foreach ($addressFields as $field) {
-            if (!empty($data[$field])) {
-                return $data[$field];
-            }
-        }
-        
-        return 'Not specified';
-    }
-    
-    private function getCustomerAddress($customerId = '', $shippingAddressId = '') {
-        try {
-            $db = Database::connect();
-            
-            // First check finance_customershippingaddress table
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customershippingaddress'");
-            $stmt->execute();
-            $addressResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($addressResults as $row) {
-                $data = json_decode($row['data'], true);
-                
-                // Match by shipping_address_id AND customer_id (both must match for accuracy)
-                if ($shippingAddressId && $customerId && 
-                    ($data['id'] ?? '') === $shippingAddressId && 
-                    ($data['customer_id'] ?? '') === $customerId) {
-                    $addressParts = array_filter([
-                        $data['label'] ?? '',
-                        $data['address_line1'] ?? '',
-                        $data['city'] ?? '',
-                        $data['state'] ?? '',
-                        $data['pincode'] ?? ''
-                    ]);
-                    if (!empty($addressParts)) {
-                        return implode(', ', $addressParts);
-                    }
-                }
-            }
-            
-            // Fallback: Match only by customer_id if shipping_address_id doesn't match
-            if ($customerId) {
-                foreach ($addressResults as $row) {
-                    $data = json_decode($row['data'], true);
-                    if (($data['customer_id'] ?? '') === $customerId) {
-                        $addressParts = array_filter([
-                            $data['label'] ?? '',
-                            $data['address_line1'] ?? '',
-                            $data['city'] ?? '',
-                            $data['state'] ?? '',
-                            $data['pincode'] ?? ''
-                        ]);
-                        if (!empty($addressParts)) {
-                            return implode(', ', $addressParts);
-                        }
-                    }
-                }
-                
-                // Final fallback to finance_customer billing address
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
-                $stmt->execute();
-                $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                foreach ($customerResults as $row) {
-                    $data = json_decode($row['data'], true);
-                    if (($data['id'] ?? '') === $customerId) {
-                        $addressFields = ['billing_address', 'address', 'location'];
-                        foreach ($addressFields as $field) {
-                            if (!empty($data[$field])) {
-                                return $data[$field];
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Exception $e) {
-            // Fallback gracefully
-        }
-        
-        return 'Not specified';
     }
     
     public function exportTable() {
@@ -1010,7 +644,14 @@ class FinanceController extends Controller {
                         $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
 
                         $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                        $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
+                        $customerName = 'Unknown';
+                        if ($customerId && isset($customerNames[$customerId])) {
+                            $customerName = $customerNames[$customerId];
+                        } elseif (!empty($data['customer_name'])) {
+                            $customerName = $data['customer_name'];
+                        } elseif (!empty($data['customer_gstin'])) {
+                            $customerName = 'GST: ' . $data['customer_gstin'];
+                        }
                         
                         echo '"' . $invoiceNumber . '","' . 
                              str_replace('"', '""', $customerName) . '","' . 
@@ -1055,7 +696,16 @@ class FinanceController extends Controller {
                 if ($outstanding <= 0) continue;
 
                 $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
+                $customerName = null;
+                if ($customerId && isset($customerNames[$customerId])) {
+                    $customerName = $customerNames[$customerId];
+                } elseif (!empty($data['customer_name'])) {
+                    $customerName = $data['customer_name'];
+                } elseif (!empty($data['customer_gstin'])) {
+                    $customerName = 'GST: ' . $data['customer_gstin'];
+                } else {
+                    $customerName = 'Customer ' . ($customerId ?: 'Unknown');
+                }
 
                 if (!isset($map[$customerName])) $map[$customerName] = 0;
                 $map[$customerName] += $outstanding;
@@ -1259,26 +909,15 @@ class FinanceController extends Controller {
             // Column already exists
         }
         
-        // Check if finance_data table exists with correct structure
-        $stmt = $db->query("SHOW TABLES LIKE 'finance_data'");
-        if ($stmt->rowCount() == 0) {
-            $db->exec("CREATE TABLE finance_data (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                table_name VARCHAR(100),
-                data JSON,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX(table_name)
-            )");
-        } else {
-            // Check if table_name column exists
-            try {
-                $db->query("SELECT table_name FROM finance_data LIMIT 1");
-            } catch (Exception $e) {
-                // Add missing column
-                $db->exec("ALTER TABLE finance_data ADD COLUMN table_name VARCHAR(100)");
-                $db->exec("ALTER TABLE finance_data ADD INDEX(table_name)");
-            }
-        }
+        $db->exec("CREATE TABLE IF NOT EXISTS finance_data (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            table_name VARCHAR(100),
+            data JSON,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX(table_name)
+        )");
+        
+
     }
     
     private function getQuotationsChart($db) {
@@ -1375,20 +1014,41 @@ class FinanceController extends Controller {
     }
     
     public function getCustomers() {
-        if (ob_get_level() > 0) { ob_clean(); }
         header('Content-Type: application/json');
         
         try {
             $db = Database::connect();
-            $this->createTables($db);
             $prefix = $this->getCompanyPrefix();
             $customers = [];
             
-            // Get customer names mapping from finance_customer table
-            $customerNames = $this->getCustomerNamesMapping($db);
-            $customerCount = count($customerNames);
+            // Check if finance_customer(s) table has data (handle both singular/plural)
+            $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
+            $stmt->execute();
+            $customerCount = $stmt->fetchColumn();
 
-            // Get customers from finance_quotations table
+            // Get customer names from finance_customer(s) table if available
+            $customerNames = [];
+            if ($customerCount > 0) {
+                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
+                $stmt->execute();
+                $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($customerResults as $row) {
+                    $data = json_decode($row['data'], true);
+                    $customerId = isset($data['id']) ? (string)$data['id'] : '';
+                    $customerName = $data['display_name'] ?? $data['name'] ?? '';
+                    $customerGstin = $data['gstin'] ?? $data['customer_gstin'] ?? '';
+
+                    if ($customerId && $customerName) {
+                        $customerNames[$customerId] = [
+                            'name' => $customerName,
+                            'gstin' => $customerGstin
+                        ];
+                    }
+                }
+            }
+
+            // Get customers from quotations as the primary source of linked customers
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
             $stmt->execute();
             $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1403,16 +1063,26 @@ class FinanceController extends Controller {
                 $customerGstin = $data['customer_gstin'] ?? '';
 
                 if ($customerId) {
-                    $resolvedName = $this->resolveCustomerName($customerId, $data, $customerNames);
-                    $customers[$customerId] = [
-                        'id' => $customerId,
-                        'gstin' => $customerGstin,
-                        'display' => $resolvedName . ($customerGstin && !str_contains($resolvedName, $customerGstin) ? " (GST: {$customerGstin})" : '')
-                    ];
+                    if (isset($customerNames[$customerId])) {
+                        $customerInfo = $customerNames[$customerId];
+                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $gstin,
+                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
+                        ];
+                    } else {
+                        // No detailed customer record found — create readable fallback using GST if available
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $customerGstin,
+                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
+                        ];
+                    }
                 }
             }
 
-            // Also aggregate customers from finance_purchase_orders table
+            // Also aggregate customers referenced by Purchase Orders
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
             $stmt->execute();
             $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1427,16 +1097,25 @@ class FinanceController extends Controller {
                 $customerGstin = $data['customer_gstin'] ?? '';
 
                 if ($customerId && !isset($customers[$customerId])) {
-                    $resolvedName = $this->resolveCustomerName($customerId, $data, $customerNames);
-                    $customers[$customerId] = [
-                        'id' => $customerId,
-                        'gstin' => $customerGstin,
-                        'display' => $resolvedName . ($customerGstin && !str_contains($resolvedName, $customerGstin) ? " (GST: {$customerGstin})" : '')
-                    ];
+                    if (isset($customerNames[$customerId])) {
+                        $customerInfo = $customerNames[$customerId];
+                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $gstin,
+                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
+                        ];
+                    } else {
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $customerGstin,
+                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
+                        ];
+                    }
                 }
             }
 
-            // Also aggregate customers from finance_invoices table
+            // Also aggregate customers referenced by Invoices
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1451,12 +1130,21 @@ class FinanceController extends Controller {
                 $customerGstin = $data['customer_gstin'] ?? '';
 
                 if ($customerId && !isset($customers[$customerId])) {
-                    $resolvedName = $this->resolveCustomerName($customerId, $data, $customerNames);
-                    $customers[$customerId] = [
-                        'id' => $customerId,
-                        'gstin' => $customerGstin,
-                        'display' => $resolvedName . ($customerGstin && !str_contains($resolvedName, $customerGstin) ? " (GST: {$customerGstin})" : '')
-                    ];
+                    if (isset($customerNames[$customerId])) {
+                        $customerInfo = $customerNames[$customerId];
+                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $gstin,
+                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
+                        ];
+                    } else {
+                        $customers[$customerId] = [
+                            'id' => $customerId,
+                            'gstin' => $customerGstin,
+                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
+                        ];
+                    }
                 }
             }
             
@@ -1473,10 +1161,8 @@ class FinanceController extends Controller {
             ]);
             
         } catch (Exception $e) {
-            if (ob_get_level() > 0) { ob_clean(); }
             echo json_encode(['error' => $e->getMessage()]);
         }
-        exit;
     }
     
     private function getConversionFunnel($db, $customerFilter = '') {
@@ -1567,15 +1253,15 @@ class FinanceController extends Controller {
     private function getCustomerNamesMapping($db) {
         $customerNames = [];
         
-        // Get customer names from finance_customer table (correct table name from DB analysis)
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
+        // Get customer names from finance_customers table only
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
         $stmt->execute();
         $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         foreach ($customerResults as $row) {
             $data = json_decode($row['data'], true);
             $customerId = $data['id'] ?? '';
-            $customerName = $data['display_name'] ?? $data['name'] ?? '';
+            $customerName = $data['name'] ?? '';
             
             if ($customerId && $customerName) {
                 $customerNames[$customerId] = $customerName;

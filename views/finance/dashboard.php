@@ -14,27 +14,27 @@
         </div>
         <div class="dashboard-header__actions">
             <div class="action-group">
-                <button id="syncBtn" class="btn btn--primary btn--sm" title="Synchronize finance data from external sources">
+                <button id="syncBtn" class="btn btn--primary btn--sm">
                     <span class="btn__icon">🔄</span>
                     <span class="btn__text">Sync Data</span>
                 </button>
-                <button id="exportBtn" class="btn btn--secondary btn--sm" title="Export dashboard data to CSV format">
+                <button id="exportBtn" class="btn btn--secondary btn--sm">
                     <span class="btn__icon">📥</span>
                     <span class="btn__text">Export</span>
                 </button>
-                <button onclick="window.open('/ergon/finance/download-database', '_blank')" class="btn btn--info btn--sm" title="Download complete database backup as CSV">
+                <button onclick="window.open('/ergon/finance/download-database', '_blank')" class="btn btn--info btn--sm">
                     <span class="btn__icon">💾</span>
                     <span class="btn__text">Download DB</span>
                 </button>
             </div>
             <div class="filter-group">
                 <div class="input-group">
-                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Company Prefix" maxlength="10" title="Enter company prefix to filter documents">
-                    <button id="updatePrefixBtn" class="btn btn--secondary btn--sm" title="Update company prefix for document filtering">
+                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Company Prefix" maxlength="10">
+                    <button id="updatePrefixBtn" class="btn btn--secondary btn--sm">
                         <span class="btn__icon">🏢</span>
                     </button>
                 </div>
-                <select id="dateFilter" class="form-control form-control--sm" title="Filter data by date range">
+                <select id="dateFilter" class="form-control form-control--sm">
                     <option value="all">All Time</option>
                     <option value="30">Last 30 Days</option>
                     <option value="90">Last 90 Days</option>
@@ -136,7 +136,7 @@
         <div class="card card--full-width">
             <div class="card__header">
                 <h2 class="card__title">🔄 Revenue Conversion Funnel</h2>
-                <select id="customerFilter" class="form-control customer-filter" title="Filter data by specific customer">
+                <select id="customerFilter" class="form-control customer-filter">
                     <option value="">All Customers</option>
                 </select>
                 <span id="customerLoader" class="customer-loader" aria-hidden="true"></span>
@@ -318,7 +318,7 @@
         <div class="card card--full-width">
             <div class="card__header">
                 <h2 class="card__title">⚠️ Outstanding Invoices</h2>
-                <button class="btn btn--sm" onclick="exportTable('outstanding')" title="Export outstanding invoices to CSV">Export</button>
+                <button class="btn btn--sm" onclick="exportTable('outstanding')">Export</button>
             </div>
             <div class="card__body">
                 <div class="table-responsive">
@@ -344,61 +344,45 @@
         </div>
     </div>
     
-    <!-- Recent Activities & Cash Flow Split Layout -->
-    <div class="dashboard-grid dashboard-grid--split">
-        <div class="card card--activities">
-            <div class="card__header card__header--compact">
+    <!-- Recent Activities -->
+    <div class="dashboard-grid">
+        <div class="card">
+            <div class="card__header">
                 <h2 class="card__title">📈 Recent Activities</h2>
-                <div class="activity-filters activity-filters--compact">
-                    <button class="filter-btn filter-btn--mini active" data-type="all" title="Show all activities">All</button>
-                    <button class="filter-btn filter-btn--mini" data-type="quotation" title="Show quotations only">📝</button>
-                    <button class="filter-btn filter-btn--mini" data-type="po" title="Show purchase orders only">🛒</button>
-                    <button class="filter-btn filter-btn--mini" data-type="invoice" title="Show invoices only">💰</button>
-                    <button class="filter-btn filter-btn--mini" data-type="payment" title="Show payments only">💳</button>
+                <div class="activity-filters">
+                    <button class="filter-btn active" data-type="all">All</button>
+                    <button class="filter-btn" data-type="quotation">📝</button>
+                    <button class="filter-btn" data-type="po">🛒</button>
+                    <button class="filter-btn" data-type="invoice">💰</button>
+                    <button class="filter-btn" data-type="payment">💳</button>
                 </div>
             </div>
-            <div class="card__body card__body--compact">
-                <div id="recentActivities" class="activities-compact">
-                    <div class="activity-loading">Loading recent activities...</div>
+            <div class="card__body">
+                <div id="recentActivities">
+                    <div class="activity-item">
+                        <div class="activity-loading">Loading recent activities...</div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="card card--cashflow">
-            <div class="card__header card__header--compact">
+        <div class="card">
+            <div class="card__header">
                 <h2 class="card__title">💰 Cash Flow Projection</h2>
             </div>
-            <div class="card__body card__body--compact">
-                <div class="cash-flow-advanced">
-                    <div class="flow-metric flow-metric--inflow">
-                        <div class="flow-icon">📈</div>
-                        <div class="flow-content">
-                            <div class="flow-label">Expected Inflow</div>
-                            <div class="flow-value" id="expectedInflow">₹0</div>
-                        </div>
+            <div class="card__body">
+                <div class="cash-flow-summary">
+                    <div class="flow-item">
+                        <div class="flow-label">Expected Inflow:</div>
+                        <div class="flow-value flow-positive" id="expectedInflow">₹0</div>
                     </div>
-                    <div class="flow-metric flow-metric--outflow">
-                        <div class="flow-icon">📉</div>
-                        <div class="flow-content">
-                            <div class="flow-label">PO Commitments</div>
-                            <div class="flow-value" id="poCommitments">₹0</div>
-                        </div>
+                    <div class="flow-item">
+                        <div class="flow-label">PO Commitments:</div>
+                        <div class="flow-value flow-negative" id="poCommitments">₹0</div>
                     </div>
-                    <div class="flow-metric flow-metric--net">
-                        <div class="flow-icon">💎</div>
-                        <div class="flow-content">
-                            <div class="flow-label">Net Cash Flow</div>
-                            <div class="flow-value" id="netCashFlow">₹0</div>
-                        </div>
-                    </div>
-                    <div class="flow-chart">
-                        <div class="flow-bar">
-                            <div class="flow-bar-fill" id="flowBarFill"></div>
-                        </div>
-                        <div class="flow-indicators">
-                            <span class="flow-indicator flow-indicator--positive">Positive</span>
-                            <span class="flow-indicator flow-indicator--negative">Negative</span>
-                        </div>
+                    <div class="flow-item">
+                        <div class="flow-label">Net Cash Flow:</div>
+                        <div class="flow-value" id="netCashFlow">₹0</div>
                     </div>
                 </div>
             </div>
@@ -422,17 +406,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('updatePrefixBtn').addEventListener('click', updateCompanyPrefix);
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
     document.getElementById('customerFilter').addEventListener('change', filterByCustomer);
-    
-    // Activity filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            console.log('Filter button clicked:', this.getAttribute('data-type'));
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            const filterType = this.getAttribute('data-type');
-            loadRecentActivities(filterType);
-        });
-    });
     // Outstanding top-N control
     const topN = document.getElementById('outstandingTopN');
     if (topN) topN.addEventListener('change', () => loadOutstandingByCustomer(parseInt(topN.value, 10)));
@@ -447,11 +420,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCompanyPrefix().then(() => {
         loadCustomers();
         loadDashboardData();
-        // Also load activities directly as a fallback
-        setTimeout(() => {
-            console.log('Loading activities as fallback...');
-            loadRecentActivities('all');
-        }, 2000);
     });
 });
 
@@ -692,31 +660,11 @@ async function loadDashboardData() {
         updateConversionFunnel(data);
         updateCharts(data);
         loadOutstandingInvoices();
-        loadRecentActivities('all');
+        loadRecentActivities();
         updateCashFlow(data);
-        
-        // Update cash flow metrics styling
-        setTimeout(() => {
-            const netElement = document.getElementById('netCashFlow');
-            if (netElement) {
-                const netValue = parseFloat(netElement.textContent.replace(/[₹,]/g, ''));
-                const netMetric = netElement.closest('.flow-metric--net');
-                if (netMetric) {
-                    if (netValue >= 0) {
-                        netMetric.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-                        netMetric.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(5, 150, 105, 0.05))';
-                    } else {
-                        netMetric.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                        netMetric.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.05))';
-                    }
-                }
-            }
-        }, 100);
         
     } catch (error) {
         console.error('Failed to load dashboard data:', error);
-        // Initialize with default cash flow data
-        updateCashFlow({ cashFlow: { expectedInflow: 0, poCommitments: 0 } });
     }
 }
 
@@ -963,126 +911,60 @@ async function loadOutstandingByCustomer(limit = 10) {
 // (Server-side export used via /ergon/finance/export-outstanding)
 
 async function loadRecentActivities(type = 'all') {
-    console.log('Loading recent activities with type:', type);
     try {
-        const response = await fetch('/ergon/finance/recent-activities?t=' + Date.now());
-        console.log('Response status:', response.status);
+        // Use existing quotations endpoint as fallback until backend is implemented
+        const response = await fetch('/ergon/finance/recent-quotations');
         if (!response.ok) {
             throw new Error('Recent activities API not available');
         }
         const activityText = await response.text();
-        console.log('Response text length:', activityText.length);
         const data = activityText ? JSON.parse(activityText) : {};
         
         const container = document.getElementById('recentActivities');
-        console.log('Container found:', !!container);
-        console.log('Activities data:', data.activities ? data.activities.length : 'No activities');
-        
-        if (data.activities && data.activities.length > 0) {
-            let filteredActivities = data.activities;
-            
-            // Filter by type if specified
-            if (type !== 'all') {
-                filteredActivities = data.activities.filter(activity => {
-                    switch(type) {
-                        case 'quotation': return activity.type === 'quotation';
-                        case 'po': return activity.type === 'purchase_order';
-                        case 'invoice': return activity.type === 'invoice' || activity.type === 'proforma_invoice';
-                        case 'payment': return activity.type === 'payment';
-                        default: return true;
-                    }
-                });
-            }
-            
-            container.innerHTML = filteredActivities.map(activity => {
-                const icon = getActivityIcon(activity.type);
-                const typeLabel = getActivityTypeLabel(activity.type);
-                const statusClass = getActivityStatusClass(activity.status);
-                
-                return `
-                    <div class="activity-row">
-                        <div class="activity-icon-compact">${icon}</div>
-                        <div class="activity-main-info">
-                            <div class="activity-title">${typeLabel}</div>
-                            <div class="activity-doc">${activity.document_number}</div>
+        if (data.quotations && data.quotations.length > 0) {
+            container.innerHTML = data.quotations.map(quote => `
+                <div class="activity-item activity-item--quotation">
+                    <div class="activity-icon">📝</div>
+                    <div class="activity-content">
+                        <div class="activity-title">${quote.quotation_number}</div>
+                        <div class="activity-details">₹${quote.total_amount.toLocaleString()} - ${quote.customer_name}</div>
+                        <div class="activity-meta">
+                            <span class="activity-type">Quotation</span>
+                            <span class="activity-date">Expires: ${quote.valid_until}</span>
                         </div>
-                        <div class="activity-customer-info">
-                            <div class="activity-customer">${activity.customer_name}</div>
-                            <div class="activity-address">${activity.dispatch_location}</div>
-                        </div>
-                        <div class="activity-amount">₹${activity.total_amount.toLocaleString()}</div>
-                        <div class="activity-status status--${statusClass}">${activity.status}</div>
                     </div>
-                `;
-            }).join('');
+                    <div class="activity-status activity-status--pending">Active</div>
+                </div>
+            `).join('');
         } else {
-            container.innerHTML = '<div class="activity-loading">No recent activities</div>';
+            container.innerHTML = '<div class="activity-item"><div class="activity-loading">No recent activities</div></div>';
         }
     } catch (error) {
         console.error('Failed to load recent activities:', error);
-        document.getElementById('recentActivities').innerHTML = '<div class="activity-loading">No activities available</div>';
+        document.getElementById('recentActivities').innerHTML = '<div class="activity-item"><div class="activity-loading">No activities available</div></div>';
     }
 }
 
 function getActivityIcon(type) {
     const icons = {
         'quotation': '📝',
-        'purchase_order': '🛒',
+        'po': '🛒',
         'invoice': '💰',
-        'proforma_invoice': '📄',
         'payment': '💳'
     };
     return icons[type] || '📈';
 }
 
-function getActivityStatusClass(status) {
-    const statusMap = {
-        'draft': 'draft',
-        'revised': 'revised',
-        'converted': 'completed',
-        'pending': 'pending',
-        'approved': 'completed',
-        'paid': 'completed',
-        'unpaid': 'pending',
-        'overdue': 'overdue'
-    };
-    return statusMap[status] || 'pending';
-}
-
-function getActivityTypeLabel(type) {
-    const typeLabels = {
-        'quotation': 'Quotation',
-        'purchase_order': 'Purchase Order',
-        'invoice': 'Invoice',
-        'proforma_invoice': 'Proforma Invoice',
-        'payment': 'Payment'
-    };
-    return typeLabels[type] || 'Document';
-}
-
 function updateCashFlow(data) {
     const cashFlow = data.cashFlow || {};
-    const inflow = cashFlow.expectedInflow || 0;
-    const outflow = cashFlow.poCommitments || 0;
-    const netFlow = inflow - outflow;
     
-    document.getElementById('expectedInflow').textContent = `₹${inflow.toLocaleString()}`;
-    document.getElementById('poCommitments').textContent = `₹${outflow.toLocaleString()}`;
+    document.getElementById('expectedInflow').textContent = `₹${(cashFlow.expectedInflow || 0).toLocaleString()}`;
+    document.getElementById('poCommitments').textContent = `₹${(cashFlow.poCommitments || 0).toLocaleString()}`;
     
+    const netFlow = (cashFlow.expectedInflow || 0) - (cashFlow.poCommitments || 0);
     const netElement = document.getElementById('netCashFlow');
     netElement.textContent = `₹${netFlow.toLocaleString()}`;
-    netElement.style.color = netFlow >= 0 ? 'var(--success)' : 'var(--error)';
-    
-    // Update flow bar
-    const flowBar = document.getElementById('flowBarFill');
-    if (flowBar) {
-        const total = Math.max(inflow, outflow, Math.abs(netFlow));
-        const percentage = total > 0 ? Math.min((Math.abs(netFlow) / total) * 100, 100) : 0;
-        flowBar.style.width = `${percentage}%`;
-        flowBar.style.background = netFlow >= 0 
-            ? 'linear-gradient(90deg, var(--success), #047857)' 
-            : 'linear-gradient(90deg, var(--error), #dc2626)';
-    }
+    netElement.className = `flow-value ${netFlow >= 0 ? 'flow-positive' : 'flow-negative'}`;
 }
 
 function toggleView(module, viewType) {
@@ -1679,43 +1561,17 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     gap: 1.5rem;
 }
 
-/* Enhanced Chart Cards */
+/* Chart Cards */
 .chart-card {
-    background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(255, 255, 255, 0.9) 100%);
+    background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 1rem;
-    height: 240px;
+    border-radius: 8px;
+    padding: 0.75rem;
+    height: 220px;
     width: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    position: relative;
-}
-
-.chart-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--success));
-    border-radius: 16px 16px 0 0;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.chart-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    border-color: rgba(59, 130, 246, 0.2);
-}
-
-.chart-card:hover::before {
-    opacity: 1;
 }
 
 .chart-card__header {
@@ -1734,16 +1590,7 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 }
 
 .chart-card__icon {
-    font-size: 1.4rem;
-    padding: 0.4rem;
-    border-radius: 10px;
-    background: rgba(59, 130, 246, 0.1);
-    transition: all 0.2s ease;
-}
-
-.chart-card:hover .chart-card__icon {
-    transform: scale(1.1);
-    background: rgba(59, 130, 246, 0.15);
+    font-size: 1.25rem;
 }
 
 .chart-card__title {
@@ -1753,15 +1600,9 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 }
 
 .chart-card__value {
-    font-size: 1.25rem;
-    font-weight: 800;
+    font-size: 1.1rem;
+    font-weight: 700;
     color: var(--text-primary);
-    letter-spacing: -0.3px;
-    transition: all 0.2s ease;
-}
-
-.chart-card:hover .chart-card__value {
-    transform: scale(1.02);
 }
 
 .chart-card__trend {
@@ -1879,43 +1720,22 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     align-items: flex-start;
     margin-bottom: 2rem;
     padding: 1.5rem;
-    background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(59, 130, 246, 0.02) 100%);
+    background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    position: relative;
-    overflow: hidden;
-}
-
-.dashboard-header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    /*background: linear-gradient(90deg, var(--primary), var(--success), var(--warning));
-    border-radius: 12px 12px 0 0;*/
+    border-radius: 8px;
 }
 
 .dashboard-header__title h1 {
     margin: 0 0 0.25rem 0;
-    font-size: 1.75rem;
-    font-weight: 800;
+    font-size: 1.5rem;
+    font-weight: 700;
     color: var(--text-primary);
-    background: linear-gradient(135deg, var(--primary), var(--success));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -0.5px;
 }
 
 .dashboard-header__title p {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: var(--text-secondary);
-    font-weight: 500;
-    opacity: 0.8;
 }
 
 .dashboard-header__actions {
@@ -1938,236 +1758,50 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 .input-group {
     display: flex;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 6px;
     overflow: hidden;
-    background: var(--bg-primary);
-    transition: all 0.2s ease;
-}
-
-.input-group:focus-within {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .input-group .form-control {
     border: none;
     border-radius: 0;
     margin: 0;
-    background: transparent;
 }
 
 .input-group .btn {
     border-radius: 0;
     border-left: 1px solid var(--border-color);
-    background: rgba(59, 130, 246, 0.05);
-}
-
-.input-group .btn:hover {
-    background: rgba(59, 130, 246, 0.1);
 }
 
 .btn--sm {
-    padding: 0.6rem 1rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    border-radius: 8px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    position: relative;
-    overflow: hidden;
-}
-
-.btn--sm:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn--sm::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s ease;
-}
-
-.btn--sm:hover::before {
-    left: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
 }
 
 .btn__icon {
-    margin-right: 0.4rem;
-    font-size: 1rem;
-    display: inline-flex;
-    align-items: center;
-    transition: transform 0.2s ease;
-}
-
-.btn--sm:hover .btn__icon {
-    transform: scale(1.1);
+    margin-right: 0.25rem;
 }
 
 .form-control--sm {
-    padding: 0.6rem 0.75rem;
-    font-size: 0.85rem;
-    min-width: 140px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-primary);
-    transition: all 0.2s ease;
-    font-weight: 500;
-}
-
-.form-control--sm:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    background: rgba(59, 130, 246, 0.02);
-}
-
-/* Enhanced Tooltip Styles */
-[title] {
-    position: relative;
-    cursor: help;
-}
-
-[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    white-space: nowrap;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    animation: tooltipFadeIn 0.2s ease;
-}
-
-[title]:hover::before {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(1px);
-    border: 4px solid transparent;
-    border-top-color: rgba(0, 0, 0, 0.9);
-    z-index: 1001;
-    animation: tooltipFadeIn 0.2s ease;
-}
-
-@keyframes tooltipFadeIn {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(-5px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
-}
-
-/* Button specific tooltip positioning */
-.btn[title]:hover::after {
-    bottom: calc(100% + 8px);
-}
-
-.btn[title]:hover::before {
-    bottom: calc(100% + 4px);
-}
-
-/* Enhanced Loading States */
-.activity-loading {
-    text-align: center;
-    color: var(--text-muted);
-    font-style: italic;
-    padding: 2rem;
-    background: rgba(59, 130, 246, 0.02);
-    border-radius: 12px;
-    border: 2px dashed rgba(59, 130, 246, 0.1);
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        opacity: 0.6;
-    }
-    50% {
-        opacity: 1;
-    }
-}
-
-.customer-loader .mini-spinner {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border: 2px solid var(--border-color);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    min-width: 120px;
 }
 
 @media (max-width: 768px) {
     .dashboard-header {
         flex-direction: column;
-        gap: 1.5rem;
-        padding: 1.25rem;
-    }
-    
-    .dashboard-header__title h1 {
-        font-size: 1.5rem;
+        gap: 1rem;
     }
     
     .dashboard-header__actions {
         flex-direction: column;
         width: 100%;
-        gap: 1rem;
     }
     
     .action-group,
     .filter-group {
         flex-wrap: wrap;
-        justify-content: center;
-    }
-    
-    .btn--sm {
-        padding: 0.7rem 1.2rem;
-        font-size: 0.9rem;
-    }
-    
-    .form-control--sm {
-        min-width: 160px;
-        padding: 0.7rem 0.9rem;
-    }
-    
-    .chart-card {
-        height: 220px;
-        padding: 0.9rem;
-    }
-    
-    .dashboard-grid--split {
-        grid-template-columns: 1fr;
-        height: auto;
-        min-height: auto;
-        gap: 1.5rem;
-    }
-    
-    .card--activities,
-    .card--cashflow {
-        height: 350px;
     }
 }
 
@@ -2246,66 +1880,27 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     font-size: 0.75rem;
 }
 
-/* Enhanced Activity Filters */
+/* Activity Filters */
 .activity-filters {
     display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    padding: 0.5rem;
-    background: rgba(59, 130, 246, 0.03);
-    border-radius: 12px;
-    border: 1px solid rgba(59, 130, 246, 0.1);
+    gap: 0.25rem;
 }
 
 .filter-btn {
-    padding: 0.6rem 1.2rem;
+    padding: 0.25rem 0.5rem;
     border: 1px solid var(--border-color);
-    background: var(--bg-primary);
+    background: var(--bg-secondary);
     color: var(--text-secondary);
-    border-radius: 10px;
-    font-size: 0.8rem;
-    font-weight: 600;
+    border-radius: 4px;
+    font-size: 0.75rem;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    white-space: nowrap;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.filter-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
-    transition: left 0.5s ease;
-}
-
-.filter-btn:hover {
-    background: rgba(59, 130, 246, 0.05);
-    border-color: var(--primary);
-    color: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-}
-
-.filter-btn:hover::before {
-    left: 100%;
+    transition: all 0.2s ease;
 }
 
 .filter-btn.active {
-    background: linear-gradient(135deg, var(--primary), #1e40af);
+    background: var(--primary);
     color: white;
     border-color: var(--primary);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    transform: translateY(-1px);
-}
-
-.filter-btn.active::before {
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
 }
 
 /* Activity Items */
@@ -2361,11 +1956,6 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     border-radius: 8px;
 }
 
-.activity-location {
-    color: var(--text-muted);
-    font-style: italic;
-}
-
 .activity-status {
     padding: 0.25rem 0.5rem;
     border-radius: 12px;
@@ -2388,785 +1978,6 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     text-align: center;
     color: var(--text-muted);
     font-style: italic;
-}
-
-/* Enhanced Activity Cards */
-.activity-card {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.activity-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    transform: translateY(-2px);
-}
-
-.activity-card__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.activity-card__icon {
-    font-size: 1.5rem;
-    margin-right: 0.75rem;
-    flex-shrink: 0;
-}
-
-.activity-card__title {
-    flex: 1;
-}
-
-.activity-card__title h4 {
-    margin: 0 0 0.25rem 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.activity-card__type {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 500;
-}
-
-.activity-card__status {
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: capitalize;
-}
-
-.activity-status--draft {
-    background: rgba(107, 114, 128, 0.1);
-    color: #6b7280;
-}
-
-.activity-status--revised {
-    background: rgba(217, 119, 6, 0.1);
-    color: #d97706;
-}
-
-.activity-status--pending {
-    background: rgba(217, 119, 6, 0.1);
-    color: #d97706;
-}
-
-.activity-status--completed {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-}
-
-.activity-status--overdue {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-}
-
-.activity-card__amounts {
-    background: var(--bg-secondary);
-    border-radius: 6px;
-    padding: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.amount-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.amount-row:last-child {
-    margin-bottom: 0;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--border-color);
-    font-weight: 600;
-}
-
-.amount-label {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.amount-value {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.activity-card__details {
-    display: grid;
-    gap: 0.5rem;
-}
-
-.detail-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.25rem 0;
-}
-
-.detail-row--highlight {
-    background: rgba(239, 68, 68, 0.05);
-    padding: 0.5rem;
-    border-radius: 4px;
-    border-left: 3px solid #ef4444;
-}
-
-.detail-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
-
-.detail-value {
-    font-size: 0.8rem;
-    color: var(--text-primary);
-    font-weight: 500;
-    text-align: right;
-    max-width: 60%;
-    word-break: break-word;
-}
-
-.detail-row--highlight .detail-value {
-    color: #ef4444;
-    font-weight: 600;
-}
-
-/* Activity Card Type Variations */
-.activity-card--quotation {
-    border-left: 4px solid #3b82f6;
-}
-
-.activity-card--purchase_order {
-    border-left: 4px solid #059669;
-}
-
-.activity-card--invoice {
-    border-left: 4px solid #dc2626;
-}
-
-.activity-card--proforma_invoice {
-    border-left: 4px solid #7c3aed;
-}
-
-.activity-card--payment {
-    border-left: 4px solid #16a34a;
-}
-
-/* Activities Grid Layout */
-.activities-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-/* Enhanced Minimalist Activity Items */
-.activity-item-minimal {
-    display: flex;
-    flex-direction: column;
-    padding: 1.25rem;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    margin-bottom: 1rem;
-    background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(255, 255, 255, 0.9) 100%);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    position: relative;
-    overflow: hidden;
-}
-
-.activity-item-minimal::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--success));
-    border-radius: 12px 12px 0 0;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.activity-item-minimal:hover {
-    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-    transform: translateY(-4px);
-    border-color: rgba(59, 130, 246, 0.3);
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(255, 255, 255, 0.95) 100%);
-}
-
-.activity-item-minimal:hover::before {
-    opacity: 1;
-}
-
-.activity-main {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-    gap: 1rem;
-}
-
-.activity-document {
-    font-weight: 800;
-    font-size: 1.1rem;
-    color: white;
-    background: linear-gradient(135deg, var(--primary), #1e40af);
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    min-width: 140px;
-    text-align: center;
-}
-
-.activity-customer {
-    font-weight: 700;
-    font-size: 1rem;
-    color: var(--text-primary);
-    flex: 1;
-    text-align: center;
-    background: rgba(107, 114, 128, 0.05);
-    padding: 0.5rem;
-    border-radius: 6px;
-    border: 1px solid rgba(107, 114, 128, 0.1);
-}
-
-.activity-amount {
-    font-weight: 800;
-    font-size: 1.1rem;
-    color: white;
-    background: linear-gradient(135deg, var(--success), #047857);
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
-    min-width: 120px;
-    text-align: center;
-}
-
-.activity-secondary {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    padding-top: 0.75rem;
-    border-top: 2px solid var(--border-color);
-    gap: 0.5rem;
-}
-
-.activity-type-small {
-    background: linear-gradient(135deg, var(--bg-secondary), #f1f5f9);
-    padding: 0.3rem 0.6rem;
-    border-radius: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-}
-
-.activity-date-small {
-    color: var(--text-secondary);
-    font-weight: 500;
-    background: rgba(107, 114, 128, 0.1);
-    padding: 0.2rem 0.5rem;
-    border-radius: 8px;
-}
-
-.activity-location-small {
-    color: var(--text-muted);
-    font-style: italic;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    background: rgba(156, 163, 175, 0.1);
-    padding: 0.2rem 0.5rem;
-    border-radius: 8px;
-}
-
-.activity-status-small {
-    padding: 0.3rem 0.6rem;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border: 1px solid currentColor;
-}
-
-/* Enhanced Split Layout for Activities & Cash Flow */
-.dashboard-grid--split {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    height: 55vh;
-    min-height: 450px;
-}
-
-.card--activities,
-.card--cashflow {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-    background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(255, 255, 255, 0.9) 100%);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-}
-
-.card--activities:hover,
-.card--cashflow:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    border-color: rgba(59, 130, 246, 0.2);
-}
-
-.card__header--compact {
-    padding: 1.25rem 1.25rem 1rem 1.25rem;
-    border-bottom: 2px solid rgba(59, 130, 246, 0.1);
-    flex-shrink: 0;
-    background: rgba(59, 130, 246, 0.02);
-    border-radius: 16px 16px 0 0;
-}
-
-.card__title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
-    letter-spacing: -0.3px;
-}
-
-.card__body--compact {
-    padding: 0;
-    flex: 1;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Compact Activity Filters */
-.activity-filters--compact {
-    display: flex;
-    gap: 0.4rem;
-    margin-top: 0.75rem;
-    padding: 0.4rem;
-    background: rgba(59, 130, 246, 0.02);
-    border-radius: 10px;
-    border: 1px solid rgba(59, 130, 246, 0.08);
-}
-
-.filter-btn--mini {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.7rem;
-    border-radius: 8px;
-    min-width: auto;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    transition: all 0.2s ease;
-}
-
-.filter-btn--mini:hover {
-    transform: scale(1.05);
-}
-
-/* Compact Activities List */
-.activities-compact {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.activity-row {
-    display: grid;
-    grid-template-columns: 30px .4fr 1fr auto 60px;
-    gap: 0.75rem;
-    align-items: center;
-    padding: 0.75rem;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    min-height: 100px;
-    position: relative;
-    overflow: hidden;
-}
-
-.activity-row::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.05), transparent);
-    transition: left 0.5s ease;
-}
-
-.activity-row:hover {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.02), rgba(16, 185, 129, 0.02));
-    border-color: var(--primary);
-    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
-    transform: translateY(-1px) scale(1.002);
-}
-
-.activity-row:hover::before {
-    left: 100%;
-}
-
-.activity-row:hover .activity-amount {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.18));
-    border-color: rgba(16, 185, 129, 0.25);
-    transform: scale(1.02);
-}
-
-.activity-row:hover .activity-status {
-    transform: scale(1.05);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.activity-icon-compact {
-    font-size: 1.1rem;
-    text-align: center;
-    background: linear-gradient(135deg, var(--bg-secondary), #f8fafc);
-    border-radius: 8px;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border-color);
-    transition: all 0.2s ease;
-}
-
-.activity-row:hover .activity-icon-compact {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
-    border-color: var(--primary);
-    transform: rotate(5deg) scale(1.1);
-}
-
-.activity-main-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    min-width: 0;
-}
-
-.activity-title {
-    font-weight: 500;
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    opacity: 0.8;
-}
-
-.activity-doc {
-    font-weight: 300;
-    font-size: 0.85rem;
-    color: var(--primary);
-    letter-spacing: 0.2px;
-    font-family: 'Courier New', monospace;
-}
-
-.activity-customer-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    min-width: 0;
-}
-
-.activity-customer {
-    font-weight: 600;
-    font-size: 0.8rem;
-    color: var(--text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.activity-address {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    font-weight: 400;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-style: italic;
-}
-
-.activity-amount {
-    font-weight: 700;
-    font-size: 0.85rem;
-    color: var(--success);
-    text-align: right;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(5, 150, 105, 0.12));
-    padding: 0.4rem 0.6rem;
-    border-radius: 6px;
-    border: 1px solid rgba(16, 185, 129, 0.15);
-    font-family: 'Courier New', monospace;
-    letter-spacing: 0.3px;
-}
-
-.activity-status {
-    font-size: 0.65rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    padding: 0.35rem 0.5rem;
-    border-radius: 6px;
-    text-align: center;
-    border: 1px solid currentColor;
-    transition: all 0.2s ease;
-}
-
-.status--draft { 
-    background: linear-gradient(135deg, rgba(107, 114, 128, 0.08), rgba(75, 85, 99, 0.12)); 
-    color: #6b7280; 
-    border-color: rgba(107, 114, 128, 0.2);
-}
-.status--revised { 
-    background: linear-gradient(135deg, rgba(217, 119, 6, 0.08), rgba(180, 83, 9, 0.12)); 
-    color: #d97706; 
-    border-color: rgba(217, 119, 6, 0.2);
-}
-.status--pending { 
-    background: linear-gradient(135deg, rgba(217, 119, 6, 0.08), rgba(180, 83, 9, 0.12)); 
-    color: #d97706; 
-    border-color: rgba(217, 119, 6, 0.2);
-}
-.status--completed { 
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(5, 150, 105, 0.12)); 
-    color: #10b981; 
-    border-color: rgba(16, 185, 129, 0.2);
-}
-.status--overdue { 
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(220, 38, 38, 0.12)); 
-    color: #ef4444; 
-    border-color: rgba(239, 68, 68, 0.2);
-}
-
-/* Advanced Cash Flow */
-.cash-flow-advanced {
-    padding: 1rem;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.flow-metric {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-}
-
-.flow-metric:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.flow-metric--inflow {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(5, 150, 105, 0.05));
-    border-color: rgba(16, 185, 129, 0.2);
-}
-
-.flow-metric--outflow {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.05));
-    border-color: rgba(239, 68, 68, 0.2);
-}
-
-.flow-metric--net {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(37, 99, 235, 0.05));
-    border-color: rgba(59, 130, 246, 0.2);
-    border-width: 2px;
-}
-
-.flow-icon {
-    font-size: 1.5rem;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-}
-
-.flow-content {
-    flex: 1;
-}
-
-.flow-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 0.25rem;
-}
-
-.flow-value {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: var(--text-primary);
-}
-
-.flow-chart {
-    margin-top: auto;
-    padding-top: 1rem;
-}
-
-.flow-bar {
-    height: 8px;
-    background: var(--bg-secondary);
-    border-radius: 4px;
-    overflow: hidden;
-    margin-bottom: 0.5rem;
-    border: 1px solid var(--border-color);
-}
-
-.flow-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--success), var(--primary));
-    border-radius: 4px;
-    transition: width 0.5s ease;
-    width: 60%;
-}
-
-.flow-indicators {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.65rem;
-}
-
-.flow-indicator {
-    padding: 0.2rem 0.4rem;
-    border-radius: 4px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
-
-.flow-indicator--positive {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--success);
-}
-
-.flow-indicator--negative {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--error);
-}
-
-/* Additional Responsive Improvements */
-@media (max-width: 1200px) {
-    .dashboard-grid {
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1.5rem;
-    }
-    
-    .dashboard-grid--2-col {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-}
-
-@media (max-width: 992px) {
-    .funnel-container {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .funnel-arrow {
-        transform: rotate(90deg);
-        margin: 0.5rem 0;
-    }
-}
-
-@media (max-width: 576px) {
-    .dashboard-header {
-        padding: 1rem;
-    }
-    
-    .dashboard-header__title h1 {
-        font-size: 1.25rem;
-    }
-    
-    .chart-card {
-        height: 180px;
-        padding: 0.75rem;
-    }
-    
-    .btn--sm {
-        padding: 0.6rem 1rem;
-        font-size: 0.8rem;
-    }
-    
-    .form-control--sm {
-        min-width: 120px;
-        padding: 0.6rem 0.75rem;
-    }
-    
-    .activity-filters--compact {
-        gap: 0.3rem;
-        padding: 0.3rem;
-    }
-    
-    .filter-btn--mini {
-        padding: 0.3rem 0.6rem;
-        font-size: 0.65rem;
-    }
-    
-    .activity-row {
-        grid-template-columns: 25px 1fr;
-        gap: 0.5rem;
-        padding: 0.6rem;
-    }
-    
-    .activity-main-info,
-    .activity-customer-info {
-        grid-column: 2;
-    }
-    
-    .activity-amount,
-    .activity-status {
-        grid-column: 2;
-        justify-self: start;
-        margin-top: 0.25rem;
-    }
-    
-    .activity-amount {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.4rem;
-    }
 }
 
 @media (max-width: 768px) {
@@ -3202,47 +2013,6 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     
     .activity-filters {
         flex-wrap: wrap;
-    }
-    
-    .activity-card {
-        padding: 0.75rem;
-    }
-    
-    .activity-card__header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-    
-    .activity-card__title {
-        order: 1;
-    }
-    
-    .activity-card__status {
-        order: 3;
-        align-self: flex-start;
-    }
-    
-    .activity-card__icon {
-        order: 2;
-        margin-right: 0;
-        margin-bottom: 0.5rem;
-    }
-    
-    .amount-row,
-    .detail-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.25rem;
-    }
-    
-    .detail-value {
-        max-width: 100%;
-        text-align: left;
-    }
-    
-    .activity-card__amounts {
-        padding: 0.5rem;
     }
 }
 </style>
