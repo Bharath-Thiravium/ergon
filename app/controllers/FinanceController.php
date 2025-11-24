@@ -613,6 +613,144 @@ class FinanceController extends Controller {
         }
     }
     
+    public function getRecentActivities() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $prefix = $this->getCompanyPrefix();
+            $customerNames = $this->getCustomerNamesMapping($db);
+            $activities = [];
+            
+            // Get recent quotations
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 10");
+            $stmt->execute();
+            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($quotationResults as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? '';
+                
+                if (!str_contains(strtoupper($quotationNumber), $prefix)) continue;
+                
+                $customerId = $data['customer_id'] ?? '';
+                $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
+                
+                $totalAmount = floatval($data['total_amount'] ?? 0);
+                $taxRate = floatval($data['tax_rate'] ?? $data['gst_rate'] ?? 0.18);
+                $taxAmount = $totalAmount * $taxRate;
+                $taxableAmount = $totalAmount - $taxAmount;
+                
+                $activities[] = [
+                    'type' => 'quotation',
+                    'document_number' => $quotationNumber,
+                    'customer_name' => $customerName,
+                    'customer_gstin' => $data['customer_gstin'] ?? '',
+                    'total_amount' => $totalAmount,
+                    'tax_amount' => $taxAmount,
+                    'taxable_amount' => $taxableAmount,
+                    'dispatch_location' => $data['dispatch_location'] ?? $data['delivery_address'] ?? 'Not specified',
+                    'date' => $data['quotation_date'] ?? $data['created_date'] ?? date('Y-m-d'),
+                    'status' => $data['status'] ?? 'draft',
+                    'valid_until' => $data['valid_until'] ?? 'N/A'
+                ];
+            }
+            
+            // Get recent purchase orders
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders' ORDER BY id DESC LIMIT 10");
+            $stmt->execute();
+            $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($poResults as $row) {
+                $data = json_decode($row['data'], true);
+                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
+                
+                if (!str_contains(strtoupper($poNumber), $prefix)) continue;
+                
+                $customerId = $data['customer_id'] ?? '';
+                $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
+                
+                $totalAmount = floatval($data['total_amount'] ?? 0);
+                $taxRate = floatval($data['tax_rate'] ?? $data['gst_rate'] ?? 0.18);
+                $taxAmount = $totalAmount * $taxRate;
+                $taxableAmount = $totalAmount - $taxAmount;
+                
+                $activities[] = [
+                    'type' => 'purchase_order',
+                    'document_number' => $poNumber,
+                    'customer_name' => $customerName,
+                    'customer_gstin' => $data['customer_gstin'] ?? '',
+                    'total_amount' => $totalAmount,
+                    'tax_amount' => $taxAmount,
+                    'taxable_amount' => $taxableAmount,
+                    'dispatch_location' => $data['dispatch_location'] ?? $data['delivery_address'] ?? 'Not specified',
+                    'date' => $data['po_date'] ?? $data['created_date'] ?? date('Y-m-d'),
+                    'status' => $data['status'] ?? 'pending'
+                ];
+            }
+            
+            // Get recent invoices
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' ORDER BY id DESC LIMIT 10");
+            $stmt->execute();
+            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($invoiceResults as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
+                
+                $customerId = $data['customer_id'] ?? '';
+                $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
+                
+                $totalAmount = floatval($data['total_amount'] ?? 0);
+                $taxRate = floatval($data['tax_rate'] ?? $data['gst_rate'] ?? 0.18);
+                $taxAmount = $totalAmount * $taxRate;
+                $taxableAmount = $totalAmount - $taxAmount;
+                
+                $activities[] = [
+                    'type' => $data['invoice_type'] === 'proforma' ? 'proforma_invoice' : 'invoice',
+                    'document_number' => $invoiceNumber,
+                    'customer_name' => $customerName,
+                    'customer_gstin' => $data['customer_gstin'] ?? '',
+                    'total_amount' => $totalAmount,
+                    'tax_amount' => $taxAmount,
+                    'taxable_amount' => $taxableAmount,
+                    'dispatch_location' => $data['dispatch_location'] ?? $data['delivery_address'] ?? 'Not specified',
+                    'date' => $data['invoice_date'] ?? $data['created_date'] ?? date('Y-m-d'),
+                    'status' => $data['payment_status'] ?? 'unpaid',
+                    'due_date' => $data['due_date'] ?? 'N/A',
+                    'outstanding_amount' => floatval($data['outstanding_amount'] ?? 0)
+                ];
+            }
+            
+            // Sort activities by date (most recent first)
+            usort($activities, function($a, $b) {
+                return strtotime($b['date']) - strtotime($a['date']);
+            });
+            
+            // Limit to 15 most recent activities
+            $activities = array_slice($activities, 0, 15);
+            
+            echo json_encode(['activities' => $activities]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+    
+    private function resolveCustomerName($customerId, $data, $customerNames) {
+        if ($customerId && isset($customerNames[$customerId])) {
+            return $customerNames[$customerId];
+        } elseif (!empty($data['customer_name'])) {
+            return $data['customer_name'];
+        } elseif (!empty($data['customer_gstin'])) {
+            return 'GST: ' . $data['customer_gstin'];
+        } else {
+            return 'Customer ' . ($customerId ?: 'Unknown');
+        }
+    }
+    
     public function exportTable() {
         $type = $_GET['type'] ?? 'outstanding';
         

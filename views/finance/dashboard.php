@@ -346,26 +346,29 @@
     
     <!-- Recent Activities -->
     <div class="dashboard-grid">
-        <div class="card">
+        <div class="card card--full-width">
             <div class="card__header">
                 <h2 class="card__title">📈 Recent Activities</h2>
                 <div class="activity-filters">
                     <button class="filter-btn active" data-type="all">All</button>
-                    <button class="filter-btn" data-type="quotation">📝</button>
-                    <button class="filter-btn" data-type="po">🛒</button>
-                    <button class="filter-btn" data-type="invoice">💰</button>
-                    <button class="filter-btn" data-type="payment">💳</button>
+                    <button class="filter-btn" data-type="quotation">📝 Quotations</button>
+                    <button class="filter-btn" data-type="po">🛒 Purchase Orders</button>
+                    <button class="filter-btn" data-type="invoice">💰 Invoices</button>
+                    <button class="filter-btn" data-type="payment">💳 Payments</button>
                 </div>
             </div>
             <div class="card__body">
-                <div id="recentActivities">
+                <div id="recentActivities" class="activities-grid">
                     <div class="activity-item">
                         <div class="activity-loading">Loading recent activities...</div>
                     </div>
                 </div>
             </div>
         </div>
-        
+    </div>
+    
+    <!-- Cash Flow Projection -->
+    <div class="dashboard-grid">
         <div class="card">
             <div class="card__header">
                 <h2 class="card__title">💰 Cash Flow Projection</h2>
@@ -406,6 +409,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('updatePrefixBtn').addEventListener('click', updateCompanyPrefix);
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
     document.getElementById('customerFilter').addEventListener('change', filterByCustomer);
+    
+    // Activity filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            const filterType = this.getAttribute('data-type');
+            loadRecentActivities(filterType);
+        });
+    });
     // Outstanding top-N control
     const topN = document.getElementById('outstandingTopN');
     if (topN) topN.addEventListener('change', () => loadOutstandingByCustomer(parseInt(topN.value, 10)));
@@ -912,8 +925,7 @@ async function loadOutstandingByCustomer(limit = 10) {
 
 async function loadRecentActivities(type = 'all') {
     try {
-        // Use existing quotations endpoint as fallback until backend is implemented
-        const response = await fetch('/ergon/finance/recent-quotations');
+        const response = await fetch('/ergon/finance/recent-activities');
         if (!response.ok) {
             throw new Error('Recent activities API not available');
         }
@@ -921,21 +933,88 @@ async function loadRecentActivities(type = 'all') {
         const data = activityText ? JSON.parse(activityText) : {};
         
         const container = document.getElementById('recentActivities');
-        if (data.quotations && data.quotations.length > 0) {
-            container.innerHTML = data.quotations.map(quote => `
-                <div class="activity-item activity-item--quotation">
-                    <div class="activity-icon">📝</div>
-                    <div class="activity-content">
-                        <div class="activity-title">${quote.quotation_number}</div>
-                        <div class="activity-details">₹${quote.total_amount.toLocaleString()} - ${quote.customer_name}</div>
-                        <div class="activity-meta">
-                            <span class="activity-type">Quotation</span>
-                            <span class="activity-date">Expires: ${quote.valid_until}</span>
+        if (data.activities && data.activities.length > 0) {
+            let filteredActivities = data.activities;
+            
+            // Filter by type if specified
+            if (type !== 'all') {
+                filteredActivities = data.activities.filter(activity => {
+                    switch(type) {
+                        case 'quotation': return activity.type === 'quotation';
+                        case 'po': return activity.type === 'purchase_order';
+                        case 'invoice': return activity.type === 'invoice' || activity.type === 'proforma_invoice';
+                        case 'payment': return activity.type === 'payment';
+                        default: return true;
+                    }
+                });
+            }
+            
+            container.innerHTML = filteredActivities.map(activity => {
+                const icon = getActivityIcon(activity.type);
+                const statusClass = getActivityStatusClass(activity.status);
+                const typeLabel = getActivityTypeLabel(activity.type);
+                
+                return `
+                    <div class="activity-card activity-card--${activity.type}">
+                        <div class="activity-card__header">
+                            <div class="activity-card__icon">${icon}</div>
+                            <div class="activity-card__title">
+                                <h4>${activity.document_number}</h4>
+                                <span class="activity-card__type">${typeLabel}</span>
+                            </div>
+                            <div class="activity-card__status activity-status--${statusClass}">${activity.status}</div>
+                        </div>
+                        
+                        <div class="activity-card__amounts">
+                            <div class="amount-row">
+                                <span class="amount-label">Total Amount:</span>
+                                <span class="amount-value">₹${activity.total_amount.toLocaleString()}</span>
+                            </div>
+                            <div class="amount-row">
+                                <span class="amount-label">Taxable Amount:</span>
+                                <span class="amount-value">₹${activity.taxable_amount.toLocaleString()}</span>
+                            </div>
+                            <div class="amount-row">
+                                <span class="amount-label">Tax Amount:</span>
+                                <span class="amount-value">₹${activity.tax_amount.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="activity-card__details">
+                            <div class="detail-row">
+                                <span class="detail-label">Customer:</span>
+                                <span class="detail-value">${activity.customer_name}</span>
+                            </div>
+                            ${activity.customer_gstin ? `
+                            <div class="detail-row">
+                                <span class="detail-label">GSTIN:</span>
+                                <span class="detail-value">${activity.customer_gstin}</span>
+                            </div>
+                            ` : ''}
+                            <div class="detail-row">
+                                <span class="detail-label">Dispatch Location:</span>
+                                <span class="detail-value">${activity.dispatch_location}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Date:</span>
+                                <span class="detail-value">${new Date(activity.date).toLocaleDateString()}</span>
+                            </div>
+                            ${activity.due_date && activity.due_date !== 'N/A' ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Due Date:</span>
+                                <span class="detail-value">${new Date(activity.due_date).toLocaleDateString()}</span>
+                            </div>
+                            ` : ''}
+                            ${activity.outstanding_amount > 0 ? `
+                            <div class="detail-row detail-row--highlight">
+                                <span class="detail-label">Outstanding:</span>
+                                <span class="detail-value">₹${activity.outstanding_amount.toLocaleString()}</span>
+                            </div>
+                            ` : ''}
                         </div>
                     </div>
-                    <div class="activity-status activity-status--pending">Active</div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
             container.innerHTML = '<div class="activity-item"><div class="activity-loading">No recent activities</div></div>';
         }
@@ -948,11 +1027,37 @@ async function loadRecentActivities(type = 'all') {
 function getActivityIcon(type) {
     const icons = {
         'quotation': '📝',
-        'po': '🛒',
+        'purchase_order': '🛒',
         'invoice': '💰',
+        'proforma_invoice': '📄',
         'payment': '💳'
     };
     return icons[type] || '📈';
+}
+
+function getActivityStatusClass(status) {
+    const statusMap = {
+        'draft': 'draft',
+        'revised': 'revised',
+        'converted': 'completed',
+        'pending': 'pending',
+        'approved': 'completed',
+        'paid': 'completed',
+        'unpaid': 'pending',
+        'overdue': 'overdue'
+    };
+    return statusMap[status] || 'pending';
+}
+
+function getActivityTypeLabel(type) {
+    const typeLabels = {
+        'quotation': 'Quotation',
+        'purchase_order': 'Purchase Order',
+        'invoice': 'Invoice',
+        'proforma_invoice': 'Proforma Invoice',
+        'payment': 'Payment'
+    };
+    return typeLabels[type] || 'Document';
 }
 
 function updateCashFlow(data) {
@@ -1883,24 +1988,34 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 /* Activity Filters */
 .activity-filters {
     display: flex;
-    gap: 0.25rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .filter-btn {
-    padding: 0.25rem 0.5rem;
+    padding: 0.5rem 1rem;
     border: 1px solid var(--border-color);
     background: var(--bg-secondary);
     color: var(--text-secondary);
-    border-radius: 4px;
-    font-size: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.filter-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
 }
 
 .filter-btn.active {
     background: var(--primary);
     color: white;
     border-color: var(--primary);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
 /* Activity Items */
@@ -1980,6 +2095,198 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     font-style: italic;
 }
 
+/* Enhanced Activity Cards */
+.activity-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.activity-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+.activity-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.activity-card__icon {
+    font-size: 1.5rem;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+}
+
+.activity-card__title {
+    flex: 1;
+}
+
+.activity-card__title h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.activity-card__type {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.activity-card__status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.activity-status--draft {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+}
+
+.activity-status--revised {
+    background: rgba(217, 119, 6, 0.1);
+    color: #d97706;
+}
+
+.activity-status--pending {
+    background: rgba(217, 119, 6, 0.1);
+    color: #d97706;
+}
+
+.activity-status--completed {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.activity-status--overdue {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.activity-card__amounts {
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.amount-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.amount-row:last-child {
+    margin-bottom: 0;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+    font-weight: 600;
+}
+
+.amount-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.amount-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.activity-card__details {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0;
+}
+
+.detail-row--highlight {
+    background: rgba(239, 68, 68, 0.05);
+    padding: 0.5rem;
+    border-radius: 4px;
+    border-left: 3px solid #ef4444;
+}
+
+.detail-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.detail-value {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    text-align: right;
+    max-width: 60%;
+    word-break: break-word;
+}
+
+.detail-row--highlight .detail-value {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* Activity Card Type Variations */
+.activity-card--quotation {
+    border-left: 4px solid #3b82f6;
+}
+
+.activity-card--purchase_order {
+    border-left: 4px solid #059669;
+}
+
+.activity-card--invoice {
+    border-left: 4px solid #dc2626;
+}
+
+.activity-card--proforma_invoice {
+    border-left: 4px solid #7c3aed;
+}
+
+.activity-card--payment {
+    border-left: 4px solid #16a34a;
+}
+
+/* Activities Grid Layout */
+.activities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    .activities-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 768px) {
     .funnel-container {
         flex-direction: column;
@@ -2013,6 +2320,47 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     
     .activity-filters {
         flex-wrap: wrap;
+    }
+    
+    .activity-card {
+        padding: 0.75rem;
+    }
+    
+    .activity-card__header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .activity-card__title {
+        order: 1;
+    }
+    
+    .activity-card__status {
+        order: 3;
+        align-self: flex-start;
+    }
+    
+    .activity-card__icon {
+        order: 2;
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+    }
+    
+    .amount-row,
+    .detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .detail-value {
+        max-width: 100%;
+        text-align: left;
+    }
+    
+    .activity-card__amounts {
+        padding: 0.5rem;
     }
 }
 </style>
