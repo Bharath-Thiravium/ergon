@@ -2361,11 +2361,13 @@ window.startTask = function(taskId) {
     fetch('/ergon/api/daily_planner_workflow.php?action=start', {
         method: 'POST',
         headers: { 
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
         },
         credentials: 'same-origin',
         body: JSON.stringify({ 
-            task_id: parseInt(taskId)
+            task_id: parseInt(taskId),
+            csrf_token: csrfToken
         })
     })
     .then(response => {
@@ -2410,11 +2412,13 @@ window.pauseTask = function(taskId) {
     fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
         method: 'POST',
         headers: { 
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
         },
         credentials: 'same-origin',
         body: JSON.stringify({ 
-            task_id: parseInt(taskId)
+            task_id: parseInt(taskId),
+            csrf_token: csrfToken
         })
     })
     .then(response => {
@@ -2460,11 +2464,13 @@ window.resumeTask = function(taskId) {
     fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
         method: 'POST',
         headers: { 
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
         },
         credentials: 'same-origin',
         body: JSON.stringify({ 
-            task_id: parseInt(taskId)
+            task_id: parseInt(taskId),
+            csrf_token: csrfToken
         })
     })
     .then(response => {
