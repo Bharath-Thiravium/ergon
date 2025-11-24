@@ -581,9 +581,13 @@ class FinanceController extends Controller {
                 
                 if (!str_contains(strtoupper($quotationNumber), $prefix)) continue;
                 
+                $customerId = $data['customer_id'] ?? '';
+                $customerNames = $this->getCustomerNamesMapping($db);
+                $customerName = $this->resolveCustomerName($customerId, $data, $customerNames);
+                
                 $quotations[] = [
                     'quotation_number' => $quotationNumber,
-                    'customer_name' => $data['customer_name'] ?? 'Unknown',
+                    'customer_name' => $customerName,
                     'total_amount' => floatval($data['total_amount'] ?? 0),
                     'valid_until' => $data['valid_until'] ?? 'N/A'
                 ];
@@ -1280,22 +1284,12 @@ class FinanceController extends Controller {
                 $customerGstin = $data['customer_gstin'] ?? '';
 
                 if ($customerId) {
-                    if (isset($customerNames[$customerId])) {
-                        $customerInfo = $customerNames[$customerId];
-                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $gstin,
-                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
-                        ];
-                    } else {
-                        // No detailed customer record found — create readable fallback using GST if available
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $customerGstin,
-                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
-                        ];
-                    }
+                    $resolvedName = $this->resolveCustomerName($customerId, $data, $customerNames);
+                    $customers[$customerId] = [
+                        'id' => $customerId,
+                        'gstin' => $customerGstin,
+                        'display' => $resolvedName . ($customerGstin && !str_contains($resolvedName, $customerGstin) ? " (GST: {$customerGstin})" : '')
+                    ];
                 }
             }
 
@@ -1314,21 +1308,12 @@ class FinanceController extends Controller {
                 $customerGstin = $data['customer_gstin'] ?? '';
 
                 if ($customerId && !isset($customers[$customerId])) {
-                    if (isset($customerNames[$customerId])) {
-                        $customerInfo = $customerNames[$customerId];
-                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $gstin,
-                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
-                        ];
-                    } else {
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $customerGstin,
-                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
-                        ];
-                    }
+                    $resolvedName = $this->resolveCustomerName($customerId, $data, $customerNames);
+                    $customers[$customerId] = [
+                        'id' => $customerId,
+                        'gstin' => $customerGstin,
+                        'display' => $resolvedName . ($customerGstin && !str_contains($resolvedName, $customerGstin) ? " (GST: {$customerGstin})" : '')
+                    ];
                 }
             }
 
@@ -1347,21 +1332,12 @@ class FinanceController extends Controller {
                 $customerGstin = $data['customer_gstin'] ?? '';
 
                 if ($customerId && !isset($customers[$customerId])) {
-                    if (isset($customerNames[$customerId])) {
-                        $customerInfo = $customerNames[$customerId];
-                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $gstin,
-                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
-                        ];
-                    } else {
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $customerGstin,
-                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
-                        ];
-                    }
+                    $resolvedName = $this->resolveCustomerName($customerId, $data, $customerNames);
+                    $customers[$customerId] = [
+                        'id' => $customerId,
+                        'gstin' => $customerGstin,
+                        'display' => $resolvedName . ($customerGstin && !str_contains($resolvedName, $customerGstin) ? " (GST: {$customerGstin})" : '')
+                    ];
                 }
             }
             
