@@ -2366,8 +2366,7 @@ window.startTask = function(taskId) {
         },
         credentials: 'same-origin',
         body: JSON.stringify({ 
-            task_id: parseInt(taskId),
-            csrf_token: csrfToken
+            task_id: parseInt(taskId)
         })
     })
     .then(response => {
@@ -2417,8 +2416,7 @@ window.pauseTask = function(taskId) {
         },
         credentials: 'same-origin',
         body: JSON.stringify({ 
-            task_id: parseInt(taskId),
-            csrf_token: csrfToken
+            task_id: parseInt(taskId)
         })
     })
     .then(response => {
@@ -2469,8 +2467,7 @@ window.resumeTask = function(taskId) {
         },
         credentials: 'same-origin',
         body: JSON.stringify({ 
-            task_id: parseInt(taskId),
-            csrf_token: csrfToken
+            task_id: parseInt(taskId)
         })
     })
     .then(response => {
