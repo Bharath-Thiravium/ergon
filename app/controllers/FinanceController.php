@@ -875,7 +875,16 @@ class FinanceController extends Controller {
     }
     
     private function resolveDispatchLocation($data) {
-        // Check all possible address fields in order of preference (same as Revenue Conversion Funnel)
+        // First try to get address from linked customer record
+        $customerId = $data['customer_id'] ?? '';
+        if ($customerId) {
+            $customerAddress = $this->getCustomerAddress($customerId);
+            if ($customerAddress !== 'Not specified') {
+                return $customerAddress;
+            }
+        }
+        
+        // Check all possible address fields in order of preference
         $addressFields = [
             'delivery_address', 'shipping_address', 'dispatch_address', 'dispatch_location',
             'customer_address', 'client_address', 'billing_address', 'site_address',
@@ -886,6 +895,38 @@ class FinanceController extends Controller {
             if (!empty($data[$field])) {
                 return $data[$field];
             }
+        }
+        
+        return 'Not specified';
+    }
+    
+    private function getCustomerAddress($customerId) {
+        try {
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
+            $stmt->execute();
+            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($customerResults as $row) {
+                $data = json_decode($row['data'], true);
+                $id = $data['id'] ?? '';
+                
+                if ($id === $customerId) {
+                    // Check customer address fields in order of preference
+                    $addressFields = [
+                        'delivery_address', 'shipping_address', 'dispatch_address', 'address',
+                        'billing_address', 'customer_address', 'site_address', 'location'
+                    ];
+                    
+                    foreach ($addressFields as $field) {
+                        if (!empty($data[$field])) {
+                            return $data[$field];
+                        }
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            // Fallback to document-level address
         }
         
         return 'Not specified';
