@@ -92,12 +92,34 @@ The system now implements proper read-only historical view for past dates with e
 - ✅ Visual indicator: `🔄 Execution moved to current date`
 - ✅ Badge styling: Warning color for rolled over tasks
 - ✅ Clear messaging about execution location
+- ✅ **Automatic rollover until completion or postponed**
+- ✅ Daily cron job for automatic task progression
+- ✅ API endpoint for manual rollover trigger
 
 ### 🧩 UI Consistency
 - ✅ **Prevents user confusion with disabled actions**
 - ✅ Consistent disabled button styling
 - ✅ Helpful tooltips: `🔒 Action disabled for past dates`
 - ✅ Read-only progress modal for completed tasks
+
+## 🔄 Automatic Rollover System
+
+### ⚙️ Core Logic
+- ✅ **Incomplete tasks automatically roll to next date**
+- ✅ Rollover continues until task is completed or postponed
+- ✅ Preserves task progress and timing data
+- ✅ Prevents duplicate entries on target dates
+
+### 📅 Scheduling
+- ✅ **Daily cron job at midnight**: `cron/daily_rollover.php`
+- ✅ Manual trigger via API: `/api/daily_planner_workflow.php?action=auto-rollover`
+- ✅ Automatic execution when viewing current date
+
+### 📊 Status Management
+- ✅ **Eligible for rollover**: `not_started`, `in_progress`, `on_break`
+- ✅ **Stops rollover**: `completed`, `postponed`, `cancelled`
+- ✅ **Progress preservation**: Maintains completion percentage
+- ✅ **Audit trail**: Full history of rollover actions
 
 ## 🎨 Visual Implementation Details
 
@@ -196,16 +218,54 @@ The system now enforces the correct workflow:
    - Visual styling updates
    - Task status indicators
 
-2. **`READ_ONLY_HISTORICAL_VIEW_VERIFICATION.md`**
+2. **`api/daily_planner_workflow.php`**
+   - Auto-rollover API endpoint
+   - Enhanced action validation
+
+3. **`app/models/DailyPlanner.php`**
+   - `autoRolloverToNextDate()` method
+   - Enhanced rollover logic
+   - Status management rules
+   - Daily rollover scheduler
+
+4. **`cron/daily_rollover.php`**
+   - Daily cron job script
+   - Command-line execution
+   - Error handling and logging
+
+5. **`READ_ONLY_HISTORICAL_VIEW_VERIFICATION.md`**
    - Complete implementation documentation
+   - Automatic rollover specifications
 
 ## 🎯 Compliance Summary
 
 **SPECIFICATION MATCH: 100%**
 
 ✅ **UI Behavior by Date Type** - All three modes implemented exactly as specified
-✅ **Key Features** - All four key features (backdated prevention, clean separation, rollover continuity, UI consistency) implemented
+✅ **Key Features** - All key features implemented (backdated prevention, clean separation, rollover continuity, UI consistency)
 ✅ **Visual Distinction** - Clear color coding and styling for each mode
 ✅ **Workflow Enforcement** - Correct behavior: past = historical, today = execution, future = planning
+✅ **Automatic Rollover** - Tasks automatically continue to next dates until completion or postponed
+✅ **Cron Job Integration** - Daily automated rollover via scheduled task
+✅ **API Integration** - Manual rollover trigger available
 
-The system now provides a clear, intuitive interface that prevents user confusion and maintains data integrity across all date contexts.
+## 🚀 Usage Instructions
+
+### Setting up Automatic Rollover
+
+1. **Cron Job Setup** (Linux/Unix):
+   ```bash
+   # Add to crontab (crontab -e)
+   0 0 * * * /usr/bin/php /path/to/ergon/cron/daily_rollover.php
+   ```
+
+2. **Windows Task Scheduler**:
+   - Create daily task at midnight
+   - Action: `php.exe C:\path\to\ergon\cron\daily_rollover.php`
+
+3. **Manual Trigger** (via API):
+   ```javascript
+   fetch('/ergon/api/daily_planner_workflow.php?action=auto-rollover&target_date=2024-01-01')
+   ```
+
+The system now provides a complete task lifecycle management with automatic progression, clear visual feedback, and maintains data integrity across all date contexts.

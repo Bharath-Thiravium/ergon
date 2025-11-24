@@ -166,6 +166,7 @@ $content = ob_start();
                         // FIXED: Remove unused variable or ensure proper usage
                         // $isPastDate is used for historical view styling and action restrictions
                         $isPastDate = ($selected_date < date('Y-m-d'));
+                        $isFutureDate = ($selected_date > date('Y-m-d'));
                         $historicalClass = $isPastDate ? 'task-card--historical' : '';
                         $modeClass = '';
                         if ($isPastDate) $modeClass = 'historical-view';
@@ -2042,6 +2043,14 @@ function changeDate(date) {
 }
 
 function showHistoryInfo() {
+    const selectedDate = '<?= $selected_date ?>';
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Only show for past dates
+    if (selectedDate >= today) {
+        return;
+    }
+    
     const modal = document.createElement('div');
     modal.className = 'history-info-modal';
     modal.innerHTML = `
@@ -2801,8 +2810,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <?php renderModalJS(); ?>
 <script src="/ergon/assets/js/planner-access-control.js"></script>
-<script src="/ergon/SLA_PREDICTIVE_ENGINE.js"></script>
-<link rel="stylesheet" href="/ergon/SLA_DASHBOARD_2_STYLES.css">
 
 <?php
 $content = ob_get_clean();

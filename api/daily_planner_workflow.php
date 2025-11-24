@@ -101,7 +101,7 @@ if ($action === 'timer') {
 }
 
 // Sanitize and validate action parameter
-$allowedActions = ['sla-dashboard', 'timer', 'start', 'pause', 'resume', 'update-progress', 'postpone'];
+$allowedActions = ['sla-dashboard', 'timer', 'start', 'pause', 'resume', 'update-progress', 'postpone', 'auto-rollover'];
 $action = filter_var($_GET['action'] ?? $_POST['action'] ?? '', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 if (!in_array($action, $allowedActions)) {
     throw new Exception('Invalid action');
@@ -433,6 +433,29 @@ try {
                     $db->rollback();
                     throw new Exception('Failed to postpone task');
                 }
+            } catch (Exception $e) {
+                $db->rollback();
+                throw $e;
+            }
+            break;
+            
+        case 'auto-rollover':
+            // Auto-rollover incomplete tasks to next date
+            $targetDate = filter_var($_GET['target_date'] ?? date('Y-m-d'), FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $targetDate) || !strtotime($targetDate)) {
+                throw new Exception('Invalid target date format');
+            }
+            
+            $db->beginTransaction();
+            try {
+                $rolledCount = $planner->autoRolloverToNextDate($userId, $targetDate);
+                $db->commit();
+                echo json_encode([
+                    'success' => true, 
+                    'message' => "Rolled over {$rolledCount} incomplete tasks",
+                    'rolled_count' => $rolledCount
+                ]);
             } catch (Exception $e) {
                 $db->rollback();
                 throw $e;
