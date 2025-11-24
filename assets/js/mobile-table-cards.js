@@ -3,17 +3,15 @@
  * Automatically converts tables to mobile-friendly cards on small screens
  */
 
-// Early exit for incompatible pages
+// Complete script wrapper with early exit for incompatible pages
 (function() {
   if (window.location.pathname.includes('/workflow/daily-planner') || 
       window.location.pathname.includes('/admin/management')) {
     console.log('Mobile table cards disabled for this page');
-    return; // Exit the IIFE
+    return; // Exit completely
   }
 
-  // Rest of the script only runs if not on excluded pages
-
-function convertTablesToCards() {
+  function convertTablesToCards() {
   // Completely disable on incompatible pages
   if (window.location.pathname.includes('/admin/management') || 
       window.location.pathname.includes('/workflow/daily-planner')) {
@@ -51,7 +49,7 @@ function convertTablesToCards() {
   });
 }
 
-function createCard(headers, cells) {
+  function createCard(headers, cells) {
   const card = document.createElement('div');
   card.className = 'task-card';
   
@@ -101,7 +99,7 @@ function createCard(headers, cells) {
   return card;
 }
 
-function getStatusFromRow(cells) {
+  function getStatusFromRow(cells) {
   // Look for status in common column positions or badge elements
   for (let cell of cells) {
     const badge = cell.querySelector('.badge, .status, [class*="status"]');
@@ -115,7 +113,7 @@ function getStatusFromRow(cells) {
   return 'pending';
 }
 
-function getPriorityFromRow(cells) {
+  function getPriorityFromRow(cells) {
   // Look for priority indicators
   for (let cell of cells) {
     const text = cell.textContent.trim().toLowerCase();
@@ -134,8 +132,8 @@ function getPriorityFromRow(cells) {
   return 'medium';
 }
 
-// Debug function
-function debugTables() {
+  // Debug function
+  function debugTables() {
   // Skip debug on excluded pages
   if (window.location.pathname.includes('/workflow/daily-planner') || 
       window.location.pathname.includes('/admin/management')) {
@@ -146,8 +144,8 @@ function debugTables() {
   console.log('Mobile cards found:', document.querySelectorAll('.mobile-card-container').length);
 }
 
-// Initialize immediately and on events
-if (document.readyState === 'loading') {
+  // Initialize immediately and on events
+  if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     debugTables();
     convertTablesToCards();
@@ -157,18 +155,18 @@ if (document.readyState === 'loading') {
   convertTablesToCards();
 }
 
-// Also run after delays to catch dynamically loaded content
-setTimeout(() => {
+  // Also run after delays to catch dynamically loaded content
+  setTimeout(() => {
   debugTables();
   convertTablesToCards();
 }, 500);
 
-setTimeout(() => {
-  debugTables();
-  convertTablesToCards();
-}, 1000);
+  setTimeout(() => {
+    debugTables();
+    convertTablesToCards();
+  }, 1000);
 
-window.addEventListener('resize', () => {
+  window.addEventListener('resize', () => {
   if (window.location.pathname.includes('/admin/management') || 
       window.location.pathname.includes('/workflow/daily-planner')) {
     return;
@@ -181,10 +179,10 @@ window.addEventListener('resize', () => {
   } else {
     setTimeout(convertTablesToCards, 100);
   }
-});
+  });
 
-// Run on any table updates
-const observer = new MutationObserver(() => {
+  // Run on any table updates
+  const observer = new MutationObserver(() => {
   if (window.location.pathname.includes('/admin/management') || 
       window.location.pathname.includes('/workflow/daily-planner')) {
     return;
@@ -192,14 +190,14 @@ const observer = new MutationObserver(() => {
   if (window.innerWidth <= 768) {
     setTimeout(convertTablesToCards, 100);
   }
-});
+  });
 
-if (document.body) {
-  observer.observe(document.body, { childList: true, subtree: true });
-}
+  if (document.body) {
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
 
-// Function to remove element by XPath
-function removeElementByXPath(xpath) {
+  // Function to remove element by XPath
+  function removeElementByXPath(xpath) {
   const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
   const element = result.singleNodeValue;
   if (element) {
@@ -209,13 +207,13 @@ function removeElementByXPath(xpath) {
   }
   console.log('Element not found:', xpath);
   return false;
-}
+  }
 
-// Remove the specific element
-removeElementByXPath('/html/body/main/div[3]/div[2]/div/div/div[1]/div[3]/div');
+  // Remove the specific element
+  removeElementByXPath('/html/body/main/div[3]/div[2]/div/div/div[1]/div[3]/div');
 
-// Export for manual triggering
-window.convertTablesToCards = convertTablesToCards;
-window.removeElementByXPath = removeElementByXPath;
+  // Export for manual triggering
+  window.convertTablesToCards = convertTablesToCards;
+  window.removeElementByXPath = removeElementByXPath;
 
-})(); // Close the IIFE
+})(); // Close the complete script IIFE

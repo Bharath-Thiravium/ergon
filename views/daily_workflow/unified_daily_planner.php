@@ -674,7 +674,7 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
 
 /* 🎯 Execution mode styling */
 .execution-mode .task-card {
-    border-left: 4px solid #28a745;
+    /*border-left: 4px solid #28a745;*/
     background: linear-gradient(135deg, #ffffff, #f8fff9);
 }
 
@@ -2428,11 +2428,7 @@ function pauseTask(taskId) {
     return window.pauseTask(taskId);
 }
 
-// Define resumeTask function globally
-function resumeTask(taskId) {
-    return window.resumeTask(taskId);
-}
-
+// Define resumeTask function globally  
 window.resumeTask = function(taskId) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
@@ -2923,11 +2919,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Ensure all timer functions are globally accessible
-window.startTask = window.startTask || startTask;
-window.pauseTask = window.pauseTask || pauseTask;
-window.resumeTask = window.resumeTask || resumeTask;
-window.postponeTask = window.postponeTask || postponeTask;
-window.openProgressModal = window.openProgressModal || openProgressModal;
+window.startTask = window.startTask || function(taskId) { return startTask(taskId); };
+window.pauseTask = window.pauseTask || function(taskId) { return pauseTask(taskId); };
+window.resumeTask = window.resumeTask || function(taskId) { return resumeTask(taskId); };
+window.postponeTask = window.postponeTask || function(taskId) { return postponeTask(taskId); };
+window.openProgressModal = window.openProgressModal || function(taskId, progress, status) { return openProgressModal(taskId, progress, status); };
 
 // Additional compatibility assignments
 if (typeof startTask === 'function') window.startTask = startTask;
