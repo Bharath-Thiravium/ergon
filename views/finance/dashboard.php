@@ -2252,96 +2252,120 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     margin-top: 1rem;
 }
 
-/* Minimalist Activity Items */
+/* Enhanced Minimalist Activity Items */
 .activity-item-minimal {
     display: flex;
     flex-direction: column;
-    padding: 0.75rem;
+    padding: 1rem;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
     background: var(--bg-primary);
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .activity-item-minimal:hover {
-    box-shadow: var(--shadow-sm);
-    transform: translateY(-1px);
-    border-color: var(--primary-light);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+    border-color: var(--primary);
+    background: rgba(59, 130, 246, 0.02);
 }
 
 .activity-main {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    gap: 1rem;
 }
 
 .activity-document {
-    font-weight: 700;
-    font-size: 1rem;
-    color: var(--primary);
-    background: rgba(59, 130, 246, 0.1);
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    border-left: 3px solid var(--primary);
-}
-
-.activity-customer {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    flex: 1;
-    margin: 0 1rem;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: white;
+    background: linear-gradient(135deg, var(--primary), #1e40af);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    min-width: 140px;
     text-align: center;
 }
 
-.activity-amount {
+.activity-customer {
     font-weight: 700;
     font-size: 1rem;
-    color: var(--success);
-    background: rgba(16, 185, 129, 0.1);
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    border-right: 3px solid var(--success);
+    color: var(--text-primary);
+    flex: 1;
+    text-align: center;
+    background: rgba(107, 114, 128, 0.05);
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(107, 114, 128, 0.1);
+}
+
+.activity-amount {
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: white;
+    background: linear-gradient(135deg, var(--success), #047857);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+    min-width: 120px;
+    text-align: center;
 }
 
 .activity-secondary {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: var(--text-muted);
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--border-color);
+    padding-top: 0.75rem;
+    border-top: 2px solid var(--border-color);
+    gap: 0.5rem;
 }
 
 .activity-type-small {
-    background: var(--bg-secondary);
-    padding: 0.2rem 0.4rem;
-    border-radius: 8px;
-    font-weight: 500;
+    background: linear-gradient(135deg, var(--bg-secondary), #f1f5f9);
+    padding: 0.3rem 0.6rem;
+    border-radius: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
 
 .activity-date-small {
     color: var(--text-secondary);
+    font-weight: 500;
+    background: rgba(107, 114, 128, 0.1);
+    padding: 0.2rem 0.5rem;
+    border-radius: 8px;
 }
 
 .activity-location-small {
     color: var(--text-muted);
     font-style: italic;
-    max-width: 150px;
+    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    background: rgba(156, 163, 175, 0.1);
+    padding: 0.2rem 0.5rem;
+    border-radius: 8px;
 }
 
 .activity-status-small {
-    padding: 0.2rem 0.4rem;
-    border-radius: 8px;
-    font-size: 0.65rem;
-    font-weight: 600;
+    padding: 0.3rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid currentColor;
 }
 
 @media (max-width: 768px) {
