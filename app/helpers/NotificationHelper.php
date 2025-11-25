@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/Notification.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../services/NotificationService.php';
 
 class NotificationHelper {
     
@@ -70,19 +71,82 @@ class NotificationHelper {
     }
     
     // Specific notification methods for common events
-    public static function notifyLeaveRequest($userId, $userName) {
-        // Only notify approvers, not the requester
-        self::notifyApprovalRequest($userId, $userName, 'leave', 'a leave request');
+    public static function notifyLeaveRequest($userId, $userName, $leaveData = []) {
+        // Enhanced notification with queue
+        $event = [
+            'sender_id' => $userId,
+            'module' => 'leave',
+            'action' => 'approval_request',
+            'template' => 'leave.request_submitted',
+            'payload' => [
+                'userName' => $userName,
+                'startDate' => $leaveData['start_date'] ?? 'N/A',
+                'endDate' => $leaveData['end_date'] ?? 'N/A'
+            ],
+            'channels' => ['inapp', 'email'],
+            'priority' => 2
+        ];
+        
+        // Send to owners and admins
+        self::sendToRoles($event, ['owner', 'admin']);
+        
+        // Fallback to old method if service fails
+        try {
+            self::notifyApprovalRequest($userId, $userName, 'leave', 'a leave request');
+        } catch (Exception $e) {
+            error_log('Fallback notification failed: ' . $e->getMessage());
+        }
     }
     
-    public static function notifyExpenseClaim($userId, $userName, $amount) {
-        // Only notify approvers, not the claimant
-        self::notifyApprovalRequest($userId, $userName, 'expense', "an expense claim of ₹{$amount}");
+    public static function notifyExpenseClaim($userId, $userName, $amount, $category = 'General') {
+        // Enhanced notification with queue
+        $event = [
+            'sender_id' => $userId,
+            'module' => 'expense',
+            'action' => 'approval_request',
+            'template' => 'expense.claim_submitted',
+            'payload' => [
+                'userName' => $userName,
+                'amount' => $amount,
+                'category' => $category
+            ],
+            'channels' => ['inapp', 'email'],
+            'priority' => 2
+        ];
+        
+        self::sendToRoles($event, ['owner', 'admin']);
+        
+        // Fallback
+        try {
+            self::notifyApprovalRequest($userId, $userName, 'expense', "an expense claim of ₹{$amount}");
+        } catch (Exception $e) {
+            error_log('Fallback notification failed: ' . $e->getMessage());
+        }
     }
     
     public static function notifyAdvanceRequest($userId, $userName, $amount) {
-        // Only notify approvers, not the requester
-        self::notifyApprovalRequest($userId, $userName, 'advance', "a salary advance request of ₹{$amount}");
+        // Enhanced notification with queue
+        $event = [
+            'sender_id' => $userId,
+            'module' => 'advance',
+            'action' => 'approval_request',
+            'template' => 'advance.request_submitted',
+            'payload' => [
+                'userName' => $userName,
+                'amount' => $amount
+            ],
+            'channels' => ['inapp', 'email'],
+            'priority' => 2
+        ];
+        
+        self::sendToRoles($event, ['owner', 'admin']);
+        
+        // Fallback
+        try {
+            self::notifyApprovalRequest($userId, $userName, 'advance', "a salary advance request of ₹{$amount}");
+        } catch (Exception $e) {
+            error_log('Fallback notification failed: ' . $e->getMessage());
+        }
     }
     
     public static function notifyApprovalDecision($approverId, $userId, $module, $decision, $itemDescription) {
@@ -136,6 +200,24 @@ class NotificationHelper {
             "{$userName} submitted {$itemDescription} for approval",
             null
         );
+    }
+    
+    private static function sendToRoles($event, $roles) {
+        try {
+            $db = Database::connect();
+            $placeholders = str_repeat('?,', count($roles) - 1) . '?';
+            $stmt = $db->prepare("SELECT id FROM users WHERE role IN ({$placeholders}) AND status = 'active'");
+            $stmt->execute($roles);
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($users as $user) {
+                $userEvent = $event;
+                $userEvent['receiver_id'] = $user['id'];
+                NotificationService::enqueueEvent($userEvent);
+            }
+        } catch (Exception $e) {
+            error_log('Enhanced notification failed: ' . $e->getMessage());
+        }
     }
 }
 ?>
