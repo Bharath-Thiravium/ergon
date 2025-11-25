@@ -713,7 +713,7 @@ ob_end_clean();
         .then(data => {
             if (data.success && data.notifications && data.notifications.length > 0) {
                 list.innerHTML = data.notifications.map(function(notif) {
-                    var link = getNotificationLink(notif.module_name, notif.message);
+                    var link = getNotificationLink(notif.module_name, notif.message, notif.reference_id);
                     return '<a href="' + link + '" class="notification-item" onclick="closeNotificationDropdown()">' +
                            '<div class="notification-title">' + (notif.action_type || 'Notification') + '</div>' +
                            '<div class="notification-message">' + (notif.message || '') + '</div>' +
@@ -757,13 +757,19 @@ ob_end_clean();
         }
     });
     
-    function getNotificationLink(module, message) {
+    function getNotificationLink(module, message, referenceId) {
+        const baseUrl = '/ergon';
         switch(module) {
-            case 'task': return '/ergon/tasks';
-            case 'leave': return '/ergon/leaves';
-            case 'expense': return '/ergon/expenses';
-            case 'advance': return '/ergon/advances';
-            default: return '/ergon/notifications';
+            case 'task': 
+                return referenceId ? `${baseUrl}/tasks/view/${referenceId}` : `${baseUrl}/tasks`;
+            case 'leave': 
+                return referenceId ? `${baseUrl}/leaves/view/${referenceId}` : `${baseUrl}/leaves`;
+            case 'expense': 
+                return referenceId ? `${baseUrl}/expenses/view/${referenceId}` : `${baseUrl}/expenses`;
+            case 'advance': 
+                return referenceId ? `${baseUrl}/advances/view/${referenceId}` : `${baseUrl}/advances`;
+            default: 
+                return `${baseUrl}/notifications`;
         }
     }
     

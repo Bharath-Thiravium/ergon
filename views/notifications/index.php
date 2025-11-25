@@ -1,144 +1,145 @@
-<?php
-$title = 'Notifications';
-$active_page = 'notifications';
-ob_start();
-?>
-
-<div class="dashboard-grid">
-    <div class="kpi-card">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">🔔</div>
-            <div class="kpi-card__trend">↗ +5%</div>
+<div class="notifications-header">
+    <div class="notifications-stats">
+        <div class="stat-card stat-card--total">
+            <div class="stat-icon">📬</div>
+            <div class="stat-content">
+                <div class="stat-number"><?= count($notifications ?? []) ?></div>
+                <div class="stat-label">Total</div>
+            </div>
         </div>
-        <div class="kpi-card__value"><?= count($notifications ?? []) ?></div>
-        <div class="kpi-card__label">Total Notifications</div>
-        <div class="kpi-card__status">Received</div>
+        <div class="stat-card stat-card--unread">
+            <div class="stat-icon">🔴</div>
+            <div class="stat-content">
+                <div class="stat-number"><?= count(array_filter($notifications ?? [], fn($n) => !($n['is_read'] ?? false))) ?></div>
+                <div class="stat-label">Unread</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card--read">
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+                <div class="stat-number"><?= count(array_filter($notifications ?? [], fn($n) => ($n['is_read'] ?? false))) ?></div>
+                <div class="stat-label">Read</div>
+            </div>
+        </div>
     </div>
-    
-    <div class="kpi-card kpi-card--warning">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">🔴</div>
-            <div class="kpi-card__trend kpi-card__trend--down">— 0%</div>
-        </div>
-        <div class="kpi-card__value"><?= count(array_filter($notifications ?? [], fn($n) => !($n['is_read'] ?? false))) ?></div>
-        <div class="kpi-card__label">Unread</div>
-        <div class="kpi-card__status kpi-card__status--pending">Pending</div>
-    </div>
-    
-    <div class="kpi-card">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">✅</div>
-            <div class="kpi-card__trend">↗ +12%</div>
-        </div>
-        <div class="kpi-card__value"><?= count(array_filter($notifications ?? [], fn($n) => ($n['is_read'] ?? false))) ?></div>
-        <div class="kpi-card__label">Read</div>
-        <div class="kpi-card__status">Processed</div>
+    <div class="notifications-actions">
+        <button class="btn btn--secondary" onclick="filterNotifications('all')">All</button>
+        <button class="btn btn--primary" onclick="filterNotifications('unread')">Unread Only</button>
+        <button class="btn btn--success" onclick="markAllAsRead()">Mark All Read</button>
     </div>
 </div>
 
-<div class="card">
-    <div class="card__body">
-        <?php if (empty($notifications ?? [])): ?>
-            <div class="empty-state">
-                <div class="empty-icon">🔔</div>
-                <h3>No Notifications</h3>
-                <p>You're all caught up! No new notifications.</p>
-            </div>
-        <?php else: ?>
-            <div class="notification-list">
-                <?php 
-                // Group notifications by type and date for better organization
-                $groupedNotifications = [];
-                foreach ($notifications as $notification) {
-                    $date = date('Y-m-d', strtotime($notification['created_at'] ?? 'now'));
-                    $type = $notification['module_name'] ?? 'general';
-                    $groupedNotifications[$date][$type][] = $notification;
-                }
-                
-                foreach ($groupedNotifications as $date => $typeGroups): 
-                    $dateLabel = $date === date('Y-m-d') ? 'Today' : ($date === date('Y-m-d', strtotime('-1 day')) ? 'Yesterday' : date('M d, Y', strtotime($date)));
-                ?>
-                <div class="notification-date-group">
-                    <h3 class="notification-date-header"><?= $dateLabel ?></h3>
-                    <?php foreach ($typeGroups as $type => $typeNotifications): ?>
-                        <?php if (count($typeNotifications) > 1): ?>
-                        <div class="notification-type-group">
-                            <h4 class="notification-type-header">
-                                <?= ucfirst($type) ?> (<?= count($typeNotifications) ?>)
-                                <button class="btn btn--xs btn--secondary" onclick="toggleTypeGroup('<?= $type ?>-<?= $date ?>')">
-                                    <i class="bi bi-chevron-down"></i>
-                                </button>
-                            </h4>
-                            <div class="notification-type-content" id="<?= $type ?>-<?= $date ?>">
-                        <?php endif; ?>
-                        
-                        <?php foreach ($typeNotifications as $notification): 
-                            $isFromSelf = ($notification['sender_id'] ?? 0) == ($_SESSION['user_id'] ?? 0);
-                            $priority = $notification['action_type'] === 'reminder' ? 'high' : 'normal';
-                        ?>
-                        <div class="notification-item notification-item--<?= $priority ?> <?= ($notification['is_read'] ?? false) ? 'notification-item--read' : 'notification-item--unread' ?> <?= $isFromSelf ? 'notification-item--self' : '' ?>" data-notification-id="<?= $notification['id'] ?? 0 ?>">
-                            <div class="notification-header">
-                                <div class="notification-meta">
-                                    <span class="notification-type-badge notification-type-badge--<?= $type ?>">
-                                        <?php 
-                                        $icons = ['task' => '✅', 'leave' => '📅', 'expense' => '💰', 'advance' => '💳', 'reminder' => '⏰'];
-                                        echo $icons[$type] ?? '🔔';
-                                        ?>
-                                        <?= ucfirst($notification['action_type'] ?? 'notification') ?>
-                                    </span>
-                                    <?php if ($notification['action_type'] === 'reminder'): ?>
-                                    <span class="notification-priority-badge">⚡ Priority</span>
-                                    <?php endif; ?>
-                                </div>
-                                <span class="notification-time"><?= date('H:i', strtotime($notification['created_at'] ?? 'now')) ?></span>
-                            </div>
-                            <p class="notification-message"><?= htmlspecialchars($notification['message'] ?? 'No message') ?></p>
-                            <?php if (!($notification['is_read'] ?? false)): ?>
-                            <div class="notification-actions">
-                                <button class="btn btn--sm btn--primary" onclick="markAsRead(<?= $notification['id'] ?? 0 ?>)">
-                                    Mark as Read
-                                </button>
-                                <?php if ($notification['module_name'] && $notification['reference_id']): ?>
-                                <a href="/ergon/<?= $notification['module_name'] ?>/view/<?= $notification['reference_id'] ?>" class="btn btn--sm btn--secondary">
-                                    View Details
-                                </a>
-                                <?php endif; ?>
-                            </div>
+<div class="notifications-container">
+    <?php if (empty($notifications ?? [])): ?>
+        <div class="empty-state">
+            <div class="empty-icon">🔔</div>
+            <h3>No Notifications</h3>
+            <p>You're all caught up! No new notifications.</p>
+        </div>
+    <?php else: ?>
+        <div class="notifications-table-wrapper">
+            <table class="notifications-table">
+                <thead>
+                    <tr>
+                        <th class="col-status"></th>
+                        <th class="col-type">Type</th>
+                        <th class="col-message">Message</th>
+                        <th class="col-sender">From</th>
+                        <th class="col-time">Time</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($notifications as $notification): 
+                        $isUnread = !($notification['is_read'] ?? false);
+                        $moduleIcon = ['task' => '✅', 'leave' => '📅', 'expense' => '💰', 'advance' => '💳'][$notification['module_name']] ?? '🔔';
+                        $viewUrl = $notification['link'] ?? "/ergon/{$notification['module_name']}";
+                    ?>
+                    <tr class="notification-row <?= $isUnread ? 'notification-row--unread' : 'notification-row--read' ?>" data-notification-id="<?= $notification['id'] ?>">
+                        <td class="col-status">
+                            <?php if ($isUnread): ?>
+                                <div class="status-indicator status-indicator--unread" title="Unread"></div>
+                            <?php else: ?>
+                                <div class="status-indicator status-indicator--read" title="Read"></div>
                             <?php endif; ?>
-                        </div>
-                        <?php endforeach; ?>
-                        
-                        <?php if (count($typeNotifications) > 1): ?>
+                        </td>
+                        <td class="col-type">
+                            <div class="notification-type">
+                                <span class="type-icon"><?= $moduleIcon ?></span>
+                                <span class="type-text"><?= ucfirst($notification['module_name'] ?? 'General') ?></span>
                             </div>
-                        </div>
-                        <?php endif; ?>
+                        </td>
+                        <td class="col-message">
+                            <div class="message-content">
+                                <div class="message-text"><?= htmlspecialchars($notification['message'] ?? 'No message') ?></div>
+                                <div class="message-meta">
+                                    <span class="action-type"><?= ucfirst($notification['action_type'] ?? '') ?></span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="col-sender">
+                            <span class="sender-name"><?= htmlspecialchars($notification['sender_name'] ?? 'System') ?></span>
+                        </td>
+                        <td class="col-time">
+                            <div class="time-info">
+                                <div class="time-relative"><?= timeAgo($notification['created_at']) ?></div>
+                                <div class="time-exact"><?= date('M j, H:i', strtotime($notification['created_at'])) ?></div>
+                            </div>
+                        </td>
+                        <td class="col-actions">
+                            <div class="action-buttons">
+                                <?php if ($isUnread): ?>
+                                    <button class="btn btn--xs btn--primary" onclick="markAsRead(<?= $notification['id'] ?>)" title="Mark as read">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                <?php endif; ?>
+                                <a href="<?= $viewUrl ?>" class="btn btn--xs btn--secondary" title="View details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
                     <?php endforeach; ?>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </div>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
 </div>
+
+<?php
+function timeAgo($datetime) {
+    $time = time() - strtotime($datetime);
+    if ($time < 60) return 'Just now';
+    if ($time < 3600) return floor($time/60) . 'm ago';
+    if ($time < 86400) return floor($time/3600) . 'h ago';
+    if ($time < 2592000) return floor($time/86400) . 'd ago';
+    return date('M j', strtotime($datetime));
+}
+?>
 
 <script>
 function markAsRead(id) {
-    fetch('/ergon/api/notifications/mark-as-read', {
+    fetch('/ergon/api/notifications.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `id=${id}`
+        body: `action=mark-read&id=${id}`
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Update UI without reload
-            const notificationItem = document.querySelector(`[data-notification-id="${id}"]`);
-            if (notificationItem) {
-                notificationItem.classList.remove('notification-item--unread');
-                notificationItem.classList.add('notification-item--read');
-                const actions = notificationItem.querySelector('.notification-actions');
-                if (actions) actions.remove();
+            const row = document.querySelector(`[data-notification-id="${id}"]`);
+            if (row) {
+                row.classList.remove('notification-row--unread');
+                row.classList.add('notification-row--read');
+                const statusIndicator = row.querySelector('.status-indicator');
+                if (statusIndicator) {
+                    statusIndicator.className = 'status-indicator status-indicator--read';
+                    statusIndicator.title = 'Read';
+                }
+                const markButton = row.querySelector('.btn--primary');
+                if (markButton) markButton.remove();
             }
             updateNotificationCounts();
         } else {
@@ -152,11 +153,12 @@ function markAsRead(id) {
 }
 
 function markAllAsRead() {
-    fetch('/ergon/api/notifications/mark-all-read', {
+    fetch('/ergon/api/notifications.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-        }
+        },
+        body: 'action=mark-all-read'
     })
     .then(response => response.json())
     .then(data => {
@@ -169,6 +171,17 @@ function markAllAsRead() {
     .catch(error => {
         console.error('Error:', error);
         alert('Network error occurred');
+    });
+}
+
+function filterNotifications(type) {
+    const rows = document.querySelectorAll('.notification-row');
+    rows.forEach(row => {
+        if (type === 'all') {
+            row.style.display = '';
+        } else if (type === 'unread') {
+            row.style.display = row.classList.contains('notification-row--unread') ? '' : 'none';
+        }
     });
 }
 
@@ -186,15 +199,14 @@ function toggleTypeGroup(groupId) {
 }
 
 function updateNotificationCounts() {
-    const unreadCount = document.querySelectorAll('.notification-item--unread').length;
-    const readCount = document.querySelectorAll('.notification-item--read').length;
+    const unreadCount = document.querySelectorAll('.notification-row--unread').length;
+    const readCount = document.querySelectorAll('.notification-row--read').length;
     
-    // Update KPI cards if they exist
-    const unreadCard = document.querySelector('.kpi-card--warning .kpi-card__value');
-    const readCard = document.querySelector('.kpi-card:not(.kpi-card--warning) .kpi-card__value');
+    const unreadStat = document.querySelector('.stat-card--unread .stat-number');
+    const readStat = document.querySelector('.stat-card--read .stat-number');
     
-    if (unreadCard) unreadCard.textContent = unreadCount;
-    if (readCard) readCard.textContent = readCount;
+    if (unreadStat) unreadStat.textContent = unreadCount;
+    if (readStat) readStat.textContent = readCount;
 }
 
 // Auto-collapse older notification groups
@@ -211,71 +223,193 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-.notification-date-group {
+.notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.notification-date-header {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid #e5e7eb;
+.notifications-stats {
+    display: flex;
+    gap: 1rem;
 }
 
-.notification-type-group {
-    margin-bottom: 1.5rem;
-}
-
-.notification-type-header {
+.stat-card {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    font-size: 1rem;
-    font-weight: 500;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 6px;
+    min-width: 120px;
+}
+
+.stat-card--unread { background: #fef2f2; }
+.stat-card--read { background: #f0fdf4; }
+
+.stat-icon {
+    font-size: 1.5rem;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.stat-label {
+    font-size: 0.875rem;
     color: #6b7280;
-    margin-bottom: 0.5rem;
 }
 
-.notification-item--high {
-    border-left: 4px solid #f59e0b;
-    background: #fffbeb;
+.notifications-actions {
+    display: flex;
+    gap: 0.5rem;
 }
 
-.notification-item--self {
-    opacity: 0.7;
-    background: #f9fafb;
+.notifications-container {
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.notification-type-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    font-size: 0.75rem;
-    font-weight: 500;
+.notifications-table {
+    width: 100%;
+    border-collapse: collapse;
 }
 
-.notification-type-badge--task { background: #dbeafe; color: #1e40af; }
-.notification-type-badge--leave { background: #fef3c7; color: #92400e; }
-.notification-type-badge--expense { background: #d1fae5; color: #065f46; }
-.notification-type-badge--reminder { background: #fecaca; color: #991b1b; }
-
-.notification-priority-badge {
-    background: #fef2f2;
-    color: #dc2626;
-    padding: 0.125rem 0.375rem;
-    border-radius: 0.25rem;
-    font-size: 0.625rem;
+.notifications-table th {
+    background: #f8fafc;
+    padding: 1rem;
+    text-align: left;
     font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
 }
 
-.notification-meta {
+.notifications-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: top;
+}
+
+.notification-row--unread {
+    background: #fffbeb;
+    border-left: 3px solid #f59e0b;
+}
+
+.notification-row--read {
+    background: #fff;
+    opacity: 0.8;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-indicator--unread { background: #f59e0b; }
+.status-indicator--read { background: #10b981; }
+
+.notification-type {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+}
+
+.type-icon {
+    font-size: 1.25rem;
+}
+
+.type-text {
+    font-weight: 500;
+    color: #374151;
+}
+
+.message-content {
+    max-width: 400px;
+}
+
+.message-text {
+    color: #1f2937;
+    line-height: 1.5;
+    margin-bottom: 0.25rem;
+}
+
+.message-meta {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.action-type {
+    background: #e5e7eb;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    text-transform: capitalize;
+}
+
+.sender-name {
+    font-weight: 500;
+    color: #374151;
+}
+
+.time-info {
+    text-align: right;
+}
+
+.time-relative {
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
+
+.time-exact {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.col-status { width: 20px; }
+.col-type { width: 120px; }
+.col-message { width: auto; }
+.col-sender { width: 150px; }
+.col-time { width: 120px; }
+.col-actions { width: 80px; }
+
+@media (max-width: 768px) {
+    .notifications-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .notifications-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .stat-card {
+        flex: 1;
+        min-width: auto;
+    }
+    
+    .notifications-table-wrapper {
+        overflow-x: auto;
+    }
+    
+    .message-content {
+        max-width: 200px;
+    }
 }
 </style>
 
