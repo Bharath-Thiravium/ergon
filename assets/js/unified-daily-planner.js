@@ -1,97 +1,158 @@
-// Initialize timer objects
-const timers = {};
+// Global timer storage
 const slaTimers = {};
 
-// Define global functions
+// Define pauseTask function globally
 window.pauseTask = function(taskId) {
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    const currentStatus = taskCard?.dataset.status;
+    
+    if (currentStatus !== 'in_progress') {
+        showNotification(`Cannot pause task. Status: ${currentStatus}. Must be 'in_progress'.`, 'error');
+        return;
+    }
+    
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     
     fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            task_id: parseInt(taskId),
-            csrf_token: csrfToken
-        })
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ task_id: parseInt(taskId, 10), csrf_token: csrfToken })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            taskCard.dataset.status = 'on_break';
             updateTaskUI(taskId, 'on_break');
-            showPauseTimer(taskId);
-            showNotification('Task paused', 'success');
+            window.taskTimer.startPause(taskId, Math.floor(Date.now() / 1000));
+            showNotification('Task paused', 'info');
         } else {
-            alert('Error: ' + (data.error || data.message));
+            showNotification('Failed to pause: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error pausing task: ' + error.message);
+        showNotification('Network error: ' + error.message, 'error');
     });
 };
 
 window.resumeTask = function(taskId) {
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    const currentStatus = taskCard?.dataset.status;
+    
+    if (currentStatus !== 'on_break') {
+        showNotification(`Cannot resume task. Status: ${currentStatus}. Must be 'on_break'.`, 'error');
+        return;
+    }
+    
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     
     fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            task_id: parseInt(taskId),
-            csrf_token: csrfToken
-        })
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ task_id: parseInt(taskId, 10), csrf_token: csrfToken })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            taskCard.dataset.status = 'in_progress';
             updateTaskUI(taskId, 'in_progress');
-            startCountdownTimer(taskId);
+            window.taskTimer.stopPause(taskId);
+            window.taskTimer.start(taskId, parseInt(taskCard.dataset.slaDuration) || 900, Math.floor(Date.now() / 1000));
             showNotification('Task resumed', 'success');
         } else {
-            alert('Error: ' + (data.error || data.message));
+            showNotification('Failed to resume: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error resuming task: ' + error.message);
+        showNotification('Network error: ' + error.message, 'error');
     });
 };
 
 window.startTask = function(taskId) {
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     
     fetch('/ergon/api/daily_planner_workflow.php?action=start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            task_id: parseInt(taskId),
-            csrf_token: csrfToken
-        })
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ task_id: parseInt(taskId, 10), csrf_token: csrfToken })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            taskCard.dataset.status = 'in_progress';
             updateTaskUI(taskId, 'in_progress');
-            startCountdownTimer(taskId);
+            window.taskTimer.start(taskId, parseInt(taskCard.dataset.slaDuration) || 900, Math.floor(Date.now() / 1000));
             showNotification('Task started', 'success');
         } else {
-            alert('Error: ' + data.message);
+            showNotification('Failed to start: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        alert('Error starting task: ' + error.message);
+        showNotification('Network error: ' + error.message, 'error');
     });
 };
 
-window.openProgressModal = function(taskId, progress, status) {
-    window.currentTaskId = taskId;
-    const progressDialog = document.getElementById('progressDialog');
-    const progressSlider = document.getElementById('progressSlider');
-    const progressValue = document.getElementById('progressValue');
+// UI update function
+function updateTaskUI(taskId, newStatus) {
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (!taskCard) return;
     
-    if (progressDialog && progressSlider && progressValue) {
-        progressSlider.value = progress || 0;
-        progressValue.textContent = progress || 0;
-        progressDialog.style.display = 'flex';
+    const statusBadge = taskCard.querySelector(`#status-${taskId}`);
+    if (statusBadge) {
+        statusBadge.textContent = newStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        statusBadge.className = `badge badge--${newStatus}`;
     }
+    
+    const actionsDiv = taskCard.querySelector(`#actions-${taskId}`);
+    if (actionsDiv) {
+        if (newStatus === 'in_progress') {
+            actionsDiv.innerHTML = `
+                <button class="btn btn--sm btn--warning" onclick="pauseTask(${taskId})" title="Take a break from this task">
+                    <i class="bi bi-pause"></i> Break
+                </button>
+                <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, 0, '${newStatus}')" title="Update task completion progress">
+                    <i class="bi bi-percent"></i> Update Progress
+                </button>
+                <button class="btn btn--sm btn--secondary" onclick="postponeTask(${taskId})" title="Postpone task to another date">
+                    <i class="bi bi-calendar-plus"></i> Postpone
+                </button>
+            `;
+        } else if (newStatus === 'on_break') {
+            actionsDiv.innerHTML = `
+                <button class="btn btn--sm btn--success" onclick="resumeTask(${taskId})" title="Resume working on this task">
+                    <i class="bi bi-play"></i> Resume
+                </button>
+                <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, 0, '${newStatus}')" title="Update task completion progress">
+                    <i class="bi bi-percent"></i> Update Progress
+                </button>
+                <button class="btn btn--sm btn--secondary" onclick="postponeTask(${taskId})" title="Postpone task to another date">
+                    <i class="bi bi-calendar-plus"></i> Postpone
+                </button>
+            `;
+        } else if (newStatus === 'postponed') {
+            actionsDiv.innerHTML = `
+                <span class="badge badge--warning"><i class="bi bi-calendar-plus"></i> Postponed</span>
+            `;
+        }
+    }
+    
+    const countdownLabel = taskCard.querySelector(`#countdown-${taskId} .countdown-label`);
+    if (countdownLabel) {
+        countdownLabel.textContent = newStatus === 'in_progress' ? 'Remaining' : (newStatus === 'on_break' ? 'Paused' : 'SLA Time');
+    }
+}
+
+window.openProgressModal = function(taskId, progress, status) {
+    alert('Progress modal for task ' + taskId + ' (progress: ' + progress + '%, status: ' + status + ')');
 };
 
 window.postponeTask = function(taskId) {
@@ -113,342 +174,73 @@ window.postponeTask = function(taskId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Task postponed to ' + newDate);
-            location.reload();
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        alert('Error postponing task: ' + error.message);
-    });
-};
-
-function updateTaskUI(taskId, action, data = {}) {
-    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-    const statusBadge = document.querySelector(`#status-${taskId}`);
-    const actionsDiv = document.querySelector(`#actions-${taskId}`);
-    
-    if (!taskCard || !statusBadge || !actionsDiv) return;
-    
-    let newStatus, newActions;
-    
-    switch(action) {
-        case 'in_progress':
-            newStatus = 'in_progress';
-            statusBadge.textContent = 'In Progress';
-            statusBadge.className = 'badge badge--success';
-            taskCard.className = 'task-card task-card--in-progress';
-            newActions = `
-                <button class="btn btn--sm btn--warning" onclick="pauseTask(${taskId})" title="Pause this task">
-                    <i class="bi bi-pause"></i> Pause
-                </button>
-                <button class="btn btn--sm btn--info" onclick="showPostponeModal(${taskId})" title="Postpone this task">
-                    <i class="bi bi-calendar-plus"></i> Postpone
-                </button>
-                <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, 0, '${newStatus}')" title="Update task completion progress">
-                    <i class="bi bi-percent"></i> Update Progress
-                </button>
-            `;
-            break;
-            
-        case 'on_break':
-            newStatus = 'on_break';
-            statusBadge.textContent = 'On Break';
-            statusBadge.className = 'badge badge--warning';
-            taskCard.className = 'task-card task-card--paused';
-            newActions = `
-                <button class="btn btn--sm btn--success" onclick="resumeTask(${taskId})" title="Resume working on this task">
-                    <i class="bi bi-play"></i> Resume
-                </button>
-                <button class="btn btn--sm btn--info" onclick="showPostponeModal(${taskId})" title="Postpone this task">
-                    <i class="bi bi-calendar-plus"></i> Postpone
-                </button>
-                <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, 0, '${newStatus}')" title="Update task completion progress">
-                    <i class="bi bi-percent"></i> Update Progress
-                </button>
-            `;
-            break;
-            
-        case 'pending':
-            newStatus = 'pending';
-            statusBadge.textContent = 'Pending';
-            statusBadge.className = 'badge badge--secondary';
-            taskCard.className = 'task-card';
-            newActions = `
-                <button class="btn btn--sm btn--success" onclick="startTask(${taskId})" title="Start working on this task">
-                    <i class="bi bi-play"></i> Start
-                </button>
-                <button class="btn btn--sm btn--info" onclick="showPostponeModal(${taskId})" title="Postpone this task">
-                    <i class="bi bi-calendar-plus"></i> Postpone
-                </button>
-            `;
-            break;
-            
-        default:
-            return;
-    }
-    
-    if (newActions) {
-        actionsDiv.innerHTML = newActions;
-    }
-    
-    // Update countdown label
-    const countdownLabel = taskCard.querySelector(`#countdown-${taskId} .countdown-label`);
-    if (countdownLabel) {
-        countdownLabel.textContent = newStatus === 'in_progress' ? 'Remaining' : (newStatus === 'on_break' ? 'Paused' : 'SLA Time');
-    }
-}
-
-// Simple countdown timer without server fetching
-function startCountdownTimer(taskId) {
-    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-    if (!taskCard) return;
-    
-    // Clear existing timer
-    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
-    
-    // Get SLA duration from task card data or default to 15 minutes
-    const slaDuration = parseInt(taskCard.dataset.slaDuration) || 900;
-    let remainingTime = slaDuration;
-    
-    // Start simple countdown
-    slaTimers[taskId] = setInterval(() => {
-        remainingTime = Math.max(0, remainingTime - 1);
-        
-        const countdownEl = taskCard.querySelector(`#countdown-${taskId} .countdown-display`);
-        if (countdownEl) {
-            countdownEl.textContent = formatTime(remainingTime);
-            countdownEl.className = remainingTime < 300 ? 'countdown-display countdown-display--warning' : 'countdown-display';
-            
-            if (remainingTime === 0) {
-                countdownEl.textContent = 'OVERDUE';
-                countdownEl.className = 'countdown-display countdown-display--overdue';
-                clearInterval(slaTimers[taskId]);
-            }
-        }
-    }, 1000);
-}
-
-// Update timer display for pause state
-function showPauseTimer(taskId) {
-    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-    if (!taskCard) return;
-    
-    const countdownEl = taskCard.querySelector(`#countdown-${taskId} .countdown-display`);
-    let pauseStartTime = Date.now();
-    
-    // Clear SLA timer
-    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
-    
-    // Start pause timer
-    slaTimers[taskId] = setInterval(() => {
-        const pauseDuration = Math.floor((Date.now() - pauseStartTime) / 1000);
-        
-        if (countdownEl) {
-            countdownEl.textContent = `Paused (Break: ${formatTime(pauseDuration)})`;
-            countdownEl.className = 'countdown-display countdown-display--paused';
-        }
-    }, 1000);
-}
-
-// Format seconds to HH:MM:SS with validation
-function formatTime(seconds) {
-    // Handle invalid or null values
-    if (!seconds || seconds <= 0 || isNaN(seconds)) {
-        return '00:00:00';
-    }
-    
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
-
-function showPostponeModal(taskId) {
-    document.getElementById('postponeTaskId').value = taskId;
-    document.getElementById('postponeForm').style.display = 'block';
-    document.getElementById('postponeOverlay').style.display = 'block';
-    document.getElementById('newDate').focus();
-}
-
-function cancelPostpone() {
-    document.getElementById('postponeForm').style.display = 'none';
-    document.getElementById('postponeOverlay').style.display = 'none';
-    document.getElementById('newDate').value = '';
-    document.getElementById('postponeReason').value = '';
-}
-
-function submitPostpone() {
-    const taskId = document.getElementById('postponeTaskId').value;
-    const newDate = document.getElementById('newDate').value;
-    const reason = document.getElementById('postponeReason').value;
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    
-    if (!newDate) {
-        alert('Please select a date');
-        return;
-    }
-    
-    fetch('/ergon/api/daily_planner_workflow.php?action=postpone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            task_id: parseInt(taskId), 
-            new_date: newDate,
-            reason: reason || 'No reason provided',
-            csrf_token: csrfToken
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            cancelPostpone();
-            
-            // Update SLA Dashboard with actual database values
-            if (data.updated_stats) {
-                updateSLADashboardStats(data.updated_stats);
-            }
-            
-            // Mark task as postponed in UI permanently
             const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
             if (taskCard) {
                 taskCard.dataset.status = 'postponed';
-                taskCard.dataset.postponed = 'true';
-                taskCard.style.opacity = '0.6';
-                taskCard.style.pointerEvents = 'none';
-                
-                const statusBadge = taskCard.querySelector('.badge');
-                if (statusBadge) {
-                    statusBadge.textContent = 'Postponed';
-                    statusBadge.className = 'badge badge--warning';
-                }
-                
-                const actionsDiv = taskCard.querySelector('.task-card__actions');
-                if (actionsDiv) {
-                    actionsDiv.innerHTML = `<span class="badge badge--warning"><i class="bi bi-calendar-plus"></i> Postponed to ${newDate}</span>`;
-                }
+                updateTaskUI(taskId, 'postponed');
+                window.taskTimer.stop(taskId);
+                window.taskTimer.stopPause(taskId);
             }
-            
-            showNotification(`Task postponed to ${newDate}`, 'success');
-            
-            // Immediately update SLA Dashboard postponed count
-            const postponedStat = document.querySelector('.stat-item:nth-child(3) .stat-value');
-            if (postponedStat) {
-                const currentCount = parseInt(postponedStat.textContent) || 0;
-                postponedStat.textContent = currentCount + 1;
-            }
-            
-            // Also refresh SLA Dashboard
-            refreshSLADashboard();
-            
-            // Prevent any auto-refresh by marking as processed
-            window.postponedTasks = window.postponedTasks || new Set();
-            window.postponedTasks.add(taskId);
-            
+            showNotification('Task postponed to ' + newDate, 'success');
         } else {
-            alert(data.message || 'Failed to postpone task');
+            showNotification('Error: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Error postponing task');
+        showNotification('Error postponing task: ' + error.message, 'error');
     });
-}
+};
 
-function stopTimer(taskId) {
-    if (timers[taskId]) {
-        clearInterval(timers[taskId]);
-        delete timers[taskId];
-    }
-    if (slaTimers[taskId]) {
-        clearInterval(slaTimers[taskId]);
-        delete slaTimers[taskId];
-    }
-}
-
-// Missing utility functions
 function showNotification(message, type) {
-    console.log(`${type.toUpperCase()}: ${message}`);
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification--${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <span class="notification-message">${message}</span>
+            <button class="notification-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+        </div>
+    `;
+    
+    // Add styles if not exists
+    if (!document.getElementById('notification-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'notification-styles';
+        styles.textContent = `
+            .notification {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 16px;
+                border-radius: 4px;
+                color: white;
+                z-index: 10000;
+                max-width: 300px;
+                animation: slideIn 0.3s ease;
+            }
+            .notification--success { background: #10b981; }
+            .notification--error { background: #ef4444; }
+            .notification--info { background: #3b82f6; }
+            .notification-content { display: flex; justify-content: space-between; align-items: center; }
+            .notification-close { background: none; border: none; color: white; font-size: 18px; cursor: pointer; }
+            @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 3000);
 }
 
 function refreshSLADashboard() {
     // Refresh dashboard if needed
 }
-
-function updateSLADashboardStats(stats) {
-    // Update dashboard stats if needed
-}
-
-function setButtonLoadingState(button, isLoading) {
-    if (!button) return;
-    
-    if (isLoading) {
-        button.disabled = true;
-        button.dataset.originalText = button.innerHTML;
-        button.innerHTML = '<i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i> Loading...';
-    } else {
-        button.disabled = false;
-        if (button.dataset.originalText) {
-            button.innerHTML = button.dataset.originalText;
-            delete button.dataset.originalText;
-        }
-    }
-}
-
-// Progress dialog functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const progressSlider = document.getElementById('progressSlider');
-    const progressValue = document.getElementById('progressValue');
-    
-    if (progressSlider && progressValue) {
-        progressSlider.addEventListener('input', function() {
-            progressValue.textContent = this.value;
-        });
-    }
-});
-
-window.closeDialog = function() {
-    const progressDialog = document.getElementById('progressDialog');
-    if (progressDialog) {
-        progressDialog.style.display = 'none';
-    }
-};
-
-window.saveProgress = function() {
-    const taskId = window.currentTaskId;
-    const progress = document.getElementById('progressSlider').value;
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    
-    if (!taskId) {
-        alert('No task selected');
-        return;
-    }
-    
-    fetch('/ergon/api/daily_planner_workflow.php?action=update-progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            task_id: parseInt(taskId),
-            progress: parseInt(progress),
-            status: progress >= 100 ? 'completed' : 'in_progress',
-            csrf_token: csrfToken
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            closeDialog();
-            showNotification(`Progress updated to ${progress}%`, 'success');
-            // Optionally reload or update UI
-        } else {
-            alert('Error: ' + (data.error || data.message));
-        }
-    })
-    .catch(error => {
-        alert('Error updating progress: ' + error.message);
-    });
-};
 
 // Compatibility functions
 function pauseTask(taskId) { return window.pauseTask(taskId); }

@@ -41,13 +41,11 @@ class ContactFollowupController extends Controller {
                 SELECT f.*, c.name as contact_name, c.phone as contact_phone, c.email as contact_email, c.company as contact_company,
                        'standalone' as followup_type
                 FROM followups f 
-                LEFT JOIN contacts c ON f.contact_id = c.id 
-                LEFT JOIN tasks t ON f.task_id = t.id
-                WHERE (f.task_id IS NULL OR t.id IS NOT NULL)
+                LEFT JOIN contacts c ON f.contact_id = c.id
             ";
             
             if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                $sql .= " AND f.user_id = ?";
+                $sql .= " WHERE f.user_id = ?";
                 $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC LIMIT 50");
                 $stmt->execute([$_SESSION['user_id']]);
             } else {
@@ -474,8 +472,6 @@ class ContactFollowupController extends Controller {
                    MAX(f.follow_up_date) as next_followup_date
             FROM contacts c
             LEFT JOIN followups f ON c.id = f.contact_id
-            LEFT JOIN tasks t ON f.task_id = t.id
-            WHERE (f.task_id IS NULL OR t.id IS NOT NULL)
         ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
@@ -495,8 +491,7 @@ class ContactFollowupController extends Controller {
             SELECT f.*, 
                    'standalone' as followup_type
             FROM followups f 
-            LEFT JOIN tasks t ON f.task_id = t.id
-            WHERE f.contact_id = ? AND (f.task_id IS NULL OR t.id IS NOT NULL)
+            WHERE f.contact_id = ?
         ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {

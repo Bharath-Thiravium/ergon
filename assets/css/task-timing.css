@@ -1,0 +1,71 @@
+/* Task Timing Grid */
+.task-timing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 0.5rem;
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.timing-card {
+    text-align: center;
+    padding: 0.5rem;
+    background: #ffffff;
+    border-radius: 6px;
+    border: 1px solid #f1f5f9;
+    transition: all 0.2s ease;
+}
+
+.timing-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.timing-card--primary {
+    border-color: #3b82f6;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+}
+
+.timing-card--break {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+}
+
+.timing-value {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #1e293b;
+    font-family: 'Courier New', monospace;
+    margin-bottom: 0.25rem;
+}
+
+.timing-label {
+    font-size: 0.65rem;
+    color: #64748b;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.countdown-display--warning {
+    color: #f59e0b !important;
+    animation: pulse-warning 2s infinite;
+}
+
+.countdown-display--expired {
+    color: #dc2626 !important;
+    animation: pulse-danger 1s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes pulse-danger {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
