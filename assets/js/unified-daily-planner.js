@@ -18,9 +18,10 @@ window.pauseTask = function(taskId) {
     .then(data => {
         if (data.success) {
             updateTaskUI(taskId, 'on_break');
+            showPauseTimer(taskId);
             showNotification('Task paused', 'success');
         } else {
-            alert('Error: ' + data.message);
+            alert('Error: ' + (data.error || data.message));
         }
     })
     .catch(error => {
@@ -46,7 +47,7 @@ window.resumeTask = function(taskId) {
             startCountdownTimer(taskId);
             showNotification('Task resumed', 'success');
         } else {
-            alert('Error: ' + data.message);
+            alert('Error: ' + (data.error || data.message));
         }
     })
     .catch(error => {
@@ -81,7 +82,16 @@ window.startTask = function(taskId) {
 };
 
 window.openProgressModal = function(taskId, progress, status) {
-    alert('Progress modal for task ' + taskId + ' (progress: ' + progress + '%, status: ' + status + ')');
+    window.currentTaskId = taskId;
+    const progressDialog = document.getElementById('progressDialog');
+    const progressSlider = document.getElementById('progressSlider');
+    const progressValue = document.getElementById('progressValue');
+    
+    if (progressDialog && progressSlider && progressValue) {
+        progressSlider.value = progress || 0;
+        progressValue.textContent = progress || 0;
+        progressDialog.style.display = 'flex';
+    }
 };
 
 window.postponeTask = function(taskId) {
@@ -133,6 +143,9 @@ function updateTaskUI(taskId, action, data = {}) {
                 <button class="btn btn--sm btn--warning" onclick="pauseTask(${taskId})" title="Pause this task">
                     <i class="bi bi-pause"></i> Pause
                 </button>
+                <button class="btn btn--sm btn--info" onclick="showPostponeModal(${taskId})" title="Postpone this task">
+                    <i class="bi bi-calendar-plus"></i> Postpone
+                </button>
                 <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, 0, '${newStatus}')" title="Update task completion progress">
                     <i class="bi bi-percent"></i> Update Progress
                 </button>
@@ -147,6 +160,9 @@ function updateTaskUI(taskId, action, data = {}) {
             newActions = `
                 <button class="btn btn--sm btn--success" onclick="resumeTask(${taskId})" title="Resume working on this task">
                     <i class="bi bi-play"></i> Resume
+                </button>
+                <button class="btn btn--sm btn--info" onclick="showPostponeModal(${taskId})" title="Postpone this task">
+                    <i class="bi bi-calendar-plus"></i> Postpone
                 </button>
                 <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, 0, '${newStatus}')" title="Update task completion progress">
                     <i class="bi bi-percent"></i> Update Progress
@@ -184,37 +200,69 @@ function updateTaskUI(taskId, action, data = {}) {
     }
 }
 
-// Countdown timer function
+// Simple countdown timer without server fetching
 function startCountdownTimer(taskId) {
     const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
     if (!taskCard) return;
     
-    const slaDuration = parseInt(taskCard.dataset.slaDuration) || 900; // 15 min default
-    const startTime = Date.now();
-    
+    // Clear existing timer
     if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
     
+    // Get SLA duration from task card data or default to 15 minutes
+    const slaDuration = parseInt(taskCard.dataset.slaDuration) || 900;
+    let remainingTime = slaDuration;
+    
+    // Start simple countdown
     slaTimers[taskId] = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const remaining = Math.max(0, slaDuration - elapsed);
-        
-        const hours = Math.floor(remaining / 3600);
-        const minutes = Math.floor((remaining % 3600) / 60);
-        const seconds = remaining % 60;
-        
-        const timeDisplay = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        remainingTime = Math.max(0, remainingTime - 1);
         
         const countdownEl = taskCard.querySelector(`#countdown-${taskId} .countdown-display`);
         if (countdownEl) {
-            countdownEl.textContent = timeDisplay;
-            countdownEl.className = remaining < 300 ? 'countdown-display countdown-display--warning' : 'countdown-display';
-        }
-        
-        if (remaining === 0) {
-            clearInterval(slaTimers[taskId]);
-            showNotification(`Task ${taskId} SLA expired!`, 'warning');
+            countdownEl.textContent = formatTime(remainingTime);
+            countdownEl.className = remainingTime < 300 ? 'countdown-display countdown-display--warning' : 'countdown-display';
+            
+            if (remainingTime === 0) {
+                countdownEl.textContent = 'OVERDUE';
+                countdownEl.className = 'countdown-display countdown-display--overdue';
+                clearInterval(slaTimers[taskId]);
+            }
         }
     }, 1000);
+}
+
+// Update timer display for pause state
+function showPauseTimer(taskId) {
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (!taskCard) return;
+    
+    const countdownEl = taskCard.querySelector(`#countdown-${taskId} .countdown-display`);
+    let pauseStartTime = Date.now();
+    
+    // Clear SLA timer
+    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+    
+    // Start pause timer
+    slaTimers[taskId] = setInterval(() => {
+        const pauseDuration = Math.floor((Date.now() - pauseStartTime) / 1000);
+        
+        if (countdownEl) {
+            countdownEl.textContent = `Paused (Break: ${formatTime(pauseDuration)})`;
+            countdownEl.className = 'countdown-display countdown-display--paused';
+        }
+    }, 1000);
+}
+
+// Format seconds to HH:MM:SS with validation
+function formatTime(seconds) {
+    // Handle invalid or null values
+    if (!seconds || seconds <= 0 || isNaN(seconds)) {
+        return '00:00:00';
+    }
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 function showPostponeModal(taskId) {
@@ -313,6 +361,10 @@ function stopTimer(taskId) {
         clearInterval(timers[taskId]);
         delete timers[taskId];
     }
+    if (slaTimers[taskId]) {
+        clearInterval(slaTimers[taskId]);
+        delete slaTimers[taskId];
+    }
 }
 
 // Missing utility functions
@@ -343,6 +395,60 @@ function setButtonLoadingState(button, isLoading) {
         }
     }
 }
+
+// Progress dialog functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const progressSlider = document.getElementById('progressSlider');
+    const progressValue = document.getElementById('progressValue');
+    
+    if (progressSlider && progressValue) {
+        progressSlider.addEventListener('input', function() {
+            progressValue.textContent = this.value;
+        });
+    }
+});
+
+window.closeDialog = function() {
+    const progressDialog = document.getElementById('progressDialog');
+    if (progressDialog) {
+        progressDialog.style.display = 'none';
+    }
+};
+
+window.saveProgress = function() {
+    const taskId = window.currentTaskId;
+    const progress = document.getElementById('progressSlider').value;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    
+    if (!taskId) {
+        alert('No task selected');
+        return;
+    }
+    
+    fetch('/ergon/api/daily_planner_workflow.php?action=update-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            task_id: parseInt(taskId),
+            progress: parseInt(progress),
+            status: progress >= 100 ? 'completed' : 'in_progress',
+            csrf_token: csrfToken
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeDialog();
+            showNotification(`Progress updated to ${progress}%`, 'success');
+            // Optionally reload or update UI
+        } else {
+            alert('Error: ' + (data.error || data.message));
+        }
+    })
+    .catch(error => {
+        alert('Error updating progress: ' + error.message);
+    });
+};
 
 // Compatibility functions
 function pauseTask(taskId) { return window.pauseTask(taskId); }

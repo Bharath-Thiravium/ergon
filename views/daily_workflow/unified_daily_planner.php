@@ -243,14 +243,18 @@ data-user-id="<?= htmlspecialchars($_SESSION['user_id'] ?? '1', ENT_QUOTES, 'UTF
                                 <div class="task-card__timing <?= $isOverdue ? 'timing--overdue' : '' ?>" id="timing-<?= $taskId ?>">
                                     <div class="countdown-timer" id="countdown-<?= $taskId ?>">
                                         <div class="countdown-display <?= $isOverdue ? 'countdown-display--overdue' : '' ?>"><?= $timeDisplay ?></div>
-                                        <div class="countdown-label"><?= $status === 'in_progress' ? 'Time Used' : ($status === 'on_break' ? 'Time Used (Paused)' : 'SLA Time') ?></div>
+                                        <div class="countdown-label"><?= $status === 'in_progress' ? 'Remaining' : ($status === 'on_break' ? 'Paused' : 'SLA Time') ?></div>
                                     </div>
                                     <div class="timing-info sla-time-info">
                                         <div class="sla-time-display"><?= $slaTimeDisplay ?></div>
                                         <div class="sla-time-label">SLA Time</div>
                                     </div>
+                                    <div class="timing-info time-used-info">
+                                        <div class="time-used-display" id="time-used-<?= $taskId ?>"><?= sprintf('%02d:%02d:%02d', floor($activeSeconds / 3600), floor(($activeSeconds % 3600) / 60), $activeSeconds % 60) ?></div>
+                                        <div class="time-used-label">Time Used</div>
+                                    </div>
                                     <div class="timing-info break-timer-info" id="break-timer-<?= $taskId ?>" style="<?= $status !== 'on_break' ? 'display: none;' : '' ?>">
-                                        <div class="pause-timer" id="pause-timer-<?= $taskId ?>">00:00:00</div>
+                                        <div class="pause-timer" id="pause-timer-<?= $taskId ?>"><?= sprintf('%02d:%02d:%02d', floor($pauseSeconds / 3600), floor(($pauseSeconds % 3600) / 60), $pauseSeconds % 60) ?></div>
                                         <div class="pause-timer-label">Break Time</div>
                                     </div>
                                 </div>
@@ -567,6 +571,7 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
 <?php renderModalJS(); ?>
 <script src="/ergon/assets/js/unified-daily-planner.js"></script>
 <script src="/ergon/assets/js/planner-access-control.js"></script>
+<script src="/ergon/fix_timer_display.js"></script>
 
 <?php
 $content = ob_get_clean();
