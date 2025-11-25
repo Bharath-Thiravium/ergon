@@ -16,11 +16,7 @@ if (!isset($_SESSION['csrf_token'])) {
 $content = ob_start();
 ?>
 <meta name="csrf-token" content="<?= $_SESSION['csrf_token'] ?>">
-<link rel="stylesheet" href="/ergon/assets/css/daily-planner.css">
-<link rel="stylesheet" href="/ergon/assets/css/daily-planner-modern.css">
-<link rel="stylesheet" href="/ergon/assets/css/planner-access-control.css">
-<link rel="stylesheet" href="/ergon/assets/css/production-fixes.css">
-<link rel="stylesheet" href="/ergon/assets/css/daily-planner-history-fix.css">
+<link rel="stylesheet" href="/ergon/assets/css/unified-daily-planner.css">
 
 <?php renderModalCSS(); ?>
 
@@ -559,916 +555,55 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
     </div>
 </div>
 
-<style>
-.task-source {
-    display: inline-block;
-    font-size: 0.9em;
-    margin-right: 5px;
-}
 
-.task-source--others {
-    color: #e67e22;
-    font-weight: bold;
-}
-
-.task-source--self {
-    color: #3498db;
-    font-weight: bold;
-}
-
-.empty-state ul {
-    color: #666;
-    font-size: 0.9em;
-}
-
-.empty-state ul li {
-    margin: 5px 0;
-}
-
-.dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
-    align-items: center;
-    justify-content: center;
-}
-
-.dialog-content {
-    background: white;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    min-width: 300px;
-    max-width: 400px;
-}
-
-.dialog-content h4 {
-    margin: 0 0 1rem 0;
-    color: #1f2937;
-}
-
-.dialog-content p {
-    margin: 0 0 1rem 0;
-    font-weight: 500;
-}
-
-#progressSlider {
-    width: 100%;
-    margin: 1rem 0;
-}
-
-.dialog-buttons {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-    margin-top: 1.5rem;
-}
-
-.dialog-buttons button {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.875rem;
-}
-
-.dialog-buttons button:first-child {
-    background: #f3f4f6;
-    color: #374151;
-}
-
-.dialog-buttons button:last-child {
-    background: #3b82f6;
-    color: white;
-}
-
-.dialog-buttons button:hover {
-    opacity: 0.9;
-}
-
-/* Task card enhancements */
-.task-card {
-    position: relative;
-}
-
-/* 📜 Historical view styling */
-.task-card--historical {
-    opacity: 0.8;
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    border-left: 4px solid #6c757d;
-    border: 1px solid #dee2e6;
-}
-
-.task-card--historical .task-card__actions {
-    /* Allow selective interactions for historical view */
-}
-
-.task-card--historical .badge--muted {
-    background: #6c757d;
-    color: white;
-}
-
-/* 🎯 Execution mode styling */
-.execution-mode .task-card {
-    border-left: 4px solid #28a745;
-    background: linear-gradient(135deg, #ffffff, #f8fff9);
-}
-
-/* 📅 Planning mode styling */
-.planning-mode .task-card {
-    border-left: 4px solid #17a2b8;
-    background: linear-gradient(135deg, #ffffff, #f0f9ff);
-}
-
-/* Visual distinction for different modes */
-.historical-view {
-    filter: grayscale(20%);
-}
-
-.execution-mode {
-    /* Full color and interactivity */
-}
-
-.planning-mode {
-    opacity: 0.9;
-}
-
-/* Disabled button styling for past/future dates */
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background-color: #e9ecef !important;
-    border-color: #dee2e6 !important;
-    color: #6c757d !important;
-}
-
-.btn:disabled:hover {
-    opacity: 0.5;
-    transform: none;
-}
-
-/* Past date specific styling */
-.task-card[data-is-past="true"] .btn:not(.btn--secondary):not([onclick*="showTaskHistory"]):not([onclick*="showReadOnlyProgress"]) {
-    opacity: 0.4;
-    pointer-events: none;
-}
-
-/* Read-only progress display */
-.progress-display {
-    text-align: center;
-    padding: 1rem;
-}
-
-.progress-display .progress-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.progress-display .progress-label {
-    font-weight: 600;
-    color: #374151;
-}
-
-.progress-display .progress-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #059669;
-}
-
-.task-card--postponed {
-    opacity: 0.7;
-    background: #fef3c7;
-    border-left: 4px solid #f59e0b;
-}
-
-.task-card--postponed .task-card__actions {
-    pointer-events: auto;
-}
-
-.task-card--postponed .btn:not(.btn--secondary):not(.btn--success) {
-    opacity: 0.5;
-    pointer-events: none;
-}
-
-.task-card--postponed-active {
-    opacity: 1;
-    background: #ecfdf5;
-    border-left: 4px solid #10b981;
-}
-
-.task-card--postponed-active .btn {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.task-card__created-info {
-    margin-bottom: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    background: rgba(59, 130, 246, 0.1);
-    border-radius: 4px;
-    border-left: 3px solid #3b82f6;
-}
-
-.task-card__rollover-info {
-    background: rgba(16, 185, 129, 0.1) !important;
-    border-left-color: #10b981 !important;
-}
-
-.task-card__rollover-info .text-info {
-    color: #059669 !important;
-    font-weight: 600;
-}
-
-/* Rollover task styling */
-.task-card[data-rollover="true"] {
-    border-left: 4px solid #10b981;
-    background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
-}
-
-.task-card[data-rollover="true"]:before {
-    content: "🔄";
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    font-size: 0.8em;
-    opacity: 0.7;
-}
-
-.task-card[data-task-source="from_others"]:before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    /*background: #e67e22;*/
-    border-radius: 2px 0 0 2px;
-}
-
-.task-card[data-task-source="self_assigned"]:before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: #3498db;
-    border-radius: 2px 0 0 2px;
-}
-
-/* SLA Display Enhancements */
-.sla-info {
-    margin-top: 0.5rem;
-    text-align: center;
-}
-
-.sla-total {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #2563eb;
-    font-family: 'Courier New', monospace;
-}
-
-.sla-total-label {
-    font-size: 0.7rem;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.sla-time {
-    cursor: help;
-    transition: all 0.2s ease;
-}
-
-.sla-time:hover {
-    transform: scale(1.1);
-    color: #2563eb;
-}
-
-/* Countdown timer enhancements */
-.countdown-display--warning {
-    color: #f59e0b !important;
-    animation: pulse-warning 2s infinite;
-}
-
-.countdown-display--expired {
-    color: #dc2626 !important;
-    animation: pulse-danger 1s infinite;
-}
-
-.pause-timer {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #f59e0b;
-    font-family: 'Courier New', monospace;
-    margin-top: 0.25rem;
-}
-
-.pause-timer-label {
-    font-size: 0.7rem;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 0.1rem;
-}
-
-@keyframes pulse-warning {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-@keyframes pulse-danger {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-/* Task card SLA section improvements */
-.task-card__sla {
-    min-width: 80px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-    background: rgba(59, 130, 246, 0.05);
-    border-radius: 10px;
-    border: 1px solid rgba(59, 130, 246, 0.1);
-}
-
-.task-card--active .task-card__sla {
-    background: rgba(34, 197, 94, 0.1);
-    border-color: rgba(34, 197, 94, 0.2);
-}
-
-.task-card--break .task-card__sla {
-    background: rgba(245, 158, 11, 0.1);
-    border-color: rgba(245, 158, 11, 0.2);
-}
-
-.task-card--completed .task-card__sla {
-    background: rgba(107, 114, 128, 0.1);
-    border-color: rgba(107, 114, 128, 0.2);
-    opacity: 0.7;
-}
-
-/* SLA tooltip enhancement */
-.sla-time[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    bottom: -35px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    white-space: nowrap;
-    z-index: 1000;
-    pointer-events: none;
-}
-
-.task-card__sla {
-    position: relative;
-}
-
-/* History display styles */
-.history-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem;
-    margin: 0.25rem 0;
-    background: #f8f9fa;
-    border-radius: 4px;
-    font-size: 0.875rem;
-}
-
-.history-date {
-    color: #6b7280;
-    font-weight: 500;
-}
-
-.history-action {
-    color: #374151;
-    font-weight: 600;
-}
-
-.history-progress {
-    color: #059669;
-    font-weight: 700;
-}
-
-.history-notes {
-    color: #6b7280;
-    font-style: italic;
-    font-size: 0.8rem;
-    margin-top: 0.25rem;
-    display: block;
-    width: 100%;
-}
-
-.postpone-history {
-    margin-bottom: 1rem;
-    padding: 1rem;
-    background: #f9fafb;
-    border-radius: 6px;
-    border: 1px solid #e5e7eb;
-}
-
-.postpone-history h4 {
-    margin: 0 0 0.75rem 0;
-    color: #374151;
-    font-size: 1rem;
-}
-
-.history-list {
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-/* Enhanced progress update modal */
-.percentage-options {
-    display: flex;
-    gap: 0.5rem;
-    margin: 0.5rem 0;
-    flex-wrap: wrap;
-}
-
-.percentage-btn {
-    flex: 1;
-    min-width: 60px;
-    padding: 0.5rem;
-    border: 2px solid #e5e7eb;
-    background: #f9fafb;
-    color: #374151;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-weight: 600;
-}
-
-.percentage-btn:hover {
-    border-color: #3b82f6;
-    background: #eff6ff;
-    color: #1d4ed8;
-}
-
-.percentage-btn.active {
-    border-color: #3b82f6;
-    background: #3b82f6;
-    color: white;
-}
-
-.percentage-btn.active:hover {
-    background: #2563eb;
-    border-color: #2563eb;
-}
-
-/* Task timing display */
-.task-card__timing {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 0.5rem;
-    margin: 0.5rem 0;
-    padding: 0.4rem;
-    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-    border-radius: 6px;
-    border: 1px solid #e2e8f0;
-    font-size: 0.75rem;
-}
-
-/* Button tooltip fixes for Daily Planner */
-.btn:hover::after {
-    content: none;
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(15, 23, 42, 0.95);
-    color: white;
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    white-space: nowrap;
-    z-index: 99999 !important;
-    pointer-events: none;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.btn:hover::before {
-    content: '';
-    position: absolute;
-    bottom: calc(100% + 2px);
-    left: 50%;
-    transform: translateX(-50%);
-    border: 4px solid transparent;
-    border-top-color: rgba(15, 23, 42, 0.95);
-    z-index: 99999 !important;
-}
-
-.btn {
-    position: relative;
-}
-
-/* Ensure task cards don't clip tooltips */
-.task-card {
-    overflow: visible !important;
-}
-
-.task-card__actions {
-    overflow: visible !important;
-    position: relative;
-    z-index: 1;
-}
-
-.timing-info {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-}
-
-.timing-label {
-    font-size: 0.65rem;
-    color: #64748b;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    margin-bottom: 0.1rem;
-}
-
-.timing-value {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #1e293b;
-    font-family: 'Courier New', monospace;
-    white-space: nowrap;
-}
-
-.task-card--active .timing-value {
-    color: #059669;
-}
-
-.task-card--break .timing-value {
-    color: #d97706;
-}
-
-.task-card--completed .timing-value {
-    color: #6b7280;
-    opacity: 0.7;
-}
-
-
-
-
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px 16px;
-    border-bottom: 1px solid var(--border-color, #f3f4f6);
-    background: var(--bg-secondary, #f8fafc);
-}
-
-.modal-header h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-primary, #1f2937);
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--text-muted, #6b7280);
-    padding: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-}
-
-.modal-close:hover {
-    color: var(--text-primary, #1f2937);
-    background: var(--bg-hover, #f3f4f6);
-}
-
-.modal-body {
-    padding: 24px;
-}
-
-.modal-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-color, #e5e7eb);
-}
-
-.form-group {
-    margin-bottom: 16px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 6px;
-    font-weight: 500;
-    color: var(--text-primary, #1f2937);
-}
-
-.form-control {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid var(--border-color, #d1d5db);
-    border-radius: 6px;
-    font-size: 14px;
-    background: var(--bg-primary, #ffffff);
-    color: var(--text-primary, #1f2937);
-    box-sizing: border-box;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: var(--primary, #2563eb);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-window.closeModal = function(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.style.display = 'none';
-};
-
-/* History Info Modal Styles */
-.history-info-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.history-info-modal .modal-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-}
-
-.history-info-modal .modal-content {
-    position: relative;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    max-width: 500px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-}
-
-.history-info-modal .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px 16px;
-    border-bottom: 1px solid #e5e7eb;
-    background: #f8fafc;
-    border-radius: 8px 8px 0 0;
-}
-
-.history-info-modal .modal-header h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: #1f2937;
-}
-
-.history-info-modal .modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: #6b7280;
-    padding: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-}
-
-.history-info-modal .modal-close:hover {
-    color: #1f2937;
-    background: #f3f4f6;
-}
-
-.history-info-modal .modal-body {
-    padding: 24px;
-}
-
-.history-info-modal .modal-body ul {
-    list-style: none;
-    padding: 0;
-    margin: 16px 0;
-}
-
-.history-info-modal .modal-body li {
-    padding: 8px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #374151;
-}
-
-.history-info-modal .modal-body li i {
-    color: #6b7280;
-    width: 16px;
-}
-
-.history-info-modal .modal-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid #e5e7eb;
-}
-
-/* Date Selector Group Styles */
-.date-selector-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.date-label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #374151;
-    margin: 0;
-}
-
-.loading-indicator {
-    font-size: 0.875rem;
-    color: #6b7280;
-    font-weight: normal;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .page-actions {
-        flex-direction: column;
-        gap: 12px;
-        align-items: stretch;
-    }
-    
-    .date-selector-group {
-        align-items: center;
-    }
-    
-    .history-info-modal .modal-content {
-        margin: 20px;
-        width: calc(100% - 40px);
-    }
-    
-    .history-info-modal .modal-actions {
-        flex-direction: column;
-    }
-}
-
-/* Task History Timeline Styles */
-.task-history-timeline {
-    position: relative;
-    padding-left: 30px;
-}
-
-.task-history-timeline::before {
-    content: '';
-    position: absolute;
-    left: 15px;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: #e5e7eb;
-}
-
-.history-timeline-item {
-    position: relative;
-    margin-bottom: 20px;
-}
-
-.timeline-marker {
-    position: absolute;
-    left: -23px;
-    top: 5px;
-    width: 8px;
-    height: 8px;
-    background: #3b82f6;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 0 0 2px #3b82f6;
-}
-
-.timeline-content {
-    background: #f8f9fa;
-    padding: 12px 16px;
-    border-radius: 8px;
-    border-left: 3px solid #3b82f6;
-}
-
-.timeline-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.timeline-action {
-    font-weight: 600;
-    color: #1f2937;
-}
-
-.timeline-date {
-    font-size: 0.875rem;
-    color: #6b7280;
-}
-
-.timeline-progress {
-    font-size: 0.875rem;
-    color: #059669;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.timeline-notes {
-    font-size: 0.875rem;
-    color: #4b5563;
-    font-style: italic;
-}
-
-.no-history, .error-message {
-    text-align: center;
-    padding: 40px 20px;
-    color: #6b7280;
-}
-
-.no-history i, .error-message i {
-    font-size: 2rem;
-    margin-bottom: 16px;
-    display: block;
-}
-
-.error-message {
-    color: #dc2626;
-}
-</style>
 
 <script>
-let timers = {};
-let slaTimers = {};
-var currentTaskId;
+// SLA Dashboard and Timer Management (using external objects)
+let slaDebugMode = false;
+let slaUpdateCount = 0;
+let lastValidSLAData = null;
+let currentTaskId = null;
 
-// SLA Timer Functions
-function startSLATimer(taskId) {
-    if (slaTimers[taskId]) {
-        clearInterval(slaTimers[taskId]);
+function updateLocalCountdown(taskId) {
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (!taskCard) return;
+    
+    const status = taskCard.dataset.status;
+    const slaDuration = parseInt(taskCard.dataset.slaDuration) || 900; // 15 minutes default
+    const startTime = parseInt(taskCard.dataset.startTime) || 0;
+    const activeSeconds = parseInt(taskCard.dataset.activeSeconds) || 0;
+    
+    const countdownDisplay = taskCard.querySelector(`#countdown-${taskId} .countdown-display`);
+    const pauseTimer = taskCard.querySelector(`#pause-timer-${taskId}`);
+    
+    if (status === 'in_progress' && startTime > 0) {
+        const elapsed = Math.floor((Date.now() - (startTime * 1000)) / 1000);
+        const totalUsed = activeSeconds + elapsed;
+        const remaining = Math.max(0, slaDuration - totalUsed);
+        
+        if (countdownDisplay) {
+            const hours = Math.floor(remaining / 3600);
+            const minutes = Math.floor((remaining % 3600) / 60);
+            const seconds = remaining % 60;
+            countdownDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Add warning classes
+            if (remaining <= 300) { // 5 minutes
+                countdownDisplay.classList.add('countdown-display--warning');
+            }
+            if (remaining <= 0) {
+                countdownDisplay.classList.add('countdown-display--expired');
+            }
+        }
+    } else if (status === 'on_break' && pauseTimer) {
+        const pauseStart = parseInt(taskCard.dataset.pauseStart) || Date.now();
+        const pauseElapsed = Math.floor((Date.now() - pauseStart) / 1000);
+        
+        const hours = Math.floor(pauseElapsed / 3600);
+        const minutes = Math.floor((pauseElapsed % 3600) / 60);
+        const seconds = pauseElapsed % 60;
+        pauseTimer.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
-    
-    // Start local countdown that updates every second
-    slaTimers[taskId] = setInterval(() => {
-        updateLocalCountdown(taskId);
-    }, 1000);
-    
-    // DISABLED - No initial server sync to prevent 429 errors
 }
 
 function stopSLATimer(taskId) {
@@ -1478,293 +613,154 @@ function stopSLATimer(taskId) {
     }
 }
 
-// Enhanced rate limiting for server calls
-let lastTimerCall = {};
-let taskTimerData = {}; // Store timer data locally
-let globalTimerQueue = []; // Queue for timer requests
-let isProcessingQueue = false;
-
-// Aggressive rate limiting: 15 seconds between server calls per task, max 2 concurrent requests
-const TIMER_THROTTLE = 15000; // 15 seconds between server calls per task
-const MAX_CONCURRENT_REQUESTS = 2;
-let activeRequests = 0;
-
-// Local countdown update (runs every second)
-function updateLocalCountdown(taskId) {
-    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-    if (!taskCard) return;
-    
-    const status = taskCard.dataset.status;
-    const display = document.querySelector(`#countdown-${taskId} .countdown-display`);
-    const pauseTimer = document.querySelector(`#pause-timer-${taskId}`);
-    
-    if (!display) return;
-    
-    const now = Date.now();
-    
-    if (status === 'in_progress') {
-        // Update SLA countdown
-        const startTime = parseInt(taskCard.dataset.startTime) * 1000;
-        const slaDuration = parseInt(taskCard.dataset.slaDuration) * 1000;
-        const activeSeconds = parseInt(taskCard.dataset.activeSeconds) || 0;
-        
-        if (startTime > 0) {
-            const elapsed = Math.floor((now - startTime) / 1000);
-            const totalUsed = activeSeconds + elapsed;
-            const remaining = Math.max(0, parseInt(taskCard.dataset.slaDuration) - totalUsed);
-            
-            if (remaining <= 0) {
-                const overdue = totalUsed - parseInt(taskCard.dataset.slaDuration);
-                const hours = Math.floor(overdue / 3600);
-                const minutes = Math.floor((overdue % 3600) / 60);
-                const seconds = overdue % 60;
-                display.textContent = `OVERDUE: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                display.className = 'countdown-display countdown-display--expired';
-                
-                // Update countdown label to show overdue timer
-                const label = document.querySelector(`#countdown-${taskId} .countdown-label`);
-                if (label) {
-                    label.textContent = 'Overdue Timer';
-                }
-            } else {
-                const hours = Math.floor(remaining / 3600);
-                const minutes = Math.floor((remaining % 3600) / 60);
-                const secs = remaining % 60;
-                display.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                display.className = remaining <= 600 ? 'countdown-display countdown-display--warning' : 'countdown-display';
-            }
-        }
-    } else if (status === 'on_break' && pauseTimer) {
-        // Update pause timer - use server-side pause start time if available
-        let pauseStart;
-        const pauseStartTime = taskCard.dataset.pauseStartTime;
-        if (pauseStartTime && pauseStartTime !== '') {
-            pauseStart = new Date(pauseStartTime).getTime();
-        } else {
-            pauseStart = parseInt(taskCard.dataset.pauseStart) || now;
-        }
-        
-        const pauseElapsed = Math.floor((now - pauseStart) / 1000);
-        const hours = Math.floor(pauseElapsed / 3600);
-        const minutes = Math.floor((pauseElapsed % 3600) / 60);
-        const seconds = pauseElapsed % 60;
-        pauseTimer.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    
-    // DISABLED: Server sync to prevent 429 errors
-    // Timer runs locally only for better performance
-}
-
-function syncTimerWithServer(taskId) {
-    return fetch(`/ergon/api/daily_planner_workflow.php?action=timer&task_id=${taskId}`, {
-        method: 'GET',
-        credentials: 'same-origin'
-    })
-    .then(response => {
-        if (!response.ok) {
-            if (response.status === 429) {
-                console.log(`Rate limited for task ${taskId}`);
-                return null;
-            }
-            throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (!data || !data.success) return;
-        
-        // Update local task data with server values
-        const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-        if (taskCard) {
-            taskCard.dataset.activeSeconds = data.active_seconds || 0;
-            taskCard.dataset.pauseDuration = data.pause_duration || 0;
-            
-            if (data.pause_start_time) {
-                taskCard.dataset.pauseStartTime = data.pause_start_time;
-            }
-            
-            // Update timing display
-            updateTaskTiming(taskId, data);
-        }
-    })
-    .catch(error => {
-        console.log(`Timer sync failed for task ${taskId}:`, error.message);
-    });
-}
-
-function updateSLADisplay(taskId) {
-    const currentTime = Date.now();
-    lastTimerCall[taskId] = currentTime;
-    activeRequests++;
-    
-    return fetch(`/ergon/api/daily_planner_workflow.php?action=timer&task_id=${taskId}`, {
-        method: 'GET',
-        credentials: 'same-origin'
-    })
-    .then(response => {
-        if (!response.ok) {
-            if (response.status === 429) {
-                console.log(`Rate limited for task ${taskId}, will retry in 15 seconds`);
-                // Schedule retry after rate limit period
-                setTimeout(() => queueTimerRequest(taskId), 15000);
-                return null;
-            }
-            throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (!data) return; // Skip if rate limited
-        
-        if (data.success) {
-            // Update local task data for accurate countdown
-            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-            if (taskCard) {
-                taskCard.dataset.activeSeconds = data.active_seconds || 0;
-                if (data.pause_start) {
-                    taskCard.dataset.pauseStart = data.pause_start * 1000;
-                }
-            }
-            
-            // Update individual task timing display
-            updateTaskTiming(taskId, data);
-            
-            // Update countdown label based on status
-            const label = document.querySelector(`#countdown-${taskId} .countdown-label`);
-            if (label && taskCard) {
-                const status = taskCard.dataset.status;
-                if (status === 'in_progress') {
-                    label.textContent = 'Remaining';
-                } else if (status === 'on_break') {
-                    label.textContent = 'Paused';
-                } else {
-                    label.textContent = 'SLA Time';
-                }
-            }
-        }
-    })
-    .catch(error => {
-        // Handle rate limiting gracefully
-        if (error.message.includes('429')) {
-            console.log(`Rate limited for task ${taskId}, scheduling retry`);
-            setTimeout(() => queueTimerRequest(taskId), 20000);
-        } else {
-            console.log(`Timer unavailable for task ${taskId}:`, error.message);
-        }
-    })
-    .finally(() => {
-        activeRequests--;
-    });
-}
-
-function updateTaskTiming(taskId, data) {
-    const timingDiv = document.querySelector(`#timing-${taskId}`);
-    if (timingDiv) {
-        const timeUsed = timingDiv.querySelector('.time-used');
-        const timeRemaining = timingDiv.querySelector('.time-remaining');
-        const timePaused = timingDiv.querySelector('.time-paused');
-        
-        if (timeUsed) timeUsed.textContent = formatTimeHours(data.active_seconds);
-        if (timeRemaining) timeRemaining.textContent = formatTimeHours(data.remaining_seconds);
-        if (timePaused) {
-            // Use pause duration from API (includes live calculation)
-            timePaused.textContent = formatTimeHours(data.pause_duration || 0);
-        }
-    }
-}
-
-function formatTime(seconds) {
-    const totalSeconds = Math.floor(Math.abs(seconds || 0));
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const secs = totalSeconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
-
 function updateSLADashboard(data) {
-    debugSLA('Updating SLA Dashboard', data);
+    if (!data || !data.user_specific) return;
     
-    // Update SLA metrics in dashboard
-    const slaTotal = document.querySelector('.sla-total-time');
-    const slaUsed = document.querySelector('.sla-used-time');
-    const slaRemaining = document.querySelector('.sla-remaining-time');
-    const slaPause = document.querySelector('.sla-pause-time');
+    const totalTime = document.querySelector('.sla-total-time');
+    const usedTime = document.querySelector('.sla-used-time');
+    const remainingTime = document.querySelector('.sla-remaining-time');
+    const pauseTime = document.querySelector('.sla-pause-time');
     
-    const newValues = {
-        total: formatTimeHours(data.sla_total_seconds || 0),
-        used: formatTimeHours(data.active_seconds || 0),
-        remaining: formatTimeHours(data.remaining_seconds || 0),
-        pause: formatTimeHours(data.pause_seconds || 0)
-    };
-    
-    if (slaTotal) {
-        debugSLA(`Total time: ${slaTotal.textContent} → ${newValues.total}`);
-        slaTotal.textContent = newValues.total;
-    }
-    if (slaUsed) {
-        debugSLA(`Used time: ${slaUsed.textContent} → ${newValues.used}`);
-        slaUsed.textContent = newValues.used;
-    }
-    if (slaRemaining) {
-        debugSLA(`Remaining time: ${slaRemaining.textContent} → ${newValues.remaining}`);
-        slaRemaining.textContent = newValues.remaining;
-    }
-    if (slaPause) {
-        debugSLA(`Pause time: ${slaPause.textContent} → ${newValues.pause}`);
-        slaPause.textContent = newValues.pause;
-    }
-    
-    console.log('SLA Dashboard metrics updated:', newValues);
-}
-
-function formatTimeHours(seconds) {
-    if (!seconds || seconds <= 0) return '0h 0m';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
+    if (totalTime) totalTime.textContent = data.total_sla_time || '0h 0m';
+    if (usedTime) usedTime.textContent = data.total_active_time || '0h 0m';
+    if (remainingTime) remainingTime.textContent = data.total_remaining_time || '0h 0m';
+    if (pauseTime) pauseTime.textContent = data.total_pause_time || '0h 0m';
 }
 
 function updateSLADashboardStats(stats) {
-    // Update task count statistics in SLA Dashboard
-    const statItems = document.querySelectorAll('.stat-item .stat-value');
-    if (statItems.length >= 4) {
-        statItems[0].textContent = stats.completed_tasks || 0; // Completed
-        statItems[1].textContent = stats.in_progress_tasks || 0; // In Progress
-        statItems[2].textContent = stats.postponed_tasks || 0; // Postponed
-        statItems[3].textContent = stats.total_tasks || 0; // Total
-    }
+    const totalTasks = document.querySelector('.stat-item:nth-child(4) .stat-value');
+    const completedTasks = document.querySelector('.stat-item:nth-child(1) .stat-value');
+    const inProgressTasks = document.querySelector('.stat-item:nth-child(2) .stat-value');
+    const postponedTasks = document.querySelector('.stat-item:nth-child(3) .stat-value');
     
-    // Update completion rate in the metrics section
-    const completionRateEl = document.querySelector('.metric-value');
-    if (completionRateEl && stats.total_tasks > 0) {
-        const rate = (stats.completed_tasks / stats.total_tasks) * 100;
-        completionRateEl.textContent = Math.round(rate) + '%';
-    }
-    
-    // Update progress bars
-    const progressFills = document.querySelectorAll('.progress-fill');
-    if (progressFills.length > 0 && stats.total_tasks > 0) {
-        const completionRate = (stats.completed_tasks / stats.total_tasks) * 100;
-        progressFills[0].style.width = completionRate + '%';
-    }
-    
-    // Force immediate visual update
-    const event = new CustomEvent('slaStatsUpdated', { detail: stats });
-    document.dispatchEvent(event);
-    
-    console.log('SLA Dashboard stats updated:', stats);
+    if (totalTasks) totalTasks.textContent = stats.total_tasks || 0;
+    if (completedTasks) completedTasks.textContent = stats.completed_tasks || 0;
+    if (inProgressTasks) inProgressTasks.textContent = stats.in_progress_tasks || 0;
+    if (postponedTasks) postponedTasks.textContent = stats.postponed_tasks || 0;
 }
 
-// Store the last successful SLA data to prevent reversion
-let lastValidSLAData = null;
-let slaDebugMode = false; // Set to true for debugging
-let slaUpdateCount = 0;
-let slaUpdateTimeout = null;
+function setButtonLoadingState(button, isLoading) {
+    if (!button) return;
+    
+    if (isLoading) {
+        button.disabled = true;
+        const originalText = button.innerHTML;
+        button.dataset.originalText = originalText;
+        button.innerHTML = '<i class="bi bi-arrow-clockwise spinner"></i> Loading...';
+    } else {
+        button.disabled = false;
+        if (button.dataset.originalText) {
+            button.innerHTML = button.dataset.originalText;
+            delete button.dataset.originalText;
+        }
+    }
+}
 
-// Debug function to track SLA updates
-function debugSLA(message, data = null) {
+function debugLog(message, data = '') {
     if (slaDebugMode) {
-        console.log(`[SLA DEBUG ${++slaUpdateCount}] ${message}`, data || '');
+        console.log(`[SLA DEBUG] ${message}`, data || '');
+    }
+}
+
+// Define missing global functions for onclick handlers
+window.pauseTask = function(taskId) {
+    updateTaskUI(taskId, 'on_break');
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (taskCard) taskCard.dataset.pauseStart = Date.now();
+    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+    slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+    fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: parseInt(taskId) })
+    }).catch(() => {});
+};
+
+window.openProgressModal = function(taskId, progress, status) {
+    currentTaskId = taskId;
+    document.getElementById('progressSlider').value = progress;
+    document.getElementById('progressValue').textContent = progress;
+    document.getElementById('progressDialog').style.display = 'flex';
+};
+
+window.postponeTask = function(taskId) {
+    document.getElementById('postponeTaskId').value = taskId;
+    document.getElementById('postponeForm').style.display = 'block';
+    document.getElementById('postponeOverlay').style.display = 'block';
+    document.getElementById('newDate').focus();
+};
+
+function closeDialog() {
+    document.getElementById('progressDialog').style.display = 'none';
+}
+
+function saveProgress() {
+    var progress = document.getElementById('progressSlider').value;
+    var status = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'assigned';
+    
+    fetch('/ergon/api/daily_planner_workflow.php?action=update-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            task_id: parseInt(currentTaskId), 
+            progress: parseInt(progress),
+            status: status
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTaskUI(currentTaskId, status, { percentage: progress });
+            closeDialog();
+            if (progress >= 100) {
+                stopSLATimer(currentTaskId);
+            }
+        }
+    })
+    .catch(() => {});
+}
+
+function updateTaskUI(taskId, action, data = {}) {
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    const statusBadge = taskCard?.querySelector('.badge');
+    const actionsDiv = taskCard?.querySelector('.task-card__actions');
+    
+    if (!taskCard || !statusBadge || !actionsDiv) return;
+    
+    taskCard.dataset.status = action;
+    
+    switch(action) {
+        case 'in_progress':
+            statusBadge.textContent = 'In Progress';
+            statusBadge.className = 'badge badge--in_progress';
+            taskCard.className = taskCard.className.replace(/task-card--\w+/g, '') + ' task-card--active';
+            break;
+        case 'on_break':
+            statusBadge.textContent = 'On Break';
+            statusBadge.className = 'badge badge--on_break';
+            taskCard.className = taskCard.className.replace(/task-card--\w+/g, '') + ' task-card--break';
+            break;
+        case 'completed':
+            statusBadge.textContent = 'Completed';
+            statusBadge.className = 'badge badge--success';
+            taskCard.className = taskCard.className.replace(/task-card--\w+/g, '') + ' task-card--completed';
+            break;
+    }
+}
+
+// Progress slider event listener
+document.addEventListener('DOMContentLoaded', function() {
+    var slider = document.getElementById('progressSlider');
+    if (slider) {
+        slider.oninput = function() {
+            document.getElementById('progressValue').textContent = this.value;
+        }
+    }
+});
+
+function debugLog(message, data = '') {
+    if (slaDebugMode) {
+        console.log(`[SLA DEBUG] ${message}`, data || '');
     }
 }
 
@@ -1988,20 +984,30 @@ Object.defineProperty(Element.prototype, 'innerHTML', {
 });
 
 function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');    
-    const colors = {
-        success: '#28a745',
-        error: '#dc3545',
-        info: '#17a2b8'
-    };
-    const bgColor = colors[type] || colors.info;
-    notification.innerHTML = `<div style="position:fixed;top:20px;right:20px;background:${bgColor};color:white;padding:10px 20px;border-radius:5px;z-index:9999;box-shadow: 0 2px 10px rgba(0,0,0,0.2);">${message}</div>`;
-    document.body.appendChild(notification);    
-    setTimeout(() => {
-        if (document.body.contains(notification)) {
-            document.body.removeChild(notification);
-        }
-    }, 3000);
+    // Simple console notification to prevent errors
+    console.log('[NOTIFICATION ' + type.toUpperCase() + ']:', message);
+    
+    // Optional: Create visual notification
+    try {
+        const notification = document.createElement('div');
+        const colors = {
+            success: '#28a745',
+            error: '#dc3545',
+            warning: '#ffc107',
+            info: '#17a2b8'
+        };
+        const bgColor = colors[type] || colors.info;
+        notification.innerHTML = '<div style="position:fixed;top:20px;right:20px;background:' + bgColor + ';color:white;padding:10px 20px;border-radius:5px;z-index:9999;box-shadow: 0 2px 10px rgba(0,0,0,0.2);">' + message + '</div>';
+        document.body.appendChild(notification);
+        setTimeout(function() {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 3000);
+    } catch (e) {
+        // Fallback to console only
+        console.log('[NOTIFICATION FALLBACK]:', message);
+    }
 }
 
 // Define openProgressModal function globally
@@ -2761,7 +1767,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeUpdateProgressModal();
                 
                 // Show success message with sync info
-                let message = `Progress updated to ${data.progress}%`;
+                let message = 'Progress updated to ' + data.progress + '%';
                 if (data.synced_to_tasks) {
                     message += ' (synced to Tasks module)';
                 }
@@ -2785,11 +1791,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // CRITICAL: Make all functions globally accessible for HTML onclick attributes
 function startTask(taskId) {
-    const button = event.target.closest('button');
-    setButtonLoadingState(button, true);
+    const taskCard = document.querySelector('[data-task-id="' + taskId + '"]');
+    if (taskCard && !taskCard.dataset.startTime) {
+        taskCard.dataset.startTime = Math.floor(Date.now() / 1000);
+    }
     updateTaskUI(taskId, 'in_progress');
-    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
-    slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+    startLocalTimer(taskId);
     fetch('/ergon/api/daily_planner_workflow.php?action=start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2798,13 +1805,18 @@ function startTask(taskId) {
 }
 
 function pauseTask(taskId) {
-    const button = event.target.closest('button');
-    setButtonLoadingState(button, true);
-    updateTaskUI(taskId, 'on_break');
-    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-    if (taskCard) taskCard.dataset.pauseStart = Date.now();
+    const taskCard = document.querySelector('[data-task-id="' + taskId + '"]');
+    if (taskCard) {
+        taskCard.dataset.pauseStart = Date.now();
+        taskCard.dataset.status = 'on_break';
+    }
+    
+    // Stop the remaining timer and start break timer
     if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
-    slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+    
+    updateTaskUI(taskId, 'on_break');
+    startPauseTimer(taskId);
+    
     fetch('/ergon/api/daily_planner_workflow.php?action=pause', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2813,16 +1825,17 @@ function pauseTask(taskId) {
 }
 
 function resumeTask(taskId) {
-    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    const taskCard = document.querySelector('[data-task-id="' + taskId + '"]');
     if (!taskCard) return;
 
-    const button = event.target.closest('button');
-    setButtonLoadingState(button, true);
-    updateTaskUI(taskId, 'in_progress');
-    
-    delete taskCard.dataset.pauseStart;
+    // Stop break timer and start remaining timer
     if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
-    slaTimers[taskId] = setInterval(() => updateLocalCountdown(taskId), 1000);
+    
+    taskCard.dataset.status = 'in_progress';
+    delete taskCard.dataset.pauseStart;
+    
+    updateTaskUI(taskId, 'in_progress');
+    startLocalTimer(taskId);
 
     fetch('/ergon/api/daily_planner_workflow.php?action=resume', {
         method: 'POST',
@@ -2830,6 +1843,87 @@ function resumeTask(taskId) {
         body: JSON.stringify({ task_id: parseInt(taskId) })
     }).catch(() => {});
 }
+
+// Timer management functions
+function startLocalTimer(taskId) {
+    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+    slaTimers[taskId] = setInterval(function() { updateLocalCountdown(taskId); }, 1000);
+}
+
+function startPauseTimer(taskId) {
+    if (slaTimers[taskId]) clearInterval(slaTimers[taskId]);
+    slaTimers[taskId] = setInterval(function() { updatePauseTimer(taskId); }, 1000);
+}
+
+function updatePauseTimer(taskId) {
+    const taskCard = document.querySelector('[data-task-id="' + taskId + '"]');
+    if (!taskCard || !taskCard.dataset.pauseStart) return;
+    
+    const pauseStart = parseInt(taskCard.dataset.pauseStart);
+    const elapsed = Math.floor((Date.now() - pauseStart) / 1000);
+    
+    const hours = Math.floor(elapsed / 3600);
+    const minutes = Math.floor((elapsed % 3600) / 60);
+    const seconds = elapsed % 60;
+    
+    const timeDisplay = hours.toString().padStart(2, '0') + ':' + 
+                       minutes.toString().padStart(2, '0') + ':' + 
+                       seconds.toString().padStart(2, '0');
+    
+    const pauseTimerEl = taskCard.querySelector('#pause-timer-' + taskId);
+    if (pauseTimerEl) {
+        pauseTimerEl.textContent = timeDisplay;
+    }
+}
+
+function updateLocalCountdown(taskId) {
+    const taskCard = document.querySelector('[data-task-id="' + taskId + '"]');
+    if (!taskCard) return;
+    
+    const status = taskCard.dataset.status;
+    const slaDuration = parseInt(taskCard.dataset.slaDuration) || 900;
+    const startTime = parseInt(taskCard.dataset.startTime);
+    const activeSeconds = parseInt(taskCard.dataset.activeSeconds) || 0;
+    
+    if (status === 'in_progress' && startTime) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const sessionElapsed = currentTime - startTime;
+        const totalUsed = activeSeconds + sessionElapsed;
+        const remaining = Math.max(0, slaDuration - totalUsed);
+        
+        const hours = Math.floor(remaining / 3600);
+        const minutes = Math.floor((remaining % 3600) / 60);
+        const seconds = remaining % 60;
+        
+        const timeDisplay = hours.toString().padStart(2, '0') + ':' + 
+                           minutes.toString().padStart(2, '0') + ':' + 
+                           seconds.toString().padStart(2, '0');
+        
+        const countdownEl = taskCard.querySelector('#countdown-' + taskId + ' .countdown-display');
+        if (countdownEl) {
+            countdownEl.textContent = timeDisplay;
+            
+            // Remove existing warning classes
+            countdownEl.classList.remove('countdown-display--warning', 'countdown-display--expired');
+            
+            if (remaining <= 0) {
+                countdownEl.classList.add('countdown-display--expired');
+                clearInterval(slaTimers[taskId]);
+                showNotification('Task ' + taskId + ' SLA expired!', 'warning');
+            } else if (remaining <= 300) { // 5 minutes warning
+                countdownEl.classList.add('countdown-display--warning');
+            }
+        }
+    }
+}
+
+function stopSLATimer(taskId) {
+    if (slaTimers[taskId]) {
+        clearInterval(slaTimers[taskId]);
+        delete slaTimers[taskId];
+    }
+}
+
 (function() {
     // Store original functions
     const originalAlert = window.alert;
@@ -2854,15 +1948,20 @@ function resumeTask(taskId) {
 })();
 
 function updateTaskUI(taskId, newStatus, data = {}) {
-    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    const taskCard = document.querySelector('[data-task-id="' + taskId + '"]');
     if (!taskCard) return;
 
-    const statusBadge = taskCard.querySelector(`#status-${taskId}`);
-    const actionsDiv = taskCard.querySelector(`#actions-${taskId}`);
-    const countdownLabel = taskCard.querySelector(`#countdown-${taskId} .countdown-label`);
+    const statusBadge = taskCard.querySelector('#status-' + taskId);
+    const actionsDiv = taskCard.querySelector('#actions-' + taskId);
+    const countdownLabel = taskCard.querySelector('#countdown-' + taskId + ' .countdown-label');
 
     // Update task card dataset
     taskCard.dataset.status = newStatus;
+    
+    // Set start time for timer calculations
+    if (newStatus === 'in_progress' && !taskCard.dataset.startTime) {
+        taskCard.dataset.startTime = Date.now();
+    }
 
     // Define all possible action buttons
     const buttons = {
@@ -2880,11 +1979,15 @@ function updateTaskUI(taskId, newStatus, data = {}) {
     });
 
     // Reset loading states on all buttons
-    Object.values(buttons).forEach(btn => setButtonLoadingState(btn, false));
+    Object.values(buttons).forEach(btn => {
+        if (btn && typeof setButtonLoadingState === 'function') {
+            setButtonLoadingState(btn, false);
+        }
+    });
 
     let statusText = newStatus.replace('_', ' ');
-    let statusClass = `badge--${newStatus}`;
-    let cardClass = `task-card--${newStatus}`;
+    let statusClass = 'badge--' + newStatus;
+    let cardClass = 'task-card--' + newStatus;
 
     switch (newStatus) {
         case 'in_progress':
@@ -2895,27 +1998,38 @@ function updateTaskUI(taskId, newStatus, data = {}) {
             if (buttons.update) buttons.update.style.display = 'inline-block';
             if (buttons.postpone) buttons.postpone.style.display = 'inline-block';
             
-            // Remove pause timer if it exists
-            const pauseTimer = taskCard.querySelector(`#pause-timer-${taskId}`);
-            if (pauseTimer) pauseTimer.parentElement.removeChild(pauseTimer.nextElementSibling); // remove label
-            if (pauseTimer) pauseTimer.parentElement.removeChild(pauseTimer);
+            // Remove pause timer elements
+            const pauseTimer = taskCard.querySelector('#pause-timer-' + taskId);
+            const pauseLabel = taskCard.querySelector('.pause-timer-label');
+            if (pauseTimer) pauseTimer.remove();
+            if (pauseLabel) pauseLabel.remove();
             break;
 
         case 'on_break':
             statusText = 'On Break';
             cardClass = 'task-card--break';
             if (countdownLabel) countdownLabel.textContent = 'Paused';
-            if (buttons.resume) buttons.resume.style.display = 'inline-block';
-            if (buttons.update) buttons.update.style.display = 'inline-block';
-            if (buttons.postpone) buttons.postpone.style.display = 'inline-block';
+            
+            // Always recreate buttons to ensure consistency
+            actionsDiv.innerHTML = `
+                <button class="btn btn--sm btn--success" onclick="resumeTask(${taskId})" title="Resume working on this task">
+                    <i class="bi bi-play"></i> Resume
+                </button>
+                <button class="btn btn--sm btn--primary" onclick="openProgressModal(${taskId}, 0, 'on_break')" title="Update task completion progress">
+                    <i class="bi bi-percent"></i> Update Progress
+                </button>
+                <button class="btn btn--sm btn--secondary" onclick="postponeTask(${taskId})" title="Postpone task to another date">
+                    <i class="bi bi-calendar-plus"></i> Postpone
+                </button>
+            `;
 
             // Add pause timer if it doesn't exist
-            const countdownDiv = taskCard.querySelector(`#countdown-${taskId}`);
-            if (countdownDiv && !countdownDiv.querySelector(`#pause-timer-${taskId}`)) {
-                countdownDiv.insertAdjacentHTML('beforeend', `
-                    <div class="pause-timer" id="pause-timer-${taskId}">00:00:00</div>
-                    <div class="pause-timer-label">Break Time</div>
-                `);
+            const countdownDiv = taskCard.querySelector('#countdown-' + taskId);
+            if (countdownDiv && !countdownDiv.querySelector('#pause-timer-' + taskId)) {
+                countdownDiv.insertAdjacentHTML('beforeend', 
+                    '<div class="pause-timer" id="pause-timer-' + taskId + '">00:00:00</div>' +
+                    '<div class="pause-timer-label">Break Time</div>'
+                );
             }
             break;
 
@@ -2929,11 +2043,13 @@ function updateTaskUI(taskId, newStatus, data = {}) {
 
         case 'completed':
             statusText = 'Completed';
-            actionsDiv.innerHTML = `<span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>`;
+            stopSLATimer(taskId);
+            actionsDiv.innerHTML = '<span class="badge badge--success"><i class="bi bi-check-circle"></i> Done</span>';
             break;
 
         case 'postponed':
             statusText = 'Postponed';
+            stopSLATimer(taskId);
             if (buttons.activate) buttons.activate.style.display = 'inline-block';
             if (buttons.postpone) {
                 buttons.postpone.style.display = 'inline-block';
@@ -2942,24 +2058,61 @@ function updateTaskUI(taskId, newStatus, data = {}) {
             break;
 
         default:
-            actionsDiv.innerHTML = `<span class="badge badge--muted">${statusText}</span>`;
+            actionsDiv.innerHTML = '<span class="badge badge--muted">' + statusText + '</span>';
             break;
     }
 
     // Update status badge
     if (statusBadge) {
         statusBadge.textContent = statusText.charAt(0).toUpperCase() + statusText.slice(1);
-        statusBadge.className = `badge ${statusClass}`;
+        statusBadge.className = 'badge ' + statusClass;
     }
 
     // Update task card class
-    taskCard.className = taskCard.className.replace(/task-card--\w+/g, '') + ` ${cardClass}`;
+    taskCard.className = taskCard.className.replace(/task-card--\w+/g, '') + ' ' + cardClass;
 }
 
-console.log('✅ Daily Planner loaded successfully - All alerts and console errors disabled');
+// Utility function for button loading states
+function setButtonLoadingState(button, isLoading) {
+    if (!button) return;
+    
+    if (isLoading) {
+        button.disabled = true;
+        button.dataset.originalText = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-arrow-clockwise spinner"></i> Loading...';
+    } else {
+        button.disabled = false;
+        if (button.dataset.originalText) {
+            button.innerHTML = button.dataset.originalText;
+            delete button.dataset.originalText;
+        }
+    }
+}
+
+// Initialize timers on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Start timers for tasks that are already in progress
+    const inProgressTasks = document.querySelectorAll('[data-status="in_progress"]');
+    inProgressTasks.forEach(function(taskCard) {
+        const taskId = taskCard.dataset.taskId;
+        if (taskId) {
+            startLocalTimer(taskId);
+        }
+    });
+    
+    // Start pause timers for tasks on break
+    const pausedTasks = document.querySelectorAll('[data-status="on_break"]');
+    pausedTasks.forEach(function(taskCard) {
+        const taskId = taskCard.dataset.taskId;
+        if (taskId && taskCard.dataset.pauseStart) {
+            startPauseTimer(taskId);
+        }
+    });
+});
 </script>
 
 <?php renderModalJS(); ?>
+<script src="/ergon/assets/js/unified-daily-planner.js"></script>
 <script src="/ergon/assets/js/planner-access-control.js"></script>
 
 <?php
@@ -2975,4 +2128,3 @@ include __DIR__ . '/../layouts/dashboard.php';
     to { transform: rotate(360deg); }
 }
 .spinner { animation: spin 1s linear infinite; }
-</style>

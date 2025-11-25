@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Task Functions</title>
+</head>
+<body>
+    <h1>Test Task Functions</h1>
+    
+    <div>
+        <button onclick="pauseTask(212)">Test Pause Task 212</button>
+        <button onclick="resumeTask(209)">Test Resume Task 209</button>
+        <button onclick="openProgressModal(210, 50, 'in_progress')">Test Progress Modal</button>
+        <button onclick="postponeTask(211)">Test Postpone Task</button>
+        <button onclick="startTask(213)">Test Start Task</button>
+    </div>
+    
+    <script src="/ergon/assets/js/task-functions.js"></script>
+    
+    <script>
+    // Test if functions are loaded
+    console.log('Testing function availability:');
+    console.log('pauseTask:', typeof pauseTask);
+    console.log('resumeTask:', typeof resumeTask);
+    console.log('openProgressModal:', typeof openProgressModal);
+    console.log('postponeTask:', typeof postponeTask);
+    console.log('startTask:', typeof startTask);
+    </script>
+</body>
+</html>
