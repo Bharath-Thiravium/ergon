@@ -1074,10 +1074,21 @@ ob_end_clean();
     
     // Check attendance status on page load - updated for smart button
     function checkAttendanceStatus() {
-        fetch('/ergon/attendance/status')
+        // Add timeout and retry logic for Hostinger compatibility
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        fetch('/ergon/attendance/status', {
+            signal: controller.signal,
+            headers: {
+                'Cache-Control': 'no-cache',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
         .then(response => {
+            clearTimeout(timeoutId);
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             return response.text();
         })
@@ -1106,7 +1117,12 @@ ob_end_clean();
             }
         })
         .catch(error => {
-            console.warn('Attendance status check failed:', error.message);
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                console.warn('Attendance status check timed out');
+            } else {
+                console.warn('Attendance status check failed:', error.message);
+            }
             // Set default state on error
             updateHeaderAttendanceButton();
         });

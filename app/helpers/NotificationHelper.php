@@ -71,42 +71,69 @@ class NotificationHelper {
     
     // Specific notification methods for common events
     public static function notifyLeaveRequest($userId, $userName) {
-        self::notifyOwners(
-            $userId,
-            'leave',
-            'request',
-            "{$userName} has submitted a leave request for approval",
-            null
-        );
+        // Only notify approvers, not the requester
+        self::notifyApprovalRequest($userId, $userName, 'leave', 'a leave request');
     }
     
     public static function notifyExpenseClaim($userId, $userName, $amount) {
-        self::notifyOwners(
-            $userId,
-            'expense',
-            'claim',
-            "{$userName} submitted expense claim of ₹{$amount} for approval",
-            null
-        );
+        // Only notify approvers, not the claimant
+        self::notifyApprovalRequest($userId, $userName, 'expense', "an expense claim of ₹{$amount}");
     }
     
     public static function notifyAdvanceRequest($userId, $userName, $amount) {
-        self::notifyOwners(
+        // Only notify approvers, not the requester
+        self::notifyApprovalRequest($userId, $userName, 'advance', "a salary advance request of ₹{$amount}");
+    }
+    
+    public static function notifyApprovalDecision($approverId, $userId, $module, $decision, $itemDescription) {
+        // Notify user about approval decision (only if different users)
+        if ($approverId != $userId) {
+            $message = "Your {$itemDescription} has been {$decision}";
+            self::notifyUser($approverId, $userId, $module, $decision, $message, null);
+        }
+    }
+    
+    public static function notifyTaskAssignment($assignedBy, $assignedTo, $taskTitle) {
+        // Only notify if assigning to someone else (not self-assignment)
+        if ($assignedBy != $assignedTo) {
+            self::notifyUser(
+                $assignedBy,
+                $assignedTo,
+                'task',
+                'assigned',
+                "You have been assigned a new task: {$taskTitle}",
+                null
+            );
+        }
+    }
+    
+    // Smart notification methods with proper logic
+    public static function notifyTaskReminder($userId, $taskTitle, $dueDate) {
+        // Always notify user about their own task reminders
+        self::notifyUser(
+            null, // System notification
             $userId,
-            'advance',
-            'request',
-            "{$userName} requested salary advance of ₹{$amount}",
+            'task',
+            'reminder',
+            "Reminder: Task '{$taskTitle}' is due on {$dueDate}",
             null
         );
     }
     
-    public static function notifyTaskAssignment($assignedBy, $assignedTo, $taskTitle) {
-        self::notifyUser(
-            $assignedBy,
-            $assignedTo,
-            'task',
-            'assigned',
-            "You have been assigned a new task: {$taskTitle}",
+    public static function notifyFromOthers($senderId, $receiverId, $module, $action, $message, $referenceId = null) {
+        // Only notify if sender is different from receiver
+        if ($senderId != $receiverId) {
+            self::notifyUser($senderId, $receiverId, $module, $action, $message, $referenceId);
+        }
+    }
+    
+    public static function notifyApprovalRequest($userId, $userName, $module, $itemDescription) {
+        // Don't notify the requester, only notify approvers (owners/admins)
+        self::notifyOwners(
+            $userId,
+            $module,
+            'approval_request',
+            "{$userName} submitted {$itemDescription} for approval",
             null
         );
     }
