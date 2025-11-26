@@ -26,6 +26,9 @@ ob_start();
             <div class="contact-title-row">
                 <h2 class="contact-title">👤 <?= htmlspecialchars($contact['name']) ?></h2>
                 <div class="contact-badges">
+                    <button class="btn btn--info" onclick="editContact(<?= $contact['id'] ?>)">
+                        ✏️ Edit Contact
+                    </button>
                     <?php if ($contact['phone']): ?>
                         <a href="tel:<?= $contact['phone'] ?>" class="btn btn--success">
                             📞 Call Now
@@ -414,6 +417,53 @@ function showHistory(id) {
         document.getElementById('historyContent').innerHTML = 'Error loading history';
     });
 }
+
+function editContact(contactId) {
+    // Load contact data
+    fetch(`/ergon/api/contacts/${contactId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.contact) {
+                const contact = data.contact;
+                document.getElementById('editContactId').value = contact.id;
+                document.getElementById('editContactName').value = contact.name || '';
+                document.getElementById('editContactPhone').value = contact.phone || '';
+                document.getElementById('editContactEmail').value = contact.email || '';
+                document.getElementById('editContactCompany').value = contact.company || '';
+                showModal('editContactModal');
+            } else {
+                alert('Error loading contact details');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading contact:', error);
+            alert('Error loading contact details');
+        });
+}
+
+function saveContactChanges() {
+    const form = document.getElementById('editContactForm');
+    const formData = new FormData(form);
+    const contactId = document.getElementById('editContactId').value;
+    
+    fetch(`/ergon/api/contacts/${contactId}`, {
+        method: 'PUT',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeModal('editContactModal');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to update contact'));
+        }
+    })
+    .catch(error => {
+        console.error('Error updating contact:', error);
+        alert('Error updating contact');
+    });
+}
 </script>
 
 <?php
@@ -453,10 +503,37 @@ $rescheduleFooter = createFormModalFooter('Cancel', '📅 Reschedule', 'reschedu
 // History Modal Content
 $historyContent = '<div id="historyContent">Loading...</div>';
 
+// Edit Contact Modal Content
+$editContactContent = '
+<form id="editContactForm">
+    <input type="hidden" id="editContactId" name="contact_id">
+    <div class="form-group">
+        <label class="form-label">Name *</label>
+        <input type="text" id="editContactName" name="name" class="form-control" required>
+    </div>
+    <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input type="tel" id="editContactPhone" name="phone" class="form-control">
+    </div>
+    <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="editContactEmail" name="email" class="form-control">
+    </div>
+    <div class="form-group">
+        <label class="form-label">Company</label>
+        <input type="text" id="editContactCompany" name="company" class="form-control">
+    </div>
+</form>';
+
+$editContactFooter = '
+<button type="button" class="btn btn--secondary" onclick="closeModal(\'editContactModal\')">Cancel</button>
+<button type="button" class="btn btn--primary" onclick="saveContactChanges()">💾 Save Changes</button>';
+
 // Render Modals
 renderModal('cancelModal', 'Cancel Follow-up', $cancelContent, $cancelFooter, ['icon' => '❌']);
 renderModal('rescheduleModal', 'Reschedule Follow-up', $rescheduleContent, $rescheduleFooter, ['icon' => '📅']);
 renderModal('historyModal', 'Follow-up History', $historyContent, '', ['icon' => '📋']);
+renderModal('editContactModal', 'Edit Contact Details', $editContactContent, $editContactFooter, ['icon' => '✏️']);
 ?>
 
 <?php renderModalJS(); ?>

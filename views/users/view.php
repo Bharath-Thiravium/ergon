@@ -108,6 +108,8 @@ ob_start();
                                 <div class="document-size"><?= $doc['size'] ?></div>
                             </div>
                             <div class="document-actions">
+                                <a href="/ergon/users/view-document/<?= $user['id'] ?>/<?= urlencode($doc['filename']) ?>" 
+                                   class="btn btn--sm btn--info" target="_blank">View Document</a>
                                 <a href="/ergon/users/download-document/<?= $user['id'] ?>/<?= urlencode($doc['filename']) ?>" 
                                    class="btn btn--sm btn--primary">Download</a>
                             </div>
