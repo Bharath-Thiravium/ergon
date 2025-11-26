@@ -3,6 +3,13 @@ $title = 'View User';
 $active_page = 'users';
 $user = $data['user'];
 $documents = $data['documents'] ?? [];
+
+// Check access permissions
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['owner', 'admin'])) {
+    header('Location: /ergon/login');
+    exit;
+}
+
 ob_start();
 ?>
 
@@ -12,12 +19,113 @@ ob_start();
         <p>View user information and employment details</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon/users/edit/<?= $user['id'] ?>" class="btn btn--primary">
-            <span>✏️</span> Edit User
-        </a>
-        <a href="<?= in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users' ?>" class="btn btn--secondary">
+        <?php 
+        $userStatus = $user['status'] ?? 'active';
+        $userId = $user['id'];
+        $userName = htmlspecialchars($user['name']);
+        ?>
+        
+        <?php if (($_SESSION['role'] ?? '') === 'admin' && in_array(($user['role'] ?? 'user'), ['admin', 'owner'])): ?>
+            <!-- Admins cannot manage other admins/owners -->
+            <span class="btn btn--secondary disabled">
+                <span>🔒</span> Protected User
+            </span>
+        <?php else: ?>
+            <?php if ($userStatus === 'terminated'): ?>
+                <!-- Terminated Users: Only show terminated message -->
+                <span class="btn btn--secondary disabled">
+                    <span>❌</span> User Terminated
+                </span>
+            <?php elseif ($userStatus === 'suspended'): ?>
+                <!-- Suspended Users: Activate + Edit + Reset Password + Terminate -->
+                <button class="btn btn--success" data-action="activate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
+                    <span>✅</span> Activate
+                </button>
+                <a href="/ergon/users/edit/<?= $userId ?>" class="btn btn--primary">
+                    <span>✏️</span> Edit
+                </a>
+                <button class="btn btn--warning" data-action="reset" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
+                    <span>🔑</span> Reset Password
+                </button>
+                <button class="btn btn--danger" data-action="terminate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
+                    <span>❌</span> Terminate
+                </button>
+            <?php elseif ($userStatus === 'active'): ?>
+                <!-- Active Users: Edit + Reset Password + Deactivate + Suspend + Terminate -->
+                <a href="/ergon/users/edit/<?= $userId ?>" class="btn btn--primary">
+                    <span>✏️</span> Edit
+                </a>
+                <button class="btn btn--warning" data-action="reset" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
+                    <span>🔑</span> Reset Password
+                </button>
+                <button class="btn btn--secondary" data-action="inactive" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
+                    <span>⏸️</span> Deactivate
+                </button>
+                <button class="btn btn--danger" data-action="suspend" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
+                    <span>👥➖</span> Suspend
+                </button>
+                <button class="btn btn--danger" data-action="terminate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
+                    <span>❌</span> Terminate
+                </button>
+            <?php else: ?>
+                <!-- Inactive Users: Edit + Reset Password + Activate -->
+                <a href="/ergon/users/edit/<?= $userId ?>" class="btn btn--primary">
+                    <span>✏️</span> Edit
+                </a>
+                <button class="btn btn--warning" data-action="reset" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
+                    <span>🔑</span> Reset Password
+                </button>
+                <button class="btn btn--success" data-action="activate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
+                    <span>✅</span> Activate
+                </button>
+            <?php endif; ?>
+        <?php endif; ?>
+        
+        <a href="/ergon/users" class="btn btn--secondary">
             <span>←</span> Back to Users
         </a>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">👤</div>
+            <div class="kpi-card__trend">— Status</div>
+        </div>
+        <div class="kpi-card__value"><?= ucfirst($user['status'] ?? 'active') ?></div>
+        <div class="kpi-card__label">User Status</div>
+        <div class="kpi-card__status"><?= match($user['status'] ?? 'active') {
+            'active' => 'Online',
+            'inactive' => 'Offline', 
+            'suspended' => 'Restricted',
+            'terminated' => 'Disabled',
+            default => 'Unknown'
+        } ?></div>
+    </div>
+    
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon"><?= match($user['role'] ?? 'user') { 'owner' => '👑', 'admin' => '🔑', default => '👤' } ?></div>
+            <div class="kpi-card__trend">— Role</div>
+        </div>
+        <div class="kpi-card__value"><?= ucfirst($user['role'] ?? 'user') ?></div>
+        <div class="kpi-card__label">Access Level</div>
+        <div class="kpi-card__status"><?= match($user['role'] ?? 'user') {
+            'owner' => 'Full Access',
+            'admin' => 'Elevated',
+            default => 'Standard'
+        } ?></div>
+    </div>
+    
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">📅</div>
+            <div class="kpi-card__trend">— Joined</div>
+        </div>
+        <div class="kpi-card__value"><?= $user['joining_date'] ? date('M Y', strtotime($user['joining_date'])) : 'N/A' ?></div>
+        <div class="kpi-card__label">Member Since</div>
+        <div class="kpi-card__status">Registered</div>
     </div>
 </div>
 
@@ -30,13 +138,29 @@ ob_start();
                     <?php 
                     $status = $user['status'] ?? 'active';
                     $role = $user['role'] ?? 'user';
-                    $statusClass = $status === 'active' ? 'success' : 'danger';
+                    
+                    $statusClass = match($status) {
+                        'active' => 'success',
+                        'inactive' => 'warning', 
+                        'suspended' => 'danger',
+                        'terminated' => 'dark',
+                        default => 'secondary'
+                    };
+                    
                     $roleClass = match($role) {
                         'owner' => 'danger',
                         'admin' => 'warning',
                         default => 'info'
                     };
-                    $statusIcon = $status === 'active' ? '✅' : '❌';
+                    
+                    $statusIcon = match($status) {
+                        'active' => '✅',
+                        'inactive' => '⏸️',
+                        'suspended' => '⚠️',
+                        'terminated' => '❌',
+                        default => '❓'
+                    };
+                    
                     $roleIcon = match($role) {
                         'owner' => '👑',
                         'admin' => '👔',
@@ -261,6 +385,12 @@ ob_start();
     flex-shrink: 0;
 }
 
+.btn.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 @media (max-width: 768px) {
     .user-title-row {
         flex-direction: column;
@@ -295,6 +425,131 @@ ob_start();
     }
 }
 </style>
+
+<script>
+// Global action button handler
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn[data-action]');
+    if (!btn) return;
+    
+    const action = btn.dataset.action;
+    const module = btn.dataset.module;
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    
+    if (action === 'inactive' && module && id && name) {
+        if (confirm(`Deactivate user ${name}? They will not be able to login.`)) {
+            fetch(`/ergon/${module}/inactive/${id}`, { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User deactivated successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Deactivation failed'));
+                }
+            })
+            .catch(error => {
+                console.error('Deactivate error:', error);
+                alert('Error deactivating user');
+            });
+        }
+    } else if (action === 'activate' && module && id && name) {
+        if (confirm(`Activate user ${name}?`)) {
+            fetch(`/ergon/${module}/activate/${id}`, { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User activated successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Activation failed'));
+                }
+            })
+            .catch(error => {
+                console.error('Activate error:', error);
+                alert('Error activating user');
+            });
+        }
+    } else if (action === 'suspend' && module && id && name) {
+        if (confirm(`Suspend user ${name}? They will not be able to login.`)) {
+            fetch(`/ergon/${module}/suspend/${id}`, { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User suspended successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Suspension failed'));
+                }
+            })
+            .catch(error => {
+                console.error('Suspend error:', error);
+                alert('Error suspending user');
+            });
+        }
+    } else if (action === 'terminate' && module && id && name) {
+        if (confirm(`Terminate user ${name}? This action cannot be undone and they will not be able to login.`)) {
+            fetch(`/ergon/${module}/terminate/${id}`, { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User terminated successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Termination failed'));
+                }
+            })
+            .catch(error => {
+                console.error('Terminate error:', error);
+                alert('Error terminating user');
+            });
+        }
+    } else if (action === 'reset' && module && id && name) {
+        if (confirm(`Reset password for ${name}?`)) {
+            fetch(`/ergon/${module}/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message || 'Password reset successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Reset failed'));
+                }
+            })
+            .catch(() => alert('Error resetting password'));
+        }
+    }
+});
+</script>
 
 <?php
 $content = ob_get_clean();
