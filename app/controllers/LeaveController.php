@@ -318,13 +318,19 @@ class LeaveController extends Controller {
                 exit;
             }
             
-            // Only allow deletion of own pending leaves
-            if ($leave['user_id'] != $_SESSION['user_id'] && !in_array($_SESSION['role'], ['admin', 'owner'])) {
+            // Permission check: owners and admins can delete any leave, users can delete their own pending leaves
+            $userRole = $_SESSION['role'] ?? 'user';
+            $isOwner = $userRole === 'owner';
+            $isAdmin = $userRole === 'admin';
+            $isOwnLeave = $leave['user_id'] == $_SESSION['user_id'];
+            
+            if (!$isOwner && !$isAdmin && !$isOwnLeave) {
                 echo json_encode(['success' => false, 'message' => 'Access denied']);
                 exit;
             }
             
-            if ($leave['status'] !== 'pending') {
+            // Users can only delete their own pending leaves, admins/owners can delete any
+            if (!$isOwner && !$isAdmin && $leave['status'] !== 'pending') {
                 echo json_encode(['success' => false, 'message' => 'Only pending leave requests can be deleted']);
                 exit;
             }

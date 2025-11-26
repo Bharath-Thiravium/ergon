@@ -226,7 +226,21 @@ ob_start();
                                 </button>
                                 <?php endif; ?>
                                 <?php endif; ?>
-                                <?php if (strtolower($leave['status'] ?? 'pending') === 'pending' && ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
+                                <?php 
+                                $canDelete = false;
+                                $isOwner = ($userRole === 'owner');
+                                $isAdmin = ($userRole === 'admin');
+                                $isOwnLeave = ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0);
+                                $isPending = strtolower($leave['status'] ?? 'pending') === 'pending';
+                                
+                                // Owners and admins can delete any leave, users can delete their own pending leaves
+                                if ($isOwner || $isAdmin) {
+                                    $canDelete = true;
+                                } elseif ($isOwnLeave && $isPending) {
+                                    $canDelete = true;
+                                }
+                                ?>
+                                <?php if ($canDelete): ?>
                                 <button class="ab-btn ab-btn--delete" data-action="delete" data-module="leaves" data-id="<?= $leave['id'] ?>" data-name="Leave Request" title="Delete Request">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <path d="M3 6h18"/>
@@ -248,7 +262,7 @@ ob_start();
 </div>
 
 <!-- Rejection Modal -->
-<div id="rejectModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 99999; display: flex; align-items: center; justify-content: center;">
+<div id="rejectModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 99999; align-items: center; justify-content: center;">
     <div class="modal-content" style="background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header">
             <h3>Reject Leave Request</h3>

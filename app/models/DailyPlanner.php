@@ -154,7 +154,7 @@ class DailyPlanner {
         }
     }
     
-    private function fetchAssignedTasksForDate($userId, $date) {
+    public function fetchAssignedTasksForDate($userId, $date) {
         try {
             $isCurrentDate = ($date === date('Y-m-d'));
             $isPastDate = ($date < date('Y-m-d'));
