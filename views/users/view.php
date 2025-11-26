@@ -108,10 +108,20 @@ ob_start();
                                 <div class="document-size"><?= $doc['size'] ?></div>
                             </div>
                             <div class="document-actions">
-                                <a href="/ergon/users/view-document/<?= $user['id'] ?>/<?= urlencode($doc['filename']) ?>" 
-                                   class="btn btn--sm btn--info" target="_blank">View Document</a>
-                                <a href="/ergon/users/download-document/<?= $user['id'] ?>/<?= urlencode($doc['filename']) ?>" 
-                                   class="btn btn--sm btn--primary">Download</a>
+                                <div class="action-buttons">
+                                    <a href="/ergon/uploads/documents/<?= urlencode($doc['filename']) ?>" 
+                                       class="action-btn action-btn--view" 
+                                       target="_blank" 
+                                       title="View Document">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="/ergon/uploads/documents/<?= urlencode($doc['filename']) ?>" 
+                                       class="action-btn action-btn--download" 
+                                       download 
+                                       title="Download Document">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -245,6 +255,49 @@ ob_start();
 
 .document-actions {
     flex-shrink: 0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    border: 1px solid transparent;
+}
+
+.action-btn--view {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.action-btn--view:hover {
+    background-color: #2563eb;
+    transform: translateY(-1px);
+}
+
+.action-btn--download {
+    background-color: #10b981;
+    color: white;
+}
+
+.action-btn--download:hover {
+    background-color: #059669;
+    transform: translateY(-1px);
+}
+
+.action-btn:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 @media (max-width: 768px) {
