@@ -218,13 +218,6 @@ ob_start();
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
                             <td>
                                 <div class="ab-container">
-                                    <button class="ab-btn ab-btn--view" onclick="viewAttendanceDetails(<?= $record['attendance_id'] ?? 0 ?>)" title="View Details">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                            <circle cx="12" cy="12" r="3"/>
-                                        </svg>
-                                    </button>
-                                    
                                     <?php $userStatus = $record['user_status'] ?? 'active'; ?>
                                     
                                     <?php if ($userStatus !== 'terminated'): ?>
@@ -246,36 +239,7 @@ ob_start();
                                             <?php endif; ?>
                                         <?php endif; ?>
                                         
-                                        <?php if ($userStatus === 'suspended'): ?>
-                                        <button class="ab-btn ab-btn--success" onclick="makeUserActive(<?= $record['user_id'] ?>)" title="Make Active">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M9 12l2 2 4-4"/>
-                                                <circle cx="12" cy="12" r="10"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--warning" onclick="resetUserPassword(<?= $record['user_id'] ?>)" title="Reset Password">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                                                <circle cx="12" cy="16" r="1"/>
-                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--danger" onclick="terminateUser(<?= $record['user_id'] ?>)" title="Terminate User">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <circle cx="12" cy="12" r="10"/>
-                                                <line x1="15" y1="9" x2="9" y2="15"/>
-                                                <line x1="9" y1="9" x2="15" y2="15"/>
-                                            </svg>
-                                        </button>
-                                        <?php endif; ?>
-                                        
-                                        <button class="ab-btn ab-btn--edit" onclick="editAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, <?= $record['user_id'] ?>)" title="Edit Record">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                                <path d="M15 5l4 4"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--info" onclick="generateReport(<?= $record['user_id'] ?>)" title="Generate Report">
+                                        <button class="ab-btn ab-btn--info" onclick="generateAttendanceReport(<?= $record['user_id'] ?>)" title="Generate Report">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                                 <polyline points="14,2 14,8 20,8"/>
@@ -334,13 +298,6 @@ ob_start();
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
                             <td>
                                 <div class="ab-container">
-                                    <button class="ab-btn ab-btn--view" onclick="viewAttendanceDetails(<?= $record['attendance_id'] ?? 0 ?>)" title="View Details">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                            <circle cx="12" cy="12" r="3"/>
-                                        </svg>
-                                    </button>
-                                    
                                     <?php $userStatus = $record['user_status'] ?? 'active'; ?>
                                     
                                     <?php if ($userStatus !== 'terminated'): ?>
@@ -362,36 +319,7 @@ ob_start();
                                             <?php endif; ?>
                                         <?php endif; ?>
                                         
-                                        <?php if ($userStatus === 'suspended'): ?>
-                                        <button class="ab-btn ab-btn--success" onclick="makeUserActive(<?= $record['user_id'] ?>)" title="Make Active">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M9 12l2 2 4-4"/>
-                                                <circle cx="12" cy="12" r="10"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--warning" onclick="resetUserPassword(<?= $record['user_id'] ?>)" title="Reset Password">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                                                <circle cx="12" cy="16" r="1"/>
-                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--danger" onclick="terminateUser(<?= $record['user_id'] ?>)" title="Terminate User">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <circle cx="12" cy="12" r="10"/>
-                                                <line x1="15" y1="9" x2="9" y2="15"/>
-                                                <line x1="9" y1="9" x2="15" y2="15"/>
-                                            </svg>
-                                        </button>
-                                        <?php endif; ?>
-                                        
-                                        <button class="ab-btn ab-btn--edit" onclick="editAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, <?= $record['user_id'] ?>)" title="Edit Record">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                                <path d="M15 5l4 4"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--info" onclick="generateReport(<?= $record['user_id'] ?>)" title="Generate Report">
+                                        <button class="ab-btn ab-btn--info" onclick="generateAttendanceReport(<?= $record['user_id'] ?>)" title="Generate Report">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                                 <polyline points="14,2 14,8 20,8"/>
@@ -443,13 +371,6 @@ ob_start();
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
                             <td>
                                 <div class="ab-container">
-                                    <button class="ab-btn ab-btn--view" onclick="viewAttendanceDetails(<?= $record['attendance_id'] ?? 0 ?>)" title="View Details">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                            <circle cx="12" cy="12" r="3"/>
-                                        </svg>
-                                    </button>
-                                    
                                     <?php $userStatus = $record['user_status'] ?? 'active'; ?>
                                     
                                     <?php if ($userStatus !== 'terminated'): ?>
@@ -471,36 +392,7 @@ ob_start();
                                             <?php endif; ?>
                                         <?php endif; ?>
                                         
-                                        <?php if ($userStatus === 'suspended'): ?>
-                                        <button class="ab-btn ab-btn--success" onclick="makeUserActive(<?= $record['user_id'] ?>)" title="Make Active">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M9 12l2 2 4-4"/>
-                                                <circle cx="12" cy="12" r="10"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--warning" onclick="resetUserPassword(<?= $record['user_id'] ?>)" title="Reset Password">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                                                <circle cx="12" cy="16" r="1"/>
-                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--danger" onclick="terminateUser(<?= $record['user_id'] ?>)" title="Terminate User">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <circle cx="12" cy="12" r="10"/>
-                                                <line x1="15" y1="9" x2="9" y2="15"/>
-                                                <line x1="9" y1="9" x2="15" y2="15"/>
-                                            </svg>
-                                        </button>
-                                        <?php endif; ?>
-                                        
-                                        <button class="ab-btn ab-btn--edit" onclick="editAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, <?= $record['user_id'] ?>)" title="Edit Record">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                                <path d="M15 5l4 4"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--info" onclick="generateReport(<?= $record['user_id'] ?>)" title="Generate Report">
+                                        <button class="ab-btn ab-btn--info" onclick="generateAttendanceReport(<?= $record['user_id'] ?>)" title="Generate Report">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                                 <polyline points="14,2 14,8 20,8"/>
@@ -596,8 +488,134 @@ function editAttendanceRecord(attendanceId, userId) {
     alert('Edit functionality for attendance ID: ' + attendanceId);
 }
 
+function generateAttendanceReport(userId) {
+    const defaultStartDate = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0];
+    const defaultEndDate = new Date().toISOString().split('T')[0];
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Generate Attendance Report</h3>
+                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label>Start Date:</label>
+                <input type="date" id="report-start-date" value="${defaultStartDate}" class="form-input">
+                <label>End Date:</label>
+                <input type="date" id="report-end-date" value="${defaultEndDate}" class="form-input">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn--secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                <button class="btn btn--primary" onclick="downloadAttendanceReport(${userId})">Generate Report</button>
+            </div>
+        </div>
+    `;
+    
+    if (!document.getElementById('modal-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'modal-styles';
+        styles.textContent = `
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10001;
+            }
+            .modal-content {
+                background: white;
+                border-radius: 8px;
+                width: 400px;
+                max-width: 90vw;
+            }
+            .modal-header {
+                padding: 16px;
+                border-bottom: 1px solid #e5e7eb;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .modal-body {
+                padding: 16px;
+            }
+            .modal-body label {
+                display: block;
+                margin-bottom: 4px;
+                font-weight: 500;
+            }
+            .modal-body .form-input {
+                width: 100%;
+                margin-bottom: 12px;
+                padding: 8px;
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+            }
+            .modal-footer {
+                padding: 16px;
+                border-top: 1px solid #e5e7eb;
+                display: flex;
+                gap: 8px;
+                justify-content: flex-end;
+            }
+            .modal-close {
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #6b7280;
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    document.body.appendChild(modal);
+}
+
+function downloadAttendanceReport(userId) {
+    const startDate = document.getElementById('report-start-date').value;
+    const endDate = document.getElementById('report-end-date').value;
+    
+    if (!startDate || !endDate) {
+        alert('Please select both start and end dates.');
+        return;
+    }
+    
+    if (new Date(startDate) > new Date(endDate)) {
+        alert('Start date cannot be later than end date.');
+        return;
+    }
+    
+    document.querySelector('.modal-overlay')?.remove();
+    window.open(`/ergon/attendance/report?user_id=${userId}&start_date=${startDate}&end_date=${endDate}`, '_blank');
+}
+
 function generateReport(userId) {
-    window.open('/ergon/reports/user/' + userId, '_blank');
+    generateAttendanceReport(userId);
+}
+
+function downloadAttendanceReport(userId) {
+    const startDate = document.getElementById('report-start-date').value;
+    const endDate = document.getElementById('report-end-date').value;
+    
+    if (!startDate || !endDate) {
+        alert('Please select both start and end dates.');
+        return;
+    }
+    
+    if (new Date(startDate) > new Date(endDate)) {
+        alert('Start date cannot be later than end date.');
+        return;
+    }
+    
+    document.querySelector('.modal-overlay')?.remove();
+    window.open(`/ergon/attendance/report?user_id=${userId}&start_date=${startDate}&end_date=${endDate}`, '_blank');
 }
 
 function deleteAttendanceRecord(attendanceId) {
