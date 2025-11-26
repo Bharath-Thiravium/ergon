@@ -27,7 +27,10 @@ class EnhancedAttendanceController extends Controller {
             // Get attendance data
             if ($role === 'user') {
                 $stmt = $this->db->prepare("
-                    SELECT a.*, u.name as user_name, u.status as user_status, u.role, s.name as shift_name 
+                    SELECT a.*, u.name, u.status as user_status, u.role, s.name as shift_name,
+                           COALESCE(CONCAT(FLOOR(a.total_hours), 'h ', FLOOR((a.total_hours - FLOOR(a.total_hours)) * 60), 'm'), '0h 0m') as working_hours,
+                           CASE WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 'Present' ELSE 'Absent' END as status,
+                           a.id as attendance_id, DATE(a.check_in) as date
                     FROM attendance a 
                     LEFT JOIN users u ON a.user_id = u.id 
                     LEFT JOIN shifts s ON a.shift_id = s.id 
@@ -35,17 +38,27 @@ class EnhancedAttendanceController extends Controller {
                     ORDER BY a.check_in DESC LIMIT 30
                 ");
                 $stmt->execute([$userId]);
+                $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } else {
                 $stmt = $this->db->prepare("
-                    SELECT a.*, u.name as user_name, u.status as user_status, u.role, s.name as shift_name 
+                    SELECT a.*, u.name, u.status as user_status, u.role, s.name as shift_name,
+                           COALESCE(CONCAT(FLOOR(a.total_hours), 'h ', FLOOR((a.total_hours - FLOOR(a.total_hours)) * 60), 'm'), '0h 0m') as working_hours,
+                           CASE WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 'Present' ELSE 'Absent' END as status,
+                           a.id as attendance_id, DATE(a.check_in) as date
                     FROM attendance a 
                     LEFT JOIN users u ON a.user_id = u.id 
                     LEFT JOIN shifts s ON a.shift_id = s.id 
                     ORDER BY a.check_in DESC LIMIT 100
                 ");
                 $stmt->execute();
+                $allAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Group by role for admin/owner view
+                $attendance = [
+                    'admin' => array_filter($allAttendance, fn($record) => $record['role'] === 'admin'),
+                    'user' => array_filter($allAttendance, fn($record) => $record['role'] === 'user')
+                ];
             }
-            $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Get today's stats
             $stats = $this->getTodayStats();
@@ -54,16 +67,18 @@ class EnhancedAttendanceController extends Controller {
                 'attendance' => $attendance,
                 'stats' => $stats,
                 'user_role' => $role,
-                'active_page' => 'attendance'
+                'active_page' => 'attendance',
+                'is_grouped' => ($role !== 'user')
             ];
             
         } catch (Exception $e) {
             error_log('Attendance index error: ' . $e->getMessage());
             $data = [
-                'attendance' => [],
-                'stats' => ['present' => 0, 'absent' => 0, 'late' => 0],
+                'attendance' => ($role === 'user') ? [] : ['admin' => [], 'user' => []],
+                'stats' => ['present_days' => 0, 'total_hours' => 0, 'total_minutes' => 0, 'late' => 0],
                 'user_role' => $role,
-                'active_page' => 'attendance'
+                'active_page' => 'attendance',
+                'is_grouped' => ($role !== 'user')
             ];
         }
         
@@ -372,14 +387,18 @@ class EnhancedAttendanceController extends Controller {
         $stmt = $this->db->query("
             SELECT 
                 COUNT(*) as total,
-                SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
-                SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
-                SUM(CASE WHEN check_out IS NULL THEN 1 ELSE 0 END) as active
-            FROM attendance 
-            WHERE DATE(check_in) = CURDATE()
+                SUM(CASE WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 1 ELSE 0 END) as present_days,
+                SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) as late,
+                SUM(CASE WHEN a.check_out IS NULL THEN 1 ELSE 0 END) as active,
+                COALESCE(SUM(a.total_hours), 0) as total_hours,
+                COALESCE(SUM(a.total_hours) * 60, 0) as total_minutes
+            FROM attendance a
+            WHERE DATE(a.check_in) = CURDATE()
         ");
         
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'present' => 0, 'late' => 0, 'active' => 0];
+        $stats = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'present_days' => 0, 'late' => 0, 'active' => 0, 'total_hours' => 0, 'total_minutes' => 0];
+        $stats['total_minutes'] = $stats['total_minutes'] % 60;
+        return $stats;
     }
     
     private function ensureAttendanceTable() {

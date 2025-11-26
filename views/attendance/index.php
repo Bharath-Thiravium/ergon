@@ -77,28 +77,35 @@ ob_start();
         <h2 class="card__title">
             <span>👤</span> My Attendance Records
         </h2>
+        <p class="card__subtitle">Personal attendance details for logged-in admin</p>
     </div>
     <div class="card__body">
         <div class="table-responsive">
             <table class="table">
                 <thead>
                     <tr>
-                        <th class="col-title">Admin Name</th>
-                        <th class="col-assignment">Date & Status</th>
-                        <th class="col-progress">Working Hours</th>
-                        <th class="col-date">Check Times</th>
-                        <th class="col-actions">Actions</th>
+                        <th>Admin Name</th>
+                        <th>Date & Status</th>
+                        <th>Working Hours</th>
+                        <th>Check Times</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php 
-                    $adminAttendance = array_filter($attendance['admin'] ?? [], function($record) {
-                        return $record['user_id'] == $_SESSION['user_id'];
-                    });
+                    $adminPersonalAttendance = [];
+                    if (isset($attendance['admin'])) {
+                        $adminPersonalAttendance = array_filter($attendance['admin'], function($record) {
+                            return $record['user_id'] == $_SESSION['user_id'];
+                        });
+                    } elseif (isset($attendance) && is_array($attendance)) {
+                        $adminPersonalAttendance = array_filter($attendance, function($record) {
+                            return $record['user_id'] == $_SESSION['user_id'];
+                        });
+                    }
                     ?>
-                    <?php if (empty($adminAttendance)): ?>
+                    <?php if (empty($adminPersonalAttendance)): ?>
                     <tr>
-                        <td colspan="5" class="text-center">
+                        <td colspan="4" class="text-center">
                             <div class="empty-state">
                                 <div class="empty-icon">📍</div>
                                 <h3>No Personal Records</h3>
@@ -107,7 +114,7 @@ ob_start();
                         </td>
                     </tr>
                     <?php else: ?>
-                        <?php foreach ($adminAttendance as $record): ?>
+                        <?php foreach ($adminPersonalAttendance as $record): ?>
                         <tr>
                             <td>
                                 <strong><?= htmlspecialchars($_SESSION['user_name'] ?? 'Admin') ?></strong>
@@ -115,9 +122,9 @@ ob_start();
                             </td>
                             <td>
                                 <div class="assignment-info">
-                                    <div class="assigned-user"><?= $currentDateIST ?></div>
+                                    <div class="assigned-user"><?= isset($record['date']) ? date('M d, Y', strtotime($record['date'])) : $currentDateIST ?></div>
                                     <div class="priority-badge">
-                                        <span class="badge badge--<?= $record['status'] === 'Present' ? 'success' : 'danger' ?>"><?= $record['status'] ?? 'Absent' ?></span>
+                                        <span class="badge badge--<?= ($record['status'] ?? 'Present') === 'Present' ? 'success' : 'danger' ?>"><?= $record['status'] ?? 'Present' ?></span>
                                     </div>
                                 </div>
                             </td>
@@ -132,65 +139,6 @@ ob_start();
                                 <div class="cell-meta">
                                     <div class="cell-primary">In: <?= ($record['check_in'] && $record['check_in'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_in']) : 'Not clocked in' ?></div>
                                     <div class="cell-secondary">Out: <?= ($record['check_out'] && $record['check_out'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_out']) : 'Not clocked out' ?></div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="ab-container">
-                                    <!-- Always show View button -->
-                                    <button class="ab-btn ab-btn--view" onclick="viewAttendanceDetails(<?= $record['attendance_id'] ?? 0 ?>)" title="View Details">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                            <circle cx="12" cy="12" r="3"/>
-                                        </svg>
-                                    </button>
-                                    
-                                    <?php $userStatus = $record['user_status'] ?? 'active'; ?>
-                                    
-                                    <?php if ($userStatus === 'terminated'): ?>
-                                        <!-- Only View button for terminated users -->
-                                    <?php elseif ($userStatus === 'suspended'): ?>
-                                        <!-- Suspended users: Make Active + View + Edit + Reset Password + Terminate -->
-                                        <button class="ab-btn ab-btn--success" onclick="makeUserActive(<?= $record['user_id'] ?>)" title="Make Active">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M9 12l2 2 4-4"/>
-                                                <circle cx="12" cy="12" r="10"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--edit" onclick="editAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, <?= $record['user_id'] ?>)" title="Edit Record">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                                <path d="M15 5l4 4"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--warning" onclick="resetUserPassword(<?= $record['user_id'] ?>)" title="Reset Password">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                                                <circle cx="12" cy="16" r="1"/>
-                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--danger" onclick="terminateUser(<?= $record['user_id'] ?>)" title="Terminate User">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <circle cx="12" cy="12" r="10"/>
-                                                <line x1="15" y1="9" x2="9" y2="15"/>
-                                                <line x1="9" y1="9" x2="15" y2="15"/>
-                                            </svg>
-                                        </button>
-                                    <?php else: ?>
-                                        <!-- Active users: All buttons -->
-                                        <button class="ab-btn ab-btn--edit" onclick="editAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>, <?= $record['user_id'] ?>)" title="Edit Record">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                                <path d="M15 5l4 4"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--info" onclick="generateReport(<?= $record['user_id'] ?>)" title="Generate Report">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                                <polyline points="14,2 14,8 20,8"/>
-                                            </svg>
-                                        </button>
-                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -333,6 +281,14 @@ ob_start();
                                                 <polyline points="14,2 14,8 20,8"/>
                                             </svg>
                                         </button>
+                                        <button class="ab-btn ab-btn--delete" onclick="deleteAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>)" title="Delete Record">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <polyline points="3,6 5,6 21,6"/>
+                                                <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
+                                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                                <line x1="14" y1="11" x2="14" y2="17"/>
+                                            </svg>
+                                        </button>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -441,6 +397,14 @@ ob_start();
                                                 <polyline points="14,2 14,8 20,8"/>
                                             </svg>
                                         </button>
+                                        <button class="ab-btn ab-btn--delete" onclick="deleteAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>)" title="Delete Record">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <polyline points="3,6 5,6 21,6"/>
+                                                <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
+                                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                                <line x1="14" y1="11" x2="14" y2="17"/>
+                                            </svg>
+                                        </button>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -540,6 +504,14 @@ ob_start();
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                                 <polyline points="14,2 14,8 20,8"/>
+                                            </svg>
+                                        </button>
+                                        <button class="ab-btn ab-btn--delete" onclick="deleteAttendanceRecord(<?= $record['attendance_id'] ?? 0 ?>)" title="Delete Record">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <polyline points="3,6 5,6 21,6"/>
+                                                <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
+                                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                                <line x1="14" y1="11" x2="14" y2="17"/>
                                             </svg>
                                         </button>
                                     <?php endif; ?>

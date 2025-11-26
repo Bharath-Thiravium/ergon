@@ -151,8 +151,130 @@ function updateTaskUI(taskId, newStatus) {
     }
 }
 
+// Debounce mechanism to prevent multiple modal triggers
+let modalDebounce = {};
+
 window.openProgressModal = function(taskId, progress, status) {
-    alert('Progress modal for task ' + taskId + ' (progress: ' + progress + '%, status: ' + status + ')');
+    // Prevent multiple rapid clicks
+    if (modalDebounce[taskId]) {
+        return;
+    }
+    
+    modalDebounce[taskId] = true;
+    
+    // Clear debounce after 1 second
+    setTimeout(() => {
+        modalDebounce[taskId] = false;
+    }, 1000);
+    
+    console.log('Progress modal for task ' + taskId + ' (progress: ' + progress + '%, status: ' + status + ')');
+    
+    // Create and show modal
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Update Progress - Task ${taskId}</h3>
+                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label>Progress Percentage:</label>
+                <input type="number" id="progress-${taskId}" min="0" max="100" value="${progress}" class="form-input">
+                <label>Status:</label>
+                <select id="status-${taskId}" class="form-input">
+                    <option value="pending" ${status === 'pending' ? 'selected' : ''}>Pending</option>
+                    <option value="in_progress" ${status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                    <option value="on_break" ${status === 'on_break' ? 'selected' : ''}>On Break</option>
+                    <option value="completed" ${status === 'completed' ? 'selected' : ''}>Completed</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn--secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                <button class="btn btn--primary" onclick="updateTaskProgress(${taskId})">Update</button>
+            </div>
+        </div>
+    `;
+    
+    // Add modal styles if not exists
+    if (!document.getElementById('modal-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'modal-styles';
+        styles.textContent = `
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10001;
+            }
+            .modal-content {
+                background: white;
+                border-radius: 8px;
+                width: 400px;
+                max-width: 90vw;
+            }
+            .modal-header {
+                padding: 16px;
+                border-bottom: 1px solid #e5e7eb;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .modal-body {
+                padding: 16px;
+            }
+            .modal-body label {
+                display: block;
+                margin-bottom: 4px;
+                font-weight: 500;
+            }
+            .modal-body .form-input {
+                width: 100%;
+                margin-bottom: 12px;
+                padding: 8px;
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+            }
+            .modal-footer {
+                padding: 16px;
+                border-top: 1px solid #e5e7eb;
+                display: flex;
+                gap: 8px;
+                justify-content: flex-end;
+            }
+            .modal-close {
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #6b7280;
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    document.body.appendChild(modal);
+};
+
+window.updateTaskProgress = function(taskId) {
+    const progressInput = document.getElementById(`progress-${taskId}`);
+    const statusSelect = document.getElementById(`status-${taskId}`);
+    
+    if (!progressInput || !statusSelect) return;
+    
+    const progress = parseInt(progressInput.value);
+    const status = statusSelect.value;
+    
+    // Close modal
+    document.querySelector('.modal-overlay')?.remove();
+    
+    showNotification(`Task ${taskId} updated: ${progress}% - ${status}`, 'success');
 };
 
 window.postponeTask = function(taskId) {
@@ -247,4 +369,5 @@ function pauseTask(taskId) { return window.pauseTask(taskId); }
 function resumeTask(taskId) { return window.resumeTask(taskId); }
 function startTask(taskId) { return window.startTask(taskId); }
 function openProgressModal(taskId, progress, status) { return window.openProgressModal(taskId, progress, status); }
+function updateTaskProgress(taskId) { return window.updateTaskProgress(taskId); }
 function postponeTask(taskId) { return window.postponeTask(taskId); }
