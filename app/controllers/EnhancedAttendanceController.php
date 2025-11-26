@@ -27,7 +27,7 @@ class EnhancedAttendanceController extends Controller {
             // Get attendance data
             if ($role === 'user') {
                 $stmt = $this->db->prepare("
-                    SELECT a.*, u.name as user_name, s.name as shift_name 
+                    SELECT a.*, u.name as user_name, u.status as user_status, u.role, s.name as shift_name 
                     FROM attendance a 
                     LEFT JOIN users u ON a.user_id = u.id 
                     LEFT JOIN shifts s ON a.shift_id = s.id 
@@ -37,7 +37,7 @@ class EnhancedAttendanceController extends Controller {
                 $stmt->execute([$userId]);
             } else {
                 $stmt = $this->db->prepare("
-                    SELECT a.*, u.name as user_name, s.name as shift_name 
+                    SELECT a.*, u.name as user_name, u.status as user_status, u.role, s.name as shift_name 
                     FROM attendance a 
                     LEFT JOIN users u ON a.user_id = u.id 
                     LEFT JOIN shifts s ON a.shift_id = s.id 
