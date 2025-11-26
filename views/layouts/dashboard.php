@@ -990,38 +990,79 @@ ob_end_clean();
         button.disabled = true;
         button.classList.add('loading');
         const originalText = text.textContent;
-        text.textContent = action === 'in' ? 'Clocking In...' : 'Clocking Out...';
+        text.textContent = 'Getting Location...';
         
-        fetch('/ergon/attendance/clock', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `type=${action}&latitude=0&longitude=0`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update status
-                if (action === 'in') {
-                    headerAttendanceStatus.has_clocked_in = true;
-                } else {
-                    headerAttendanceStatus.has_clocked_out = true;
+        // Get user location first
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    
+                    text.textContent = action === 'in' ? 'Clocking In...' : 'Clocking Out...';
+                    
+                    fetch('/ergon/attendance/clock', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `type=${action}&latitude=${latitude}&longitude=${longitude}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update status
+                            if (action === 'in') {
+                                headerAttendanceStatus.has_clocked_in = true;
+                            } else {
+                                headerAttendanceStatus.has_clocked_out = true;
+                            }
+                            
+                            updateHeaderAttendanceButton();
+                            showAttendanceNotification(`Clocked ${action} successfully!`, 'success');
+                        } else {
+                            showAttendanceNotification(data.error || 'Failed to update attendance', 'error');
+                            text.textContent = originalText;
+                        }
+                    })
+                    .catch(error => {
+                        showAttendanceNotification('Network error occurred', 'error');
+                        text.textContent = originalText;
+                    })
+                    .finally(() => {
+                        button.disabled = false;
+                        button.classList.remove('loading');
+                    });
+                },
+                function(error) {
+                    let errorMessage = 'Location access denied';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = 'Please enable location access to continue';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = 'Location information unavailable';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = 'Location request timed out';
+                            break;
+                    }
+                    
+                    showAttendanceNotification(errorMessage, 'error');
+                    text.textContent = originalText;
+                    button.disabled = false;
+                    button.classList.remove('loading');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000
                 }
-                
-                updateHeaderAttendanceButton();
-                showAttendanceNotification(`Clocked ${action} successfully!`, 'success');
-            } else {
-                showAttendanceNotification(data.error || 'Failed to update attendance', 'error');
-                text.textContent = originalText;
-            }
-        })
-        .catch(error => {
-            showAttendanceNotification('Network error occurred', 'error');
+            );
+        } else {
+            showAttendanceNotification('Geolocation is not supported by this browser', 'error');
             text.textContent = originalText;
-        })
-        .finally(() => {
             button.disabled = false;
             button.classList.remove('loading');
-        });
+        }
     }
     
     function updateHeaderAttendanceButton() {

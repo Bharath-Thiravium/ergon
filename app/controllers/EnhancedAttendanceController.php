@@ -85,8 +85,16 @@ class EnhancedAttendanceController extends Controller {
                 // Get attendance rules
                 $rules = $this->getAttendanceRules();
                 
-                // GPS Validation
-                if ($rules['is_gps_required'] && $latitude && $longitude) {
+                // GPS Validation - Always required
+                if (!$latitude || !$longitude) {
+                    echo json_encode([
+                        'success' => false, 
+                        'error' => 'Location is required for attendance. Please enable GPS.'
+                    ]);
+                    exit;
+                }
+                
+                if ($rules['is_gps_required']) {
                     $distance = $this->calculateDistance(
                         $latitude, $longitude,
                         $rules['office_latitude'], $rules['office_longitude']
@@ -95,7 +103,7 @@ class EnhancedAttendanceController extends Controller {
                     if ($distance > $rules['office_radius_meters']) {
                         echo json_encode([
                             'success' => false, 
-                            'error' => "You are {$distance}m away from office. Please move closer."
+                            'error' => "Please move within the allowed area to continue. You are {$distance}m away from office."
                         ]);
                         exit;
                     }
