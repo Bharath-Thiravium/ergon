@@ -361,7 +361,73 @@ function showNotification(message, type) {
 }
 
 function refreshSLADashboard() {
-    // Refresh dashboard if needed
+    forceSLARefresh();
+}
+
+function forceSLARefresh() {
+    return window.forceSLARefresh();
+}
+
+window.forceSLARefresh = function() {
+    // Show loading state
+    const dashboardCards = document.querySelectorAll('.sla-card');
+    dashboardCards.forEach(card => {
+        const valueElement = card.querySelector('.sla-value');
+        if (valueElement) {
+            valueElement.textContent = 'Loading...';
+        }
+    });
+    
+    // Fetch updated SLA data
+    fetch('/ergon/api/sla_dashboard.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateSLADashboard(data.sla_data);
+            } else {
+                console.error('Failed to refresh SLA dashboard:', data.message);
+                // Reset loading states on error
+                dashboardCards.forEach(card => {
+                    const valueElement = card.querySelector('.sla-value');
+                    if (valueElement && valueElement.textContent === 'Loading...') {
+                        valueElement.textContent = '0';
+                    }
+                });
+            }
+        })
+        .catch(error => {
+            console.error('SLA refresh error:', error);
+            // Reset loading states on error
+            dashboardCards.forEach(card => {
+                const valueElement = card.querySelector('.sla-value');
+                if (valueElement && valueElement.textContent === 'Loading...') {
+                    valueElement.textContent = '0';
+                }
+            });
+        });
+};
+
+function updateSLADashboard(slaData) {
+    // Update dashboard cards with new data
+    if (slaData.total_tasks !== undefined) {
+        const totalElement = document.querySelector('[data-sla="total"] .sla-value');
+        if (totalElement) totalElement.textContent = slaData.total_tasks;
+    }
+    
+    if (slaData.overdue_tasks !== undefined) {
+        const overdueElement = document.querySelector('[data-sla="overdue"] .sla-value');
+        if (overdueElement) overdueElement.textContent = slaData.overdue_tasks;
+    }
+    
+    if (slaData.on_time_tasks !== undefined) {
+        const onTimeElement = document.querySelector('[data-sla="on_time"] .sla-value');
+        if (onTimeElement) onTimeElement.textContent = slaData.on_time_tasks;
+    }
+    
+    if (slaData.completion_rate !== undefined) {
+        const rateElement = document.querySelector('[data-sla="completion"] .sla-value');
+        if (rateElement) rateElement.textContent = slaData.completion_rate + '%';
+    }
 }
 
 // Compatibility functions

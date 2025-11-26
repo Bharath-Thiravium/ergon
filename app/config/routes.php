@@ -113,6 +113,7 @@ $router->post('/attendance/clock', 'SimpleAttendanceController', 'clock');
 $router->post('/attendance/manual', 'SimpleAttendanceController', 'manual');
 $router->post('/attendance/delete', 'SimpleAttendanceController', 'delete');
 $router->get('/attendance/status', 'SimpleAttendanceController', 'status');
+$router->get('/attendance/report', 'EnhancedAttendanceController', 'report');
 $router->get('/attendance/history/{id}', 'AttendanceController', 'history');
 $router->get('/attendance/export', 'AttendanceController', 'exportAttendance');
 $router->get('/attendance/conflicts', 'AttendanceController', 'conflicts');

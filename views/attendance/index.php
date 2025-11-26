@@ -19,7 +19,7 @@ ob_start();
     </div>
     <div class="page-actions">
         <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
-        <input type="date" id="dateFilter" value="<?= $selected_date ?? TimezoneHelper::getCurrentDate() ?>" onchange="filterByDate(this.value)" class="form-input" style="margin-right: 1rem;">
+        <input type="date" id="dateFilter" name="date_filter" value="<?= $selected_date ?? TimezoneHelper::getCurrentDate() ?>" onchange="filterByDate(this.value)" class="form-input" style="margin-right: 1rem;">
         <select id="filterSelect" onchange="filterAttendance(this.value)" class="form-input">
             <option value="today" <?= ($current_filter ?? 'today') === 'today' ? 'selected' : '' ?>>Today</option>
             <option value="week" <?= ($current_filter ?? '') === 'week' ? 'selected' : '' ?>>One Week</option>
@@ -502,9 +502,9 @@ function generateAttendanceReport(userId) {
             </div>
             <div class="modal-body">
                 <label>Start Date:</label>
-                <input type="date" id="report-start-date" value="${defaultStartDate}" class="form-input">
+                <input type="date" id="report-start-date" name="start_date" value="${defaultStartDate}" class="form-input">
                 <label>End Date:</label>
-                <input type="date" id="report-end-date" value="${defaultEndDate}" class="form-input">
+                <input type="date" id="report-end-date" name="end_date" value="${defaultEndDate}" class="form-input">
             </div>
             <div class="modal-footer">
                 <button class="btn btn--secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
@@ -592,30 +592,16 @@ function downloadAttendanceReport(userId) {
         return;
     }
     
+    console.log('Generating report for user:', userId, 'from', startDate, 'to', endDate);
     document.querySelector('.modal-overlay')?.remove();
-    window.open(`/ergon/attendance/report?user_id=${userId}&start_date=${startDate}&end_date=${endDate}`, '_blank');
+    
+    const reportUrl = `/ergon/attendance/report?user_id=${userId}&start_date=${startDate}&end_date=${endDate}`;
+    console.log('Report URL:', reportUrl);
+    window.open(reportUrl, '_blank');
 }
 
 function generateReport(userId) {
     generateAttendanceReport(userId);
-}
-
-function downloadAttendanceReport(userId) {
-    const startDate = document.getElementById('report-start-date').value;
-    const endDate = document.getElementById('report-end-date').value;
-    
-    if (!startDate || !endDate) {
-        alert('Please select both start and end dates.');
-        return;
-    }
-    
-    if (new Date(startDate) > new Date(endDate)) {
-        alert('Start date cannot be later than end date.');
-        return;
-    }
-    
-    document.querySelector('.modal-overlay')?.remove();
-    window.open(`/ergon/attendance/report?user_id=${userId}&start_date=${startDate}&end_date=${endDate}`, '_blank');
 }
 
 function deleteAttendanceRecord(attendanceId) {

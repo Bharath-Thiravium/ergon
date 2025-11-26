@@ -10,7 +10,7 @@ class EnhancedAttendanceController extends Controller {
         $this->ensureAttendanceTable();
     }
     
-    private function requireAuth() {
+    protected function requireAuth() {
         if (!isset($_SESSION['user_id'])) {
             header('Location: /ergon/login');
             exit;
@@ -204,6 +204,87 @@ class EnhancedAttendanceController extends Controller {
             echo json_encode(['success' => true, 'data' => $attendance]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function report() {
+        $this->requireAuth();
+        
+        // Debug logging
+        error_log('Report method called. GET params: ' . print_r($_GET, true));
+        error_log('Session role: ' . ($_SESSION['role'] ?? 'none'));
+        
+        if (!in_array($_SESSION['role'], ['owner', 'admin'])) {
+            error_log('Access denied for role: ' . ($_SESSION['role'] ?? 'none'));
+            header('Location: /ergon/attendance?error=access_denied');
+            exit;
+        }
+        
+        $userId = $_GET['user_id'] ?? null;
+        $startDate = $_GET['start_date'] ?? date('Y-m-01');
+        $endDate = $_GET['end_date'] ?? date('Y-m-t');
+        
+        error_log('Report params - userId: ' . ($userId ?? 'null') . ', startDate: ' . $startDate . ', endDate: ' . $endDate);
+        
+        if (!$userId) {
+            error_log('Attendance report error: Missing user_id parameter');
+            header('Location: /ergon/attendance?error=missing_user_id');
+            exit;
+        }
+        
+        try {
+            // Get user info
+            $userStmt = $this->db->prepare("SELECT name, email FROM users WHERE id = ?");
+            $userStmt->execute([$userId]);
+            $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+            
+            error_log('User found: ' . ($user ? $user['name'] : 'none'));
+            
+            if (!$user) {
+                error_log('User not found for ID: ' . $userId);
+                header('Location: /ergon/attendance?error=user_not_found');
+                exit;
+            }
+            
+            // Get attendance records
+            $stmt = $this->db->prepare("
+                SELECT DATE(check_in) as date, check_in, check_out, 
+                       CASE WHEN check_out IS NOT NULL THEN 
+                           TIMESTAMPDIFF(MINUTE, check_in, check_out) / 60.0 
+                       ELSE 0 END as total_hours,
+                       CASE WHEN check_in IS NOT NULL AND check_out IS NOT NULL THEN 'Present' ELSE 'Absent' END as status
+                FROM attendance 
+                WHERE user_id = ? AND DATE(check_in) BETWEEN ? AND ?
+                ORDER BY check_in DESC
+            ");
+            $stmt->execute([$userId, $startDate, $endDate]);
+            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Generate CSV
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment; filename="attendance_report_' . $user['name'] . '_' . $startDate . '_to_' . $endDate . '.csv"');
+            
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['Date', 'Check In', 'Check Out', 'Total Hours', 'Status']);
+            
+            foreach ($records as $record) {
+                fputcsv($output, [
+                    $record['date'],
+                    $record['check_in'] ? date('H:i:s', strtotime($record['check_in'])) : 'Not clocked in',
+                    $record['check_out'] ? date('H:i:s', strtotime($record['check_out'])) : 'Not clocked out',
+                    $record['total_hours'] ? round($record['total_hours'], 2) . 'h' : '0h',
+                    $record['status']
+                ]);
+            }
+            
+            fclose($output);
+            exit;
+            
+        } catch (Exception $e) {
+            error_log('Attendance report error: ' . $e->getMessage());
+            error_log('Report parameters: user_id=' . ($userId ?? 'null') . ', start_date=' . $startDate . ', end_date=' . $endDate);
+            header('Location: /ergon/attendance?error=report_failed&details=' . urlencode($e->getMessage()));
+            exit;
         }
     }
     
