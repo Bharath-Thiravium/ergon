@@ -108,18 +108,23 @@ ob_start();
                                 <div class="document-size"><?= $doc['size'] ?></div>
                             </div>
                             <div class="document-actions">
-                                <div class="action-buttons">
+                                <div class="ab-container">
                                     <a href="/ergon/uploads/documents/<?= urlencode($doc['filename']) ?>" 
-                                       class="action-btn action-btn--view" 
+                                       class="ab-btn ab-btn--view" 
                                        target="_blank" 
                                        title="View Document">
-                                        <i class="fas fa-eye"></i>
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
                                     </a>
                                     <a href="/ergon/uploads/documents/<?= urlencode($doc['filename']) ?>" 
-                                       class="action-btn action-btn--download" 
+                                       class="ab-btn ab-btn--edit" 
                                        download 
                                        title="Download Document">
-                                        <i class="fas fa-download"></i>
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
                                     </a>
                                 </div>
                             </div>
@@ -255,49 +260,6 @@ ob_start();
 
 .document-actions {
     flex-shrink: 0;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    font-size: 0.875rem;
-    border: 1px solid transparent;
-}
-
-.action-btn--view {
-    background-color: #3b82f6;
-    color: white;
-}
-
-.action-btn--view:hover {
-    background-color: #2563eb;
-    transform: translateY(-1px);
-}
-
-.action-btn--download {
-    background-color: #10b981;
-    color: white;
-}
-
-.action-btn--download:hover {
-    background-color: #059669;
-    transform: translateY(-1px);
-}
-
-.action-btn:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 @media (max-width: 768px) {
