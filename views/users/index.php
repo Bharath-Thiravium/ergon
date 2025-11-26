@@ -117,58 +117,94 @@ ob_start();
                             </td>
                             <td><?= isset($user['last_login']) ? date('M d, Y', strtotime($user['last_login'])) : 'Never' ?></td>
                             <td>
+                                <?php 
+                                $userStatus = $user['status'] ?? 'active';
+                                $userId = $user['id'];
+                                $userName = htmlspecialchars($user['name']);
+                                ?>
                                 <div class="ab-container">
-                                    <button class="ab-btn ab-btn--view" data-action="view" data-module="users" data-id="<?= $user['id'] ?>" title="View Details">
+                                    <!-- Always show View button -->
+                                    <button class="ab-btn ab-btn--view" data-action="view" data-module="users" data-id="<?= $userId ?>" title="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                            <polyline points="14,2 14,8 20,8"/>
-                                            <line x1="16" y1="13" x2="8" y2="13"/>
-                                            <line x1="16" y1="17" x2="8" y2="17"/>
-                                            <polyline points="10,9 9,9 8,9"/>
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
                                         </svg>
                                     </button>
-                                    <?php if (($user['status'] ?? 'active') !== 'terminated'): ?>
-                                        <button class="ab-btn ab-btn--edit" data-action="edit" data-module="users" data-id="<?= $user['id'] ?>" title="Edit User">
+                                    
+                                    <?php if ($userStatus === 'terminated'): ?>
+                                        <!-- Terminated Users: Only View button -->
+                                        <span class="text-muted">Terminated</span>
+                                    <?php elseif ($userStatus === 'suspended'): ?>
+                                        <!-- Suspended Users: Make Active + Edit + Reset Password + Terminate -->
+                                        <button class="ab-btn ab-btn--success" data-action="activate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>" title="Make Active">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M9 12l2 2 4-4"/>
+                                                <circle cx="12" cy="12" r="10"/>
+                                            </svg>
+                                        </button>
+                                        <button class="ab-btn ab-btn--edit" data-action="edit" data-module="users" data-id="<?= $userId ?>" title="Edit User">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                 <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                                 <path d="M15 5l4 4"/>
                                             </svg>
                                         </button>
-                                        <button class="ab-btn ab-btn--reset" data-action="reset" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Reset Password">
+                                        <button class="ab-btn ab-btn--warning" data-action="reset" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>" title="Reset Password">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                                <circle cx="12" cy="16" r="1"/>
+                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                             </svg>
                                         </button>
-                                        <?php if (($user['status'] ?? 'active') === 'active'): ?>
-                                            <button class="ab-btn ab-btn--warning btn-deactivate" data-action="inactive" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Deactivate User">
+                                        <button class="ab-btn ab-btn--delete" data-action="terminate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>" title="Terminate User">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <line x1="15" y1="9" x2="9" y2="15"/>
+                                                <line x1="9" y1="9" x2="15" y2="15"/>
+                                            </svg>
+                                        </button>
+                                    <?php else: ?>
+                                        <!-- Active/Inactive Users: Full action set -->
+                                        <button class="ab-btn ab-btn--edit" data-action="edit" data-module="users" data-id="<?= $userId ?>" title="Edit User">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                                <path d="M15 5l4 4"/>
+                                            </svg>
+                                        </button>
+                                        <button class="ab-btn ab-btn--warning" data-action="reset" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>" title="Reset Password">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                                <circle cx="12" cy="16" r="1"/>
+                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                            </svg>
+                                        </button>
+                                        <?php if ($userStatus === 'active'): ?>
+                                            <button class="ab-btn ab-btn--info" data-action="inactive" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>" title="Deactivate User">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                     <circle cx="12" cy="12" r="10"/>
                                                     <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
                                                 </svg>
                                             </button>
-                                            <button class="ab-btn ab-btn--danger" data-action="suspend" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Suspend User">
+                                            <button class="ab-btn ab-btn--danger" data-action="suspend" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>" title="Suspend User">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                     <circle cx="12" cy="12" r="10"/>
                                                     <path d="M10 15l4-4 4 4"/>
                                                 </svg>
                                             </button>
-                                            <button class="ab-btn ab-btn--delete" data-action="terminate" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Terminate User">
+                                            <button class="ab-btn ab-btn--delete" data-action="terminate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>" title="Terminate User">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                     <circle cx="12" cy="12" r="10"/>
                                                     <line x1="15" y1="9" x2="9" y2="15"/>
                                                     <line x1="9" y1="9" x2="15" y2="15"/>
                                                 </svg>
                                             </button>
-                                        <?php elseif (($user['status'] ?? 'active') === 'inactive' || ($user['status'] ?? 'active') === 'suspended'): ?>
-                                            <button class="ab-btn ab-btn--success" data-action="activate" data-module="users" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>" title="Activate User">
+                                        <?php else: ?>
+                                            <button class="ab-btn ab-btn--success" data-action="activate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>" title="Activate User">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                                     <path d="M9 12l2 2 4-4"/>
                                                     <circle cx="12" cy="12" r="10"/>
                                                 </svg>
                                             </button>
                                         <?php endif; ?>
-                                    <?php else: ?>
-                                        <span class="text-muted">No Actions Available</span>
                                     <?php endif; ?>
                                 </div>
                             </td>
