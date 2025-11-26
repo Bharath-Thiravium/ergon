@@ -446,8 +446,8 @@ function saveContactChanges() {
     const formData = new FormData(form);
     const contactId = document.getElementById('editContactId').value;
     
-    fetch(`/ergon/api/contacts/${contactId}`, {
-        method: 'PUT',
+    fetch(`/ergon/api/contacts/${contactId}/update`, {
+        method: 'POST',
         body: formData
     })
     .then(response => response.json())

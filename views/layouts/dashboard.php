@@ -885,6 +885,13 @@ ob_end_clean();
     
     function deleteRecord(module, id, name) {
         if (confirm('Are you sure you want to delete "' + name + '"? This action cannot be undone.')) {
+            // Show loading state
+            const deleteBtn = document.querySelector(`[data-id="${id}"][data-action="delete"]`);
+            if (deleteBtn) {
+                deleteBtn.disabled = true;
+                deleteBtn.style.opacity = '0.5';
+            }
+            
             fetch('/ergon/' + module + '/delete/' + id, {
                 method: 'POST',
                 headers: {
@@ -892,17 +899,42 @@ ob_end_clean();
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    location.reload();
+                    // Remove the row immediately
+                    const row = deleteBtn ? deleteBtn.closest('tr') : null;
+                    if (row) {
+                        row.style.transition = 'opacity 0.3s ease';
+                        row.style.opacity = '0';
+                        setTimeout(() => {
+                            row.remove();
+                            // Show success message
+                            alert('✅ ' + name + ' deleted successfully!');
+                        }, 300);
+                    } else {
+                        location.reload();
+                    }
                 } else {
-                    alert('Error: ' + (data.message || 'Failed to delete record'));
+                    alert('❌ Error: ' + (data.message || 'Failed to delete record'));
+                    if (deleteBtn) {
+                        deleteBtn.disabled = false;
+                        deleteBtn.style.opacity = '1';
+                    }
                 }
             })
             .catch(error => {
                 console.error('Delete error:', error);
-                alert('An error occurred while deleting the record.');
+                alert('❌ An error occurred while deleting the record.');
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.style.opacity = '1';
+                }
             });
         }
     }

@@ -217,12 +217,14 @@ ob_start();
                                         <polyline points="20,6 9,17 4,12"/>
                                     </svg>
                                 </button>
+                                <?php if (($userRole === 'owner') || ($userRole === 'admin' && $isNotOwnLeave)): ?>
                                 <button class="ab-btn ab-btn--reject" onclick="showRejectModal(<?= $leave['id'] ?>)" title="Reject Leave">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <line x1="18" y1="6" x2="6" y2="18"/>
                                         <line x1="6" y1="6" x2="18" y2="18"/>
                                     </svg>
                                 </button>
+                                <?php endif; ?>
                                 <?php endif; ?>
                                 <?php if (strtolower($leave['status'] ?? 'pending') === 'pending' && ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
                                 <button class="ab-btn ab-btn--delete" data-action="delete" data-module="leaves" data-id="<?= $leave['id'] ?>" data-name="Leave Request" title="Delete Request">

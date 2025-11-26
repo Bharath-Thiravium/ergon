@@ -86,6 +86,7 @@ class NotificationService {
 
 class NotificationQueue {
     private $redis;
+    private $queueDir;
     
     public function __construct() {
         // Simple file-based queue for now, replace with Redis/RabbitMQ

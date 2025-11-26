@@ -107,14 +107,20 @@ class LeaveController extends Controller {
             $userId = $_SESSION['user_id'];
             
             // Validate required fields
-            if (empty($_POST['type']) || empty($_POST['start_date']) || empty($_POST['end_date'])) {
+            if (empty($_POST['type']) || empty($_POST['start_date']) || empty($_POST['end_date']) || empty($_POST['reason'])) {
                 echo json_encode(['success' => false, 'error' => 'All fields are required']);
                 return;
             }
             
             // Validate dates
-            $startDate = $_POST['start_date'];
-            $endDate = $_POST['end_date'];
+            $startDate = trim($_POST['start_date']);
+            $endDate = trim($_POST['end_date']);
+            $reason = trim($_POST['reason']);
+            
+            if (empty($startDate) || empty($endDate) || empty($reason)) {
+                echo json_encode(['success' => false, 'error' => 'All fields are required']);
+                return;
+            }
             
             if (strtotime($startDate) < strtotime(date('Y-m-d'))) {
                 echo json_encode(['success' => false, 'error' => 'Start date cannot be in the past']);
@@ -126,12 +132,17 @@ class LeaveController extends Controller {
                 return;
             }
             
+            if (strlen($reason) < 10) {
+                echo json_encode(['success' => false, 'error' => 'Please provide a detailed reason (minimum 10 characters)']);
+                return;
+            }
+            
             $data = [
                 'user_id' => $userId,
                 'type' => Security::sanitizeString($_POST['type']),
                 'start_date' => $startDate,
                 'end_date' => $endDate,
-                'reason' => Security::sanitizeString($_POST['reason'] ?? '', 500)
+                'reason' => Security::sanitizeString($reason, 500)
             ];
             
             // Calculate leave days
@@ -289,16 +300,44 @@ class LeaveController extends Controller {
         header('Content-Type: application/json');
         AuthMiddleware::requireAuth();
         
-        if (!$id) {
-            echo json_encode(['success' => false, 'message' => 'Invalid ID']);
+        if (!$id || !is_numeric($id)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid leave ID']);
             exit;
         }
         
         try {
+            // Check if leave exists and user has permission to delete
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT user_id, status FROM leaves WHERE id = ?");
+            $stmt->execute([$id]);
+            $leave = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$leave) {
+                echo json_encode(['success' => false, 'message' => 'Leave request not found']);
+                exit;
+            }
+            
+            // Only allow deletion of own pending leaves
+            if ($leave['user_id'] != $_SESSION['user_id'] && !in_array($_SESSION['role'], ['admin', 'owner'])) {
+                echo json_encode(['success' => false, 'message' => 'Access denied']);
+                exit;
+            }
+            
+            if ($leave['status'] !== 'pending') {
+                echo json_encode(['success' => false, 'message' => 'Only pending leave requests can be deleted']);
+                exit;
+            }
+            
             $result = $this->leave->delete($id);
-            echo json_encode(['success' => $result, 'message' => $result ? 'Leave deleted successfully' : 'Delete failed']);
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'Leave request deleted successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to delete leave request']);
+            }
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            error_log('Leave delete error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Database error occurred']);
         }
         exit;
     }

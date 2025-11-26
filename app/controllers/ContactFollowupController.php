@@ -454,11 +454,83 @@ class ContactFollowupController extends Controller {
             if ($result) {
                 echo json_encode(['success' => true, 'contact_id' => $db->lastInsertId()]);
             } else {
-                echo json_encode(['success' => false, 'error' => 'Failed to create']);
+                echo json_encode(['success' => false, 'error' => 'Failed to create contact']);
             }
         } catch (Exception $e) {
             error_log('Create contact error: ' . $e->getMessage());
             echo json_encode(['success' => false, 'error' => 'Failed to create']);
+        }
+        exit;
+    }
+    
+    public function getContact($id) {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
+        try {
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT * FROM contacts WHERE id = ?");
+            $stmt->execute([$id]);
+            $contact = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($contact) {
+                echo json_encode(['success' => true, 'contact' => $contact]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Contact not found']);
+            }
+        } catch (Exception $e) {
+            error_log('Get contact error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Failed to get contact']);
+        }
+        exit;
+    }
+    
+    public function updateContact($id) {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            exit;
+        }
+        
+        try {
+            $name = trim($_POST['name'] ?? '');
+            if (empty($name)) {
+                echo json_encode(['success' => false, 'message' => 'Name is required']);
+                exit;
+            }
+            
+            $db = Database::connect();
+            
+            // Check if contact exists
+            $checkStmt = $db->prepare("SELECT id FROM contacts WHERE id = ?");
+            $checkStmt->execute([$id]);
+            if (!$checkStmt->fetch()) {
+                echo json_encode(['success' => false, 'message' => 'Contact not found']);
+                exit;
+            }
+            
+            $stmt = $db->prepare("UPDATE contacts SET name = ?, phone = ?, email = ?, company = ? WHERE id = ?");
+            $result = $stmt->execute([
+                $name,
+                trim($_POST['phone'] ?? '') ?: null,
+                trim($_POST['email'] ?? '') ?: null,
+                trim($_POST['company'] ?? '') ?: null,
+                $id
+            ]);
+            
+            if ($result && $stmt->rowCount() > 0) {
+                echo json_encode(['success' => true, 'message' => 'Contact updated successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'No changes made or contact not found']);
+            }
+        } catch (Exception $e) {
+            error_log('Update contact error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         }
         exit;
     }

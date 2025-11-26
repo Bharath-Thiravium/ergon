@@ -257,6 +257,8 @@ $router->post('/api/activity-log', 'ApiController', 'activityLog');
 $router->post('/api/session_from_jwt', 'ApiController', 'sessionFromJWT');
 $router->post('/api/test', 'ApiController', 'test');
 $router->post('/api/contacts/create', 'ContactFollowupController', 'createContact');
+$router->get('/api/contacts/{id}', 'ContactFollowupController', 'getContact');
+$router->post('/api/contacts/{id}/update', 'ContactFollowupController', 'updateContact');
 $router->get('/api/contact-persons', 'ApiController', 'contactPersons');
 $router->get('/api/companies', 'ApiController', 'companies');
 $router->get('/api/users', 'ApiController', 'users');
