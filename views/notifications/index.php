@@ -55,7 +55,7 @@ ob_start();
                             
                             if ($actionUrl) {
                                 $viewUrl = $actionUrl;
-                            } elseif ($referenceId && $referenceType) {
+                            } elseif ($referenceType && $referenceId > 0) {
                                 switch ($referenceType) {
                                     case 'task':
                                     case 'tasks':
@@ -74,17 +74,13 @@ ob_start();
                                         $viewUrl = "/ergon/advances/view/{$referenceId}";
                                         break;
                                     default:
-                                        // For any other type, try to generate URL
-                                        if ($referenceType) {
-                                            $pluralType = $referenceType . 's';
-                                            $viewUrl = "/ergon/{$pluralType}/view/{$referenceId}";
-                                        }
+                                        $pluralType = $referenceType . 's';
+                                        $viewUrl = "/ergon/{$pluralType}/view/{$referenceId}";
                                 }
                             } elseif ($referenceType) {
-                                // If no reference ID but has type, go to module index
                                 $moduleUrls = [
                                     'leave' => '/ergon/leaves',
-                                    'expense' => '/ergon/expenses',
+                                    'expense' => '/ergon/expenses', 
                                     'advance' => '/ergon/advances',
                                     'task' => '/ergon/tasks'
                                 ];
@@ -129,7 +125,7 @@ ob_start();
                                         </svg>
                                     </button>
                                     <?php endif; ?>
-                                    <?php if ($viewUrl && $viewUrl !== '/ergon/dashboard'): ?>
+                                    <?php if ($viewUrl && $viewUrl !== '/ergon/dashboard' && $referenceId > 0): ?>
                                     <a href="<?= htmlspecialchars($viewUrl, ENT_QUOTES, 'UTF-8') ?>" class="ab-btn ab-btn--view" data-tooltip="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
