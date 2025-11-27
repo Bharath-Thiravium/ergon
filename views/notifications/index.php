@@ -48,12 +48,14 @@ ob_start();
                                 'system' => '⚙️'
                             ][$referenceType] ?? '🔔';
                             
-                            // Use action_url if available, otherwise generate URL
+                            // Generate URL based on reference type and ID
                             $actionUrl = $notification['action_url'] ?? null;
-                            $viewUrl = $actionUrl ?: '/ergon/dashboard';
                             $referenceId = $notification['reference_id'] ?? null;
+                            $viewUrl = null;
                             
-                            if (!$actionUrl && $referenceId && $referenceType) {
+                            if ($actionUrl) {
+                                $viewUrl = $actionUrl;
+                            } elseif ($referenceId && $referenceType) {
                                 switch ($referenceType) {
                                     case 'task':
                                     case 'tasks':
@@ -112,12 +114,14 @@ ob_start();
                                         </svg>
                                     </button>
                                     <?php endif; ?>
+                                    <?php if ($viewUrl): ?>
                                     <a href="<?= $viewUrl ?>" class="ab-btn ab-btn--view" data-tooltip="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                             <circle cx="12" cy="12" r="3"/>
                                         </svg>
                                     </a>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
