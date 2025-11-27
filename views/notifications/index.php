@@ -71,8 +71,10 @@ ob_start();
                                     case 'advances':
                                         $viewUrl = "/ergon/advances/view/{$referenceId}";
                                         break;
+                                    default:
+                                        $viewUrl = "/ergon/{$referenceType}";
                                 }
-                            }
+
                         ?>
                         <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= $notification['id'] ?>">
                             <td>
