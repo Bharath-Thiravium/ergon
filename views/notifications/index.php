@@ -39,7 +39,7 @@ ob_start();
                     <tbody>
                         <?php foreach ($notifications as $notification): 
                             $isUnread = !($notification['is_read'] ?? false);
-                            $referenceType = $notification['reference_type'] ?? $notification['module_name'] ?? '';
+                            $referenceType = $notification['module_name'] ?? $notification['reference_type'] ?? '';
                             $moduleIcon = [
                                 'task' => '✅', 'tasks' => '✅',
                                 'leave' => '📅', 'leaves' => '📅', 
@@ -58,12 +58,11 @@ ob_start();
                                     require_once __DIR__ . '/../../app/config/database.php';
                                     $db = Database::connect();
                                     $table = $referenceType === 'advance' ? 'advances' : $referenceType . 's';
-                                    $stmt = $db->prepare("SELECT id FROM {$table} WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
-                                    $stmt->execute([$notification['sender_id'] ?? 1]);
+                                    $stmt = $db->prepare("SELECT id FROM {$table} ORDER BY id DESC LIMIT 1");
+                                    $stmt->execute();
                                     $result = $stmt->fetch(PDO::FETCH_ASSOC);
                                     if ($result) {
                                         $referenceId = $result['id'];
-                                        // Update notification with found reference_id
                                         $updateStmt = $db->prepare("UPDATE notifications SET reference_id = ? WHERE id = ?");
                                         $updateStmt->execute([$referenceId, $notification['id']]);
                                     }
