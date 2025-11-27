@@ -2,6 +2,8 @@
 ob_start();
 header('Content-Type: text/html; charset=UTF-8');
 require_once __DIR__ . '/../../app/helpers/Security.php';
+require_once __DIR__ . '/../../app/helpers/SecurityHeaders.php';
+SecurityHeaders::apply();
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) { header('Location: /ergon/login'); exit; }
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) { session_unset(); session_destroy(); header('Location: /ergon/login?timeout=1'); exit; }

@@ -91,9 +91,9 @@ ob_start();
                                 $viewUrl = $moduleUrls[$referenceType] ?? "/ergon/{$referenceType}";
                             }
                         ?>
-                        <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= $notification['id'] ?>">
+                        <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= (int)$notification['id'] ?>">
                             <td>
-                                <input type="checkbox" class="notification-checkbox" name="notification_<?= $notification['id'] ?>" value="<?= $notification['id'] ?>" onchange="updateMarkSelectedButton()" style="margin-right: 8px; vertical-align: top;">
+                                <input type="checkbox" class="notification-checkbox" name="notification_<?= (int)$notification['id'] ?>" value="<?= (int)$notification['id'] ?>" onchange="updateMarkSelectedButton()" style="margin-right: 8px; vertical-align: top;">
                                 <div class="notification-content" style="display: inline-block; width: calc(100% - 30px);">
                                     <div class="notification-title">
                                         <strong><?= htmlspecialchars($notification['title'] ?? ucfirst($referenceType ?: 'General')) ?></strong>
@@ -123,14 +123,14 @@ ob_start();
                             <td>
                                 <div class="ab-container">
                                     <?php if ($isUnread): ?>
-                                    <button class="ab-btn ab-btn--success" onclick="markAsRead(<?= $notification['id'] ?>)" data-tooltip="Mark as read">
+                                    <button class="ab-btn ab-btn--success" onclick="markAsRead(<?= (int)$notification['id'] ?>)" data-tooltip="Mark as read">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <polyline points="20,6 9,17 4,12"/>
                                         </svg>
                                     </button>
                                     <?php endif; ?>
                                     <?php if ($viewUrl && $viewUrl !== '/ergon/dashboard'): ?>
-                                    <a href="<?= $viewUrl ?>" class="ab-btn ab-btn--view" data-tooltip="View Details">
+                                    <a href="<?= htmlspecialchars($viewUrl, ENT_QUOTES, 'UTF-8') ?>" class="ab-btn ab-btn--view" data-tooltip="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                             <circle cx="12" cy="12" r="3"/>
@@ -198,56 +198,7 @@ function timeAgo($datetime) {
 }
 ?>
 
-<script>
-function markAsRead(id) {
-    fetch('/ergon/api/notifications.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `action=mark-read&id=${id}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const row = document.querySelector(`[data-notification-id="${id}"]`);
-            if (row) {
-                row.classList.remove('notification--unread');
-                row.classList.add('notification--read');
-                const badge = row.querySelector('.badge--warning');
-                if (badge) badge.remove();
-                const button = row.querySelector('.ab-btn--success');
-                if (button) button.remove();
-            }
-        }
-    });
-}
-
-function toggleSelectAll() {
-    const selectAll = document.getElementById('selectAll');
-    const checkboxes = document.querySelectorAll('.notification-checkbox');
-    checkboxes.forEach(cb => cb.checked = selectAll.checked);
-    updateMarkSelectedButton();
-}
-
-function updateMarkSelectedButton() {
-    const selected = document.querySelectorAll('.notification-checkbox:checked');
-    document.getElementById('markSelectedBtn').disabled = selected.length === 0;
-}
-
-function markSelectedAsRead() {
-    const selected = document.querySelectorAll('.notification-checkbox:checked');
-    selected.forEach(cb => markAsRead(cb.value));
-}
-
-function markAllAsRead() {
-    const unreadRows = document.querySelectorAll('.notification--unread');
-    unreadRows.forEach(row => {
-        const id = row.dataset.notificationId;
-        if (id) markAsRead(id);
-    });
-}
-</script>
+<script src="/ergon/assets/js/notifications-enhanced.js" defer></script>
 
 <?php
 $content = ob_get_clean();
