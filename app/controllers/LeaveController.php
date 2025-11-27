@@ -306,7 +306,6 @@ class LeaveController extends Controller {
         }
         
         try {
-            // Check if leave exists and user has permission to delete
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             $stmt = $db->prepare("SELECT user_id, status FROM leaves WHERE id = ?");
@@ -318,7 +317,6 @@ class LeaveController extends Controller {
                 exit;
             }
             
-            // Permission check: owners and admins can delete any leave, users can delete their own pending leaves
             $userRole = $_SESSION['role'] ?? 'user';
             $isOwner = $userRole === 'owner';
             $isAdmin = $userRole === 'admin';
@@ -329,13 +327,14 @@ class LeaveController extends Controller {
                 exit;
             }
             
-            // Users can only delete their own pending leaves, admins/owners can delete any
-            if (!$isOwner && !$isAdmin && $leave['status'] !== 'pending') {
+            if (!$isOwner && !$isAdmin && strtolower($leave['status']) !== 'pending') {
                 echo json_encode(['success' => false, 'message' => 'Only pending leave requests can be deleted']);
                 exit;
             }
             
-            $result = $this->leave->delete($id);
+            $stmt = $db->prepare("DELETE FROM leaves WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
             if ($result) {
                 echo json_encode(['success' => true, 'message' => 'Leave request deleted successfully']);
             } else {

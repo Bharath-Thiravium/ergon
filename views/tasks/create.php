@@ -721,8 +721,27 @@ function updateSLAHours() {
     document.getElementById('sla_hours').value = totalHours.toFixed(4);
 }
 
+// Check for URL parameters and show messages
+function checkUrlMessages() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+    
+    if (success) {
+        showMessage(success, 'success');
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error) {
+        showMessage(error, 'error');
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
 // Form initialization
 document.addEventListener('DOMContentLoaded', function() {
+    // Check for messages first
+    checkUrlMessages();
     // SLA time inputs event listeners
     document.getElementById('sla_hours_part').addEventListener('input', updateSLAHours);
     document.getElementById('sla_minutes_part').addEventListener('input', updateSLAHours);

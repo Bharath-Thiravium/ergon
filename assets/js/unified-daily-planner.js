@@ -351,24 +351,27 @@ window.updateTaskProgress = function(taskId) {
         return;
     }
     
+    // Get the original task ID from the task card
+    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+    const originalTaskId = taskCard?.dataset.originalTaskId || taskId;
+    
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     
     // Close modal
     document.querySelector('.modal-overlay')?.remove();
     
-    // Send update to server
-    fetch('/ergon/api/daily_planner_workflow.php?action=update-progress', {
+    // Send update to server using the same endpoint as Task module with original task ID
+    fetch('/ergon/tasks/update-status', {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
             'X-CSRF-Token': csrfToken
         },
         body: JSON.stringify({ 
-            task_id: parseInt(taskId), 
+            task_id: parseInt(originalTaskId), 
             progress: progress,
             status: status,
-            reason: 'Progress updated via daily planner',
-            csrf_token: csrfToken
+            reason: 'Progress updated via daily planner'
         })
     })
     .then(response => response.json())

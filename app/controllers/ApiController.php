@@ -476,8 +476,18 @@ class ApiController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Get all active users for task assignment
-            $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE status = 'active' ORDER BY name");
+            // For User Panel: exclude owners from task assignment dropdown
+            // Only show Employees and Admins for task assignment
+            $currentUserRole = $_SESSION['role'] ?? 'user';
+            
+            if ($currentUserRole === 'user') {
+                // User Panel: exclude owners, show only employees and admins
+                $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE status = 'active' AND role != 'owner' ORDER BY name");
+            } else {
+                // Admin/Owner Panel: show all active users
+                $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE status = 'active' ORDER BY name");
+            }
+            
             $stmt->execute();
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             

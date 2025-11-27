@@ -314,6 +314,32 @@ ob_start();
     font-size: 4rem;
     margin-bottom: 1rem;
 }
+.password-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.password-input-container .form-control {
+    padding-right: 45px;
+}
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    color: #6b7280;
+    font-size: 16px;
+    z-index: 10;
+}
+.password-toggle:hover {
+    color: #374151;
+}
+.password-toggle-icon {
+    display: inline-block;
+    transition: opacity 0.2s;
+}
 
 </style>
 
@@ -336,7 +362,12 @@ ob_start();
                 </div>
                 <div class="form-group">
                     <label class="form-label">Initial Password</label>
-                    <input type="password" name="password" class="form-control" required>
+                    <div class="password-input-container">
+                        <input type="password" name="password" class="form-control" id="adminPassword" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword('adminPassword', this)">
+                            <span class="password-toggle-icon">👁️</span>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -350,6 +381,19 @@ ob_start();
 
 
 <script>
+function togglePassword(inputId, button) {
+    const input = document.getElementById(inputId);
+    const icon = button.querySelector('.password-toggle-icon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        icon.textContent = '👁️';
+    }
+}
+
 function showCreateAdminModal() {
     console.log('Modal function called');
     const modal = document.getElementById('createAdminModal');

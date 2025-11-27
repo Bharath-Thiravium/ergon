@@ -80,6 +80,17 @@ ob_end_clean();
     .btn--attendance-toggle.state-completed{background:#059669 !important;border:3px solid #047857 !important;color:#ffffff !important;opacity:1 !important;box-shadow:0 4px 12px rgba(5,150,105,0.4) !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important}
     .btn--attendance-toggle.state-leave{background:#f59e0b !important;border:3px solid #d97706 !important;color:#ffffff !important;opacity:1 !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important}
     @keyframes pulse-red{0%,100%{box-shadow:0 4px 16px rgba(220,38,38,0.6)}50%{box-shadow:0 6px 20px rgba(220,38,38,0.8)}}
+    
+    /* Simple Message Modal */
+    .message-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center}
+    .message-content{background:#fff;border-radius:12px;padding:24px;max-width:400px;width:90%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.3)}
+    .message-icon{font-size:48px;margin-bottom:16px}
+    .message-text{font-size:16px;margin-bottom:20px;color:#333;line-height:1.5}
+    .message-close{background:#007bff;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600}
+    .message-close:hover{background:#0056b3}
+    .message-modal.success .message-icon{color:#28a745}
+    .message-modal.error .message-icon{color:#dc3545}
+    .message-modal.warning .message-icon{color:#ffc107}
     </style>
     
     <link href="/ergon/assets/css/bootstrap-icons.min.css?v=1.0" rel="stylesheet">
@@ -171,6 +182,15 @@ ob_end_clean();
                         <span class="menu-icon"><i class="bi bi-box-arrow-right"></i></span>
                         Logout
                     </a>
+                </div>
+                
+                <!-- Simple Message Modal -->
+                <div id="messageModal" class="message-modal" style="display: none;">
+                    <div class="message-content">
+                        <div class="message-icon" id="messageIcon"></div>
+                        <div class="message-text" id="messageText"></div>
+                        <button class="message-close" onclick="closeMessageModal()">OK</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1150,6 +1170,37 @@ ob_end_clean();
             setTimeout(() => document.body.removeChild(notification), 300);
         }, 3000);
     }
+    
+    // Simple Message Modal Functions
+    function showMessage(message, type = 'success') {
+        const modal = document.getElementById('messageModal');
+        const icon = document.getElementById('messageIcon');
+        const text = document.getElementById('messageText');
+        
+        if (!modal || !icon || !text) return;
+        
+        // Set icon based on type
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        
+        icon.textContent = icons[type] || icons.success;
+        text.textContent = message;
+        modal.className = `message-modal ${type}`;
+        modal.style.display = 'flex';
+    }
+    
+    function closeMessageModal() {
+        const modal = document.getElementById('messageModal');
+        if (modal) modal.style.display = 'none';
+    }
+    
+    // Make functions globally available
+    window.showMessage = showMessage;
+    window.closeMessageModal = closeMessageModal;
     
     // Check attendance status on page load - updated for smart button
     function checkAttendanceStatus() {

@@ -303,7 +303,19 @@ document.addEventListener('click', function(e) {
     } else if (action === 'edit' && module && id) {
         window.location.href = `/ergon/${module}/edit/${id}`;
     } else if (action === 'delete' && module && id && name) {
-        deleteRecord(module, id, name);
+        if (confirm('Are you sure you want to delete "' + name + '"?')) {
+            fetch(`/ergon/${module}/delete/${id}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showMessage(data.message, 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(() => showMessage('Delete failed', 'error'));
+        }
     }
 });
 var currentTaskId;
@@ -347,7 +359,24 @@ function saveProgress() {
     })
     .catch(() => alert('Error updating task'));
 }
+// Check for URL parameters and show messages
+function checkUrlMessages() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+    
+    if (success) {
+        showMessage(success, 'success');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error) {
+        showMessage(error, 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    checkUrlMessages();
+    
     var slider = document.getElementById('progressSlider');
     if (slider) {
         slider.oninput = function() {
