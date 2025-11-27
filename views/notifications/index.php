@@ -51,6 +51,27 @@ ob_start();
                             // Generate URL based on reference type and ID (same logic as tasks)
                             $actionUrl = $notification['action_url'] ?? null;
                             $referenceId = $notification['reference_id'] ?? null;
+                            
+                            // Auto-populate missing reference_id for existing notifications
+                            if (!$referenceId && $referenceType && in_array($referenceType, ['expense', 'leave', 'advance'])) {
+                                try {
+                                    require_once __DIR__ . '/../../app/config/database.php';
+                                    $db = Database::connect();
+                                    $table = $referenceType === 'advance' ? 'advances' : $referenceType . 's';
+                                    $stmt = $db->prepare("SELECT id FROM {$table} WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
+                                    $stmt->execute([$notification['sender_id'] ?? 1]);
+                                    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                                    if ($result) {
+                                        $referenceId = $result['id'];
+                                        // Update notification with found reference_id
+                                        $updateStmt = $db->prepare("UPDATE notifications SET reference_id = ? WHERE id = ?");
+                                        $updateStmt->execute([$referenceId, $notification['id']]);
+                                    }
+                                } catch (Exception $e) {
+                                    // Ignore errors, continue with null reference_id
+                                }
+                            }
+                            
                             $viewUrl = '/ergon/dashboard'; // Default fallback
                             
                             // Debug: Check what we have
