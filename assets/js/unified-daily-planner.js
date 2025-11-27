@@ -179,11 +179,20 @@ window.openProgressModal = function(taskId, progress, status) {
                 <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
             </div>
             <div class="modal-body">
-                <label>Progress Percentage:</label>
-                <input type="number" id="progress-${taskId}" min="0" max="100" value="${progress}" class="form-input">
+                <label>Progress Percentage: <span id="progress-display-${taskId}">${progress}%</span></label>
+                <input type="range" id="progress-slider-${taskId}" min="0" max="100" value="${progress}" class="form-slider" oninput="document.getElementById('progress-display-${taskId}').textContent = this.value + '%'; document.getElementById('progress-${taskId}').value = this.value;">
+                <input type="number" id="progress-${taskId}" min="0" max="100" value="${progress}" class="form-input" oninput="document.getElementById('progress-slider-${taskId}').value = this.value; document.getElementById('progress-display-${taskId}').textContent = this.value + '%';">
+                
+                <div class="progress-presets">
+                    <button type="button" class="preset-btn" onclick="setProgress(${taskId}, 25)">25%</button>
+                    <button type="button" class="preset-btn" onclick="setProgress(${taskId}, 50)">50%</button>
+                    <button type="button" class="preset-btn" onclick="setProgress(${taskId}, 75)">75%</button>
+                    <button type="button" class="preset-btn" onclick="setProgress(${taskId}, 100)">100%</button>
+                </div>
+                
                 <label>Status:</label>
                 <select id="status-${taskId}" class="form-input">
-                    <option value="pending" ${status === 'pending' ? 'selected' : ''}>Pending</option>
+                    <option value="not_started" ${status === 'not_started' ? 'selected' : ''}>Not Started</option>
                     <option value="in_progress" ${status === 'in_progress' ? 'selected' : ''}>In Progress</option>
                     <option value="on_break" ${status === 'on_break' ? 'selected' : ''}>On Break</option>
                     <option value="completed" ${status === 'completed' ? 'selected' : ''}>Completed</option>
@@ -255,11 +264,76 @@ window.openProgressModal = function(taskId, progress, status) {
                 cursor: pointer;
                 color: #6b7280;
             }
+            .form-slider {
+                width: 100%;
+                margin-bottom: 12px;
+                -webkit-appearance: none;
+                height: 6px;
+                border-radius: 3px;
+                background: #e5e7eb;
+                outline: none;
+            }
+            .form-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #3b82f6;
+                cursor: pointer;
+            }
+            .form-slider::-moz-range-thumb {
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #3b82f6;
+                cursor: pointer;
+                border: none;
+            }
+            .progress-presets {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+            .preset-btn {
+                padding: 6px 12px;
+                border: 1px solid #d1d5db;
+                background: #f9fafb;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+            }
+            .preset-btn:hover {
+                background: #e5e7eb;
+            }
         `;
         document.head.appendChild(styles);
     }
     
     document.body.appendChild(modal);
+};
+
+// Helper function to set progress from preset buttons
+window.setProgress = function(taskId, value) {
+    const progressSlider = document.getElementById(`progress-slider-${taskId}`);
+    const progressInput = document.getElementById(`progress-${taskId}`);
+    const progressDisplay = document.getElementById(`progress-display-${taskId}`);
+    
+    if (progressSlider) progressSlider.value = value;
+    if (progressInput) progressInput.value = value;
+    if (progressDisplay) progressDisplay.textContent = value + '%';
+    
+    // Auto-update status based on progress
+    const statusSelect = document.getElementById(`status-${taskId}`);
+    if (statusSelect) {
+        if (value === 0) {
+            statusSelect.value = 'not_started';
+        } else if (value === 100) {
+            statusSelect.value = 'completed';
+        } else if (value > 0) {
+            statusSelect.value = 'in_progress';
+        }
+    }
 };
 
 window.updateTaskProgress = function(taskId) {
@@ -271,10 +345,77 @@ window.updateTaskProgress = function(taskId) {
     const progress = parseInt(progressInput.value);
     const status = statusSelect.value;
     
+    // Validate progress
+    if (isNaN(progress) || progress < 0 || progress > 100) {
+        showNotification('Progress must be between 0 and 100', 'error');
+        return;
+    }
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    
     // Close modal
     document.querySelector('.modal-overlay')?.remove();
     
-    showNotification(`Task ${taskId} updated: ${progress}% - ${status}`, 'success');
+    // Send update to server
+    fetch('/ergon/api/daily_planner_workflow.php?action=update-progress', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ 
+            task_id: parseInt(taskId), 
+            progress: progress,
+            status: status,
+            reason: 'Progress updated via daily planner',
+            csrf_token: csrfToken
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update UI
+            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+            if (taskCard) {
+                taskCard.dataset.status = status;
+                
+                // Update progress bar
+                const progressBar = taskCard.querySelector('.progress-fill');
+                if (progressBar) {
+                    progressBar.style.width = progress + '%';
+                }
+                
+                // Update progress value display
+                const progressValue = taskCard.querySelector('.progress-value');
+                if (progressValue) {
+                    progressValue.textContent = progress + '%';
+                }
+                
+                // Update status badge
+                const statusBadge = taskCard.querySelector(`#status-${taskId}`);
+                if (statusBadge) {
+                    statusBadge.textContent = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    statusBadge.className = `badge badge--${status}`;
+                }
+                
+                // If completed, update actions
+                if (progress >= 100 || status === 'completed') {
+                    updateTaskUI(taskId, 'completed', progress);
+                    window.taskTimer.stop(taskId);
+                    window.taskTimer.stopPause(taskId);
+                } else {
+                    updateTaskUI(taskId, status, progress);
+                }
+            }
+            
+            showNotification(`Task updated: ${progress}% - ${status}`, 'success');
+        } else {
+            showNotification('Failed to update progress: ' + (data.error || data.message), 'error');
+        }
+    })
+    .catch(error => {
+        showNotification('Network error: ' + error.message, 'error');
+    });
 };
 
 window.postponeTask = function(taskId) {
@@ -437,3 +578,4 @@ function startTask(taskId) { return window.startTask(taskId); }
 function openProgressModal(taskId, progress, status) { return window.openProgressModal(taskId, progress, status); }
 function updateTaskProgress(taskId) { return window.updateTaskProgress(taskId); }
 function postponeTask(taskId) { return window.postponeTask(taskId); }
+function setProgress(taskId, value) { return window.setProgress(taskId, value); }

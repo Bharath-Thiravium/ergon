@@ -311,6 +311,30 @@ window.onclick = function(event) {
 </script>
 
 <script>
+// Delete function
+function deleteRecord(module, id, name) {
+    if (confirm(`Are you sure you want to delete this ${name}? This action cannot be undone.`)) {
+        fetch(`/ergon/${module}/delete/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to delete record');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Network error occurred');
+        });
+    }
+}
+
 // Global action button handler
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.ab-btn');

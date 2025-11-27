@@ -12,14 +12,20 @@ class UsersController extends Controller {
         }
         
         try {
-            $userModel = new User();
-            $users = $userModel->getAll();
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
             
-            // Debug logging
-            error_log('Users index: Retrieved ' . count($users) . ' users');
+            // Get users with DISTINCT to prevent duplicates
+            $stmt = $db->prepare("SELECT DISTINCT u.*, d.name as department_name FROM users u LEFT JOIN departments d ON u.department_id = d.id WHERE u.status != 'deleted' ORDER BY u.created_at DESC");
+            $stmt->execute();
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Remove any potential duplicates by ID
+            $uniqueUsers = [];
             foreach ($users as $user) {
-                error_log("User {$user['id']}: {$user['name']} - Status: {$user['status']}");
+                $uniqueUsers[$user['id']] = $user;
             }
+            $users = array_values($uniqueUsers);
             
             $data = [
                 'users' => $users,

@@ -160,23 +160,14 @@ class TasksController extends Controller {
                 $stmt->execute([$taskData['assigned_to']]);
                 $assignedUser = $stmt->fetch(PDO::FETCH_ASSOC);
                 
-                if ($assignedUser) {
-                    // Notify assigned user
+                if ($assignedUser && $taskData['assigned_by'] != $taskData['assigned_to']) {
+                    // Notify assigned user (only if not self-assignment)
                     NotificationHelper::notifyUser(
                         $taskData['assigned_by'],
                         $taskData['assigned_to'],
-                        'task',
+                        'tasks',
                         'assigned',
                         "You have been assigned a new task: {$taskData['title']}",
-                        $taskId
-                    );
-                    
-                    // Notify owners about new task creation
-                    NotificationHelper::notifyOwners(
-                        $taskData['assigned_by'],
-                        'task',
-                        'created',
-                        "New task '{$taskData['title']}' assigned to {$assignedUser['name']}",
                         $taskId
                     );
                 }

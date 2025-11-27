@@ -253,7 +253,6 @@ ob_start();
                                 </div>
                             </td>
                         </tr>
-                                <?php include 'user_row.php'; ?>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
