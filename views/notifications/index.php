@@ -48,10 +48,10 @@ ob_start();
                                 'system' => '⚙️'
                             ][$referenceType] ?? '🔔';
                             
-                            // Generate URL based on reference type and ID
+                            // Generate URL based on reference type and ID (same logic as tasks)
                             $actionUrl = $notification['action_url'] ?? null;
                             $referenceId = $notification['reference_id'] ?? null;
-                            $viewUrl = null;
+                            $viewUrl = '/ergon/dashboard'; // Default fallback
                             
                             if ($actionUrl) {
                                 $viewUrl = $actionUrl;
@@ -73,7 +73,22 @@ ob_start();
                                     case 'advances':
                                         $viewUrl = "/ergon/advances/view/{$referenceId}";
                                         break;
+                                    default:
+                                        // For any other type, try to generate URL
+                                        if ($referenceType) {
+                                            $pluralType = $referenceType . 's';
+                                            $viewUrl = "/ergon/{$pluralType}/view/{$referenceId}";
+                                        }
                                 }
+                            } elseif ($referenceType) {
+                                // If no reference ID but has type, go to module index
+                                $moduleUrls = [
+                                    'leave' => '/ergon/leaves',
+                                    'expense' => '/ergon/expenses',
+                                    'advance' => '/ergon/advances',
+                                    'task' => '/ergon/tasks'
+                                ];
+                                $viewUrl = $moduleUrls[$referenceType] ?? "/ergon/{$referenceType}";
                             }
                         ?>
                         <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= $notification['id'] ?>">
@@ -114,7 +129,7 @@ ob_start();
                                         </svg>
                                     </button>
                                     <?php endif; ?>
-                                    <?php if ($viewUrl): ?>
+                                    <?php if ($viewUrl && $viewUrl !== '/ergon/dashboard'): ?>
                                     <a href="<?= $viewUrl ?>" class="ab-btn ab-btn--view" data-tooltip="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
