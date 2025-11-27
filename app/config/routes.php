@@ -102,6 +102,7 @@ $router->get('/planner', 'PlannerController', 'index');
 $router->post('/planner/add-task', 'PlannerController', 'addTask');
 $router->post('/planner/update-status', 'PlannerController', 'updateStatus');
 $router->get('/daily-planner/project-overview', 'DashboardController', 'projectOverview');
+$router->get('/daily-planner/project-tasks-overview', 'DashboardController', 'projectTasksOverview');
 $router->get('/daily-planner/delayed-tasks-overview', 'DashboardController', 'delayedTasksOverview');
 
 
