@@ -206,7 +206,7 @@ ob_start();
                                 </a>
                                 <?php endif; ?>
                                 <?php 
-                                $userRole = $user_role ?? '';
+                                $userRole = $_SESSION['role'] ?? 'user';
                                 $leaveStatus = strtolower($leave['status'] ?? 'pending');
                                 $isNotOwnLeave = ($leave['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0);
                                 $canApprove = $leaveStatus === 'pending' && (($userRole === 'owner') || ($userRole === 'admin' && $isNotOwnLeave));
@@ -227,9 +227,10 @@ ob_start();
                                 <?php endif; ?>
                                 <?php endif; ?>
                                 <?php 
+                                $sessionRole = $_SESSION['role'] ?? 'user';
                                 $canDelete = false;
-                                $isOwner = ($userRole === 'owner');
-                                $isAdmin = ($userRole === 'admin');
+                                $isOwner = ($sessionRole === 'owner');
+                                $isAdmin = ($sessionRole === 'admin');
                                 $isOwnLeave = ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0);
                                 $isPending = strtolower($leave['status'] ?? 'pending') === 'pending';
                                 
@@ -241,7 +242,7 @@ ob_start();
                                 }
                                 ?>
                                 <?php if ($canDelete): ?>
-                                <button class="ab-btn ab-btn--delete" data-action="delete" data-module="leaves" data-id="<?= $leave['id'] ?>" data-name="Leave Request" title="Delete Request">
+                                <button class="ab-btn ab-btn--delete" onclick="deleteLeave(<?= $leave['id'] ?>)" title="Delete Request">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <path d="M3 6h18"/>
                                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -311,13 +312,12 @@ window.onclick = function(event) {
 </script>
 
 <script>
-// Delete function
-function deleteRecord(module, id, name) {
-    if (confirm(`Are you sure you want to delete this ${name}? This action cannot be undone.`)) {
-        fetch(`/ergon/${module}/delete/${id}`, {
+function deleteLeave(id) {
+    if (confirm('Are you sure you want to delete this leave request? This action cannot be undone.')) {
+        fetch(`/ergon/leaves/delete/${id}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Type': 'application/json',
             }
         })
         .then(response => response.json())
@@ -325,17 +325,16 @@ function deleteRecord(module, id, name) {
             if (data.success) {
                 location.reload();
             } else {
-                alert(data.error || 'Failed to delete record');
+                alert(data.message || 'Failed to delete leave request');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Network error occurred');
+            alert('Error: ' + error.message);
         });
     }
 }
 
-// Global action button handler
+// Global action button handler for other buttons
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.ab-btn');
     if (!btn) return;
@@ -343,14 +342,11 @@ document.addEventListener('click', function(e) {
     const action = btn.dataset.action;
     const module = btn.dataset.module;
     const id = btn.dataset.id;
-    const name = btn.dataset.name;
     
     if (action === 'view' && module && id) {
         window.location.href = `/ergon/${module}/view/${id}`;
     } else if (action === 'edit' && module && id) {
         window.location.href = `/ergon/${module}/edit/${id}`;
-    } else if (action === 'delete' && module && id && name) {
-        deleteRecord(module, id, name);
     } else if (action === 'approve' && module && id) {
         window.location.href = `/ergon/${module}/approve/${id}`;
     }
