@@ -1,5 +1,4 @@
 <?php
-$title = 'Notifications';
 $active_page = 'notifications';
 ob_start();
 ?>
@@ -16,13 +15,6 @@ ob_start();
 </div>
 
 <div class="card">
-    <div class="card__header">
-        <h2 class="card__title">Your Notifications</h2>
-        <div class="card__actions">
-            <button class="btn btn--secondary" onclick="markAllAsRead()" id="markAllBtn">Mark All Read</button>
-            <button class="btn btn--primary" onclick="markSelectedAsRead()" id="markSelectedBtn" disabled>Mark Selected Read</button>
-        </div>
-    </div>
     <div class="card__body">
         <?php if (empty($notifications ?? [])): ?>
             <div class="empty-state">
@@ -86,20 +78,17 @@ ob_start();
                         ?>
                         <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= $notification['id'] ?>">
                             <td>
-                                <div class="notification-content">
-                                    <div class="notification-header">
-                                        <input type="checkbox" class="notification-checkbox" name="notification_<?= $notification['id'] ?>" value="<?= $notification['id'] ?>" onchange="updateMarkSelectedButton()" style="margin-right: 8px;">
+                                <input type="checkbox" class="notification-checkbox" name="notification_<?= $notification['id'] ?>" value="<?= $notification['id'] ?>" onchange="updateMarkSelectedButton()" style="margin-right: 8px; vertical-align: top;">
+                                <div class="notification-content" style="display: inline-block; width: calc(100% - 30px);">
+                                    <div class="notification-title">
                                         <strong><?= ucfirst($moduleName ?: 'General') ?></strong>
                                         <?php if ($isUnread): ?>
-                                        <span class="badge badge--warning">New</span>
+                                        <span class="badge badge--warning" style="margin-left: 8px;">New</span>
                                         <?php endif; ?>
                                     </div>
-                                    <div class="notification-message">
+                                    <div class="notification-message" style="margin-top: 4px; color: #666;">
                                         <?= htmlspecialchars($notification['message'] ?? 'No message') ?>
                                     </div>
-                                    <?php if ($notification['action_type'] ?? ''): ?>
-                                    <small class="text-muted"><?= ucfirst($notification['action_type']) ?></small>
-                                    <?php endif; ?>
                                 </div>
                             </td>
                             <td>
