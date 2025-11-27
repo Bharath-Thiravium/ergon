@@ -6,12 +6,23 @@ try {
     
     echo "<h2>Populating Notification Reference IDs</h2>";
     
+    // Check table structure first
+    $stmt = $db->query("DESCRIBE notifications");
+    $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $columnNames = array_column($columns, 'Field');
+    
+    echo "<p>Available columns: " . implode(', ', $columnNames) . "</p>";
+    
+    // Use module_name if reference_type doesn't exist
+    $typeColumn = in_array('reference_type', $columnNames) ? 'reference_type' : 'module_name';
+    $idColumn = in_array('reference_id', $columnNames) ? 'reference_id' : 'id';
+    
     // Get notifications without reference_id
     $stmt = $db->query("
-        SELECT id, reference_type, message, sender_id, created_at 
+        SELECT id, {$typeColumn} as ref_type, message, sender_id, created_at 
         FROM notifications 
-        WHERE reference_id IS NULL 
-        AND reference_type IN ('expense', 'leave', 'advance')
+        WHERE ({$idColumn} IS NULL OR {$idColumn} = 0)
+        AND {$typeColumn} IN ('expense', 'leave', 'advance')
         ORDER BY created_at DESC
     ");
     
@@ -23,7 +34,7 @@ try {
     foreach ($notifications as $notif) {
         $referenceId = null;
         
-        switch ($notif['reference_type']) {
+        switch ($notif['ref_type']) {
             case 'expense':
                 // Find expense by sender and approximate time
                 $stmt = $db->prepare("
@@ -66,12 +77,13 @@ try {
         }
         
         if ($referenceId) {
-            $updateStmt = $db->prepare("UPDATE notifications SET reference_id = ? WHERE id = ?");
+            $updateColumn = in_array('reference_id', $columnNames) ? 'reference_id' : 'module_id';
+            $updateStmt = $db->prepare("UPDATE notifications SET {$updateColumn} = ? WHERE id = ?");
             $updateStmt->execute([$referenceId, $notif['id']]);
-            echo "<p>✅ Fixed {$notif['reference_type']} notification ID {$notif['id']} → reference_id = {$referenceId}</p>";
+            echo "<p>✅ Fixed {$notif['ref_type']} notification ID {$notif['id']} → {$updateColumn} = {$referenceId}</p>";
             $fixed++;
         } else {
-            echo "<p>❌ No matching {$notif['reference_type']} found for notification ID {$notif['id']}</p>";
+            echo "<p>❌ No matching {$notif['ref_type']} found for notification ID {$notif['id']}</p>";
         }
     }
     
