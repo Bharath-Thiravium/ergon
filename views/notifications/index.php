@@ -49,10 +49,11 @@ ob_start();
                             ][$referenceType] ?? '🔔';
                             
                             // Use action_url if available, otherwise generate URL
-                            $viewUrl = $notification['action_url'] ?? '/ergon/dashboard';
+                            $actionUrl = $notification['action_url'] ?? null;
+                            $viewUrl = $actionUrl ?: '/ergon/dashboard';
                             $referenceId = $notification['reference_id'] ?? null;
                             
-                            if (!$notification['action_url'] && $referenceId && $referenceType) {
+                            if (!$actionUrl && $referenceId && $referenceType) {
                                 switch ($referenceType) {
                                     case 'task':
                                     case 'tasks':
@@ -73,7 +74,7 @@ ob_start();
                                     default:
                                         $viewUrl = "/ergon/{$referenceType}";
                                 }
-                            } elseif (!$notification['action_url'] && $referenceType) {
+                            } elseif (!$actionUrl && $referenceType) {
                                 $viewUrl = "/ergon/{$referenceType}";
                             }
                         ?>
