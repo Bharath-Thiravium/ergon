@@ -323,13 +323,14 @@ function deleteLeave(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                showMessage(data.message || 'Leave request deleted successfully', 'success');
+                setTimeout(() => location.reload(), 1500);
             } else {
-                alert(data.message || 'Failed to delete leave request');
+                showMessage(data.message || 'Failed to delete leave request', 'error');
             }
         })
         .catch(error => {
-            alert('Error: ' + error.message);
+            showMessage('Network error occurred', 'error');
         });
     }
 }
