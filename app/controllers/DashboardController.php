@@ -39,43 +39,26 @@ class DashboardController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Query to get actual project data with proper filtering
+            // Query to get all project data including those with empty/null project names
             $stmt = $db->query("
                 SELECT 
-                    project_name,
+                    CASE 
+                        WHEN project_name IS NULL OR project_name = '' THEN 'General Tasks'
+                        ELSE project_name 
+                    END as project_name,
                     COUNT(*) as total_tasks,
                     SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
                     SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
                     SUM(CASE WHEN status IN ('assigned', 'pending', 'not_started') THEN 1 ELSE 0 END) as pending_tasks
                 FROM tasks 
-                WHERE project_name IS NOT NULL 
-                AND project_name != '' 
-                AND project_name != 'General Tasks'
-                GROUP BY project_name
+                GROUP BY CASE 
+                    WHEN project_name IS NULL OR project_name = '' THEN 'General Tasks'
+                    ELSE project_name 
+                END
                 ORDER BY total_tasks DESC
                 LIMIT 10
             ");
             $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            // Add fallback data if no projects found
-            if (empty($projects)) {
-                $projects = [
-                    [
-                        'project_name' => 'Sample Project A',
-                        'total_tasks' => 15,
-                        'completed_tasks' => 10,
-                        'in_progress_tasks' => 3,
-                        'pending_tasks' => 2
-                    ],
-                    [
-                        'project_name' => 'Sample Project B', 
-                        'total_tasks' => 8,
-                        'completed_tasks' => 5,
-                        'in_progress_tasks' => 2,
-                        'pending_tasks' => 1
-                    ]
-                ];
-            }
             
             $this->view('dashboard/project_overview', [
                 'projects' => $projects,
