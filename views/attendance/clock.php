@@ -84,9 +84,18 @@ function getLocation() {
             },
             function(error) {
                 document.getElementById('locationStatus').innerHTML = 
-                    '<span>⚠️</span> Location unavailable';
+                    '<span>⚠️</span> Location access denied - Required for attendance';
+                console.error('Location error:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000
             }
         );
+    } else {
+        document.getElementById('locationStatus').innerHTML = 
+            '<span>⚠️</span> Location not supported by browser';
     }
 }
 
@@ -147,6 +156,16 @@ function clockAction(type) {
     const btn = document.getElementById('clockBtn');
     const text = document.getElementById('clockBtnText');
     
+    // Check if location is available
+    if (!currentPosition) {
+        if (typeof showMessage === 'function') {
+            showMessage('Location required for attendance. Please enable location access.', 'error');
+        } else {
+            alert('Location required for attendance. Please enable location access.');
+        }
+        return;
+    }
+    
     // Disable button and show loading
     btn.disabled = true;
     const originalText = text.textContent;
@@ -154,11 +173,8 @@ function clockAction(type) {
     
     const formData = new FormData();
     formData.append('type', type);
-    
-    if (currentPosition) {
-        formData.append('latitude', currentPosition.coords.latitude);
-        formData.append('longitude', currentPosition.coords.longitude);
-    }
+    formData.append('latitude', currentPosition.coords.latitude);
+    formData.append('longitude', currentPosition.coords.longitude);
     
     fetch('/ergon/attendance/clock', {
         method: 'POST',
@@ -192,10 +208,18 @@ function clockAction(type) {
                 }
             }
             
-            alert(`Clocked ${type} successfully!`);
+            if (typeof showMessage === 'function') {
+                showMessage(`Clocked ${type} successfully!`, 'success');
+            } else {
+                alert(`Clocked ${type} successfully!`);
+            }
             setTimeout(() => window.location.href = '/ergon/attendance', 1500);
         } else {
-            alert(data.error || 'An error occurred');
+            if (typeof showMessage === 'function') {
+                showMessage(data.error || 'An error occurred', 'error');
+            } else {
+                alert(data.error || 'An error occurred');
+            }
             // Restore button state
             text.textContent = originalText;
             btn.disabled = false;
@@ -203,7 +227,11 @@ function clockAction(type) {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Server error occurred. Please try again.');
+        if (typeof showMessage === 'function') {
+            showMessage('Server error occurred. Please try again.', 'error');
+        } else {
+            alert('Server error occurred. Please try again.');
+        }
         // Restore button state
         text.textContent = originalText;
         btn.disabled = false;

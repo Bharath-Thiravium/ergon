@@ -224,7 +224,7 @@ $content = ob_start();
             <div class="form-grid">
                 <div class="form-group">
                     <label for="deadline">⏰ Due Date <span class="field-help" title="Hard deadline for task completion">ℹ️</span></label>
-                    <input type="date" id="deadline" name="deadline" value="<?= $task['deadline'] ?? '' ?>" min="<?= date('Y-m-d') ?>">
+                    <input type="date" id="deadline" name="deadline" value="<?= !empty($task['deadline']) ? date('Y-m-d', strtotime($task['deadline'])) : '' ?>" min="<?= date('Y-m-d') ?>">
                     <small class="field-hint">Hard deadline when task must be completed. Leave empty if no specific deadline.</small>
                 </div>
                 <div class="form-group">
@@ -311,6 +311,51 @@ $content = ob_start();
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
+                </div>
+                
+                <div class="option-card">
+                    <div class="option-header">
+                        <div class="option-icon">🔄</div>
+                        <div class="option-content">
+                            <h4>Recurring Task</h4>
+                            <p>Set task to repeat automatically</p>
+                        </div>
+                    </div>
+                    <div class="option-toggle">
+                        <input type="checkbox" id="is_recurring" name="is_recurring" <?= !empty($task['is_recurring']) ? 'checked' : '' ?> onchange="toggleRecurringFields()" class="toggle-switch">
+                        <label for="is_recurring" class="toggle-label">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recurring Fields (Hidden by default) -->
+        <div id="recurringFields" class="form-section recurring-section" style="display: <?= !empty($task['is_recurring']) ? 'block' : 'none' ?>;">
+            <h3>🔄 Recurring Schedule</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="recurrence_type">Repeat Frequency *</label>
+                    <select id="recurrence_type" name="recurrence_type">
+                        <option value="weekly" <?= ($task['recurrence_type'] ?? '') === 'weekly' ? 'selected' : '' ?>>📅 Weekly</option>
+                        <option value="monthly" <?= ($task['recurrence_type'] ?? '') === 'monthly' ? 'selected' : '' ?>>📆 Monthly</option>
+                        <option value="quarterly" <?= ($task['recurrence_type'] ?? '') === 'quarterly' ? 'selected' : '' ?>>📅 Quarterly (3 months)</option>
+                        <option value="half_yearly" <?= ($task['recurrence_type'] ?? '') === 'half_yearly' ? 'selected' : '' ?>>📆 Half Yearly (6 months)</option>
+                        <option value="annually" <?= ($task['recurrence_type'] ?? '') === 'annually' ? 'selected' : '' ?>>📅 Annually (12 months)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="recurrence_interval">Repeat Every</label>
+                    <div class="interval-input">
+                        <input type="number" id="recurrence_interval" name="recurrence_interval" min="1" max="12" value="<?= $task['recurrence_interval'] ?? '1' ?>">
+                        <span id="interval_label">week(s)</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="recurrence_end_date">End Recurrence</label>
+                    <input type="date" id="recurrence_end_date" name="recurrence_end_date" value="<?= $task['recurrence_end_date'] ?? '' ?>" min="<?= date('Y-m-d', strtotime('+1 week')) ?>">
+                    <small class="field-hint">Optional: When to stop creating recurring tasks</small>
                 </div>
             </div>
         </div>
@@ -726,6 +771,60 @@ function updateSLAHours() {
     document.getElementById('sla_hours').value = totalHours.toFixed(4);
 }
 
+// Toggle recurring fields
+function toggleRecurringFields(isInitial = false) {
+    const checkbox = document.getElementById('is_recurring');
+    const recurringFields = document.getElementById('recurringFields');
+    
+    if (checkbox.checked) {
+        recurringFields.style.display = 'block';
+        recurringFields.style.animation = 'slideDown 0.3s ease';
+        
+        if (!isInitial) {
+            recurringFields.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        document.getElementById('recurrence_type').setAttribute('required', 'required');
+        
+        // Update interval label based on recurrence type
+        updateIntervalLabel();
+    } else {
+        recurringFields.style.display = 'none';
+        
+        // Remove required attribute
+        document.getElementById('recurrence_type').removeAttribute('required');
+    }
+}
+
+// Update interval label based on recurrence type
+function updateIntervalLabel() {
+    const type = document.getElementById('recurrence_type').value;
+    const label = document.getElementById('interval_label');
+    const intervalInput = document.getElementById('recurrence_interval');
+    
+    const labels = {
+        'weekly': 'week(s)',
+        'monthly': 'month(s)',
+        'quarterly': 'quarter(s)',
+        'half_yearly': 'half-year(s)',
+        'annually': 'year(s)'
+    };
+    
+    const maxValues = {
+        'weekly': 52,
+        'monthly': 12,
+        'quarterly': 4,
+        'half_yearly': 2,
+        'annually': 5
+    };
+    
+    label.textContent = labels[type] || 'period(s)';
+    intervalInput.max = maxValues[type] || 12;
+    
+    if (parseInt(intervalInput.value) > maxValues[type]) {
+        intervalInput.value = 1;
+    }
+}
+
 // Check for URL parameters and show messages
 function checkUrlMessages() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -835,6 +934,19 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('progressValue').textContent = '0%';
         }
     });
+    
+    // Initialize recurring fields
+    const recurringTypeSelect = document.getElementById('recurrence_type');
+    if (recurringTypeSelect) {
+        recurringTypeSelect.addEventListener('change', updateIntervalLabel);
+        if (!document.getElementById('is_recurring').checked) {
+            recurringTypeSelect.removeAttribute('required');
+        }
+        updateIntervalLabel(); // Set initial label
+    }
+    
+    // Initialize recurring fields state
+    toggleRecurringFields(true);
     
     // Initialize follow-up fields state based on current checkbox state
     const followupRequiredFields = [
@@ -1264,6 +1376,29 @@ document.addEventListener('DOMContentLoaded', function() {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
+}
+
+.recurring-section {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), var(--bg-secondary));
+    border: 2px dashed #22c55e;
+    animation: slideDown 0.3s ease;
+}
+
+.interval-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.interval-input input {
+    width: 80px;
+    text-align: center;
+}
+
+.interval-input span {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
 }
 
 @media (max-width: 768px) {

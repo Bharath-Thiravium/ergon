@@ -21,7 +21,7 @@ class LeaveController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Ensure leaves table exists
+            // Ensure leaves table exists with all columns
             $this->ensureLeavesTable($db);
             
             // Get filter parameters
@@ -137,12 +137,15 @@ class LeaveController extends Controller {
                 return;
             }
             
+            $contactDuringLeave = trim($_POST['contact_during_leave'] ?? '');
+            
             $data = [
                 'user_id' => $userId,
                 'type' => Security::sanitizeString($_POST['type']),
                 'start_date' => $startDate,
                 'end_date' => $endDate,
-                'reason' => Security::sanitizeString($reason, 500)
+                'reason' => Security::sanitizeString($reason, 500),
+                'contact_during_leave' => Security::sanitizeString($contactDuringLeave, 20)
             ];
             
             // Calculate leave days
@@ -154,14 +157,16 @@ class LeaveController extends Controller {
             try {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
+                $this->ensureLeavesTable($db);
                 
-                $stmt = $db->prepare("INSERT INTO leaves (user_id, leave_type, start_date, end_date, reason, days_requested, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())");
+                $stmt = $db->prepare("INSERT INTO leaves (user_id, leave_type, start_date, end_date, reason, contact_during_leave, days_requested, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
                 $result = $stmt->execute([
                     $data['user_id'],
                     $data['type'],
                     $data['start_date'],
                     $data['end_date'],
                     $data['reason'],
+                    $data['contact_during_leave'],
                     $days
                 ]);
                 
@@ -231,6 +236,7 @@ class LeaveController extends Controller {
                 $startDate = $_POST['start_date'] ?? '';
                 $endDate = $_POST['end_date'] ?? '';
                 $reason = trim($_POST['reason'] ?? '');
+                $contactDuringLeave = trim($_POST['contact_during_leave'] ?? '');
                 
                 if (empty($type) || empty($startDate) || empty($endDate) || empty($reason)) {
                     header('Location: /ergon/leaves/edit/' . $id . '?error=All fields are required');
@@ -247,9 +253,9 @@ class LeaveController extends Controller {
                 $end = new DateTime($endDate);
                 $days = $end->diff($start)->days + 1;
                 
-                // Update using leave_type column with days calculation
-                $stmt = $db->prepare("UPDATE leaves SET leave_type = ?, start_date = ?, end_date = ?, reason = ?, days_requested = ? WHERE id = ?");
-                $result = $stmt->execute([$type, $startDate, $endDate, $reason, $days, $id]);
+                // Update using leave_type column with days calculation and contact_during_leave
+                $stmt = $db->prepare("UPDATE leaves SET leave_type = ?, start_date = ?, end_date = ?, reason = ?, contact_during_leave = ?, days_requested = ? WHERE id = ?");
+                $result = $stmt->execute([$type, $startDate, $endDate, $reason, $contactDuringLeave, $days, $id]);
                 
                 if ($result) {
                     header('Location: /ergon/leaves?success=Leave request updated successfully');
@@ -512,6 +518,7 @@ class LeaveController extends Controller {
                 end_date DATE NOT NULL,
                 days_requested INT DEFAULT 1,
                 reason TEXT NOT NULL,
+                contact_during_leave VARCHAR(20) NULL,
                 status VARCHAR(20) DEFAULT 'pending',
                 rejection_reason TEXT NULL,
                 approved_by INT NULL,
@@ -521,6 +528,13 @@ class LeaveController extends Controller {
                 INDEX idx_user_id (user_id),
                 INDEX idx_status (status)
             )");
+            
+            // Add contact_during_leave column if it doesn't exist
+            $stmt = $db->prepare("SHOW COLUMNS FROM leaves LIKE 'contact_during_leave'");
+            $stmt->execute();
+            if ($stmt->rowCount() == 0) {
+                $db->exec("ALTER TABLE leaves ADD COLUMN contact_during_leave VARCHAR(20) NULL AFTER reason");
+            }
         } catch (Exception $e) {
             error_log('ensureLeavesTable error: ' . $e->getMessage());
         }
