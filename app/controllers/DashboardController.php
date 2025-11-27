@@ -46,19 +46,27 @@ class DashboardController extends Controller {
                     p.status as project_status,
                     p.description,
                     d.name as department_name,
-                    COALESCE(COUNT(t.id), 0) as total_tasks,
-                    COALESCE(SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END), 0) as completed_tasks,
-                    COALESCE(SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END), 0) as in_progress_tasks,
-                    COALESCE(SUM(CASE WHEN t.status IN ('assigned', 'pending', 'not_started') THEN 1 ELSE 0 END), 0) as pending_tasks
+                    COUNT(t.id) as total_tasks,
+                    SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
+                    SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
+                    SUM(CASE WHEN t.status IN ('assigned', 'pending', 'not_started') THEN 1 ELSE 0 END) as pending_tasks
                 FROM projects p
                 LEFT JOIN departments d ON p.department_id = d.id
-                LEFT JOIN tasks t ON t.project_name = p.name
+                LEFT JOIN tasks t ON (t.project_name = p.name OR t.project_id = p.id)
                 WHERE p.status = 'active'
                 GROUP BY p.id, p.name, p.status, p.description, d.name
                 ORDER BY total_tasks DESC, p.created_at DESC
                 LIMIT 10
             ");
             $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Ensure numeric values are properly set
+            foreach ($projects as &$project) {
+                $project['total_tasks'] = (int)($project['total_tasks'] ?? 0);
+                $project['completed_tasks'] = (int)($project['completed_tasks'] ?? 0);
+                $project['in_progress_tasks'] = (int)($project['in_progress_tasks'] ?? 0);
+                $project['pending_tasks'] = (int)($project['pending_tasks'] ?? 0);
+            }
             
             $this->view('dashboard/project_overview', [
                 'projects' => $projects,
