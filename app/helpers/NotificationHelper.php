@@ -17,10 +17,11 @@ class NotificationHelper {
                 $notification->create([
                     'sender_id' => $senderId,
                     'receiver_id' => $owner['id'],
-                    'module_name' => $module,
-                    'action_type' => $action,
+                    'title' => ucfirst($module) . ' ' . ucfirst($action),
                     'message' => $message,
-                    'reference_id' => $referenceId
+                    'reference_type' => $module,
+                    'reference_id' => $referenceId,
+                    'category' => 'approval'
                 ]);
             }
             
@@ -37,10 +38,11 @@ class NotificationHelper {
             $notification->create([
                 'sender_id' => $senderId,
                 'receiver_id' => $receiverId,
-                'module_name' => $module,
-                'action_type' => $action,
+                'title' => ucfirst($module) . ' ' . ucfirst($action),
                 'message' => $message,
-                'reference_id' => $referenceId
+                'reference_type' => $module,
+                'reference_id' => $referenceId,
+                'category' => 'system'
             ]);
         } catch (Exception $e) {
             error_log('NotificationHelper error: ' . $e->getMessage());
@@ -59,10 +61,11 @@ class NotificationHelper {
                 $notification->create([
                     'sender_id' => $senderId,
                     'receiver_id' => $admin['id'],
-                    'module_name' => $module,
-                    'action_type' => $action,
+                    'title' => ucfirst($module) . ' ' . ucfirst($action),
                     'message' => $message,
-                    'reference_id' => $referenceId
+                    'reference_type' => $module,
+                    'reference_id' => $referenceId,
+                    'category' => 'approval'
                 ]);
             }
         } catch (Exception $e) {

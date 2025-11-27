@@ -39,20 +39,21 @@ ob_start();
                     <tbody>
                         <?php foreach ($notifications as $notification): 
                             $isUnread = !($notification['is_read'] ?? false);
-                            $moduleName = $notification['module_name'] ?? '';
+                            $referenceType = $notification['reference_type'] ?? $notification['module_name'] ?? '';
                             $moduleIcon = [
                                 'task' => '✅', 'tasks' => '✅',
                                 'leave' => '📅', 'leaves' => '📅', 
                                 'expense' => '💰', 'expenses' => '💰',
                                 'advance' => '💳', 'advances' => '💳',
                                 'system' => '⚙️'
-                            ][$moduleName] ?? '🔔';
-                            // Generate proper URL based on module and reference
-                            $viewUrl = '/ergon/dashboard';
+                            ][$referenceType] ?? '🔔';
+                            
+                            // Use action_url if available, otherwise generate URL
+                            $viewUrl = $notification['action_url'] ?? '/ergon/dashboard';
                             $referenceId = $notification['reference_id'] ?? null;
                             
-                            if ($referenceId && $moduleName) {
-                                switch ($moduleName) {
+                            if (!$notification['action_url'] && $referenceId && $referenceType) {
+                                switch ($referenceType) {
                                     case 'task':
                                     case 'tasks':
                                         $viewUrl = "/ergon/tasks/view/{$referenceId}";
@@ -70,10 +71,10 @@ ob_start();
                                         $viewUrl = "/ergon/advances/view/{$referenceId}";
                                         break;
                                     default:
-                                        $viewUrl = "/ergon/{$moduleName}";
+                                        $viewUrl = "/ergon/{$referenceType}";
                                 }
-                            } elseif ($moduleName) {
-                                $viewUrl = "/ergon/{$moduleName}";
+                            } elseif (!$notification['action_url'] && $referenceType) {
+                                $viewUrl = "/ergon/{$referenceType}";
                             }
                         ?>
                         <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= $notification['id'] ?>">
@@ -81,7 +82,7 @@ ob_start();
                                 <input type="checkbox" class="notification-checkbox" name="notification_<?= $notification['id'] ?>" value="<?= $notification['id'] ?>" onchange="updateMarkSelectedButton()" style="margin-right: 8px; vertical-align: top;">
                                 <div class="notification-content" style="display: inline-block; width: calc(100% - 30px);">
                                     <div class="notification-title">
-                                        <strong><?= ucfirst($moduleName ?: 'General') ?></strong>
+                                        <strong><?= htmlspecialchars($notification['title'] ?? ucfirst($referenceType ?: 'General')) ?></strong>
                                         <?php if ($isUnread): ?>
                                         <span class="badge badge--warning" style="margin-left: 8px;">New</span>
                                         <?php endif; ?>
