@@ -128,7 +128,7 @@ ob_start();
                                         </svg>
                                     </button>
                                     <?php endif; ?>
-                                    <?php if ($viewUrl && $viewUrl !== '/ergon/dashboard' && !empty($referenceId) && is_numeric($referenceId) && $referenceId > 0): ?>
+                                    <?php if ($viewUrl && $viewUrl !== '/ergon/dashboard'): ?>
                                     <a href="<?= htmlspecialchars($viewUrl, ENT_QUOTES, 'UTF-8') ?>" class="ab-btn ab-btn--view" data-tooltip="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
