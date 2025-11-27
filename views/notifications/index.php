@@ -53,6 +53,7 @@ ob_start();
                             $viewUrl = $actionUrl ?: '/ergon/dashboard';
                             $referenceId = $notification['reference_id'] ?? null;
                             
+                            // Only generate view URLs when there's a reference ID
                             if (!$actionUrl && $referenceId && $referenceType) {
                                 switch ($referenceType) {
                                     case 'task':
@@ -71,19 +72,7 @@ ob_start();
                                     case 'advances':
                                         $viewUrl = "/ergon/advances/view/{$referenceId}";
                                         break;
-                                    default:
-                                        $viewUrl = "/ergon/{$referenceType}";
                                 }
-                            } elseif (!$actionUrl && $referenceType) {
-                                // Map singular to plural for correct URLs
-                                $moduleUrls = [
-                                    'leave' => '/ergon/leaves',
-                                    'expense' => '/ergon/expenses', 
-                                    'advance' => '/ergon/advances',
-                                    'task' => '/ergon/tasks'
-                                ];
-                                $baseUrl = $moduleUrls[$referenceType] ?? "/ergon/{$referenceType}";
-                                $viewUrl = $referenceId ? "{$baseUrl}/view/{$referenceId}" : $baseUrl;
                             }
                         ?>
                         <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= $notification['id'] ?>">
@@ -124,12 +113,14 @@ ob_start();
                                         </svg>
                                     </button>
                                     <?php endif; ?>
+                                    <?php if ($referenceId || $actionUrl): ?>
                                     <a href="<?= $viewUrl ?>" class="ab-btn ab-btn--view" data-tooltip="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                             <circle cx="12" cy="12" r="3"/>
                                         </svg>
                                     </a>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
