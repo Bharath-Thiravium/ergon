@@ -182,7 +182,8 @@ class ExpenseController extends Controller {
                     $user = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if ($user) {
-                        @NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount);
+                        $expenseId = $db->lastInsertId();
+                        NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount, $expenseId);
                     }
                 } catch (Exception $notifError) {
                     // Log but don't fail the expense creation
@@ -207,6 +208,22 @@ class ExpenseController extends Controller {
                     ]);
                     
                     if ($result) {
+                        $expenseId = $db->lastInsertId();
+                        
+                        // Create notification with expense ID
+                        try {
+                            require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                            $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                            $stmt->execute([$userId]);
+                            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                            
+                            if ($user) {
+                                NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount, $expenseId);
+                            }
+                        } catch (Exception $notifError) {
+                            error_log('Notification error (non-critical): ' . $notifError->getMessage());
+                        }
+                        
                         echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => '/ergon/expenses']);
                     } else {
                         error_log('Direct expense insert failed: ' . implode(' - ', $stmt->errorInfo()));

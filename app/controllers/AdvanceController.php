@@ -78,6 +78,23 @@ class AdvanceController extends Controller {
                 ]);
                 
                 if ($result) {
+                    $advanceId = $db->lastInsertId();
+                    $amount = floatval($_POST['amount'] ?? 0);
+                    
+                    // Create notification with advance ID
+                    try {
+                        require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                        $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                        $stmt->execute([$_SESSION['user_id']]);
+                        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        if ($user) {
+                            NotificationHelper::notifyAdvanceRequest($_SESSION['user_id'], $user['name'], $amount, $advanceId);
+                        }
+                    } catch (Exception $notifError) {
+                        error_log('Notification error (non-critical): ' . $notifError->getMessage());
+                    }
+                    
                     header('Location: /ergon/advances?success=1');
                 } else {
                     header('Location: /ergon/advances/create?error=1');
