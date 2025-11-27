@@ -39,23 +39,23 @@ class DashboardController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Query to get all project data including those with empty/null project names
+            // Query to get actual projects from projects table with task statistics
             $stmt = $db->query("
                 SELECT 
-                    CASE 
-                        WHEN project_name IS NULL OR project_name = '' THEN 'General Tasks'
-                        ELSE project_name 
-                    END as project_name,
-                    COUNT(*) as total_tasks,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
-                    SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
-                    SUM(CASE WHEN status IN ('assigned', 'pending', 'not_started') THEN 1 ELSE 0 END) as pending_tasks
-                FROM tasks 
-                GROUP BY CASE 
-                    WHEN project_name IS NULL OR project_name = '' THEN 'General Tasks'
-                    ELSE project_name 
-                END
-                ORDER BY total_tasks DESC
+                    p.name as project_name,
+                    p.status as project_status,
+                    p.description,
+                    d.name as department_name,
+                    COALESCE(COUNT(t.id), 0) as total_tasks,
+                    COALESCE(SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END), 0) as completed_tasks,
+                    COALESCE(SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END), 0) as in_progress_tasks,
+                    COALESCE(SUM(CASE WHEN t.status IN ('assigned', 'pending', 'not_started') THEN 1 ELSE 0 END), 0) as pending_tasks
+                FROM projects p
+                LEFT JOIN departments d ON p.department_id = d.id
+                LEFT JOIN tasks t ON t.project_name = p.name
+                WHERE p.status = 'active'
+                GROUP BY p.id, p.name, p.status, p.description, d.name
+                ORDER BY total_tasks DESC, p.created_at DESC
                 LIMIT 10
             ");
             $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
