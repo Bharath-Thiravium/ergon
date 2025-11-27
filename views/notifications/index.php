@@ -53,9 +53,12 @@ ob_start();
                             $referenceId = $notification['reference_id'] ?? null;
                             $viewUrl = '/ergon/dashboard'; // Default fallback
                             
+                            // Debug: Check what we have
+                            // echo "<!-- Debug: ID={$referenceId}, Type={$referenceType}, ActionURL={$actionUrl} -->"
+                            
                             if ($actionUrl) {
                                 $viewUrl = $actionUrl;
-                            } elseif ($referenceType && $referenceId > 0) {
+                            } elseif ($referenceType && !empty($referenceId) && is_numeric($referenceId) && $referenceId > 0) {
                                 switch ($referenceType) {
                                     case 'task':
                                     case 'tasks':
@@ -125,7 +128,7 @@ ob_start();
                                         </svg>
                                     </button>
                                     <?php endif; ?>
-                                    <?php if ($viewUrl && $viewUrl !== '/ergon/dashboard' && $referenceId > 0): ?>
+                                    <?php if ($viewUrl && $viewUrl !== '/ergon/dashboard' && !empty($referenceId) && is_numeric($referenceId) && $referenceId > 0): ?>
                                     <a href="<?= htmlspecialchars($viewUrl, ENT_QUOTES, 'UTF-8') ?>" class="ab-btn ab-btn--view" data-tooltip="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
