@@ -82,7 +82,8 @@ ob_start();
                                     'advance' => '/ergon/advances',
                                     'task' => '/ergon/tasks'
                                 ];
-                                $viewUrl = $moduleUrls[$referenceType] ?? "/ergon/{$referenceType}";
+                                $baseUrl = $moduleUrls[$referenceType] ?? "/ergon/{$referenceType}";
+                                $viewUrl = $referenceId ? "{$baseUrl}/view/{$referenceId}" : $baseUrl;
                             }
                         ?>
                         <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= $notification['id'] ?>">
