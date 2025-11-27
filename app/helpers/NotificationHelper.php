@@ -8,13 +8,15 @@ class NotificationHelper {
     public static function notifyOwners($senderId, $module, $action, $message, $referenceId = null, $actionUrl = null) {
         try {
             $db = Database::connect();
-            $stmt = $db->prepare("SELECT id FROM users WHERE role = 'owner' AND status = 'active'");
+            $stmt = $db->prepare("SELECT id FROM users WHERE role = 'owner' AND (status = 'active' OR status IS NULL OR status = '')");
             $stmt->execute();
             $owners = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
+            error_log("NotificationHelper: Found " . count($owners) . " owners for notification");
+            
             $notification = new Notification();
             foreach ($owners as $owner) {
-                $notification->create([
+                $result = $notification->create([
                     'sender_id' => $senderId,
                     'receiver_id' => $owner['id'],
                     'title' => ucfirst($module) . ' ' . ucfirst(str_replace('_', ' ', $action)),
@@ -24,6 +26,7 @@ class NotificationHelper {
                     'action_url' => $actionUrl,
                     'category' => 'approval'
                 ]);
+                error_log("NotificationHelper: Created notification for owner {$owner['id']}: " . ($result ? 'SUCCESS' : 'FAILED'));
             }
             
             // Also notify admins for all owner notifications
@@ -53,13 +56,15 @@ class NotificationHelper {
     public static function notifyAdmins($senderId, $module, $action, $message, $referenceId = null, $actionUrl = null) {
         try {
             $db = Database::connect();
-            $stmt = $db->prepare("SELECT id FROM users WHERE role = 'admin' AND status = 'active'");
+            $stmt = $db->prepare("SELECT id FROM users WHERE role = 'admin' AND (status = 'active' OR status IS NULL OR status = '')");
             $stmt->execute();
             $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
+            error_log("NotificationHelper: Found " . count($admins) . " admins for notification");
+            
             $notification = new Notification();
             foreach ($admins as $admin) {
-                $notification->create([
+                $result = $notification->create([
                     'sender_id' => $senderId,
                     'receiver_id' => $admin['id'],
                     'title' => ucfirst($module) . ' ' . ucfirst(str_replace('_', ' ', $action)),
@@ -69,6 +74,7 @@ class NotificationHelper {
                     'action_url' => $actionUrl,
                     'category' => 'approval'
                 ]);
+                error_log("NotificationHelper: Created notification for admin {$admin['id']}: " . ($result ? 'SUCCESS' : 'FAILED'));
             }
         } catch (Exception $e) {
             error_log('NotificationHelper error: ' . $e->getMessage());

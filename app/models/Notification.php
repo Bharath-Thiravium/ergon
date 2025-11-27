@@ -60,9 +60,9 @@ class Notification {
     
     public function getForUser($userId, $limit = 50) {
         $stmt = $this->db->prepare("
-            SELECT n.*, u.name as sender_name 
+            SELECT n.*, COALESCE(u.name, 'System') as sender_name 
             FROM notifications n 
-            JOIN users u ON n.sender_id = u.id 
+            LEFT JOIN users u ON n.sender_id = u.id 
             WHERE n.receiver_id = ? 
             ORDER BY n.created_at DESC 
             LIMIT ?
