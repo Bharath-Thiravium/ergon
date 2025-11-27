@@ -75,7 +75,14 @@ ob_start();
                                         $viewUrl = "/ergon/{$referenceType}";
                                 }
                             } elseif (!$actionUrl && $referenceType) {
-                                $viewUrl = "/ergon/{$referenceType}";
+                                // Map singular to plural for correct URLs
+                                $moduleUrls = [
+                                    'leave' => '/ergon/leaves',
+                                    'expense' => '/ergon/expenses', 
+                                    'advance' => '/ergon/advances',
+                                    'task' => '/ergon/tasks'
+                                ];
+                                $viewUrl = $moduleUrls[$referenceType] ?? "/ergon/{$referenceType}";
                             }
                         ?>
                         <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= $notification['id'] ?>">
