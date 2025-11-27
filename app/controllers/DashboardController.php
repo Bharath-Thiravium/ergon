@@ -39,16 +39,19 @@ class DashboardController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Simple query to get project data from tasks
+            // Query to get actual project data with proper filtering
             $stmt = $db->query("
                 SELECT 
-                    COALESCE(project_name, 'General Tasks') as project_name,
+                    project_name,
                     COUNT(*) as total_tasks,
                     SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
                     SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
-                    SUM(CASE WHEN status IN ('assigned', 'pending') THEN 1 ELSE 0 END) as pending_tasks
+                    SUM(CASE WHEN status IN ('assigned', 'pending', 'not_started') THEN 1 ELSE 0 END) as pending_tasks
                 FROM tasks 
-                GROUP BY COALESCE(project_name, 'General Tasks')
+                WHERE project_name IS NOT NULL 
+                AND project_name != '' 
+                AND project_name != 'General Tasks'
+                GROUP BY project_name
                 ORDER BY total_tasks DESC
                 LIMIT 10
             ");
