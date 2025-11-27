@@ -73,8 +73,17 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            // Return all users for task assignment (allow any user to assign tasks to others)
-            $stmt = $db->prepare("SELECT id, name, email, role FROM users ORDER BY name");
+            // For User Panel: exclude owners from task assignment dropdown
+            $currentUserRole = $_SESSION['role'] ?? 'user';
+            
+            if ($currentUserRole === 'user') {
+                // User Panel: exclude owners, show only employees and admins
+                $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE status = 'active' AND role != 'owner' ORDER BY name");
+            } else {
+                // Admin/Owner Panel: show all active users
+                $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE status = 'active' ORDER BY name");
+            }
+            
             $stmt->execute();
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
@@ -670,6 +679,14 @@ class TasksController extends Controller {
                 if ($oldStatus !== $status) {
                     require_once __DIR__ . '/ContactFollowupController.php';
                     ContactFollowupController::updateLinkedFollowupStatus($taskId, $status);
+                }
+                
+                // Sync with daily_tasks table if exists
+                try {
+                    $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, completed_percentage = ? WHERE original_task_id = ? OR task_id = ?");
+                    $stmt->execute([$status, $progress, $taskId, $taskId]);
+                } catch (Exception $e) {
+                    error_log('Daily tasks sync error: ' . $e->getMessage());
                 }
                 
                 echo json_encode(['success' => true, 'message' => 'Task updated successfully']);
