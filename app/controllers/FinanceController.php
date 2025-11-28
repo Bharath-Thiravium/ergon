@@ -96,24 +96,34 @@ class FinanceController extends Controller {
                 ]);
                 return;
             } else {
-                // No dashboard stats found - require refresh
-                echo json_encode([
-                    'totalInvoiceAmount' => 0,
-                    'invoiceReceived' => 0,
-                    'pendingInvoiceAmount' => 0,
-                    'pendingGSTAmount' => 0,
-                    'pendingPOValue' => 0,
-                    'claimableAmount' => 0,
-                    'outstandingAmount' => 0,
-                    'pendingInvoices' => 0,
-                    'customersPending' => 0,
-                    'overdueAmount' => 0,
-                    'outstandingPercentage' => 0,
-                    'conversionFunnel' => ['quotations' => 0, 'purchaseOrders' => 0, 'invoices' => 0, 'payments' => 0],
-                    'cashFlow' => ['expectedInflow' => 0, 'poCommitments' => 0],
-                    'message' => 'No dashboard stats available. Please refresh stats to calculate Stat Card 3 metrics.',
-                    'source' => 'empty'
-                ]);
+                // Calculate stats immediately if none exist
+                $this->calculateStatCard3Pipeline($db, null, $prefix);
+                
+                // Try reading again
+                $stmt = $db->prepare("SELECT * FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
+                $stmt->execute([$prefix]);
+                $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($dashboardStats) {
+                    echo json_encode([
+                        'totalInvoiceAmount' => floatval($dashboardStats['total_revenue']),
+                        'invoiceReceived' => floatval($dashboardStats['amount_received']),
+                        'pendingInvoiceAmount' => floatval($dashboardStats['outstanding_amount']),
+                        'pendingGSTAmount' => 0,
+                        'pendingPOValue' => floatval($dashboardStats['po_commitments']),
+                        'claimableAmount' => floatval($dashboardStats['claimable_amount']),
+                        'outstandingAmount' => floatval($dashboardStats['outstanding_amount']),
+                        'pendingInvoices' => intval($dashboardStats['pending_invoices']),
+                        'customersPending' => intval($dashboardStats['customers_pending']),
+                        'overdueAmount' => floatval($dashboardStats['overdue_amount']),
+                        'outstandingPercentage' => floatval($dashboardStats['outstanding_percentage']),
+                        'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
+                        'cashFlow' => ['expectedInflow' => floatval($dashboardStats['outstanding_amount']), 'poCommitments' => floatval($dashboardStats['po_commitments'])],
+                        'source' => 'calculated'
+                    ]);
+                } else {
+                    echo json_encode(['message' => 'No data available', 'source' => 'empty']);
+                }
                 return;
             }
             
@@ -1264,13 +1274,26 @@ class FinanceController extends Controller {
      * Follows the exact specification: fetch raw data, calculate in backend, store results
      */
     private function calculateStatCard3Pipeline($db, $pgConn, $prefix) {
-        // Step 1: Fetch raw invoice rows using simple SELECT without aggregation
-        $invoiceQuery = "SELECT id, invoice_number, taxable_amount, amount_paid, cgst, sgst, total_amount, due_date, customer_gstin 
-                        FROM finance_invoices 
-                        WHERE invoice_number LIKE '{$prefix}%'";
+        // Step 1: Fetch raw invoice rows from existing finance_data table
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        $stmt->execute();
+        $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        $invoiceResult = @pg_query($pgConn, $invoiceQuery);
-        $invoices = $invoiceResult ? pg_fetch_all($invoiceResult) : [];
+        $invoices = [];
+        foreach ($invoiceResults as $row) {
+            $data = json_decode($row['data'], true);
+            $invoiceNumber = $data['invoice_number'] ?? '';
+            if (!$prefix || strpos($invoiceNumber, $prefix) === 0) {
+                $invoices[] = [
+                    'invoice_number' => $invoiceNumber,
+                    'taxable_amount' => floatval($data['taxable_amount'] ?? $data['total_amount'] ?? 0),
+                    'amount_paid' => floatval($data['amount_paid'] ?? 0),
+                    'total_amount' => floatval($data['total_amount'] ?? 0),
+                    'due_date' => $data['due_date'] ?? '',
+                    'customer_gstin' => $data['customer_gstin'] ?? $data['customer_id'] ?? ''
+                ];
+            }
+        }
         
         // Step 2: Perform all calculations in backend/service layer
         $outstandingAmount = 0;
@@ -1323,10 +1346,22 @@ class FinanceController extends Controller {
             if ($paid > 0) $paidInvoices++;
         }
         
-        // Fetch PO data for other cards
-        $poQuery = "SELECT id, po_number, total_amount, amount_paid FROM finance_purchase_orders WHERE po_number LIKE '{$prefix}%'";
-        $poResult = @pg_query($pgConn, $poQuery);
-        $pos = $poResult ? pg_fetch_all($poResult) : [];
+        // Fetch PO data from existing finance_data table
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $pos = [];
+        foreach ($poResults as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+            if (!$prefix || stripos($poNumber, $prefix) !== false) {
+                $pos[] = [
+                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
+                    'amount_paid' => floatval($data['amount_paid'] ?? 0)
+                ];
+            }
+        }
         
         $poCommitments = 0;
         $claimableAmount = 0;
