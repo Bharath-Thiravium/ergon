@@ -619,8 +619,18 @@ class FinanceController extends Controller {
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            return $result ? strtoupper($result['company_prefix']) : '';
+            $prefix = $result ? strtoupper(trim($result['company_prefix'])) : '';
+            
+            // Ensure a default prefix if none is explicitly set or found
+            if (empty($prefix)) {
+                $prefix = 'BKC'; // Default prefix
+                // Optionally, insert this default into the DB if it doesn't exist
+                $stmt = $db->prepare("INSERT INTO finance_tables (table_name, company_prefix) VALUES ('settings', ?) ON DUPLICATE KEY UPDATE company_prefix = VALUES(company_prefix)");
+                $stmt->execute([$prefix]);
+            }
+            return $prefix;
         } catch (Exception $e) {
+            error_log("Error fetching company prefix: " . $e->getMessage());
             return '';
         }
     }

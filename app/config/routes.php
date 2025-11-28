@@ -389,7 +389,6 @@ $router->get('/finance/customers', 'FinanceController', 'getCustomers');
 $router->get('/finance/download-database', 'FinanceController', 'downloadDatabase');
 // New finance visualization/export endpoints
 $router->get('/finance/outstanding-by-customer', 'FinanceController', 'getOutstandingByCustomer');
-$router->get('/finance/outstanding-by-customer', 'FinanceController', 'getOutstandingByCustomer');
 $router->get('/finance/aging-buckets', 'FinanceController', 'getAgingBuckets');
 $router->get('/finance/export-outstanding', 'FinanceController', 'exportOutstanding');
 $router->get('/finance/import', 'FinanceController', 'importData');
