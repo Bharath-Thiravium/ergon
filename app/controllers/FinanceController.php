@@ -335,6 +335,7 @@ class FinanceController extends Controller {
             
             $prefix = $this->getCompanyPrefix();
             $customerFilter = $_GET['customer'] ?? '';
+            $limit = intval($_GET['limit'] ?? 10);
             
             // Build customer lookup map
             $customerMap = [];
@@ -377,10 +378,19 @@ class FinanceController extends Controller {
                 }
             }
             
-            echo json_encode(['success' => true, 'data' => $outstandingByCustomer]);
+            // Sort by amount descending and limit
+            arsort($outstandingByCustomer);
+            $outstandingByCustomer = array_slice($outstandingByCustomer, 0, $limit, true);
+            
+            echo json_encode([
+                'labels' => array_keys($outstandingByCustomer),
+                'data' => array_values($outstandingByCustomer),
+                'total' => array_sum($outstandingByCustomer),
+                'customerCount' => count($outstandingByCustomer)
+            ]);
             
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => 'Failed to load outstanding data', 'details' => $e->getMessage()]);
+            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
         }
     }
     
@@ -425,10 +435,9 @@ class FinanceController extends Controller {
             $this->createTables($db);
             
             $prefix = $this->getCompanyPrefix();
-            $customers = [];
             $customerMap = [];
 
-            // Step 1 & 2: Read from both finance_customer and finance_customers
+            // Read from both finance_customer and finance_customers
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
             $stmt->execute();
             $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -438,56 +447,40 @@ class FinanceController extends Controller {
                 $customerId = $data['id'] ?? '';
 
                 if ($customerId) {
-                    // Prefer display_name, then name, then fallback
                     $displayName = $data['display_name'] ?? $data['name'] ?? 'Unknown Customer';
                     $gstin = $data['gstin'] ?? '';
                     
-                    // Step 3: Build a readable label
                     $label = $displayName;
                     if ($gstin) {
-                        $label .= " (gstin: $gstin)";
+                        $label .= " (GSTIN: $gstin)";
                     }
 
-                    // Use existing entry to enrich data, but don't overwrite with less info
-                    $existing = $customerMap[$customerId] ?? [];
-                    
                     $customerMap[$customerId] = [
                         'id' => $customerId,
-                        'customer_code' => $data['customer_code'] ?? $existing['customer_code'] ?? '',
-                        'name' => $data['name'] ?? $existing['name'] ?? 'Unknown',
+                        'name' => $data['name'] ?? 'Unknown',
                         'display_name' => $displayName,
-                        'label' => $label,
-                        'email' => $data['email'] ?? $existing['email'] ?? '',
-                        'phone' => $data['phone'] ?? $existing['phone'] ?? '',
-                        'gstin' => $gstin ?: ($existing['gstin'] ?? '')
+                        'display' => $label,
+                        'gstin' => $gstin
                     ];
                 }
             }
             
-            // Step 4: Aggregate customers from quotations to find linked/missing customers
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            // Get customers from invoices if not in customer tables
+            $stmt = $db->prepare("SELECT DISTINCT JSON_EXTRACT(data, '$.customer_id') as customer_id, JSON_EXTRACT(data, '$.customer_name') as customer_name FROM finance_data WHERE table_name = 'finance_invoices' AND JSON_EXTRACT(data, '$.customer_id') IS NOT NULL");
             $stmt->execute();
-            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $invoiceCustomers = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            foreach ($quotationResults as $row) {
-                $data = json_decode($row['data'], true);
-                $customerId = $data['customer_id'] ?? '';
+            foreach ($invoiceCustomers as $row) {
+                $customerId = trim($row['customer_id'], '"');
+                $customerName = trim($row['customer_name'] ?? '', '"');
                 
-                // If the customer from a quotation is not already in our map, create a fallback entry
                 if ($customerId && !isset($customerMap[$customerId])) {
-                    $customerName = $data['customer_name'] ?? 'Customer ' . $customerId;
-                    $customerGstin = $data['customer_gstin'] ?? '';
-                    $label = $customerName . ($customerGstin ? " (gstin: $customerGstin)" : '');
-
                     $customerMap[$customerId] = [
                         'id' => $customerId,
-                        'customer_code' => '',
-                        'name' => $customerName,
-                        'display_name' => $customerName,
-                        'label' => $label,
-                        'email' => '',
-                        'phone' => '',
-                        'gstin' => $customerGstin
+                        'name' => $customerName ?: 'Customer ' . $customerId,
+                        'display_name' => $customerName ?: 'Customer ' . $customerId,
+                        'display' => $customerName ?: 'Customer ' . $customerId,
+                        'gstin' => ''
                     ];
                 }
             }
@@ -552,7 +545,7 @@ class FinanceController extends Controller {
             $activities = [];
             
             // Get recent invoices
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' ORDER BY id DESC LIMIT 5");
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' ORDER BY id DESC LIMIT 3");
             $stmt->execute();
             $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
@@ -574,7 +567,7 @@ class FinanceController extends Controller {
             }
             
             // Get recent quotations
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 3");
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 2");
             $stmt->execute();
             $quotations = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
@@ -592,6 +585,50 @@ class FinanceController extends Controller {
                     'amount' => floatval($data['amount'] ?? $data['total_amount'] ?? 0),
                     'date' => $data['created_date'] ?? $data['date'] ?? date('Y-m-d'),
                     'status' => $data['status'] ?? 'pending'
+                ];
+            }
+            
+            // Get recent purchase orders
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders' ORDER BY id DESC LIMIT 2");
+            $stmt->execute();
+            $pos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($pos as $row) {
+                $data = json_decode($row['data'], true);
+                $poNumber = $data['po_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($poNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $activities[] = [
+                    'type' => 'po',
+                    'description' => "Purchase Order {$poNumber} created",
+                    'amount' => floatval($data['total_amount'] ?? 0),
+                    'date' => $data['po_date'] ?? $data['created_date'] ?? date('Y-m-d'),
+                    'status' => $data['status'] ?? 'open'
+                ];
+            }
+            
+            // Get recent payments
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_payments' ORDER BY id DESC LIMIT 1");
+            $stmt->execute();
+            $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($payments as $row) {
+                $data = json_decode($row['data'], true);
+                $paymentRef = $data['payment_reference'] ?? $data['reference'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($paymentRef, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $activities[] = [
+                    'type' => 'payment',
+                    'description' => "Payment {$paymentRef} received",
+                    'amount' => floatval($data['amount'] ?? $data['payment_amount'] ?? 0),
+                    'date' => $data['payment_date'] ?? $data['date'] ?? date('Y-m-d'),
+                    'status' => 'completed'
                 ];
             }
             
@@ -630,7 +667,41 @@ class FinanceController extends Controller {
     }
     
     public function recentQuotations() {
-        $this->getRecentActivities();
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 10");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $quotations = [];
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? 'N/A';
+                
+                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $quotations[] = [
+                    'quotation_number' => $quotationNumber,
+                    'customer_name' => $data['customer_name'] ?? $data['name'] ?? 'Unknown',
+                    'total_amount' => floatval($data['amount'] ?? $data['total_amount'] ?? 0),
+                    'valid_until' => $data['valid_until'] ?? $data['expiry_date'] ?? date('Y-m-d', strtotime('+30 days')),
+                    'status' => $data['status'] ?? 'active'
+                ];
+            }
+            
+            echo json_encode(['quotations' => $quotations]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['quotations' => [], 'error' => $e->getMessage()]);
+        }
     }
     
     public function getAgingBuckets() {
@@ -761,7 +832,11 @@ class FinanceController extends Controller {
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            $chartData = ['labels' => [], 'data' => []];
+            if (empty($results)) {
+                echo json_encode(['labels' => ['No Data'], 'data' => [0]]);
+                return;
+            }
+            
             $monthlyData = [];
             
             foreach ($results as $row) {
@@ -779,13 +854,18 @@ class FinanceController extends Controller {
                 $monthlyData[$month] = ($monthlyData[$month] ?? 0) + $amount;
             }
             
-            $chartData['labels'] = array_keys($monthlyData);
-            $chartData['data'] = array_values($monthlyData);
+            if (empty($monthlyData)) {
+                echo json_encode(['labels' => ['No Data'], 'data' => [0]]);
+                return;
+            }
             
-            echo json_encode($chartData);
+            echo json_encode([
+                'labels' => array_keys($monthlyData),
+                'data' => array_values($monthlyData)
+            ]);
             
         } catch (Exception $e) {
-            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
+            echo json_encode(['labels' => ['Error'], 'data' => [0], 'error' => $e->getMessage()]);
         }
     }
     
@@ -851,7 +931,11 @@ class FinanceController extends Controller {
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            $chartData = ['labels' => [], 'data' => []];
+            if (empty($results)) {
+                echo json_encode(['labels' => ['No Data'], 'data' => [0]]);
+                return;
+            }
+            
             $monthlyData = [];
             
             foreach ($results as $row) {
@@ -869,14 +953,52 @@ class FinanceController extends Controller {
                 $monthlyData[$month] = ($monthlyData[$month] ?? 0) + $amount;
             }
             
-            $chartData['labels'] = array_keys($monthlyData);
-            $chartData['data'] = array_values($monthlyData);
+            if (empty($monthlyData)) {
+                echo json_encode(['labels' => ['No Data'], 'data' => [0]]);
+                return;
+            }
             
-            echo json_encode($chartData);
+            echo json_encode([
+                'labels' => array_keys($monthlyData),
+                'data' => array_values($monthlyData)
+            ]);
             
         } catch (Exception $e) {
-            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
+            echo json_encode(['labels' => ['Error'], 'data' => [0], 'error' => $e->getMessage()]);
         }
+    }
+    
+    // Route aliases for dashboard endpoints
+    public function companyPrefix() {
+        $this->updateCompanyPrefix();
+    }
+    
+    public function availablePrefixes() {
+        $this->getAvailablePrefixes();
+    }
+    
+    public function customers() {
+        $this->getCustomers();
+    }
+    
+    public function dashboardStats() {
+        $this->getDashboardStats();
+    }
+    
+    public function outstandingInvoices() {
+        $this->getOutstandingInvoices();
+    }
+    
+    public function outstandingByCustomer() {
+        $this->getOutstandingByCustomer();
+    }
+    
+    public function agingBuckets() {
+        $this->getAgingBuckets();
+    }
+    
+    public function recentActivities() {
+        $this->getRecentActivities();
     }
     
     private function getCompanyPrefix() {

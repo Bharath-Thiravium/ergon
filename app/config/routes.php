@@ -364,8 +364,6 @@ $router->get('/gamification/individual', 'GamificationController', 'individual')
 
 // Finance Module Routes
 $router->get('/finance', 'FinanceController', 'dashboard');
-$router->get('/finance/dashboard-stats', 'FinanceController', 'getDashboardStats');
-$router->get('/finance/outstanding-invoices', 'FinanceController', 'getOutstandingInvoices');
 $router->get('/finance/recent-quotations', 'FinanceController', 'recentQuotations');
 $router->get('/finance/export-table', 'FinanceController', 'exportTable');
 $router->get('/finance/export-dashboard', 'FinanceController', 'exportDashboard');
@@ -378,15 +376,18 @@ $router->post('/finance/sync', 'FinanceController', 'sync');
 $router->get('/finance/analyze', 'FinanceController', 'analyzeAllTables');
 $router->get('/finance/visualization', 'FinanceController', 'visualization');
 $router->get('/finance/export', 'FinanceController', 'exportData');
-$router->get('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
-$router->post('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
-$router->get('/finance/customers', 'FinanceController', 'getCustomers');
 $router->get('/finance/download-database', 'FinanceController', 'downloadDatabase');
-$router->get('/finance/outstanding-by-customer', 'FinanceController', 'getOutstandingByCustomer');
-$router->get('/finance/aging-buckets', 'FinanceController', 'getAgingBuckets');
 $router->get('/finance/export-outstanding', 'FinanceController', 'exportOutstanding');
 $router->get('/finance/import', 'FinanceController', 'importData');
 $router->post('/finance/import', 'FinanceController', 'importData');
-$router->get('/finance/available-prefixes', 'FinanceController', 'getAvailablePrefixes');
+$router->get('/finance/available-prefixes', 'FinanceController', 'availablePrefixes');
+$router->get('/finance/dashboard-stats', 'FinanceController', 'dashboardStats');
+$router->get('/finance/outstanding-invoices', 'FinanceController', 'outstandingInvoices');
+$router->get('/finance/outstanding-by-customer', 'FinanceController', 'outstandingByCustomer');
+$router->get('/finance/aging-buckets', 'FinanceController', 'agingBuckets');
+$router->get('/finance/recent-activities', 'FinanceController', 'recentActivities');
+$router->get('/finance/customers', 'FinanceController', 'customers');
+$router->get('/finance/company-prefix', 'FinanceController', 'companyPrefix');
+$router->post('/finance/company-prefix', 'FinanceController', 'companyPrefix');
 
 ?>
