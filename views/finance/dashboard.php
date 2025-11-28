@@ -11,8 +11,8 @@ ob_start();
             <p>Financial insights and analytics</p>
         </div>
         <div class="dashboard-header__actions">
-            <button id="syncBtn" class="btn btn--success btn--sm">
-                <span class="btn__text">🔄 Sync PostgreSQL</span>
+            <button id="populateDataBtn" class="btn btn--success btn--sm">
+                <span class="btn__text">📊 Load Demo Data</span>
             </button>
             <button id="refreshBtn" class="btn btn--primary btn--sm">
                 <span class="btn__text">🔄 Refresh</span>
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initChart();
     loadDashboardData();
     
-    document.getElementById('syncBtn').addEventListener('click', syncPostgreSQL);
+    document.getElementById('populateDataBtn').addEventListener('click', populateDemo);
     document.getElementById('refreshBtn').addEventListener('click', loadDashboardData);
 });
 
@@ -193,28 +193,30 @@ async function loadOutstandingInvoices() {
     }
 }
 
-async function syncPostgreSQL() {
-    const btn = document.getElementById('syncBtn');
+async function populateDemo() {
+    const btn = document.getElementById('populateDataBtn');
     btn.disabled = true;
-    btn.querySelector('.btn__text').textContent = '⏳ Syncing...';
+    btn.querySelector('.btn__text').textContent = '⏳ Loading...';
     
     try {
-        const response = await fetch('/ergon/finance/sync', {
-            method: 'POST'
+        const response = await fetch('/ergon/finance/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=populate_demo'
         });
         
         const data = await response.json();
         if (data.success) {
-            showNotification(`Synced ${data.tables} tables from PostgreSQL!`, 'success');
+            showNotification('Demo data loaded successfully!', 'success');
             setTimeout(() => loadDashboardData(), 1000);
         } else {
-            showNotification('Sync failed: ' + data.error, 'error');
+            showNotification('Failed to load demo data: ' + data.error, 'error');
         }
     } catch (error) {
         showNotification('Network error: ' + error.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.querySelector('.btn__text').textContent = '🔄 Sync PostgreSQL';
+        btn.querySelector('.btn__text').textContent = '📊 Load Demo Data';
     }
 }
 
