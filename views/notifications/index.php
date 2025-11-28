@@ -9,7 +9,6 @@ ob_start();
         <p>Stay updated with your latest notifications</p>
     </div>
     <div class="page-actions">
-        <button class="btn btn--success" onclick="createTestNotification()">Create Test Notification</button>
         <button class="btn btn--secondary" onclick="markAllAsRead()" id="markAllBtn">Mark All Read</button>
         <button class="btn btn--primary" onclick="markSelectedAsRead()" id="markSelectedBtn" disabled>Mark Selected Read</button>
     </div>
