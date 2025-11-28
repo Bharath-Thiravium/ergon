@@ -68,6 +68,14 @@ class OwnerController extends Controller {
             // Debug: Log the stats to see what's being fetched
             error_log('Owner Dashboard Stats: ' . json_encode($stats));
             
+            // Add debug info to view
+            $stats['debug_info'] = [
+                'active_projects_query' => $this->getActiveProjectsCount($db),
+                'completed_tasks_query' => $this->getCompletedTasksCount($db),
+                'in_progress_query' => $this->getInProgressTasksCount($db),
+                'pending_query' => $this->getPendingTasksCount($db)
+            ];
+            
             // Force clear any cached data
             if (function_exists('opcache_reset')) {
                 opcache_reset();
