@@ -218,7 +218,7 @@
             hideMessages();
             
             try {
-                const response = await fetch('api_test_funnel.php?action=containers');
+                const response = await fetch('simple_funnel_api.php');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -242,7 +242,7 @@
             hideMessages();
             
             try {
-                const response = await fetch('api_test_funnel.php?action=refresh');
+                const response = await fetch('simple_funnel_api.php');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -261,18 +261,18 @@
         // Show raw statistics
         async function showRawStats() {
             try {
-                const response = await fetch('api_test_funnel.php?action=stats');
+                const response = await fetch('simple_funnel_api.php');
                 const data = await response.json();
                 
                 if (data.success) {
-                    const stats = data.stats;
+                    const c = data.containers;
                     const message = `
                         <strong>Raw Funnel Statistics:</strong><br>
-                        Quotations: ${stats.quotation_count} (₹${formatNumber(stats.quotation_value)})<br>
-                        Purchase Orders: ${stats.po_count} (₹${formatNumber(stats.po_value)}) - ${stats.po_conversion_rate}%<br>
-                        Invoices: ${stats.invoice_count} (₹${formatNumber(stats.invoice_value)}) - ${stats.invoice_conversion_rate}%<br>
-                        Payments: ${stats.payment_count} (₹${formatNumber(stats.payment_value)}) - ${stats.payment_conversion_rate}%<br>
-                        <em>Generated: ${stats.generated_at}</em>
+                        Quotations: ${c.container1.quotations_count} (₹${formatNumber(c.container1.quotations_total_value)})<br>
+                        Purchase Orders: ${c.container2.po_count} (₹${formatNumber(c.container2.po_total_value)}) - ${c.container2.po_conversion_rate}%<br>
+                        Invoices: ${c.container3.invoice_count} (₹${formatNumber(c.container3.invoice_total_value)}) - ${c.container3.invoice_conversion_rate}%<br>
+                        Payments: ${c.container4.payment_count} (₹${formatNumber(c.container4.total_payment_received)}) - ${c.container4.payment_conversion_rate}%<br>
+                        <em>Company Prefix: ${data.prefix || 'ALL'}</em>
                     `;
                     showSuccess(message);
                 } else {

@@ -108,14 +108,16 @@ class FunnelStatsService {
         $quotations = [];
         foreach ($results as $row) {
             $data = json_decode($row['data'], true);
-            $quotationNumber = $data['quotation_number'] ?? '';
+            if (!$data) continue;
             
-            // Apply prefix filtering
-            if (!$prefix || strpos($quotationNumber, $prefix) === 0) {
+            $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+            
+            // Apply prefix filtering - if no prefix, include all
+            if (!$prefix || empty($prefix) || strpos($quotationNumber, $prefix) === 0) {
                 $quotations[] = [
                     'id' => $data['id'] ?? '',
                     'quotation_number' => $quotationNumber,
-                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0)
+                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0)
                 ];
             }
         }
@@ -134,14 +136,16 @@ class FunnelStatsService {
         $purchaseOrders = [];
         foreach ($results as $row) {
             $data = json_decode($row['data'], true);
-            $poNumber = $data['po_number'] ?? '';
+            if (!$data) continue;
             
-            // Apply prefix filtering
-            if (!$prefix || strpos($poNumber, $prefix) === 0) {
+            $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? $data['purchase_order_number'] ?? '';
+            
+            // Apply prefix filtering - if no prefix, include all
+            if (!$prefix || empty($prefix) || strpos($poNumber, $prefix) === 0 || stripos($poNumber, $prefix) !== false) {
                 $purchaseOrders[] = [
                     'id' => $data['id'] ?? '',
                     'po_number' => $poNumber,
-                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
+                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0),
                     'amount_paid' => floatval($data['amount_paid'] ?? 0)
                 ];
             }
@@ -161,15 +165,21 @@ class FunnelStatsService {
         $invoices = [];
         foreach ($results as $row) {
             $data = json_decode($row['data'], true);
-            $invoiceNumber = $data['invoice_number'] ?? '';
+            if (!$data) continue;
             
-            // Apply prefix filtering
-            if (!$prefix || strpos($invoiceNumber, $prefix) === 0) {
+            $invoiceNumber = $data['invoice_number'] ?? $data['number'] ?? '';
+            
+            // Apply prefix filtering - if no prefix, include all
+            if (!$prefix || empty($prefix) || strpos($invoiceNumber, $prefix) === 0) {
+                $total = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
+                $outstanding = floatval($data['outstanding_amount'] ?? $data['balance'] ?? 0);
+                $paid = $total - $outstanding;
+                
                 $invoices[] = [
                     'id' => $data['id'] ?? '',
                     'invoice_number' => $invoiceNumber,
-                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
-                    'amount_paid' => floatval($data['amount_paid'] ?? 0)
+                    'total_amount' => $total,
+                    'amount_paid' => $paid > 0 ? $paid : floatval($data['amount_paid'] ?? 0)
                 ];
             }
         }
