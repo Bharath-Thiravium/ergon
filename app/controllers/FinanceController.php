@@ -1391,54 +1391,19 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
-            // Generate customers
-            $customers = [];
-            for ($i = 1; $i <= 10; $i++) {
-                $customers[] = [
-                    'id' => $i,
-                    'name' => 'Customer ' . $i,
-                    'display_name' => 'Customer ' . $i,
-                    'gstin' => '29ABCDE' . str_pad($i, 4, '0', STR_PAD_LEFT) . 'F1Z5'
-                ];
-            }
-            
-            // Generate invoices
-            $invoices = [];
-            for ($i = 1; $i <= 25; $i++) {
-                $customerId = rand(1, 10);
-                $totalAmount = rand(25000, 200000);
-                $outstanding = rand(0, 1) ? rand(0, $totalAmount) : 0;
-                
-                $invoices[] = [
-                    'invoice_number' => 'BKC-INV-' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                    'customer_id' => $customerId,
-                    'customer_name' => 'Customer ' . $customerId,
-                    'total_amount' => $totalAmount,
-                    'outstanding_amount' => $outstanding,
-                    'due_date' => date('Y-m-d', strtotime('-' . rand(0, 60) . ' days')),
-                    'payment_status' => $outstanding > 0 ? 'unpaid' : 'paid',
-                    'gst_rate' => 0.18
-                ];
-            }
-            
-            // Generate quotations
-            $quotations = [];
-            for ($i = 1; $i <= 15; $i++) {
-                $customerId = rand(1, 10);
-                $quotations[] = [
-                    'quotation_number' => 'BKC-Q-' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                    'customer_id' => $customerId,
-                    'customer_name' => 'Customer ' . $customerId,
-                    'total_amount' => rand(30000, 250000),
-                    'status' => ['draft', 'revised', 'converted'][rand(0, 2)],
-                    'valid_until' => date('Y-m-d', strtotime('+' . rand(15, 45) . ' days'))
-                ];
-            }
-            
             $demoData = [
-                'finance_customers' => $customers,
-                'finance_invoices' => $invoices,
-                'finance_quotations' => $quotations
+                'finance_quotations' => [
+                    ['quotation_number' => 'BKC-Q-001', 'customer_id' => '1', 'total_amount' => 50000, 'status' => 'draft'],
+                    ['quotation_number' => 'BKC-Q-002', 'customer_id' => '2', 'total_amount' => 75000, 'status' => 'revised']
+                ],
+                'finance_invoices' => [
+                    ['invoice_number' => 'BKC-INV-001', 'customer_id' => '1', 'total_amount' => 50000, 'outstanding_amount' => 25000, 'due_date' => date('Y-m-d')],
+                    ['invoice_number' => 'BKC-INV-002', 'customer_id' => '2', 'total_amount' => 75000, 'outstanding_amount' => 0, 'due_date' => date('Y-m-d')]
+                ],
+                'finance_customers' => [
+                    ['id' => '1', 'name' => 'Demo Customer 1', 'display_name' => 'Demo Customer 1', 'gstin' => '29ABCDE1234F1Z5'],
+                    ['id' => '2', 'name' => 'Demo Customer 2', 'display_name' => 'Demo Customer 2', 'gstin' => '29ABCDE5678F1Z5']
+                ]
             ];
             
             foreach ($demoData as $tableName => $records) {
@@ -1447,7 +1412,6 @@ class FinanceController extends Controller {
             
         } catch (Exception $e) {
             error_log('Demo data creation failed: ' . $e->getMessage());
-            throw $e;
         }
     }
     
