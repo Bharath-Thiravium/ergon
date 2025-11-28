@@ -93,11 +93,19 @@
             </div>
             <div class="kpi-card__value" id="pendingInvoiceAmount">₹0</div>
             <div class="kpi-card__label">Outstanding Amount</div>
-            <div class="kpi-card__description">Awaiting Customer Payment</div>
+            <div class="kpi-card__description">Taxable Amount Pending (No GST)</div>
             <div class="kpi-card__details">
-                <div class="detail-item">Overdue: <span id="overdueAmount">₹0</span></div>
-                <div class="detail-item">Customers: <span id="pendingCustomers">0</span></div>
+                <div class="detail-item">Pending Invoices: <span id="pendingInvoicesCount">0</span></div>
+                <div class="detail-item">Customers: <span id="customersPendingCount">0</span></div>
+                <div class="detail-item">Overdue Amount: <span id="overdueAmount">₹0</span></div>
             </div>
+            <!-- Stat Card 3 Implementation:
+                 - Outstanding Amount = sum(taxable_amount - amount_paid) where pending > 0
+                 - Pending Invoices = count of invoices with pending_amount > 0
+                 - Customers = count of unique customer_gstin with pending_amount > 0
+                 - Overdue Amount = sum(pending_amount) where due_date < today
+                 - All calculations done in backend, frontend reads from dashboard_stats only
+            -->
         </div>
         
         <div class="kpi-card kpi-card--info">
@@ -915,6 +923,14 @@ async function loadDashboardData() {
             showNotification(data.message, 'info');
         }
         
+        // Show source information for Stat Card 3
+        if (data.source === 'dashboard_stats') {
+            console.log('Stat Card 3: Using backend-calculated metrics from dashboard_stats table');
+            console.log('Outstanding Amount calculation: taxable_amount - amount_paid (no GST)');
+        } else if (data.source === 'empty') {
+            showNotification('Stat Card 3 requires backend calculation. Click "Refresh Stats" to calculate metrics.', 'warning');
+        }
+        
     } catch (error) {
         console.error('Failed to load dashboard data:', error);
         showNotification('Failed to load dashboard data: ' + error.message, 'error');
@@ -954,14 +970,23 @@ function updateKPICards(data) {
     }
     if (paidInvoiceCount) paidInvoiceCount.textContent = funnel.payments || 0;
     
-    // Pending Invoice Amount
-    document.getElementById('pendingInvoiceAmount').textContent = `₹${(data.pendingInvoiceAmount || 0).toLocaleString()}`;
+    // Stat Card 3: Outstanding Amount (Backend calculated)
+    document.getElementById('pendingInvoiceAmount').textContent = `₹${(data.outstandingAmount || data.pendingInvoiceAmount || 0).toLocaleString()}`;
     
-    // Update pending details
+    // Update Stat Card 3 details with backend calculations
+    const pendingInvoicesCount = document.getElementById('pendingInvoicesCount');
+    const customersPendingCount = document.getElementById('customersPendingCount');
     const overdueAmount = document.getElementById('overdueAmount');
-    const pendingCustomers = document.getElementById('pendingCustomers');
-    if (overdueAmount) overdueAmount.textContent = `₹${((data.pendingInvoiceAmount || 0) * 0.3).toLocaleString()}`; // Estimate
-    if (pendingCustomers) pendingCustomers.textContent = Math.ceil((funnel.invoices - funnel.payments) / 2) || 0; // Estimate
+    
+    if (pendingInvoicesCount) pendingInvoicesCount.textContent = data.pendingInvoices || 0;
+    if (customersPendingCount) customersPendingCount.textContent = data.customersPending || 0;
+    if (overdueAmount) overdueAmount.textContent = `₹${(data.overdueAmount || 0).toLocaleString()}`;
+    
+    // Update trend for outstanding percentage
+    const pendingTrend = document.getElementById('pendingTrend');
+    if (pendingTrend && data.outstandingPercentage !== undefined) {
+        pendingTrend.textContent = `${Math.round(data.outstandingPercentage)}%`;
+    }
     
     // Pending GST Amount
     document.getElementById('pendingGSTAmount').textContent = `₹${(data.pendingGSTAmount || 0).toLocaleString()}`;

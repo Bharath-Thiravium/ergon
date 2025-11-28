@@ -62,7 +62,62 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customerFilter = $_GET['customer'] ?? '';
             
-            // Calculate funnel stats directly
+            // ALWAYS read from dashboard_stats table - never query finance_invoices directly
+            $stmt = $db->prepare("SELECT * FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
+            $stmt->execute([$prefix]);
+            $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($dashboardStats) {
+                // Return pre-calculated stats from dashboard_stats table
+                echo json_encode([
+                    'totalInvoiceAmount' => floatval($dashboardStats['total_revenue']),
+                    'invoiceReceived' => floatval($dashboardStats['amount_received']),
+                    'pendingInvoiceAmount' => floatval($dashboardStats['outstanding_amount']),
+                    'pendingGSTAmount' => 0, // GST not included in outstanding calculation per requirements
+                    'pendingPOValue' => floatval($dashboardStats['po_commitments']),
+                    'claimableAmount' => floatval($dashboardStats['claimable_amount']),
+                    'claimablePOCount' => intval($dashboardStats['claimable_pos']),
+                    'openPOCount' => intval($dashboardStats['open_pos']),
+                    'totalPOCount' => intval($dashboardStats['open_pos']),
+                    'claimRate' => floatval($dashboardStats['claim_rate']),
+                    'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
+                    'cashFlow' => [
+                        'expectedInflow' => floatval($dashboardStats['outstanding_amount']),
+                        'poCommitments' => floatval($dashboardStats['po_commitments'])
+                    ],
+                    // Stat Card 3 metrics from dashboard_stats (backend calculated)
+                    'outstandingAmount' => floatval($dashboardStats['outstanding_amount']),
+                    'pendingInvoices' => intval($dashboardStats['pending_invoices']),
+                    'customersPending' => intval($dashboardStats['customers_pending']),
+                    'overdueAmount' => floatval($dashboardStats['overdue_amount']),
+                    'outstandingPercentage' => floatval($dashboardStats['outstanding_percentage']),
+                    'source' => 'dashboard_stats',
+                    'generated_at' => $dashboardStats['generated_at']
+                ]);
+                return;
+            } else {
+                // No dashboard stats found - require refresh
+                echo json_encode([
+                    'totalInvoiceAmount' => 0,
+                    'invoiceReceived' => 0,
+                    'pendingInvoiceAmount' => 0,
+                    'pendingGSTAmount' => 0,
+                    'pendingPOValue' => 0,
+                    'claimableAmount' => 0,
+                    'outstandingAmount' => 0,
+                    'pendingInvoices' => 0,
+                    'customersPending' => 0,
+                    'overdueAmount' => 0,
+                    'outstandingPercentage' => 0,
+                    'conversionFunnel' => ['quotations' => 0, 'purchaseOrders' => 0, 'invoices' => 0, 'payments' => 0],
+                    'cashFlow' => ['expectedInflow' => 0, 'poCommitments' => 0],
+                    'message' => 'No dashboard stats available. Please refresh stats to calculate Stat Card 3 metrics.',
+                    'source' => 'empty'
+                ]);
+                return;
+            }
+            
+            // Fallback to old calculation if no dashboard_stats found
             $funnelStats = $this->calculateFunnelStats($db, $prefix);
             $chartStats = $this->calculateChartStats($db, $prefix);
             
@@ -945,6 +1000,8 @@ class FinanceController extends Controller {
             outstanding_amount DECIMAL(15,2) DEFAULT 0,
             outstanding_percentage DECIMAL(5,2) DEFAULT 0,
             overdue_amount DECIMAL(15,2) DEFAULT 0,
+            pending_invoices INT DEFAULT 0,
+            customers_pending INT DEFAULT 0,
             customer_count INT DEFAULT 0,
             po_commitments DECIMAL(15,2) DEFAULT 0,
             open_pos INT DEFAULT 0,
@@ -955,6 +1012,19 @@ class FinanceController extends Controller {
             generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY unique_prefix (company_prefix)
         )");
+        
+        // Add new columns for Stat Card 3 if they don't exist
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN pending_invoices INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN customers_pending INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
     }
     
     private function storeTableData($db, $tableName, $data) {
@@ -1178,7 +1248,7 @@ class FinanceController extends Controller {
             
             $pgConn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango");
             if ($pgConn) {
-                $this->calculateStatsForPrefix($db, $pgConn, $prefix);
+                $this->calculateStatCard3Pipeline($db, $pgConn, $prefix);
                 @pg_close($pgConn);
                 echo json_encode(['success' => true, 'message' => 'Stats refreshed for prefix: ' . $prefix]);
             } else {
@@ -1189,9 +1259,123 @@ class FinanceController extends Controller {
         }
     }
     
+    /**
+     * Implements Stat Card 3 pipeline with backend calculations only
+     * Follows the exact specification: fetch raw data, calculate in backend, store results
+     */
+    private function calculateStatCard3Pipeline($db, $pgConn, $prefix) {
+        // Step 1: Fetch raw invoice rows using simple SELECT without aggregation
+        $invoiceQuery = "SELECT id, invoice_number, taxable_amount, amount_paid, cgst, sgst, total_amount, due_date, customer_gstin 
+                        FROM finance_invoices 
+                        WHERE invoice_number LIKE '{$prefix}%'";
+        
+        $invoiceResult = @pg_query($pgConn, $invoiceQuery);
+        $invoices = $invoiceResult ? pg_fetch_all($invoiceResult) : [];
+        
+        // Step 2: Perform all calculations in backend/service layer
+        $outstandingAmount = 0;
+        $pendingInvoices = 0;
+        $customersPending = [];
+        $overdueAmount = 0;
+        $totalTaxableAmount = 0;
+        $today = date('Y-m-d');
+        
+        foreach ($invoices as $invoice) {
+            $taxableAmount = floatval($invoice['taxable_amount'] ?? 0);
+            $amountPaid = floatval($invoice['amount_paid'] ?? 0);
+            $dueDate = $invoice['due_date'] ?? '';
+            $customerGstin = $invoice['customer_gstin'] ?? '';
+            
+            // Step 3: Outstanding amount uses only taxable_amount (no GST)
+            $pendingAmount = $taxableAmount - $amountPaid;
+            $totalTaxableAmount += $taxableAmount;
+            
+            if ($pendingAmount > 0) {
+                // Step 4: Calculate metrics
+                $outstandingAmount += $pendingAmount;
+                $pendingInvoices++;
+                
+                // Track unique customers with pending amounts
+                if ($customerGstin) {
+                    $customersPending[$customerGstin] = true;
+                }
+                
+                // Calculate overdue amount
+                if ($dueDate && $dueDate < $today) {
+                    $overdueAmount += $pendingAmount;
+                }
+            }
+        }
+        
+        $customersPendingCount = count($customersPending);
+        $outstandingPercentage = $totalTaxableAmount > 0 ? ($outstandingAmount / $totalTaxableAmount) * 100 : 0;
+        
+        // Also calculate other stats for completeness
+        $totalRevenue = 0;
+        $amountReceived = 0;
+        $paidInvoices = 0;
+        
+        foreach ($invoices as $invoice) {
+            $total = floatval($invoice['total_amount'] ?? 0);
+            $paid = floatval($invoice['amount_paid'] ?? 0);
+            $totalRevenue += $total;
+            $amountReceived += $paid;
+            if ($paid > 0) $paidInvoices++;
+        }
+        
+        // Fetch PO data for other cards
+        $poQuery = "SELECT id, po_number, total_amount, amount_paid FROM finance_purchase_orders WHERE po_number LIKE '{$prefix}%'";
+        $poResult = @pg_query($pgConn, $poQuery);
+        $pos = $poResult ? pg_fetch_all($poResult) : [];
+        
+        $poCommitments = 0;
+        $claimableAmount = 0;
+        $claimablePos = 0;
+        $openPos = 0;
+        
+        foreach ($pos as $po) {
+            $total = floatval($po['total_amount'] ?? 0);
+            $paid = floatval($po['amount_paid'] ?? 0);
+            $poCommitments += $total;
+            if ($total > $paid) {
+                $openPos++;
+                $claimable = $total - $paid;
+                if ($claimable > 0) {
+                    $claimableAmount += $claimable;
+                    $claimablePos++;
+                }
+            }
+        }
+        
+        // Step 5: Store computed results in dashboard_stats table
+        $stats = [
+            'company_prefix' => $prefix,
+            'total_revenue' => $totalRevenue,
+            'invoice_count' => count($invoices),
+            'average_invoice' => count($invoices) > 0 ? $totalRevenue / count($invoices) : 0,
+            'amount_received' => $amountReceived,
+            'collection_rate' => $totalRevenue > 0 ? ($amountReceived / $totalRevenue) * 100 : 0,
+            'paid_invoices' => $paidInvoices,
+            'outstanding_amount' => $outstandingAmount,
+            'pending_invoices' => $pendingInvoices,
+            'customers_pending' => $customersPendingCount,
+            'overdue_amount' => $overdueAmount,
+            'outstanding_percentage' => $outstandingPercentage,
+            'customer_count' => $customersPendingCount,
+            'po_commitments' => $poCommitments,
+            'open_pos' => $openPos,
+            'average_po' => count($pos) > 0 ? $poCommitments / count($pos) : 0,
+            'claimable_amount' => $claimableAmount,
+            'claimable_pos' => $claimablePos,
+            'claim_rate' => $poCommitments > 0 ? ($claimableAmount / $poCommitments) * 100 : 0
+        ];
+        
+        $this->saveDashboardStats($db, $stats);
+    }
+    
     private function calculateStatsForPrefix($db, $pgConn, $prefix) {
-        // Fetch raw invoice data
-        $invoiceQuery = "SELECT id, invoice_number, total_amount, amount_paid, cgst, sgst, customer_gstin, due_date FROM finance_invoices WHERE invoice_number LIKE '$prefix%'";
+        // Fetch raw invoice data using simple SELECT without aggregation
+        $invoiceQuery = "SELECT id, invoice_number, taxable_amount, amount_paid, cgst, sgst, total_amount, due_date, customer_gstin FROM finance_invoices WHERE invoice_number LIKE '$prefix%'";
         $invoiceResult = @pg_query($pgConn, $invoiceQuery);
         $invoices = $invoiceResult ? pg_fetch_all($invoiceResult) : [];
         
@@ -1233,31 +1417,47 @@ class FinanceController extends Controller {
         $stats['collection_rate'] = $totalRevenue > 0 ? ($amountReceived / $totalRevenue) * 100 : 0;
         $stats['paid_invoices'] = $paidInvoices;
         
-        // Stat Card 3: Outstanding Amount
+        // Stat Card 3: Outstanding Amount (Backend calculations only)
         $outstandingAmount = 0;
+        $pendingInvoices = 0;
+        $customersPending = [];
         $overdueAmount = 0;
-        $uniqueCustomers = [];
+        $totalTaxableAmount = 0;
         $today = date('Y-m-d');
         
         foreach ($invoices as $inv) {
-            $total = floatval($inv['total_amount'] ?? 0);
-            $paid = floatval($inv['amount_paid'] ?? 0);
-            $pending = $total - $paid;
+            $taxableAmount = floatval($inv['taxable_amount'] ?? 0);
+            $amountPaid = floatval($inv['amount_paid'] ?? 0);
+            $dueDate = $inv['due_date'] ?? '';
+            $customerGstin = $inv['customer_gstin'] ?? '';
             
-            if ($pending > 0) {
-                $outstandingAmount += $pending;
-                $uniqueCustomers[$inv['customer_gstin'] ?? ''] = true;
+            // Calculate pending amount using only taxable_amount (no GST)
+            $pendingAmount = $taxableAmount - $amountPaid;
+            
+            $totalTaxableAmount += $taxableAmount;
+            
+            if ($pendingAmount > 0) {
+                $outstandingAmount += $pendingAmount;
+                $pendingInvoices++;
                 
-                if (($inv['due_date'] ?? '') < $today) {
-                    $overdueAmount += $pending;
+                // Track unique customers with pending amounts
+                if ($customerGstin) {
+                    $customersPending[$customerGstin] = true;
+                }
+                
+                // Calculate overdue amount
+                if ($dueDate && $dueDate < $today) {
+                    $overdueAmount += $pendingAmount;
                 }
             }
         }
         
         $stats['outstanding_amount'] = $outstandingAmount;
-        $stats['outstanding_percentage'] = $totalRevenue > 0 ? ($outstandingAmount / $totalRevenue) * 100 : 0;
-        $stats['overdue_amount'] = $overdueAmount;
-        $stats['customer_count'] = count($uniqueCustomers);
+        $stats['pending_invoices'] = $pendingInvoices; // Renamed from overdue
+        $stats['customers_pending'] = count($customersPending);
+        $stats['overdue_amount'] = $overdueAmount; // Raw overdue in money
+        $stats['outstanding_percentage'] = $totalTaxableAmount > 0 ? ($outstandingAmount / $totalTaxableAmount) * 100 : 0;
+        $stats['customer_count'] = count($customersPending); // For backward compatibility
         
         // Stat Card 5: PO Commitments
         $poCommitments = 0;
@@ -1295,10 +1495,11 @@ class FinanceController extends Controller {
         $sql = "INSERT INTO dashboard_stats (
                     company_prefix, total_revenue, invoice_count, average_invoice,
                     amount_received, collection_rate, paid_invoices,
-                    outstanding_amount, outstanding_percentage, overdue_amount, customer_count,
+                    outstanding_amount, outstanding_percentage, overdue_amount, 
+                    pending_invoices, customers_pending, customer_count,
                     po_commitments, open_pos, average_po,
                     claimable_amount, claimable_pos, claim_rate, generated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
                     total_revenue = VALUES(total_revenue),
                     invoice_count = VALUES(invoice_count),
@@ -1309,6 +1510,8 @@ class FinanceController extends Controller {
                     outstanding_amount = VALUES(outstanding_amount),
                     outstanding_percentage = VALUES(outstanding_percentage),
                     overdue_amount = VALUES(overdue_amount),
+                    pending_invoices = VALUES(pending_invoices),
+                    customers_pending = VALUES(customers_pending),
                     customer_count = VALUES(customer_count),
                     po_commitments = VALUES(po_commitments),
                     open_pos = VALUES(open_pos),
@@ -1330,6 +1533,8 @@ class FinanceController extends Controller {
             $stats['outstanding_amount'],
             $stats['outstanding_percentage'],
             $stats['overdue_amount'],
+            $stats['pending_invoices'],
+            $stats['customers_pending'],
             $stats['customer_count'],
             $stats['po_commitments'],
             $stats['open_pos'],
