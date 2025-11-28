@@ -1572,12 +1572,22 @@ class FinanceController extends Controller {
         $pos = [];
         foreach ($results as $row) {
             $data = json_decode($row['data'], true);
-            $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
-            if (!$prefix || stripos($poNumber, $prefix) !== false) {
-                $pos[] = [
-                    'number' => $poNumber,
-                    'amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0)
-                ];
+            $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+            
+            // Skip prefix check if no prefix or match any of the PO number fields
+            $matchesPrefix = !$prefix || 
+                            (!empty($poNumber) && stripos($poNumber, $prefix) !== false) ||
+                            (!empty($data['po_number']) && stripos($data['po_number'], $prefix) !== false) ||
+                            (!empty($data['internal_po_number']) && stripos($data['internal_po_number'], $prefix) !== false);
+            
+            if ($matchesPrefix) {
+                $amount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? 0);
+                if ($amount > 0) {
+                    $pos[] = [
+                        'number' => $poNumber,
+                        'amount' => $amount
+                    ];
+                }
             }
         }
         return $pos;
