@@ -218,7 +218,7 @@
             hideMessages();
             
             try {
-                const response = await fetch('simple_funnel_api.php');
+                const response = await fetch('fixed_funnel_api.php');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -242,7 +242,7 @@
             hideMessages();
             
             try {
-                const response = await fetch('simple_funnel_api.php');
+                const response = await fetch('fixed_funnel_api.php');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -261,7 +261,7 @@
         // Show raw statistics
         async function showRawStats() {
             try {
-                const response = await fetch('simple_funnel_api.php');
+                const response = await fetch('fixed_funnel_api.php');
                 const data = await response.json();
                 
                 if (data.success) {
