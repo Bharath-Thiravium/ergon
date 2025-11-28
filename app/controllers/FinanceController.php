@@ -270,7 +270,7 @@ class FinanceController extends Controller {
             
             $prefix = $this->getCompanyPrefix();
             
-            // Build customer lookup map
+            // Build customer lookup map with prefix filtering
             $customerMap = [];
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
             $stmt->execute();
@@ -279,6 +279,13 @@ class FinanceController extends Controller {
             foreach ($customerResults as $row) {
                 $data = json_decode($row['data'], true);
                 $customerId = $data['id'] ?? '';
+                $customerCode = $data['customer_code'] ?? '';
+                
+                // Filter by customer_code prefix
+                if ($prefix && !empty($prefix) && !empty($customerCode) && stripos($customerCode, $prefix) === false) {
+                    continue;
+                }
+                
                 if ($customerId) {
                     $customerMap[$customerId] = $data['display_name'] ?? $data['name'] ?? 'Unknown';
                 }
@@ -373,7 +380,7 @@ class FinanceController extends Controller {
             $customerFilter = $_GET['customer'] ?? '';
             $limit = intval($_GET['limit'] ?? 10);
             
-            // Build customer lookup map
+            // Build customer lookup map with prefix filtering
             $customerMap = [];
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
             $stmt->execute();
@@ -382,6 +389,13 @@ class FinanceController extends Controller {
             foreach ($customerResults as $row) {
                 $data = json_decode($row['data'], true);
                 $customerId = $data['id'] ?? '';
+                $customerCode = $data['customer_code'] ?? '';
+                
+                // Filter by customer_code prefix
+                if ($prefix && !empty($prefix) && !empty($customerCode) && stripos($customerCode, $prefix) === false) {
+                    continue;
+                }
+                
                 if ($customerId) {
                     $customerMap[$customerId] = $data['display_name'] ?? $data['name'] ?? 'Unknown';
                 }
@@ -520,6 +534,12 @@ class FinanceController extends Controller {
             foreach ($customerResults as $row) {
                 $data = json_decode($row['data'], true);
                 $customerId = $data['id'] ?? '';
+                $customerCode = $data['customer_code'] ?? '';
+                
+                // Filter by customer_code prefix
+                if ($prefix && !empty($prefix) && !empty($customerCode) && stripos($customerCode, $prefix) === false) {
+                    continue;
+                }
 
                 if ($customerId && (!$prefix || empty($prefix) || isset($prefixCustomers[$customerId]))) {
                     $displayName = $data['display_name'] ?? $data['name'] ?? 'Unknown Customer';
@@ -535,7 +555,8 @@ class FinanceController extends Controller {
                         'name' => $data['name'] ?? 'Unknown',
                         'display_name' => $displayName,
                         'display' => $label,
-                        'gstin' => $gstin
+                        'gstin' => $gstin,
+                        'customer_code' => $customerCode
                     ];
                 }
             }
