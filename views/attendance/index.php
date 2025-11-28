@@ -81,13 +81,77 @@ ob_start();
     </div>
     <div class="card__body">
         <div class="table-responsive">
-            <table class="table">
+            <table class="table" data-table-utils="initialized">
                 <thead>
                     <tr>
-                        <th>Admin Name</th>
-                        <th>Date & Status</th>
-                        <th>Working Hours</th>
-                        <th>Check Times</th>
+                        <th class="table-header__cell">
+                <div class="table-header__content">
+                    <span class="table-header__text">Admin Name</span>
+                    <div class="table-header__controls">
+                        <span class="table-header__sort" data-column="admin_name_0" data-direction="none">⇅</span>
+                        <span class="table-header__filter" data-column="admin_name_0">🔍</span>
+                    </div>
+                </div>
+                <div class="table-filter-dropdown" data-column="admin_name_0">
+                    <input type="text" class="filter-input" placeholder="Search Admin Name...">
+                    <div class="filter-options"></div>
+                    <div class="filter-actions">
+                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
+                        <button class="filter-btn" data-action="clear">Clear</button>
+                    </div>
+                </div>
+            </th>
+                        <th class="table-header__cell">
+                <div class="table-header__content">
+                    <span class="table-header__text">Date &amp; Status</span>
+                    <div class="table-header__controls">
+                        <span class="table-header__sort" data-column="date___status_1" data-direction="none">⇅</span>
+                        <span class="table-header__filter" data-column="date___status_1">🔍</span>
+                    </div>
+                </div>
+                <div class="table-filter-dropdown" data-column="date___status_1">
+                    <input type="text" class="filter-input" placeholder="Search Date &amp; Status...">
+                    <div class="filter-options"></div>
+                    <div class="filter-actions">
+                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
+                        <button class="filter-btn" data-action="clear">Clear</button>
+                    </div>
+                </div>
+            </th>
+                        <th class="table-header__cell">
+                <div class="table-header__content">
+                    <span class="table-header__text">Working Hours</span>
+                    <div class="table-header__controls">
+                        <span class="table-header__sort" data-column="working_hours_2" data-direction="none">⇅</span>
+                        <span class="table-header__filter" data-column="working_hours_2">🔍</span>
+                    </div>
+                </div>
+                <div class="table-filter-dropdown" data-column="working_hours_2">
+                    <input type="text" class="filter-input" placeholder="Search Working Hours...">
+                    <div class="filter-options"></div>
+                    <div class="filter-actions">
+                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
+                        <button class="filter-btn" data-action="clear">Clear</button>
+                    </div>
+                </div>
+            </th>
+                        <th class="table-header__cell">
+                <div class="table-header__content">
+                    <span class="table-header__text">Check Times</span>
+                    <div class="table-header__controls">
+                        <span class="table-header__sort" data-column="check_times_3" data-direction="none">⇅</span>
+                        <span class="table-header__filter" data-column="check_times_3">🔍</span>
+                    </div>
+                </div>
+                <div class="table-filter-dropdown" data-column="check_times_3">
+                    <input type="text" class="filter-input" placeholder="Search Check Times...">
+                    <div class="filter-options"></div>
+                    <div class="filter-actions">
+                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
+                        <button class="filter-btn" data-action="clear">Clear</button>
+                    </div>
+                </div>
+            </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -104,7 +168,7 @@ ob_start();
                     }
                     ?>
                     <?php if (empty($adminPersonalAttendance)): ?>
-                    <tr>
+                                            <tr>
                         <td colspan="4" class="text-center">
                             <div class="empty-state">
                                 <div class="empty-icon">📍</div>
@@ -144,7 +208,7 @@ ob_start();
                         </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
-                </tbody>
+                                    </tbody>
             </table>
         </div>
     </div>
@@ -696,6 +760,8 @@ function terminateUser(userId) {
 }
 </script>
 
+<link rel="stylesheet" href="/ergon/assets/css/enhanced-table-utils.css?v=<?= time() ?>">
+<script src="/ergon/assets/js/table-utils.js?v=<?= time() ?>"></script>
 <script src="/ergon/assets/js/attendance-auto-refresh.js?v=<?= time() ?>"></script>
 
 <?php

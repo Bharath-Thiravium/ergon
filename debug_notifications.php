@@ -1,110 +1,70 @@
 <?php
 require_once __DIR__ . '/app/config/database.php';
+require_once __DIR__ . '/app/models/Notification.php';
+
+if (session_status() === PHP_SESSION_NONE) session_start();
+
+echo "<h2>🔍 Notification Debug</h2>";
 
 try {
     $db = Database::connect();
+    $userId = $_SESSION['user_id'] ?? 1;
     
-    echo "<h2>Notification Debug Information</h2>";
+    echo "<p><strong>Current User ID:</strong> {$userId}</p>";
     
     // Check if notifications table exists
-    $stmt = $db->query("SHOW TABLES LIKE 'notifications'");
-    if ($stmt->rowCount() > 0) {
-        echo "<p>✅ Notifications table exists</p>";
-        
-        // Show table structure
-        echo "<h3>Table Structure:</h3>";
-        $stmt = $db->query("DESCRIBE notifications");
-        $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        echo "<table border='1'>";
-        echo "<tr><th>Field</th><th>Type</th><th>Null</th><th>Key</th><th>Default</th></tr>";
-        foreach ($columns as $col) {
-            echo "<tr><td>{$col['Field']}</td><td>{$col['Type']}</td><td>{$col['Null']}</td><td>{$col['Key']}</td><td>{$col['Default']}</td></tr>";
-        }
-        echo "</table>";
-        
-        // Count total notifications
-        $stmt = $db->query("SELECT COUNT(*) as total FROM notifications");
-        $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-        echo "<p>Total notifications in database: <strong>{$total}</strong></p>";
-        
-        // Show recent notifications
-        echo "<h3>Recent Notifications (Last 10):</h3>";
-        $stmt = $db->query("SELECT n.*, u.name as sender_name FROM notifications n LEFT JOIN users u ON n.sender_id = u.id ORDER BY n.created_at DESC LIMIT 10");
-        $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        if (empty($notifications)) {
-            echo "<p>❌ No notifications found in database</p>";
-        } else {
-            echo "<table border='1' style='width:100%'>";
-            echo "<tr><th>ID</th><th>Sender</th><th>Receiver ID</th><th>Title</th><th>Message</th><th>Category</th><th>Reference Type</th><th>Reference ID</th><th>Created</th></tr>";
-            foreach ($notifications as $notif) {
-                echo "<tr>";
-                echo "<td>{$notif['id']}</td>";
-                echo "<td>{$notif['sender_name']}</td>";
-                echo "<td>{$notif['receiver_id']}</td>";
-                echo "<td>{$notif['title']}</td>";
-                echo "<td>" . substr($notif['message'], 0, 50) . "...</td>";
-                echo "<td>{$notif['category']}</td>";
-                echo "<td>{$notif['reference_type']}</td>";
-                echo "<td>{$notif['reference_id']}</td>";
-                echo "<td>{$notif['created_at']}</td>";
-                echo "</tr>";
-            }
-            echo "</table>";
-        }
-        
-        // Check users and their roles
-        echo "<h3>Users and Roles:</h3>";
-        $stmt = $db->query("SELECT id, name, role, status FROM users ORDER BY role, name");
-        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        echo "<table border='1'>";
-        echo "<tr><th>ID</th><th>Name</th><th>Role</th><th>Status</th></tr>";
-        foreach ($users as $user) {
-            echo "<tr><td>{$user['id']}</td><td>{$user['name']}</td><td>{$user['role']}</td><td>{$user['status']}</td></tr>";
-        }
-        echo "</table>";
-        
-        // Check notifications by receiver role
-        echo "<h3>Notifications by Receiver Role:</h3>";
-        $stmt = $db->query("SELECT u.role, COUNT(n.id) as notification_count FROM notifications n JOIN users u ON n.receiver_id = u.id GROUP BY u.role");
-        $roleStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        echo "<table border='1'>";
-        echo "<tr><th>Role</th><th>Notification Count</th></tr>";
-        foreach ($roleStats as $stat) {
-            echo "<tr><td>{$stat['role']}</td><td>{$stat['notification_count']}</td></tr>";
-        }
-        echo "</table>";
-        
-        // Check approval category notifications specifically
-        echo "<h3>Approval Category Notifications:</h3>";
-        $stmt = $db->query("SELECT n.*, u.name as sender_name, ur.name as receiver_name, ur.role as receiver_role FROM notifications n LEFT JOIN users u ON n.sender_id = u.id LEFT JOIN users ur ON n.receiver_id = ur.id WHERE n.category = 'approval' ORDER BY n.created_at DESC");
-        $approvalNotifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        if (empty($approvalNotifs)) {
-            echo "<p>❌ No approval notifications found</p>";
-        } else {
-            echo "<table border='1' style='width:100%'>";
-            echo "<tr><th>ID</th><th>Sender</th><th>Receiver</th><th>Receiver Role</th><th>Title</th><th>Message</th><th>Reference</th><th>Created</th></tr>";
-            foreach ($approvalNotifs as $notif) {
-                echo "<tr>";
-                echo "<td>{$notif['id']}</td>";
-                echo "<td>{$notif['sender_name']}</td>";
-                echo "<td>{$notif['receiver_name']}</td>";
-                echo "<td>{$notif['receiver_role']}</td>";
-                echo "<td>{$notif['title']}</td>";
-                echo "<td>" . substr($notif['message'], 0, 50) . "...</td>";
-                echo "<td>{$notif['reference_type']}#{$notif['reference_id']}</td>";
-                echo "<td>{$notif['created_at']}</td>";
-                echo "</tr>";
-            }
-            echo "</table>";
-        }
-        
+    $tables = $db->query("SHOW TABLES LIKE 'notifications'")->fetchAll();
+    echo "<p><strong>Notifications table exists:</strong> " . (count($tables) > 0 ? "Yes" : "No") . "</p>";
+    
+    // Check total notifications in database
+    $stmt = $db->prepare("SELECT COUNT(*) FROM notifications");
+    $stmt->execute();
+    $totalNotifications = $stmt->fetchColumn();
+    echo "<p><strong>Total notifications in database:</strong> {$totalNotifications}</p>";
+    
+    // Check notifications for current user
+    $stmt = $db->prepare("SELECT COUNT(*) FROM notifications WHERE receiver_id = ?");
+    $stmt->execute([$userId]);
+    $userNotifications = $stmt->fetchColumn();
+    echo "<p><strong>Notifications for user {$userId}:</strong> {$userNotifications}</p>";
+    
+    // Show actual notifications
+    $stmt = $db->prepare("SELECT * FROM notifications WHERE receiver_id = ? ORDER BY created_at DESC LIMIT 5");
+    $stmt->execute([$userId]);
+    $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    echo "<h3>Sample Notifications:</h3>";
+    if (empty($notifications)) {
+        echo "<p>No notifications found for user {$userId}</p>";
     } else {
-        echo "<p>❌ Notifications table does not exist</p>";
+        echo "<table border='1' style='border-collapse: collapse; width: 100%;'>";
+        echo "<tr><th>ID</th><th>Title</th><th>Message</th><th>Type</th><th>Category</th><th>Created</th></tr>";
+        foreach ($notifications as $notif) {
+            echo "<tr>";
+            echo "<td>{$notif['id']}</td>";
+            echo "<td>{$notif['title']}</td>";
+            echo "<td>{$notif['message']}</td>";
+            echo "<td>{$notif['type']}</td>";
+            echo "<td>{$notif['category']}</td>";
+            echo "<td>{$notif['created_at']}</td>";
+            echo "</tr>";
+        }
+        echo "</table>";
+    }
+    
+    // Test the Notification model
+    echo "<h3>Testing Notification Model:</h3>";
+    $notificationModel = new Notification();
+    $modelNotifications = $notificationModel->getForUser($userId);
+    echo "<p><strong>Model returned:</strong> " . count($modelNotifications) . " notifications</p>";
+    
+    if (!empty($modelNotifications)) {
+        echo "<p>First notification from model:</p>";
+        echo "<pre>" . print_r($modelNotifications[0], true) . "</pre>";
     }
     
 } catch (Exception $e) {
-    echo "<p>Error: " . $e->getMessage() . "</p>";
+    echo "<p><strong>Error:</strong> " . $e->getMessage() . "</p>";
+    echo "<p><strong>Stack trace:</strong> " . $e->getTraceAsString() . "</p>";
 }
 ?>

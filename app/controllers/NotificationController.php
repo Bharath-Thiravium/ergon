@@ -15,16 +15,27 @@ class NotificationController extends Controller {
             require_once __DIR__ . '/../models/Notification.php';
             $notificationModel = new Notification();
             
+            // Debug: Check if notifications exist in database
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT COUNT(*) FROM notifications WHERE receiver_id = ?");
+            $stmt->execute([$userId]);
+            $totalCount = $stmt->fetchColumn();
+            
             $notifications = $notificationModel->getForUser($userId);
+            
+            // Debug output
+            error_log("User ID: {$userId}, Total notifications in DB: {$totalCount}, Fetched: " . count($notifications));
             
             $data = [
                 'notifications' => $notifications,
                 'user_role' => $role,
-                'active_page' => 'notifications'
+                'active_page' => 'notifications',
+                'debug_info' => "User: {$userId}, DB Count: {$totalCount}, Fetched: " . count($notifications)
             ];
             
             $this->view('notifications/index', $data);
         } catch (Exception $e) {
+            error_log('Notification controller error: ' . $e->getMessage());
             $data = [
                 'notifications' => [],
                 'user_role' => $_SESSION['role'],

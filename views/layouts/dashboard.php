@@ -170,7 +170,7 @@ ob_end_clean();
     <script src="/ergon/assets/js/mobile-table-cards.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/table-utils.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/user-status-check.js?v=1.0" defer></script>
-    <script src="/ergon/assets/js/notifications-enhanced.js" defer></script>
+
 
     <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
     <script src="/ergon/assets/js/mobile-validation.js?v=<?= time() ?>" defer></script>
@@ -201,7 +201,7 @@ ob_end_clean();
                 <button class="control-btn" id="theme-toggle" title="Toggle Theme">
                     <i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i>
                 </button>
-                <button class="control-btn notification-btn" id="notificationBtn" title="Notifications">
+                <button class="control-btn notification-btn" id="notificationBtn" onclick="toggleNotifications(event)" title="Notifications">
                     <i class="bi bi-bell-fill"></i>
                     <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
                 </button>
@@ -665,7 +665,7 @@ ob_end_clean();
     <div class="notification-dropdown" id="notificationDropdown">
         <div class="notification-header">
             <h3>Notifications</h3>
-            <button type="button" class="view-all-link" id="viewAllNotificationsBtn">View All</button>
+            <button type="button" class="view-all-link" id="viewAllNotificationsBtn" onclick="window.location.href='/ergon/notifications'">View All</button>
         </div>
         <div class="notification-list" id="notificationList">
             <div class="notification-loading">Loading notifications...</div>
@@ -701,6 +701,105 @@ ob_end_clean();
     <script>
     // Global variables - Initialize first
     let attendanceState = 'out'; // 'in' or 'out'
+    
+    // Notification functions - Define immediately
+    function toggleNotifications(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        const dropdown = document.getElementById('notificationDropdown');
+        if (!dropdown) return;
+        
+        const isVisible = dropdown.style.display === 'block';
+        
+        if (isVisible) {
+            dropdown.style.display = 'none';
+        } else {
+            const button = document.querySelector('.notification-btn');
+            if (button) {
+                const rect = button.getBoundingClientRect();
+                dropdown.style.position = 'fixed';
+                dropdown.style.top = (rect.bottom + 8) + 'px';
+                dropdown.style.right = (window.innerWidth - rect.right) + 'px';
+                dropdown.style.zIndex = '10000';
+            }
+            dropdown.style.display = 'block';
+            loadNotifications();
+        }
+    }
+    
+    function loadNotifications() {
+        const list = document.getElementById('notificationList');
+        if (!list) return;
+        
+        list.innerHTML = '<div class="notification-loading">Loading...</div>';
+        
+        fetch('/ergon/api/notifications.php', {
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.notifications && data.notifications.length > 0) {
+                    list.innerHTML = data.notifications.map(notif => {
+                        const time = formatTime(notif.created_at);
+                        const title = escapeHtml(notif.title || 'Notification');
+                        const message = escapeHtml(notif.message || '');
+                        
+                        return `
+                            <a href="/ergon/notifications" class="notification-item">
+                                <div class="notification-title">${title}</div>
+                                <div class="notification-message">${message}</div>
+                                <div class="notification-time">${time}</div>
+                            </a>
+                        `;
+                    }).join('');
+                } else {
+                    list.innerHTML = '<div class="notification-loading">No notifications</div>';
+                }
+                
+                const badge = document.getElementById('notificationBadge');
+                if (badge && data.unread_count !== undefined) {
+                    badge.textContent = data.unread_count;
+                    badge.style.display = data.unread_count > 0 ? 'inline-block' : 'none';
+                }
+            })
+            .catch(() => {
+                list.innerHTML = '<div class="notification-loading">Failed to load</div>';
+            });
+    }
+    
+    function formatTime(dateStr) {
+        try {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return `${minutes}m ago`;
+            
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            
+            return date.toLocaleDateString();
+        } catch (error) {
+            return 'Recently';
+        }
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Make globally available
+    window.toggleNotifications = toggleNotifications;
     
     // Global back button function
     function goBack() {
@@ -773,8 +872,34 @@ ob_end_clean();
         }
     }
     
+    function toggleDropdown(dropdownId) {
+        const dropdown = document.getElementById(dropdownId);
+        const button = dropdown ? dropdown.previousElementSibling : null;
+        
+        if (!dropdown) return;
+        
+        // Close all other dropdowns first
+        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
+            if (menu !== dropdown) {
+                menu.classList.remove('show');
+            }
+        });
+        document.querySelectorAll('.nav-dropdown-btn').forEach(function(btn) {
+            if (btn !== button) {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Toggle current dropdown
+        dropdown.classList.toggle('show');
+        if (button) {
+            button.classList.toggle('active');
+        }
+    }
+    
     window.showDropdown = showDropdown;
     window.hideDropdown = hideDropdown;
+    window.toggleDropdown = toggleDropdown;
     
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.header__controls')) {

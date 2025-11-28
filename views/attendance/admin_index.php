@@ -96,6 +96,150 @@ ob_start();
     </div>
 </div>
 
+<!-- Admin's Detailed Attendance Records -->
+<div class="card">
+    <div class="card__header">
+        <h2 class="card__title">
+            <span>👤</span> My Attendance Records
+        </h2>
+        <p class="card__subtitle">Personal attendance details for logged-in admin</p>
+    </div>
+    <div class="card__body">
+        <div class="table-responsive">
+            <table class="table" data-table-utils="initialized">
+                <thead>
+                    <tr>
+                        <th class="table-header__cell">
+                <div class="table-header__content">
+                    <span class="table-header__text">Admin Name</span>
+                    <div class="table-header__controls">
+                        <span class="table-header__sort" data-column="admin_name_0" data-direction="none">⇅</span>
+                        <span class="table-header__filter" data-column="admin_name_0">🔍</span>
+                    </div>
+                </div>
+                <div class="table-filter-dropdown" data-column="admin_name_0">
+                    <input type="text" class="filter-input" placeholder="Search Admin Name...">
+                    <div class="filter-options"></div>
+                    <div class="filter-actions">
+                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
+                        <button class="filter-btn" data-action="clear">Clear</button>
+                    </div>
+                </div>
+            </th>
+                        <th class="table-header__cell">
+                <div class="table-header__content">
+                    <span class="table-header__text">Date &amp; Status</span>
+                    <div class="table-header__controls">
+                        <span class="table-header__sort" data-column="date___status_1" data-direction="none">⇅</span>
+                        <span class="table-header__filter" data-column="date___status_1">🔍</span>
+                    </div>
+                </div>
+                <div class="table-filter-dropdown" data-column="date___status_1">
+                    <input type="text" class="filter-input" placeholder="Search Date &amp; Status...">
+                    <div class="filter-options"></div>
+                    <div class="filter-actions">
+                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
+                        <button class="filter-btn" data-action="clear">Clear</button>
+                    </div>
+                </div>
+            </th>
+                        <th class="table-header__cell">
+                <div class="table-header__content">
+                    <span class="table-header__text">Working Hours</span>
+                    <div class="table-header__controls">
+                        <span class="table-header__sort" data-column="working_hours_2" data-direction="none">⇅</span>
+                        <span class="table-header__filter" data-column="working_hours_2">🔍</span>
+                    </div>
+                </div>
+                <div class="table-filter-dropdown" data-column="working_hours_2">
+                    <input type="text" class="filter-input" placeholder="Search Working Hours...">
+                    <div class="filter-options"></div>
+                    <div class="filter-actions">
+                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
+                        <button class="filter-btn" data-action="clear">Clear</button>
+                    </div>
+                </div>
+            </th>
+                        <th class="table-header__cell">
+                <div class="table-header__content">
+                    <span class="table-header__text">Check Times</span>
+                    <div class="table-header__controls">
+                        <span class="table-header__sort" data-column="check_times_3" data-direction="none">⇅</span>
+                        <span class="table-header__filter" data-column="check_times_3">🔍</span>
+                    </div>
+                </div>
+                <div class="table-filter-dropdown" data-column="check_times_3">
+                    <input type="text" class="filter-input" placeholder="Search Check Times...">
+                    <div class="filter-options"></div>
+                    <div class="filter-actions">
+                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
+                        <button class="filter-btn" data-action="clear">Clear</button>
+                    </div>
+                </div>
+            </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if ($admin_attendance): ?>
+                    <tr>
+                        <td>
+                            <strong><?= htmlspecialchars($_SESSION['user_name'] ?? 'Admin') ?></strong>
+                            <br><small class="text-muted">Role: Administrator</small>
+                        </td>
+                        <td>
+                            <div class="assignment-info">
+                                <div class="assigned-user"><?= date('M d, Y', strtotime($filter_date ?? date('Y-m-d'))) ?></div>
+                                <div class="priority-badge">
+                                    <span class="badge badge--<?= $admin_attendance['check_in'] ? 'success' : 'danger' ?>">
+                                        <?= $admin_attendance['check_in'] ? '✅ Present' : '❌ Absent' ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="progress-container">
+                                <div class="progress-info">
+                                    <span class="progress-percentage">
+                                        <?php 
+                                        if ($admin_attendance['check_in'] && $admin_attendance['check_out']) {
+                                            $hours = (strtotime($admin_attendance['check_out']) - strtotime($admin_attendance['check_in'])) / 3600;
+                                            echo number_format($hours, 2) . 'h';
+                                        } else {
+                                            echo '0h';
+                                        }
+                                        ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="cell-meta">
+                                <div class="cell-primary">
+                                    In: <?= $admin_attendance['check_in'] ? TimezoneHelper::displayTime($admin_attendance['check_in']) : 'Not clocked in' ?>
+                                </div>
+                                <div class="cell-secondary">
+                                    Out: <?= $admin_attendance['check_out'] ? TimezoneHelper::displayTime($admin_attendance['check_out']) : 'Not clocked out' ?>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php else: ?>
+                    <tr>
+                        <td colspan="4" class="text-center">
+                            <div class="empty-state">
+                                <div class="empty-icon">📍</div>
+                                <h3>No Personal Records</h3>
+                                <p>No attendance records found for your account.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card__header">
         <h2 class="card__title">
@@ -348,6 +492,9 @@ function performAdminClock(type, latitude, longitude) {
     border: 1px solid #fcd34d;
 }
 </style>
+
+<link rel="stylesheet" href="/ergon/assets/css/enhanced-table-utils.css?v=<?= time() ?>">
+<script src="/ergon/assets/js/table-utils.js?v=<?= time() ?>"></script>
 
 <?php
 $content = ob_get_clean();

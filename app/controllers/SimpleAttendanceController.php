@@ -24,7 +24,8 @@ class SimpleAttendanceController extends Controller {
         if ($role === 'user') {
             $roleFilter = "AND u.id = $userId";
         } elseif ($role === 'admin') {
-            $roleFilter = "AND u.role IN ('user')";
+            // Include both admin's own attendance and employee attendance
+            $roleFilter = "AND (u.role IN ('user') OR u.id = $userId)";
         } else {
             $roleFilter = "AND u.role IN ('admin', 'user')";
         }
@@ -53,12 +54,12 @@ class SimpleAttendanceController extends Controller {
                         ELSE '0h 0m'
                     END as working_hours
                 FROM users u
-                LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.created_at) = ?
+                LEFT JOIN attendance a ON u.id = a.user_id AND (DATE(a.check_in) = ? OR DATE(a.created_at) = ?)
                 WHERE u.status = 'active' {$roleFilter}
                 ORDER BY u.role DESC, u.name
             ");
         } else {
-            // For past dates, only show users who have attendance records
+            // For past dates, show all users including those without attendance records
             $stmt = $this->db->prepare("
                 SELECT 
                     u.id as user_id,
@@ -81,12 +82,16 @@ class SimpleAttendanceController extends Controller {
                         ELSE '0h 0m'
                     END as working_hours
                 FROM users u
-                INNER JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
+                LEFT JOIN attendance a ON u.id = a.user_id AND (DATE(a.check_in) = ? OR DATE(a.created_at) = ?)
                 WHERE u.status = 'active' {$roleFilter}
                 ORDER BY u.role DESC, u.name
             ");
         }
-        $stmt->execute([$selectedDate]);
+        if ($selectedDate === TimezoneHelper::getCurrentDate()) {
+            $stmt->execute([$selectedDate, $selectedDate]);
+        } else {
+            $stmt->execute([$selectedDate, $selectedDate]);
+        }
         $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Group by role for owner and admin view
