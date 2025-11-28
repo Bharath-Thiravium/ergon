@@ -1146,7 +1146,7 @@ class FinanceController extends Controller {
                 // Check multiple possible field names for PO number
                 $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
                 
-                if ($prefix && !empty($prefix) && strpos($poNumber, $prefix) !== 0) {
+                if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) {
                     continue;
                 }
                 
@@ -1732,11 +1732,7 @@ class FinanceController extends Controller {
             $poStats = ['po_high_fulfillment_count' => 0, 'po_mid_fulfillment_count' => 0, 'po_low_fulfillment_count' => 0, 'po_total_count' => 0];
         }
         
-        // Calculate PO commitments from backend data
-        $poCommitments = 0;
-        foreach ($purchaseOrders as $po) {
-            $poCommitments += $po['po_amount'];
-        }
+        // PO commitments already calculated above in the loop
         
         // Step 7: Store computed results in dashboard_stats table
         $stats = [
