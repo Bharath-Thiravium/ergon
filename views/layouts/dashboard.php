@@ -759,6 +759,7 @@ ob_end_clean();
                 toggleProfile();
             });
         }
+    });
 
     function toggleProfile() {
         console.log('toggleProfile called'); // Debug log
