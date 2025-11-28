@@ -257,10 +257,10 @@
         <div class="chart-card">
             <div class="chart-card__header">
                 <div class="chart-card__info">
-                    <div class="chart-card__icon">📋</div>
-                    <div class="chart-card__title">Outstanding by Customer</div>
+                    <div class="chart-card__icon">📊</div>
+                    <div class="chart-card__title">Outstanding Distribution</div>
                     <div class="chart-card__value" id="outstandingTotal">₹0</div>
-                    <div class="chart-card__subtitle">Receivables Concentration Risk</div>
+                    <div class="chart-card__subtitle">Top Customer Outstanding Amounts</div>
                 </div>
                 <div class="chart-card__trend" id="outstandingTrend">0%</div>
             </div>
@@ -516,13 +516,19 @@ function initCharts() {
         });
     }
 
-    // Outstanding by Customer Bar Chart
+    // Outstanding by Customer Donut Chart
     const outstandingCtx = document.getElementById('outstandingByCustomerChart');
     if (outstandingCtx) {
         outstandingByCustomerChart = new Chart(outstandingCtx.getContext('2d'), {
-            type: 'bar',
-            data: { labels: [], datasets: [{ label: 'Outstanding', data: [], backgroundColor: '#ef4444' }] },
-            options: chartDefaults
+            type: 'doughnut',
+            data: { 
+                labels: [], 
+                datasets: [{ 
+                    data: [], 
+                    backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e']
+                }] 
+            },
+            options: { ...chartDefaults, cutout: '60%' }
         });
     }
 
