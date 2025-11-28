@@ -242,8 +242,33 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
+            $this->createTables($db);
             $prefix = $this->getCompanyPrefix();
             $customerFilter = $_GET['customer'] ?? '';
+            
+            // Check if finance_data table exists and has data
+            $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $invoiceCount = $stmt->fetchColumn();
+            
+            if ($invoiceCount == 0) {
+                // Return empty stats if no data
+                echo json_encode([
+                    'totalInvoiceAmount' => 0,
+                    'invoiceReceived' => 0,
+                    'pendingInvoiceAmount' => 0,
+                    'pendingGSTAmount' => 0,
+                    'pendingPOValue' => 0,
+                    'claimableAmount' => 0,
+                    'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
+                    'cashFlow' => [
+                        'expectedInflow' => 0,
+                        'poCommitments' => 0
+                    ],
+                    'message' => 'No finance data available. Please sync data first.'
+                ]);
+                return;
+            }
             
             // Get invoice data
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
@@ -309,7 +334,34 @@ class FinanceController extends Controller {
             ]);
             
         } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
+            error_log('Finance dashboard stats error: ' . $e->getMessage());
+            echo json_encode([
+                'error' => 'Failed to load dashboard statistics',
+                'details' => $e->getMessage(),
+                'totalInvoiceAmount' => 0,
+                'invoiceReceived' => 0,
+                'pendingInvoiceAmount' => 0,
+                'pendingGSTAmount' => 0,
+                'pendingPOValue' => 0,
+                'claimableAmount' => 0,
+                'conversionFunnel' => [
+                    'quotations' => 0,
+                    'quotationValue' => 0,
+                    'purchaseOrders' => 0,
+                    'poValue' => 0,
+                    'quotationToPO' => 0,
+                    'invoices' => 0,
+                    'invoiceValue' => 0,
+                    'poToInvoice' => 0,
+                    'payments' => 0,
+                    'paymentValue' => 0,
+                    'invoiceToPayment' => 0
+                ],
+                'cashFlow' => [
+                    'expectedInflow' => 0,
+                    'poCommitments' => 0
+                ]
+            ]);
         }
     }
     
@@ -419,7 +471,19 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
+            $this->createTables($db);
             $prefix = $this->getCompanyPrefix();
+            
+            // Check if table exists and has data
+            $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $count = $stmt->fetchColumn();
+            
+            if ($count == 0) {
+                echo json_encode(['invoices' => [], 'message' => 'No invoice data available']);
+                return;
+            }
+            
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -463,7 +527,8 @@ class FinanceController extends Controller {
             echo json_encode(['invoices' => $invoices]);
             
         } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
+            error_log('Outstanding invoices error: ' . $e->getMessage());
+            echo json_encode(['invoices' => [], 'error' => 'Failed to load outstanding invoices']);
         }
     }
 
@@ -1028,6 +1093,7 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
+            $this->createTables($db);
             $prefix = $this->getCompanyPrefix();
             $customers = [];
             

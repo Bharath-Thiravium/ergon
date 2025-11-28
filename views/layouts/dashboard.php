@@ -170,6 +170,7 @@ ob_end_clean();
     <script src="/ergon/assets/js/mobile-table-cards.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/table-utils.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/user-status-check.js?v=1.0" defer></script>
+    <script src="/ergon/assets/js/notifications-enhanced.js" defer></script>
 
     <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
     <script src="/ergon/assets/js/mobile-validation.js?v=<?= time() ?>" defer></script>
@@ -200,7 +201,7 @@ ob_end_clean();
                 <button class="control-btn" id="theme-toggle" title="Toggle Theme">
                     <i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i>
                 </button>
-                <button class="control-btn notification-btn" onclick="toggleNotifications(event)" title="Notifications">
+                <button class="control-btn notification-btn" id="notificationBtn" title="Notifications">
                     <i class="bi bi-bell-fill"></i>
                     <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
                 </button>
@@ -664,7 +665,7 @@ ob_end_clean();
     <div class="notification-dropdown" id="notificationDropdown">
         <div class="notification-header">
             <h3>Notifications</h3>
-            <button type="button" class="view-all-link" onclick="navigateToNotifications(event)">View All</button>
+            <button type="button" class="view-all-link" id="viewAllNotificationsBtn">View All</button>
         </div>
         <div class="notification-list" id="notificationList">
             <div class="notification-loading">Loading notifications...</div>
@@ -689,9 +690,7 @@ ob_end_clean();
             </div>
             <?php if ($title === 'Notifications'): ?>
             <div class="page-actions">
-                <button class="btn btn--primary" onclick="markAllAsRead()">
-                    Mark All Read
-                </button>
+                <!-- Buttons are now handled by the view file itself -->
             </div>
             <?php endif; ?>
         </div>
@@ -734,54 +733,6 @@ ob_end_clean();
     
     window.toggleDropdown = toggleDropdown;
     
-    function toggleNotifications(event) {
-        if (event) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        var dropdown = document.getElementById('notificationDropdown');
-        var button = event.target.closest('.control-btn');
-        
-        if (dropdown && button) {
-            var isVisible = dropdown.style.display === 'block';
-            
-            document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
-                menu.classList.remove('show');
-            });
-            var profileMenu = document.getElementById('profileMenu');
-            if (profileMenu) profileMenu.classList.remove('show');
-            
-            if (isVisible) {
-                dropdown.style.display = 'none';
-            } else {
-                var rect = button.getBoundingClientRect();
-                dropdown.style.position = 'fixed';
-                dropdown.style.top = (rect.bottom + 8) + 'px';
-                dropdown.style.right = (window.innerWidth - rect.right) + 'px';
-                dropdown.style.left = 'auto';
-                dropdown.style.zIndex = '10000';
-                dropdown.style.display = 'block';
-                
-                loadNotifications();
-            }
-        }
-    }
-    
-    function navigateToNotifications(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        
-        var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown) {
-            dropdown.style.display = 'none';
-        }
-        
-        setTimeout(function() {
-            window.location.href = '/ergon/notifications';
-        }, 100);
-        return false;
-    }
-    
     // Global back button function
     function goBack() {
         if (window.history.length > 1) {
@@ -796,92 +747,9 @@ ob_end_clean();
         window.history.forward();
     }
     
-    function loadNotifications() {
-        var list = document.getElementById('notificationList');
-        if (!list) return;
-        
-        // Add cache busting and proper headers
-        fetch('/ergon/api/notifications.php?t=' + Date.now(), {
-            method: 'GET',
-            headers: {
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin'
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.status);
-            }
-            return response.text();
-        })
-        .then(text => {
-            try {
-                var data = JSON.parse(text);
-                if (data.success && data.notifications && data.notifications.length > 0) {
-                    list.innerHTML = data.notifications.map(function(notif) {
-                        var link = getNotificationLink(notif.reference_type || notif.module_name, notif.message, notif.reference_id);
-                        var title = notif.title || notif.action_type || 'Notification';
-                        var isUnread = !notif.is_read;
-                        var unreadClass = isUnread ? ' notification-item--unread' : '';
-                        
-                        return '<a href="' + link + '" class="notification-item' + unreadClass + '" onclick="closeNotificationDropdown()">' +
-                               '<div class="notification-title">' + title + (isUnread ? ' <span class="unread-dot">●</span>' : '') + '</div>' +
-                               '<div class="notification-message">' + (notif.message || '') + '</div>' +
-                               '<div class="notification-time">' + formatTime(notif.created_at) + '</div>' +
-                               '</a>';
-                    }).join('');
-                    
-                    updateNotificationBadge(data.unread_count || 0);
-                } else {
-                    list.innerHTML = '<div class="notification-loading">No notifications</div>';
-                    updateNotificationBadge(0);
-                }
-            } catch (e) {
-                console.error('Failed to parse notification response:', e);
-                console.log('Raw response:', text.substring(0, 200));
-                list.innerHTML = '<div class="notification-loading">Error loading notifications</div>';
-                updateNotificationBadge(0);
-            }
-        })
-        .catch(error => {
-            console.warn('Notification loading failed:', error.message);
-            list.innerHTML = '<div class="notification-loading">Unable to load notifications</div>';
-            updateNotificationBadge(0);
-        });
-    }
-    
-    function updateNotificationBadge(count) {
-        var badge = document.getElementById('notificationBadge');
-        if (badge) {
-            badge.textContent = count || 0;
-            badge.style.display = count > 0 ? 'inline-block' : 'none';
-            
-            // Add visual feedback for new notifications
-            if (count > 0) {
-                badge.classList.add('has-notifications');
-                // Pulse animation for new notifications
-                badge.style.animation = 'pulse 0.5s ease-in-out';
-                setTimeout(function() {
-                    badge.style.animation = '';
-                }, 500);
-            } else {
-                badge.classList.remove('has-notifications');
-            }
-        }
-    }
-    
     document.addEventListener('DOMContentLoaded', function() {
-        loadNotifications();
         checkAttendanceStatus();
-        
-        // Refresh notifications every 30 seconds
-        setInterval(function() {
-            loadNotifications();
-        }, 30000);
-        
+
         // Ensure profile button is clickable
         var profileBtn = document.getElementById('profileButton');
         if (profileBtn) {
@@ -891,73 +759,6 @@ ob_end_clean();
                 toggleProfile();
             });
         }
-    });
-    
-    function getNotificationLink(module, message, referenceId) {
-        const baseUrl = '/ergon';
-        
-        // Handle both singular and plural forms
-        const moduleMap = {
-            'task': 'tasks',
-            'tasks': 'tasks',
-            'leave': 'leaves', 
-            'leaves': 'leaves',
-            'expense': 'expenses',
-            'expenses': 'expenses',
-            'advance': 'advances',
-            'advances': 'advances',
-            'approval': 'notifications'
-        };
-        
-        const mappedModule = moduleMap[module] || module;
-        
-        if (referenceId && referenceId > 0 && mappedModule !== 'notifications') {
-            return `${baseUrl}/${mappedModule}/view/${referenceId}`;
-        } else if (mappedModule && mappedModule !== 'notifications') {
-            return `${baseUrl}/${mappedModule}`;
-        } else {
-            return `${baseUrl}/notifications`;
-        }
-    }
-    
-    function formatTime(dateStr) {
-        var date = new Date(dateStr);
-        var now = new Date();
-        var diff = now - date;
-        var minutes = Math.floor(diff / 60000);
-        if (minutes < 1) return 'Just now';
-        if (minutes < 60) return minutes + ' min ago';
-        var hours = Math.floor(minutes / 60);
-        if (hours < 24) return hours + ' hour' + (hours > 1 ? 's' : '') + ' ago';
-        return date.toLocaleDateString();
-    }
-    
-    function closeNotificationDropdown() {
-        var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown) dropdown.style.display = 'none';
-    }
-    
-    function markAllAsRead() {
-        fetch('/ergon/api/notifications.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: 'action=mark-all-read'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.error || 'Failed to mark all as read');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Network error occurred');
-        });
-    }
 
     function toggleProfile() {
         console.log('toggleProfile called'); // Debug log
@@ -1012,7 +813,7 @@ ob_end_clean();
         }
         
         var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown && !e.target.closest('.control-btn') && !e.target.closest('#notificationDropdown')) {
+        if (dropdown && !e.target.closest('.notification-btn') && !e.target.closest('#notificationDropdown')) {
             dropdown.style.display = 'none';
         }
         

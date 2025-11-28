@@ -398,6 +398,35 @@ let quotationsChart, purchaseOrdersChart, invoicesChart, paymentsChart;
 let outstandingByCustomerChart;
 let agingBucketsChart;
 
+// Notification function
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification--${type}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        background: ${type === 'error' ? '#f8d7da' : type === 'success' ? '#d4edda' : '#fff3cd'};
+        border: 1px solid ${type === 'error' ? '#f5c6cb' : type === 'success' ? '#c3e6cb' : '#ffeaa7'};
+        color: ${type === 'error' ? '#721c24' : type === 'success' ? '#155724' : '#856404'};
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        max-width: 400px;
+        font-size: 14px;
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 5000);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     
@@ -653,8 +682,28 @@ async function loadDashboardData() {
     try {
         const customerFilter = document.getElementById('customerFilter').value;
         const url = customerFilter ? `/ergon/finance/dashboard-stats?customer=${encodeURIComponent(customerFilter)}` : '/ergon/finance/dashboard-stats';
+        
+        console.log('Loading dashboard data from:', url);
         const response = await fetch(url);
-        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const text = await response.text();
+        console.log('Raw response:', text.substring(0, 200));
+        
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            throw new Error('Invalid JSON response: ' + text.substring(0, 100));
+        }
+        
+        if (data.error) {
+            console.warn('API returned error:', data.error);
+            if (data.details) console.warn('Error details:', data.details);
+        }
         
         updateKPICards(data);
         updateConversionFunnel(data);
@@ -663,8 +712,17 @@ async function loadDashboardData() {
         loadRecentActivities();
         updateCashFlow(data);
         
+        if (data.message) {
+            showNotification(data.message, 'info');
+        }
+        
     } catch (error) {
         console.error('Failed to load dashboard data:', error);
+        showNotification('Failed to load dashboard data: ' + error.message, 'error');
+        // Load with empty data to prevent UI breaking
+        updateKPICards({});
+        updateConversionFunnel({});
+        updateCashFlow({});
     }
 }
 
@@ -869,9 +927,16 @@ async function loadOutstandingInvoices() {
     try {
         const response = await fetch('/ergon/finance/outstanding-invoices');
         if (!response.ok) {
-            throw new Error('Outstanding invoices API not available');
+            throw new Error(`HTTP ${response.status}: Outstanding invoices API not available`);
         }
-        const data = await response.json();
+        
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            throw new Error('Invalid JSON response from outstanding invoices API');
+        }
         
         const tbody = document.querySelector('#outstandingTable tbody');
         if (data.invoices && data.invoices.length > 0) {
@@ -886,10 +951,17 @@ async function loadOutstandingInvoices() {
                 </tr>
             `).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No outstanding invoices</td></tr>';
+            const message = data.message || 'No outstanding invoices';
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center">${message}</td></tr>`;
+        }
+        
+        if (data.error) {
+            console.warn('Outstanding invoices API error:', data.error);
         }
     } catch (error) {
         console.error('Failed to load outstanding invoices:', error);
+        const tbody = document.querySelector('#outstandingTable tbody');
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error loading data: ${error.message}</td></tr>`;
     }
 }
 
