@@ -205,18 +205,13 @@ $router->post('/profile/preferences', 'ProfileController', 'preferences');
 // Notifications
 $router->get('/notifications', 'NotificationController', 'index');
 $router->get('/api/notifications/unread-count', 'NotificationController', 'getUnreadCount');
-$router->post('/api/notifications/mark-read', 'NotificationController', 'markAsRead');
-$router->post('/api/notifications/mark-as-read', 'NotificationController', 'markAsRead');
+// The unified API handles all POST actions now
 $router->post('/api/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
-$router->post('/notifications/markAsRead', 'NotificationController', 'markAsRead');
-$router->post('/notifications/markAllAsRead', 'NotificationController', 'markAllAsRead');
-$router->post('/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
-$router->post('/notifications/mark-as-read', 'NotificationController', 'markAsRead');
 
 // Additional notification API routes
-$router->get('/api/notifications', 'NotificationController', 'getUnreadCount');
-$router->post('/api/notifications', 'NotificationController', 'markAllAsRead');
-$router->post('/api/notifications_unified.php', 'NotificationController', 'markAllAsRead');
+// These are now handled by the unified API script directly and don't need a route
+// $router->get('/api/notifications', 'NotificationController', 'getUnreadCount');
+// $router->post('/api/notifications_unified.php', 'NotificationController', 'markAllAsRead');
 
 // Daily Workflow Management (New Integrated System)
 $router->get('/daily-workflow/morning-planner', 'PlannerController', 'index');
@@ -387,7 +382,6 @@ $router->get('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefi
 $router->post('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
 $router->get('/finance/customers', 'FinanceController', 'getCustomers');
 $router->get('/finance/download-database', 'FinanceController', 'downloadDatabase');
-// New finance visualization/export endpoints
 $router->get('/finance/outstanding-by-customer', 'FinanceController', 'getOutstandingByCustomer');
 $router->get('/finance/aging-buckets', 'FinanceController', 'getAgingBuckets');
 $router->get('/finance/export-outstanding', 'FinanceController', 'exportOutstanding');

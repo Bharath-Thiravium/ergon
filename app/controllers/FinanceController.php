@@ -56,19 +56,27 @@ class FinanceController extends Controller {
         try {
             $db = Database::connect();
             $this->createTables($db);
-            
             $prefix = $this->getCompanyPrefix();
+            $customerFilter = $_GET['customer'] ?? '';
             
             $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $invoiceCount = $stmt->fetchColumn();
             
             if ($invoiceCount == 0) {
+                // Return empty stats if no data, but still provide the funnel structure
                 echo json_encode([
                     'totalInvoiceAmount' => 0,
                     'invoiceReceived' => 0,
                     'pendingInvoiceAmount' => 0,
-                    'conversionFunnel' => ['quotations' => 0],
+                    'pendingGSTAmount' => 0,
+                    'pendingPOValue' => 0,
+                    'claimableAmount' => 0,
+                    'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
+                    'cashFlow' => [
+                        'expectedInflow' => 0,
+                        'poCommitments' => 0
+                    ],
                     'message' => 'No finance data available. Please sync data first.'
                 ]);
                 return;
@@ -81,6 +89,8 @@ class FinanceController extends Controller {
             $totalInvoiceAmount = 0;
             $invoiceReceived = 0;
             $pendingInvoiceAmount = 0;
+            $pendingGSTAmount = 0;
+            $paidInvoiceCount = 0;
             
             foreach ($invoiceResults as $row) {
                 $data = json_decode($row['data'], true);
@@ -92,32 +102,56 @@ class FinanceController extends Controller {
                 
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                $totalTax = floatval($data['total_tax'] ?? 0);
                 
                 $totalInvoiceAmount += $total;
                 $invoiceReceived += ($total - $outstanding);
                 $pendingInvoiceAmount += $outstanding;
+
+                if ($outstanding > 0) {
+                    // Approximate GST on outstanding amount
+                    if ($total > 0) {
+                        $pendingGSTAmount += ($outstanding / $total) * $totalTax;
+                    }
+                } else {
+                    $paidInvoiceCount++;
+                }
             }
-            
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+
+            // Calculate PO and Claimable amounts
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
             $stmt->execute();
-            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $quotationCount = 0;
-            foreach ($quotationResults as $row) {
+            $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $pendingPOValue = 0;
+            $claimableAmount = 0;
+
+            foreach ($poResults as $row) {
                 $data = json_decode($row['data'], true);
-                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
-                
-                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                $poNumber = $data['po_number'] ?? '';
+                if ($prefix && !empty($prefix) && strpos($poNumber, $prefix) !== 0) {
                     continue;
                 }
-                $quotationCount++;
+                $status = strtolower($data['status'] ?? '');
+                if ($status === 'open' || $status === 'partially_billed') {
+                    $pendingPOValue += floatval($data['total_amount'] ?? 0);
+                }
+                if ($status === 'billed' || $status === 'partially_billed') {
+                     $claimableAmount += floatval($data['billed_amount'] ?? 0) - floatval($data['paid_amount'] ?? 0);
+                }
             }
             
             echo json_encode([
                 'totalInvoiceAmount' => $totalInvoiceAmount,
                 'invoiceReceived' => $invoiceReceived,
                 'pendingInvoiceAmount' => $pendingInvoiceAmount,
-                'conversionFunnel' => ['quotations' => $quotationCount]
+                'pendingGSTAmount' => $pendingGSTAmount,
+                'pendingPOValue' => $pendingPOValue,
+                'claimableAmount' => $claimableAmount,
+                'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
+                'cashFlow' => [
+                    'expectedInflow' => $pendingInvoiceAmount,
+                    'poCommitments' => $pendingPOValue
+                ]
             ]);
             
         } catch (Exception $e) {
@@ -125,10 +159,70 @@ class FinanceController extends Controller {
                 'totalInvoiceAmount' => 0,
                 'invoiceReceived' => 0,
                 'pendingInvoiceAmount' => 0,
-                'conversionFunnel' => ['quotations' => 0],
+                'pendingGSTAmount' => 0,
+                'pendingPOValue' => 0,
+                'claimableAmount' => 0,
+                'conversionFunnel' => ['quotations' => 0, 'purchaseOrders' => 0, 'invoices' => 0, 'payments' => 0],
                 'error' => $e->getMessage()
             ]);
         }
+    }
+
+    private function getConversionFunnel($db, $customerFilter = '') {
+        $prefix = $this->getCompanyPrefix();
+        $funnel = [
+            'quotations' => 0, 'quotationValue' => 0,
+            'purchaseOrders' => 0, 'poValue' => 0,
+            'invoices' => 0, 'invoiceValue' => 0,
+            'payments' => 0, 'paymentValue' => 0,
+            'quotationToPO' => 0, 'poToInvoice' => 0, 'invoiceToPayment' => 0
+        ];
+
+        // Quotations
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+        $stmt->execute();
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $data = json_decode($row['data'], true);
+            if ($prefix && !empty($prefix) && strpos($data['quotation_number'] ?? '', $prefix) !== 0) continue;
+            if ($customerFilter && ($data['customer_id'] ?? '') != $customerFilter) continue;
+            $funnel['quotations']++;
+            $funnel['quotationValue'] += floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+        }
+
+        // Purchase Orders
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $data = json_decode($row['data'], true);
+            if ($prefix && !empty($prefix) && strpos($data['po_number'] ?? '', $prefix) !== 0) continue;
+            if ($customerFilter && ($data['customer_id'] ?? '') != $customerFilter) continue;
+            $funnel['purchaseOrders']++;
+            $funnel['poValue'] += floatval($data['total_amount'] ?? 0);
+        }
+
+        // Invoices and Payments (can be derived from invoice data)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        $stmt->execute();
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $data = json_decode($row['data'], true);
+            if ($prefix && !empty($prefix) && strpos($data['invoice_number'] ?? '', $prefix) !== 0) continue;
+            if ($customerFilter && ($data['customer_id'] ?? '') != $customerFilter) continue;
+            $funnel['invoices']++;
+            $total = floatval($data['total_amount'] ?? 0);
+            $outstanding = floatval($data['outstanding_amount'] ?? 0);
+            $funnel['invoiceValue'] += $total;
+            $funnel['paymentValue'] += ($total - $outstanding);
+            if ($outstanding <= 0) {
+                $funnel['payments']++; // Count fully paid invoices as "payments"
+            }
+        }
+
+        // Calculate conversion rates
+        if ($funnel['quotations'] > 0) $funnel['quotationToPO'] = round(($funnel['purchaseOrders'] / $funnel['quotations']) * 100);
+        if ($funnel['purchaseOrders'] > 0) $funnel['poToInvoice'] = round(($funnel['invoices'] / $funnel['purchaseOrders']) * 100);
+        if ($funnel['invoices'] > 0) $funnel['invoiceToPayment'] = round(($funnel['payments'] / $funnel['invoices']) * 100);
+
+        return $funnel;
     }
     
     public function getOutstandingInvoices() {
