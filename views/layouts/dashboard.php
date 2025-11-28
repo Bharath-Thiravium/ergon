@@ -94,8 +94,14 @@ ob_end_clean();
     .message-modal.error .message-icon{color:#dc3545}
     .message-modal.warning .message-icon{color:#ffc107}
     
-    /* Global Back Button - Hidden */
-    .global-back-btn{display:none}
+    /* Global Back Button - Desktop Only */
+    .global-back-btn{position:fixed !important;top:350px !important;right:30px !important;left:auto !important;z-index:1000;background:transparent;color:#000;border:2px solid #000;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s ease}
+    .global-back-btn:hover{background:rgba(0,0,0,0.1);border-color:#000;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+    .global-back-btn svg{stroke:#000}
+    [data-theme="dark"] .global-back-btn{background:transparent;border-color:#fff;color:#fff}
+    [data-theme="dark"] .global-back-btn:hover{background:rgba(255,255,255,0.1);border-color:#fff}
+    [data-theme="dark"] .global-back-btn svg{stroke:#fff}
+    @media (max-width:768px){.global-back-btn{display:none}}
     
     /* Notification Enhancements */
     .notification-item--unread{background:#f0f9ff;border-left:3px solid #0ea5e9}
@@ -663,6 +669,11 @@ ob_end_clean();
     </div>
 
     <main class="main-content">
+        <button class="global-back-btn desktop-only" onclick="goBack()" data-tooltip="Go Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+        </button>
         <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports', 'Notifications'])): ?>
         <div class="page-header">
             <div class="page-title">
@@ -761,6 +772,15 @@ ob_end_clean();
             window.location.href = '/ergon/notifications';
         }, 100);
         return false;
+    }
+    
+    // Global back button function
+    function goBack() {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = '/ergon/dashboard';
+        }
     }
     
     function loadNotifications() {

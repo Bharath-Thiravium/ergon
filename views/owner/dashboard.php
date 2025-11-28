@@ -73,7 +73,7 @@ ob_start();
         <div class="card__header">
             <h2 class="card__title">🎯 Project Progress Overview</h2>
             <div class="card-actions">
-                <a href="/ergon/daily-planner/project-overview" class="btn btn--primary btn--sm">View Details</a>
+                <a href="/ergon/dashboard/project-overview" class="btn btn--primary btn--sm">View Details</a>
             </div>
         </div>
         <div class="card__body">
@@ -150,7 +150,7 @@ ob_start();
         <div class="card__header">
             <h2 class="card__title">⚠️ Delayed Tasks Overview</h2>
             <div class="card-actions">
-                <a href="/ergon/daily-planner/delayed-tasks-overview" class="btn btn--primary btn--sm">View Details</a>
+                <a href="/ergon/dashboard/delayed-tasks-overview" class="btn btn--primary btn--sm">View Details</a>
             </div>
         </div>
         <div class="card__body">

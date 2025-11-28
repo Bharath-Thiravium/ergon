@@ -35,13 +35,22 @@ class DashboardController extends Controller {
     public function projectOverview() {
         AuthMiddleware::requireAuth();
         
+        // Prevent caching
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
+            // Debug: Log the query execution
+            error_log('Executing project overview query...');
+            
             // Query to get actual projects from projects table with task statistics
             $stmt = $db->query("
                 SELECT 
+                    p.id as project_id,
                     p.name as project_name,
                     p.status as project_status,
                     p.description,
@@ -60,6 +69,9 @@ class DashboardController extends Controller {
             ");
             $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
+            // Debug: Log the results
+            error_log('Project overview found ' . count($projects) . ' projects');
+            
             // Ensure numeric values are properly set
             foreach ($projects as &$project) {
                 $project['total_tasks'] = (int)($project['total_tasks'] ?? 0);
@@ -74,6 +86,7 @@ class DashboardController extends Controller {
             ]);
         } catch (Exception $e) {
             error_log('Project overview error: ' . $e->getMessage());
+            error_log('Stack trace: ' . $e->getTraceAsString());
             $this->view('dashboard/project_overview', ['projects' => [], 'active_page' => 'dashboard']);
         }
     }
@@ -81,9 +94,17 @@ class DashboardController extends Controller {
     public function delayedTasksOverview() {
         AuthMiddleware::requireAuth();
         
+        // Prevent caching
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
+            
+            // Debug: Log the query execution
+            error_log('Executing delayed tasks overview query...');
             
             // Get delayed tasks data - check both due_date and deadline columns
             $stmt = $db->query("
@@ -103,12 +124,16 @@ class DashboardController extends Controller {
             ");
             $delayedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
+            // Debug: Log the results
+            error_log('Delayed tasks overview found ' . count($delayedTasks) . ' tasks');
+            
             $this->view('dashboard/delayed_tasks_overview', [
                 'delayed_tasks' => $delayedTasks,
                 'active_page' => 'dashboard'
             ]);
         } catch (Exception $e) {
             error_log('Delayed tasks overview error: ' . $e->getMessage());
+            error_log('Stack trace: ' . $e->getTraceAsString());
             $this->view('dashboard/delayed_tasks_overview', ['delayed_tasks' => [], 'active_page' => 'dashboard']);
         }
     }

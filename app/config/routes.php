@@ -31,6 +31,9 @@ $router->post('/auth/forgot-password', 'AuthController', 'forgotPassword');
 
 // Dashboard Routes
 $router->get('/dashboard', 'DashboardController', 'index');
+$router->get('/dashboard/project-overview', 'DashboardController', 'projectOverview');
+$router->get('/dashboard/delayed-tasks-overview', 'DashboardController', 'delayedTasksOverview');
+$router->get('/dashboard/project-tasks-overview', 'DashboardController', 'projectTasksOverview');
 $router->get('/owner/dashboard', 'OwnerController', 'dashboard');
 $router->get('/admin/dashboard', 'AdminController', 'dashboard');
 $router->get('/user/dashboard', 'UserController', 'dashboard');
