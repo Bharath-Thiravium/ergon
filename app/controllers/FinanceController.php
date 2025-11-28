@@ -1324,16 +1324,37 @@ class FinanceController extends Controller {
             $data = json_decode($row['data'], true);
             $invoiceNumber = $data['invoice_number'] ?? '';
             if (!$prefix || strpos($invoiceNumber, $prefix) === 0) {
+                // Calculate GST components from available data
+                $totalAmount = floatval($data['total_amount'] ?? 0);
+                $taxableAmount = floatval($data['taxable_amount'] ?? $totalAmount);
+                $totalTax = floatval($data['total_tax'] ?? $data['tax_amount'] ?? $data['gst_amount'] ?? 0);
+                
+                // If no explicit tax, calculate 18% GST on taxable amount
+                if ($totalTax == 0 && $taxableAmount > 0) {
+                    $totalTax = $taxableAmount * 0.18;
+                }
+                
+                // Extract individual GST components or split total tax
+                $igst = floatval($data['igst'] ?? 0);
+                $cgst = floatval($data['cgst'] ?? 0);
+                $sgst = floatval($data['sgst'] ?? 0);
+                
+                // If individual components not available, assume CGST+SGST (9% each)
+                if ($igst == 0 && $cgst == 0 && $sgst == 0 && $totalTax > 0) {
+                    $cgst = $totalTax / 2;
+                    $sgst = $totalTax / 2;
+                }
+                
                 $invoices[] = [
                     'invoice_number' => $invoiceNumber,
-                    'taxable_amount' => floatval($data['taxable_amount'] ?? $data['total_amount'] ?? 0),
+                    'taxable_amount' => $taxableAmount,
                     'amount_paid' => floatval($data['amount_paid'] ?? 0),
-                    'total_amount' => floatval($data['total_amount'] ?? 0),
+                    'total_amount' => $totalAmount,
                     'due_date' => $data['due_date'] ?? '',
                     'customer_gstin' => $data['customer_gstin'] ?? $data['customer_id'] ?? '',
-                    'igst' => floatval($data['igst'] ?? 0),
-                    'cgst' => floatval($data['cgst'] ?? 0),
-                    'sgst' => floatval($data['sgst'] ?? 0)
+                    'igst' => $igst,
+                    'cgst' => $cgst,
+                    'sgst' => $sgst
                 ];
             }
         }
