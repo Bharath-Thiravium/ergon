@@ -390,5 +390,7 @@ $router->get('/finance/download-database', 'FinanceController', 'downloadDatabas
 $router->get('/finance/outstanding-by-customer', 'FinanceController', 'getOutstandingByCustomer');
 $router->get('/finance/aging-buckets', 'FinanceController', 'getAgingBuckets');
 $router->get('/finance/export-outstanding', 'FinanceController', 'exportOutstanding');
+$router->get('/finance/import', 'FinanceController', 'importData');
+$router->post('/finance/import', 'FinanceController', 'importData');
 
 ?>

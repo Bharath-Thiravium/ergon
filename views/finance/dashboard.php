@@ -26,6 +26,10 @@
                     <span class="btn__icon">💾</span>
                     <span class="btn__text">Download DB</span>
                 </button>
+                <a href="/ergon/finance/import" class="btn btn--success btn--sm">
+                    <span class="btn__icon">📥</span>
+                    <span class="btn__text">Import Data</span>
+                </a>
             </div>
             <div class="filter-group">
                 <div class="input-group">

@@ -854,6 +854,21 @@ class FinanceController extends Controller {
         exit;
     }
     
+    public function importData() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'populate_demo') {
+            header('Content-Type: application/json');
+            try {
+                $this->createDemoData();
+                echo json_encode(['success' => true, 'message' => 'Demo data populated successfully']);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
+            return;
+        }
+        
+        $this->view('finance/import');
+    }
+    
     public function downloadDatabase() {
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="complete_database_' . date('Y-m-d_H-i-s') . '.csv"');
