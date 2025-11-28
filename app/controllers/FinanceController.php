@@ -170,56 +170,54 @@ class FinanceController extends Controller {
         
         try {
             if (!function_exists('pg_connect')) {
-                // Create dummy data for demo purposes when PostgreSQL is not available
-                $this->createDemoData();
-                echo json_encode(['success' => true, 'tables' => 5, 'message' => 'Demo data created (PostgreSQL not available)']);
+                echo json_encode(['success' => false, 'error' => 'PostgreSQL extension not available']);
                 exit;
             }
-            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=60");
+            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=30");
             
             if (!$conn) {
-                echo json_encode(['error' => 'PostgreSQL connection failed']);
+                echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed']);
                 exit;
             }
             
             $db = Database::connect();
             $this->createTables($db);
             
-            // Get all tables from PostgreSQL
-            $tablesResult = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name");
-            $allTables = [];
-            while ($row = pg_fetch_assoc($tablesResult)) {
-                $allTables[] = $row['table_name'];
-            }
+            // Focus on finance-related tables only
+            $financeTables = [
+                'finance_quotations' => 'quotations',
+                'finance_invoices' => 'invoices', 
+                'finance_purchase_orders' => 'purchase_orders',
+                'finance_customers' => 'customers',
+                'finance_payments' => 'payments'
+            ];
             
             $syncCount = 0;
-            $batchSize = 50;
             
-            foreach ($allTables as $tableName) {
+            foreach ($financeTables as $localTable => $pgTable) {
                 try {
-                    // Get row count first
-                    $countResult = pg_query($conn, "SELECT COUNT(*) FROM \"$tableName\"");
-                    if (!$countResult) continue;
+                    // Check if table exists in PostgreSQL
+                    $checkResult = pg_query($conn, "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = '$pgTable'");
+                    if (!$checkResult || pg_fetch_row($checkResult)[0] == 0) {
+                        continue;
+                    }
                     
-                    $rowCount = pg_fetch_row($countResult)[0];
+                    // Get data from PostgreSQL
+                    $dataResult = pg_query($conn, "SELECT * FROM \"$pgTable\" LIMIT 100");
+                    $data = [];
                     
-                    if ($rowCount > 0) {
-                        $limit = min($batchSize, $rowCount);
-                        $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT $limit");
-                        $data = [];
-                        
-                        if ($dataResult) {
-                            while ($dataRow = pg_fetch_assoc($dataResult)) {
-                                $data[] = $dataRow;
-                            }
-                        }
-                        
-                        if (!empty($data)) {
-                            $this->storeTableData($db, $tableName, $data);
-                            $syncCount++;
+                    if ($dataResult) {
+                        while ($dataRow = pg_fetch_assoc($dataResult)) {
+                            $data[] = $dataRow;
                         }
                     }
+                    
+                    if (!empty($data)) {
+                        $this->storeTableData($db, $localTable, $data);
+                        $syncCount++;
+                    }
                 } catch (Exception $e) {
+                    error_log("Sync error for $pgTable: " . $e->getMessage());
                     continue;
                 }
             }
@@ -1391,19 +1389,54 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
+            // Generate customers
+            $customers = [];
+            for ($i = 1; $i <= 10; $i++) {
+                $customers[] = [
+                    'id' => $i,
+                    'name' => 'Customer ' . $i,
+                    'display_name' => 'Customer ' . $i,
+                    'gstin' => '29ABCDE' . str_pad($i, 4, '0', STR_PAD_LEFT) . 'F1Z5'
+                ];
+            }
+            
+            // Generate invoices
+            $invoices = [];
+            for ($i = 1; $i <= 25; $i++) {
+                $customerId = rand(1, 10);
+                $totalAmount = rand(25000, 200000);
+                $outstanding = rand(0, 1) ? rand(0, $totalAmount) : 0;
+                
+                $invoices[] = [
+                    'invoice_number' => 'BKC-INV-' . str_pad($i, 3, '0', STR_PAD_LEFT),
+                    'customer_id' => $customerId,
+                    'customer_name' => 'Customer ' . $customerId,
+                    'total_amount' => $totalAmount,
+                    'outstanding_amount' => $outstanding,
+                    'due_date' => date('Y-m-d', strtotime('-' . rand(0, 60) . ' days')),
+                    'payment_status' => $outstanding > 0 ? 'unpaid' : 'paid',
+                    'gst_rate' => 0.18
+                ];
+            }
+            
+            // Generate quotations
+            $quotations = [];
+            for ($i = 1; $i <= 15; $i++) {
+                $customerId = rand(1, 10);
+                $quotations[] = [
+                    'quotation_number' => 'BKC-Q-' . str_pad($i, 3, '0', STR_PAD_LEFT),
+                    'customer_id' => $customerId,
+                    'customer_name' => 'Customer ' . $customerId,
+                    'total_amount' => rand(30000, 250000),
+                    'status' => ['draft', 'revised', 'converted'][rand(0, 2)],
+                    'valid_until' => date('Y-m-d', strtotime('+' . rand(15, 45) . ' days'))
+                ];
+            }
+            
             $demoData = [
-                'finance_quotations' => [
-                    ['quotation_number' => 'BKC-Q-001', 'customer_id' => '1', 'total_amount' => 50000, 'status' => 'draft'],
-                    ['quotation_number' => 'BKC-Q-002', 'customer_id' => '2', 'total_amount' => 75000, 'status' => 'revised']
-                ],
-                'finance_invoices' => [
-                    ['invoice_number' => 'BKC-INV-001', 'customer_id' => '1', 'total_amount' => 50000, 'outstanding_amount' => 25000, 'due_date' => date('Y-m-d')],
-                    ['invoice_number' => 'BKC-INV-002', 'customer_id' => '2', 'total_amount' => 75000, 'outstanding_amount' => 0, 'due_date' => date('Y-m-d')]
-                ],
-                'finance_customers' => [
-                    ['id' => '1', 'name' => 'Demo Customer 1', 'display_name' => 'Demo Customer 1', 'gstin' => '29ABCDE1234F1Z5'],
-                    ['id' => '2', 'name' => 'Demo Customer 2', 'display_name' => 'Demo Customer 2', 'gstin' => '29ABCDE5678F1Z5']
-                ]
+                'finance_customers' => $customers,
+                'finance_invoices' => $invoices,
+                'finance_quotations' => $quotations
             ];
             
             foreach ($demoData as $tableName => $records) {
@@ -1412,6 +1445,7 @@ class FinanceController extends Controller {
             
         } catch (Exception $e) {
             error_log('Demo data creation failed: ' . $e->getMessage());
+            throw $e;
         }
     }
     
