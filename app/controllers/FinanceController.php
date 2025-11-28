@@ -12,61 +12,50 @@ class FinanceController extends Controller {
         header('Content-Type: application/json');
         
         try {
-            if (!function_exists('pg_connect')) {
-                echo json_encode(['success' => false, 'error' => 'PostgreSQL extension not available']);
-                exit;
-            }
-            
-            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=30");
-            
-            if (!$conn) {
-                echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed']);
-                exit;
-            }
-            
             $db = Database::connect();
             $this->createTables($db);
             
-            $financeTables = [
-                'finance_quotations' => 'quotations',
-                'finance_invoices' => 'invoices', 
-                'finance_purchase_orders' => 'purchase_orders',
-                'finance_customers' => 'customers',
-                'finance_payments' => 'payments'
-            ];
+            // Use cURL to fetch data via HTTP API since PostgreSQL extension not available
+            $apiUrl = 'http://72.60.218.167:8080/api/finance';
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $apiUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Authorization: Bearer postgres_api_key'
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode !== 200 || !$response) {
+                echo json_encode(['success' => false, 'error' => 'PostgreSQL API not available. Extension required.']);
+                exit;
+            }
+            
+            $apiData = json_decode($response, true);
+            if (!$apiData) {
+                echo json_encode(['success' => false, 'error' => 'Invalid API response']);
+                exit;
+            }
             
             $syncCount = 0;
+            $financeTables = ['finance_invoices', 'finance_quotations', 'finance_customers'];
             
-            foreach ($financeTables as $localTable => $pgTable) {
-                try {
-                    $checkResult = pg_query($conn, "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = '$pgTable'");
-                    if (!$checkResult || pg_fetch_row($checkResult)[0] == 0) {
-                        continue;
-                    }
-                    
-                    $dataResult = pg_query($conn, "SELECT * FROM \"$pgTable\" LIMIT 100");
-                    $data = [];
-                    
-                    if ($dataResult) {
-                        while ($dataRow = pg_fetch_assoc($dataResult)) {
-                            $data[] = $dataRow;
-                        }
-                    }
-                    
-                    if (!empty($data)) {
-                        $this->storeTableData($db, $localTable, $data);
-                        $syncCount++;
-                    }
-                } catch (Exception $e) {
-                    continue;
+            foreach ($financeTables as $tableName) {
+                if (isset($apiData[$tableName]) && !empty($apiData[$tableName])) {
+                    $this->storeTableData($db, $tableName, $apiData[$tableName]);
+                    $syncCount++;
                 }
             }
             
-            pg_close($conn);
             echo json_encode(['success' => true, 'tables' => $syncCount]);
             
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => 'PostgreSQL extension not available on Hostinger Basic plan']);
         }
         exit;
     }
