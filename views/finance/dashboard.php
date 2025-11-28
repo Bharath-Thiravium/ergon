@@ -383,11 +383,11 @@
             <div class="card__header">
                 <h2 class="card__title">📈 Recent Activities</h2>
                 <div class="activity-filters">
-                    <button class="filter-btn active" data-type="all">All</button>
-                    <button class="filter-btn" data-type="quotation">📝</button>
-                    <button class="filter-btn" data-type="po">🛒</button>
-                    <button class="filter-btn" data-type="invoice">💰</button>
-                    <button class="filter-btn" data-type="payment">💳</button>
+                    <button class="filter-btn active" data-type="all" onclick="loadRecentActivities('all')">All</button>
+                    <button class="filter-btn" data-type="quotation" onclick="loadRecentActivities('quotation')">📝</button>
+                    <button class="filter-btn" data-type="purchase_order" onclick="loadRecentActivities('purchase_order')">🛒</button>
+                    <button class="filter-btn" data-type="invoice" onclick="loadRecentActivities('invoice')">💰</button>
+                    <button class="filter-btn" data-type="payment" onclick="loadRecentActivities('payment')">💳</button>
                 </div>
             </div>
             <div class="card__body">
@@ -1319,37 +1319,93 @@ async function loadOutstandingByCustomer(limit = 10) {
 
 async function loadRecentActivities(type = 'all') {
     try {
-        // Use existing quotations endpoint as fallback until backend is implemented
-        const response = await fetch('/ergon/finance/recent-quotations');
+        const response = await fetch('/ergon/finance/recent-activities');
         if (!response.ok) {
             throw new Error('Recent activities API not available');
         }
-        const activityText = await response.text();
-        const data = activityText ? JSON.parse(activityText) : {};
+        const data = await response.json();
         
         const container = document.getElementById('recentActivities');
-        if (data.quotations && data.quotations.length > 0) {
-            container.innerHTML = data.quotations.map(quote => `
-                <div class="activity-item activity-item--quotation">
-                    <div class="activity-icon">📝</div>
-                    <div class="activity-content">
-                        <div class="activity-title">${quote.quotation_number}</div>
-                        <div class="activity-details">₹${quote.total_amount.toLocaleString()} - ${quote.customer_name}</div>
-                        <div class="activity-meta">
-                            <span class="activity-type">Quotation</span>
-                            <span class="activity-date">Expires: ${quote.valid_until}</span>
+        if (data.activities && data.activities.length > 0) {
+            let filteredActivities = data.activities;
+            if (type !== 'all') {
+                filteredActivities = data.activities.filter(activity => activity.type === type);
+            }
+            
+            container.innerHTML = filteredActivities.map(activity => {
+                const statusClass = getActivityStatusClass(activity.status);
+                const timeAgo = getTimeAgo(activity.date);
+                
+                return `
+                    <div class="activity-item activity-item--${activity.type}">
+                        <div class="activity-icon">${activity.icon}</div>
+                        <div class="activity-content">
+                            <div class="activity-title">${activity.title}</div>
+                            <div class="activity-details">${activity.description}</div>
+                            <div class="activity-meta">
+                                <span class="activity-type">${getActivityTypeLabel(activity.type)}</span>
+                                <span class="activity-date">${timeAgo}</span>
+                            </div>
                         </div>
+                        <div class="activity-status ${statusClass}">${getStatusLabel(activity.status)}</div>
                     </div>
-                    <div class="activity-status activity-status--pending">Active</div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
-            container.innerHTML = '<div class="activity-item"><div class="activity-loading">No recent activities</div></div>';
+            container.innerHTML = '<div class="activity-item"><div class="activity-loading">No recent activities found</div></div>';
         }
+        
+        // Update filter button states
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === type);
+        });
+        
     } catch (error) {
         console.error('Failed to load recent activities:', error);
-        document.getElementById('recentActivities').innerHTML = '<div class="activity-item"><div class="activity-loading">No activities available</div></div>';
+        document.getElementById('recentActivities').innerHTML = '<div class="activity-item"><div class="activity-loading">Error loading activities</div></div>';
     }
+}
+
+function getActivityStatusClass(status) {
+    const statusMap = {
+        'completed': 'activity-status--completed',
+        'pending': 'activity-status--pending',
+        'open': 'activity-status--pending',
+        'draft': 'activity-status--draft'
+    };
+    return statusMap[status] || 'activity-status--pending';
+}
+
+function getStatusLabel(status) {
+    const labelMap = {
+        'completed': 'Completed',
+        'pending': 'Pending',
+        'open': 'Open',
+        'draft': 'Draft'
+    };
+    return labelMap[status] || 'Active';
+}
+
+function getActivityTypeLabel(type) {
+    const typeMap = {
+        'invoice': 'Invoice',
+        'quotation': 'Quotation',
+        'purchase_order': 'Purchase Order',
+        'payment': 'Payment'
+    };
+    return typeMap[type] || 'Activity';
+}
+
+function getTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString();
 }
 
 function getActivityIcon(type) {
@@ -2407,6 +2463,11 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 .activity-status--completed {
     background: rgba(16, 185, 129, 0.1);
     color: var(--success);
+}
+
+.activity-status--draft {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--text-muted);
 }
 
 .activity-loading {

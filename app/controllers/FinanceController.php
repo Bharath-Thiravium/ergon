@@ -745,99 +745,87 @@ class FinanceController extends Controller {
         try {
             $db = Database::connect();
             $this->createTables($db);
-            
             $prefix = $this->getCompanyPrefix();
             $activities = [];
             
-            // Get recent invoices
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' ORDER BY id DESC LIMIT 3");
+            // Recent Invoices
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' ORDER BY id DESC LIMIT 5");
             $stmt->execute();
-            $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($invoices as $row) {
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $data = json_decode($row['data'], true);
                 $invoiceNumber = $data['invoice_number'] ?? '';
+                if ($prefix && strpos($invoiceNumber, $prefix) !== 0) continue;
                 
-                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
-                    continue;
-                }
-                
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                $total = floatval($data['total_amount'] ?? 0);
                 $activities[] = [
                     'type' => 'invoice',
-                    'description' => "Invoice {$invoiceNumber} created",
-                    'amount' => floatval($data['total_amount'] ?? 0),
-                    'date' => $data['invoice_date'] ?? date('Y-m-d'),
-                    'status' => $data['payment_status'] ?? 'pending'
+                    'icon' => '💰',
+                    'title' => "Invoice {$invoiceNumber}",
+                    'description' => $outstanding > 0 ? "₹{$total} - Outstanding: ₹{$outstanding}" : "₹{$total} - Paid",
+                    'date' => $data['invoice_date'] ?? $data['created_date'] ?? date('Y-m-d'),
+                    'status' => $outstanding > 0 ? 'pending' : 'completed'
                 ];
             }
             
-            // Get recent quotations
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 2");
+            // Recent Quotations
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 3");
             $stmt->execute();
-            $quotations = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($quotations as $row) {
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $data = json_decode($row['data'], true);
                 $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+                if ($prefix && strpos($quotationNumber, $prefix) !== 0) continue;
                 
-                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
-                    continue;
-                }
-                
+                $amount = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
                 $activities[] = [
                     'type' => 'quotation',
-                    'description' => "Quotation {$quotationNumber} created",
-                    'amount' => floatval($data['amount'] ?? $data['total_amount'] ?? 0),
+                    'icon' => '📝',
+                    'title' => "Quotation {$quotationNumber}",
+                    'description' => "₹{$amount} - " . ucfirst($data['status'] ?? 'draft'),
                     'date' => $data['created_date'] ?? $data['date'] ?? date('Y-m-d'),
-                    'status' => $data['status'] ?? 'pending'
+                    'status' => strtolower($data['status'] ?? 'draft')
                 ];
             }
             
-            // Get recent purchase orders
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders' ORDER BY id DESC LIMIT 2");
+            // Recent Purchase Orders
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders' ORDER BY id DESC LIMIT 3");
             $stmt->execute();
-            $pos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($pos as $row) {
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $data = json_decode($row['data'], true);
-                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+                $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+                if ($prefix && !stripos($poNumber, $prefix)) continue;
                 
-                if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) {
-                    continue;
-                }
-                
+                $total = floatval($data['total_amount'] ?? 0);
+                $paid = floatval($data['amount_paid'] ?? 0);
                 $activities[] = [
-                    'type' => 'po',
-                    'description' => "Purchase Order {$poNumber} created",
-                    'amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? 0),
-                    'date' => $data['po_date'] ?? $data['created_date'] ?? $data['date'] ?? $data['order_date'] ?? date('Y-m-d'),
-                    'status' => $data['status'] ?? $data['po_status'] ?? 'open'
+                    'type' => 'purchase_order',
+                    'icon' => '🛒',
+                    'title' => "PO {$poNumber}",
+                    'description' => "₹{$total}" . ($paid > 0 ? " - Paid: ₹{$paid}" : " - Open"),
+                    'date' => $data['po_date'] ?? $data['created_date'] ?? date('Y-m-d'),
+                    'status' => ($paid >= $total && !empty($data['received_date'])) ? 'completed' : 'open'
                 ];
             }
             
-            // Get recent payments
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_payments' ORDER BY id DESC LIMIT 1");
+            // Recent Payments
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_payments' ORDER BY id DESC LIMIT 2");
             $stmt->execute();
-            $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($payments as $row) {
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $data = json_decode($row['data'], true);
-                $paymentRef = $data['payment_reference'] ?? $data['reference'] ?? '';
+                $paymentRef = $data['payment_reference'] ?? $data['reference'] ?? 'Payment';
                 
-                if ($prefix && !empty($prefix) && strpos($paymentRef, $prefix) !== 0) {
-                    continue;
-                }
-                
+                $amount = floatval($data['amount'] ?? $data['payment_amount'] ?? 0);
                 $activities[] = [
                     'type' => 'payment',
-                    'description' => "Payment {$paymentRef} received",
-                    'amount' => floatval($data['amount'] ?? $data['payment_amount'] ?? 0),
+                    'icon' => '💳',
+                    'title' => "Payment Received",
+                    'description' => "₹{$amount} - {$paymentRef}",
                     'date' => $data['payment_date'] ?? $data['date'] ?? date('Y-m-d'),
                     'status' => 'completed'
                 ];
             }
             
-            // Sort by date
+            // Sort by date (newest first)
             usort($activities, function($a, $b) {
                 return strtotime($b['date']) - strtotime($a['date']);
             });
@@ -1296,14 +1284,8 @@ class FinanceController extends Controller {
             $this->createTables($db);
             $prefix = $this->getCompanyPrefix();
             
-            $pgConn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango");
-            if ($pgConn) {
-                $this->calculateStatCard3Pipeline($db, $pgConn, $prefix);
-                @pg_close($pgConn);
-                echo json_encode(['success' => true, 'message' => 'Stats refreshed for prefix: ' . $prefix]);
-            } else {
-                echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed']);
-            }
+            $this->calculateStatCard3Pipeline($db, null, $prefix);
+            echo json_encode(['success' => true, 'message' => 'Stats refreshed for prefix: ' . $prefix]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
