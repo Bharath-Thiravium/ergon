@@ -139,7 +139,7 @@ ob_end_clean();
     <script src="/ergon/assets/js/mobile-validation.js?v=<?= time() ?>" defer></script>
     <?php endif; ?>
 </head>
-<body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>" data-user-role="<?= $_SESSION['role'] ?? 'user' ?>">
+<body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>" data-user-role="<?= $_SESSION['role'] ?? 'user' ?>" data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>">
     <header class="main-header">
         <div class="header__top">
             <div class="header__brand">
