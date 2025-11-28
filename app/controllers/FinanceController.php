@@ -5,7 +5,17 @@ require_once __DIR__ . '/../config/database.php';
 class FinanceController extends Controller {
     
     public function dashboard() {
-        $this->view('finance/dashboard');
+        try {
+            // Check if required tables exist
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $this->view('finance/dashboard');
+        } catch (Exception $e) {
+            error_log('Finance dashboard error: ' . $e->getMessage());
+            $this->view('finance/dashboard');
+        }
     }
     
     public function analyzeAllTables() {
