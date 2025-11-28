@@ -859,6 +859,32 @@ ob_end_clean();
     // Make functions globally accessible
     window.toggleProfile = toggleProfile;
     
+    // Navigation dropdown toggle function
+    function toggleDropdown(dropdownId) {
+        const dropdown = document.getElementById(dropdownId);
+        const button = dropdown ? dropdown.previousElementSibling : null;
+        
+        // Close all other dropdowns
+        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
+            if (menu.id !== dropdownId) {
+                menu.classList.remove('show');
+            }
+        });
+        document.querySelectorAll('.nav-dropdown-btn').forEach(function(btn) {
+            if (btn !== button) {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Toggle current dropdown
+        if (dropdown) {
+            dropdown.classList.toggle('show');
+            if (button) {
+                button.classList.toggle('active');
+            }
+        }
+    }
+    
     // Define missing dropdown functions
     function showDropdown(element) {
         if (element && element.nextElementSibling) {
