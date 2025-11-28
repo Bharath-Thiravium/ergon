@@ -1145,8 +1145,13 @@ class FinanceController extends Controller {
                 $data = json_decode($row['data'], true);
                 // Check multiple possible field names for PO number
                 $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
+                $internalPoNumber = $data['internal_po_number'] ?? '';
                 
-                if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) {
+                $matchesPrefix = !$prefix || 
+                                stripos($poNumber, $prefix) !== false || 
+                                stripos($internalPoNumber, $prefix) !== false;
+                
+                if (!$matchesPrefix) {
                     continue;
                 }
                 
@@ -1352,8 +1357,12 @@ class FinanceController extends Controller {
             $data = json_decode($row['data'], true);
             $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
             
-            // Apply prefix filtering
-            if (!$prefix || stripos($poNumber, $prefix) !== false) {
+            // Apply prefix filtering - check both po_number and internal_po_number
+            $matchesPrefix = !$prefix || 
+                            stripos($poNumber, $prefix) !== false || 
+                            stripos($data['internal_po_number'] ?? '', $prefix) !== false;
+            
+            if ($matchesPrefix) {
                 $purchaseOrders[] = [
                     'po_number' => $poNumber,
                     'po_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),

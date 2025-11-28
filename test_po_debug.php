@@ -3,7 +3,7 @@ require_once __DIR__ . '/app/config/database.php';
 
 try {
     $db = Database::connect();
-    $prefix = 'BKC'; // Change this to your actual prefix
+    $prefix = 'BKG'; // Change this to your actual prefix
     
     echo "<h2>PO Debug Test</h2>";
     
@@ -45,17 +45,18 @@ try {
         $data = json_decode($row['data'], true);
         $totalCount++;
         
-        $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+        $poNumber = $data['po_number'] ?? '';
+        $internalPoNumber = $data['internal_po_number'] ?? '';
         $amount = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
         
         $matches = false;
-        if (!$prefix || stripos($poNumber, $prefix) !== false) {
+        if (!$prefix || stripos($poNumber, $prefix) !== false || stripos($internalPoNumber, $prefix) !== false) {
             $matches = true;
             $matchCount++;
         }
         
         if ($totalCount <= 5) { // Show first 5 for debugging
-            echo "<p>PO: $poNumber | Amount: $amount | Matches: " . ($matches ? 'YES' : 'NO') . "</p>";
+            echo "<p>PO: $poNumber | Internal: $internalPoNumber | Amount: $amount | Matches: " . ($matches ? 'YES' : 'NO') . "</p>";
         }
     }
     
@@ -67,9 +68,14 @@ try {
     $purchaseOrders = [];
     foreach ($results as $row) {
         $data = json_decode($row['data'], true);
-        $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+        $poNumber = $data['po_number'] ?? '';
+        $internalPoNumber = $data['internal_po_number'] ?? '';
         
-        if (!$prefix || stripos($poNumber, $prefix) !== false) {
+        $matchesPrefix = !$prefix || 
+                        stripos($poNumber, $prefix) !== false || 
+                        stripos($internalPoNumber, $prefix) !== false;
+        
+        if ($matchesPrefix) {
             $purchaseOrders[] = [
                 'po_number' => $poNumber,
                 'po_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
