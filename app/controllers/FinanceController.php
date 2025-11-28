@@ -748,6 +748,137 @@ class FinanceController extends Controller {
         $stmt->execute([$tableName, count($data), count($data)]);
     }
     
+    public function getPurchaseOrderChart() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $chartData = ['labels' => [], 'data' => []];
+            $monthlyData = [];
+            
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $poNumber = $data['po_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($poNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $date = $data['created_date'] ?? $data['po_date'] ?? date('Y-m-d');
+                $month = date('M Y', strtotime($date));
+                $amount = floatval($data['total_amount'] ?? 0);
+                
+                $monthlyData[$month] = ($monthlyData[$month] ?? 0) + $amount;
+            }
+            
+            $chartData['labels'] = array_keys($monthlyData);
+            $chartData['data'] = array_values($monthlyData);
+            
+            echo json_encode($chartData);
+            
+        } catch (Exception $e) {
+            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function getInvoiceChart() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $paid = 0;
+            $unpaid = 0;
+            $overdue = 0;
+            
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                $total = floatval($data['total_amount'] ?? 0);
+                $dueDate = $data['due_date'] ?? date('Y-m-d');
+                $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
+                
+                if ($outstanding <= 0) {
+                    $paid += $total;
+                } elseif ($daysOverdue > 0) {
+                    $overdue += $outstanding;
+                } else {
+                    $unpaid += $outstanding;
+                }
+            }
+            
+            echo json_encode([
+                'labels' => ['Paid', 'Unpaid', 'Overdue'],
+                'data' => [$paid, $unpaid, $overdue]
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function getPaymentChart() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_payments'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $chartData = ['labels' => [], 'data' => []];
+            $monthlyData = [];
+            
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $paymentRef = $data['payment_reference'] ?? $data['reference'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($paymentRef, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $date = $data['payment_date'] ?? $data['date'] ?? date('Y-m-d');
+                $month = date('M Y', strtotime($date));
+                $amount = floatval($data['amount'] ?? $data['payment_amount'] ?? 0);
+                
+                $monthlyData[$month] = ($monthlyData[$month] ?? 0) + $amount;
+            }
+            
+            $chartData['labels'] = array_keys($monthlyData);
+            $chartData['data'] = array_values($monthlyData);
+            
+            echo json_encode($chartData);
+            
+        } catch (Exception $e) {
+            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
     private function getCompanyPrefix() {
         try {
             $db = Database::connect();
@@ -759,13 +890,6 @@ class FinanceController extends Controller {
             
             $prefix = $result ? strtoupper(trim($result['company_prefix'])) : '';
             
-            // Ensure a default prefix if none is explicitly set or found
-            if (empty($prefix)) {
-                $prefix = 'BKC'; // Default prefix
-                // Optionally, insert this default into the DB if it doesn't exist
-                $stmt = $db->prepare("INSERT INTO finance_tables (table_name, company_prefix) VALUES ('settings', ?) ON DUPLICATE KEY UPDATE company_prefix = VALUES(company_prefix)");
-                $stmt->execute([$prefix]);
-            }
             return $prefix;
         } catch (Exception $e) {
             error_log("Error fetching company prefix: " . $e->getMessage());
