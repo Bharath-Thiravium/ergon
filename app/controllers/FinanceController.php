@@ -438,6 +438,21 @@ class FinanceController extends Controller {
         }
     }
     
+    public function visualization() {
+        $type = $_GET['type'] ?? '';
+        
+        if ($type === 'quotations') {
+            $this->getQuotationChart();
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['labels' => [], 'data' => [], 'error' => 'Invalid visualization type']);
+        }
+    }
+    
+    public function recentQuotations() {
+        $this->getRecentActivities();
+    }
+    
     public function updateCompanyPrefix() {
         header('Content-Type: application/json');
         
