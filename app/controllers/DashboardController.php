@@ -35,7 +35,6 @@ class DashboardController extends Controller {
     public function projectOverview() {
         AuthMiddleware::requireAuth();
         
-        // Prevent caching
         header('Cache-Control: no-cache, no-store, must-revalidate');
         header('Pragma: no-cache');
         header('Expires: 0');
@@ -44,35 +43,44 @@ class DashboardController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Debug: Log the query execution
-            error_log('Executing project overview query...');
+            // Simplified query - get projects from tasks if projects table is empty
+            $stmt = $db->query("SELECT COUNT(*) FROM projects WHERE status = 'active'");
+            $projectTableCount = $stmt->fetchColumn();
             
-            // Query to get actual projects from projects table with task statistics
-            $stmt = $db->query("
-                SELECT 
-                    p.id as project_id,
-                    p.name as project_name,
-                    p.status as project_status,
-                    p.description,
-                    d.name as department_name,
-                    COUNT(t.id) as total_tasks,
-                    SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
-                    SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
-                    SUM(CASE WHEN t.status IN ('assigned', 'pending', 'not_started') THEN 1 ELSE 0 END) as pending_tasks
-                FROM projects p
-                LEFT JOIN departments d ON p.department_id = d.id
-                LEFT JOIN tasks t ON (t.project_name = p.name OR t.project_id = p.id)
-                WHERE p.status = 'active'
-                GROUP BY p.id, p.name, p.status, p.description, d.name
-                ORDER BY total_tasks DESC, p.created_at DESC
-                LIMIT 10
-            ");
+            if ($projectTableCount > 0) {
+                // Use projects table
+                $stmt = $db->query("
+                    SELECT 
+                        p.name as project_name,
+                        COUNT(t.id) as total_tasks,
+                        SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
+                        SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
+                        SUM(CASE WHEN t.status IN ('assigned', 'pending', 'not_started') THEN 1 ELSE 0 END) as pending_tasks
+                    FROM projects p
+                    LEFT JOIN tasks t ON (t.project_name = p.name OR t.project_id = p.id)
+                    WHERE p.status = 'active'
+                    GROUP BY p.name
+                    ORDER BY total_tasks DESC
+                    LIMIT 10
+                ");
+            } else {
+                // Fallback to tasks table
+                $stmt = $db->query("
+                    SELECT 
+                        COALESCE(project_name, 'General Tasks') as project_name,
+                        COUNT(*) as total_tasks,
+                        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
+                        SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
+                        SUM(CASE WHEN status IN ('assigned', 'pending', 'not_started') THEN 1 ELSE 0 END) as pending_tasks
+                    FROM tasks
+                    GROUP BY COALESCE(project_name, 'General Tasks')
+                    ORDER BY total_tasks DESC
+                    LIMIT 10
+                ");
+            }
+            
             $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Debug: Log the results
-            error_log('Project overview found ' . count($projects) . ' projects');
-            
-            // Ensure numeric values are properly set
             foreach ($projects as &$project) {
                 $project['total_tasks'] = (int)($project['total_tasks'] ?? 0);
                 $project['completed_tasks'] = (int)($project['completed_tasks'] ?? 0);
@@ -86,7 +94,6 @@ class DashboardController extends Controller {
             ]);
         } catch (Exception $e) {
             error_log('Project overview error: ' . $e->getMessage());
-            error_log('Stack trace: ' . $e->getTraceAsString());
             $this->view('dashboard/project_overview', ['projects' => [], 'active_page' => 'dashboard']);
         }
     }
@@ -94,7 +101,6 @@ class DashboardController extends Controller {
     public function delayedTasksOverview() {
         AuthMiddleware::requireAuth();
         
-        // Prevent caching
         header('Cache-Control: no-cache, no-store, must-revalidate');
         header('Pragma: no-cache');
         header('Expires: 0');
@@ -103,29 +109,31 @@ class DashboardController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Debug: Log the query execution
-            error_log('Executing delayed tasks overview query...');
-            
-            // Get delayed tasks data - check both due_date and deadline columns
+            // Simplified query for delayed tasks
             $stmt = $db->query("
                 SELECT 
                     t.*,
                     u.name as assigned_user,
-                    COALESCE(
-                        DATEDIFF(CURDATE(), t.due_date),
-                        DATEDIFF(CURDATE(), t.deadline)
-                    ) as days_overdue
+                    CASE 
+                        WHEN t.due_date IS NOT NULL AND t.due_date < CURDATE() THEN DATEDIFF(CURDATE(), t.due_date)
+                        WHEN t.deadline IS NOT NULL AND t.deadline < CURDATE() THEN DATEDIFF(CURDATE(), t.deadline)
+                        ELSE 0
+                    END as days_overdue
                 FROM tasks t 
                 LEFT JOIN users u ON t.assigned_to = u.id
-                WHERE (t.due_date < CURDATE() OR t.deadline < CURDATE())
+                WHERE (
+                    (t.due_date IS NOT NULL AND t.due_date < CURDATE()) OR 
+                    (t.deadline IS NOT NULL AND t.deadline < CURDATE())
+                )
                 AND t.status NOT IN ('completed', 'cancelled')
-                ORDER BY COALESCE(t.due_date, t.deadline) ASC
+                ORDER BY 
+                    CASE 
+                        WHEN t.due_date IS NOT NULL THEN t.due_date
+                        ELSE t.deadline
+                    END ASC
                 LIMIT 50
             ");
             $delayedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            // Debug: Log the results
-            error_log('Delayed tasks overview found ' . count($delayedTasks) . ' tasks');
             
             $this->view('dashboard/delayed_tasks_overview', [
                 'delayed_tasks' => $delayedTasks,
@@ -133,7 +141,6 @@ class DashboardController extends Controller {
             ]);
         } catch (Exception $e) {
             error_log('Delayed tasks overview error: ' . $e->getMessage());
-            error_log('Stack trace: ' . $e->getTraceAsString());
             $this->view('dashboard/delayed_tasks_overview', ['delayed_tasks' => [], 'active_page' => 'dashboard']);
         }
     }
