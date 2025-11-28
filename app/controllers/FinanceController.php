@@ -436,8 +436,47 @@ class FinanceController extends Controller {
             
             $prefix = $this->getCompanyPrefix();
             $customerMap = [];
+            $prefixCustomers = [];
 
-            // Read from both finance_customer and finance_customers
+            // Get customers from invoices that match the prefix
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($invoiceResults as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $customerId = $data['customer_id'] ?? '';
+                if ($customerId) {
+                    $prefixCustomers[$customerId] = true;
+                }
+            }
+            
+            // Get customers from quotations that match the prefix
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($quotationResults as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $customerId = $data['customer_id'] ?? '';
+                if ($customerId) {
+                    $prefixCustomers[$customerId] = true;
+                }
+            }
+
+            // Read customer details from customer tables
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
             $stmt->execute();
             $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -446,7 +485,7 @@ class FinanceController extends Controller {
                 $data = json_decode($row['data'], true);
                 $customerId = $data['id'] ?? '';
 
-                if ($customerId) {
+                if ($customerId && (!$prefix || empty($prefix) || isset($prefixCustomers[$customerId]))) {
                     $displayName = $data['display_name'] ?? $data['name'] ?? 'Unknown Customer';
                     $gstin = $data['gstin'] ?? '';
                     
@@ -465,14 +504,17 @@ class FinanceController extends Controller {
                 }
             }
             
-            // Get customers from invoices if not in customer tables
-            $stmt = $db->prepare("SELECT DISTINCT JSON_EXTRACT(data, '$.customer_id') as customer_id, JSON_EXTRACT(data, '$.customer_name') as customer_name FROM finance_data WHERE table_name = 'finance_invoices' AND JSON_EXTRACT(data, '$.customer_id') IS NOT NULL");
-            $stmt->execute();
-            $invoiceCustomers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($invoiceCustomers as $row) {
-                $customerId = trim($row['customer_id'], '"');
-                $customerName = trim($row['customer_name'] ?? '', '"');
+            // Add customers from invoices/quotations if not in customer tables
+            foreach ($invoiceResults as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $customerId = $data['customer_id'] ?? '';
+                $customerName = $data['customer_name'] ?? '';
                 
                 if ($customerId && !isset($customerMap[$customerId])) {
                     $customerMap[$customerId] = [
