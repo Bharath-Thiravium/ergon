@@ -74,6 +74,22 @@ class Notification {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
+    public function getForDropdown($userId, $limit = 10) {
+        $stmt = $this->db->prepare("
+            SELECT n.*, COALESCE(u.name, 'System') as sender_name,
+                   n.reference_type as module_name,
+                   n.category as action_type
+            FROM notifications n 
+            LEFT JOIN users u ON n.sender_id = u.id 
+            WHERE n.receiver_id = ? 
+            AND (n.expires_at IS NULL OR n.expires_at > NOW())
+            ORDER BY n.is_read ASC, n.created_at DESC 
+            LIMIT ?
+        ");
+        $stmt->execute([$userId, $limit]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
     public function getUnreadCount($userId) {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM notifications WHERE receiver_id = ? AND is_read = 0");
         $stmt->execute([$userId]);

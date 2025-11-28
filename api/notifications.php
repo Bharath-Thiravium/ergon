@@ -40,7 +40,7 @@ try {
                 echo json_encode(['success' => false, 'error' => 'Invalid action']);
         }
     } else {
-        $notifications = $notification->getForUser($userId, 10);
+        $notifications = $notification->getForDropdown($userId, 10);
         $unreadCount = $notification->getUnreadCount($userId);
         
         echo json_encode([
