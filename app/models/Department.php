@@ -26,7 +26,7 @@ class Department {
                    COUNT(emp.id) as employee_count
             FROM {$this->table} d 
             LEFT JOIN users u ON d.head_id = u.id 
-            LEFT JOIN users emp ON emp.department = d.name
+            LEFT JOIN users emp ON emp.department_id = d.id AND emp.status = 'active'
             GROUP BY d.id, d.name, d.description, d.head_id, d.status, d.created_at, d.updated_at, u.name
             ORDER BY d.name
         ");

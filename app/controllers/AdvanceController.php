@@ -40,10 +40,10 @@ class AdvanceController extends Controller {
             }
             
             if ($role === 'user') {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id WHERE a.user_id = ? ORDER BY a.created_at DESC");
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a JOIN users u ON a.user_id = u.id WHERE a.user_id = ? ORDER BY a.created_at DESC");
                 $stmt->execute([$user_id]);
             } else {
-                $stmt = $db->query("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC");
+                $stmt = $db->query("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC");
             }
             $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
@@ -280,10 +280,10 @@ class AdvanceController extends Controller {
             $db = Database::connect();
             
             if ($_SESSION['role'] === 'user') {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a LEFT JOIN users u ON a.user_id = u.id WHERE a.id = ? AND a.user_id = ?");
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a LEFT JOIN users u ON a.user_id = u.id WHERE a.id = ? AND a.user_id = ?");
                 $stmt->execute([$id, $_SESSION['user_id']]);
             } else {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a LEFT JOIN users u ON a.user_id = u.id WHERE a.id = ?");
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a LEFT JOIN users u ON a.user_id = u.id WHERE a.id = ?");
                 $stmt->execute([$id]);
             }
             

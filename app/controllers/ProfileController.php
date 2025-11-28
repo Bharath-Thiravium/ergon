@@ -86,74 +86,51 @@ class ProfileController extends Controller {
         AuthMiddleware::requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Validate CSRF token
+            $csrfToken = $_POST['csrf_token'] ?? '';
+            if (!Security::validateCSRFToken($csrfToken)) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Invalid security token']);
+                exit;
+            }
+            
             $currentPassword = $_POST['current_password'] ?? '';
             $newPassword = $_POST['new_password'] ?? '';
             $confirmPassword = $_POST['confirm_password'] ?? '';
             
-            // Check if this is an AJAX request
-            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
-                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-            
             if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
-                if ($isAjax) {
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'error' => 'All password fields are required']);
-                    exit;
-                }
-                $data = ['error' => 'All password fields are required', 'active_page' => 'profile'];
-                $this->view('profile/change-password', $data);
-                return;
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'All password fields are required']);
+                exit;
             }
             
             if ($newPassword !== $confirmPassword) {
-                if ($isAjax) {
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'error' => 'New passwords do not match']);
-                    exit;
-                }
-                $data = ['error' => 'New passwords do not match', 'active_page' => 'profile'];
-                $this->view('profile/change-password', $data);
-                return;
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'New passwords do not match']);
+                exit;
             }
             
             if (strlen($newPassword) < 6) {
-                if ($isAjax) {
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'error' => 'Password must be at least 6 characters']);
-                    exit;
-                }
-                $data = ['error' => 'Password must be at least 6 characters', 'active_page' => 'profile'];
-                $this->view('profile/change-password', $data);
-                return;
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Password must be at least 6 characters']);
+                exit;
             }
             
             if ($this->verifyCurrentPassword($_SESSION['user_id'], $currentPassword)) {
                 if ($this->updatePassword($_SESSION['user_id'], $newPassword)) {
-                    if ($isAjax) {
-                        header('Content-Type: application/json');
-                        echo json_encode(['success' => true, 'message' => 'Password changed successfully']);
-                        exit;
-                    }
-                    header('Location: /ergon/profile?password_changed=1');
-                } else {
-                    if ($isAjax) {
-                        header('Content-Type: application/json');
-                        echo json_encode(['success' => false, 'error' => 'Failed to update password']);
-                        exit;
-                    }
-                    $data = ['error' => 'Failed to update password', 'active_page' => 'profile'];
-                    $this->view('profile/change-password', $data);
-                }
-            } else {
-                if ($isAjax) {
                     header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'error' => 'Current password is incorrect']);
+                    echo json_encode(['success' => true, 'message' => 'Password changed successfully']);
+                    exit;
+                } else {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Failed to update password']);
                     exit;
                 }
-                $data = ['error' => 'Current password is incorrect', 'active_page' => 'profile'];
-                $this->view('profile/change-password', $data);
+            } else {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Current password is incorrect']);
+                exit;
             }
-            exit;
         }
         
         $data = ['active_page' => 'profile'];

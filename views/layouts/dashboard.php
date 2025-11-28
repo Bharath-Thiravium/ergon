@@ -53,7 +53,7 @@ ob_end_clean();
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
     
-    <script src="/ergon/assets/js/theme-preload.js"></script>
+    <script src="/ergon/assets/js/theme-preload.js?v=<?= time() ?>"></script>
     <script>
     // Convert title attributes to data-tooltip for custom tooltips
     document.addEventListener('DOMContentLoaded', function() {
