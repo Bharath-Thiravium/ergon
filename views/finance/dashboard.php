@@ -33,10 +33,7 @@
             </div>
             <div class="filter-group">
                 <div class="input-group">
-                    <select id="companyPrefixSelect" class="form-control form-control--sm">
-                        <option value="">All Companies</option>
-                    </select>
-                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Custom Prefix" maxlength="10" style="display:none;">
+                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Company Prefix (e.g. BKC)" maxlength="10">
                     <button id="updatePrefixBtn" class="btn btn--secondary btn--sm">
                         <span class="btn__icon">🏢</span>
                     </button>
@@ -440,7 +437,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
     document.getElementById('exportBtn').addEventListener('click', exportDashboard);
     document.getElementById('updatePrefixBtn').addEventListener('click', updateCompanyPrefix);
-    document.getElementById('companyPrefixSelect').addEventListener('change', handlePrefixSelection);
+
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
     document.getElementById('customerFilter').addEventListener('change', filterByCustomer);
     // Outstanding top-N control
@@ -453,10 +450,8 @@ document.addEventListener('DOMContentLoaded', function() {
         window.open(`/ergon/finance/export-outstanding?limit=${limit}`, '_blank');
     });
     
-    // Load available prefixes, then current prefix, then dashboard data
-    loadAvailablePrefixes().then(() => {
-        return loadCompanyPrefix();
-    }).then(() => {
+    // Load current prefix, then dashboard data
+    loadCompanyPrefix().then(() => {
         loadCustomers();
         loadDashboardData();
     });
@@ -1263,43 +1258,13 @@ function exportDashboard() {
     window.open('/ergon/finance/export-dashboard', '_blank');
 }
 
-async function loadAvailablePrefixes() {
-    try {
-        const response = await fetch('/ergon/finance/available-prefixes');
-        const data = await response.json();
-        
-        // Populate dropdown
-        const select = document.getElementById('companyPrefixSelect');
-        select.innerHTML = '<option value="">All Companies</option>';
-        
-        if (data.prefixes && data.prefixes.length > 0) {
-            data.prefixes.forEach(prefix => {
-                select.innerHTML += `<option value="${prefix}">${prefix}</option>`;
-            });
-        }
-        
-        // Add custom option
-        select.innerHTML += '<option value="custom">Custom...</option>';
-        
-    } catch (error) {
-        console.error('Failed to load available prefixes:', error);
-        // Fallback to basic dropdown
-        const select = document.getElementById('companyPrefixSelect');
-        select.innerHTML = '<option value="">All Companies</option><option value="custom">Custom...</option>';
-    }
-}
+
 
 async function loadCompanyPrefix() {
     try {
         const response = await fetch('/ergon/finance/company-prefix');
         const data = await response.json();
         const currentPrefix = data.prefix || '';
-        
-        // Set the dropdown to current prefix
-        const select = document.getElementById('companyPrefixSelect');
-        if (currentPrefix) {
-            select.value = currentPrefix;
-        }
         
         document.getElementById('companyPrefix').value = currentPrefix;
         return currentPrefix;
@@ -1309,64 +1274,13 @@ async function loadCompanyPrefix() {
     }
 }
 
-function handlePrefixSelection() {
-    const select = document.getElementById('companyPrefixSelect');
-    const input = document.getElementById('companyPrefix');
-    
-    if (select.value === 'custom') {
-        // Show custom input
-        input.style.display = 'block';
-        input.focus();
-    } else {
-        // Hide custom input and update prefix
-        input.style.display = 'none';
-        input.value = select.value;
-        
-        // Auto-update prefix when selection changes
-        if (select.value !== '') {
-            updateCompanyPrefix();
-        } else {
-            // Clear prefix for "All Companies"
-            clearCompanyPrefix();
-        }
-    }
-}
 
-async function clearCompanyPrefix() {
-    try {
-        const formData = new FormData();
-        formData.append('company_prefix', '');
-        
-        const response = await fetch('/ergon/finance/company-prefix', {
-            method: 'POST',
-            body: formData
-        });
-        const result = await response.json();
-        
-        if (result.success) {
-            showNotification('Showing all companies', 'success');
-            await loadCustomers();
-            loadDashboardData();
-        }
-    } catch (error) {
-        console.error('Failed to clear prefix:', error);
-    }
-}
+
+
 
 async function updateCompanyPrefix() {
-    const select = document.getElementById('companyPrefixSelect');
     const input = document.getElementById('companyPrefix');
-    
-    let prefix;
-    if (select.value === 'custom') {
-        prefix = input.value.trim().toUpperCase();
-        if (!prefix) {
-            showNotification('Please enter a company prefix', 'error');
-            return;
-        }
-    } else {
-        prefix = select.value;
-    }
+    const prefix = input.value.trim().toUpperCase();
     
     const btn = document.getElementById('updatePrefixBtn');
     btn.disabled = true;
@@ -1390,9 +1304,6 @@ async function updateCompanyPrefix() {
                 showNotification('Showing all companies', 'success');
             }
             
-            // Update UI
-            await loadAvailablePrefixes();
-            await loadCompanyPrefix();
             await loadCustomers();
             
             // Reset customer filter
