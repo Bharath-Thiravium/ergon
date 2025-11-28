@@ -958,15 +958,18 @@ function updateKPICards(data) {
     if (pendingCGST) pendingCGST.textContent = `₹${Math.round((data.pendingGSTAmount || 0) / 2).toLocaleString()}`;
     if (pendingSGST) pendingSGST.textContent = `₹${Math.round((data.pendingGSTAmount || 0) / 2).toLocaleString()}`;
     
-    // PO Commitments - Use funnel data
-    document.getElementById('pendingPOValue').textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
+    // PO Commitments - Use both dashboard data and funnel data
+    const poValue = data.pendingPOValue || funnel.poValue || 0;
+    document.getElementById('pendingPOValue').textContent = `₹${poValue.toLocaleString()}`;
     
     // Update PO details
     const openPOCount = document.getElementById('openPOCount');
     const avgPOValue = document.getElementById('avgPOValue');
-    if (openPOCount) openPOCount.textContent = funnel.purchaseOrders || 0;
-    if (avgPOValue && funnel.purchaseOrders > 0) {
-        avgPOValue.textContent = `₹${Math.round((funnel.poValue || 0) / funnel.purchaseOrders).toLocaleString()}`;
+    const openCount = data.openPOCount || funnel.purchaseOrders || 0;
+    
+    if (openPOCount) openPOCount.textContent = openCount;
+    if (avgPOValue && openCount > 0) {
+        avgPOValue.textContent = `₹${Math.round(poValue / openCount).toLocaleString()}`;
     } else if (avgPOValue) {
         avgPOValue.textContent = '₹0';
     }
