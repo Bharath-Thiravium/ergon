@@ -610,11 +610,22 @@ class FinanceController extends Controller {
     public function visualization() {
         $type = $_GET['type'] ?? '';
         
-        if ($type === 'quotations') {
-            $this->getQuotationChart();
-        } else {
-            header('Content-Type: application/json');
-            echo json_encode(['labels' => [], 'data' => [], 'error' => 'Invalid visualization type']);
+        switch ($type) {
+            case 'quotations':
+                $this->getQuotationChart();
+                break;
+            case 'purchase_orders':
+                $this->getPurchaseOrderChart();
+                break;
+            case 'invoices':
+                $this->getInvoiceChart();
+                break;
+            case 'payments':
+                $this->getPaymentChart();
+                break;
+            default:
+                header('Content-Type: application/json');
+                echo json_encode(['labels' => [], 'data' => [], 'error' => 'Invalid visualization type']);
         }
     }
     
