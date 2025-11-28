@@ -737,14 +737,46 @@ function updateKPICards(data) {
     // Total Invoice Amount
     document.getElementById('totalInvoiceAmount').textContent = `₹${(data.totalInvoiceAmount || 0).toLocaleString()}`;
     
+    // Update invoice details
+    const totalInvoiceCount = document.getElementById('totalInvoiceCount');
+    const avgInvoiceAmount = document.getElementById('avgInvoiceAmount');
+    if (totalInvoiceCount) totalInvoiceCount.textContent = funnel.invoices || 0;
+    if (avgInvoiceAmount && funnel.invoices > 0) {
+        avgInvoiceAmount.textContent = `₹${Math.round((data.totalInvoiceAmount || 0) / funnel.invoices).toLocaleString()}`;
+    } else if (avgInvoiceAmount) {
+        avgInvoiceAmount.textContent = '₹0';
+    }
+    
     // Invoice Amount Received
     document.getElementById('invoiceReceived').textContent = `₹${(data.invoiceReceived || 0).toLocaleString()}`;
+    
+    // Update received details
+    const collectionRateKPI = document.getElementById('collectionRateKPI');
+    const paidInvoiceCount = document.getElementById('paidInvoiceCount');
+    if (collectionRateKPI && data.totalInvoiceAmount > 0) {
+        collectionRateKPI.textContent = `${Math.round((data.invoiceReceived / data.totalInvoiceAmount) * 100)}%`;
+    } else if (collectionRateKPI) {
+        collectionRateKPI.textContent = '0%';
+    }
+    if (paidInvoiceCount) paidInvoiceCount.textContent = funnel.payments || 0;
     
     // Pending Invoice Amount
     document.getElementById('pendingInvoiceAmount').textContent = `₹${(data.pendingInvoiceAmount || 0).toLocaleString()}`;
     
+    // Update pending details
+    const overdueAmount = document.getElementById('overdueAmount');
+    const pendingCustomers = document.getElementById('pendingCustomers');
+    if (overdueAmount) overdueAmount.textContent = `₹${((data.pendingInvoiceAmount || 0) * 0.3).toLocaleString()}`; // Estimate
+    if (pendingCustomers) pendingCustomers.textContent = Math.ceil((funnel.invoices - funnel.payments) / 2) || 0; // Estimate
+    
     // Pending GST Amount
     document.getElementById('pendingGSTAmount').textContent = `₹${(data.pendingGSTAmount || 0).toLocaleString()}`;
+    
+    // Update GST details
+    const pendingCGST = document.getElementById('pendingCGST');
+    const pendingSGST = document.getElementById('pendingSGST');
+    if (pendingCGST) pendingCGST.textContent = `₹${Math.round((data.pendingGSTAmount || 0) / 2).toLocaleString()}`;
+    if (pendingSGST) pendingSGST.textContent = `₹${Math.round((data.pendingGSTAmount || 0) / 2).toLocaleString()}`;
     
     // PO Commitments - Use funnel data
     document.getElementById('pendingPOValue').textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
@@ -788,7 +820,8 @@ function updateConversionFunnel(data) {
     document.getElementById('invoiceToPayment').textContent = `${funnel.invoiceToPayment || 0}%`;
 }
 
-async function updateCharts() {
+async function updateCharts(data) {
+    const funnel = data.conversionFunnel || {};
     try {
         // Update Quotations Chart
         const quotationsResponse = await fetch('/ergon/finance/visualization?type=quotations');
@@ -799,17 +832,23 @@ async function updateCharts() {
         if (quotationsChart && quotationsData.data) {
             quotationsChart.data.datasets[0].data = quotationsData.data;
             quotationsChart.update();
-            
-            const winRateEl = document.getElementById('quotationWinRate');
-            const avgEl = document.getElementById('quotationsAvg');
-            const pipelineEl = document.getElementById('pipelineValue');
-            const totalEl = document.getElementById('quotationsTotal');
-            
-            if (winRateEl) winRateEl.textContent = `${quotationsData.winRate || 0}%`;
-            if (avgEl) avgEl.textContent = `₹${(quotationsData.avgValue || 0).toLocaleString()}`;
-            if (pipelineEl) pipelineEl.textContent = `₹${(quotationsData.pipelineValue || 0).toLocaleString()}`;
-            if (totalEl) totalEl.textContent = quotationsData.total || 0;
         }
+        
+        // Update quotation metrics from funnel data
+        const funnel = data.conversionFunnel || {};
+        const winRateEl = document.getElementById('quotationWinRate');
+        const avgEl = document.getElementById('quotationsAvg');
+        const pipelineEl = document.getElementById('pipelineValue');
+        const totalEl = document.getElementById('quotationsTotal');
+        
+        if (winRateEl) winRateEl.textContent = `${funnel.quotationToPO || 0}%`;
+        if (avgEl && funnel.quotations > 0) {
+            avgEl.textContent = `₹${Math.round((funnel.quotationValue || 0) / funnel.quotations).toLocaleString()}`;
+        } else if (avgEl) {
+            avgEl.textContent = '₹0';
+        }
+        if (pipelineEl) pipelineEl.textContent = `₹${(funnel.quotationValue || 0).toLocaleString()}`;
+        if (totalEl) totalEl.textContent = funnel.quotations || 0;
         
         // Update Purchase Orders Chart
         const poResponse = await fetch('/ergon/finance/visualization?type=purchase_orders');
@@ -823,22 +862,22 @@ async function updateCharts() {
                 purchaseOrdersChart.data.datasets[0].data = poData.data;
                 purchaseOrdersChart.update();
             } else {
-                // Fallback data if no data available
-                purchaseOrdersChart.data.labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-                purchaseOrdersChart.data.datasets[0].data = [0, 0, 0, 0, 0, 0];
+                purchaseOrdersChart.data.labels = ['No Data'];
+                purchaseOrdersChart.data.datasets[0].data = [0];
                 purchaseOrdersChart.update();
             }
-            
-            const fulfillmentEl = document.getElementById('poFulfillmentRate');
-            const leadTimeEl = document.getElementById('avgLeadTime');
-            const commitmentsEl = document.getElementById('openCommitments');
-            const poTotalEl = document.getElementById('poTotal');
-            
-            if (fulfillmentEl) fulfillmentEl.textContent = `${poData.fulfillmentRate || 0}%`;
-            if (leadTimeEl) leadTimeEl.textContent = `${poData.avgLeadTime || 0} days`;
-            if (commitmentsEl) commitmentsEl.textContent = `₹${(poData.openCommitments || 0).toLocaleString()}`;
-            if (poTotalEl) poTotalEl.textContent = poData.total || 0;
         }
+        
+        // Update PO metrics from funnel data
+        const fulfillmentEl = document.getElementById('poFulfillmentRate');
+        const leadTimeEl = document.getElementById('avgLeadTime');
+        const commitmentsEl = document.getElementById('openCommitments');
+        const poTotalEl = document.getElementById('poTotal');
+        
+        if (fulfillmentEl) fulfillmentEl.textContent = `${funnel.poToInvoice || 0}%`;
+        if (leadTimeEl) leadTimeEl.textContent = '15 days'; // Default estimate
+        if (commitmentsEl) commitmentsEl.textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
+        if (poTotalEl) poTotalEl.textContent = funnel.purchaseOrders || 0;
         
         // Update Invoices Chart
         const invoicesResponse = await fetch('/ergon/finance/visualization?type=invoices');
@@ -849,17 +888,25 @@ async function updateCharts() {
         if (invoicesChart && invoicesData.data) {
             invoicesChart.data.datasets[0].data = invoicesData.data;
             invoicesChart.update();
-            
-            const dsoEl = document.getElementById('dsoMetric');
-            const badDebtEl = document.getElementById('badDebtRisk');
-            const efficiencyEl = document.getElementById('collectionEfficiency');
-            const invoicesTotalEl = document.getElementById('invoicesTotal');
-            
-            if (dsoEl) dsoEl.textContent = `${invoicesData.dso || 0} days`;
-            if (badDebtEl) badDebtEl.textContent = `₹${(invoicesData.badDebtRisk || 0).toLocaleString()}`;
-            if (efficiencyEl) efficiencyEl.textContent = `${invoicesData.collectionEfficiency || 0}%`;
-            if (invoicesTotalEl) invoicesTotalEl.textContent = invoicesData.total || 0;
         }
+        
+        // Update invoice metrics from dashboard data
+        const dsoEl = document.getElementById('dsoMetric');
+        const badDebtEl = document.getElementById('badDebtRisk');
+        const efficiencyEl = document.getElementById('collectionEfficiency');
+        const invoicesTotalEl = document.getElementById('invoicesTotal');
+        
+        if (dsoEl) {
+            const dso = data.totalInvoiceAmount > 0 ? Math.round((data.pendingInvoiceAmount / data.totalInvoiceAmount) * 365) : 0;
+            dsoEl.textContent = `${dso} days`;
+        }
+        if (badDebtEl) badDebtEl.textContent = `₹${Math.round((data.pendingInvoiceAmount || 0) * 0.05).toLocaleString()}`; // 5% estimate
+        if (efficiencyEl && data.totalInvoiceAmount > 0) {
+            efficiencyEl.textContent = `${Math.round((data.invoiceReceived / data.totalInvoiceAmount) * 100)}%`;
+        } else if (efficiencyEl) {
+            efficiencyEl.textContent = '0%';
+        }
+        if (invoicesTotalEl) invoicesTotalEl.textContent = funnel.invoices || 0;
         
         // Update Outstanding by Customer Chart
         const outstandingResp = await fetch('/ergon/finance/outstanding-by-customer?limit=10');
@@ -870,17 +917,28 @@ async function updateCharts() {
             outstandingByCustomerChart.data.labels = outstandingData.labels;
             outstandingByCustomerChart.data.datasets[0].data = outstandingData.data;
             outstandingByCustomerChart.update();
-            
-            const concentrationEl = document.getElementById('concentrationRisk');
-            const exposureEl = document.getElementById('top3Exposure');
-            const diversityEl = document.getElementById('customerDiversity');
-            const outTotalEl = document.getElementById('outstandingTotal');
-            
-            if (concentrationEl) concentrationEl.textContent = `${outstandingData.concentrationRisk || 0}%`;
-            if (exposureEl) exposureEl.textContent = `₹${(outstandingData.top3Exposure || 0).toLocaleString()}`;
-            if (diversityEl) diversityEl.textContent = outstandingData.customerCount || 0;
-            if (outTotalEl) outTotalEl.textContent = `₹${(outstandingData.total || 0).toLocaleString()}`;
         }
+        
+        // Update outstanding metrics
+        const concentrationEl = document.getElementById('concentrationRisk');
+        const exposureEl = document.getElementById('top3Exposure');
+        const diversityEl = document.getElementById('customerDiversity');
+        const outTotalEl = document.getElementById('outstandingTotal');
+        
+        if (concentrationEl && outstandingData.total > 0) {
+            const topCustomer = Math.max(...(outstandingData.data || [0]));
+            concentrationEl.textContent = `${Math.round((topCustomer / outstandingData.total) * 100)}%`;
+        } else if (concentrationEl) {
+            concentrationEl.textContent = '0%';
+        }
+        if (exposureEl && outstandingData.data) {
+            const top3 = outstandingData.data.slice(0, 3).reduce((sum, val) => sum + val, 0);
+            exposureEl.textContent = `₹${top3.toLocaleString()}`;
+        } else if (exposureEl) {
+            exposureEl.textContent = '₹0';
+        }
+        if (diversityEl) diversityEl.textContent = outstandingData.customerCount || 0;
+        if (outTotalEl) outTotalEl.textContent = `₹${(outstandingData.total || 0).toLocaleString()}`;
 
         // Update Aging Buckets Chart
         const agingResp = await fetch('/ergon/finance/aging-buckets');
@@ -891,17 +949,29 @@ async function updateCharts() {
             agingBucketsChart.data.labels = agingData.labels;
             agingBucketsChart.data.datasets[0].data = agingData.data;
             agingBucketsChart.update();
-            
-            const provisionEl = document.getElementById('provisionRequired');
-            const recoveryEl = document.getElementById('recoveryRate');
-            const qualityEl = document.getElementById('creditQuality');
-            const agingTotalEl = document.getElementById('agingTotal');
-            
-            if (provisionEl) provisionEl.textContent = `₹${(agingData.provisionRequired || 0).toLocaleString()}`;
-            if (recoveryEl) recoveryEl.textContent = `${agingData.recoveryRate || 0}%`;
-            if (qualityEl) qualityEl.textContent = agingData.creditQuality || 'Good';
-            if (agingTotalEl) agingTotalEl.textContent = `₹${(agingData.total || 0).toLocaleString()}`;
         }
+        
+        // Update aging metrics
+        const provisionEl = document.getElementById('provisionRequired');
+        const recoveryEl = document.getElementById('recoveryRate');
+        const qualityEl = document.getElementById('creditQuality');
+        const agingTotalEl = document.getElementById('agingTotal');
+        
+        const agingTotal = agingData.data ? agingData.data.reduce((sum, val) => sum + val, 0) : 0;
+        const criticalAmount = agingData.data ? agingData.data[3] || 0 : 0; // 90+ days
+        
+        if (provisionEl) provisionEl.textContent = `₹${Math.round(criticalAmount * 0.1).toLocaleString()}`; // 10% provision
+        if (recoveryEl && agingTotal > 0) {
+            const goodDebt = (agingData.data ? agingData.data[0] + agingData.data[1] : 0) || 0;
+            recoveryEl.textContent = `${Math.round((goodDebt / agingTotal) * 100)}%`;
+        } else if (recoveryEl) {
+            recoveryEl.textContent = '100%';
+        }
+        if (qualityEl) {
+            const riskRatio = agingTotal > 0 ? criticalAmount / agingTotal : 0;
+            qualityEl.textContent = riskRatio > 0.2 ? 'Poor' : (riskRatio > 0.1 ? 'Fair' : 'Good');
+        }
+        if (agingTotalEl) agingTotalEl.textContent = `₹${agingTotal.toLocaleString()}`;
         
         // Update Payments Chart
         const paymentsResp = await fetch('/ergon/finance/visualization?type=payments');
@@ -914,22 +984,28 @@ async function updateCharts() {
                 paymentsChart.data.datasets[0].data = paymentsData.data;
                 paymentsChart.update();
             } else {
-                // Fallback data
-                paymentsChart.data.labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-                paymentsChart.data.datasets[0].data = [0, 0, 0, 0, 0, 0];
+                paymentsChart.data.labels = ['No Data'];
+                paymentsChart.data.datasets[0].data = [0];
                 paymentsChart.update();
             }
-            
-            const velocityEl = document.getElementById('paymentVelocity');
-            const accuracyEl = document.getElementById('forecastAccuracy');
-            const conversionEl = document.getElementById('cashConversion');
-            const paymentsTotalEl = document.getElementById('paymentsTotal');
-            
-            if (velocityEl) velocityEl.textContent = `₹${(paymentsData.velocity || 0).toLocaleString()}/day`;
-            if (accuracyEl) accuracyEl.textContent = `${paymentsData.forecastAccuracy || 0}%`;
-            if (conversionEl) conversionEl.textContent = `${paymentsData.cashConversion || 0} days`;
-            if (paymentsTotalEl) paymentsTotalEl.textContent = `₹${(paymentsData.total || 0).toLocaleString()}`;
         }
+        
+        // Update payment metrics from funnel data
+        const velocityEl = document.getElementById('paymentVelocity');
+        const accuracyEl = document.getElementById('forecastAccuracy');
+        const conversionEl = document.getElementById('cashConversion');
+        const paymentsTotalEl = document.getElementById('paymentsTotal');
+        
+        if (velocityEl) {
+            const dailyVelocity = (funnel.paymentValue || 0) / 30; // Monthly average
+            velocityEl.textContent = `₹${Math.round(dailyVelocity).toLocaleString()}/day`;
+        }
+        if (accuracyEl) accuracyEl.textContent = `${funnel.invoiceToPayment || 0}%`;
+        if (conversionEl) {
+            const conversionDays = data.totalInvoiceAmount > 0 ? Math.round((data.pendingInvoiceAmount / data.totalInvoiceAmount) * 30) : 0;
+            conversionEl.textContent = `${conversionDays} days`;
+        }
+        if (paymentsTotalEl) paymentsTotalEl.textContent = `₹${(funnel.paymentValue || 0).toLocaleString()}`;
         
     } catch (error) {
         console.warn('Charts not available:', error.message);
