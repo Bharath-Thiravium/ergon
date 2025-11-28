@@ -4,12 +4,6 @@ ob_start();
 ?>
 
 <div class="page-header">
-    <button class="btn btn--back" onclick="goBack()" data-tooltip="Go Back">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
-        Back
-    </button>
     <div class="page-title">
         <h1><span>🔔</span> Notifications</h1>
         <p>Stay updated with your latest notifications</p>
@@ -220,25 +214,7 @@ ob_start();
     gap: 8px;
     margin-bottom: 4px;
 }
-.btn--back {
-    position: relative;
-    margin-bottom: 16px;
-}
-.btn--back[data-tooltip]:hover::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #333;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    z-index: 1000;
-    margin-top: 4px;
-}
+
 </style>
 
 <?php
