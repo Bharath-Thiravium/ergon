@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../helpers/TimezoneHelper.php';
+require_once __DIR__ . '/../helpers/LocationHelper.php';
 
 class SimpleAttendanceController extends Controller {
     private $db;
@@ -294,11 +295,29 @@ class SimpleAttendanceController extends Controller {
         try {
             $type = $_POST['type'] ?? '';
             $userId = $_SESSION['user_id'];
+            $latitude = $_POST['latitude'] ?? null;
+            $longitude = $_POST['longitude'] ?? null;
+            
+            // Validate location if coordinates provided
+            if ($latitude && $longitude) {
+                $officeSettings = LocationHelper::getOfficeSettings($this->db);
+                $locationCheck = LocationHelper::isWithinAttendanceRadius($latitude, $longitude, $officeSettings);
+                
+                if (!$locationCheck['allowed']) {
+                    echo json_encode([
+                        'success' => false, 
+                        'error' => 'Please move within the allowed area to continue.',
+                        'distance' => $locationCheck['distance'],
+                        'allowed_radius' => $locationCheck['allowed_radius']
+                    ]);
+                    exit;
+                }
+            }
             
             if ($type === 'in') {
-                $this->handleClockIn($userId);
+                $this->handleClockIn($userId, $latitude, $longitude);
             } elseif ($type === 'out') {
-                $this->handleClockOut($userId);
+                $this->handleClockOut($userId, $latitude, $longitude);
             } else {
                 echo json_encode(['success' => false, 'error' => 'Invalid action']);
             }
@@ -310,7 +329,7 @@ class SimpleAttendanceController extends Controller {
         exit;
     }
     
-    private function handleClockIn($userId) {
+    private function handleClockIn($userId, $latitude = null, $longitude = null) {
         $currentDate = TimezoneHelper::getCurrentDate();
         $stmt = $this->db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
         $stmt->execute([$userId, $currentDate]);
@@ -322,8 +341,8 @@ class SimpleAttendanceController extends Controller {
         
         $currentTime = TimezoneHelper::nowIst();
         
-        $stmt = $this->db->prepare("INSERT INTO attendance (user_id, check_in, created_at) VALUES (?, ?, ?)");
-        $result = $stmt->execute([$userId, $currentTime, $currentTime]);
+        $stmt = $this->db->prepare("INSERT INTO attendance (user_id, check_in, latitude, longitude, created_at) VALUES (?, ?, ?, ?, ?)");
+        $result = $stmt->execute([$userId, $currentTime, $latitude, $longitude, $currentTime]);
         
         echo json_encode([
             'success' => $result,
@@ -331,7 +350,7 @@ class SimpleAttendanceController extends Controller {
         ]);
     }
     
-    private function handleClockOut($userId) {
+    private function handleClockOut($userId, $latitude = null, $longitude = null) {
         $currentTime = TimezoneHelper::nowIst();
         $currentDate = TimezoneHelper::getCurrentDate();
         
@@ -344,8 +363,14 @@ class SimpleAttendanceController extends Controller {
             return;
         }
         
-        $stmt = $this->db->prepare("UPDATE attendance SET check_out = ? WHERE id = ?");
-        $result = $stmt->execute([$currentTime, $attendance['id']]);
+        // Update with location data if provided
+        if ($latitude && $longitude) {
+            $stmt = $this->db->prepare("UPDATE attendance SET check_out = ?, latitude = COALESCE(latitude, ?), longitude = COALESCE(longitude, ?) WHERE id = ?");
+            $result = $stmt->execute([$currentTime, $latitude, $longitude, $attendance['id']]);
+        } else {
+            $stmt = $this->db->prepare("UPDATE attendance SET check_out = ? WHERE id = ?");
+            $result = $stmt->execute([$currentTime, $attendance['id']]);
+        }
         
         echo json_encode([
             'success' => $result,

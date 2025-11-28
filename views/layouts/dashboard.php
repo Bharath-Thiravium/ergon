@@ -111,6 +111,36 @@ ob_end_clean();
     .notification-dropdown{max-height:400px;overflow-y:auto;box-shadow:0 10px 25px rgba(0,0,0,0.15);background:#fff;border-radius:8px;border:1px solid #e2e8f0;min-width:320px}
     @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
     .control-btn{position:relative}
+    
+    /* Attendance Notification Styles */
+    .attendance-notification{position:fixed;top:20px;right:20px;background:#fff;border-radius:8px;padding:16px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15);z-index:99999;transform:translateX(100%);transition:transform 0.3s ease;max-width:350px;border-left:4px solid #10b981}
+    .attendance-notification.show{transform:translateX(0)}
+    .attendance-notification.success{border-left-color:#10b981}
+    .attendance-notification.error{border-left-color:#ef4444}
+    .attendance-notification.warning{border-left-color:#f59e0b}
+    .notification-content{display:flex;align-items:center;gap:12px;font-size:14px;font-weight:500}
+    .notification-content i{font-size:18px}
+    .attendance-notification.success .notification-content i{color:#10b981}
+    .attendance-notification.error .notification-content i{color:#ef4444}
+    .attendance-notification.warning .notification-content i{color:#f59e0b}
+    
+    /* Mobile Dialog Styles */
+    .attendance-dialog-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.3s ease}
+    .attendance-dialog-overlay.show{opacity:1}
+    .attendance-dialog{background:#fff;border-radius:12px;padding:24px;max-width:320px;width:90%;text-align:center;transform:scale(0.9);transition:transform 0.3s ease}
+    .attendance-dialog-overlay.show .attendance-dialog{transform:scale(1)}
+    .dialog-icon{font-size:48px;margin-bottom:16px}
+    .dialog-icon i{color:#10b981}
+    .attendance-dialog.error .dialog-icon i{color:#ef4444}
+    .attendance-dialog.warning .dialog-icon i{color:#f59e0b}
+    .dialog-message{font-size:16px;margin-bottom:20px;color:#333;line-height:1.5}
+    .dialog-close{background:#007bff;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600}
+    .dialog-close:hover{background:#0056b3}
+    
+    @media (max-width:768px){
+        .attendance-notification{top:10px;right:10px;left:10px;max-width:none;transform:translateY(-100%)}
+        .attendance-notification.show{transform:translateY(0)}
+    }
     </style>
     
     <link href="/ergon/assets/css/bootstrap-icons.min.css?v=1.0" rel="stylesheet">
@@ -1111,7 +1141,12 @@ ob_end_clean();
                             updateHeaderAttendanceButton();
                             showAttendanceNotification(`Clocked ${action} successfully!`, 'success');
                         } else {
-                            showAttendanceNotification(data.error || 'Failed to update attendance', 'error');
+                            // Check if it's a location restriction error
+                            if (data.error && data.error.includes('Please move within the allowed area')) {
+                                showAttendanceNotification('Please move within the allowed area to continue.', 'warning');
+                            } else {
+                                showAttendanceNotification(data.error || 'Failed to update attendance', 'error');
+                            }
                             text.textContent = originalText;
                         }
                     })
