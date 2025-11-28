@@ -9,6 +9,7 @@ class FinanceController extends Controller {
     }
     
     public function sync() {
+        ob_clean();
         header('Content-Type: application/json');
         
         try {
@@ -19,12 +20,12 @@ class FinanceController extends Controller {
             $pgPort = '5432';
             $pgDb = 'u494785662_ergon_finance';
             $pgUser = 'u494785662_ergon';
-            $pgPass = 'your_postgres_password';
+            $pgPass = 'ErgonFinance2024!';
             
-            $pgConn = pg_connect("host=$pgHost port=$pgPort dbname=$pgDb user=$pgUser password=$pgPass");
+            $pgConn = @pg_connect("host=$pgHost port=$pgPort dbname=$pgDb user=$pgUser password=$pgPass");
             
             if (!$pgConn) {
-                echo json_encode(['success' => false, 'error' => 'Failed to connect to PostgreSQL database']);
+                echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed']);
                 exit;
             }
             
@@ -32,7 +33,7 @@ class FinanceController extends Controller {
             $financeTables = ['finance_invoices', 'finance_quotations', 'finance_customers'];
             
             foreach ($financeTables as $tableName) {
-                $result = pg_query($pgConn, "SELECT * FROM $tableName");
+                $result = @pg_query($pgConn, "SELECT * FROM $tableName");
                 if ($result && pg_num_rows($result) > 0) {
                     $data = pg_fetch_all($result);
                     $this->storeTableData($db, $tableName, $data);
@@ -40,11 +41,11 @@ class FinanceController extends Controller {
                 }
             }
             
-            pg_close($pgConn);
+            @pg_close($pgConn);
             echo json_encode(['success' => true, 'tables' => $syncCount]);
             
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => 'Sync failed: ' . $e->getMessage()]);
         }
         exit;
     }
