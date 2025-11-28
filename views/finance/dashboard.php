@@ -2,32 +2,66 @@
  $title = 'Finance Dashboard';
  $active_page = 'finance';
  ob_start(); 
+ // Finance-specific styles are merged into `assets/css/ergon-overrides.css`
 ?>
 
 <div class="container-fluid">
+    <!-- Header Actions -->
     <div class="dashboard-header">
         <div class="dashboard-header__title">
-            <h1>💰 Finance Dashboard</h1>
-            <p>Financial insights and analytics</p>
+            <h1>Finance Dashboard</h1>
+            <p>Real-time financial insights and analytics</p>
         </div>
         <div class="dashboard-header__actions">
-            <button id="populateDataBtn" class="btn btn--success btn--sm">
-                <span class="btn__text">📊 Load Demo Data</span>
-            </button>
-            <button id="refreshBtn" class="btn btn--primary btn--sm">
-                <span class="btn__text">🔄 Refresh</span>
-            </button>
-            <a href="/ergon/finance/import" class="btn btn--secondary btn--sm">
-                <span class="btn__text">📥 Import</span>
-            </a>
+            <div class="action-group">
+                <button id="syncBtn" class="btn btn--primary btn--sm">
+                    <span class="btn__icon">🔄</span>
+                    <span class="btn__text">Sync Data</span>
+                </button>
+                <button id="exportBtn" class="btn btn--secondary btn--sm">
+                    <span class="btn__icon">📥</span>
+                    <span class="btn__text">Export</span>
+                </button>
+                <button onclick="window.open('/ergon/finance/download-database', '_blank')" class="btn btn--info btn--sm">
+                    <span class="btn__icon">💾</span>
+                    <span class="btn__text">Download DB</span>
+                </button>
+                <a href="/ergon/finance/import" class="btn btn--success btn--sm">
+                    <span class="btn__icon">📥</span>
+                    <span class="btn__text">Import Data</span>
+                </a>
+            </div>
+            <div class="filter-group">
+                <div class="input-group">
+                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Company Prefix" maxlength="10">
+                    <button id="updatePrefixBtn" class="btn btn--secondary btn--sm">
+                        <span class="btn__icon">🏢</span>
+                    </button>
+                </div>
+                <select id="dateFilter" class="form-control form-control--sm">
+                    <option value="all">All Time</option>
+                    <option value="30">Last 30 Days</option>
+                    <option value="90">Last 90 Days</option>
+                    <option value="365">Last Year</option>
+                </select>
+            </div>
         </div>
     </div>
 
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-icon">💰</div>
-            <div class="kpi-value" id="totalInvoiceAmount">₹0</div>
-            <div class="kpi-label">Total Invoices</div>
+    <!-- Top-Level KPI Cards -->
+    <div class="dashboard-grid">
+        <div class="kpi-card kpi-card--success">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">💰</div>
+                <div class="kpi-card__trend" id="invoiceTrend">↗ +0%</div>
+            </div>
+            <div class="kpi-card__value" id="totalInvoiceAmount">₹0</div>
+            <div class="kpi-card__label">Total Invoice Amount</div>
+            <div class="kpi-card__description">Total Revenue Generated</div>
+            <div class="kpi-card__details">
+                <div class="detail-item">Count: <span id="totalInvoiceCount">0</span></div>
+                <div class="detail-item">Avg: <span id="avgInvoiceAmount">₹0</span></div>
+            </div>
         </div>
         
         <div class="kpi-card kpi-card--success">
