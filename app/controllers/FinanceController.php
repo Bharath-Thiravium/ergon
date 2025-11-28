@@ -62,15 +62,9 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customerFilter = $_GET['customer'] ?? '';
             
-            // Calculate and save funnel stats
-            require_once __DIR__ . '/../services/FunnelCalculationService.php';
-            $funnelService = new FunnelCalculationService($db);
-            $funnelService->calculateFunnelStats($prefix);
-            $funnelService->calculateChartStats($prefix);
-            
-            // Get calculated stats from tables
-            $funnelStats = $funnelService->getFunnelStats($prefix);
-            $chartStats = $funnelService->getChartStats($prefix);
+            // Calculate funnel stats directly
+            $funnelStats = $this->calculateFunnelStats($db, $prefix);
+            $chartStats = $this->calculateChartStats($db, $prefix);
             
             $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
@@ -202,6 +196,7 @@ class FinanceController extends Controller {
                 'totalPOCount' => $totalPOCount,
                 'claimRate' => $claimRate,
                 'conversionFunnel' => $funnelStats ?: $this->getConversionFunnel($db, $customerFilter),
+                'funnelStats' => $funnelStats,
                 'chartData' => $chartStats,
                 'cashFlow' => [
                     'expectedInflow' => $pendingInvoiceAmount,
@@ -1503,6 +1498,111 @@ class FinanceController extends Controller {
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
         }
+    }
+    
+    private function calculateFunnelStats($db, $prefix) {
+        $quotations = $this->fetchQuotationData($db, $prefix);
+        $pos = $this->fetchPOData($db, $prefix);
+        $invoices = $this->fetchInvoiceData($db, $prefix);
+        
+        $quotation_count = count($quotations);
+        $quotation_value = array_sum(array_column($quotations, 'amount'));
+        
+        $po_count = count($pos);
+        $po_value = array_sum(array_column($pos, 'amount'));
+        $po_conversion_rate = $quotation_count > 0 ? ($po_count / $quotation_count) * 100 : 0;
+        
+        $invoice_count = count($invoices);
+        $invoice_value = array_sum(array_column($invoices, 'total'));
+        $invoice_conversion_rate = $po_count > 0 ? ($invoice_count / $po_count) * 100 : 0;
+        
+        $payment_count = count(array_filter($invoices, fn($inv) => $inv['paid'] > 0));
+        $payment_value = array_sum(array_column($invoices, 'paid'));
+        $payment_conversion_rate = $invoice_count > 0 ? ($payment_count / $invoice_count) * 100 : 0;
+        
+        return [
+            'quotations' => $quotation_count,
+            'quotationValue' => $quotation_value,
+            'purchaseOrders' => $po_count,
+            'poValue' => $po_value,
+            'quotationToPO' => round($po_conversion_rate),
+            'invoices' => $invoice_count,
+            'invoiceValue' => $invoice_value,
+            'poToInvoice' => round($invoice_conversion_rate),
+            'payments' => $payment_count,
+            'paymentValue' => $payment_value,
+            'invoiceToPayment' => round($payment_conversion_rate)
+        ];
+    }
+    
+    private function calculateChartStats($db, $prefix) {
+        return [
+            'quotationChart' => ['draft' => 0, 'revised' => 0, 'converted' => 0],
+            'poChart' => ['open' => 0, 'fulfilled' => 0],
+            'invoiceChart' => ['paid' => 0, 'unpaid' => 0, 'overdue' => 0],
+            'agingChart' => ['current' => 0, 'watch' => 0, 'concern' => 0, 'critical' => 0]
+        ];
+    }
+    
+    private function fetchQuotationData($db, $prefix) {
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $quotations = [];
+        foreach ($results as $row) {
+            $data = json_decode($row['data'], true);
+            $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+            if (!$prefix || strpos($quotationNumber, $prefix) === 0) {
+                $quotations[] = [
+                    'number' => $quotationNumber,
+                    'amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
+                    'status' => $data['status'] ?? 'Draft'
+                ];
+            }
+        }
+        return $quotations;
+    }
+    
+    private function fetchPOData($db, $prefix) {
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $pos = [];
+        foreach ($results as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+            if (!$prefix || stripos($poNumber, $prefix) !== false) {
+                $pos[] = [
+                    'number' => $poNumber,
+                    'amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0)
+                ];
+            }
+        }
+        return $pos;
+    }
+    
+    private function fetchInvoiceData($db, $prefix) {
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $invoices = [];
+        foreach ($results as $row) {
+            $data = json_decode($row['data'], true);
+            $invoiceNumber = $data['invoice_number'] ?? '';
+            if (!$prefix || strpos($invoiceNumber, $prefix) === 0) {
+                $total = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                $invoices[] = [
+                    'number' => $invoiceNumber,
+                    'total' => $total,
+                    'paid' => $total - $outstanding
+                ];
+            }
+        }
+        return $invoices;
     }
     
     private function getCompanyPrefix() {
