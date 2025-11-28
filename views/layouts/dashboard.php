@@ -627,7 +627,7 @@ ob_end_clean();
     </div>
 
     <main class="main-content">
-        <button class="global-back-btn" onclick="goBack()" data-tooltip="Go Back" style="position: fixed !important; right: 10px !important; left: auto !important; top: 120px !important;">
+        <button class="global-back-btn" onclick="goBack()" data-tooltip="Go Back">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
                 <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>

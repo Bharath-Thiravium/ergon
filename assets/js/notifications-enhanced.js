@@ -5,8 +5,8 @@
 
 class NotificationManager {
     constructor() {
-        this.apiEndpoint = '/ergon/api/notifications_unified.php';
-        this.fallbackEndpoint = '/ergon/api/notifications.php';
+        this.apiEndpoint = '/ergon/api/notifications.php';
+        this.fallbackEndpoint = '/ergon/api/notifications_unified.php';
         this.retryCount = 0;
         this.maxRetries = 3;
         this.cache = new Map();
@@ -121,13 +121,10 @@ class NotificationManager {
     
     async updateBadge() {
         try {
-            const data = await this.makeRequest(this.apiEndpoint, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'get-unread-count' })
-            });
+            const data = await this.makeRequest(this.apiEndpoint);
             
             if (data.success) {
-                this.setBadgeCount(data.unread_count);
+                this.setBadgeCount(data.unread_count || 0);
             }
         } catch (error) {
             console.warn('Failed to update notification badge:', error.message);
