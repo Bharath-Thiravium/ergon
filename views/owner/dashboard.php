@@ -286,20 +286,7 @@ ob_start();
     </div>
 </div>
 
-<!-- Debug Info -->
-<div style="background:#f0f0f0;padding:10px;margin:10px;border:1px solid #ccc;font-family:monospace;font-size:12px;">
-    <strong>Debug Info:</strong><br>
-    Active Projects: <?= $data['stats']['active_projects'] ?? 'N/A' ?><br>
-    Completed Tasks: <?= $data['stats']['completed_tasks'] ?? 'N/A' ?><br>
-    In Progress: <?= $data['stats']['in_progress'] ?? 'N/A' ?><br>
-    Pending: <?= $data['stats']['pending'] ?? 'N/A' ?><br>
-    <?php if (isset($data['stats']['debug_info'])): ?>
-        <br><strong>Raw Query Results:</strong><br>
-        <?php foreach ($data['stats']['debug_info'] as $key => $value): ?>
-            <?= $key ?>: <?= $value ?><br>
-        <?php endforeach; ?>
-    <?php endif; ?>
-</div>
+
 
 <?php
 $content = ob_get_clean();
