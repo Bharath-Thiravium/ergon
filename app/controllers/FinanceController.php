@@ -133,6 +133,10 @@ class FinanceController extends Controller {
                         'gstLiability' => floatval($dashboardStats['gst_liability']),
                         'openPOCount' => intval($dashboardStats['open_pos']),
                         'closedPOCount' => intval($dashboardStats['closed_pos']),
+                        'placedQuotations' => intval($dashboardStats['placed_quotations'] ?? 0),
+                        'rejectedQuotations' => intval($dashboardStats['rejected_quotations'] ?? 0),
+                        'pendingQuotations' => intval($dashboardStats['pending_quotations'] ?? 0),
+                        'totalQuotations' => intval($dashboardStats['total_quotations'] ?? 0),
                         'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
                         'cashFlow' => ['expectedInflow' => floatval($dashboardStats['outstanding_amount']), 'poCommitments' => floatval($dashboardStats['po_commitments'])],
                         'source' => 'calculated'
@@ -1286,7 +1290,9 @@ class FinanceController extends Controller {
             $this->createTables($db);
             $prefix = $this->getCompanyPrefix();
             
+            // Calculate all stats including quotations
             $this->calculateStatCard3Pipeline($db, null, $prefix);
+            
             echo json_encode(['success' => true, 'message' => 'Stats refreshed for prefix: ' . $prefix]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
