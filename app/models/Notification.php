@@ -60,11 +60,14 @@ class Notification {
     
     public function getForUser($userId, $limit = 50) {
         $stmt = $this->db->prepare("
-            SELECT n.*, COALESCE(u.name, 'System') as sender_name 
+            SELECT n.*, COALESCE(u.name, 'System') as sender_name,
+                   n.reference_type as module_name,
+                   n.category as action_type
             FROM notifications n 
             LEFT JOIN users u ON n.sender_id = u.id 
             WHERE n.receiver_id = ? 
-            ORDER BY n.created_at DESC 
+            AND (n.expires_at IS NULL OR n.expires_at > NOW())
+            ORDER BY n.is_read ASC, n.created_at DESC 
             LIMIT ?
         ");
         $stmt->execute([$userId, $limit]);

@@ -99,6 +99,15 @@ ob_end_clean();
     .global-back-btn:hover{background:#f8fafc;border-color:#cbd5e0;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
     .global-back-btn[data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;top:90%;left:50%;transform:translateX(-50%);color:Black;padding:0px 0px;border-radius:4px;font-size:12px;white-space:nowrap;z-index:99999;margin-top:8px}
     @media (max-width:768px){.global-back-btn{top:115px !important;right:8px !important;left:auto !important;width:40px;height:40px}}
+    
+    /* Notification Enhancements */
+    .notification-item--unread{background:#f0f9ff;border-left:3px solid #0ea5e9}
+    .unread-dot{color:#ef4444;font-size:12px;margin-left:4px}
+    .notification-badge{background:#ef4444;color:#fff;border-radius:50%;padding:2px 6px;font-size:11px;font-weight:600;min-width:18px;text-align:center;position:absolute;top:-8px;right:-8px;z-index:10}
+    .notification-badge.has-notifications{animation:pulse 2s infinite}
+    .notification-dropdown{max-height:400px;overflow-y:auto;box-shadow:0 10px 25px rgba(0,0,0,0.15);background:#fff;border-radius:8px;border:1px solid #e2e8f0;min-width:320px}
+    @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
+    .control-btn{position:relative}
     </style>
     
     <link href="/ergon/assets/css/bootstrap-icons.min.css?v=1.0" rel="stylesheet">
@@ -155,9 +164,9 @@ ob_end_clean();
                 <button class="control-btn" id="theme-toggle" title="Toggle Theme">
                     <i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i>
                 </button>
-                <button class="control-btn" onclick="toggleNotifications(event)" title="Notifications">
+                <button class="control-btn notification-btn" onclick="toggleNotifications(event)" title="Notifications" style="position:relative;">
                     <i class="bi bi-bell-fill"></i>
-                    <span class="notification-badge" id="notificationBadge">0</span>
+                    <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
                 </button>
                 <button class="profile-btn" id="profileButton" type="button">
                     <span class="profile-avatar"><?= htmlspecialchars(strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
@@ -736,27 +745,49 @@ ob_end_clean();
         var list = document.getElementById('notificationList');
         if (!list) return;
         
-        fetch('/ergon/api/notifications.php')
+        // Add cache busting and proper headers
+        fetch('/ergon/api/notifications.php?t=' + Date.now(), {
+            method: 'GET',
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
         .then(response => {
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error('Network response was not ok: ' + response.status);
             }
-            return response.json();
+            return response.text();
         })
-        .then(data => {
-            if (data.success && data.notifications && data.notifications.length > 0) {
-                list.innerHTML = data.notifications.map(function(notif) {
-                    var link = getNotificationLink(notif.module_name, notif.message, notif.reference_id);
-                    return '<a href="' + link + '" class="notification-item" onclick="closeNotificationDropdown()">' +
-                           '<div class="notification-title">' + (notif.action_type || 'Notification') + '</div>' +
-                           '<div class="notification-message">' + (notif.message || '') + '</div>' +
-                           '<div class="notification-time">' + formatTime(notif.created_at) + '</div>' +
-                           '</a>';
-                }).join('');
-                
-                updateNotificationBadge(data.unread_count || 0);
-            } else {
-                list.innerHTML = '<div class="notification-loading">No notifications</div>';
+        .then(text => {
+            try {
+                var data = JSON.parse(text);
+                if (data.success && data.notifications && data.notifications.length > 0) {
+                    list.innerHTML = data.notifications.map(function(notif) {
+                        var link = getNotificationLink(notif.reference_type || notif.module_name, notif.message, notif.reference_id);
+                        var title = notif.title || notif.action_type || 'Notification';
+                        var isUnread = !notif.is_read;
+                        var unreadClass = isUnread ? ' notification-item--unread' : '';
+                        
+                        return '<a href="' + link + '" class="notification-item' + unreadClass + '" onclick="closeNotificationDropdown()">' +
+                               '<div class="notification-title">' + title + (isUnread ? ' <span class="unread-dot">●</span>' : '') + '</div>' +
+                               '<div class="notification-message">' + (notif.message || '') + '</div>' +
+                               '<div class="notification-time">' + formatTime(notif.created_at) + '</div>' +
+                               '</a>';
+                    }).join('');
+                    
+                    updateNotificationBadge(data.unread_count || 0);
+                } else {
+                    list.innerHTML = '<div class="notification-loading">No notifications</div>';
+                    updateNotificationBadge(0);
+                }
+            } catch (e) {
+                console.error('Failed to parse notification response:', e);
+                console.log('Raw response:', text.substring(0, 200));
+                list.innerHTML = '<div class="notification-loading">Error loading notifications</div>';
                 updateNotificationBadge(0);
             }
         })
@@ -770,14 +801,31 @@ ob_end_clean();
     function updateNotificationBadge(count) {
         var badge = document.getElementById('notificationBadge');
         if (badge) {
-            badge.textContent = count;
-            badge.style.display = count > 0 ? 'block' : 'none';
+            badge.textContent = count || 0;
+            badge.style.display = count > 0 ? 'inline-block' : 'none';
+            
+            // Add visual feedback for new notifications
+            if (count > 0) {
+                badge.classList.add('has-notifications');
+                // Pulse animation for new notifications
+                badge.style.animation = 'pulse 0.5s ease-in-out';
+                setTimeout(function() {
+                    badge.style.animation = '';
+                }, 500);
+            } else {
+                badge.classList.remove('has-notifications');
+            }
         }
     }
     
     document.addEventListener('DOMContentLoaded', function() {
         loadNotifications();
         checkAttendanceStatus();
+        
+        // Refresh notifications every 30 seconds
+        setInterval(function() {
+            loadNotifications();
+        }, 30000);
         
         // Ensure profile button is clickable
         var profileBtn = document.getElementById('profileButton');
@@ -792,17 +840,28 @@ ob_end_clean();
     
     function getNotificationLink(module, message, referenceId) {
         const baseUrl = '/ergon';
-        switch(module) {
-            case 'task': 
-                return referenceId ? `${baseUrl}/tasks/view/${referenceId}` : `${baseUrl}/tasks`;
-            case 'leave': 
-                return referenceId ? `${baseUrl}/leaves/view/${referenceId}` : `${baseUrl}/leaves`;
-            case 'expense': 
-                return referenceId ? `${baseUrl}/expenses/view/${referenceId}` : `${baseUrl}/expenses`;
-            case 'advance': 
-                return referenceId ? `${baseUrl}/advances/view/${referenceId}` : `${baseUrl}/advances`;
-            default: 
-                return `${baseUrl}/notifications`;
+        
+        // Handle both singular and plural forms
+        const moduleMap = {
+            'task': 'tasks',
+            'tasks': 'tasks',
+            'leave': 'leaves', 
+            'leaves': 'leaves',
+            'expense': 'expenses',
+            'expenses': 'expenses',
+            'advance': 'advances',
+            'advances': 'advances',
+            'approval': 'notifications'
+        };
+        
+        const mappedModule = moduleMap[module] || module;
+        
+        if (referenceId && referenceId > 0 && mappedModule !== 'notifications') {
+            return `${baseUrl}/${mappedModule}/view/${referenceId}`;
+        } else if (mappedModule && mappedModule !== 'notifications') {
+            return `${baseUrl}/${mappedModule}`;
+        } else {
+            return `${baseUrl}/notifications`;
         }
     }
     
