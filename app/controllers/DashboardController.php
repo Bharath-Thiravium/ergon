@@ -67,7 +67,7 @@ class DashboardController extends Controller {
             $hasProjectsTable = $projectTableCheck->rowCount() > 0;
             
             if ($hasProjectsTable) {
-                // Use INNER JOIN to show only projects with tasks
+                // Use LEFT JOIN to show all active projects, even with 0 tasks
                 $stmt = $db->prepare("
                     SELECT 
                         p.name as project_name,
@@ -76,10 +76,10 @@ class DashboardController extends Controller {
                         SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
                         SUM(CASE WHEN t.status NOT IN ('completed', 'in_progress') THEN 1 ELSE 0 END) as pending_tasks
                     FROM projects p
-                    INNER JOIN tasks t ON t.project_id = p.id
+                    LEFT JOIN tasks t ON t.project_id = p.id
                     WHERE p.status = 'active'
                     GROUP BY p.id, p.name
-                    ORDER BY total_tasks DESC
+                    ORDER BY total_tasks DESC, p.name ASC
                     LIMIT 10
                 ");
             } else if ($hasProjectName) {
