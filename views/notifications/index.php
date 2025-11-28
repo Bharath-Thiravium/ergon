@@ -58,9 +58,19 @@ ob_start();
                                     require_once __DIR__ . '/../../app/config/database.php';
                                     $db = Database::connect();
                                     $table = $referenceType === 'advance' ? 'advances' : $referenceType . 's';
-                                    $stmt = $db->prepare("SELECT id FROM {$table} ORDER BY id DESC LIMIT 1");
-                                    $stmt->execute();
+                                    
+                                    // Try to match by user and time proximity (within 1 hour)
+                                    $stmt = $db->prepare("SELECT id FROM {$table} WHERE user_id = ? AND ABS(TIMESTAMPDIFF(MINUTE, created_at, ?)) <= 60 ORDER BY ABS(TIMESTAMPDIFF(MINUTE, created_at, ?)) ASC LIMIT 1");
+                                    $stmt->execute([$notification['sender_id'], $notification['created_at'], $notification['created_at']]);
                                     $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                                    
+                                    // Fallback: get latest record for this user
+                                    if (!$result) {
+                                        $stmt = $db->prepare("SELECT id FROM {$table} WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
+                                        $stmt->execute([$notification['sender_id']]);
+                                        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                                    }
+                                    
                                     if ($result) {
                                         $referenceId = $result['id'];
                                         $updateStmt = $db->prepare("UPDATE notifications SET reference_id = ? WHERE id = ?");
