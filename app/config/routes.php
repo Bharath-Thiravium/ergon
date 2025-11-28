@@ -392,6 +392,7 @@ $router->post('/finance/company-prefix', 'FinanceController', 'companyPrefix');
 $router->get('/finance/debug-po', 'FinanceController', 'debugPo');
 $router->get('/finance/all-pos', 'FinanceController', 'getAllPurchaseOrders');
 $router->get('/finance/download-pg-tables', 'FinanceController', 'downloadTables');
+$router->get('/finance/refresh-stats', 'FinanceController', 'refreshStats');
 $router->get('/finance/structure', 'FinanceController', 'structure');
 
 ?>

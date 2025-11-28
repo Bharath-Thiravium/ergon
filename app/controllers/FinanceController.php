@@ -926,6 +926,29 @@ class FinanceController extends Controller {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX(table_name)
         )");
+        
+        $db->exec("CREATE TABLE IF NOT EXISTS dashboard_stats (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            company_prefix VARCHAR(10),
+            total_revenue DECIMAL(15,2) DEFAULT 0,
+            invoice_count INT DEFAULT 0,
+            average_invoice DECIMAL(15,2) DEFAULT 0,
+            amount_received DECIMAL(15,2) DEFAULT 0,
+            collection_rate DECIMAL(5,2) DEFAULT 0,
+            paid_invoices INT DEFAULT 0,
+            outstanding_amount DECIMAL(15,2) DEFAULT 0,
+            outstanding_percentage DECIMAL(5,2) DEFAULT 0,
+            overdue_amount DECIMAL(15,2) DEFAULT 0,
+            customer_count INT DEFAULT 0,
+            po_commitments DECIMAL(15,2) DEFAULT 0,
+            open_pos INT DEFAULT 0,
+            average_po DECIMAL(15,2) DEFAULT 0,
+            claimable_amount DECIMAL(15,2) DEFAULT 0,
+            claimable_pos INT DEFAULT 0,
+            claim_rate DECIMAL(5,2) DEFAULT 0,
+            generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_prefix (company_prefix)
+        )");
     }
     
     private function storeTableData($db, $tableName, $data) {
@@ -1137,6 +1160,178 @@ class FinanceController extends Controller {
     
     public function downloadTables() {
         $this->downloadPgTables();
+    }
+    
+    public function refreshStats() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            $prefix = $this->getCompanyPrefix();
+            
+            $pgConn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango");
+            if ($pgConn) {
+                $this->calculateStatsForPrefix($db, $pgConn, $prefix);
+                @pg_close($pgConn);
+                echo json_encode(['success' => true, 'message' => 'Stats refreshed for prefix: ' . $prefix]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+    
+    private function calculateStatsForPrefix($db, $pgConn, $prefix) {
+        // Fetch raw invoice data
+        $invoiceQuery = "SELECT id, invoice_number, total_amount, amount_paid, cgst, sgst, customer_gstin, due_date FROM finance_invoices WHERE invoice_number LIKE '$prefix%'";
+        $invoiceResult = @pg_query($pgConn, $invoiceQuery);
+        $invoices = $invoiceResult ? pg_fetch_all($invoiceResult) : [];
+        
+        // Fetch raw PO data
+        $poQuery = "SELECT id, po_number, total_amount, amount_paid FROM finance_purchase_orders WHERE po_number LIKE '$prefix%'";
+        $poResult = @pg_query($pgConn, $poQuery);
+        $pos = $poResult ? pg_fetch_all($poResult) : [];
+        
+        // Calculate metrics
+        $stats = $this->calculateMetrics($invoices ?: [], $pos ?: []);
+        $stats['company_prefix'] = $prefix;
+        
+        // Save to dashboard_stats
+        $this->saveDashboardStats($db, $stats);
+    }
+    
+    private function calculateMetrics($invoices, $pos) {
+        $stats = [];
+        
+        // Stat Card 1: Total Invoice Amount
+        $totalRevenue = 0;
+        $invoiceCount = count($invoices);
+        foreach ($invoices as $inv) {
+            $totalRevenue += floatval($inv['total_amount'] ?? 0);
+        }
+        $stats['total_revenue'] = $totalRevenue;
+        $stats['invoice_count'] = $invoiceCount;
+        $stats['average_invoice'] = $invoiceCount > 0 ? $totalRevenue / $invoiceCount : 0;
+        
+        // Stat Card 2: Amount Received
+        $amountReceived = 0;
+        $paidInvoices = 0;
+        foreach ($invoices as $inv) {
+            $paid = floatval($inv['amount_paid'] ?? 0);
+            $amountReceived += $paid;
+            if ($paid > 0) $paidInvoices++;
+        }
+        $stats['amount_received'] = $amountReceived;
+        $stats['collection_rate'] = $totalRevenue > 0 ? ($amountReceived / $totalRevenue) * 100 : 0;
+        $stats['paid_invoices'] = $paidInvoices;
+        
+        // Stat Card 3: Outstanding Amount
+        $outstandingAmount = 0;
+        $overdueAmount = 0;
+        $uniqueCustomers = [];
+        $today = date('Y-m-d');
+        
+        foreach ($invoices as $inv) {
+            $total = floatval($inv['total_amount'] ?? 0);
+            $paid = floatval($inv['amount_paid'] ?? 0);
+            $pending = $total - $paid;
+            
+            if ($pending > 0) {
+                $outstandingAmount += $pending;
+                $uniqueCustomers[$inv['customer_gstin'] ?? ''] = true;
+                
+                if (($inv['due_date'] ?? '') < $today) {
+                    $overdueAmount += $pending;
+                }
+            }
+        }
+        
+        $stats['outstanding_amount'] = $outstandingAmount;
+        $stats['outstanding_percentage'] = $totalRevenue > 0 ? ($outstandingAmount / $totalRevenue) * 100 : 0;
+        $stats['overdue_amount'] = $overdueAmount;
+        $stats['customer_count'] = count($uniqueCustomers);
+        
+        // Stat Card 5: PO Commitments
+        $poCommitments = 0;
+        $openPos = 0;
+        foreach ($pos as $po) {
+            $total = floatval($po['total_amount'] ?? 0);
+            $paid = floatval($po['amount_paid'] ?? 0);
+            $poCommitments += $total;
+            if ($total > $paid) $openPos++;
+        }
+        $stats['po_commitments'] = $poCommitments;
+        $stats['open_pos'] = $openPos;
+        $stats['average_po'] = count($pos) > 0 ? $poCommitments / count($pos) : 0;
+        
+        // Stat Card 6: Claimable Amount
+        $claimableAmount = 0;
+        $claimablePos = 0;
+        foreach ($pos as $po) {
+            $total = floatval($po['total_amount'] ?? 0);
+            $paid = floatval($po['amount_paid'] ?? 0);
+            $claimable = $total - $paid;
+            if ($claimable > 0) {
+                $claimableAmount += $claimable;
+                $claimablePos++;
+            }
+        }
+        $stats['claimable_amount'] = $claimableAmount;
+        $stats['claimable_pos'] = $claimablePos;
+        $stats['claim_rate'] = $poCommitments > 0 ? ($claimableAmount / $poCommitments) * 100 : 0;
+        
+        return $stats;
+    }
+    
+    private function saveDashboardStats($db, $stats) {
+        $sql = "INSERT INTO dashboard_stats (
+                    company_prefix, total_revenue, invoice_count, average_invoice,
+                    amount_received, collection_rate, paid_invoices,
+                    outstanding_amount, outstanding_percentage, overdue_amount, customer_count,
+                    po_commitments, open_pos, average_po,
+                    claimable_amount, claimable_pos, claim_rate, generated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                    total_revenue = VALUES(total_revenue),
+                    invoice_count = VALUES(invoice_count),
+                    average_invoice = VALUES(average_invoice),
+                    amount_received = VALUES(amount_received),
+                    collection_rate = VALUES(collection_rate),
+                    paid_invoices = VALUES(paid_invoices),
+                    outstanding_amount = VALUES(outstanding_amount),
+                    outstanding_percentage = VALUES(outstanding_percentage),
+                    overdue_amount = VALUES(overdue_amount),
+                    customer_count = VALUES(customer_count),
+                    po_commitments = VALUES(po_commitments),
+                    open_pos = VALUES(open_pos),
+                    average_po = VALUES(average_po),
+                    claimable_amount = VALUES(claimable_amount),
+                    claimable_pos = VALUES(claimable_pos),
+                    claim_rate = VALUES(claim_rate),
+                    generated_at = NOW()";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            $stats['company_prefix'],
+            $stats['total_revenue'],
+            $stats['invoice_count'],
+            $stats['average_invoice'],
+            $stats['amount_received'],
+            $stats['collection_rate'],
+            $stats['paid_invoices'],
+            $stats['outstanding_amount'],
+            $stats['outstanding_percentage'],
+            $stats['overdue_amount'],
+            $stats['customer_count'],
+            $stats['po_commitments'],
+            $stats['open_pos'],
+            $stats['average_po'],
+            $stats['claimable_amount'],
+            $stats['claimable_pos'],
+            $stats['claim_rate']
+        ]);
     }
     
     public function getAllPurchaseOrders() {

@@ -30,6 +30,10 @@
                     <span class="btn__icon">📥</span>
                     <span class="btn__text">Download PG Tables</span>
                 </button>
+                <button onclick="refreshDashboardStats()" class="btn btn--success btn--sm">
+                    <span class="btn__icon">🔄</span>
+                    <span class="btn__text">Refresh Stats</span>
+                </button>
                 <a href="/ergon/finance/import" class="btn btn--success btn--sm">
                     <span class="btn__icon">📥</span>
                     <span class="btn__text">Import Data</span>
@@ -1644,6 +1648,22 @@ async function loadCustomers() {
     } finally {
         if (loader) loader.style.display = 'none';
         if (select) select.disabled = false;
+    }
+}
+
+async function refreshDashboardStats() {
+    try {
+        const response = await fetch('/ergon/finance/refresh-stats');
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('Dashboard stats refreshed successfully!', 'success');
+            loadDashboardData();
+        } else {
+            showNotification('Failed to refresh stats: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        showNotification('Failed to refresh stats: ' + error.message, 'error');
     }
 }
 </script>
