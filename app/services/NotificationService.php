@@ -68,21 +68,42 @@ class NotificationService {
         
         try {
             $db = Database::connect();
-            $stmt = $db->prepare("
-                INSERT INTO notifications (sender_id, receiver_id, module_name, action_type, message, reference_id, priority, metadata, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            ");
             
-            return $stmt->execute([
-                $senderId,
-                $receiverId, 
-                $module,
-                $action,
-                $message,
-                $referenceId,
-                $priority,
-                json_encode($metadata)
-            ]);
+            // Check if new columns exist, fallback to standard notification creation
+            $stmt = $db->query("SHOW COLUMNS FROM notifications LIKE 'module_name'");
+            $hasModuleName = $stmt->rowCount() > 0;
+            
+            if ($hasModuleName) {
+                $stmt = $db->prepare("
+                    INSERT INTO notifications (sender_id, receiver_id, module_name, action_type, message, reference_id, priority, metadata, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ");
+                
+                return $stmt->execute([
+                    $senderId,
+                    $receiverId, 
+                    $module,
+                    $action,
+                    $message,
+                    $referenceId,
+                    $priority,
+                    json_encode($metadata)
+                ]);
+            } else {
+                // Fallback to standard notification model
+                require_once __DIR__ . '/../models/Notification.php';
+                $notification = new Notification();
+                return $notification->create([
+                    'sender_id' => $senderId,
+                    'receiver_id' => $receiverId,
+                    'title' => ucfirst($module) . ' ' . ucfirst($action),
+                    'message' => $message,
+                    'reference_type' => $module,
+                    'reference_id' => $referenceId,
+                    'category' => 'system',
+                    'priority' => $priority === 'medium' ? 1 : ($priority === 'high' ? 2 : 1)
+                ]);
+            }
         } catch (Exception $e) {
             error_log('Notification creation error: ' . $e->getMessage());
             return false;
@@ -93,12 +114,27 @@ class NotificationService {
     private static function isDuplicateNotification($senderId, $receiverId, $module, $action, $minutesThreshold = 5) {
         try {
             $db = Database::connect();
-            $stmt = $db->prepare("
-                SELECT COUNT(*) as count FROM notifications 
-                WHERE sender_id = ? AND receiver_id = ? AND module_name = ? AND action_type = ?
-                AND created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
-            ");
-            $stmt->execute([$senderId, $receiverId, $module, $action, $minutesThreshold]);
+            
+            // Check if module_name column exists
+            $stmt = $db->query("SHOW COLUMNS FROM notifications LIKE 'module_name'");
+            $hasModuleName = $stmt->rowCount() > 0;
+            
+            if ($hasModuleName) {
+                $stmt = $db->prepare("
+                    SELECT COUNT(*) as count FROM notifications 
+                    WHERE sender_id = ? AND receiver_id = ? AND module_name = ? AND action_type = ?
+                    AND created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                ");
+                $stmt->execute([$senderId, $receiverId, $module, $action, $minutesThreshold]);
+            } else {
+                $stmt = $db->prepare("
+                    SELECT COUNT(*) as count FROM notifications 
+                    WHERE sender_id = ? AND receiver_id = ? AND reference_type = ?
+                    AND created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                ");
+                $stmt->execute([$senderId, $receiverId, $module, $minutesThreshold]);
+            }
+            
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             return $result['count'] > 0;
         } catch (Exception $e) {

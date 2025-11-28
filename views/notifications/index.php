@@ -9,7 +9,6 @@ ob_start();
         <p>Stay updated with your latest notifications</p>
     </div>
     <div class="page-actions">
-        <button class="btn btn--success" onclick="createTestNotification()">Create Test Notification</button>
         <button class="btn btn--secondary" onclick="markAllAsRead()" id="markAllBtn">Mark All Read</button>
         <button class="btn btn--primary" onclick="markSelectedAsRead()" id="markSelectedBtn" disabled>Mark Selected Read</button>
     </div>
@@ -17,7 +16,12 @@ ob_start();
 
 <div class="card">
     <div class="card__body">
-        <?php if (empty($notifications ?? [])): ?>
+        <?php 
+        // Debug: Check if notifications variable exists and has data
+        $hasNotifications = !empty($notifications ?? []);
+        echo "<!-- DEBUG: Notifications count: " . count($notifications ?? []) . " -->";
+        if (isset($debug_info)) echo "<!-- DEBUG INFO: {$debug_info} -->";
+        if (!$hasNotifications): ?>
             <div class="empty-state">
                 <div class="empty-icon">🔔</div>
                 <h3>No Notifications</h3>
@@ -229,7 +233,7 @@ function timeAgo($datetime) {
 }
 ?>
 
-<script src="/ergon/assets/js/notifications-enhanced.js" defer></script>
+
 <script>
 function goBack() {
     window.history.back();
@@ -257,6 +261,90 @@ function createTestNotification() {
     .catch(error => {
         alert('❌ Network error: ' + error.message);
     });
+}
+
+function markAsRead(notificationId) {
+    fetch('/ergon/api/notifications_unified.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            action: 'mark-read',
+            id: notificationId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+function markAllAsRead() {
+    fetch('/ergon/api/notifications_unified.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            action: 'mark-all-read'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+function markSelectedAsRead() {
+    const checkboxes = document.querySelectorAll('.notification-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    
+    if (ids.length === 0) return;
+    
+    fetch('/ergon/api/notifications_unified.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            action: 'mark-selected-read',
+            ids: ids
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.notification-checkbox');
+    
+    checkboxes.forEach(cb => {
+        cb.checked = selectAll.checked;
+    });
+    
+    updateMarkSelectedButton();
+}
+
+function updateMarkSelectedButton() {
+    const checkboxes = document.querySelectorAll('.notification-checkbox:checked');
+    const button = document.getElementById('markSelectedBtn');
+    
+    if (button) {
+        button.disabled = checkboxes.length === 0;
+    }
 }
 </script>
 

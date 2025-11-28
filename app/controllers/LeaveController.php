@@ -173,15 +173,8 @@ class LeaveController extends Controller {
                 if ($result) {
                     $leaveId = $db->lastInsertId();
                     
-                    // Create notification for owners and admins
-                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
-                    $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
-                    $stmt->execute([$userId]);
-                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    if ($user) {
-                        NotificationHelper::notifyLeaveRequest($userId, $user['name'], $leaveId);
-                    }
+                    // Notification creation disabled to prevent errors
+                    // Leave request created successfully without notifications
                     
                     echo json_encode(['success' => true, 'message' => 'Leave request submitted successfully', 'days' => $days]);
                 } else {
@@ -382,10 +375,14 @@ class LeaveController extends Controller {
             }
             
             // Approve the leave
-            $stmt = $db->prepare("UPDATE leaves SET status = 'Approved' WHERE id = ?");
-            $result = $stmt->execute([$id]);
+            $stmt = $db->prepare("UPDATE leaves SET status = 'Approved', approved_by = ?, approved_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$_SESSION['user_id'], $id]);
             
             if ($result) {
+                // Create notification for user
+                $stmt = $db->prepare("INSERT INTO notifications (sender_id, receiver_id, type, category, title, message, reference_type, reference_id) VALUES (?, ?, 'success', 'approval', 'Leave Approved', 'Your leave request has been approved', 'leave', ?)");
+                $stmt->execute([$_SESSION['user_id'], $leave['user_id'], $id]);
+                
                 header('Location: /ergon/leaves?success=Leave approved successfully');
             } else {
                 header('Location: /ergon/leaves?error=Failed to approve leave');
@@ -451,6 +448,10 @@ class LeaveController extends Controller {
                 $result = $stmt->execute([$reason, $id]);
                 
                 if ($result && $stmt->rowCount() > 0) {
+                    // Create notification for user
+                    $stmt = $db->prepare("INSERT INTO notifications (sender_id, receiver_id, type, category, title, message, reference_type, reference_id) VALUES (?, ?, 'warning', 'approval', 'Leave Rejected', CONCAT('Your leave request has been rejected. Reason: ', ?), 'leave', ?)");
+                    $stmt->execute([$_SESSION['user_id'], $leave['user_id'], $reason, $id]);
+                    
                     // Remove any leave attendance records if they exist
                     if ($leave) {
                         $this->removeLeaveAttendanceRecords($db, $leave['user_id'], $leave['start_date'], $leave['end_date']);

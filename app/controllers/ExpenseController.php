@@ -186,7 +186,7 @@ class ExpenseController extends Controller {
                         NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount, $expenseId);
                     }
                 } catch (Exception $notifError) {
-                    // Log but don't fail the expense creation
+                    // Log but don't fail the expense creation - notification system may have table issues
                     error_log('Notification error (non-critical): ' . $notifError->getMessage());
                 }
                 
@@ -221,6 +221,7 @@ class ExpenseController extends Controller {
                                 NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount, $expenseId);
                             }
                         } catch (Exception $notifError) {
+                            // Silently fail notification - expense creation is more important
                             error_log('Notification error (non-critical): ' . $notifError->getMessage());
                         }
                         

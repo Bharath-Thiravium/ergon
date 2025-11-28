@@ -79,7 +79,13 @@ ob_start();
 
 <style>
 .password-change-container { max-width: 500px; margin: 0 auto; }
-.password-card { background: white; padding: 32px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.password-card { 
+    background: white; 
+    padding: 32px; 
+    border-radius: 12px; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
 .card-header { text-align: center; margin-bottom: 32px; }
 .card-header h2 { color: #333; margin-bottom: 8px; }
 .card-header p { color: #666; }
@@ -91,27 +97,120 @@ ob_start();
 
 .password-input-wrapper {
     position: relative;
-    display: flex;
-    align-items: center;
+    display: block;
 }
 
 .password-input-wrapper input {
-    padding-right: 45px;
+    padding-right: 50px !important;
+    width: 100%;
 }
 
 .password-toggle {
     position: absolute;
-    right: 10px;
-    background: none;
-    border: none;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent !important;
+    border: none !important;
     cursor: pointer;
-    color: #666;
+    color: #666 !important;
     font-size: 16px;
-    padding: 5px;
+    padding: 6px;
+    z-index: 100;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
 }
 
 .password-toggle:hover {
-    color: #333;
+    color: #333 !important;
+    background-color: rgba(0,0,0,0.05) !important;
+}
+
+.password-toggle:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Fallback for Bootstrap Icons */
+.password-toggle::before {
+    content: '👁️';
+    font-size: 16px;
+    display: block;
+}
+
+.password-toggle.show-password::before {
+    content: '🙈';
+}
+
+/* Hide fallback when Bootstrap Icons load */
+.password-toggle i {
+    pointer-events: none;
+    font-size: 16px;
+}
+
+.password-toggle:not(:empty) i + *::before,
+.password-toggle i:not(:empty) ~ *::before {
+    display: none;
+}
+
+/* Dark Theme Support */
+[data-theme="dark"] .password-card {
+    background: #1f2937 !important;
+    border: 1px solid #374151;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+[data-theme="dark"] .card-header h2 {
+    color: #f9fafb !important;
+}
+
+[data-theme="dark"] .card-header p {
+    color: #d1d5db !important;
+}
+
+[data-theme="dark"] .form-label {
+    color: #f9fafb !important;
+}
+
+[data-theme="dark"] .form-help {
+    color: #9ca3af !important;
+}
+
+[data-theme="dark"] .password-tips {
+    border-top-color: #374151 !important;
+}
+
+[data-theme="dark"] .password-tips h4 {
+    color: #f9fafb !important;
+}
+
+[data-theme="dark"] .password-tips li {
+    color: #d1d5db !important;
+}
+
+[data-theme="dark"] .password-toggle {
+    color: #9ca3af !important;
+}
+
+[data-theme="dark"] .password-toggle:hover {
+    color: #f9fafb !important;
+    background-color: rgba(255,255,255,0.1) !important;
+}
+
+[data-theme="dark"] .form-control {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+    color: #f9fafb !important;
+}
+
+[data-theme="dark"] .form-control:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25) !important;
 }
 
 .alert {
@@ -132,19 +231,38 @@ ob_start();
     border: 1px solid #f5c6cb;
     color: #721c24;
 }
+
+[data-theme="dark"] .alert--success {
+    background-color: #064e3b;
+    border-color: #065f46;
+    color: #a7f3d0;
+}
+
+[data-theme="dark"] .alert--error {
+    background-color: #7f1d1d;
+    border-color: #991b1b;
+    color: #fca5a5;
+}
 </style>
 
 <script>
 function togglePassword(fieldId) {
     const field = document.getElementById(fieldId);
+    const button = field.parentElement.querySelector('.password-toggle');
     const icon = document.getElementById(fieldId + '_icon');
     
     if (field.type === 'password') {
         field.type = 'text';
-        icon.className = 'bi bi-eye-slash';
+        button.classList.add('show-password');
+        if (icon) {
+            icon.className = 'bi bi-eye-slash';
+        }
     } else {
         field.type = 'password';
-        icon.className = 'bi bi-eye';
+        button.classList.remove('show-password');
+        if (icon) {
+            icon.className = 'bi bi-eye';
+        }
     }
 }
 
@@ -178,10 +296,15 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                showMessage('Password changed successfully!', 'success');
+                showMessage(data.message || 'Password changed successfully!', 'success');
                 form.reset();
                 setTimeout(() => {
                     window.location.href = '/ergon/profile';
@@ -191,6 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
+            console.error('Error:', error);
             showMessage('An error occurred. Please try again.', 'error');
         })
         .finally(() => {

@@ -127,6 +127,10 @@ class ContactFollowupController extends Controller {
     }
     
     private function storeStandaloneFollowup() {
+        // Check if this is an AJAX request
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                 strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+        
         try {
             $db = Database::connect();
             
@@ -140,6 +144,11 @@ class ContactFollowupController extends Controller {
             $contact_id = !empty($_POST['contact_id']) ? intval($_POST['contact_id']) : null;
             
             if (empty($title)) {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Title is required']);
+                    exit;
+                }
                 $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=Title required" : '/ergon/contacts/followups/create?error=Title required';
                 header("Location: $redirectUrl");
                 exit;
@@ -163,14 +172,32 @@ class ContactFollowupController extends Controller {
                 // Log creation in history
                 $this->logHistory($followup_id, 'created', null, 'Follow-up created');
                 
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'message' => 'Follow-Up Details Saved Successfully']);
+                    exit;
+                }
+                
                 $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?success=Follow-up added" : '/ergon/contacts/followups/view?success=Follow-up created';
                 header("Location: $redirectUrl");
             } else {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Failed to save follow-up details']);
+                    exit;
+                }
                 $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=Failed to add follow-up" : '/ergon/contacts/followups/create?error=Failed to create';
                 header("Location: $redirectUrl");
             }
         } catch (Exception $e) {
             error_log('Store followup error: ' . $e->getMessage());
+            
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+                exit;
+            }
+            
             $task_id = !empty($_POST['task_id']) ? intval($_POST['task_id']) : null;
             $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=" . urlencode($e->getMessage()) : '/ergon/contacts/followups/create?error=' . urlencode($e->getMessage());
             header("Location: $redirectUrl");

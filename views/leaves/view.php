@@ -10,6 +10,14 @@ ob_start();
         <p>View leave request information</p>
     </div>
     <div class="page-actions">
+        <?php if (($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'owner') && strtolower($leave['status']) === 'pending'): ?>
+        <a href="/ergon/leaves/approve/<?= $leave['id'] ?>" class="btn btn--success" onclick="return confirm('Approve this leave request?')">
+            ✅ Approve
+        </a>
+        <button class="btn btn--danger" onclick="showRejectModal(<?= $leave['id'] ?>)">
+            ❌ Reject
+        </button>
+        <?php endif; ?>
         <a href="/ergon/leaves" class="btn btn--secondary">
             <span>←</span> Back to Leaves
         </a>
@@ -94,6 +102,80 @@ ob_start();
         </div>
     </div>
 </div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Reject Leave Request</h3>
+        <form method="POST" action="" id="rejectForm">
+            <div class="form-group">
+                <label for="rejection_reason">Rejection Reason:</label>
+                <textarea name="rejection_reason" id="rejection_reason" required rows="3" placeholder="Please provide a reason for rejection..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" onclick="closeRejectModal()" class="btn btn--secondary">Cancel</button>
+                <button type="submit" class="btn btn--danger">Reject Leave</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showRejectModal(leaveId) {
+    document.getElementById('rejectForm').action = '/ergon/leaves/reject/' + leaveId;
+    document.getElementById('rejectModal').style.display = 'flex';
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+}
+</script>
+
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
 
 <style>
 .leave-compact {
