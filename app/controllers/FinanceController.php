@@ -25,7 +25,7 @@ class FinanceController extends Controller {
             $pgConn = @pg_connect("host=$pgHost port=$pgPort dbname=$pgDb user=$pgUser password=$pgPass");
             
             if (!$pgConn) {
-                echo json_encode(['success' => false, 'error' => 'PostgreSQL not available. Please install and configure PostgreSQL server.']);
+                echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed']);
                 exit;
             }
             
@@ -86,7 +86,6 @@ class FinanceController extends Controller {
                 $data = json_decode($row['data'], true);
                 $invoiceNumber = $data['invoice_number'] ?? '';
                 
-                // Filter by company prefix if set
                 if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
                     continue;
                 }
@@ -99,9 +98,20 @@ class FinanceController extends Controller {
                 $pendingInvoiceAmount += $outstanding;
             }
             
-            $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
             $stmt->execute();
-            $quotationCount = $stmt->fetchColumn();
+            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $quotationCount = 0;
+            foreach ($quotationResults as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                    continue;
+                }
+                $quotationCount++;
+            }
             
             echo json_encode([
                 'totalInvoiceAmount' => $totalInvoiceAmount,
@@ -148,7 +158,6 @@ class FinanceController extends Controller {
                 $data = json_decode($row['data'], true);
                 $invoiceNumber = $data['invoice_number'] ?? 'N/A';
                 
-                // Filter by company prefix if set
                 if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
                     continue;
                 }
@@ -177,6 +186,83 @@ class FinanceController extends Controller {
         }
     }
     
+    public function getQuotations() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $quotations = [];
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? 'N/A';
+                
+                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $quotations[] = [
+                    'quotation_number' => $quotationNumber,
+                    'customer_name' => $data['name'] ?? $data['display_name'] ?? $data['customer_name'] ?? 'Unknown',
+                    'amount' => floatval($data['amount'] ?? $data['total_amount'] ?? 0),
+                    'status' => $data['status'] ?? 'pending',
+                    'created_date' => $data['created_date'] ?? $data['date'] ?? date('Y-m-d')
+                ];
+            }
+            
+            echo json_encode(['quotations' => $quotations]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['quotations' => [], 'error' => 'Failed to load quotations']);
+        }
+    }
+    
+    public function getCustomers() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $customers = [];
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $customerCode = $data['customer_code'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($customerCode, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $customers[] = [
+                    'customer_code' => $customerCode,
+                    'name' => $data['name'] ?? 'Unknown',
+                    'display_name' => $data['display_name'] ?? $data['name'] ?? 'Unknown',
+                    'email' => $data['email'] ?? '',
+                    'phone' => $data['phone'] ?? '',
+                    'gstin' => $data['gstin'] ?? ''
+                ];
+            }
+            
+            echo json_encode(['customers' => $customers]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['customers' => [], 'error' => 'Failed to load customers']);
+        }
+    }
+    
     public function updateCompanyPrefix() {
         header('Content-Type: application/json');
         
@@ -198,8 +284,6 @@ class FinanceController extends Controller {
             echo json_encode(['prefix' => $this->getCompanyPrefix()]);
         }
     }
-    
-
     
     private function createTables($db) {
         $db->exec("CREATE TABLE IF NOT EXISTS finance_tables (
@@ -238,8 +322,6 @@ class FinanceController extends Controller {
                              ON DUPLICATE KEY UPDATE record_count = ?, last_sync = NOW()");
         $stmt->execute([$tableName, count($data), count($data)]);
     }
-    
-
     
     private function getCompanyPrefix() {
         try {
