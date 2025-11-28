@@ -4,8 +4,16 @@ require_once __DIR__ . '/app/core/Session.php';
 
 Session::init();
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
-    echo "Access denied. Owner role required.";
+if (!isset($_SESSION['user_id'])) {
+    echo "Please log in first.";
+    exit;
+}
+
+echo "<p>Current user ID: {$_SESSION['user_id']}</p>";
+echo "<p>Current role: {$_SESSION['role']}</p>";
+
+if ($_SESSION['role'] !== 'owner') {
+    echo "<p>Access denied. Owner role required but you have: {$_SESSION['role']}</p>";
     exit;
 }
 
