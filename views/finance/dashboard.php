@@ -143,7 +143,7 @@
             </div>
             <div class="kpi-card__value" id="claimableAmount">₹0</div>
             <div class="kpi-card__label">Claimable Amount</div>
-            <div class="kpi-card__description">Available for Invoice Claims</div>
+            <div class="kpi-card__description">Total Invoice Amount - Payments Received</div>
             <div class="kpi-card__details">
                 <div class="detail-item">Claimable POs: <span id="claimablePOCount">0</span></div>
                 <div class="detail-item">Claim Rate: <span id="claimRate">0%</span></div>
@@ -1013,14 +1013,20 @@ function updateKPICards(data) {
         avgPOValue.textContent = '₹0';
     }
     
-    // Claimable Amount
+    // Stat Card 6: Claimable Amount (Backend calculated from invoices)
     document.getElementById('claimableAmount').textContent = `₹${(data.claimableAmount || 0).toLocaleString()}`;
     
-    // Update claimable details
+    // Update claimable details with backend calculations
     const claimablePOCount = document.getElementById('claimablePOCount');
     const claimRate = document.getElementById('claimRate');
-    if (claimablePOCount) claimablePOCount.textContent = data.claimablePOCount || 0;
-    if (claimRate) claimRate.textContent = `${data.claimRate || 0}%`;
+    if (claimablePOCount) claimablePOCount.textContent = data.claimablePOCount || data.claimablePos || 0;
+    if (claimRate) claimRate.textContent = `${Math.round(data.claimRate || 0)}%`;
+    
+    // Update trend for claim rate
+    const claimableTrend = document.getElementById('claimableTrend');
+    if (claimableTrend && data.claimRate !== undefined) {
+        claimableTrend.textContent = `${Math.round(data.claimRate)}%`;
+    }
 }
 
 function updateConversionFunnel(data) {

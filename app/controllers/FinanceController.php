@@ -77,6 +77,7 @@ class FinanceController extends Controller {
                     'pendingPOValue' => floatval($dashboardStats['po_commitments']),
                     'claimableAmount' => floatval($dashboardStats['claimable_amount']),
                     'claimablePOCount' => intval($dashboardStats['claimable_pos']),
+                    'claimablePos' => intval($dashboardStats['claimable_pos']),
                     'openPOCount' => intval($dashboardStats['open_pos']),
                     'totalPOCount' => intval($dashboardStats['open_pos']),
                     'claimRate' => floatval($dashboardStats['claim_rate']),
@@ -1301,83 +1302,76 @@ class FinanceController extends Controller {
         $customersPending = [];
         $overdueAmount = 0;
         $totalTaxableAmount = 0;
+        $claimableAmount = 0;
+        $claimablePos = 0;
+        $totalInvoiceAmount = 0;
         $today = date('Y-m-d');
         
         foreach ($invoices as $invoice) {
             $taxableAmount = floatval($invoice['taxable_amount'] ?? 0);
+            $totalAmount = floatval($invoice['total_amount'] ?? 0);
             $amountPaid = floatval($invoice['amount_paid'] ?? 0);
             $dueDate = $invoice['due_date'] ?? '';
             $customerGstin = $invoice['customer_gstin'] ?? '';
             
-            // Step 3: Outstanding amount uses only taxable_amount (no GST)
+            // Stat Card 3: Outstanding amount uses only taxable_amount (no GST)
             $pendingAmount = $taxableAmount - $amountPaid;
             $totalTaxableAmount += $taxableAmount;
             
+            // Stat Card 6: Claimable amount uses total_amount (includes GST)
+            $claimable = $totalAmount - $amountPaid;
+            $totalInvoiceAmount += $totalAmount;
+            
             if ($pendingAmount > 0) {
-                // Step 4: Calculate metrics
                 $outstandingAmount += $pendingAmount;
                 $pendingInvoices++;
                 
-                // Track unique customers with pending amounts
                 if ($customerGstin) {
                     $customersPending[$customerGstin] = true;
                 }
                 
-                // Calculate overdue amount
                 if ($dueDate && $dueDate < $today) {
                     $overdueAmount += $pendingAmount;
                 }
+            }
+            
+            if ($claimable > 0) {
+                $claimableAmount += $claimable;
+                $claimablePos++;
             }
         }
         
         $customersPendingCount = count($customersPending);
         $outstandingPercentage = $totalTaxableAmount > 0 ? ($outstandingAmount / $totalTaxableAmount) * 100 : 0;
+        $claimRate = $totalInvoiceAmount > 0 ? ($claimableAmount / $totalInvoiceAmount) * 100 : 0;
         
-        // Also calculate other stats for completeness
-        $totalRevenue = 0;
+        // Calculate other stats
         $amountReceived = 0;
         $paidInvoices = 0;
         
         foreach ($invoices as $invoice) {
-            $total = floatval($invoice['total_amount'] ?? 0);
             $paid = floatval($invoice['amount_paid'] ?? 0);
-            $totalRevenue += $total;
             $amountReceived += $paid;
             if ($paid > 0) $paidInvoices++;
         }
         
-        // Fetch PO data from existing finance_data table
+        // Fetch PO data for other cards
         $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
         $stmt->execute();
         $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        $pos = [];
+        $poCommitments = 0;
+        $openPos = 0;
+        
         foreach ($poResults as $row) {
             $data = json_decode($row['data'], true);
             $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
             if (!$prefix || stripos($poNumber, $prefix) !== false) {
-                $pos[] = [
-                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
-                    'amount_paid' => floatval($data['amount_paid'] ?? 0)
-                ];
-            }
-        }
-        
-        $poCommitments = 0;
-        $claimableAmount = 0;
-        $claimablePos = 0;
-        $openPos = 0;
-        
-        foreach ($pos as $po) {
-            $total = floatval($po['total_amount'] ?? 0);
-            $paid = floatval($po['amount_paid'] ?? 0);
-            $poCommitments += $total;
-            if ($total > $paid) {
-                $openPos++;
-                $claimable = $total - $paid;
-                if ($claimable > 0) {
-                    $claimableAmount += $claimable;
-                    $claimablePos++;
+                $total = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+                $paid = floatval($data['amount_paid'] ?? 0);
+                $poCommitments += $total;
+                if ($total > $paid) {
+                    $openPos++;
                 }
             }
         }
@@ -1385,11 +1379,11 @@ class FinanceController extends Controller {
         // Step 5: Store computed results in dashboard_stats table
         $stats = [
             'company_prefix' => $prefix,
-            'total_revenue' => $totalRevenue,
+            'total_revenue' => $totalInvoiceAmount,
             'invoice_count' => count($invoices),
-            'average_invoice' => count($invoices) > 0 ? $totalRevenue / count($invoices) : 0,
+            'average_invoice' => count($invoices) > 0 ? $totalInvoiceAmount / count($invoices) : 0,
             'amount_received' => $amountReceived,
-            'collection_rate' => $totalRevenue > 0 ? ($amountReceived / $totalRevenue) * 100 : 0,
+            'collection_rate' => $totalInvoiceAmount > 0 ? ($amountReceived / $totalInvoiceAmount) * 100 : 0,
             'paid_invoices' => $paidInvoices,
             'outstanding_amount' => $outstandingAmount,
             'pending_invoices' => $pendingInvoices,
@@ -1399,10 +1393,10 @@ class FinanceController extends Controller {
             'customer_count' => $customersPendingCount,
             'po_commitments' => $poCommitments,
             'open_pos' => $openPos,
-            'average_po' => count($pos) > 0 ? $poCommitments / count($pos) : 0,
+            'average_po' => $openPos > 0 ? $poCommitments / $openPos : 0,
             'claimable_amount' => $claimableAmount,
             'claimable_pos' => $claimablePos,
-            'claim_rate' => $poCommitments > 0 ? ($claimableAmount / $poCommitments) * 100 : 0
+            'claim_rate' => $claimRate
         ];
         
         $this->saveDashboardStats($db, $stats);
