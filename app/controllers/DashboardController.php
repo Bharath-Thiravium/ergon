@@ -35,65 +35,32 @@ class DashboardController extends Controller {
     public function projectOverview() {
         AuthMiddleware::requireAuth();
         
-        header('Cache-Control: no-cache, no-store, must-revalidate');
-        header('Pragma: no-cache');
-        header('Expires: 0');
-        
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Simplified query - get projects from tasks if projects table is empty
-            $stmt = $db->query("SELECT COUNT(*) FROM projects WHERE status = 'active'");
-            $projectTableCount = $stmt->fetchColumn();
+            // Direct query from tasks table
+            $stmt = $db->query("
+                SELECT 
+                    COALESCE(NULLIF(project_name, ''), 'General Tasks') as project_name,
+                    COUNT(*) as total_tasks,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
+                    SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
+                    SUM(CASE WHEN status NOT IN ('completed', 'in_progress') THEN 1 ELSE 0 END) as pending_tasks
+                FROM tasks
+                GROUP BY COALESCE(NULLIF(project_name, ''), 'General Tasks')
+                HAVING COUNT(*) > 0
+                ORDER BY total_tasks DESC
+                LIMIT 10
+            ");
             
-            if ($projectTableCount > 0) {
-                // Use projects table
-                $stmt = $db->query("
-                    SELECT 
-                        p.name as project_name,
-                        COUNT(t.id) as total_tasks,
-                        SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
-                        SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
-                        SUM(CASE WHEN t.status IN ('assigned', 'pending', 'not_started') THEN 1 ELSE 0 END) as pending_tasks
-                    FROM projects p
-                    LEFT JOIN tasks t ON (t.project_name = p.name OR t.project_id = p.id)
-                    WHERE p.status = 'active'
-                    GROUP BY p.name
-                    ORDER BY total_tasks DESC
-                    LIMIT 10
-                ");
-            } else {
-                // Fallback to tasks table
-                $stmt = $db->query("
-                    SELECT 
-                        COALESCE(project_name, 'General Tasks') as project_name,
-                        COUNT(*) as total_tasks,
-                        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
-                        SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
-                        SUM(CASE WHEN status IN ('assigned', 'pending', 'not_started') THEN 1 ELSE 0 END) as pending_tasks
-                    FROM tasks
-                    GROUP BY COALESCE(project_name, 'General Tasks')
-                    ORDER BY total_tasks DESC
-                    LIMIT 10
-                ");
-            }
-            
-            $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($projects as &$project) {
-                $project['total_tasks'] = (int)($project['total_tasks'] ?? 0);
-                $project['completed_tasks'] = (int)($project['completed_tasks'] ?? 0);
-                $project['in_progress_tasks'] = (int)($project['in_progress_tasks'] ?? 0);
-                $project['pending_tasks'] = (int)($project['pending_tasks'] ?? 0);
-            }
+            $projects = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
             
             $this->view('dashboard/project_overview', [
                 'projects' => $projects,
                 'active_page' => 'dashboard'
             ]);
         } catch (Exception $e) {
-            error_log('Project overview error: ' . $e->getMessage());
             $this->view('dashboard/project_overview', ['projects' => [], 'active_page' => 'dashboard']);
         }
     }
@@ -101,46 +68,34 @@ class DashboardController extends Controller {
     public function delayedTasksOverview() {
         AuthMiddleware::requireAuth();
         
-        header('Cache-Control: no-cache, no-store, must-revalidate');
-        header('Pragma: no-cache');
-        header('Expires: 0');
-        
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Simplified query for delayed tasks
+            // Simple query for overdue tasks
             $stmt = $db->query("
                 SELECT 
                     t.*,
                     u.name as assigned_user,
-                    CASE 
-                        WHEN t.due_date IS NOT NULL AND t.due_date < CURDATE() THEN DATEDIFF(CURDATE(), t.due_date)
-                        WHEN t.deadline IS NOT NULL AND t.deadline < CURDATE() THEN DATEDIFF(CURDATE(), t.deadline)
-                        ELSE 0
-                    END as days_overdue
+                    1 as days_overdue
                 FROM tasks t 
                 LEFT JOIN users u ON t.assigned_to = u.id
-                WHERE (
-                    (t.due_date IS NOT NULL AND t.due_date < CURDATE()) OR 
-                    (t.deadline IS NOT NULL AND t.deadline < CURDATE())
+                WHERE t.status NOT IN ('completed', 'cancelled')
+                AND (
+                    (t.due_date IS NOT NULL AND t.due_date < NOW()) OR
+                    (t.deadline IS NOT NULL AND t.deadline < NOW())
                 )
-                AND t.status NOT IN ('completed', 'cancelled')
-                ORDER BY 
-                    CASE 
-                        WHEN t.due_date IS NOT NULL THEN t.due_date
-                        ELSE t.deadline
-                    END ASC
+                ORDER BY t.created_at DESC
                 LIMIT 50
             ");
-            $delayedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $delayedTasks = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
             
             $this->view('dashboard/delayed_tasks_overview', [
                 'delayed_tasks' => $delayedTasks,
                 'active_page' => 'dashboard'
             ]);
         } catch (Exception $e) {
-            error_log('Delayed tasks overview error: ' . $e->getMessage());
             $this->view('dashboard/delayed_tasks_overview', ['delayed_tasks' => [], 'active_page' => 'dashboard']);
         }
     }
