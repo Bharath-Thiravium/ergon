@@ -202,20 +202,7 @@ class FinanceController extends Controller {
         }
     }
     
-    public function importData() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'populate_demo') {
-            header('Content-Type: application/json');
-            try {
-                $this->createDemoData();
-                echo json_encode(['success' => true, 'message' => 'Demo data populated successfully']);
-            } catch (Exception $e) {
-                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-            }
-            return;
-        }
-        
-        $this->view('finance/import');
-    }
+
     
     private function createTables($db) {
         $db->exec("CREATE TABLE IF NOT EXISTS finance_tables (
@@ -255,61 +242,7 @@ class FinanceController extends Controller {
         $stmt->execute([$tableName, count($data), count($data)]);
     }
     
-    private function createDemoData() {
-        $db = Database::connect();
-        $this->createTables($db);
-        
-        $customers = [];
-        for ($i = 1; $i <= 10; $i++) {
-            $customers[] = [
-                'id' => $i,
-                'name' => 'Customer ' . $i,
-                'display_name' => 'Customer ' . $i,
-                'gstin' => '29ABCDE' . str_pad($i, 4, '0', STR_PAD_LEFT) . 'F1Z5'
-            ];
-        }
-        
-        $invoices = [];
-        for ($i = 1; $i <= 25; $i++) {
-            $customerId = rand(1, 10);
-            $totalAmount = rand(25000, 200000);
-            $outstanding = rand(0, 1) ? rand(0, $totalAmount) : 0;
-            
-            $invoices[] = [
-                'invoice_number' => 'BKC-INV-' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                'customer_id' => $customerId,
-                'customer_name' => 'Customer ' . $customerId,
-                'total_amount' => $totalAmount,
-                'outstanding_amount' => $outstanding,
-                'due_date' => date('Y-m-d', strtotime('-' . rand(0, 60) . ' days')),
-                'payment_status' => $outstanding > 0 ? 'unpaid' : 'paid',
-                'gst_rate' => 0.18
-            ];
-        }
-        
-        $quotations = [];
-        for ($i = 1; $i <= 15; $i++) {
-            $customerId = rand(1, 10);
-            $quotations[] = [
-                'quotation_number' => 'BKC-Q-' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                'customer_id' => $customerId,
-                'customer_name' => 'Customer ' . $customerId,
-                'total_amount' => rand(30000, 250000),
-                'status' => ['draft', 'revised', 'converted'][rand(0, 2)],
-                'valid_until' => date('Y-m-d', strtotime('+' . rand(15, 45) . ' days'))
-            ];
-        }
-        
-        $demoData = [
-            'finance_customers' => $customers,
-            'finance_invoices' => $invoices,
-            'finance_quotations' => $quotations
-        ];
-        
-        foreach ($demoData as $tableName => $records) {
-            $this->storeTableData($db, $tableName, $records);
-        }
-    }
+
     
     private function getCompanyPrefix() {
         try {
@@ -320,16 +253,9 @@ class FinanceController extends Controller {
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($result) {
-                return strtoupper($result['company_prefix']);
-            }
-            
-            $stmt = $db->prepare("INSERT INTO finance_tables (table_name, record_count, company_prefix) VALUES ('settings', 0, 'BKC')");
-            $stmt->execute();
-            
-            return 'BKC';
+            return $result ? strtoupper($result['company_prefix']) : '';
         } catch (Exception $e) {
-            return 'BKC';
+            return '';
         }
     }
 }
