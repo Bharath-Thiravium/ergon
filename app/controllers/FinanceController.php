@@ -141,7 +141,7 @@ class FinanceController extends Controller {
             foreach ($poResults as $row) {
                 $data = json_decode($row['data'], true);
                 // Check multiple possible field names for PO number
-                $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
+                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
                 if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) {
                     continue;
                 }
@@ -228,7 +228,7 @@ class FinanceController extends Controller {
         $stmt->execute();
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $data = json_decode($row['data'], true);
-            $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
+            $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
             if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) continue;
             if ($customerFilter && ($data['customer_id'] ?? $data['supplier_id'] ?? '') != $customerFilter) continue;
             $funnel['purchaseOrders']++;
@@ -686,7 +686,7 @@ class FinanceController extends Controller {
             
             foreach ($pos as $row) {
                 $data = json_decode($row['data'], true);
-                $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? '';
+                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
                 
                 if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) {
                     continue;
@@ -1122,7 +1122,8 @@ class FinanceController extends Controller {
             foreach ($results as $row) {
                 $data = json_decode($row['data'], true);
                 $pos[] = [
-                    'po_number' => $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? 'N/A',
+                    'internal_po_number' => $data['internal_po_number'] ?? 'N/A',
+                    'po_number' => $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? 'N/A',
                     'amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? 0),
                     'status' => $data['status'] ?? $data['po_status'] ?? 'unknown',
                     'raw_data' => $data
@@ -1237,7 +1238,7 @@ class FinanceController extends Controller {
             $prefixMatches = 0;
             foreach ($samples as $row) {
                 $data = json_decode($row['data'], true);
-                $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
+                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
                 
                 $matchesPrefix = false;
                 if ($prefix && !empty($prefix) && !empty($poNumber)) {
