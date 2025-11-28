@@ -370,7 +370,7 @@ $router->get('/gamification/individual', 'GamificationController', 'individual')
 $router->get('/finance', 'FinanceController', 'dashboard');
 $router->get('/finance/dashboard-stats', 'FinanceController', 'getDashboardStats');
 $router->get('/finance/outstanding-invoices', 'FinanceController', 'getOutstandingInvoices');
-$router->get('/finance/recent-quotations', 'FinanceController', 'getRecentQuotations');
+$router->get('/finance/recent-quotations', 'FinanceController', 'recentQuotations');
 $router->get('/finance/export-table', 'FinanceController', 'exportTable');
 $router->get('/finance/export-dashboard', 'FinanceController', 'exportDashboard');
 $router->get('/finance/tables', 'FinanceController', 'getTables');
@@ -380,7 +380,7 @@ $router->get('/finance/chart', 'FinanceController', 'getChartData');
 $router->get('/finance/structure', 'FinanceController', 'getTableStructure');
 $router->post('/finance/sync', 'FinanceController', 'sync');
 $router->get('/finance/analyze', 'FinanceController', 'analyzeAllTables');
-$router->get('/finance/visualization', 'FinanceController', 'getVisualizationData');
+$router->get('/finance/visualization', 'FinanceController', 'visualization');
 $router->get('/finance/export', 'FinanceController', 'exportData');
 $router->get('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
 $router->post('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
