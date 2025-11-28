@@ -761,6 +761,12 @@ function updateKPICards(data) {
     
     // Claimable Amount
     document.getElementById('claimableAmount').textContent = `₹${(data.claimableAmount || 0).toLocaleString()}`;
+    
+    // Update claimable details
+    const claimablePOCount = document.getElementById('claimablePOCount');
+    const claimRate = document.getElementById('claimRate');
+    if (claimablePOCount) claimablePOCount.textContent = data.claimablePOCount || 0;
+    if (claimRate) claimRate.textContent = `${data.claimRate || 0}%`;
 }
 
 function updateConversionFunnel(data) {

@@ -124,6 +124,8 @@ class FinanceController extends Controller {
             $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $pendingPOValue = 0;
             $claimableAmount = 0;
+            $claimablePOCount = 0;
+            $totalPOCount = 0;
 
             foreach ($poResults as $row) {
                 $data = json_decode($row['data'], true);
@@ -131,14 +133,23 @@ class FinanceController extends Controller {
                 if ($prefix && !empty($prefix) && strpos($poNumber, $prefix) !== 0) {
                     continue;
                 }
+                $totalPOCount++;
                 $status = strtolower($data['status'] ?? '');
                 if ($status === 'open' || $status === 'partially_billed') {
                     $pendingPOValue += floatval($data['total_amount'] ?? 0);
                 }
                 if ($status === 'billed' || $status === 'partially_billed') {
-                     $claimableAmount += floatval($data['billed_amount'] ?? 0) - floatval($data['paid_amount'] ?? 0);
+                    $billedAmount = floatval($data['billed_amount'] ?? 0);
+                    $paidAmount = floatval($data['paid_amount'] ?? 0);
+                    $claimable = $billedAmount - $paidAmount;
+                    if ($claimable > 0) {
+                        $claimableAmount += $claimable;
+                        $claimablePOCount++;
+                    }
                 }
             }
+            
+            $claimRate = $totalPOCount > 0 ? round(($claimablePOCount / $totalPOCount) * 100) : 0;
             
             echo json_encode([
                 'totalInvoiceAmount' => $totalInvoiceAmount,
@@ -147,6 +158,8 @@ class FinanceController extends Controller {
                 'pendingGSTAmount' => $pendingGSTAmount,
                 'pendingPOValue' => $pendingPOValue,
                 'claimableAmount' => $claimableAmount,
+                'claimablePOCount' => $claimablePOCount,
+                'claimRate' => $claimRate,
                 'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
                 'cashFlow' => [
                     'expectedInflow' => $pendingInvoiceAmount,
