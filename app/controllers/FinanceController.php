@@ -384,6 +384,39 @@ class FinanceController extends Controller {
         }
     }
     
+    public function getAvailablePrefixes() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $prefixes = [];
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                // Extract prefix (letters before numbers/special chars)
+                if (preg_match('/^([A-Z]+)/', $invoiceNumber, $matches)) {
+                    $prefix = $matches[1];
+                    if (!in_array($prefix, $prefixes)) {
+                        $prefixes[] = $prefix;
+                    }
+                }
+            }
+            
+            sort($prefixes);
+            echo json_encode(['prefixes' => $prefixes]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['prefixes' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
     public function getCustomers() {
         header('Content-Type: application/json');
         

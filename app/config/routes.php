@@ -387,5 +387,6 @@ $router->get('/finance/aging-buckets', 'FinanceController', 'getAgingBuckets');
 $router->get('/finance/export-outstanding', 'FinanceController', 'exportOutstanding');
 $router->get('/finance/import', 'FinanceController', 'importData');
 $router->post('/finance/import', 'FinanceController', 'importData');
+$router->get('/finance/available-prefixes', 'FinanceController', 'getAvailablePrefixes');
 
 ?>
