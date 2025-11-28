@@ -53,6 +53,20 @@ ob_end_clean();
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
     
+    <link href="/ergon/assets/css/bootstrap-icons.min.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/theme-enhanced.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/utilities-new.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/instant-theme.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/global-tooltips.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/_archive_legacy/css/user-management-mobile.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/_archive_legacy/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/ergon-overrides.css?v=<?= time() ?>" rel="stylesheet">
+    <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
+    <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
+    <?php endif; ?>
+    
     <script src="/ergon/assets/js/theme-preload.js"></script>
     <script>
     // Convert title attributes to data-tooltip for custom tooltips
@@ -145,23 +159,6 @@ ob_end_clean();
         .attendance-notification.show{transform:translateY(0)}
     }
     </style>
-    
-    <link href="/ergon/assets/css/bootstrap-icons.min.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/theme-enhanced.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/utilities-new.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/instant-theme.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/global-tooltips.css?v=1.0" rel="stylesheet">
-
-
-    <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/_archive_legacy/css/user-management-mobile.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/_archive_legacy/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
-    <!-- Dashboard overrides loaded last to ensure overrides on compiled CSS in deployments -->
-    <link href="/ergon/assets/css/ergon-overrides.css?v=<?= time() ?>" rel="stylesheet">
-    <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
-    <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
-    <?php endif; ?>
 
     <script src="/ergon/assets/js/theme-switcher.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=1.0" defer></script>

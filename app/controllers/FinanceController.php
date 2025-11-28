@@ -511,6 +511,61 @@ class FinanceController extends Controller {
         $this->getRecentActivities();
     }
     
+    public function getAgingBuckets() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $buckets = [
+                '0-30' => 0,
+                '31-60' => 0,
+                '61-90' => 0,
+                '90+' => 0
+            ];
+            
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                if ($outstanding > 0) {
+                    $dueDate = $data['due_date'] ?? date('Y-m-d');
+                    $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
+                    
+                    if ($daysOverdue <= 30) {
+                        $buckets['0-30'] += $outstanding;
+                    } elseif ($daysOverdue <= 60) {
+                        $buckets['31-60'] += $outstanding;
+                    } elseif ($daysOverdue <= 90) {
+                        $buckets['61-90'] += $outstanding;
+                    } else {
+                        $buckets['90+'] += $outstanding;
+                    }
+                }
+            }
+            
+            echo json_encode([
+                'labels' => array_keys($buckets),
+                'data' => array_values($buckets)
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
     public function updateCompanyPrefix() {
         header('Content-Type: application/json');
         
