@@ -62,6 +62,9 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customerFilter = $_GET['customer'] ?? '';
             
+            // Always ensure quotation data is calculated
+            $quotationStats = $this->calculateQuotationOverview($db, $prefix);
+            
             // ALWAYS read from dashboard_stats table - never query finance_invoices directly
             $stmt = $db->prepare("SELECT * FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
             $stmt->execute([$prefix]);
@@ -98,10 +101,10 @@ class FinanceController extends Controller {
                     'cgstSgstTotal' => floatval($dashboardStats['cgst_sgst_total']),
                     'gstLiability' => floatval($dashboardStats['gst_liability']),
                     // Chart Card 1: Quotations Overview (NEW - backend calculated counts only)
-                    'placedQuotations' => intval($dashboardStats['placed_quotations'] ?? 0),
-                    'rejectedQuotations' => intval($dashboardStats['rejected_quotations'] ?? 0),
-                    'pendingQuotations' => intval($dashboardStats['pending_quotations'] ?? 0),
-                    'totalQuotations' => intval($dashboardStats['total_quotations'] ?? 0),
+                    'placedQuotations' => intval($dashboardStats['placed_quotations'] ?? $quotationStats['placed_quotations'] ?? 0),
+                    'rejectedQuotations' => intval($dashboardStats['rejected_quotations'] ?? $quotationStats['rejected_quotations'] ?? 0),
+                    'pendingQuotations' => intval($dashboardStats['pending_quotations'] ?? $quotationStats['pending_quotations'] ?? 0),
+                    'totalQuotations' => intval($dashboardStats['total_quotations'] ?? $quotationStats['total_quotations'] ?? 0),
                     'source' => 'dashboard_stats',
                     'generated_at' => $dashboardStats['generated_at']
                 ]);
@@ -1564,6 +1567,11 @@ class FinanceController extends Controller {
         
         // Step 6: Calculate Chart Card 1 (Quotations Overview) metrics
         $quotationStats = $this->calculateQuotationOverview($db, $prefix);
+        
+        // Ensure quotation stats are always included
+        if (empty($quotationStats)) {
+            $quotationStats = ['placed_quotations' => 0, 'rejected_quotations' => 0, 'pending_quotations' => 0, 'total_quotations' => 0];
+        }
         
         // Step 7: Store computed results in dashboard_stats table
         $stats = [
