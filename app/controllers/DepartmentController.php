@@ -194,16 +194,16 @@ class DepartmentController extends Controller {
                     COUNT(*) as total_employees,
                     SUM(CASE WHEN u.status = 'active' THEN 1 ELSE 0 END) as active_employees
                 FROM users u 
-                WHERE u.department_id = ?
+                WHERE u.department_id = ? AND u.status != 'deleted'
             ");
             $stmt->execute([$id]);
             $stats = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Get department employees
             $stmt = $db->prepare("
-                SELECT u.id, u.name, u.email, u.role, u.status, u.designation
+                SELECT u.id, u.name, u.email, u.role, u.status, u.phone
                 FROM users u 
-                WHERE u.department_id = ?
+                WHERE u.department_id = ? AND u.status != 'deleted'
                 ORDER BY u.name
             ");
             $stmt->execute([$id]);

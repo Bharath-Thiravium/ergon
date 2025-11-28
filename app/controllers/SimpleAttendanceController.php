@@ -18,6 +18,7 @@ class SimpleAttendanceController extends Controller {
         $role = $_SESSION['role'] ?? 'user';
         $userId = $_SESSION['user_id'];
         $selectedDate = $_GET['date'] ?? TimezoneHelper::getCurrentDate();
+        $filter = $_GET['filter'] ?? 'today';
         
         // Query to get all users with their attendance data for the selected date
         $roleFilter = '';
@@ -30,68 +31,40 @@ class SimpleAttendanceController extends Controller {
             $roleFilter = "AND u.role IN ('admin', 'user')";
         }
         
-        if ($selectedDate === TimezoneHelper::getCurrentDate()) {
-            // For current date, show all users including those without attendance records
-            $stmt = $this->db->prepare("
-                SELECT 
-                    u.id as user_id,
-                    u.name,
-                    u.email,
-                    u.role,
-                    a.id as attendance_id,
-                    a.check_in,
-                    a.check_out,
-                    CASE 
-                        WHEN a.check_in IS NOT NULL THEN 'Present'
-                        ELSE 'Absent'
-                    END as status,
-                    COALESCE(TIME_FORMAT(a.check_in, '%H:%i'), '00:00') as check_in_time,
-                    COALESCE(TIME_FORMAT(a.check_out, '%H:%i'), '00:00') as check_out_time,
-                    CASE 
-                        WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
-                            CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out), 'h ', 
-                                   TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) % 60, 'm')
-                        ELSE '0h 0m'
-                    END as working_hours
-                FROM users u
-                LEFT JOIN attendance a ON u.id = a.user_id AND (DATE(a.check_in) = ? OR DATE(a.created_at) = ?)
-                WHERE u.status = 'active' {$roleFilter}
-                ORDER BY u.role DESC, u.name
-            ");
+        // Use date filter if provided, otherwise use time-based filter
+        if (isset($_GET['date']) && $_GET['date'] !== TimezoneHelper::getCurrentDate()) {
+            $dateCondition = "DATE(a.check_in) = '{$selectedDate}'";
         } else {
-            // For past dates, show all users including those without attendance records
-            $stmt = $this->db->prepare("
-                SELECT 
-                    u.id as user_id,
-                    u.name,
-                    u.email,
-                    u.role,
-                    a.id as attendance_id,
-                    a.check_in,
-                    a.check_out,
-                    CASE 
-                        WHEN a.check_in IS NOT NULL THEN 'Present'
-                        ELSE 'Absent'
-                    END as status,
-                    COALESCE(TIME_FORMAT(a.check_in, '%H:%i'), '00:00') as check_in_time,
-                    COALESCE(TIME_FORMAT(a.check_out, '%H:%i'), '00:00') as check_out_time,
-                    CASE 
-                        WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
-                            CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out), 'h ', 
-                                   TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) % 60, 'm')
-                        ELSE '0h 0m'
-                    END as working_hours
-                FROM users u
-                LEFT JOIN attendance a ON u.id = a.user_id AND (DATE(a.check_in) = ? OR DATE(a.created_at) = ?)
-                WHERE u.status = 'active' {$roleFilter}
-                ORDER BY u.role DESC, u.name
-            ");
+            $dateCondition = $this->getDateCondition($filter);
         }
-        if ($selectedDate === TimezoneHelper::getCurrentDate()) {
-            $stmt->execute([$selectedDate, $selectedDate]);
-        } else {
-            $stmt->execute([$selectedDate, $selectedDate]);
-        }
+        
+        $stmt = $this->db->prepare("
+            SELECT 
+                u.id as user_id,
+                u.name,
+                u.email,
+                u.role,
+                a.id as attendance_id,
+                a.check_in,
+                a.check_out,
+                CASE 
+                    WHEN a.check_in IS NOT NULL THEN 'Present'
+                    ELSE 'Absent'
+                END as status,
+                COALESCE(TIME_FORMAT(a.check_in, '%H:%i'), '00:00') as check_in_time,
+                COALESCE(TIME_FORMAT(a.check_out, '%H:%i'), '00:00') as check_out_time,
+                CASE 
+                    WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
+                        CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out), 'h ', 
+                               TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) % 60, 'm')
+                    ELSE '0h 0m'
+                END as working_hours
+            FROM users u
+            LEFT JOIN attendance a ON u.id = a.user_id AND {$dateCondition}
+            WHERE u.status = 'active' {$roleFilter}
+            ORDER BY u.role DESC, u.name
+        ");
+        $stmt->execute();
         $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Group by role for owner and admin view
@@ -107,16 +80,24 @@ class SimpleAttendanceController extends Controller {
             $isGrouped = false;
         }
         
-        // Calculate stats for user view
+        // Calculate stats
         $stats = ['total_hours' => 0, 'total_minutes' => 0, 'present_days' => 0];
-        if ($role === 'user' && !empty($records)) {
-            $stats = $this->calculateUserStats($records);
+        if (!empty($records)) {
+            if ($role === 'user') {
+                $stats = $this->calculateUserStats($records);
+            } elseif ($role === 'admin') {
+                // Calculate stats for admin's own records only
+                $adminRecords = array_filter($records, function($record) {
+                    return $record['user_id'] == $_SESSION['user_id'];
+                });
+                $stats = $this->calculateUserStats($adminRecords);
+            }
         }
         
         $this->view('attendance/index', [
             'attendance' => $attendance,
             'stats' => $stats,
-            'current_filter' => 'today',
+            'current_filter' => $filter,
             'selected_date' => $selectedDate,
             'user_role' => $role,
             'active_page' => 'attendance',
@@ -467,12 +448,15 @@ class SimpleAttendanceController extends Controller {
         $presentDays = 0;
         
         foreach ($attendance as $record) {
-            if ($record['check_in'] && $record['check_out']) {
-                $minutes = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 60;
-                $totalMinutes += $minutes;
+            // Count as present if there's a check_in (regardless of check_out)
+            if ($record['check_in'] && $record['status'] === 'Present') {
                 $presentDays++;
-            } elseif ($record['check_in']) {
-                $presentDays++;
+                
+                // Calculate working hours only if both check_in and check_out exist
+                if ($record['check_out']) {
+                    $minutes = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 60;
+                    $totalMinutes += $minutes;
+                }
             }
         }
         

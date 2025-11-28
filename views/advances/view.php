@@ -10,6 +10,21 @@ ob_start();
         <p>View advance request information</p>
     </div>
     <div class="page-actions">
+        <?php 
+        // Show approve/reject buttons for admin/owner when status is pending
+        $userRole = $_SESSION['role'] ?? 'user';
+        $canApprove = in_array($userRole, ['admin', 'owner']) && ($advance['status'] ?? 'pending') === 'pending';
+        if ($canApprove): 
+        ?>
+        <form method="POST" action="/ergon/advances/approve/<?= $advance['id'] ?>" style="display: inline;">
+            <button type="submit" class="btn btn--success" onclick="return confirm('Are you sure you want to approve this advance request?')">
+                <span>✅</span> Approve
+            </button>
+        </form>
+        <button type="button" class="btn btn--danger" onclick="showRejectModal(<?= $advance['id'] ?>)">
+            <span>❌</span> Reject
+        </button>
+        <?php endif; ?>
         <a href="/ergon/advances" class="btn btn--secondary">
             <span>←</span> Back to Advances
         </a>
@@ -55,6 +70,8 @@ ob_start();
             </div>
             <?php endif; ?>
             
+
+            
             <div class="details-compact">
                 <div class="detail-group">
                     <h4>👤 Employee Details</h4>
@@ -91,6 +108,28 @@ ob_start();
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Reject Advance Request</h3>
+            <span class="modal-close" onclick="closeRejectModal()">&times;</span>
+        </div>
+        <form id="rejectForm" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="rejection_reason">Rejection Reason:</label>
+                    <textarea id="rejection_reason" name="rejection_reason" class="form-control" rows="3" required placeholder="Please provide a reason for rejection..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" onclick="closeRejectModal()">Cancel</button>
+                <button type="submit" class="btn btn--danger">Reject Request</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -204,6 +243,61 @@ ob_start();
     font-size: 0.8rem;
 }
 
+
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.modal-body {
+    padding: 1rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
 @media (max-width: 768px) {
     .advance-title-row {
         flex-direction: column;
@@ -227,8 +321,46 @@ ob_start();
     .details-compact {
         grid-template-columns: 1fr;
     }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 1rem;
+    }
 }
 </style>
+
+<script>
+function showRejectModal(advanceId) {
+    const modal = document.getElementById('rejectModal');
+    const form = document.getElementById('rejectForm');
+    form.action = '/ergon/advances/reject/' + advanceId;
+    modal.style.display = 'flex';
+}
+
+function closeRejectModal() {
+    const modal = document.getElementById('rejectModal');
+    modal.style.display = 'none';
+    document.getElementById('rejection_reason').value = '';
+}
+
+// Close modal when clicking outside
+document.getElementById('rejectModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeRejectModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeRejectModal();
+    }
+});
+</script>
 
 <?php
 $content = ob_get_clean();

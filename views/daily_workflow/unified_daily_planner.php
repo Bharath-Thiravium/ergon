@@ -18,6 +18,7 @@ $content = ob_start();
 <meta name="csrf-token" content="<?= $_SESSION['csrf_token'] ?>">
 <link rel="stylesheet" href="/ergon/assets/css/unified-daily-planner.css">
 <link rel="stylesheet" href="/ergon/assets/css/task-timing.css">
+<link rel="stylesheet" href="/ergon/assets/css/sla-dashboard-improvements.css">
 
 <?php renderModalCSS(); ?>
 
@@ -412,12 +413,16 @@ data-user-id="<?= htmlspecialchars($_SESSION['user_id'] ?? '1', ENT_QUOTES, 'UTF
 
     <!-- Enhanced SLA Dashboard -->
     <div class="card">
-        <div class="card__header">
-            <h3 class="card__title"><i class="bi bi-speedometer2"></i> SLA Dashboard</h3>
-            <button class="btn btn--sm btn--secondary" onclick="forceSLARefresh()" title="Manual refresh - automatic updates disabled to prevent rate limiting">
-                <i class="bi bi-arrow-clockwise"></i> Manual Refresh
-            </button>
-            <small class="text-muted" style="display: block; margin-top: 5px;">⚡ Auto-refresh disabled to prevent rate limiting</small>
+        <div class="card__header sla-dashboard-header">
+            <div class="sla-header-content">
+                <h3 class="card__title"><i class="bi bi-speedometer2"></i> SLA Dashboard</h3>
+                <small class="text-muted sla-refresh-note">⚡ Auto-refresh disabled to prevent rate limiting</small>
+            </div>
+            <div class="sla-header-actions">
+                <button class="btn btn--sm btn--secondary sla-refresh-btn" onclick="forceSLARefresh()" title="Manual refresh - automatic updates disabled to prevent rate limiting">
+                    <i class="bi bi-arrow-clockwise"></i> Manual Refresh
+                </button>
+            </div>
         </div>
         <div class="card__body">
             <?php
@@ -433,7 +438,7 @@ data-user-id="<?= htmlspecialchars($_SESSION['user_id'] ?? '1', ENT_QUOTES, 'UTF
             $slaAdherence = $totalPlannedMinutes > 0 ? ($totalActiveMinutes / $totalPlannedMinutes) * 100 : 0;
             ?>
             
-            <div class="stats-grid">
+            <div class="stats-grid stats-grid--2x2">
                 <div class="stat-item">
                     <div class="stat-value text-success"><?= $completedTasks ?></div>
                     <div class="stat-label">Completed</div>
@@ -593,6 +598,7 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
 <script src="/ergon/assets/js/task-timer.js"></script>
 <script src="/ergon/assets/js/unified-daily-planner.js"></script>
 <script src="/ergon/assets/js/timer-init.js"></script>
+<script src="/ergon/assets/js/sla-dashboard-fix.js"></script>
 <script src="/ergon/assets/js/planner-access-control.js"></script>
 
 <?php

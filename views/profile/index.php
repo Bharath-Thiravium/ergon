@@ -67,20 +67,36 @@ ob_start();
             </div>
             <div class="card__body">
                 <form id="passwordForm" class="form">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                     <div class="form-group">
                         <label for="current_password" class="form-label">Current Password *</label>
-                        <input type="password" class="form-control" id="current_password" name="current_password" required>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="form-control" id="current_password" name="current_password" required>
+                            <button type="button" class="password-toggle" onclick="togglePassword('current_password')">
+                                👁️
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="form-group">
                         <label for="new_password" class="form-label">New Password *</label>
-                        <input type="password" class="form-control" id="new_password" name="new_password" required>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="form-control" id="new_password" name="new_password" required>
+                            <button type="button" class="password-toggle" onclick="togglePassword('new_password')">
+                                👁️
+                            </button>
+                        </div>
                         <small class="form-text">Minimum 8 characters</small>
                     </div>
                     
                     <div class="form-group">
                         <label for="confirm_password" class="form-label">Confirm Password *</label>
-                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            <button type="button" class="password-toggle" onclick="togglePassword('confirm_password')">
+                                👁️
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="form-actions">
@@ -171,6 +187,36 @@ ob_start();
     margin-top: 4px;
 }
 
+.password-input-wrapper {
+    position: relative;
+    display: block;
+}
+
+.password-input-wrapper input {
+    padding-right: 50px !important;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 6px;
+    z-index: 100;
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.password-toggle:hover {
+    background-color: rgba(0,0,0,0.05) !important;
+}
+
 @media (max-width: 768px) {
     .profile-grid {
         grid-template-columns: 1fr;
@@ -240,9 +286,10 @@ document.getElementById('passwordForm').addEventListener('submit', function(e) {
     fetch('/ergon/profile/change-password', {
         method: 'POST',
         headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: formData
+        body: new URLSearchParams(formData)
     })
     .then(response => response.json())
     .then(data => {
@@ -250,7 +297,7 @@ document.getElementById('passwordForm').addEventListener('submit', function(e) {
             alert('✅ Password changed successfully!');
             this.reset();
         } else {
-            alert('❌ Error: ' + (data.error || 'Failed to change password'));
+            alert('❌ Error: ' + (data.message || data.error || 'Failed to change password'));
         }
     })
     .catch(error => {
@@ -262,6 +309,19 @@ document.getElementById('passwordForm').addEventListener('submit', function(e) {
         submitBtn.innerHTML = originalText;
     });
 });
+
+function togglePassword(fieldId) {
+    const field = document.getElementById(fieldId);
+    const button = field.parentElement.querySelector('.password-toggle');
+    
+    if (field.type === 'password') {
+        field.type = 'text';
+        button.innerHTML = '🙈';
+    } else {
+        field.type = 'password';
+        button.innerHTML = '👁️';
+    }
+}
 </script>
 
 <?php
