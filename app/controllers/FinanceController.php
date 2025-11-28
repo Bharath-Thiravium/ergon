@@ -16,31 +16,30 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
-            // Demo data for testing
-            $demoData = [
-                'finance_invoices' => [
-                    ['invoice_number' => 'INV-001', 'customer_name' => 'ABC Corp', 'total_amount' => 5000, 'outstanding_amount' => 1500, 'due_date' => '2024-01-15'],
-                    ['invoice_number' => 'INV-002', 'customer_name' => 'XYZ Ltd', 'total_amount' => 3200, 'outstanding_amount' => 0, 'due_date' => '2024-01-20']
-                ],
-                'finance_quotations' => [
-                    ['quote_number' => 'QUO-001', 'customer_name' => 'DEF Inc', 'amount' => 2800, 'status' => 'pending']
-                ],
-                'finance_customers' => [
-                    ['customer_name' => 'ABC Corp', 'contact_email' => 'contact@abc.com'],
-                    ['customer_name' => 'XYZ Ltd', 'contact_email' => 'info@xyz.com']
-                ]
-            ];
+            $pgConn = @pg_connect("host=localhost port=5432 dbname=postgres user=postgres password=postgres");
             
-            $syncCount = 0;
-            foreach ($demoData as $tableName => $data) {
-                $this->storeTableData($db, $tableName, $data);
-                $syncCount++;
+            if (!$pgConn) {
+                echo json_encode(['success' => false, 'error' => 'PostgreSQL not available. Please install and configure PostgreSQL server.']);
+                exit;
             }
             
-            echo json_encode(['success' => true, 'tables' => $syncCount, 'message' => 'Demo data synced']);
+            $syncCount = 0;
+            $financeTables = ['finance_invoices', 'finance_quotations', 'finance_customers'];
+            
+            foreach ($financeTables as $tableName) {
+                $result = @pg_query($pgConn, "SELECT * FROM $tableName");
+                if ($result && pg_num_rows($result) > 0) {
+                    $data = pg_fetch_all($result);
+                    $this->storeTableData($db, $tableName, $data);
+                    $syncCount++;
+                }
+            }
+            
+            @pg_close($pgConn);
+            echo json_encode(['success' => true, 'tables' => $syncCount]);
             
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => 'Sync failed: ' . $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed: ' . $e->getMessage()]);
         }
         exit;
     }
