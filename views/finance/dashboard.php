@@ -739,140 +739,17 @@ function updateCashFlow(cashFlow) {
     }
 }
 
-async function loadDashboardDataOld() {
-    try {
-        const response = await fetch('/ergon/finance/dashboard-stats');
-        const data = await response.json();
-        
-        if (data.error) {
-            alert('Error: ' + data.error);
-            return;
-        }
-        
-        renderTableStructure(data.tables);
-        
-        document.getElementById('structureModal').style.display = 'block';
-        
-    } catch (error) {
-        alert('Failed to load structure: ' + error.message);
-    } finally {
-        btn.disabled = false;
-        btn.textContent = 'View Table Structure';
-    }
-}
 
-function renderTableStructure(tables) {
-    const container = document.getElementById('structureContainer');
-    
-    let html = '<div class="followups-modern">';
-    
-    tables.forEach((table, index) => {
-        html += `
-            <div class="followup-card">
-                <div class="followup-card__header">
-                    <div class="followup-icon task-linked">📋</div>
-                    <div class="followup-title-section">
-                        <h4 class="followup-title">${table.display_name}</h4>
-                        <div class="followup-badges">
-                            <span class="badge badge--info">${table.column_count} columns</span>
-                            <span class="badge badge--success">${table.actual_rows} rows</span>
-                        </div>
-                    </div>
-                    <button class="btn--modern btn--outline" onclick="toggleStructure(this)">
-                        <span class="expand-icon">▼</span>
-                    </button>
-                </div>
-                <div class="structure-details ${index === 0 ? 'is-open' : ''}">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Column</th>
-                                    <th>Type</th>
-                                    <th>Nullable</th>
-                                    <th>Default</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
-        
-        table.columns.forEach(col => {
-            html += `
-                <tr>
-                    <td><code>${col.name}</code></td>
-                    <td><span class="badge badge--info">${col.type}</span></td>
-                    <td>${col.nullable ? '✓' : '✗'}</td>
-                    <td>${col.default || '-'}</td>
-                </tr>`;
-        });
-        
-        html += `
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>`;
-    });
-    
-    html += '</div>';
-    container.innerHTML = html;
-}
 
-function toggleStructure(button) {
-    const card = button.closest('.followup-card');
-    const details = card.querySelector('.structure-details');
-    const icon = button.querySelector('.expand-icon');
 
-    if (details.classList.contains('is-open')) {
-        details.classList.remove('is-open');
-        icon.textContent = '▼';
-    } else {
-        details.classList.add('is-open');
-        icon.textContent = '▲';
-    }
-}
 
-function closeStructureModal() {
-    document.getElementById('structureModal').style.display = 'none';
-}
 
-function analyzeAllTables() {
-    const btn = document.getElementById('analyzeBtn');
-    btn.disabled = true;
-    btn.textContent = 'Generating CSV...';
-    
-    // Create download link
-    const link = document.createElement('a');
-    link.href = '/ergon/finance/analyze';
-    link.download = 'finance_analysis.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    setTimeout(() => {
-        btn.disabled = false;
-        btn.textContent = 'Analyze All Tables';
-    }, 1000);
-}
 
-async function syncFinanceData() {
-    const btn = document.getElementById('syncBtn');
-    btn.disabled = true;
-    btn.textContent = 'Syncing...';
-    
-    try {
-        const response = await fetch('/ergon/finance/sync', {method: 'POST'});
-        const result = await response.json();
-        
-        if (result.error) {
-            alert('Sync failed: ' + result.error);
-        } else {
-            alert(`Synced ${result.tables} finance tables successfully`);
-            loadDashboardData();
-        }
-    } catch (error) {
-        alert('Sync failed: ' + error.message);
-    } finally {
-        btn.disabled = false;
+
+
+
+
+sabled = false;
         btn.textContent = '🔄 Sync Data';
     }
 }

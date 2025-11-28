@@ -79,33 +79,11 @@ ob_start();
         <div class="card__body">
             <div class="overview-summary">
                 <div class="summary-stat">
-                    <?php
-                try {
-                    require_once __DIR__ . '/../../app/config/database.php';
-                    $db = Database::connect();
-                    $stmt = $db->query("SELECT COUNT(*) FROM projects WHERE status = 'active'");
-                    $activeProjects = $stmt->fetchColumn();
-                    if ($activeProjects == 0) {
-                        $stmt = $db->query("SELECT COUNT(DISTINCT project_name) FROM tasks WHERE project_name IS NOT NULL AND project_name != ''");
-                        $activeProjects = $stmt->fetchColumn();
-                    }
-                } catch (Exception $e) {
-                    $activeProjects = 0;
-                }
-                ?>
-                <span class="summary-number">📁 <?= $activeProjects ?></span>
+                <span class="summary-number">📁 <?= htmlspecialchars($data['stats']['active_projects'] ?? '0', ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="summary-label">Active Projects</span>
                 </div>
                 <div class="summary-stat">
-                    <?php
-                try {
-                    $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status = 'completed'");
-                    $completedTasks = $stmt->fetchColumn();
-                } catch (Exception $e) {
-                    $completedTasks = 0;
-                }
-                ?>
-                <span class="summary-number">✅ <?= $completedTasks ?></span>
+                <span class="summary-number">✅ <?= htmlspecialchars($data['stats']['completed_tasks'] ?? '0', ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="summary-label">Completed Tasks</span>
                 </div>
                 <div class="summary-stat">
@@ -156,39 +134,15 @@ ob_start();
         <div class="card__body">
             <div class="overview-summary">
                 <div class="summary-stat">
-                    <?php
-                try {
-                    $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (due_date < CURDATE() OR deadline < CURDATE()) AND status NOT IN ('completed', 'cancelled')");
-                    $overdueTasks = $stmt->fetchColumn();
-                } catch (Exception $e) {
-                    $overdueTasks = 0;
-                }
-                ?>
-                <span class="summary-number">🚨 <?= $overdueTasks ?></span>
+                <span class="summary-number">🚨 <?= htmlspecialchars($data['stats']['overdue_tasks'] ?? '0', ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="summary-label">Overdue Tasks</span>
                 </div>
                 <div class="summary-stat">
-                    <?php
-                try {
-                    $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) OR deadline BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AND status NOT IN ('completed', 'cancelled')");
-                    $dueThisWeek = $stmt->fetchColumn();
-                } catch (Exception $e) {
-                    $dueThisWeek = 0;
-                }
-                ?>
-                <span class="summary-number">⏰ <?= $dueThisWeek ?></span>
+                <span class="summary-number">⏰ <?= htmlspecialchars($data['stats']['due_this_week'] ?? '0', ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="summary-label">Due This Week</span>
                 </div>
                 <div class="summary-stat">
-                    <?php
-                try {
-                    $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (DATE(due_date) = DATE_ADD(CURDATE(), INTERVAL 1 DAY) OR DATE(deadline) = DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AND status NOT IN ('completed', 'cancelled')");
-                    $dueTomorrow = $stmt->fetchColumn();
-                } catch (Exception $e) {
-                    $dueTomorrow = 0;
-                }
-                ?>
-                <span class="summary-number">📅 <?= $dueTomorrow ?></span>
+                <span class="summary-number">📅 <?= htmlspecialchars($data['stats']['due_tomorrow'] ?? '0', ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="summary-label">Due Tomorrow</span>
                 </div>
             </div>
