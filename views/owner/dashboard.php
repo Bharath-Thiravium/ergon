@@ -118,30 +118,14 @@ ob_start();
                     <div class="stat-item-inline">
                         <div class="stat-icon">📈</div>
                         <div>
-                            <?php
-                            try {
-                                $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status IN ('in_progress', 'assigned')");
-                                $inProgress = $stmt->fetchColumn();
-                            } catch (Exception $e) {
-                                $inProgress = 0;
-                            }
-                            ?>
-                            <div class="stat-value-sm"><?= $inProgress ?></div>
+                            <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['in_progress'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
                             <div class="stat-label-sm">In Progress</div>
                         </div>
                     </div>
                     <div class="stat-item-inline">
                         <div class="stat-icon">⏳</div>
                         <div>
-                            <?php
-                            try {
-                                $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status IN ('pending', 'not_started')");
-                                $pending = $stmt->fetchColumn();
-                            } catch (Exception $e) {
-                                $pending = 0;
-                            }
-                            ?>
-                            <div class="stat-value-sm"><?= $pending ?></div>
+                            <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['pending'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
                             <div class="stat-label-sm">Pending</div>
                         </div>
                     </div>
