@@ -1932,7 +1932,7 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 }
 
 .input-group {
-    display: flex;
+    display: blockruby;
     border: 1px solid var(--border-color);
     border-radius: 6px;
     overflow: hidden;
