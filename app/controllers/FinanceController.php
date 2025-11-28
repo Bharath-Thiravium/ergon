@@ -62,8 +62,9 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customerFilter = $_GET['customer'] ?? '';
             
-            // Always ensure quotation data is calculated
+            // Always ensure quotation and PO data is calculated
             $quotationStats = $this->calculateQuotationOverview($db, $prefix);
+            $poStats = $this->calculatePurchaseOrderOverview($db, $prefix);
             
             // ALWAYS read from dashboard_stats table - never query finance_invoices directly
             $stmt = $db->prepare("SELECT * FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
@@ -105,6 +106,11 @@ class FinanceController extends Controller {
                     'rejectedQuotations' => intval($dashboardStats['rejected_quotations'] ?? $quotationStats['rejected_quotations'] ?? 0),
                     'pendingQuotations' => intval($dashboardStats['pending_quotations'] ?? $quotationStats['pending_quotations'] ?? 0),
                     'totalQuotations' => intval($dashboardStats['total_quotations'] ?? $quotationStats['total_quotations'] ?? 0),
+                    // Chart Card 2: Purchase Orders Overview (NEW - backend calculated counts only)
+                    'poHighFulfillment' => intval($dashboardStats['po_high_fulfillment_count'] ?? $poStats['po_high_fulfillment_count'] ?? 0),
+                    'poMidFulfillment' => intval($dashboardStats['po_mid_fulfillment_count'] ?? $poStats['po_mid_fulfillment_count'] ?? 0),
+                    'poLowFulfillment' => intval($dashboardStats['po_low_fulfillment_count'] ?? $poStats['po_low_fulfillment_count'] ?? 0),
+                    'poTotalCount' => intval($dashboardStats['po_total_count'] ?? $poStats['po_total_count'] ?? 0),
                     'source' => 'dashboard_stats',
                     'generated_at' => $dashboardStats['generated_at']
                 ]);
@@ -1303,6 +1309,126 @@ class FinanceController extends Controller {
     }
     
     /**
+     * Implements Chart Card 2 (Purchase Orders) - Revised Logic
+     * Fetches PO + Invoice/Claim data first, then computes results in backend logic
+     * New field mappings:
+     * - Fulfillment Rate (OLD) → POs claimed > 80% (NEW): count
+     * - Avg Lead Time (OLD) → POs claimed > 50% (NEW): count
+     * - Open Commitments (OLD) → POs claimed < 50% (NEW): count
+     */
+    private function calculatePurchaseOrderOverview($db, $prefix) {
+        // Step 1: Fetch all Purchase Orders using company prefix (no SQL aggregation)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $purchaseOrders = [];
+        foreach ($poResults as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+            
+            // Apply prefix filtering
+            if (!$prefix || stripos($poNumber, $prefix) !== false) {
+                $purchaseOrders[] = [
+                    'po_number' => $poNumber,
+                    'po_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
+                    'company_prefix' => $prefix
+                ];
+            }
+        }
+        
+        // Step 2: Fetch matched invoice/claim details per PO (no SQL aggregation)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        $stmt->execute();
+        $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $invoiceClaims = [];
+        foreach ($invoiceResults as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['po_number'] ?? '';
+            $invoiceAmount = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+            
+            if ($poNumber && $invoiceAmount > 0) {
+                if (!isset($invoiceClaims[$poNumber])) {
+                    $invoiceClaims[$poNumber] = 0;
+                }
+                $invoiceClaims[$poNumber] += $invoiceAmount;
+            }
+        }
+        
+        // Step 3: Join both datasets in backend (NOT SQL join)
+        $count_high_fulfillment = 0; // > 80%
+        $count_mid_fulfillment = 0;  // > 50%
+        $count_low_fulfillment = 0;  // < 50%
+        $po_total_count = count($purchaseOrders);
+        
+        foreach ($purchaseOrders as $po) {
+            $claimed_amount = $invoiceClaims[$po['po_number']] ?? 0;
+            $fulfillment_percentage = $po['po_amount'] > 0 ? ($claimed_amount / $po['po_amount']) * 100 : 0;
+            
+            // Step 4: New KPI Classification Rules
+            if ($fulfillment_percentage > 80) {
+                $count_high_fulfillment++;
+            } elseif ($fulfillment_percentage > 50) {
+                $count_mid_fulfillment++;
+            } else {
+                $count_low_fulfillment++;
+            }
+        }
+        
+        // Step 5: Save to dashboard_stats table
+        $this->updatePurchaseOrderStats($db, $prefix, [
+            'po_high_fulfillment_count' => $count_high_fulfillment,
+            'po_mid_fulfillment_count' => $count_mid_fulfillment,
+            'po_low_fulfillment_count' => $count_low_fulfillment,
+            'po_total_count' => $po_total_count
+        ]);
+        
+        return [
+            'po_high_fulfillment_count' => $count_high_fulfillment,
+            'po_mid_fulfillment_count' => $count_mid_fulfillment,
+            'po_low_fulfillment_count' => $count_low_fulfillment,
+            'po_total_count' => $po_total_count
+        ];
+    }
+    
+    private function updatePurchaseOrderStats($db, $prefix, $stats) {
+        // Add PO columns to dashboard_stats if they don't exist
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_high_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_mid_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_low_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_total_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        
+        // Update dashboard_stats with new PO metrics
+        $stmt = $db->prepare("
+            INSERT INTO dashboard_stats (company_prefix, po_high_fulfillment_count, po_mid_fulfillment_count, po_low_fulfillment_count, po_total_count, generated_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+                po_high_fulfillment_count = VALUES(po_high_fulfillment_count),
+                po_mid_fulfillment_count = VALUES(po_mid_fulfillment_count),
+                po_low_fulfillment_count = VALUES(po_low_fulfillment_count),
+                po_total_count = VALUES(po_total_count),
+                generated_at = NOW()
+        ");
+        
+        $stmt->execute([
+            $prefix,
+            $stats['po_high_fulfillment_count'],
+            $stats['po_mid_fulfillment_count'],
+            $stats['po_low_fulfillment_count'],
+            $stats['po_total_count']
+        ]);
+    }
+
+    /**
      * Implements Chart Card 1 (Quotations Overview) - Revised Logic
      * Fetches raw quotation rows first, then computes metrics in backend/service layer
      * New field mappings:
@@ -1573,6 +1699,14 @@ class FinanceController extends Controller {
             $quotationStats = ['placed_quotations' => 0, 'rejected_quotations' => 0, 'pending_quotations' => 0, 'total_quotations' => 0];
         }
         
+        // Step 7: Calculate Chart Card 2 (Purchase Orders Overview) metrics
+        $poStats = $this->calculatePurchaseOrderOverview($db, $prefix);
+        
+        // Ensure PO stats are always included
+        if (empty($poStats)) {
+            $poStats = ['po_high_fulfillment_count' => 0, 'po_mid_fulfillment_count' => 0, 'po_low_fulfillment_count' => 0, 'po_total_count' => 0];
+        }
+        
         // Step 7: Store computed results in dashboard_stats table
         $stats = [
             'company_prefix' => $prefix,
@@ -1601,7 +1735,12 @@ class FinanceController extends Controller {
             'placed_quotations' => $quotationStats['placed_quotations'],
             'rejected_quotations' => $quotationStats['rejected_quotations'],
             'pending_quotations' => $quotationStats['pending_quotations'],
-            'total_quotations' => $quotationStats['total_quotations']
+            'total_quotations' => $quotationStats['total_quotations'],
+            // Chart Card 2: Purchase Orders Overview (NEW)
+            'po_high_fulfillment_count' => $poStats['po_high_fulfillment_count'],
+            'po_mid_fulfillment_count' => $poStats['po_mid_fulfillment_count'],
+            'po_low_fulfillment_count' => $poStats['po_low_fulfillment_count'],
+            'po_total_count' => $poStats['po_total_count']
         ];
         
         $this->saveDashboardStats($db, $stats);
@@ -1739,6 +1878,18 @@ class FinanceController extends Controller {
         try {
             $db->exec("ALTER TABLE dashboard_stats ADD COLUMN total_quotations INT DEFAULT 0");
         } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_high_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_mid_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_low_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_total_count INT DEFAULT 0");
+        } catch (Exception $e) {}
         
         $sql = "INSERT INTO dashboard_stats (
                     company_prefix, total_revenue, invoice_count, average_invoice,
@@ -1749,8 +1900,9 @@ class FinanceController extends Controller {
                     claimable_amount, claimable_pos, claim_rate,
                     igst_liability, cgst_sgst_total, gst_liability,
                     placed_quotations, rejected_quotations, pending_quotations, total_quotations,
+                    po_high_fulfillment_count, po_mid_fulfillment_count, po_low_fulfillment_count, po_total_count,
                     generated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
                     total_revenue = VALUES(total_revenue),
                     invoice_count = VALUES(invoice_count),
@@ -1777,6 +1929,10 @@ class FinanceController extends Controller {
                     rejected_quotations = VALUES(rejected_quotations),
                     pending_quotations = VALUES(pending_quotations),
                     total_quotations = VALUES(total_quotations),
+                    po_high_fulfillment_count = VALUES(po_high_fulfillment_count),
+                    po_mid_fulfillment_count = VALUES(po_mid_fulfillment_count),
+                    po_low_fulfillment_count = VALUES(po_low_fulfillment_count),
+                    po_total_count = VALUES(po_total_count),
                     generated_at = NOW()";
         
         $stmt = $db->prepare($sql);
@@ -1806,7 +1962,11 @@ class FinanceController extends Controller {
             $stats['placed_quotations'] ?? 0,
             $stats['rejected_quotations'] ?? 0,
             $stats['pending_quotations'] ?? 0,
-            $stats['total_quotations'] ?? 0
+            $stats['total_quotations'] ?? 0,
+            $stats['po_high_fulfillment_count'] ?? 0,
+            $stats['po_mid_fulfillment_count'] ?? 0,
+            $stats['po_low_fulfillment_count'] ?? 0,
+            $stats['po_total_count'] ?? 0
         ]);
     }
     

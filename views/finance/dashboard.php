@@ -248,9 +248,9 @@
                 <canvas id="purchaseOrdersChart"></canvas>
             </div>
             <div class="chart-card__meta">
-                <div class="meta-item"><span>Fulfillment Rate:</span><strong id="poFulfillmentRate">0%</strong></div>
-                <div class="meta-item"><span>Avg Lead Time:</span><strong id="avgLeadTime">0 days</strong></div>
-                <div class="meta-item"><span>Open Commitments:</span><strong id="openCommitments">₹0</strong></div>
+                <div class="meta-item"><span>Fulfillment Rate:</span><strong id="poFulfillmentRate">0</strong></div>
+                <div class="meta-item"><span>Avg Lead Time:</span><strong id="avgLeadTime">0</strong></div>
+                <div class="meta-item"><span>Open Commitments:</span><strong id="openCommitments">0</strong></div>
             </div>
         </div>
         
@@ -1133,16 +1133,16 @@ async function updateCharts(data) {
             }
         }
         
-        // Update PO metrics from funnel data
+        // Update Chart Card 2: Purchase Orders Overview (NEW - backend calculated counts)
         const fulfillmentEl = document.getElementById('poFulfillmentRate');
         const leadTimeEl = document.getElementById('avgLeadTime');
         const commitmentsEl = document.getElementById('openCommitments');
         const poTotalEl = document.getElementById('poTotal');
         
-        if (fulfillmentEl) fulfillmentEl.textContent = `${funnel.poToInvoice || 0}%`;
-        if (leadTimeEl) leadTimeEl.textContent = '15 days'; // Default estimate
-        if (commitmentsEl) commitmentsEl.textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
-        if (poTotalEl) poTotalEl.textContent = funnel.purchaseOrders || 0;
+        if (fulfillmentEl) fulfillmentEl.textContent = data.poHighFulfillment || 0;
+        if (leadTimeEl) leadTimeEl.textContent = data.poMidFulfillment || 0;
+        if (commitmentsEl) commitmentsEl.textContent = data.poLowFulfillment || 0;
+        if (poTotalEl) poTotalEl.textContent = data.poTotalCount || 0;
         
         // Update Invoices Chart
         const invoicesResponse = await fetch('/ergon/finance/visualization?type=invoices');
