@@ -156,14 +156,25 @@ class FinanceController extends Controller {
                     $pendingPOValue += $totalAmount;
                     $openPOCount++;
                 }
-                if (in_array($status, ['billed', 'partially_billed', 'completed', 'delivered', 'invoiced'])) {
-                    $billedAmount = floatval($data['billed_amount'] ?? $data['invoiced_amount'] ?? $data['delivered_amount'] ?? $totalAmount);
-                    $paidAmount = floatval($data['paid_amount'] ?? $data['payment_amount'] ?? $data['received_amount'] ?? 0);
-                    $claimable = $billedAmount - $paidAmount;
-                    if ($claimable > 0) {
-                        $claimableAmount += $claimable;
-                        $claimablePOCount++;
-                    }
+                // Calculate claimable amount for all POs with any amount processed
+                $billedAmount = floatval($data['billed_amount'] ?? $data['invoiced_amount'] ?? $data['delivered_amount'] ?? 0);
+                $paidAmount = floatval($data['paid_amount'] ?? $data['payment_amount'] ?? $data['received_amount'] ?? 0);
+                $receivedAmount = floatval($data['received_qty'] ?? $data['delivered_qty'] ?? 0);
+                
+                // If no explicit billed amount but has received/delivered quantity, use total amount
+                if ($billedAmount == 0 && $receivedAmount > 0) {
+                    $billedAmount = $totalAmount;
+                }
+                
+                // If PO is completed/delivered but no billed amount, assume fully billed
+                if ($billedAmount == 0 && in_array($status, ['completed', 'delivered', 'closed', 'received'])) {
+                    $billedAmount = $totalAmount;
+                }
+                
+                $claimable = $billedAmount - $paidAmount;
+                if ($claimable > 0) {
+                    $claimableAmount += $claimable;
+                    $claimablePOCount++;
                 }
             }
             
