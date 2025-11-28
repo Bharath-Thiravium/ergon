@@ -2965,7 +2965,7 @@ canvas { width: 100% !important; height: auto !important; }
   color: white;
 }
 
-/* Global Back Button */
+/* Global Navigation Buttons */
 .global-back-btn {
   position: fixed;
   top: 120px;
@@ -2985,24 +2985,47 @@ canvas { width: 100% !important; height: auto !important; }
   backdrop-filter: blur(10px);
 }
 
-.global-back-btn:hover {
+.global-forward-btn {
+  position: fixed;
+  top: 120px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+}
+
+.global-back-btn:hover,
+.global-forward-btn:hover {
   background: rgba(255, 255, 255, 1);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.global-back-btn svg {
+.global-back-btn svg,
+.global-forward-btn svg {
   color: #374151;
   transition: color 0.2s ease;
 }
 
-.global-back-btn:hover svg {
+.global-back-btn:hover svg,
+.global-forward-btn:hover svg {
   color: #1f2937;
 }
 
 /* Desktop only - hide on mobile/tablet */
 @media (max-width: 1024px) {
-  .global-back-btn.desktop-only {
+  .global-back-btn.desktop-only,
+  .global-forward-btn.desktop-only {
     display: none;
   }
 }
