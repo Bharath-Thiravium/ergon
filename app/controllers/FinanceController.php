@@ -73,7 +73,7 @@ class FinanceController extends Controller {
                     'totalInvoiceAmount' => floatval($dashboardStats['total_revenue']),
                     'invoiceReceived' => floatval($dashboardStats['amount_received']),
                     'pendingInvoiceAmount' => floatval($dashboardStats['outstanding_amount']),
-                    'pendingGSTAmount' => 0, // GST not included in outstanding calculation per requirements
+                    'pendingGSTAmount' => floatval($dashboardStats['gst_liability']),
                     'pendingPOValue' => floatval($dashboardStats['po_commitments']),
                     'claimableAmount' => floatval($dashboardStats['claimable_amount']),
                     'claimablePOCount' => intval($dashboardStats['claimable_pos']),
@@ -92,6 +92,10 @@ class FinanceController extends Controller {
                     'customersPending' => intval($dashboardStats['customers_pending']),
                     'overdueAmount' => floatval($dashboardStats['overdue_amount']),
                     'outstandingPercentage' => floatval($dashboardStats['outstanding_percentage']),
+                    // Stat Card 4: GST Liability metrics from dashboard_stats (backend calculated)
+                    'igstLiability' => floatval($dashboardStats['igst_liability']),
+                    'cgstSgstTotal' => floatval($dashboardStats['cgst_sgst_total']),
+                    'gstLiability' => floatval($dashboardStats['gst_liability']),
                     'source' => 'dashboard_stats',
                     'generated_at' => $dashboardStats['generated_at']
                 ]);
@@ -110,7 +114,7 @@ class FinanceController extends Controller {
                         'totalInvoiceAmount' => floatval($dashboardStats['total_revenue']),
                         'invoiceReceived' => floatval($dashboardStats['amount_received']),
                         'pendingInvoiceAmount' => floatval($dashboardStats['outstanding_amount']),
-                        'pendingGSTAmount' => 0,
+                        'pendingGSTAmount' => floatval($dashboardStats['gst_liability']),
                         'pendingPOValue' => floatval($dashboardStats['po_commitments']),
                         'claimableAmount' => floatval($dashboardStats['claimable_amount']),
                         'outstandingAmount' => floatval($dashboardStats['outstanding_amount']),
@@ -118,6 +122,9 @@ class FinanceController extends Controller {
                         'customersPending' => intval($dashboardStats['customers_pending']),
                         'overdueAmount' => floatval($dashboardStats['overdue_amount']),
                         'outstandingPercentage' => floatval($dashboardStats['outstanding_percentage']),
+                        'igstLiability' => floatval($dashboardStats['igst_liability']),
+                        'cgstSgstTotal' => floatval($dashboardStats['cgst_sgst_total']),
+                        'gstLiability' => floatval($dashboardStats['gst_liability']),
                         'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
                         'cashFlow' => ['expectedInflow' => floatval($dashboardStats['outstanding_amount']), 'poCommitments' => floatval($dashboardStats['po_commitments'])],
                         'source' => 'calculated'
@@ -976,7 +983,7 @@ class FinanceController extends Controller {
         }
     }
     
-    private function createTables($db) {
+    public function createTables($db) {
         $db->exec("CREATE TABLE IF NOT EXISTS finance_tables (
             id INT AUTO_INCREMENT PRIMARY KEY,
             table_name VARCHAR(100) UNIQUE,
@@ -1020,6 +1027,9 @@ class FinanceController extends Controller {
             claimable_amount DECIMAL(15,2) DEFAULT 0,
             claimable_pos INT DEFAULT 0,
             claim_rate DECIMAL(5,2) DEFAULT 0,
+            igst_liability DECIMAL(15,2) DEFAULT 0,
+            cgst_sgst_total DECIMAL(15,2) DEFAULT 0,
+            gst_liability DECIMAL(15,2) DEFAULT 0,
             generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY unique_prefix (company_prefix)
         )");
@@ -1033,6 +1043,25 @@ class FinanceController extends Controller {
         
         try {
             $db->exec("ALTER TABLE dashboard_stats ADD COLUMN customers_pending INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        // Add GST liability columns for Stat Card 4
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN igst_liability DECIMAL(15,2) DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN cgst_sgst_total DECIMAL(15,2) DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN gst_liability DECIMAL(15,2) DEFAULT 0");
         } catch (Exception $e) {
             // Column already exists
         }
@@ -1271,7 +1300,7 @@ class FinanceController extends Controller {
     }
     
     /**
-     * Implements Stat Card 3 pipeline with backend calculations only
+     * Implements Stat Card 3 & 4 pipeline with backend calculations only
      * Follows the exact specification: fetch raw data, calculate in backend, store results
      */
     private function calculateStatCard3Pipeline($db, $pgConn, $prefix) {
@@ -1291,7 +1320,10 @@ class FinanceController extends Controller {
                     'amount_paid' => floatval($data['amount_paid'] ?? 0),
                     'total_amount' => floatval($data['total_amount'] ?? 0),
                     'due_date' => $data['due_date'] ?? '',
-                    'customer_gstin' => $data['customer_gstin'] ?? $data['customer_id'] ?? ''
+                    'customer_gstin' => $data['customer_gstin'] ?? $data['customer_id'] ?? '',
+                    'igst' => floatval($data['igst'] ?? 0),
+                    'cgst' => floatval($data['cgst'] ?? 0),
+                    'sgst' => floatval($data['sgst'] ?? 0)
                 ];
             }
         }
@@ -1307,12 +1339,19 @@ class FinanceController extends Controller {
         $totalInvoiceAmount = 0;
         $today = date('Y-m-d');
         
+        // Stat Card 4: GST Liability calculations
+        $igstLiability = 0;
+        $cgstSgstTotal = 0;
+        
         foreach ($invoices as $invoice) {
             $taxableAmount = floatval($invoice['taxable_amount'] ?? 0);
             $totalAmount = floatval($invoice['total_amount'] ?? 0);
             $amountPaid = floatval($invoice['amount_paid'] ?? 0);
             $dueDate = $invoice['due_date'] ?? '';
             $customerGstin = $invoice['customer_gstin'] ?? '';
+            $igst = floatval($invoice['igst'] ?? 0);
+            $cgst = floatval($invoice['cgst'] ?? 0);
+            $sgst = floatval($invoice['sgst'] ?? 0);
             
             // Stat Card 3: Outstanding amount uses only taxable_amount (no GST)
             $pendingAmount = $taxableAmount - $amountPaid;
@@ -1333,6 +1372,10 @@ class FinanceController extends Controller {
                 if ($dueDate && $dueDate < $today) {
                     $overdueAmount += $pendingAmount;
                 }
+                
+                // Stat Card 4: GST liability only on outstanding invoices
+                $igstLiability += $igst;
+                $cgstSgstTotal += ($cgst + $sgst);
             }
             
             if ($claimable > 0) {
@@ -1344,6 +1387,9 @@ class FinanceController extends Controller {
         $customersPendingCount = count($customersPending);
         $outstandingPercentage = $totalTaxableAmount > 0 ? ($outstandingAmount / $totalTaxableAmount) * 100 : 0;
         $claimRate = $totalInvoiceAmount > 0 ? ($claimableAmount / $totalInvoiceAmount) * 100 : 0;
+        
+        // Stat Card 4: Total GST Liability
+        $gstLiability = $igstLiability + $cgstSgstTotal;
         
         // Calculate other stats
         $amountReceived = 0;
@@ -1396,7 +1442,10 @@ class FinanceController extends Controller {
             'average_po' => $openPos > 0 ? $poCommitments / $openPos : 0,
             'claimable_amount' => $claimableAmount,
             'claimable_pos' => $claimablePos,
-            'claim_rate' => $claimRate
+            'claim_rate' => $claimRate,
+            'igst_liability' => $igstLiability,
+            'cgst_sgst_total' => $cgstSgstTotal,
+            'gst_liability' => $gstLiability
         ];
         
         $this->saveDashboardStats($db, $stats);
@@ -1527,8 +1576,9 @@ class FinanceController extends Controller {
                     outstanding_amount, outstanding_percentage, overdue_amount, 
                     pending_invoices, customers_pending, customer_count,
                     po_commitments, open_pos, average_po,
-                    claimable_amount, claimable_pos, claim_rate, generated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    claimable_amount, claimable_pos, claim_rate,
+                    igst_liability, cgst_sgst_total, gst_liability, generated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
                     total_revenue = VALUES(total_revenue),
                     invoice_count = VALUES(invoice_count),
@@ -1548,6 +1598,9 @@ class FinanceController extends Controller {
                     claimable_amount = VALUES(claimable_amount),
                     claimable_pos = VALUES(claimable_pos),
                     claim_rate = VALUES(claim_rate),
+                    igst_liability = VALUES(igst_liability),
+                    cgst_sgst_total = VALUES(cgst_sgst_total),
+                    gst_liability = VALUES(gst_liability),
                     generated_at = NOW()";
         
         $stmt = $db->prepare($sql);
@@ -1570,7 +1623,10 @@ class FinanceController extends Controller {
             $stats['average_po'],
             $stats['claimable_amount'],
             $stats['claimable_pos'],
-            $stats['claim_rate']
+            $stats['claim_rate'],
+            $stats['igst_liability'],
+            $stats['cgst_sgst_total'],
+            $stats['gst_liability']
         ]);
     }
     

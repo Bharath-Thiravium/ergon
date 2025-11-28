@@ -115,11 +115,18 @@
             </div>
             <div class="kpi-card__value" id="pendingGSTAmount">₹0</div>
             <div class="kpi-card__label">GST Liability</div>
-            <div class="kpi-card__description">Tax Liability on Outstanding</div>
+            <div class="kpi-card__description">Tax Liability on Outstanding Invoices Only</div>
             <div class="kpi-card__details">
-                <div class="detail-item">CGST: <span id="pendingCGST">₹0</span></div>
-                <div class="detail-item">SGST: <span id="pendingSGST">₹0</span></div>
+                <div class="detail-item">IGST: <span id="igstLiability">₹0</span></div>
+                <div class="detail-item">CGST+SGST: <span id="cgstSgstTotal">₹0</span></div>
             </div>
+            <!-- Stat Card 4 Implementation:
+                 - GST Liability calculated only on outstanding invoices
+                 - IGST = sum(igst) where pending_base > 0
+                 - CGST+SGST = sum(cgst + sgst) where pending_base > 0
+                 - Total GST Liability = IGST + CGST+SGST
+                 - All calculations done in backend, frontend reads from dashboard_stats only
+            -->
         </div>
         
         <div class="kpi-card kpi-card--primary">
@@ -988,14 +995,14 @@ function updateKPICards(data) {
         pendingTrend.textContent = `${Math.round(data.outstandingPercentage)}%`;
     }
     
-    // Pending GST Amount
-    document.getElementById('pendingGSTAmount').textContent = `₹${(data.pendingGSTAmount || 0).toLocaleString()}`;
+    // Stat Card 4: GST Liability (Backend calculated)
+    document.getElementById('pendingGSTAmount').textContent = `₹${(data.gstLiability || data.pendingGSTAmount || 0).toLocaleString()}`;
     
-    // Update GST details
-    const pendingCGST = document.getElementById('pendingCGST');
-    const pendingSGST = document.getElementById('pendingSGST');
-    if (pendingCGST) pendingCGST.textContent = `₹${Math.round((data.pendingGSTAmount || 0) / 2).toLocaleString()}`;
-    if (pendingSGST) pendingSGST.textContent = `₹${Math.round((data.pendingGSTAmount || 0) / 2).toLocaleString()}`;
+    // Update GST details from backend calculations
+    const igstLiability = document.getElementById('igstLiability');
+    const cgstSgstTotal = document.getElementById('cgstSgstTotal');
+    if (igstLiability) igstLiability.textContent = `₹${(data.igstLiability || 0).toLocaleString()}`;
+    if (cgstSgstTotal) cgstSgstTotal.textContent = `₹${(data.cgstSgstTotal || 0).toLocaleString()}`;
     
     // PO Commitments - Use both dashboard data and funnel data
     const poValue = data.pendingPOValue || funnel.poValue || 0;
