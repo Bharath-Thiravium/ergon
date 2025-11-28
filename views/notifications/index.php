@@ -9,9 +9,7 @@ ob_start();
         <p>Stay updated with your latest notifications</p>
     </div>
     <div class="page-actions">
-        <form method="POST" action="/ergon/create_test_notification.php" style="display:inline;">
-            <button type="submit" class="btn btn--success">Create Test Notification</button>
-        </form>
+        <button class="btn btn--success" onclick="createTestNotification()">Create Test Notification</button>
         <button class="btn btn--secondary" onclick="markAllAsRead()" id="markAllBtn">Mark All Read</button>
         <button class="btn btn--primary" onclick="markSelectedAsRead()" id="markSelectedBtn" disabled>Mark Selected Read</button>
     </div>
@@ -237,6 +235,29 @@ function goBack() {
     window.history.back();
 }
 window.goBack = goBack;
+
+function createTestNotification() {
+    fetch('/ergon/api/notifications.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: 'action=create-test'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Test notification created!');
+            location.reload();
+        } else {
+            alert('❌ Failed to create notification: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        alert('❌ Network error: ' + error.message);
+    });
+}
 </script>
 
 <?php
