@@ -146,6 +146,10 @@ class FinanceController extends Controller {
                         'rejectedQuotations' => intval($dashboardStats['rejected_quotations'] ?? 0),
                         'pendingQuotations' => intval($dashboardStats['pending_quotations'] ?? 0),
                         'totalQuotations' => intval($dashboardStats['total_quotations'] ?? 0),
+                        'poHighFulfillment' => intval($dashboardStats['po_high_fulfillment_count'] ?? 0),
+                        'poMidFulfillment' => intval($dashboardStats['po_mid_fulfillment_count'] ?? 0),
+                        'poLowFulfillment' => intval($dashboardStats['po_low_fulfillment_count'] ?? 0),
+                        'poTotalCount' => intval($dashboardStats['po_total_count'] ?? 0),
                         'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
                         'cashFlow' => ['expectedInflow' => floatval($dashboardStats['outstanding_amount']), 'poCommitments' => floatval($dashboardStats['po_commitments'])],
                         'source' => 'calculated'
