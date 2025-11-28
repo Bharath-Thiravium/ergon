@@ -15,30 +15,16 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
-            // Use cURL to fetch data via HTTP API since PostgreSQL extension not available
-            $apiUrl = 'http://72.60.218.167:8080/api/finance';
+            $pgHost = 'localhost';
+            $pgPort = '5432';
+            $pgDb = 'u494785662_ergon_finance';
+            $pgUser = 'u494785662_ergon';
+            $pgPass = 'your_postgres_password';
             
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $apiUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json',
-                'Authorization: Bearer postgres_api_key'
-            ]);
+            $pgConn = pg_connect("host=$pgHost port=$pgPort dbname=$pgDb user=$pgUser password=$pgPass");
             
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            if ($httpCode !== 200 || !$response) {
-                echo json_encode(['success' => false, 'error' => 'PostgreSQL API not available. Extension required.']);
-                exit;
-            }
-            
-            $apiData = json_decode($response, true);
-            if (!$apiData) {
-                echo json_encode(['success' => false, 'error' => 'Invalid API response']);
+            if (!$pgConn) {
+                echo json_encode(['success' => false, 'error' => 'Failed to connect to PostgreSQL database']);
                 exit;
             }
             
@@ -46,16 +32,19 @@ class FinanceController extends Controller {
             $financeTables = ['finance_invoices', 'finance_quotations', 'finance_customers'];
             
             foreach ($financeTables as $tableName) {
-                if (isset($apiData[$tableName]) && !empty($apiData[$tableName])) {
-                    $this->storeTableData($db, $tableName, $apiData[$tableName]);
+                $result = pg_query($pgConn, "SELECT * FROM $tableName");
+                if ($result && pg_num_rows($result) > 0) {
+                    $data = pg_fetch_all($result);
+                    $this->storeTableData($db, $tableName, $data);
                     $syncCount++;
                 }
             }
             
+            pg_close($pgConn);
             echo json_encode(['success' => true, 'tables' => $syncCount]);
             
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => 'PostgreSQL extension not available on Hostinger Basic plan']);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         exit;
     }
