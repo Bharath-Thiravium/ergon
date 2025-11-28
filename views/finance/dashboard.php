@@ -215,22 +215,22 @@
                     <div class="chart-card__icon">📝</div>
                     <div class="chart-card__title">Quotations Overview</div>
                     <div class="chart-card__value" id="quotationsTotal">0</div>
-                    <div class="chart-card__subtitle">Sales Pipeline Status Distribution</div>
+                    <div class="chart-card__subtitle">Quotation Status Count Distribution</div>
                 </div>
                 <div class="chart-card__trend" id="quotationsTrend">+0%</div>
             </div>
             <div class="chart-card__chart">
                 <canvas id="quotationsChart"></canvas>
                 <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color" style="background:#3b82f6"></span>Draft (Initial)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Revised (Updated)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Converted (Won)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#3b82f6"></span>Pending (Draft/Revised)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Placed (Approved)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Rejected</div>
                 </div>
             </div>
             <div class="chart-card__meta">
-                <div class="meta-item"><span>Win Rate:</span><strong id="quotationWinRate">0%</strong></div>
-                <div class="meta-item"><span>Avg Deal Size:</span><strong id="quotationsAvg">₹0</strong></div>
-                <div class="meta-item"><span>Pipeline Value:</span><strong id="pipelineValue">₹0</strong></div>
+                <div class="meta-item"><span>Placed Quotations:</span><strong id="placedQuotations">0</strong></div>
+                <div class="meta-item"><span>Rejected Quotations:</span><strong id="rejectedQuotations">0</strong></div>
+                <div class="meta-item"><span>Pending Quotations:</span><strong id="pendingQuotations">0</strong></div>
             </div>
         </div>
         
@@ -1070,21 +1070,16 @@ async function updateCharts(data) {
             quotationsChart.update();
         }
         
-        // Update quotation metrics from funnel data
-        const funnel = data.conversionFunnel || {};
-        const winRateEl = document.getElementById('quotationWinRate');
-        const avgEl = document.getElementById('quotationsAvg');
-        const pipelineEl = document.getElementById('pipelineValue');
+        // Update Chart Card 1: Quotations Overview (NEW - backend calculated counts)
+        const placedEl = document.getElementById('placedQuotations');
+        const rejectedEl = document.getElementById('rejectedQuotations');
+        const pendingEl = document.getElementById('pendingQuotations');
         const totalEl = document.getElementById('quotationsTotal');
         
-        if (winRateEl) winRateEl.textContent = `${funnel.quotationToPO || 0}%`;
-        if (avgEl && funnel.quotations > 0) {
-            avgEl.textContent = `₹${Math.round((funnel.quotationValue || 0) / funnel.quotations).toLocaleString()}`;
-        } else if (avgEl) {
-            avgEl.textContent = '₹0';
-        }
-        if (pipelineEl) pipelineEl.textContent = `₹${(funnel.quotationValue || 0).toLocaleString()}`;
-        if (totalEl) totalEl.textContent = funnel.quotations || 0;
+        if (placedEl) placedEl.textContent = data.placedQuotations || 0;
+        if (rejectedEl) rejectedEl.textContent = data.rejectedQuotations || 0;
+        if (pendingEl) pendingEl.textContent = data.pendingQuotations || 0;
+        if (totalEl) totalEl.textContent = data.totalQuotations || 0;
         
         // Update Purchase Orders Chart
         const poResponse = await fetch('/ergon/finance/visualization?type=purchase_orders');

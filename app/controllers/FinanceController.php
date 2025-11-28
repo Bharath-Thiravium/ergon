@@ -97,6 +97,11 @@ class FinanceController extends Controller {
                     'igstLiability' => floatval($dashboardStats['igst_liability']),
                     'cgstSgstTotal' => floatval($dashboardStats['cgst_sgst_total']),
                     'gstLiability' => floatval($dashboardStats['gst_liability']),
+                    // Chart Card 1: Quotations Overview (NEW - backend calculated counts only)
+                    'placedQuotations' => intval($dashboardStats['placed_quotations'] ?? 0),
+                    'rejectedQuotations' => intval($dashboardStats['rejected_quotations'] ?? 0),
+                    'pendingQuotations' => intval($dashboardStats['pending_quotations'] ?? 0),
+                    'totalQuotations' => intval($dashboardStats['total_quotations'] ?? 0),
                     'source' => 'dashboard_stats',
                     'generated_at' => $dashboardStats['generated_at']
                 ]);
@@ -694,45 +699,42 @@ class FinanceController extends Controller {
             
             $prefix = $this->getCompanyPrefix();
             
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-            $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Read from dashboard_stats table (backend calculated)
+            $stmt = $db->prepare("SELECT placed_quotations, rejected_quotations, pending_quotations, total_quotations FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
+            $stmt->execute([$prefix]);
+            $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            $statusData = ['Draft' => 0, 'Revised' => 0, 'Converted' => 0];
-            $totalCount = 0;
-            $totalAmount = 0;
-            
-            foreach ($results as $row) {
-                $data = json_decode($row['data'], true);
-                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? $data['number'] ?? '';
+            if ($dashboardStats) {
+                // Return count-based data from backend calculations
+                $statusData = [
+                    'Pending' => intval($dashboardStats['pending_quotations']),
+                    'Placed' => intval($dashboardStats['placed_quotations']),
+                    'Rejected' => intval($dashboardStats['rejected_quotations'])
+                ];
                 
-                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
-                    continue;
-                }
+                echo json_encode([
+                    'labels' => array_keys($statusData),
+                    'data' => array_values($statusData),
+                    'total' => intval($dashboardStats['total_quotations']),
+                    'count' => intval($dashboardStats['total_quotations'])
+                ]);
+            } else {
+                // Fallback: calculate directly if no dashboard_stats available
+                $quotationStats = $this->calculateQuotationOverview($db, $prefix);
                 
-                $amount = floatval($data['amount'] ?? $data['total_amount'] ?? $data['value'] ?? 0);
-                $status = strtolower($data['status'] ?? 'draft');
+                $statusData = [
+                    'Pending' => $quotationStats['pending_quotations'],
+                    'Placed' => $quotationStats['placed_quotations'],
+                    'Rejected' => $quotationStats['rejected_quotations']
+                ];
                 
-                if ($amount > 0) {
-                    $totalCount++;
-                    $totalAmount += $amount;
-                    
-                    if (in_array($status, ['converted', 'accepted', 'won'])) {
-                        $statusData['Converted'] += $amount;
-                    } elseif (in_array($status, ['revised', 'updated'])) {
-                        $statusData['Revised'] += $amount;
-                    } else {
-                        $statusData['Draft'] += $amount;
-                    }
-                }
+                echo json_encode([
+                    'labels' => array_keys($statusData),
+                    'data' => array_values($statusData),
+                    'total' => $quotationStats['total_quotations'],
+                    'count' => $quotationStats['total_quotations']
+                ]);
             }
-            
-            echo json_encode([
-                'labels' => array_keys($statusData),
-                'data' => array_values($statusData),
-                'total' => $totalAmount,
-                'count' => $totalCount
-            ]);
             
         } catch (Exception $e) {
             echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
@@ -1292,6 +1294,118 @@ class FinanceController extends Controller {
     }
     
     /**
+     * Implements Chart Card 1 (Quotations Overview) - Revised Logic
+     * Fetches raw quotation rows first, then computes metrics in backend/service layer
+     * New field mappings:
+     * - Win Rate (OLD) → Placed Quotations (NEW): count of placed quotations
+     * - Avg Deal Size (OLD) → Rejected Quotations (NEW): count of rejected quotations  
+     * - Pipeline Value (OLD) → Pending Quotations (NEW): count of pending quotations
+     */
+    private function calculateQuotationOverview($db, $prefix) {
+        // Step 1: Fetch raw quotation rows using prefix-based filtering (no SQL aggregation)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+        $stmt->execute();
+        $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $quotations = [];
+        foreach ($quotationResults as $row) {
+            $data = json_decode($row['data'], true);
+            $quotationNumber = $data['quotation_number'] ?? '';
+            
+            // Apply prefix-based filtering
+            if (!$prefix || strpos($quotationNumber, $prefix) === 0) {
+                $quotations[] = [
+                    'id' => $data['id'] ?? '',
+                    'quotation_number' => $quotationNumber,
+                    'amount' => floatval($data['amount'] ?? $data['total_amount'] ?? 0),
+                    'status' => strtolower($data['status'] ?? 'draft')
+                ];
+            }
+        }
+        
+        // Step 2: Move all calculations to backend logic (no SQL aggregation functions)
+        $placed_count = 0;
+        $rejected_count = 0;
+        $pending_count = 0;
+        $total_quotations = count($quotations);
+        
+        // Step 3: Calculate counts based on status
+        foreach ($quotations as $quotation) {
+            $status = $quotation['status'];
+            
+            if ($status === 'placed') {
+                $placed_count++;
+            } elseif ($status === 'rejected') {
+                $rejected_count++;
+            } elseif (in_array($status, ['pending', 'draft', 'revised'])) {
+                $pending_count++;
+            }
+        }
+        
+        // Step 4: Store calculated values into dashboard_stats
+        $this->updateQuotationStats($db, $prefix, [
+            'placed_quotations' => $placed_count,
+            'rejected_quotations' => $rejected_count, 
+            'pending_quotations' => $pending_count,
+            'total_quotations' => $total_quotations
+        ]);
+        
+        return [
+            'placed_quotations' => $placed_count,
+            'rejected_quotations' => $rejected_count,
+            'pending_quotations' => $pending_count,
+            'total_quotations' => $total_quotations
+        ];
+    }
+    
+    private function updateQuotationStats($db, $prefix, $stats) {
+        // Add quotation columns to dashboard_stats if they don't exist
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN placed_quotations INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN rejected_quotations INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN pending_quotations INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN total_quotations INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        // Update the dashboard_stats table with new quotation metrics
+        $stmt = $db->prepare("
+            INSERT INTO dashboard_stats (company_prefix, placed_quotations, rejected_quotations, pending_quotations, total_quotations, generated_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+                placed_quotations = VALUES(placed_quotations),
+                rejected_quotations = VALUES(rejected_quotations),
+                pending_quotations = VALUES(pending_quotations),
+                total_quotations = VALUES(total_quotations),
+                generated_at = NOW()
+        ");
+        
+        $stmt->execute([
+            $prefix,
+            $stats['placed_quotations'],
+            $stats['rejected_quotations'],
+            $stats['pending_quotations'],
+            $stats['total_quotations']
+        ]);
+    }
+
+    /**
      * Implements Stat Card 3 & 4 pipeline with backend calculations only
      * Follows the exact specification: fetch raw data, calculate in backend, store results
      */
@@ -1442,7 +1556,10 @@ class FinanceController extends Controller {
             }
         }
         
-        // Step 5: Store computed results in dashboard_stats table
+        // Step 6: Calculate Chart Card 1 (Quotations Overview) metrics
+        $quotationStats = $this->calculateQuotationOverview($db, $prefix);
+        
+        // Step 7: Store computed results in dashboard_stats table
         $stats = [
             'company_prefix' => $prefix,
             'total_revenue' => $totalInvoiceAmount,
@@ -1465,7 +1582,12 @@ class FinanceController extends Controller {
             'claim_rate' => $claimRate,
             'igst_liability' => $igstLiability,
             'cgst_sgst_total' => $cgstSgstTotal,
-            'gst_liability' => $gstLiability
+            'gst_liability' => $gstLiability,
+            // Chart Card 1: Quotations Overview (NEW)
+            'placed_quotations' => $quotationStats['placed_quotations'],
+            'rejected_quotations' => $quotationStats['rejected_quotations'],
+            'pending_quotations' => $quotationStats['pending_quotations'],
+            'total_quotations' => $quotationStats['total_quotations']
         ];
         
         $this->saveDashboardStats($db, $stats);
@@ -1590,6 +1712,20 @@ class FinanceController extends Controller {
     }
     
     private function saveDashboardStats($db, $stats) {
+        // Add quotation columns if they don't exist
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN placed_quotations INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN rejected_quotations INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN pending_quotations INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN total_quotations INT DEFAULT 0");
+        } catch (Exception $e) {}
+        
         $sql = "INSERT INTO dashboard_stats (
                     company_prefix, total_revenue, invoice_count, average_invoice,
                     amount_received, collection_rate, paid_invoices,
@@ -1597,8 +1733,10 @@ class FinanceController extends Controller {
                     pending_invoices, customers_pending, customer_count,
                     po_commitments, open_pos, closed_pos,
                     claimable_amount, claimable_pos, claim_rate,
-                    igst_liability, cgst_sgst_total, gst_liability, generated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    igst_liability, cgst_sgst_total, gst_liability,
+                    placed_quotations, rejected_quotations, pending_quotations, total_quotations,
+                    generated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
                     total_revenue = VALUES(total_revenue),
                     invoice_count = VALUES(invoice_count),
@@ -1621,6 +1759,10 @@ class FinanceController extends Controller {
                     igst_liability = VALUES(igst_liability),
                     cgst_sgst_total = VALUES(cgst_sgst_total),
                     gst_liability = VALUES(gst_liability),
+                    placed_quotations = VALUES(placed_quotations),
+                    rejected_quotations = VALUES(rejected_quotations),
+                    pending_quotations = VALUES(pending_quotations),
+                    total_quotations = VALUES(total_quotations),
                     generated_at = NOW()";
         
         $stmt = $db->prepare($sql);
@@ -1646,7 +1788,11 @@ class FinanceController extends Controller {
             $stats['claim_rate'],
             $stats['igst_liability'],
             $stats['cgst_sgst_total'],
-            $stats['gst_liability']
+            $stats['gst_liability'],
+            $stats['placed_quotations'] ?? 0,
+            $stats['rejected_quotations'] ?? 0,
+            $stats['pending_quotations'] ?? 0,
+            $stats['total_quotations'] ?? 0
         ]);
     }
     
