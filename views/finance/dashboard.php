@@ -248,9 +248,9 @@
                 <canvas id="purchaseOrdersChart"></canvas>
             </div>
             <div class="chart-card__meta">
-                <div class="meta-item"><span>Fulfillment Rate:</span><strong id="poFulfillmentRate">0</strong></div>
-                <div class="meta-item"><span>Avg Lead Time:</span><strong id="avgLeadTime">0</strong></div>
-                <div class="meta-item"><span>Open Commitments:</span><strong id="openCommitments">0</strong></div>
+                <div class="meta-item"><span>Fulfillment Rate:</span><strong id="poFulfillmentRate">0%</strong></div>
+                <div class="meta-item"><span>Avg Lead Time:</span><strong id="avgLeadTime">0 days</strong></div>
+                <div class="meta-item"><span>Open Commitments:</span><strong id="openCommitments">₹0</strong></div>
             </div>
         </div>
         
