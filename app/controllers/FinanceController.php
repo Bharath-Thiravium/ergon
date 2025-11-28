@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../services/FunnelStatsService.php';
 
 class FinanceController extends Controller {
     
@@ -2332,6 +2333,106 @@ class FinanceController extends Controller {
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
         }
+    }
+    
+    /**
+     * Get funnel container stats (4 boxes)
+     * UI reads ONLY from funnel_stats table
+     */
+    public function getFunnelContainers() {
+        header('Content-Type: application/json');
+        
+        try {
+            $prefix = $this->getCompanyPrefix();
+            $funnelService = new FunnelStatsService();
+            
+            $containers = $funnelService->getFunnelContainers($prefix);
+            
+            echo json_encode([
+                'success' => true,
+                'containers' => $containers,
+                'prefix' => $prefix
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'containers' => [
+                    'container1' => ['title' => 'Quotations', 'quotations_count' => 0, 'quotations_total_value' => 0],
+                    'container2' => ['title' => 'Purchase Orders', 'po_count' => 0, 'po_total_value' => 0, 'po_conversion_rate' => 0],
+                    'container3' => ['title' => 'Invoices', 'invoice_count' => 0, 'invoice_total_value' => 0, 'invoice_conversion_rate' => 0],
+                    'container4' => ['title' => 'Payments', 'payment_count' => 0, 'total_payment_received' => 0, 'payment_conversion_rate' => 0]
+                ]
+            ]);
+        }
+    }
+    
+    /**
+     * Calculate and refresh funnel stats
+     * Backend calculations → stored → UI reads
+     */
+    public function refreshFunnelStats() {
+        header('Content-Type: application/json');
+        
+        try {
+            $prefix = $this->getCompanyPrefix();
+            $funnelService = new FunnelStatsService();
+            
+            $stats = $funnelService->calculateFunnelStats($prefix);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Funnel stats refreshed successfully',
+                'stats' => $stats,
+                'prefix' => $prefix
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get raw funnel stats from funnel_stats table
+     */
+    public function getFunnelStats() {
+        header('Content-Type: application/json');
+        
+        try {
+            $prefix = $this->getCompanyPrefix();
+            $funnelService = new FunnelStatsService();
+            
+            $stats = $funnelService->getFunnelStats($prefix);
+            
+            echo json_encode([
+                'success' => true,
+                'stats' => $stats,
+                'prefix' => $prefix
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    // Route aliases for funnel endpoints
+    public function funnelContainers() {
+        $this->getFunnelContainers();
+    }
+    
+    public function funnelStats() {
+        $this->getFunnelStats();
+    }
+    
+    public function refreshFunnel() {
+        $this->refreshFunnelStats();
     }
 }
 ?>
