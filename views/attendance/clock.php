@@ -84,9 +84,18 @@ function getLocation() {
             },
             function(error) {
                 document.getElementById('locationStatus').innerHTML = 
-                    '<span>⚠️</span> Location unavailable';
+                    '<span>⚠️</span> Location access denied - Required for attendance';
+                console.error('Location error:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000
             }
         );
+    } else {
+        document.getElementById('locationStatus').innerHTML = 
+            '<span>⚠️</span> Location not supported by browser';
     }
 }
 
@@ -149,7 +158,11 @@ function clockAction(type) {
     
     // Check if location is available
     if (!currentPosition) {
-        showLocationAlert('Location is required for attendance. Please enable location access and try again.');
+        if (typeof showMessage === 'function') {
+            showMessage('Location required for attendance. Please enable location access.', 'error');
+        } else {
+            showLocationAlert('Location is required for attendance. Please enable location access and try again.');
+        }
         return;
     }
     
@@ -195,14 +208,22 @@ function clockAction(type) {
                 }
             }
             
-            showSuccessAlert(`Clocked ${type} successfully!`);
+            if (typeof showMessage === 'function') {
+                showMessage(`Clocked ${type} successfully!`, 'success');
+            } else {
+                showSuccessAlert(`Clocked ${type} successfully!`);
+            }
             setTimeout(() => window.location.href = '/ergon/attendance', 1500);
         } else {
-            // Check if it's a location restriction error
-            if (data.error && data.error.includes('Please move within the allowed area')) {
-                showLocationAlert(data.error);
+            if (typeof showMessage === 'function') {
+                showMessage(data.error || 'An error occurred', 'error');
             } else {
-                showErrorAlert(data.error || 'An error occurred');
+                // Check if it's a location restriction error
+                if (data.error && data.error.includes('Please move within the allowed area')) {
+                    showLocationAlert(data.error);
+                } else {
+                    showErrorAlert(data.error || 'An error occurred');
+                }
             }
             // Restore button state
             text.textContent = originalText;
@@ -211,7 +232,11 @@ function clockAction(type) {
     })
     .catch(error => {
         console.error('Error:', error);
-        showErrorAlert('Server error occurred. Please try again.');
+        if (typeof showMessage === 'function') {
+            showMessage('Server error occurred. Please try again.', 'error');
+        } else {
+            showErrorAlert('Server error occurred. Please try again.');
+        }
         // Restore button state
         text.textContent = originalText;
         btn.disabled = false;
