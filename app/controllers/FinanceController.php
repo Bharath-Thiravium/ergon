@@ -30,7 +30,7 @@ class FinanceController extends Controller {
             }
             
             $syncCount = 0;
-            $financeTables = ['finance_invoices', 'finance_quotations', 'finance_customer'];
+            $financeTables = ['finance_invoices', 'finance_quotations', 'finance_customers', 'finance_customer', 'finance_payments', 'finance_purchase_orders'];
             
             foreach ($financeTables as $tableName) {
                 $result = @pg_query($pgConn, "SELECT * FROM $tableName");
@@ -140,13 +140,18 @@ class FinanceController extends Controller {
             
             $prefix = $this->getCompanyPrefix();
             
-            $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_invoices'");
+            // Build customer lookup map
+            $customerMap = [];
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
             $stmt->execute();
-            $count = $stmt->fetchColumn();
+            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            if ($count == 0) {
-                echo json_encode(['invoices' => [], 'message' => 'No invoice data available']);
-                return;
+            foreach ($customerResults as $row) {
+                $data = json_decode($row['data'], true);
+                $customerId = $data['id'] ?? '';
+                if ($customerId) {
+                    $customerMap[$customerId] = $data['display_name'] ?? $data['name'] ?? 'Unknown';
+                }
             }
             
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
@@ -165,12 +170,15 @@ class FinanceController extends Controller {
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
                 
                 if ($outstanding > 0) {
+                    $customerId = $data['customer_id'] ?? '';
+                    $customerName = $customerMap[$customerId] ?? 'Unknown';
+                    
                     $dueDate = $data['due_date'] ?? date('Y-m-d');
                     $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
                     
                     $invoices[] = [
                         'invoice_number' => $invoiceNumber,
-                        'customer_name' => $data['name'] ?? $data['display_name'] ?? $data['customer_name'] ?? 'Unknown',
+                        'customer_name' => $customerName,
                         'due_date' => $dueDate,
                         'outstanding_amount' => $outstanding,
                         'daysOverdue' => floor($daysOverdue),
@@ -232,30 +240,97 @@ class FinanceController extends Controller {
             $this->createTables($db);
             
             $prefix = $this->getCompanyPrefix();
+            $customers = [];
+            $customerMap = [];
             
+            // Get primary customer data from finance_customer
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
             $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            $customers = [];
-            foreach ($results as $row) {
+            foreach ($customerResults as $row) {
                 $data = json_decode($row['data'], true);
+                $customerId = $data['id'] ?? '';
                 $customerCode = $data['customer_code'] ?? '';
                 
-                if ($prefix && !empty($prefix) && strpos($customerCode, $prefix) !== 0) {
+                if ($prefix && !empty($prefix) && $customerCode && strpos($customerCode, $prefix) !== 0) {
                     continue;
                 }
                 
-                $customers[] = [
+                $displayName = $data['display_name'] ?? $data['name'] ?? 'Unknown';
+                $gstin = $data['gstin'] ?? '';
+                $label = $displayName . ($gstin ? " (gstin $gstin)" : '');
+                
+                $customerMap[$customerId] = [
+                    'id' => $customerId,
                     'customer_code' => $customerCode,
                     'name' => $data['name'] ?? 'Unknown',
-                    'display_name' => $data['display_name'] ?? $data['name'] ?? 'Unknown',
+                    'display_name' => $displayName,
+                    'label' => $label,
                     'email' => $data['email'] ?? '',
                     'phone' => $data['phone'] ?? '',
-                    'gstin' => $data['gstin'] ?? ''
+                    'gstin' => $gstin
                 ];
             }
             
+            // Get additional customers from finance_customers if exists
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
+            $stmt->execute();
+            $customersResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($customersResults as $row) {
+                $data = json_decode($row['data'], true);
+                $customerId = $data['id'] ?? '';
+                
+                if (!isset($customerMap[$customerId])) {
+                    $customerCode = $data['customer_code'] ?? '';
+                    
+                    if ($prefix && !empty($prefix) && $customerCode && strpos($customerCode, $prefix) !== 0) {
+                        continue;
+                    }
+                    
+                    $displayName = $data['display_name'] ?? $data['name'] ?? 'Unknown';
+                    $gstin = $data['gstin'] ?? '';
+                    $label = $displayName . ($gstin ? " (gstin $gstin)" : '');
+                    
+                    $customerMap[$customerId] = [
+                        'id' => $customerId,
+                        'customer_code' => $customerCode,
+                        'name' => $data['name'] ?? 'Unknown',
+                        'display_name' => $displayName,
+                        'label' => $label,
+                        'email' => $data['email'] ?? '',
+                        'phone' => $data['phone'] ?? '',
+                        'gstin' => $gstin
+                    ];
+                }
+            }
+            
+            // Aggregate customers from quotations for linked customers
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($quotationResults as $row) {
+                $data = json_decode($row['data'], true);
+                $customerId = $data['customer_id'] ?? '';
+                $customerGstin = $data['customer_gstin'] ?? '';
+                
+                if ($customerId && !isset($customerMap[$customerId]) && $customerGstin) {
+                    $customerMap[$customerId] = [
+                        'id' => $customerId,
+                        'customer_code' => '',
+                        'name' => 'Customer ' . $customerId,
+                        'display_name' => 'Customer ' . $customerId,
+                        'label' => "Customer $customerId (gstin $customerGstin)",
+                        'email' => '',
+                        'phone' => '',
+                        'gstin' => $customerGstin
+                    ];
+                }
+            }
+            
+            $customers = array_values($customerMap);
             echo json_encode(['customers' => $customers]);
             
         } catch (Exception $e) {
