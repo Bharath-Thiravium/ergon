@@ -1943,7 +1943,7 @@ class FinanceController extends Controller {
         return $invoices;
     }
     
-    private function getCompanyPrefix() {
+    public function getCompanyPrefix() {
         try {
             $db = Database::connect();
             $this->createTables($db);
