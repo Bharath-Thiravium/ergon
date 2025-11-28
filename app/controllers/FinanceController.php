@@ -180,6 +180,28 @@ class FinanceController extends Controller {
         }
     }
     
+    public function updateCompanyPrefix() {
+        header('Content-Type: application/json');
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $prefix = strtoupper(trim($_POST['company_prefix'] ?? 'BKC'));
+            
+            try {
+                $db = Database::connect();
+                $this->createTables($db);
+                
+                $stmt = $db->prepare("INSERT INTO finance_tables (table_name, record_count, company_prefix) VALUES ('settings', 0, ?) ON DUPLICATE KEY UPDATE company_prefix = ?");
+                $stmt->execute([$prefix, $prefix]);
+                
+                echo json_encode(['success' => true, 'prefix' => $prefix]);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
+        } else {
+            echo json_encode(['prefix' => $this->getCompanyPrefix()]);
+        }
+    }
+    
     public function importData() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'populate_demo') {
             header('Content-Type: application/json');
@@ -200,8 +222,15 @@ class FinanceController extends Controller {
             id INT AUTO_INCREMENT PRIMARY KEY,
             table_name VARCHAR(100) UNIQUE,
             record_count INT,
-            last_sync TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            last_sync TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            company_prefix VARCHAR(10) DEFAULT 'BKC'
         )");
+        
+        try {
+            $db->exec("ALTER TABLE finance_tables ADD COLUMN company_prefix VARCHAR(10) DEFAULT 'BKC'");
+        } catch (Exception $e) {
+            // Column already exists
+        }
         
         $db->exec("CREATE TABLE IF NOT EXISTS finance_data (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -279,6 +308,28 @@ class FinanceController extends Controller {
         
         foreach ($demoData as $tableName => $records) {
             $this->storeTableData($db, $tableName, $records);
+        }
+    }
+    
+    private function getCompanyPrefix() {
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $stmt = $db->prepare("SELECT company_prefix FROM finance_tables WHERE table_name = 'settings' LIMIT 1");
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result) {
+                return strtoupper($result['company_prefix']);
+            }
+            
+            $stmt = $db->prepare("INSERT INTO finance_tables (table_name, record_count, company_prefix) VALUES ('settings', 0, 'BKC')");
+            $stmt->execute();
+            
+            return 'BKC';
+        } catch (Exception $e) {
+            return 'BKC';
         }
     }
 }
