@@ -67,18 +67,18 @@ class DashboardController extends Controller {
             $hasProjectsTable = $projectTableCheck->rowCount() > 0;
             
             if ($hasProjectsTable) {
-                // Use JOIN with projects table for proper project names
+                // Use INNER JOIN to show only projects with tasks
                 $stmt = $db->prepare("
                     SELECT 
-                        COALESCE(p.name, 'General Tasks') as project_name,
-                        COUNT(*) as total_tasks,
+                        p.name as project_name,
+                        COUNT(t.id) as total_tasks,
                         SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
                         SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
                         SUM(CASE WHEN t.status NOT IN ('completed', 'in_progress') THEN 1 ELSE 0 END) as pending_tasks
-                    FROM tasks t
-                    LEFT JOIN projects p ON t.project_id = p.id
-                    GROUP BY COALESCE(p.name, 'General Tasks')
-                    HAVING COUNT(*) > 0
+                    FROM projects p
+                    INNER JOIN tasks t ON t.project_id = p.id
+                    WHERE p.status = 'active'
+                    GROUP BY p.id, p.name
                     ORDER BY total_tasks DESC
                     LIMIT 10
                 ");
