@@ -96,8 +96,8 @@ ob_end_clean();
     .message-modal.warning .message-icon{color:#ffc107}
     
     /* Global Navigation Buttons - Desktop Only */
-    .global-back-btn{position:fixed !important;top:320px !important;left:20px !important;right:auto !important;z-index:1000;background:rgba(255,255,255,0.95);color:#374151;border:1px solid rgba(0,0,0,0.1);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);backdrop-filter:blur(10px);transition:all 0.2s ease}
-    .global-forward-btn{position:fixed !important;top:320px !important;right:20px !important;left:auto !important;z-index:1000;background:rgba(255,255,255,0.95);color:#374151;border:1px solid rgba(0,0,0,0.1);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);backdrop-filter:blur(10px);transition:all 0.2s ease}
+    .global-back-btn{position:fixed !important;top:420px !important;left:20px !important;right:auto !important;z-index:1000;background:rgba(255,255,255,0.95);color:#374151;border:1px solid rgba(0,0,0,0.1);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);backdrop-filter:blur(10px);transition:all 0.2s ease}
+    .global-forward-btn{position:fixed !important;top:420px !important;right:20px !important;left:auto !important;z-index:1000;background:rgba(255,255,255,0.95);color:#374151;border:1px solid rgba(0,0,0,0.1);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);backdrop-filter:blur(10px);transition:all 0.2s ease}
     .global-back-btn:hover,.global-forward-btn:hover{background:rgba(255,255,255,1);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.2)}
     .global-back-btn svg,.global-forward-btn svg{stroke:#374151;transition:color 0.2s ease}
     .global-back-btn:hover svg,.global-forward-btn:hover svg{stroke:#1f2937}

@@ -39,28 +39,69 @@ class DashboardController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Direct query from tasks table
-            $stmt = $db->query("
-                SELECT 
-                    COALESCE(NULLIF(project_name, ''), 'General Tasks') as project_name,
-                    COUNT(*) as total_tasks,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
-                    SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
-                    SUM(CASE WHEN status NOT IN ('completed', 'in_progress') THEN 1 ELSE 0 END) as pending_tasks
-                FROM tasks
-                GROUP BY COALESCE(NULLIF(project_name, ''), 'General Tasks')
-                HAVING COUNT(*) > 0
-                ORDER BY total_tasks DESC
-                LIMIT 10
-            ");
+            if (!$db) {
+                throw new Exception('Database connection failed');
+            }
             
+            // First check if tasks table exists and has data
+            $tableCheck = $db->query("SHOW TABLES LIKE 'tasks'");
+            if ($tableCheck->rowCount() === 0) {
+                throw new Exception('Tasks table does not exist');
+            }
+            
+            // Check if there are any tasks at all
+            $countStmt = $db->query("SELECT COUNT(*) as total FROM tasks");
+            $totalTasks = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+            error_log('Total tasks in database: ' . $totalTasks);
+            
+            if ($totalTasks == 0) {
+                throw new Exception('No tasks found in database');
+            }
+            
+            // Check if project_name column exists
+            $columnCheck = $db->query("SHOW COLUMNS FROM tasks LIKE 'project_name'");
+            $hasProjectName = $columnCheck->rowCount() > 0;
+            
+            if ($hasProjectName) {
+                // Use project_name column if it exists
+                $stmt = $db->prepare("
+                    SELECT 
+                        COALESCE(NULLIF(TRIM(project_name), ''), 'General Tasks') as project_name,
+                        COUNT(*) as total_tasks,
+                        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
+                        SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
+                        SUM(CASE WHEN status NOT IN ('completed', 'in_progress') THEN 1 ELSE 0 END) as pending_tasks
+                    FROM tasks
+                    GROUP BY COALESCE(NULLIF(TRIM(project_name), ''), 'General Tasks')
+                    HAVING COUNT(*) > 0
+                    ORDER BY total_tasks DESC
+                    LIMIT 10
+                ");
+            } else {
+                // Fallback: group all tasks as 'General Tasks'
+                $stmt = $db->prepare("
+                    SELECT 
+                        'General Tasks' as project_name,
+                        COUNT(*) as total_tasks,
+                        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
+                        SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
+                        SUM(CASE WHEN status NOT IN ('completed', 'in_progress') THEN 1 ELSE 0 END) as pending_tasks
+                    FROM tasks
+                ");
+            }
+            
+            $stmt->execute();
             $projects = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            
+            // Log for debugging
+            error_log('Project Overview - Found ' . count($projects) . ' projects');
             
             $this->view('dashboard/project_overview', [
                 'projects' => $projects,
                 'active_page' => 'dashboard'
             ]);
         } catch (Exception $e) {
+            error_log('Project Overview Error: ' . $e->getMessage());
             $this->view('dashboard/project_overview', ['projects' => [], 'active_page' => 'dashboard']);
         }
     }
