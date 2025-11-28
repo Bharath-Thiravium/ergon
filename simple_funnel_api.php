@@ -36,10 +36,18 @@ try {
     foreach ($quotations as $row) {
         $data = json_decode($row['data'], true);
         if ($data) {
-            $number = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+            $number = $data['quotation_number'] ?? $data['quote_number'] ?? $data['number'] ?? '';
             if (!$prefix || strpos($number, $prefix) === 0) {
                 $quotation_count++;
-                $quotation_value += floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+                // Try all possible amount fields
+                $value = 0;
+                foreach (['total_amount', 'amount', 'value', 'quote_amount', 'quotation_amount', 'total', 'grand_total'] as $field) {
+                    if (isset($data[$field]) && floatval($data[$field]) > 0) {
+                        $value = floatval($data[$field]);
+                        break;
+                    }
+                }
+                $quotation_value += $value;
             }
         }
     }
@@ -52,10 +60,18 @@ try {
     foreach ($pos as $row) {
         $data = json_decode($row['data'], true);
         if ($data) {
-            $number = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+            $number = $data['po_number'] ?? $data['internal_po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
             if (!$prefix || strpos($number, $prefix) === 0 || stripos($number, $prefix) !== false) {
                 $po_count++;
-                $po_value += floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+                // Try all possible amount fields
+                $value = 0;
+                foreach (['total_amount', 'amount', 'value', 'po_amount', 'order_amount', 'total', 'grand_total'] as $field) {
+                    if (isset($data[$field]) && floatval($data[$field]) > 0) {
+                        $value = floatval($data[$field]);
+                        break;
+                    }
+                }
+                $po_value += $value;
             }
         }
     }
@@ -68,12 +84,21 @@ try {
     foreach ($invoices as $row) {
         $data = json_decode($row['data'], true);
         if ($data) {
-            $number = $data['invoice_number'] ?? $data['number'] ?? '';
+            $number = $data['invoice_number'] ?? $data['number'] ?? $data['invoice_no'] ?? '';
             if (!$prefix || strpos($number, $prefix) === 0) {
                 $invoice_count++;
-                $total = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
-                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                // Try all possible total amount fields
+                $total = 0;
+                foreach (['total_amount', 'amount', 'value', 'invoice_amount', 'total', 'grand_total'] as $field) {
+                    if (isset($data[$field]) && floatval($data[$field]) > 0) {
+                        $total = floatval($data[$field]);
+                        break;
+                    }
+                }
+                
+                $outstanding = floatval($data['outstanding_amount'] ?? $data['balance'] ?? $data['due_amount'] ?? 0);
                 $paid = $total - $outstanding;
+                if ($paid < 0) $paid = floatval($data['amount_paid'] ?? $data['paid_amount'] ?? 0);
                 
                 $invoice_value += $total;
                 $payment_value += $paid;
