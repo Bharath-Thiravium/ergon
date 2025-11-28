@@ -9,6 +9,9 @@ ob_start();
         <p>Stay updated with your latest notifications</p>
     </div>
     <div class="page-actions">
+        <form method="POST" action="/ergon/create_test_notification.php" style="display:inline;">
+            <button type="submit" class="btn btn--success">Create Test Notification</button>
+        </form>
         <button class="btn btn--secondary" onclick="markAllAsRead()" id="markAllBtn">Mark All Read</button>
         <button class="btn btn--primary" onclick="markSelectedAsRead()" id="markSelectedBtn" disabled>Mark Selected Read</button>
     </div>
