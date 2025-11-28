@@ -5,6 +5,12 @@ ob_start();
 
 <div class="page-header">
     <div class="page-title">
+        <button class="btn btn--back" onclick="goBack()" title="Go Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+        </button>
         <h1><span>🔔</span> Notifications</h1>
         <p>Stay updated with your latest notifications</p>
     </div>
@@ -228,6 +234,12 @@ function timeAgo($datetime) {
 ?>
 
 <script src="/ergon/assets/js/notifications-enhanced.js" defer></script>
+<script>
+function goBack() {
+    window.history.back();
+}
+window.goBack = goBack;
+</script>
 
 <?php
 $content = ob_get_clean();

@@ -962,12 +962,9 @@ ob_end_clean();
     }
 
     function goBack() {
-        if (document.referrer && document.referrer.includes('/ergon/')) {
-            window.history.back();
-        } else {
-            window.location.href = '/ergon/tasks';
-        }
+        window.history.back();
     }
+    window.goBack = goBack;
     
     function toggleLeaveFilters() {
         const panel = document.getElementById('leaveFiltersPanel');
