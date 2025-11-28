@@ -18,6 +18,7 @@ $content = ob_start();
 <meta name="csrf-token" content="<?= $_SESSION['csrf_token'] ?>">
 <link rel="stylesheet" href="/ergon/assets/css/unified-daily-planner.css">
 <link rel="stylesheet" href="/ergon/assets/css/task-timing.css">
+<link rel="stylesheet" href="/ergon/assets/css/css-parsing-fixes.css">
 
 <?php renderModalCSS(); ?>
 

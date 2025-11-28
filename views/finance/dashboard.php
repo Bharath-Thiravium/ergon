@@ -435,20 +435,36 @@ let agingBucketsChart;
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification notification--${type}`;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        background: ${type === 'error' ? '#f8d7da' : type === 'success' ? '#d4edda' : type === 'warning' ? '#fff3cd' : '#d1ecf1'};
-        border: 1px solid ${type === 'error' ? '#f5c6cb' : type === 'success' ? '#c3e6cb' : type === 'warning' ? '#ffeaa7' : '#bee5eb'};
-        color: ${type === 'error' ? '#721c24' : type === 'success' ? '#155724' : type === 'warning' ? '#856404' : '#0c5460'};
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 10000;
-        max-width: 400px;
-        font-size: 14px;
-    `;
+    // Use CSS classes instead of inline styles to avoid parsing errors
+    notification.className = `notification notification--${type}`;
+    notification.style.position = 'fixed';
+    notification.style.top = '20px';
+    notification.style.right = '20px';
+    notification.style.padding = '12px 20px';
+    notification.style.borderRadius = '6px';
+    notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    notification.style.zIndex = '10000';
+    notification.style.maxWidth = '400px';
+    notification.style.fontSize = '14px';
+    
+    // Set colors based on type
+    if (type === 'error') {
+        notification.style.background = '#f8d7da';
+        notification.style.border = '1px solid #f5c6cb';
+        notification.style.color = '#721c24';
+    } else if (type === 'success') {
+        notification.style.background = '#d4edda';
+        notification.style.border = '1px solid #c3e6cb';
+        notification.style.color = '#155724';
+    } else if (type === 'warning') {
+        notification.style.background = '#fff3cd';
+        notification.style.border = '1px solid #ffeaa7';
+        notification.style.color = '#856404';
+    } else {
+        notification.style.background = '#d1ecf1';
+        notification.style.border = '1px solid #bee5eb';
+        notification.style.color = '#0c5460';
+    }
     notification.textContent = message;
     
     document.body.appendChild(notification);
@@ -516,7 +532,7 @@ function initCharts() {
     if (quotationsCtx) {
         quotationsChart = new Chart(quotationsCtx.getContext('2d'), {
             type: 'pie',
-            data: { labels: ['Draft','Revised','Converted'], datasets: [{ data: [0,0,0], backgroundColor: ['#3b82f6','#f59e0b','#10b981'] }] },
+            data: { labels: ['Pending','Placed','Rejected'], datasets: [{ data: [0,0,0], backgroundColor: ['#3b82f6','#10b981','#ef4444'] }] },
             options: chartDefaults
         });
     }
@@ -623,11 +639,19 @@ async function showTableStructure() {
         
         // Show in a modal or alert
         const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            max-width: 80%; max-height: 80%; overflow: auto; z-index: 10000;
-        `;
+            // Use individual style properties to avoid CSS parsing errors
+        modal.style.position = 'fixed';
+        modal.style.top = '50%';
+        modal.style.left = '50%';
+        modal.style.transform = 'translate(-50%, -50%)';
+        modal.style.background = 'white';
+        modal.style.padding = '20px';
+        modal.style.borderRadius = '8px';
+        modal.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)';
+        modal.style.maxWidth = '80%';
+        modal.style.maxHeight = '80%';
+        modal.style.overflow = 'auto';
+        modal.style.zIndex = '10000';
         modal.innerHTML = structureHtml + '<button onclick="this.parentNode.remove()" style="margin-top: 15px; padding: 8px 16px;">Close</button>';
         document.body.appendChild(modal);
         
@@ -1080,6 +1104,16 @@ async function updateCharts(data) {
         if (rejectedEl) rejectedEl.textContent = data.rejectedQuotations || 0;
         if (pendingEl) pendingEl.textContent = data.pendingQuotations || 0;
         if (totalEl) totalEl.textContent = data.totalQuotations || 0;
+        
+        // Update quotations chart with count data
+        if (quotationsChart) {
+            quotationsChart.data.datasets[0].data = [
+                data.pendingQuotations || 0,
+                data.placedQuotations || 0, 
+                data.rejectedQuotations || 0
+            ];
+            quotationsChart.update();
+        }
         
         // Update Purchase Orders Chart
         const poResponse = await fetch('/ergon/finance/visualization?type=purchase_orders');
