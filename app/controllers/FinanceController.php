@@ -30,7 +30,7 @@ class FinanceController extends Controller {
             }
             
             $syncCount = 0;
-            $financeTables = ['finance_invoices', 'finance_quotations', 'finance_customers'];
+            $financeTables = ['finance_invoices', 'finance_quotations', 'finance_customer'];
             
             foreach ($financeTables as $tableName) {
                 $result = @pg_query($pgConn, "SELECT * FROM $tableName");
@@ -57,6 +57,8 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
+            $prefix = $this->getCompanyPrefix();
+            
             $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $invoiceCount = $stmt->fetchColumn();
@@ -82,6 +84,13 @@ class FinanceController extends Controller {
             
             foreach ($invoiceResults as $row) {
                 $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                // Filter by company prefix if set
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
                 $total = floatval($data['total_amount'] ?? 0);
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
                 
@@ -119,6 +128,8 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
+            $prefix = $this->getCompanyPrefix();
+            
             $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $count = $stmt->fetchColumn();
@@ -135,6 +146,13 @@ class FinanceController extends Controller {
             $invoices = [];
             foreach ($results as $row) {
                 $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? 'N/A';
+                
+                // Filter by company prefix if set
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
                 
                 if ($outstanding > 0) {
@@ -142,8 +160,8 @@ class FinanceController extends Controller {
                     $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
                     
                     $invoices[] = [
-                        'invoice_number' => $data['invoice_number'] ?? 'N/A',
-                        'customer_name' => $data['customer_name'] ?? 'Unknown',
+                        'invoice_number' => $invoiceNumber,
+                        'customer_name' => $data['name'] ?? $data['display_name'] ?? $data['customer_name'] ?? 'Unknown',
                         'due_date' => $dueDate,
                         'outstanding_amount' => $outstanding,
                         'daysOverdue' => floor($daysOverdue),
