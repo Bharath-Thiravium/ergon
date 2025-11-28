@@ -62,6 +62,16 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customerFilter = $_GET['customer'] ?? '';
             
+            // Calculate and save funnel stats
+            require_once __DIR__ . '/../services/FunnelCalculationService.php';
+            $funnelService = new FunnelCalculationService($db);
+            $funnelService->calculateFunnelStats($prefix);
+            $funnelService->calculateChartStats($prefix);
+            
+            // Get calculated stats from tables
+            $funnelStats = $funnelService->getFunnelStats($prefix);
+            $chartStats = $funnelService->getChartStats($prefix);
+            
             $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $invoiceCount = $stmt->fetchColumn();
@@ -191,7 +201,8 @@ class FinanceController extends Controller {
                 'openPOCount' => $openPOCount,
                 'totalPOCount' => $totalPOCount,
                 'claimRate' => $claimRate,
-                'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
+                'conversionFunnel' => $funnelStats ?: $this->getConversionFunnel($db, $customerFilter),
+                'chartData' => $chartStats,
                 'cashFlow' => [
                     'expectedInflow' => $pendingInvoiceAmount,
                     'poCommitments' => $pendingPOValue
