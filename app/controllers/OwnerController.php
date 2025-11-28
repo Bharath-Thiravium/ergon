@@ -65,10 +65,14 @@ class OwnerController extends Controller {
             // Get system alerts
             $alerts = $this->getSystemAlerts($db);
             
-            // Debug: Log the stats to see what's being fetched
-            error_log('Owner Dashboard Stats: ' . json_encode($stats));
+
             
-            $this->view('owner/dashboard_clean', [
+            // Force clear any cached data
+            if (function_exists('opcache_reset')) {
+                opcache_reset();
+            }
+            
+            $this->view('owner/dashboard', [
                 'data' => [
                     'stats' => $stats,
                     'final_approvals' => $finalApprovals,
@@ -470,76 +474,103 @@ class OwnerController extends Controller {
     }
     
     private function getActiveProjectsCount($db) {
-        // First try projects table, then fall back to tasks
         try {
             $stmt = $db->query("SELECT COUNT(*) FROM projects WHERE status = 'active'");
             $count = $stmt->fetchColumn();
             if ($count > 0) return $count;
-        } catch (Exception $e) {}
+        } catch (Exception $e) {
+            // Projects table doesn't exist, fall back to tasks
+        }
         
-        $stmt = $db->query("SELECT COUNT(DISTINCT project_name) FROM tasks WHERE project_name IS NOT NULL AND project_name != '' AND status != 'completed'");
-        return $stmt->fetchColumn() ?: 12;
+        try {
+            $stmt = $db->query("SELECT COUNT(DISTINCT project_name) FROM tasks WHERE project_name IS NOT NULL AND project_name != '' AND status != 'completed'");
+            return $stmt->fetchColumn() ?: 0;
+        } catch (Exception $e) {
+            return 0;
+        }
     }
     
     private function getCompletedTasksCount($db) {
-        $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status = 'completed' AND DATE(updated_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
-        return $stmt->fetchColumn() ?: 35;
+        try {
+            $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status = 'completed'");
+            return $stmt->fetchColumn() ?: 0;
+        } catch (Exception $e) {
+            return 0;
+        }
     }
     
     private function getAverageProgress($db) {
-        // Calculate average progress across all projects
-        $stmt = $db->query("
-            SELECT AVG(
-                (SELECT COUNT(*) FROM tasks t2 WHERE t2.project_name = t1.project_name AND t2.status = 'completed') * 100.0 /
-                (SELECT COUNT(*) FROM tasks t3 WHERE t3.project_name = t1.project_name)
-            ) as avg_progress
-            FROM (SELECT DISTINCT project_name FROM tasks WHERE project_name IS NOT NULL AND project_name != '') t1
-        ");
-        return round($stmt->fetchColumn() ?: 85);
+        try {
+            $stmt = $db->query("SELECT COUNT(*) FROM tasks");
+            $totalTasks = $stmt->fetchColumn();
+            if ($totalTasks == 0) return 0;
+            
+            $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status = 'completed'");
+            $completedTasks = $stmt->fetchColumn();
+            
+            return round(($completedTasks / $totalTasks) * 100);
+        } catch (Exception $e) {
+            return 0;
+        }
     }
     
     private function getInProgressTasksCount($db) {
-        $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status = 'in_progress'");
-        return $stmt->fetchColumn() ?: 8;
+        try {
+            $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status IN ('in_progress', 'assigned')");
+            return $stmt->fetchColumn() ?: 0;
+        } catch (Exception $e) {
+            return 0;
+        }
     }
     
     private function getPendingTasksCount($db) {
-        $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status = 'pending'");
-        return $stmt->fetchColumn() ?: 4;
+        try {
+            $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status IN ('pending', 'not_started')");
+            return $stmt->fetchColumn() ?: 0;
+        } catch (Exception $e) {
+            return 0;
+        }
     }
     
     private function getCompletionRate($db) {
-        $stmt = $db->query("
-            SELECT 
-                (COUNT(CASE WHEN status = 'completed' THEN 1 END) * 100.0 / COUNT(*)) as completion_rate
-            FROM tasks
-        ");
-        return round($stmt->fetchColumn() ?: 78);
+        try {
+            $stmt = $db->query("SELECT COUNT(*) FROM tasks");
+            $totalTasks = $stmt->fetchColumn();
+            if ($totalTasks == 0) return 0;
+            
+            $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status = 'completed'");
+            $completedTasks = $stmt->fetchColumn();
+            
+            return round(($completedTasks / $totalTasks) * 100);
+        } catch (Exception $e) {
+            return 0;
+        }
     }
     
     private function getOverdueTasksCount($db) {
         $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (due_date < CURDATE() OR deadline < CURDATE()) AND status NOT IN ('completed', 'cancelled')");
-        return $stmt->fetchColumn() ?: 5;
+        return $stmt->fetchColumn();
     }
     
     private function getDueThisWeekCount($db) {
         $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) OR deadline BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AND status NOT IN ('completed', 'cancelled')");
-        return $stmt->fetchColumn() ?: 8;
+        return $stmt->fetchColumn();
     }
     
     private function getDueTomorrowCount($db) {
         $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (DATE(due_date) = DATE_ADD(CURDATE(), INTERVAL 1 DAY) OR DATE(deadline) = DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AND status NOT IN ('completed', 'cancelled')");
-        return $stmt->fetchColumn() ?: 3;
+        return $stmt->fetchColumn();
     }
     
     private function getRescheduledTasksCount($db) {
-        // This would require a rescheduled_count field or history table
-        return 2; // Placeholder
+        // Count tasks that have been updated multiple times (approximation)
+        $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE updated_at != created_at AND status != 'completed'");
+        return $stmt->fetchColumn();
     }
     
     private function getCriticalTasksCount($db) {
         $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE priority = 'high' AND due_date < DATE_ADD(CURDATE(), INTERVAL 2 DAY) AND status != 'completed'");
-        return $stmt->fetchColumn() ?: 1;
+        return $stmt->fetchColumn();
     }
     
     private function getOntimeRate($db) {
@@ -550,7 +581,7 @@ class OwnerController extends Controller {
             FROM tasks 
             WHERE status = 'completed' AND due_date IS NOT NULL
         ");
-        return round($stmt->fetchColumn() ?: 92);
+        return round($stmt->fetchColumn() ?: 0);
     }
     
     private function ensureApprovalColumns($db) {

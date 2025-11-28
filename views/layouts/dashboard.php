@@ -2,6 +2,8 @@
 ob_start();
 header('Content-Type: text/html; charset=UTF-8');
 require_once __DIR__ . '/../../app/helpers/Security.php';
+require_once __DIR__ . '/../../app/helpers/SecurityHeaders.php';
+SecurityHeaders::apply();
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) { header('Location: /ergon/login'); exit; }
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) { session_unset(); session_destroy(); header('Location: /ergon/login?timeout=1'); exit; }
@@ -51,7 +53,7 @@ ob_end_clean();
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
     
-    <script src="/ergon/assets/js/theme-preload.js"></script>
+    <script src="/ergon/assets/js/theme-preload.js?v=<?= time() ?>"></script>
     <script>
     // Convert title attributes to data-tooltip for custom tooltips
     document.addEventListener('DOMContentLoaded', function() {
@@ -80,6 +82,68 @@ ob_end_clean();
     .btn--attendance-toggle.state-completed{background:#059669 !important;border:3px solid #047857 !important;color:#ffffff !important;opacity:1 !important;box-shadow:0 4px 12px rgba(5,150,105,0.4) !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important}
     .btn--attendance-toggle.state-leave{background:#f59e0b !important;border:3px solid #d97706 !important;color:#ffffff !important;opacity:1 !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important}
     @keyframes pulse-red{0%,100%{box-shadow:0 4px 16px rgba(220,38,38,0.6)}50%{box-shadow:0 6px 20px rgba(220,38,38,0.8)}}
+    
+    /* Simple Message Modal */
+    .message-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99999;display:none;align-items:center;justify-content:center}
+    .message-modal.show{display:flex}
+    .message-content{background:#fff;border-radius:12px;padding:24px;max-width:400px;width:90%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.3)}
+    .message-icon{font-size:48px;margin-bottom:16px}
+    .message-text{font-size:16px;margin-bottom:20px;color:#333;line-height:1.5}
+    .message-close{background:#007bff;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600}
+    .message-close:hover{background:#0056b3}
+    .message-modal.success .message-icon{color:#28a745}
+    .message-modal.error .message-icon{color:#dc3545}
+    .message-modal.warning .message-icon{color:#ffc107}
+    
+    /* Global Navigation Buttons - Desktop Only */
+    .global-back-btn{position:fixed !important;top:400px !important;left:20px !important;right:auto !important;z-index:1000;background:rgba(255,255,255,0.95);color:#374151;border:1px solid rgba(0,0,0,0.1);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);backdrop-filter:blur(10px);transition:all 0.2s ease}
+    .global-forward-btn{position:fixed !important;top:400px !important;right:20px !important;left:auto !important;z-index:1000;background:rgba(255,255,255,0.95);color:#374151;border:1px solid rgba(0,0,0,0.1);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);backdrop-filter:blur(10px);transition:all 0.2s ease}
+    .global-back-btn:hover,.global-forward-btn:hover{background:rgba(255,255,255,1);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+    .global-back-btn svg,.global-forward-btn svg{stroke:#374151;transition:color 0.2s ease}
+    .global-back-btn:hover svg,.global-forward-btn:hover svg{stroke:#1f2937}
+    [data-theme="dark"] .global-back-btn,[data-theme="dark"] .global-forward-btn{background:rgba(31,41,55,0.95);border-color:rgba(255,255,255,0.1);color:#f1f5f9}
+    [data-theme="dark"] .global-back-btn:hover,[data-theme="dark"] .global-forward-btn:hover{background:rgba(31,41,55,1)}
+    [data-theme="dark"] .global-back-btn svg,[data-theme="dark"] .global-forward-btn svg{stroke:#f1f5f9}
+    @media (max-width:1024px){.global-back-btn,.global-forward-btn{display:none}}
+    
+    /* Notification Enhancements */
+    .notification-item--unread{background:#f0f9ff;border-left:3px solid #0ea5e9}
+    .unread-dot{color:#ef4444;font-size:12px;margin-left:4px}
+    .notification-badge{background:#ef4444;color:#fff;border-radius:50%;padding:2px 6px;font-size:11px;font-weight:600;min-width:18px;text-align:center;position:absolute;top:-8px;right:-8px;z-index:10}
+    .notification-badge.has-notifications{animation:pulse 2s infinite}
+    .notification-dropdown{max-height:400px;overflow-y:auto;box-shadow:0 10px 25px rgba(0,0,0,0.15);background:#fff;border-radius:8px;border:1px solid #e2e8f0;min-width:320px}
+    @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
+    .control-btn{position:relative}
+    
+    /* Attendance Notification Styles */
+    .attendance-notification{position:fixed;top:20px;right:20px;background:#fff;border-radius:8px;padding:16px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15);z-index:99999;transform:translateX(100%);transition:transform 0.3s ease;max-width:350px;border-left:4px solid #10b981}
+    .attendance-notification.show{transform:translateX(0)}
+    .attendance-notification.success{border-left-color:#10b981}
+    .attendance-notification.error{border-left-color:#ef4444}
+    .attendance-notification.warning{border-left-color:#f59e0b}
+    .notification-content{display:flex;align-items:center;gap:12px;font-size:14px;font-weight:500}
+    .notification-content i{font-size:18px}
+    .attendance-notification.success .notification-content i{color:#10b981}
+    .attendance-notification.error .notification-content i{color:#ef4444}
+    .attendance-notification.warning .notification-content i{color:#f59e0b}
+    
+    /* Mobile Dialog Styles */
+    .attendance-dialog-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.3s ease}
+    .attendance-dialog-overlay.show{opacity:1}
+    .attendance-dialog{background:#fff;border-radius:12px;padding:24px;max-width:320px;width:90%;text-align:center;transform:scale(0.9);transition:transform 0.3s ease}
+    .attendance-dialog-overlay.show .attendance-dialog{transform:scale(1)}
+    .dialog-icon{font-size:48px;margin-bottom:16px}
+    .dialog-icon i{color:#10b981}
+    .attendance-dialog.error .dialog-icon i{color:#ef4444}
+    .attendance-dialog.warning .dialog-icon i{color:#f59e0b}
+    .dialog-message{font-size:16px;margin-bottom:20px;color:#333;line-height:1.5}
+    .dialog-close{background:#007bff;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600}
+    .dialog-close:hover{background:#0056b3}
+    
+    @media (max-width:768px){
+        .attendance-notification{top:10px;right:10px;left:10px;max-width:none;transform:translateY(-100%)}
+        .attendance-notification.show{transform:translateY(0)}
+    }
     </style>
     
     <link href="/ergon/assets/css/bootstrap-icons.min.css?v=1.0" rel="stylesheet">
@@ -107,11 +171,12 @@ ob_end_clean();
     <script src="/ergon/assets/js/table-utils.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/user-status-check.js?v=1.0" defer></script>
 
+
     <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
     <script src="/ergon/assets/js/mobile-validation.js?v=<?= time() ?>" defer></script>
     <?php endif; ?>
 </head>
-<body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>" data-user-role="<?= $_SESSION['role'] ?? 'user' ?>">
+<body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>" data-user-role="<?= $_SESSION['role'] ?? 'user' ?>" data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>">
     <header class="main-header">
         <div class="header__top">
             <div class="header__brand">
@@ -136,9 +201,9 @@ ob_end_clean();
                 <button class="control-btn" id="theme-toggle" title="Toggle Theme">
                     <i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i>
                 </button>
-                <button class="control-btn" onclick="toggleNotifications(event)" title="Notifications">
+                <button class="control-btn notification-btn" id="notificationBtn" onclick="toggleNotifications(event)" title="Notifications">
                     <i class="bi bi-bell-fill"></i>
-                    <span class="notification-badge" id="notificationBadge">0</span>
+                    <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
                 </button>
                 <button class="profile-btn" id="profileButton" type="button">
                     <span class="profile-avatar"><?= htmlspecialchars(strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
@@ -171,6 +236,15 @@ ob_end_clean();
                         <span class="menu-icon"><i class="bi bi-box-arrow-right"></i></span>
                         Logout
                     </a>
+                </div>
+                
+                <!-- Simple Message Modal -->
+                <div id="messageModal" class="message-modal">
+                    <div class="message-content">
+                        <div class="message-icon" id="messageIcon"></div>
+                        <div class="message-text" id="messageText"></div>
+                        <button class="message-close" onclick="closeMessageModal()">OK</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -591,7 +665,7 @@ ob_end_clean();
     <div class="notification-dropdown" id="notificationDropdown">
         <div class="notification-header">
             <h3>Notifications</h3>
-            <button type="button" class="view-all-link" onclick="navigateToNotifications(event)">View All</button>
+            <button type="button" class="view-all-link" id="viewAllNotificationsBtn" onclick="window.location.href='/ergon/notifications'">View All</button>
         </div>
         <div class="notification-list" id="notificationList">
             <div class="notification-loading">Loading notifications...</div>
@@ -599,6 +673,16 @@ ob_end_clean();
     </div>
 
     <main class="main-content">
+        <button class="global-back-btn desktop-only" onclick="goBack()" data-tooltip="Go Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+        </button>
+        <button class="global-forward-btn desktop-only" onclick="goForward()" data-tooltip="Go Forward">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+        </button>
         <?php if (isset($title) && in_array($title, ['Executive Dashboard', 'Team Competition Dashboard', 'Follow-ups Management', 'System Settings', 'IT Activity Reports', 'Notifications'])): ?>
         <div class="page-header">
             <div class="page-title">
@@ -606,9 +690,7 @@ ob_end_clean();
             </div>
             <?php if ($title === 'Notifications'): ?>
             <div class="page-actions">
-                <button class="btn btn--primary" onclick="markAllAsRead()">
-                    Mark All Read
-                </button>
+                <!-- Buttons are now handled by the view file itself -->
             </div>
             <?php endif; ?>
         </div>
@@ -620,132 +702,122 @@ ob_end_clean();
     // Global variables - Initialize first
     let attendanceState = 'out'; // 'in' or 'out'
     
-    // Simple dropdown system
-    function toggleDropdown(id) {
-        var dropdown = document.getElementById(id);
+    // Notification functions - Define immediately
+    function toggleNotifications(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        const dropdown = document.getElementById('notificationDropdown');
         if (!dropdown) return;
         
-        var isOpen = dropdown.classList.contains('show');
+        const isVisible = dropdown.style.display === 'block';
         
-        // Close all dropdowns
-        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
-            menu.classList.remove('show');
-            var btn = menu.previousElementSibling;
-            if (btn) btn.classList.remove('active');
-        });
-        
-        // Open this dropdown if it was closed
-        if (!isOpen) {
-            var btn = dropdown.previousElementSibling;
-            var rect = btn.getBoundingClientRect();
-            
-            dropdown.style.position = 'fixed';
-            dropdown.style.top = (rect.bottom + 8) + 'px';
-            dropdown.style.left = rect.left + 'px';
-            dropdown.style.zIndex = '99999';
-            
-            dropdown.classList.add('show');
-            btn.classList.add('active');
-        }
-    }
-    
-    window.toggleDropdown = toggleDropdown;
-    
-    function toggleNotifications(event) {
-        if (event) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        var dropdown = document.getElementById('notificationDropdown');
-        var button = event.target.closest('.control-btn');
-        
-        if (dropdown && button) {
-            var isVisible = dropdown.style.display === 'block';
-            
-            document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
-                menu.classList.remove('show');
-            });
-            var profileMenu = document.getElementById('profileMenu');
-            if (profileMenu) profileMenu.classList.remove('show');
-            
-            if (isVisible) {
-                dropdown.style.display = 'none';
-            } else {
-                var rect = button.getBoundingClientRect();
+        if (isVisible) {
+            dropdown.style.display = 'none';
+        } else {
+            const button = document.querySelector('.notification-btn');
+            if (button) {
+                const rect = button.getBoundingClientRect();
                 dropdown.style.position = 'fixed';
                 dropdown.style.top = (rect.bottom + 8) + 'px';
                 dropdown.style.right = (window.innerWidth - rect.right) + 'px';
-                dropdown.style.left = 'auto';
                 dropdown.style.zIndex = '10000';
-                dropdown.style.display = 'block';
-                
-                loadNotifications();
             }
+            dropdown.style.display = 'block';
+            loadNotifications();
         }
-    }
-    
-    function navigateToNotifications(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        
-        var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown) {
-            dropdown.style.display = 'none';
-        }
-        
-        setTimeout(function() {
-            window.location.href = '/ergon/notifications';
-        }, 100);
-        return false;
     }
     
     function loadNotifications() {
-        var list = document.getElementById('notificationList');
+        const list = document.getElementById('notificationList');
         if (!list) return;
         
-        fetch('/ergon/api/notifications.php')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
+        list.innerHTML = '<div class="notification-loading">Loading...</div>';
+        
+        fetch('/ergon/api/notifications.php', {
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
             }
-            return response.json();
         })
-        .then(data => {
-            if (data.success && data.notifications && data.notifications.length > 0) {
-                list.innerHTML = data.notifications.map(function(notif) {
-                    var link = getNotificationLink(notif.module_name, notif.message);
-                    return '<a href="' + link + '" class="notification-item" onclick="closeNotificationDropdown()">' +
-                           '<div class="notification-title">' + (notif.action_type || 'Notification') + '</div>' +
-                           '<div class="notification-message">' + (notif.message || '') + '</div>' +
-                           '<div class="notification-time">' + formatTime(notif.created_at) + '</div>' +
-                           '</a>';
-                }).join('');
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.notifications && data.notifications.length > 0) {
+                    list.innerHTML = data.notifications.map(notif => {
+                        const time = formatTime(notif.created_at);
+                        const title = escapeHtml(notif.title || 'Notification');
+                        const message = escapeHtml(notif.message || '');
+                        
+                        return `
+                            <a href="/ergon/notifications" class="notification-item">
+                                <div class="notification-title">${title}</div>
+                                <div class="notification-message">${message}</div>
+                                <div class="notification-time">${time}</div>
+                            </a>
+                        `;
+                    }).join('');
+                } else {
+                    list.innerHTML = '<div class="notification-loading">No notifications</div>';
+                }
                 
-                updateNotificationBadge(data.unread_count || 0);
-            } else {
-                list.innerHTML = '<div class="notification-loading">No notifications</div>';
-                updateNotificationBadge(0);
-            }
-        })
-        .catch(error => {
-            console.warn('Notification loading failed:', error.message);
-            list.innerHTML = '<div class="notification-loading">Unable to load notifications</div>';
-            updateNotificationBadge(0);
-        });
+                const badge = document.getElementById('notificationBadge');
+                if (badge && data.unread_count !== undefined) {
+                    badge.textContent = data.unread_count;
+                    badge.style.display = data.unread_count > 0 ? 'inline-block' : 'none';
+                }
+            })
+            .catch(() => {
+                list.innerHTML = '<div class="notification-loading">Failed to load</div>';
+            });
     }
     
-    function updateNotificationBadge(count) {
-        var badge = document.getElementById('notificationBadge');
-        if (badge) {
-            badge.textContent = count;
-            badge.style.display = count > 0 ? 'block' : 'none';
+    function formatTime(dateStr) {
+        try {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return `${minutes}m ago`;
+            
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            
+            return date.toLocaleDateString();
+        } catch (error) {
+            return 'Recently';
         }
     }
     
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Make globally available
+    window.toggleNotifications = toggleNotifications;
+    
+    // Global back button function
+    function goBack() {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = '/ergon/dashboard';
+        }
+    }
+    
+    // Global forward button function
+    function goForward() {
+        window.history.forward();
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
-        loadNotifications();
         checkAttendanceStatus();
-        
+
         // Ensure profile button is clickable
         var profileBtn = document.getElementById('profileButton');
         if (profileBtn) {
@@ -756,55 +828,6 @@ ob_end_clean();
             });
         }
     });
-    
-    function getNotificationLink(module, message) {
-        switch(module) {
-            case 'task': return '/ergon/tasks';
-            case 'leave': return '/ergon/leaves';
-            case 'expense': return '/ergon/expenses';
-            case 'advance': return '/ergon/advances';
-            default: return '/ergon/notifications';
-        }
-    }
-    
-    function formatTime(dateStr) {
-        var date = new Date(dateStr);
-        var now = new Date();
-        var diff = now - date;
-        var minutes = Math.floor(diff / 60000);
-        if (minutes < 1) return 'Just now';
-        if (minutes < 60) return minutes + ' min ago';
-        var hours = Math.floor(minutes / 60);
-        if (hours < 24) return hours + ' hour' + (hours > 1 ? 's' : '') + ' ago';
-        return date.toLocaleDateString();
-    }
-    
-    function closeNotificationDropdown() {
-        var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown) dropdown.style.display = 'none';
-    }
-    
-    function markAllAsRead() {
-        fetch('/ergon/api/notifications.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: 'action=mark-all-read'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.error || 'Failed to mark all as read');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Network error occurred');
-        });
-    }
 
     function toggleProfile() {
         console.log('toggleProfile called'); // Debug log
@@ -836,6 +859,32 @@ ob_end_clean();
     // Make functions globally accessible
     window.toggleProfile = toggleProfile;
     
+    // Navigation dropdown toggle function
+    function toggleDropdown(dropdownId) {
+        const dropdown = document.getElementById(dropdownId);
+        const button = dropdown ? dropdown.previousElementSibling : null;
+        
+        // Close all other dropdowns
+        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
+            if (menu.id !== dropdownId) {
+                menu.classList.remove('show');
+            }
+        });
+        document.querySelectorAll('.nav-dropdown-btn').forEach(function(btn) {
+            if (btn !== button) {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Toggle current dropdown
+        if (dropdown) {
+            dropdown.classList.toggle('show');
+            if (button) {
+                button.classList.toggle('active');
+            }
+        }
+    }
+    
     // Define missing dropdown functions
     function showDropdown(element) {
         if (element && element.nextElementSibling) {
@@ -849,8 +898,34 @@ ob_end_clean();
         }
     }
     
+    function toggleDropdown(dropdownId) {
+        const dropdown = document.getElementById(dropdownId);
+        const button = dropdown ? dropdown.previousElementSibling : null;
+        
+        if (!dropdown) return;
+        
+        // Close all other dropdowns first
+        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
+            if (menu !== dropdown) {
+                menu.classList.remove('show');
+            }
+        });
+        document.querySelectorAll('.nav-dropdown-btn').forEach(function(btn) {
+            if (btn !== button) {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Toggle current dropdown
+        dropdown.classList.toggle('show');
+        if (button) {
+            button.classList.toggle('active');
+        }
+    }
+    
     window.showDropdown = showDropdown;
     window.hideDropdown = hideDropdown;
+    window.toggleDropdown = toggleDropdown;
     
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.header__controls')) {
@@ -859,7 +934,7 @@ ob_end_clean();
         }
         
         var dropdown = document.getElementById('notificationDropdown');
-        if (dropdown && !e.target.closest('.control-btn') && !e.target.closest('#notificationDropdown')) {
+        if (dropdown && !e.target.closest('.notification-btn') && !e.target.closest('#notificationDropdown')) {
             dropdown.style.display = 'none';
         }
         
@@ -879,6 +954,13 @@ ob_end_clean();
     
     function deleteRecord(module, id, name) {
         if (confirm('Are you sure you want to delete "' + name + '"? This action cannot be undone.')) {
+            // Show loading state
+            const deleteBtn = document.querySelector(`[data-id="${id}"][data-action="delete"]`);
+            if (deleteBtn) {
+                deleteBtn.disabled = true;
+                deleteBtn.style.opacity = '0.5';
+            }
+            
             fetch('/ergon/' + module + '/delete/' + id, {
                 method: 'POST',
                 headers: {
@@ -886,28 +968,50 @@ ob_end_clean();
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    location.reload();
+                    // Remove the row immediately
+                    const row = deleteBtn ? deleteBtn.closest('tr') : null;
+                    if (row) {
+                        row.style.transition = 'opacity 0.3s ease';
+                        row.style.opacity = '0';
+                        setTimeout(() => {
+                            row.remove();
+                            // Show success message
+                            alert('✅ ' + name + ' deleted successfully!');
+                        }, 300);
+                    } else {
+                        location.reload();
+                    }
                 } else {
-                    alert('Error: ' + (data.message || 'Failed to delete record'));
+                    alert('❌ Error: ' + (data.message || 'Failed to delete record'));
+                    if (deleteBtn) {
+                        deleteBtn.disabled = false;
+                        deleteBtn.style.opacity = '1';
+                    }
                 }
             })
             .catch(error => {
                 console.error('Delete error:', error);
-                alert('An error occurred while deleting the record.');
+                alert('❌ An error occurred while deleting the record.');
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.style.opacity = '1';
+                }
             });
         }
     }
 
     function goBack() {
-        if (document.referrer && document.referrer.includes('/ergon/')) {
-            window.history.back();
-        } else {
-            window.location.href = '/ergon/tasks';
-        }
+        window.history.back();
     }
+    window.goBack = goBack;
     
     function toggleLeaveFilters() {
         const panel = document.getElementById('leaveFiltersPanel');
@@ -952,38 +1056,84 @@ ob_end_clean();
         button.disabled = true;
         button.classList.add('loading');
         const originalText = text.textContent;
-        text.textContent = action === 'in' ? 'Clocking In...' : 'Clocking Out...';
+        text.textContent = 'Getting Location...';
         
-        fetch('/ergon/attendance/clock', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `type=${action}&latitude=0&longitude=0`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update status
-                if (action === 'in') {
-                    headerAttendanceStatus.has_clocked_in = true;
-                } else {
-                    headerAttendanceStatus.has_clocked_out = true;
+        // Get user location first
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    
+                    text.textContent = action === 'in' ? 'Clocking In...' : 'Clocking Out...';
+                    
+                    fetch('/ergon/attendance/clock', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `type=${action}&latitude=${latitude}&longitude=${longitude}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update status
+                            if (action === 'in') {
+                                headerAttendanceStatus.has_clocked_in = true;
+                            } else {
+                                headerAttendanceStatus.has_clocked_out = true;
+                            }
+                            
+                            updateHeaderAttendanceButton();
+                            showAttendanceNotification(`Clocked ${action} successfully!`, 'success');
+                        } else {
+                            // Check if it's a location restriction error
+                            if (data.error && data.error.includes('Please move within the allowed area')) {
+                                showAttendanceNotification('Please move within the allowed area to continue.', 'warning');
+                            } else {
+                                showAttendanceNotification(data.error || 'Failed to update attendance', 'error');
+                            }
+                            text.textContent = originalText;
+                        }
+                    })
+                    .catch(error => {
+                        showAttendanceNotification('Network error occurred', 'error');
+                        text.textContent = originalText;
+                    })
+                    .finally(() => {
+                        button.disabled = false;
+                        button.classList.remove('loading');
+                    });
+                },
+                function(error) {
+                    let errorMessage = 'Location access denied';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = 'Please enable location access to continue';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = 'Location information unavailable';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = 'Location request timed out';
+                            break;
+                    }
+                    
+                    showAttendanceNotification(errorMessage, 'error');
+                    text.textContent = originalText;
+                    button.disabled = false;
+                    button.classList.remove('loading');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000
                 }
-                
-                updateHeaderAttendanceButton();
-                showAttendanceNotification(`Clocked ${action} successfully!`, 'success');
-            } else {
-                showAttendanceNotification(data.error || 'Failed to update attendance', 'error');
-                text.textContent = originalText;
-            }
-        })
-        .catch(error => {
-            showAttendanceNotification('Network error occurred', 'error');
+            );
+        } else {
+            showAttendanceNotification('Geolocation is not supported by this browser', 'error');
             text.textContent = originalText;
-        })
-        .finally(() => {
             button.disabled = false;
             button.classList.remove('loading');
-        });
+        }
     }
     
     function updateHeaderAttendanceButton() {
@@ -1072,12 +1222,54 @@ ob_end_clean();
         }, 3000);
     }
     
+    // Simple Message Modal Functions
+    function showMessage(message, type = 'success') {
+        const modal = document.getElementById('messageModal');
+        const icon = document.getElementById('messageIcon');
+        const text = document.getElementById('messageText');
+        
+        if (!modal || !icon || !text) return;
+        
+        // Set icon based on type
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        
+        icon.textContent = icons[type] || icons.success;
+        text.textContent = message;
+        modal.className = `message-modal ${type}`;
+        modal.style.display = 'flex';
+    }
+    
+    function closeMessageModal() {
+        const modal = document.getElementById('messageModal');
+        if (modal) modal.style.display = 'none';
+    }
+    
+    // Make functions globally available
+    window.showMessage = showMessage;
+    window.closeMessageModal = closeMessageModal;
+    
     // Check attendance status on page load - updated for smart button
     function checkAttendanceStatus() {
-        fetch('/ergon/attendance/status')
+        // Add timeout and retry logic for Hostinger compatibility
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        fetch('/ergon/attendance/status', {
+            signal: controller.signal,
+            headers: {
+                'Cache-Control': 'no-cache',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
         .then(response => {
+            clearTimeout(timeoutId);
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             return response.text();
         })
@@ -1106,7 +1298,12 @@ ob_end_clean();
             }
         })
         .catch(error => {
-            console.warn('Attendance status check failed:', error.message);
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                console.warn('Attendance status check timed out');
+            } else {
+                console.warn('Attendance status check failed:', error.message);
+            }
             // Set default state on error
             updateHeaderAttendanceButton();
         });

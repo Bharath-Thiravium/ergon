@@ -470,5 +470,33 @@ class ApiController extends Controller {
             $this->json(['success' => false, 'error' => $e->getMessage(), 'companies' => []]);
         }
     }
+    
+    public function users() {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // For User Panel: exclude owners from task assignment dropdown
+            // Only show Employees and Admins for task assignment
+            $currentUserRole = $_SESSION['role'] ?? 'user';
+            
+            if ($currentUserRole === 'user') {
+                // User Panel: exclude owners, show only employees and admins
+                $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE status = 'active' AND role != 'owner' ORDER BY name");
+            } else {
+                // Admin/Owner Panel: show all active users
+                $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE status = 'active' ORDER BY name");
+            }
+            
+            $stmt->execute();
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->json(['success' => true, 'users' => $users]);
+            
+        } catch (Exception $e) {
+            error_log('Users API error: ' . $e->getMessage());
+            $this->json(['success' => false, 'error' => 'Failed to fetch users', 'users' => []]);
+        }
+    }
 }
 ?>

@@ -10,7 +10,7 @@ class EnhancedAttendanceController extends Controller {
         $this->ensureAttendanceTable();
     }
     
-    private function requireAuth() {
+    protected function requireAuth() {
         if (!isset($_SESSION['user_id'])) {
             header('Location: /ergon/login');
             exit;
@@ -27,7 +27,10 @@ class EnhancedAttendanceController extends Controller {
             // Get attendance data
             if ($role === 'user') {
                 $stmt = $this->db->prepare("
-                    SELECT a.*, u.name as user_name, s.name as shift_name 
+                    SELECT a.*, u.name, u.status as user_status, u.role, s.name as shift_name,
+                           COALESCE(CONCAT(FLOOR(a.total_hours), 'h ', FLOOR((a.total_hours - FLOOR(a.total_hours)) * 60), 'm'), '0h 0m') as working_hours,
+                           CASE WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 'Present' ELSE 'Absent' END as status,
+                           a.id as attendance_id, DATE(a.check_in) as date
                     FROM attendance a 
                     LEFT JOIN users u ON a.user_id = u.id 
                     LEFT JOIN shifts s ON a.shift_id = s.id 
@@ -35,17 +38,27 @@ class EnhancedAttendanceController extends Controller {
                     ORDER BY a.check_in DESC LIMIT 30
                 ");
                 $stmt->execute([$userId]);
+                $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } else {
                 $stmt = $this->db->prepare("
-                    SELECT a.*, u.name as user_name, s.name as shift_name 
+                    SELECT a.*, u.name, u.status as user_status, u.role, s.name as shift_name,
+                           COALESCE(CONCAT(FLOOR(a.total_hours), 'h ', FLOOR((a.total_hours - FLOOR(a.total_hours)) * 60), 'm'), '0h 0m') as working_hours,
+                           CASE WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 'Present' ELSE 'Absent' END as status,
+                           a.id as attendance_id, DATE(a.check_in) as date
                     FROM attendance a 
                     LEFT JOIN users u ON a.user_id = u.id 
                     LEFT JOIN shifts s ON a.shift_id = s.id 
                     ORDER BY a.check_in DESC LIMIT 100
                 ");
                 $stmt->execute();
+                $allAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Group by role for admin/owner view
+                $attendance = [
+                    'admin' => array_filter($allAttendance, fn($record) => $record['role'] === 'admin'),
+                    'user' => array_filter($allAttendance, fn($record) => $record['role'] === 'user')
+                ];
             }
-            $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Get today's stats
             $stats = $this->getTodayStats();
@@ -54,16 +67,18 @@ class EnhancedAttendanceController extends Controller {
                 'attendance' => $attendance,
                 'stats' => $stats,
                 'user_role' => $role,
-                'active_page' => 'attendance'
+                'active_page' => 'attendance',
+                'is_grouped' => ($role !== 'user')
             ];
             
         } catch (Exception $e) {
             error_log('Attendance index error: ' . $e->getMessage());
             $data = [
-                'attendance' => [],
-                'stats' => ['present' => 0, 'absent' => 0, 'late' => 0],
+                'attendance' => ($role === 'user') ? [] : ['admin' => [], 'user' => []],
+                'stats' => ['present_days' => 0, 'total_hours' => 0, 'total_minutes' => 0, 'late' => 0],
                 'user_role' => $role,
-                'active_page' => 'attendance'
+                'active_page' => 'attendance',
+                'is_grouped' => ($role !== 'user')
             ];
         }
         
@@ -85,8 +100,16 @@ class EnhancedAttendanceController extends Controller {
                 // Get attendance rules
                 $rules = $this->getAttendanceRules();
                 
-                // GPS Validation
-                if ($rules['is_gps_required'] && $latitude && $longitude) {
+                // GPS Validation - Always required
+                if (!$latitude || !$longitude) {
+                    echo json_encode([
+                        'success' => false, 
+                        'error' => 'Location is required for attendance. Please enable GPS.'
+                    ]);
+                    exit;
+                }
+                
+                if ($rules['is_gps_required']) {
                     $distance = $this->calculateDistance(
                         $latitude, $longitude,
                         $rules['office_latitude'], $rules['office_longitude']
@@ -95,7 +118,7 @@ class EnhancedAttendanceController extends Controller {
                     if ($distance > $rules['office_radius_meters']) {
                         echo json_encode([
                             'success' => false, 
-                            'error' => "You are {$distance}m away from office. Please move closer."
+                            'error' => "Please move within the allowed area to continue. You are {$distance}m away from office."
                         ]);
                         exit;
                     }
@@ -181,6 +204,87 @@ class EnhancedAttendanceController extends Controller {
             echo json_encode(['success' => true, 'data' => $attendance]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function report() {
+        $this->requireAuth();
+        
+        // Debug logging
+        error_log('Report method called. GET params: ' . print_r($_GET, true));
+        error_log('Session role: ' . ($_SESSION['role'] ?? 'none'));
+        
+        if (!in_array($_SESSION['role'], ['owner', 'admin'])) {
+            error_log('Access denied for role: ' . ($_SESSION['role'] ?? 'none'));
+            header('Location: /ergon/attendance?error=access_denied');
+            exit;
+        }
+        
+        $userId = $_GET['user_id'] ?? null;
+        $startDate = $_GET['start_date'] ?? date('Y-m-01');
+        $endDate = $_GET['end_date'] ?? date('Y-m-t');
+        
+        error_log('Report params - userId: ' . ($userId ?? 'null') . ', startDate: ' . $startDate . ', endDate: ' . $endDate);
+        
+        if (!$userId) {
+            error_log('Attendance report error: Missing user_id parameter');
+            header('Location: /ergon/attendance?error=missing_user_id');
+            exit;
+        }
+        
+        try {
+            // Get user info
+            $userStmt = $this->db->prepare("SELECT name, email FROM users WHERE id = ?");
+            $userStmt->execute([$userId]);
+            $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+            
+            error_log('User found: ' . ($user ? $user['name'] : 'none'));
+            
+            if (!$user) {
+                error_log('User not found for ID: ' . $userId);
+                header('Location: /ergon/attendance?error=user_not_found');
+                exit;
+            }
+            
+            // Get attendance records
+            $stmt = $this->db->prepare("
+                SELECT DATE(check_in) as date, check_in, check_out, 
+                       CASE WHEN check_out IS NOT NULL THEN 
+                           TIMESTAMPDIFF(MINUTE, check_in, check_out) / 60.0 
+                       ELSE 0 END as total_hours,
+                       CASE WHEN check_in IS NOT NULL AND check_out IS NOT NULL THEN 'Present' ELSE 'Absent' END as status
+                FROM attendance 
+                WHERE user_id = ? AND DATE(check_in) BETWEEN ? AND ?
+                ORDER BY check_in DESC
+            ");
+            $stmt->execute([$userId, $startDate, $endDate]);
+            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Generate CSV
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment; filename="attendance_report_' . $user['name'] . '_' . $startDate . '_to_' . $endDate . '.csv"');
+            
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['Date', 'Check In', 'Check Out', 'Total Hours', 'Status']);
+            
+            foreach ($records as $record) {
+                fputcsv($output, [
+                    $record['date'],
+                    $record['check_in'] ? date('H:i:s', strtotime($record['check_in'])) : 'Not clocked in',
+                    $record['check_out'] ? date('H:i:s', strtotime($record['check_out'])) : 'Not clocked out',
+                    $record['total_hours'] ? round($record['total_hours'], 2) . 'h' : '0h',
+                    $record['status']
+                ]);
+            }
+            
+            fclose($output);
+            exit;
+            
+        } catch (Exception $e) {
+            error_log('Attendance report error: ' . $e->getMessage());
+            error_log('Report parameters: user_id=' . ($userId ?? 'null') . ', start_date=' . $startDate . ', end_date=' . $endDate);
+            header('Location: /ergon/attendance?error=report_failed&details=' . urlencode($e->getMessage()));
+            exit;
         }
     }
     
@@ -364,14 +468,18 @@ class EnhancedAttendanceController extends Controller {
         $stmt = $this->db->query("
             SELECT 
                 COUNT(*) as total,
-                SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
-                SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
-                SUM(CASE WHEN check_out IS NULL THEN 1 ELSE 0 END) as active
-            FROM attendance 
-            WHERE DATE(check_in) = CURDATE()
+                SUM(CASE WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 1 ELSE 0 END) as present_days,
+                SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) as late,
+                SUM(CASE WHEN a.check_out IS NULL THEN 1 ELSE 0 END) as active,
+                COALESCE(SUM(a.total_hours), 0) as total_hours,
+                COALESCE(SUM(a.total_hours) * 60, 0) as total_minutes
+            FROM attendance a
+            WHERE DATE(a.check_in) = CURDATE()
         ");
         
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'present' => 0, 'late' => 0, 'active' => 0];
+        $stats = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'present_days' => 0, 'late' => 0, 'active' => 0, 'total_hours' => 0, 'total_minutes' => 0];
+        $stats['total_minutes'] = $stats['total_minutes'] % 60;
+        return $stats;
     }
     
     private function ensureAttendanceTable() {

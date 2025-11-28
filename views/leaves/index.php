@@ -206,7 +206,7 @@ ob_start();
                                 </a>
                                 <?php endif; ?>
                                 <?php 
-                                $userRole = $user_role ?? '';
+                                $userRole = $_SESSION['role'] ?? 'user';
                                 $leaveStatus = strtolower($leave['status'] ?? 'pending');
                                 $isNotOwnLeave = ($leave['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0);
                                 $canApprove = $leaveStatus === 'pending' && (($userRole === 'owner') || ($userRole === 'admin' && $isNotOwnLeave));
@@ -217,6 +217,7 @@ ob_start();
                                         <polyline points="20,6 9,17 4,12"/>
                                     </svg>
                                 </button>
+                                <?php if (($userRole === 'owner') || ($userRole === 'admin' && $isNotOwnLeave)): ?>
                                 <button class="ab-btn ab-btn--reject" onclick="showRejectModal(<?= $leave['id'] ?>)" title="Reject Leave">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <line x1="18" y1="6" x2="6" y2="18"/>
@@ -224,8 +225,24 @@ ob_start();
                                     </svg>
                                 </button>
                                 <?php endif; ?>
-                                <?php if (strtolower($leave['status'] ?? 'pending') === 'pending' && ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0)): ?>
-                                <button class="ab-btn ab-btn--delete" data-action="delete" data-module="leaves" data-id="<?= $leave['id'] ?>" data-name="Leave Request" title="Delete Request">
+                                <?php endif; ?>
+                                <?php 
+                                $sessionRole = $_SESSION['role'] ?? 'user';
+                                $canDelete = false;
+                                $isOwner = ($sessionRole === 'owner');
+                                $isAdmin = ($sessionRole === 'admin');
+                                $isOwnLeave = ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0);
+                                $isPending = strtolower($leave['status'] ?? 'pending') === 'pending';
+                                
+                                // Owners and admins can delete any leave, users can delete their own pending leaves
+                                if ($isOwner || $isAdmin) {
+                                    $canDelete = true;
+                                } elseif ($isOwnLeave && $isPending) {
+                                    $canDelete = true;
+                                }
+                                ?>
+                                <?php if ($canDelete): ?>
+                                <button class="ab-btn ab-btn--delete" onclick="deleteLeave(<?= $leave['id'] ?>)" title="Delete Request">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <path d="M3 6h18"/>
                                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -246,7 +263,7 @@ ob_start();
 </div>
 
 <!-- Rejection Modal -->
-<div id="rejectModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 99999; display: flex; align-items: center; justify-content: center;">
+<div id="rejectModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 99999; align-items: center; justify-content: center;">
     <div class="modal-content" style="background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header">
             <h3>Reject Leave Request</h3>
@@ -295,7 +312,30 @@ window.onclick = function(event) {
 </script>
 
 <script>
-// Global action button handler
+function deleteLeave(id) {
+    if (confirm('Are you sure you want to delete this leave request? This action cannot be undone.')) {
+        fetch(`/ergon/leaves/delete/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message || 'Leave request deleted successfully', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showMessage(data.message || 'Failed to delete leave request', 'error');
+            }
+        })
+        .catch(error => {
+            showMessage('Network error occurred', 'error');
+        });
+    }
+}
+
+// Global action button handler for other buttons
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.ab-btn');
     if (!btn) return;
@@ -303,14 +343,11 @@ document.addEventListener('click', function(e) {
     const action = btn.dataset.action;
     const module = btn.dataset.module;
     const id = btn.dataset.id;
-    const name = btn.dataset.name;
     
     if (action === 'view' && module && id) {
         window.location.href = `/ergon/${module}/view/${id}`;
     } else if (action === 'edit' && module && id) {
         window.location.href = `/ergon/${module}/edit/${id}`;
-    } else if (action === 'delete' && module && id && name) {
-        deleteRecord(module, id, name);
     } else if (action === 'approve' && module && id) {
         window.location.href = `/ergon/${module}/approve/${id}`;
     }

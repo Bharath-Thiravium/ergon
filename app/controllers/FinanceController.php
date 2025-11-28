@@ -8,222 +8,48 @@ class FinanceController extends Controller {
         $this->view('finance/dashboard');
     }
     
-    public function analyzeAllTables() {
-        if (ob_get_level() > 0) { ob_clean(); }
-        // If PHP does not have pg_connect (pgsql extension missing), output a CSV-friendly error
-        if (!function_exists('pg_connect')) {
-            header('Content-Type: text/csv');
-            echo "Error,PostgreSQL extension (pgsql) not enabled in PHP\n";
-            exit;
-        }
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="finance_tables_analysis_' . date('Y-m-d_H-i-s') . '.csv"');
-        
-        try {
-            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
-            
-            if (!$conn) {
-                echo "Error,PostgreSQL connection failed\n";
-                exit;
-            }
-            
-            $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
-            
-            // CSV Header
-            echo "Table Name,Exists,Row Count,Column Count,Columns,Sample Data\n";
-            
-            foreach ($targetTables as $tableName) {
-                // Check if table exists
-                $checkResult = pg_query($conn, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '$tableName'");
-                $exists = pg_fetch_row($checkResult)[0] > 0;
-                
-                if ($exists) {
-                    // Get row count
-                    $countResult = pg_query($conn, "SELECT COUNT(*) FROM \"$tableName\"");
-                    $rowCount = pg_fetch_row($countResult)[0];
-                    
-                    // Get all columns
-                    $colResult = pg_query($conn, "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '$tableName' ORDER BY ordinal_position");
-                    $columns = [];
-                    while ($col = pg_fetch_assoc($colResult)) {
-                        $columns[] = $col['column_name'] . '(' . $col['data_type'] . ')';
-                    }
-                    
-                    // Get sample data
-                    $sampleResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT 2");
-                    $sampleData = [];
-                    while ($sample = pg_fetch_assoc($sampleResult)) {
-                        $sampleData[] = json_encode($sample);
-                    }
-                    
-                    echo '"' . $tableName . '",YES,' . $rowCount . ',' . count($columns) . ',"' . implode('; ', $columns) . '","' . implode(' | ', $sampleData) . "\"\n";
-                } else {
-                    echo '"' . $tableName . '",NO,0,0,"",""\n';
-                }
-            }
-            
-            pg_close($conn);
-            
-        } catch (Exception $e) {
-            echo "Error," . $e->getMessage() . "\n";
-        }
-        exit;
-    }
-    
-    public function getTableStructure() {
-        header('Content-Type: application/json');
-        
-        try {
-            if (!function_exists('pg_connect')) {
-                echo json_encode(['error' => 'PostgreSQL extension (pgsql) not enabled in PHP']);
-                return;
-            }
-            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=10");
-            
-            if (!$conn) {
-                throw new Exception('PostgreSQL connection failed');
-            }
-            
-            // Focus on specific finance tables only
-            $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
-            $tableList = "'" . implode("','", $targetTables) . "'";
-            
-            $result = pg_query($conn, "
-                SELECT 
-                    t.table_name,
-                    COUNT(c.column_name) as column_count,
-                    COALESCE(s.n_tup_ins, 0) as estimated_rows
-                FROM information_schema.tables t
-                LEFT JOIN information_schema.columns c ON t.table_name = c.table_name
-                LEFT JOIN pg_stat_user_tables s ON t.table_name = s.relname
-                WHERE t.table_schema = 'public' 
-                AND t.table_name IN ($tableList)
-                GROUP BY t.table_name, s.n_tup_ins
-                ORDER BY t.table_name
-            ");
-            
-            $tables = [];
-            while ($row = pg_fetch_assoc($result)) {
-                $tableName = $row['table_name'];
-                
-                // Get column details
-                $colResult = pg_query($conn, "
-                    SELECT 
-                        column_name,
-                        data_type,
-                        is_nullable,
-                        column_default
-                    FROM information_schema.columns 
-                    WHERE table_name = '$tableName' 
-                    AND table_schema = 'public'
-                    ORDER BY ordinal_position
-                ");
-                
-                $columns = [];
-                while ($colRow = pg_fetch_assoc($colResult)) {
-                    $columns[] = [
-                        'name' => $colRow['column_name'],
-                        'type' => $colRow['data_type'],
-                        'nullable' => $colRow['is_nullable'] === 'YES',
-                        'default' => $colRow['column_default']
-                    ];
-                }
-                
-                // Get actual row count
-                $countResult = pg_query($conn, "SELECT COUNT(*) as actual_count FROM \"$tableName\"");
-                $countRow = pg_fetch_assoc($countResult);
-                
-                $tables[] = [
-                    'table_name' => $tableName,
-                    'display_name' => str_replace('finance_', '', $tableName),
-                    'column_count' => (int)$row['column_count'],
-                    'estimated_rows' => (int)$row['estimated_rows'],
-                    'actual_rows' => (int)$countRow['actual_count'],
-                    'columns' => $columns
-                ];
-            }
-            
-            pg_close($conn);
-            echo json_encode(['tables' => $tables]);
-            
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-    }
-    
     public function sync() {
-        if (ob_get_level() > 0) { ob_clean(); }
-        set_time_limit(0);
-        ini_set('memory_limit', '1G');
-        
+        ob_clean();
         header('Content-Type: application/json');
         
         try {
-            if (!function_exists('pg_connect')) {
-                // Create dummy data for demo purposes when PostgreSQL is not available
-                $this->createDemoData();
-                echo json_encode(['success' => true, 'tables' => 5, 'message' => 'Demo data created (PostgreSQL not available)']);
-                exit;
-            }
-            $conn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango sslmode=disable connect_timeout=60");
-            
-            if (!$conn) {
-                echo json_encode(['error' => 'PostgreSQL connection failed']);
-                exit;
-            }
-            
             $db = Database::connect();
             $this->createTables($db);
             
-            // Get all tables from PostgreSQL
-            $tablesResult = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name");
-            $allTables = [];
-            while ($row = pg_fetch_assoc($tablesResult)) {
-                $allTables[] = $row['table_name'];
+            $pgHost = '72.60.218.167';
+            $pgPort = '5432';
+            $pgDb = 'modernsap';
+            $pgUser = 'postgres';
+            $pgPass = 'mango';
+            
+            $pgConn = @pg_connect("host=$pgHost port=$pgPort dbname=$pgDb user=$pgUser password=$pgPass");
+            
+            if (!$pgConn) {
+                echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed']);
+                exit;
             }
             
             $syncCount = 0;
-            $batchSize = 50;
+            $financeTables = ['finance_invoices', 'finance_quotations', 'finance_customers', 'finance_customer', 'finance_payments', 'finance_purchase_orders'];
             
-            foreach ($allTables as $tableName) {
-                try {
-                    // Get row count first
-                    $countResult = pg_query($conn, "SELECT COUNT(*) FROM \"$tableName\"");
-                    if (!$countResult) continue;
-                    
-                    $rowCount = pg_fetch_row($countResult)[0];
-                    
-                    if ($rowCount > 0) {
-                        $limit = min($batchSize, $rowCount);
-                        $dataResult = pg_query($conn, "SELECT * FROM \"$tableName\" LIMIT $limit");
-                        $data = [];
-                        
-                        if ($dataResult) {
-                            while ($dataRow = pg_fetch_assoc($dataResult)) {
-                                $data[] = $dataRow;
-                            }
-                        }
-                        
-                        if (!empty($data)) {
-                            $this->storeTableData($db, $tableName, $data);
-                            $syncCount++;
-                        }
-                    }
-                } catch (Exception $e) {
-                    continue;
+            foreach ($financeTables as $tableName) {
+                $result = @pg_query($pgConn, "SELECT * FROM $tableName");
+                if ($result && pg_num_rows($result) > 0) {
+                    $data = pg_fetch_all($result);
+                    $this->storeTableData($db, $tableName, $data);
+                    $syncCount++;
+                    error_log("Synced $tableName: " . count($data) . " records");
+                } else {
+                    error_log("No data found for table: $tableName");
                 }
             }
             
-            pg_close($conn);
+            @pg_close($pgConn);
+            echo json_encode(['success' => true, 'tables' => $syncCount]);
             
         } catch (Exception $e) {
-            if (ob_get_level() > 0) { ob_clean(); }
-            echo json_encode(['error' => $e->getMessage()]);
-            exit;
+            echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed: ' . $e->getMessage()]);
         }
-        
-        if (ob_get_level() > 0) { ob_clean(); }
-        echo json_encode(['success' => true, 'tables' => $syncCount]);
         exit;
     }
     
@@ -232,10 +58,37 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
+            $this->createTables($db);
             $prefix = $this->getCompanyPrefix();
             $customerFilter = $_GET['customer'] ?? '';
             
-            // Get invoice data
+            // Calculate funnel stats directly
+            $funnelStats = $this->calculateFunnelStats($db, $prefix);
+            $chartStats = $this->calculateChartStats($db, $prefix);
+            
+            $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $invoiceCount = $stmt->fetchColumn();
+            
+            if ($invoiceCount == 0) {
+                // Return empty stats if no data, but still provide the funnel structure
+                echo json_encode([
+                    'totalInvoiceAmount' => 0,
+                    'invoiceReceived' => 0,
+                    'pendingInvoiceAmount' => 0,
+                    'pendingGSTAmount' => 0,
+                    'pendingPOValue' => 0,
+                    'claimableAmount' => 0,
+                    'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
+                    'cashFlow' => [
+                        'expectedInflow' => 0,
+                        'poCommitments' => 0
+                    ],
+                    'message' => 'No finance data available. Please sync data first.'
+                ]);
+                return;
+            }
+            
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -244,45 +97,92 @@ class FinanceController extends Controller {
             $invoiceReceived = 0;
             $pendingInvoiceAmount = 0;
             $pendingGSTAmount = 0;
+            $paidInvoiceCount = 0;
             
             foreach ($invoiceResults as $row) {
                 $data = json_decode($row['data'], true);
-                $invoiceNumber = $data['invoice_number'] ?? '';
+                $invoiceNumber = $data['invoice_number'] ?? $data['number'] ?? '';
                 
-                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
                 
-                $total = floatval($data['total_amount'] ?? 0);
-                $outstanding = floatval($data['outstanding_amount'] ?? 0);
-                $gstRate = floatval($data['gst_rate'] ?? 0.18);
+                $total = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
+                $outstanding = floatval($data['outstanding_amount'] ?? $data['balance'] ?? $data['due_amount'] ?? 0);
+                $totalTax = floatval($data['total_tax'] ?? $data['tax_amount'] ?? $data['gst_amount'] ?? 0);
+                
+                // If no explicit tax field, calculate 18% GST
+                if ($totalTax == 0 && $total > 0) {
+                    $totalTax = $total * 0.18; // Assume 18% GST
+                }
                 
                 $totalInvoiceAmount += $total;
                 $invoiceReceived += ($total - $outstanding);
                 $pendingInvoiceAmount += $outstanding;
-                $pendingGSTAmount += ($outstanding * $gstRate);
+
+                if ($outstanding > 0) {
+                    // Calculate GST on outstanding amount
+                    if ($total > 0) {
+                        $pendingGSTAmount += ($outstanding / $total) * $totalTax;
+                    } else {
+                        $pendingGSTAmount += $outstanding * 0.18; // Fallback 18% GST
+                    }
+                } else {
+                    $paidInvoiceCount++;
+                }
             }
-            
-            // Get PO data
+
+            // Calculate PO and Claimable amounts
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
             $stmt->execute();
             $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
             $pendingPOValue = 0;
             $claimableAmount = 0;
-            
+            $claimablePOCount = 0;
+            $totalPOCount = 0;
+            $openPOCount = 0;
+
             foreach ($poResults as $row) {
                 $data = json_decode($row['data'], true);
-                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
+                // Check multiple possible field names for PO number
+                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+                if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) {
+                    continue;
+                }
+                $totalPOCount++;
                 
-                if (!str_contains(strtoupper($poNumber), $prefix)) continue;
+                // Check multiple possible field names for status
+                $status = strtolower($data['status'] ?? $data['po_status'] ?? $data['order_status'] ?? 'open');
+                // Check multiple possible field names for amount
+                $totalAmount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? 0);
                 
-                $status = strtolower($data['status'] ?? 'pending');
-                $amount = floatval($data['total_amount'] ?? 0);
+                if (in_array($status, ['open', 'partially_billed', 'pending', 'approved', 'active', 'confirmed'])) {
+                    $pendingPOValue += $totalAmount;
+                    $openPOCount++;
+                }
+                // Calculate claimable amount for all POs with any amount processed
+                $billedAmount = floatval($data['billed_amount'] ?? $data['invoiced_amount'] ?? $data['delivered_amount'] ?? 0);
+                $paidAmount = floatval($data['paid_amount'] ?? $data['payment_amount'] ?? $data['received_amount'] ?? 0);
+                $receivedAmount = floatval($data['received_qty'] ?? $data['delivered_qty'] ?? 0);
                 
-                if ($status !== 'invoiced') {
-                    $pendingPOValue += $amount;
-                    $claimableAmount += floatval($data['claimable_amount'] ?? $amount);
+                // If no explicit billed amount but has received/delivered quantity, use total amount
+                if ($billedAmount == 0 && $receivedAmount > 0) {
+                    $billedAmount = $totalAmount;
+                }
+                
+                // If PO is completed/delivered but no billed amount, assume fully billed
+                if ($billedAmount == 0 && in_array($status, ['completed', 'delivered', 'closed', 'received'])) {
+                    $billedAmount = $totalAmount;
+                }
+                
+                $claimable = $billedAmount - $paidAmount;
+                if ($claimable > 0) {
+                    $claimableAmount += $claimable;
+                    $claimablePOCount++;
                 }
             }
+            
+            $claimRate = $totalPOCount > 0 ? round(($claimablePOCount / $totalPOCount) * 100) : 0;
             
             echo json_encode([
                 'totalInvoiceAmount' => $totalInvoiceAmount,
@@ -291,7 +191,13 @@ class FinanceController extends Controller {
                 'pendingGSTAmount' => $pendingGSTAmount,
                 'pendingPOValue' => $pendingPOValue,
                 'claimableAmount' => $claimableAmount,
-                'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
+                'claimablePOCount' => $claimablePOCount,
+                'openPOCount' => $openPOCount,
+                'totalPOCount' => $totalPOCount,
+                'claimRate' => $claimRate,
+                'conversionFunnel' => $funnelStats ?: $this->getConversionFunnel($db, $customerFilter),
+                'funnelStats' => $funnelStats,
+                'chartData' => $chartStats,
                 'cashFlow' => [
                     'expectedInflow' => $pendingInvoiceAmount,
                     'poCommitments' => $pendingPOValue
@@ -299,109 +205,77 @@ class FinanceController extends Controller {
             ]);
             
         } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-    }
-    
-    public function getFinanceStats() {
-        header('Content-Type: application/json');
-        
-        try {
-            $db = Database::connect();
-            
-            $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
-            $tableList = "'" . implode("','", $targetTables) . "'";
-            
-            $stmt = $db->query("SELECT table_name, record_count FROM finance_tables WHERE table_name IN ($tableList) ORDER BY record_count DESC");
-            $tables = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $totalRecords = array_sum(array_column($tables, 'record_count'));
-            $totalTables = count($tables);
-            
             echo json_encode([
-                'tables' => $tables,
-                'totalTables' => $totalTables,
-                'totalRecords' => $totalRecords
+                'totalInvoiceAmount' => 0,
+                'invoiceReceived' => 0,
+                'pendingInvoiceAmount' => 0,
+                'pendingGSTAmount' => 0,
+                'pendingPOValue' => 0,
+                'claimableAmount' => 0,
+                'conversionFunnel' => ['quotations' => 0, 'purchaseOrders' => 0, 'invoices' => 0, 'payments' => 0],
+                'error' => $e->getMessage()
             ]);
-            
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
         }
     }
-    
-    public function getTables() {
-        header('Content-Type: application/json');
-        
-        try {
-            $db = Database::connect();
-            $targetTables = ['finance_quotations', 'finance_purchase_orders', 'finance_invoices', 'finance_payments', 'finance_customers'];
-            $tableList = "'" . implode("','", $targetTables) . "'";
-            
-            $stmt = $db->query("SELECT table_name, record_count, last_sync FROM finance_tables WHERE table_name IN ($tableList) ORDER BY record_count DESC");
-            $tables = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            echo json_encode(['tables' => $tables]);
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
+
+    private function getConversionFunnel($db, $customerFilter = '') {
+        $prefix = $this->getCompanyPrefix();
+        $funnel = [
+            'quotations' => 0, 'quotationValue' => 0,
+            'purchaseOrders' => 0, 'poValue' => 0,
+            'invoices' => 0, 'invoiceValue' => 0,
+            'payments' => 0, 'paymentValue' => 0,
+            'quotationToPO' => 0, 'poToInvoice' => 0, 'invoiceToPayment' => 0
+        ];
+
+        // Quotations - check multiple number fields
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+        $stmt->execute();
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $data = json_decode($row['data'], true);
+            $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? $data['number'] ?? '';
+            if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) continue;
+            if ($customerFilter && ($data['customer_id'] ?? '') != $customerFilter) continue;
+            $funnel['quotations']++;
+            $funnel['quotationValue'] += floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
         }
-    }
-    
-    public function getTableData() {
-        header('Content-Type: application/json');
-        
-        $table = $_GET['table'] ?? '';
-        $limit = (int)($_GET['limit'] ?? 50);
-        
-        try {
-            $db = Database::connect();
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = ? LIMIT ?");
-            $stmt->execute([$table, $limit]);
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $data = [];
-            $columns = [];
-            
-            foreach ($results as $row) {
-                $decoded = json_decode($row['data'], true);
-                if ($decoded) {
-                    $data[] = $decoded;
-                    if (empty($columns)) {
-                        $columns = array_keys($decoded);
-                    }
-                }
+
+        // Purchase Orders - check multiple number fields
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+            if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) continue;
+            if ($customerFilter && ($data['customer_id'] ?? $data['supplier_id'] ?? '') != $customerFilter) continue;
+            $funnel['purchaseOrders']++;
+            $funnel['poValue'] += floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? 0);
+        }
+
+        // Invoices and Payments
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        $stmt->execute();
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $data = json_decode($row['data'], true);
+            $invoiceNumber = $data['invoice_number'] ?? $data['number'] ?? '';
+            if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) continue;
+            if ($customerFilter && ($data['customer_id'] ?? '') != $customerFilter) continue;
+            $funnel['invoices']++;
+            $total = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
+            $outstanding = floatval($data['outstanding_amount'] ?? $data['balance'] ?? 0);
+            $funnel['invoiceValue'] += $total;
+            $funnel['paymentValue'] += ($total - $outstanding);
+            if ($outstanding <= 0) {
+                $funnel['payments']++;
             }
-            
-            echo json_encode(['data' => $data, 'columns' => $columns]);
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
         }
-    }
-    
-    public function getVisualizationData() {
-        header('Content-Type: application/json');
-        if (ob_get_level() > 0) { ob_clean(); }
-        
-        $type = $_GET['type'] ?? 'quotations';
-        
-        try {
-            $db = Database::connect();
-            
-            switch ($type) {
-                case 'quotations':
-                    echo json_encode($this->getQuotationsChart($db));
-                    break;
-                case 'purchase_orders':
-                    echo json_encode($this->getPurchaseOrdersChart($db));
-                    break;
-                case 'invoices':
-                    echo json_encode($this->getInvoicesChart($db));
-                    break;
-            }
-            
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-        exit;
+
+        // Calculate conversion rates
+        if ($funnel['quotations'] > 0) $funnel['quotationToPO'] = round(($funnel['purchaseOrders'] / $funnel['quotations']) * 100);
+        if ($funnel['purchaseOrders'] > 0) $funnel['poToInvoice'] = round(($funnel['invoices'] / $funnel['purchaseOrders']) * 100);
+        if ($funnel['invoices'] > 0) $funnel['invoiceToPayment'] = round(($funnel['payments'] / $funnel['invoices']) * 100);
+
+        return $funnel;
     }
     
     public function getOutstandingInvoices() {
@@ -409,36 +283,53 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
+            $this->createTables($db);
+            
             $prefix = $this->getCompanyPrefix();
+            
+            // Build customer lookup map with prefix filtering
+            $customerMap = [];
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
+            $stmt->execute();
+            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($customerResults as $row) {
+                $data = json_decode($row['data'], true);
+                $customerId = $data['id'] ?? '';
+                $customerCode = $data['customer_code'] ?? '';
+                
+                // Filter by customer_code prefix
+                if ($prefix && !empty($prefix) && !empty($customerCode) && stripos($customerCode, $prefix) === false) {
+                    continue;
+                }
+                
+                if ($customerId) {
+                    $customerMap[$customerId] = $data['display_name'] ?? $data['name'] ?? 'Unknown';
+                }
+            }
+            
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $invoices = [];
-            // Load customer name mapping to resolve customer_id -> display name
-            $customerNames = $this->getCustomerNamesMapping($db);
             foreach ($results as $row) {
                 $data = json_decode($row['data'], true);
-                $invoiceNumber = $data['invoice_number'] ?? '';
+                $invoiceNumber = $data['invoice_number'] ?? 'N/A';
                 
-                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
                 
                 $outstanding = floatval($data['outstanding_amount'] ?? 0);
                 
                 if ($outstanding > 0) {
+                    $customerId = $data['customer_id'] ?? '';
+                    $customerName = $customerMap[$customerId] ?? 'Unknown';
+                    
                     $dueDate = $data['due_date'] ?? date('Y-m-d');
                     $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
-
-                    $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                    $customerName = 'Unknown';
-                    if ($customerId && isset($customerNames[$customerId])) {
-                        $customerName = $customerNames[$customerId];
-                    } elseif (!empty($data['customer_name'])) {
-                        $customerName = $data['customer_name'];
-                    } elseif (!empty($data['customer_gstin'])) {
-                        $customerName = 'GST: ' . $data['customer_gstin'];
-                    }
-
+                    
                     $invoices[] = [
                         'invoice_number' => $invoiceNumber,
                         'customer_name' => $customerName,
@@ -453,387 +344,548 @@ class FinanceController extends Controller {
             echo json_encode(['invoices' => $invoices]);
             
         } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
+            echo json_encode(['invoices' => [], 'error' => 'Failed to load outstanding invoices']);
         }
     }
-
-    public function getOutstandingByCustomer() {
+    
+    public function getQuotations() {
         header('Content-Type: application/json');
-
+        
         try {
             $db = Database::connect();
+            $this->createTables($db);
+            
             $prefix = $this->getCompanyPrefix();
-
-            // optional limit parameter for top N customers
-            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
-            if ($limit <= 0) $limit = 10;
-
-            // Load all invoices
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $quotations = [];
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? 'N/A';
+                
+                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $quotations[] = [
+                    'quotation_number' => $quotationNumber,
+                    'customer_name' => $data['name'] ?? $data['display_name'] ?? $data['customer_name'] ?? 'Unknown',
+                    'amount' => floatval($data['amount'] ?? $data['total_amount'] ?? 0),
+                    'status' => $data['status'] ?? 'pending',
+                    'created_date' => $data['created_date'] ?? $data['date'] ?? date('Y-m-d')
+                ];
+            }
+            
+            echo json_encode(['quotations' => $quotations]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['quotations' => [], 'error' => 'Failed to load quotations']);
+        }
+    }
+    
+    public function getOutstandingByCustomer() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            $customerFilter = $_GET['customer'] ?? '';
+            $limit = intval($_GET['limit'] ?? 10);
+            
+            // Build customer lookup map with prefix filtering
+            $customerMap = [];
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
+            $stmt->execute();
+            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($customerResults as $row) {
+                $data = json_decode($row['data'], true);
+                $customerId = $data['id'] ?? '';
+                $customerCode = $data['customer_code'] ?? '';
+                
+                // Filter by customer_code prefix
+                if ($prefix && !empty($prefix) && !empty($customerCode) && stripos($customerCode, $prefix) === false) {
+                    continue;
+                }
+                
+                if ($customerId) {
+                    $customerMap[$customerId] = $data['display_name'] ?? $data['name'] ?? 'Unknown';
+                }
+            }
+            
+            // Aggregate outstanding amounts
+            $outstandingByCustomer = [];
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($invoiceResults as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                if ($outstanding > 0) {
+                    $customerId = $data['customer_id'] ?? '';
+                    $customerName = $customerMap[$customerId] ?? 'Unknown Customer';
+                    
+                    if ($customerFilter && $customerName !== $customerFilter) {
+                        continue;
+                    }
+                    
+                    $outstandingByCustomer[$customerName] = ($outstandingByCustomer[$customerName] ?? 0) + $outstanding;
+                }
+            }
+            
+            // Sort by amount descending and limit
+            arsort($outstandingByCustomer);
+            $outstandingByCustomer = array_slice($outstandingByCustomer, 0, $limit, true);
+            
+            echo json_encode([
+                'labels' => array_keys($outstandingByCustomer),
+                'data' => array_values($outstandingByCustomer),
+                'total' => array_sum($outstandingByCustomer),
+                'customerCount' => count($outstandingByCustomer)
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function getAvailablePrefixes() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // customerId => total outstanding
-            $map = [];
-            $customerNames = $this->getCustomerNamesMapping($db);
-
+            
+            $prefixes = [];
             foreach ($results as $row) {
                 $data = json_decode($row['data'], true);
                 $invoiceNumber = $data['invoice_number'] ?? '';
-
-                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
-
-                $outstanding = floatval($data['outstanding_amount'] ?? 0);
-                if ($outstanding <= 0) continue;
-
-                $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                $customerName = null;
-                if ($customerId && isset($customerNames[$customerId])) {
-                    $customerName = $customerNames[$customerId];
-                } elseif (!empty($data['customer_name'])) {
-                    $customerName = $data['customer_name'];
-                } elseif (!empty($data['customer_gstin'])) {
-                    $customerName = 'GST: ' . $data['customer_gstin'];
-                } else {
-                    $customerName = 'Customer ' . ($customerId ?: 'Unknown');
+                
+                // Extract prefix (letters before numbers/special chars)
+                if (preg_match('/^([A-Z]+)/', $invoiceNumber, $matches)) {
+                    $prefix = $matches[1];
+                    if (!in_array($prefix, $prefixes)) {
+                        $prefixes[] = $prefix;
+                    }
                 }
-
-                if (!isset($map[$customerName])) $map[$customerName] = 0;
-                $map[$customerName] += $outstanding;
             }
-
-            // sort descending
-            arsort($map);
-
-            // top N and aggregate others
-            $labels = [];
-            $data = [];
-            $others = 0;
-            $i = 0;
-            foreach ($map as $name => $amt) {
-                if ($i < $limit) {
-                    $labels[] = $name;
-                    $data[] = $amt;
-                } else {
-                    $others += $amt;
-                }
-                $i++;
-            }
-            if ($others > 0) {
-                $labels[] = 'Others';
-                $data[] = $others;
-            }
-
-            echo json_encode(['labels' => $labels, 'data' => $data]);
+            
+            sort($prefixes);
+            echo json_encode(['prefixes' => $prefixes]);
+            
         } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
+            echo json_encode(['prefixes' => [], 'error' => $e->getMessage()]);
         }
     }
-
-    public function getAgingBuckets() {
+    
+    public function getCustomers() {
         header('Content-Type: application/json');
-
+        
         try {
             $db = Database::connect();
+            $this->createTables($db);
+            
             $prefix = $this->getCompanyPrefix();
+            $customerMap = [];
+            $prefixCustomers = [];
 
+            // Get customers from invoices that match the prefix
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($invoiceResults as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $customerId = $data['customer_id'] ?? '';
+                if ($customerId) {
+                    $prefixCustomers[$customerId] = true;
+                }
+            }
+            
+            // Get customers from quotations that match the prefix
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($quotationResults as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $customerId = $data['customer_id'] ?? '';
+                if ($customerId) {
+                    $prefixCustomers[$customerId] = true;
+                }
+            }
+
+            // Read customer details from customer tables
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
+            $stmt->execute();
+            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($customerResults as $row) {
+                $data = json_decode($row['data'], true);
+                $customerId = $data['id'] ?? '';
+                $customerCode = $data['customer_code'] ?? '';
+                
+                // Filter by customer_code prefix
+                if ($prefix && !empty($prefix) && !empty($customerCode) && stripos($customerCode, $prefix) === false) {
+                    continue;
+                }
+
+                if ($customerId && (!$prefix || empty($prefix) || isset($prefixCustomers[$customerId]))) {
+                    $displayName = $data['display_name'] ?? $data['name'] ?? 'Unknown Customer';
+                    $gstin = $data['gstin'] ?? '';
+                    
+                    $label = $displayName;
+                    if ($gstin) {
+                        $label .= " (GSTIN: $gstin)";
+                    }
+
+                    $customerMap[$customerId] = [
+                        'id' => $customerId,
+                        'name' => $data['name'] ?? 'Unknown',
+                        'display_name' => $displayName,
+                        'display' => $label,
+                        'gstin' => $gstin,
+                        'customer_code' => $customerCode
+                    ];
+                }
+            }
+            
+            // Add customers from invoices/quotations if not in customer tables
+            foreach ($invoiceResults as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $customerId = $data['customer_id'] ?? '';
+                $customerName = $data['customer_name'] ?? '';
+                
+                if ($customerId && !isset($customerMap[$customerId])) {
+                    $customerMap[$customerId] = [
+                        'id' => $customerId,
+                        'name' => $customerName ?: 'Customer ' . $customerId,
+                        'display_name' => $customerName ?: 'Customer ' . $customerId,
+                        'display' => $customerName ?: 'Customer ' . $customerId,
+                        'gstin' => ''
+                    ];
+                }
+            }
+            
+            $customers = array_values($customerMap);
+            echo json_encode(['customers' => $customers]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['customers' => [], 'error' => 'Failed to load customers']);
+        }
+    }
+    
+    public function getQuotationChart() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $statusData = ['Draft' => 0, 'Revised' => 0, 'Converted' => 0];
+            $totalCount = 0;
+            $totalAmount = 0;
+            
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? $data['number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $amount = floatval($data['amount'] ?? $data['total_amount'] ?? $data['value'] ?? 0);
+                $status = strtolower($data['status'] ?? 'draft');
+                
+                if ($amount > 0) {
+                    $totalCount++;
+                    $totalAmount += $amount;
+                    
+                    if (in_array($status, ['converted', 'accepted', 'won'])) {
+                        $statusData['Converted'] += $amount;
+                    } elseif (in_array($status, ['revised', 'updated'])) {
+                        $statusData['Revised'] += $amount;
+                    } else {
+                        $statusData['Draft'] += $amount;
+                    }
+                }
+            }
+            
+            echo json_encode([
+                'labels' => array_keys($statusData),
+                'data' => array_values($statusData),
+                'total' => $totalAmount,
+                'count' => $totalCount
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function getRecentActivities() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            $activities = [];
+            
+            // Get recent invoices
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' ORDER BY id DESC LIMIT 3");
+            $stmt->execute();
+            $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($invoices as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $activities[] = [
+                    'type' => 'invoice',
+                    'description' => "Invoice {$invoiceNumber} created",
+                    'amount' => floatval($data['total_amount'] ?? 0),
+                    'date' => $data['invoice_date'] ?? date('Y-m-d'),
+                    'status' => $data['payment_status'] ?? 'pending'
+                ];
+            }
+            
+            // Get recent quotations
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 2");
+            $stmt->execute();
+            $quotations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($quotations as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $activities[] = [
+                    'type' => 'quotation',
+                    'description' => "Quotation {$quotationNumber} created",
+                    'amount' => floatval($data['amount'] ?? $data['total_amount'] ?? 0),
+                    'date' => $data['created_date'] ?? $data['date'] ?? date('Y-m-d'),
+                    'status' => $data['status'] ?? 'pending'
+                ];
+            }
+            
+            // Get recent purchase orders
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders' ORDER BY id DESC LIMIT 2");
+            $stmt->execute();
+            $pos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($pos as $row) {
+                $data = json_decode($row['data'], true);
+                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) {
+                    continue;
+                }
+                
+                $activities[] = [
+                    'type' => 'po',
+                    'description' => "Purchase Order {$poNumber} created",
+                    'amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? 0),
+                    'date' => $data['po_date'] ?? $data['created_date'] ?? $data['date'] ?? $data['order_date'] ?? date('Y-m-d'),
+                    'status' => $data['status'] ?? $data['po_status'] ?? 'open'
+                ];
+            }
+            
+            // Get recent payments
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_payments' ORDER BY id DESC LIMIT 1");
+            $stmt->execute();
+            $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($payments as $row) {
+                $data = json_decode($row['data'], true);
+                $paymentRef = $data['payment_reference'] ?? $data['reference'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($paymentRef, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $activities[] = [
+                    'type' => 'payment',
+                    'description' => "Payment {$paymentRef} received",
+                    'amount' => floatval($data['amount'] ?? $data['payment_amount'] ?? 0),
+                    'date' => $data['payment_date'] ?? $data['date'] ?? date('Y-m-d'),
+                    'status' => 'completed'
+                ];
+            }
+            
+            // Sort by date
+            usort($activities, function($a, $b) {
+                return strtotime($b['date']) - strtotime($a['date']);
+            });
+            
+            echo json_encode(['activities' => array_slice($activities, 0, 8)]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['activities' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function visualization() {
+        $type = $_GET['type'] ?? '';
+        
+        switch ($type) {
+            case 'quotations':
+                $this->getQuotationChart();
+                break;
+            case 'purchase_orders':
+                $this->getPurchaseOrderChart();
+                break;
+            case 'invoices':
+                $this->getInvoiceChart();
+                break;
+            case 'payments':
+                $this->getPaymentChart();
+                break;
+            default:
+                header('Content-Type: application/json');
+                echo json_encode(['labels' => [], 'data' => [], 'error' => 'Invalid visualization type']);
+        }
+    }
+    
+    public function recentQuotations() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 10");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $quotations = [];
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? 'N/A';
+                
+                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $quotations[] = [
+                    'quotation_number' => $quotationNumber,
+                    'customer_name' => $data['customer_name'] ?? $data['name'] ?? 'Unknown',
+                    'total_amount' => floatval($data['amount'] ?? $data['total_amount'] ?? 0),
+                    'valid_until' => $data['valid_until'] ?? $data['expiry_date'] ?? date('Y-m-d', strtotime('+30 days')),
+                    'status' => $data['status'] ?? 'active'
+                ];
+            }
+            
+            echo json_encode(['quotations' => $quotations]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['quotations' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function getAgingBuckets() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+            
             $buckets = [
                 '0-30' => 0,
                 '31-60' => 0,
                 '61-90' => 0,
                 '90+' => 0
             ];
-
+            
             foreach ($results as $row) {
                 $data = json_decode($row['data'], true);
                 $invoiceNumber = $data['invoice_number'] ?? '';
-
-                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
-
-                $outstanding = floatval($data['outstanding_amount'] ?? 0);
-                if ($outstanding <= 0) continue;
-
-                $dueDate = $data['due_date'] ?? date('Y-m-d');
-                $days = max(0, floor((time() - strtotime($dueDate)) / (24 * 3600)));
-
-                if ($days <= 30) {
-                    $buckets['0-30'] += $outstanding;
-                } elseif ($days <= 60) {
-                    $buckets['31-60'] += $outstanding;
-                } elseif ($days <= 90) {
-                    $buckets['61-90'] += $outstanding;
-                } else {
-                    $buckets['90+'] += $outstanding;
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
                 }
-            }
-
-            echo json_encode(['labels' => array_keys($buckets), 'data' => array_values($buckets)]);
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-    }
-    
-    public function getRecentQuotations() {
-        header('Content-Type: application/json');
-        
-        try {
-            $db = Database::connect();
-            $prefix = $this->getCompanyPrefix();
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-            $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $quotations = [];
-            $count = 0;
-            foreach ($results as $row) {
-                if ($count >= 5) break;
                 
-                $data = json_decode($row['data'], true);
-                $quotationNumber = $data['quotation_number'] ?? '';
-                
-                if (!str_contains(strtoupper($quotationNumber), $prefix)) continue;
-                
-                $quotations[] = [
-                    'quotation_number' => $quotationNumber,
-                    'customer_name' => $data['customer_name'] ?? 'Unknown',
-                    'total_amount' => floatval($data['total_amount'] ?? 0),
-                    'valid_until' => $data['valid_until'] ?? 'N/A'
-                ];
-                $count++;
-            }
-            
-            echo json_encode(['quotations' => $quotations]);
-            
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-    }
-    
-    public function exportTable() {
-        $type = $_GET['type'] ?? 'outstanding';
-        
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="finance_' . $type . '_' . date('Y-m-d') . '.csv"');
-        
-        try {
-            if ($type === 'outstanding') {
-                echo "Invoice Number,Customer Name,Due Date,Outstanding Amount,Days Overdue,Status\n";
-                
-                $db = Database::connect();
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-                $stmt->execute();
-                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                $prefix = $this->getCompanyPrefix();
-                // Load customer mapping
-                $customerNames = $this->getCustomerNamesMapping($db);
-                foreach ($results as $row) {
-                    $data = json_decode($row['data'], true);
-                    $invoiceNumber = $data['invoice_number'] ?? '';
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                if ($outstanding > 0) {
+                    $dueDate = $data['due_date'] ?? date('Y-m-d');
+                    $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
                     
-                    if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
-                    
-                    $outstanding = floatval($data['outstanding_amount'] ?? 0);
-                    
-                    if ($outstanding > 0) {
-                        $dueDate = $data['due_date'] ?? date('Y-m-d');
-                        $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
-
-                        $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                        $customerName = 'Unknown';
-                        if ($customerId && isset($customerNames[$customerId])) {
-                            $customerName = $customerNames[$customerId];
-                        } elseif (!empty($data['customer_name'])) {
-                            $customerName = $data['customer_name'];
-                        } elseif (!empty($data['customer_gstin'])) {
-                            $customerName = 'GST: ' . $data['customer_gstin'];
-                        }
-                        
-                        echo '"' . $invoiceNumber . '","' . 
-                             str_replace('"', '""', $customerName) . '","' . 
-                             $dueDate . '","' . 
-                             $outstanding . '","' . 
-                             floor($daysOverdue) . '","' . 
-                             ($daysOverdue > 0 ? 'Overdue' : 'Pending') . "\"\n";
+                    if ($daysOverdue <= 30) {
+                        $buckets['0-30'] += $outstanding;
+                    } elseif ($daysOverdue <= 60) {
+                        $buckets['31-60'] += $outstanding;
+                    } elseif ($daysOverdue <= 90) {
+                        $buckets['61-90'] += $outstanding;
+                    } else {
+                        $buckets['90+'] += $outstanding;
                     }
                 }
             }
-        } catch (Exception $e) {
-            echo "Error: " . $e->getMessage() . "\n";
-        }
-        exit;
-    }
-
-    // Export top-N outstanding by customer as CSV
-    public function exportOutstanding() {
-        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
-        if ($limit <= 0) $limit = 10;
-
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="outstanding_by_customer_top' . $limit . '_' . date('Y-m-d') . '.csv"');
-
-        try {
-            $db = Database::connect();
-            $prefix = $this->getCompanyPrefix();
-
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-            $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            $map = [];
-            $customerNames = $this->getCustomerNamesMapping($db);
-
-            foreach ($results as $row) {
-                $data = json_decode($row['data'], true);
-                $invoiceNumber = $data['invoice_number'] ?? '';
-                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
-
-                $outstanding = floatval($data['outstanding_amount'] ?? 0);
-                if ($outstanding <= 0) continue;
-
-                $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                $customerName = null;
-                if ($customerId && isset($customerNames[$customerId])) {
-                    $customerName = $customerNames[$customerId];
-                } elseif (!empty($data['customer_name'])) {
-                    $customerName = $data['customer_name'];
-                } elseif (!empty($data['customer_gstin'])) {
-                    $customerName = 'GST: ' . $data['customer_gstin'];
-                } else {
-                    $customerName = 'Customer ' . ($customerId ?: 'Unknown');
-                }
-
-                if (!isset($map[$customerName])) $map[$customerName] = 0;
-                $map[$customerName] += $outstanding;
-            }
-
-            arsort($map);
-
-            // Output CSV header
-            echo "Customer,Outstanding\n";
-            $i = 0; $others = 0;
-            foreach ($map as $name => $amt) {
-                if ($i < $limit) {
-                    echo '"' . str_replace('"', '""', $name) . '",' . $amt . "\n";
-                } else {
-                    $others += $amt;
-                }
-                $i++;
-            }
-            if ($others > 0) {
-                echo '"Others",' . $others . "\n";
-            }
-
-        } catch (Exception $e) {
-            echo "Error: " . $e->getMessage() . "\n";
-        }
-        exit;
-    }
-    
-    public function exportDashboard() {
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="finance_dashboard_' . date('Y-m-d') . '.csv"');
-        
-        try {
-            $db = Database::connect();
             
-            echo "Finance Dashboard Summary - " . date('Y-m-d H:i:s') . "\n\n";
-            echo "KPI,Value\n";
-            
-            // Get dashboard stats
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-            $stmt->execute();
-            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $totalInvoiceAmount = 0;
-            $invoiceReceived = 0;
-            $pendingInvoiceAmount = 0;
-            
-            $prefix = $this->getCompanyPrefix();
-            foreach ($invoiceResults as $row) {
-                $data = json_decode($row['data'], true);
-                $invoiceNumber = $data['invoice_number'] ?? '';
-                
-                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
-                
-                $total = floatval($data['total_amount'] ?? 0);
-                $outstanding = floatval($data['outstanding_amount'] ?? 0);
-                
-                $totalInvoiceAmount += $total;
-                $invoiceReceived += ($total - $outstanding);
-                $pendingInvoiceAmount += $outstanding;
-            }
-            
-            echo "Total Invoice Amount," . $totalInvoiceAmount . "\n";
-            echo "Invoice Amount Received," . $invoiceReceived . "\n";
-            echo "Pending Invoice Amount," . $pendingInvoiceAmount . "\n";
-            echo "Collection Rate," . ($totalInvoiceAmount > 0 ? round(($invoiceReceived / $totalInvoiceAmount) * 100, 2) : 0) . "%\n";
+            echo json_encode([
+                'labels' => array_keys($buckets),
+                'data' => array_values($buckets)
+            ]);
             
         } catch (Exception $e) {
-            echo "Error: " . $e->getMessage() . "\n";
+            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
         }
-        exit;
-    }
-    
-    public function downloadDatabase() {
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="complete_database_' . date('Y-m-d_H-i-s') . '.csv"');
-        
-        try {
-            $db = Database::connect();
-            
-            echo "Complete Database Export - " . date('Y-m-d H:i:s') . "\n\n";
-            
-            // Get all table names
-            $stmt = $db->prepare("SELECT DISTINCT table_name FROM finance_data ORDER BY table_name");
-            $stmt->execute();
-            $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            foreach ($tables as $tableName) {
-                echo "\n=== TABLE: {$tableName} ===\n";
-                
-                // Get sample records
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = ? LIMIT 3");
-                $stmt->execute([$tableName]);
-                $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                if (!empty($records)) {
-                    // Get all possible columns from all records
-                    $allColumns = [];
-                    foreach ($records as $record) {
-                        $data = json_decode($record['data'], true);
-                        if ($data) {
-                            $allColumns = array_merge($allColumns, array_keys($data));
-                        }
-                    }
-                    $allColumns = array_unique($allColumns);
-                    
-                    // Write headers
-                    echo implode(',', $allColumns) . "\n";
-                    
-                    // Write sample data
-                    foreach ($records as $record) {
-                        $data = json_decode($record['data'], true);
-                        $row = [];
-                        foreach ($allColumns as $col) {
-                            $value = $data[$col] ?? '';
-                            $row[] = '"' . str_replace('"', '""', $value) . '"';
-                        }
-                        echo implode(',', $row) . "\n";
-                    }
-                } else {
-                    echo "No data available\n";
-                }
-            }
-            
-        } catch (Exception $e) {
-            echo "Error: " . $e->getMessage() . "\n";
-        }
-        exit;
     }
     
     public function updateCompanyPrefix() {
@@ -851,47 +903,11 @@ class FinanceController extends Controller {
                 
                 echo json_encode(['success' => true, 'prefix' => $prefix]);
             } catch (Exception $e) {
-                echo json_encode(['error' => $e->getMessage()]);
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
         } else {
             echo json_encode(['prefix' => $this->getCompanyPrefix()]);
         }
-    }
-    
-    public function exportData() {
-        $type = $_GET['type'] ?? 'quotations';
-        
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="finance_' . $type . '_' . date('Y-m-d') . '.csv"');
-        
-        try {
-            $db = Database::connect();
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = ?");
-            $stmt->execute(['finance_' . $type]);
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            if (empty($results)) {
-                echo "No data available for $type\n";
-                exit;
-            }
-            
-            // Get headers from first record
-            $firstRecord = json_decode($results[0]['data'], true);
-            echo implode(',', array_keys($firstRecord)) . "\n";
-            
-            // Output data
-            foreach ($results as $row) {
-                $data = json_decode($row['data'], true);
-                $values = array_map(function($value) {
-                    return '"' . str_replace('"', '""', $value) . '"';
-                }, array_values($data));
-                echo implode(',', $values) . "\n";
-            }
-            
-        } catch (Exception $e) {
-            echo "Error: " . $e->getMessage() . "\n";
-        }
-        exit;
     }
     
     private function createTables($db) {
@@ -899,10 +915,10 @@ class FinanceController extends Controller {
             id INT AUTO_INCREMENT PRIMARY KEY,
             table_name VARCHAR(100) UNIQUE,
             record_count INT,
-            last_sync TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            last_sync TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            company_prefix VARCHAR(10) DEFAULT 'BKC'
         )");
         
-        // Add company_prefix column if it doesn't exist
         try {
             $db->exec("ALTER TABLE finance_tables ADD COLUMN company_prefix VARCHAR(10) DEFAULT 'BKC'");
         } catch (Exception $e) {
@@ -917,411 +933,28 @@ class FinanceController extends Controller {
             INDEX(table_name)
         )");
         
-
-    }
-    
-    private function getQuotationsChart($db) {
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-        $stmt->execute();
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        $prefix = $this->getCompanyPrefix();
-        $statusCount = ['draft' => 0, 'revised' => 0, 'converted' => 0];
-        foreach ($results as $row) {
-            $data = json_decode($row['data'], true);
-            $quotationNumber = $data['quotation_number'] ?? '';
-            
-            if (!str_contains(strtoupper($quotationNumber), $prefix)) continue;
-            
-            $status = strtolower($data['status'] ?? 'draft');
-            if (isset($statusCount[$status])) {
-                $statusCount[$status]++;
-            }
-        }
-        
-        return [
-            'data' => array_values($statusCount),
-            'draft' => $statusCount['draft'],
-            'revised' => $statusCount['revised']
-        ];
-    }
-    
-    private function getPurchaseOrdersChart($db) {
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
-        $stmt->execute();
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        $prefix = $this->getCompanyPrefix();
-        $monthlyData = [];
-        $largest = 0;
-        foreach ($results as $row) {
-            $data = json_decode($row['data'], true);
-            $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
-            
-            if (!str_contains(strtoupper($poNumber), $prefix)) continue;
-            
-            $month = date('M Y', strtotime($data['po_date'] ?? '2024-01-01'));
-            $amount = floatval($data['total_amount'] ?? 0);
-            
-            if ($amount > $largest) $largest = $amount;
-            
-            if (!isset($monthlyData[$month])) {
-                $monthlyData[$month] = 0;
-            }
-            $monthlyData[$month] += $amount;
-        }
-        
-        return [
-            'labels' => array_keys($monthlyData),
-            'data' => array_values($monthlyData),
-            'largest' => $largest
-        ];
-    }
-    
-    private function getInvoicesChart($db) {
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-        $stmt->execute();
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        $prefix = $this->getCompanyPrefix();
-        $paid = 0;
-        $unpaid = 0;
-        $overdueCount = 0;
-        
-        foreach ($results as $row) {
-            $data = json_decode($row['data'], true);
-            $invoiceNumber = $data['invoice_number'] ?? '';
-            
-            if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
-            
-            $status = strtolower($data['payment_status'] ?? 'unpaid');
-            $amount = floatval($data['total_amount'] ?? 0);
-            $dueDate = $data['due_date'] ?? date('Y-m-d');
-            $isOverdue = strtotime($dueDate) < time();
-            
-            if ($status === 'paid') {
-                $paid += $amount;
-            } else {
-                $unpaid += $amount;
-                if ($isOverdue) $overdueCount++;
-            }
-        }
-        
-        return [
-            'data' => [$paid, $unpaid, 0],
-            'overdueCount' => $overdueCount
-        ];
-    }
-    
-    public function getCustomers() {
-        header('Content-Type: application/json');
-        
-        try {
-            $db = Database::connect();
-            $prefix = $this->getCompanyPrefix();
-            $customers = [];
-            
-            // Check if finance_customer(s) table has data (handle both singular/plural)
-            $stmt = $db->prepare("SELECT COUNT(*) FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
-            $stmt->execute();
-            $customerCount = $stmt->fetchColumn();
-
-            // Get customer names from finance_customer(s) table if available
-            $customerNames = [];
-            if ($customerCount > 0) {
-                $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customers','finance_customer')");
-                $stmt->execute();
-                $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                foreach ($customerResults as $row) {
-                    $data = json_decode($row['data'], true);
-                    $customerId = isset($data['id']) ? (string)$data['id'] : '';
-                    $customerName = $data['display_name'] ?? $data['name'] ?? '';
-                    $customerGstin = $data['gstin'] ?? $data['customer_gstin'] ?? '';
-
-                    if ($customerId && $customerName) {
-                        $customerNames[$customerId] = [
-                            'name' => $customerName,
-                            'gstin' => $customerGstin
-                        ];
-                    }
-                }
-            }
-
-            // Get customers from quotations as the primary source of linked customers
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-            $stmt->execute();
-            $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            foreach ($quotationResults as $row) {
-                $data = json_decode($row['data'], true);
-                $quotationNumber = $data['quotation_number'] ?? '';
-
-                if (!str_contains(strtoupper($quotationNumber), $prefix)) continue;
-
-                $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                $customerGstin = $data['customer_gstin'] ?? '';
-
-                if ($customerId) {
-                    if (isset($customerNames[$customerId])) {
-                        $customerInfo = $customerNames[$customerId];
-                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $gstin,
-                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
-                        ];
-                    } else {
-                        // No detailed customer record found — create readable fallback using GST if available
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $customerGstin,
-                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
-                        ];
-                    }
-                }
-            }
-
-            // Also aggregate customers referenced by Purchase Orders
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
-            $stmt->execute();
-            $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            foreach ($poResults as $row) {
-                $data = json_decode($row['data'], true);
-                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
-
-                if (!str_contains(strtoupper($poNumber), $prefix)) continue;
-
-                $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                $customerGstin = $data['customer_gstin'] ?? '';
-
-                if ($customerId && !isset($customers[$customerId])) {
-                    if (isset($customerNames[$customerId])) {
-                        $customerInfo = $customerNames[$customerId];
-                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $gstin,
-                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
-                        ];
-                    } else {
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $customerGstin,
-                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
-                        ];
-                    }
-                }
-            }
-
-            // Also aggregate customers referenced by Invoices
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-            $stmt->execute();
-            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            foreach ($invoiceResults as $row) {
-                $data = json_decode($row['data'], true);
-                $invoiceNumber = $data['invoice_number'] ?? '';
-
-                if (!str_contains(strtoupper($invoiceNumber), $prefix)) continue;
-
-                $customerId = isset($data['customer_id']) ? (string)$data['customer_id'] : '';
-                $customerGstin = $data['customer_gstin'] ?? '';
-
-                if ($customerId && !isset($customers[$customerId])) {
-                    if (isset($customerNames[$customerId])) {
-                        $customerInfo = $customerNames[$customerId];
-                        $gstin = $customerInfo['gstin'] ?: $customerGstin;
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $gstin,
-                            'display' => $customerInfo['name'] . ($gstin ? " (GST: {$gstin})" : '')
-                        ];
-                    } else {
-                        $customers[$customerId] = [
-                            'id' => $customerId,
-                            'gstin' => $customerGstin,
-                            'display' => ($customerGstin ? "Customer {$customerId} (GST: {$customerGstin})" : "Customer {$customerId}")
-                        ];
-                    }
-                }
-            }
-            
-            uasort($customers, function($a, $b) {
-                return strcmp($a['display'], $b['display']);
-            });
-            
-            echo json_encode([
-                'customers' => array_values($customers),
-                'debug' => [
-                    'customer_table_records' => $customerCount,
-                    'prefix' => $prefix
-                ]
-            ]);
-            
-        } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-    }
-    
-    private function getConversionFunnel($db, $customerFilter = '') {
-        $prefix = $this->getCompanyPrefix();
-        
-        // Get customer names mapping first
-        $customerNames = $this->getCustomerNamesMapping($db);
-        
-        // Count quotations
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-        $stmt->execute();
-        $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        $quotationCount = 0;
-        $quotationValue = 0;
-        foreach ($quotationResults as $row) {
-            $data = json_decode($row['data'], true);
-            $quotationNumber = $data['quotation_number'] ?? '';
-            $customerId = $data['customer_id'] ?? '';
-            
-            if (str_contains(strtoupper($quotationNumber), $prefix)) {
-                if ($customerFilter === '' || $customerId === $customerFilter) {
-                    $quotationCount++;
-                    $quotationValue += floatval($data['total_amount'] ?? 0);
-                }
-            }
-        }
-        
-        // Count POs
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
-        $stmt->execute();
-        $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        $poCount = 0;
-        $poValue = 0;
-        foreach ($poResults as $row) {
-            $data = json_decode($row['data'], true);
-            $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? '';
-            $customerId = $data['customer_id'] ?? '';
-            
-            if (str_contains(strtoupper($poNumber), $prefix)) {
-                if ($customerFilter === '' || $customerId === $customerFilter) {
-                    $poCount++;
-                    $poValue += floatval($data['total_amount'] ?? 0);
-                }
-            }
-        }
-        
-        // Count invoices
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-        $stmt->execute();
-        $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        $invoiceCount = 0;
-        $invoiceValue = 0;
-        $paymentValue = 0;
-        foreach ($invoiceResults as $row) {
-            $data = json_decode($row['data'], true);
-            $invoiceNumber = $data['invoice_number'] ?? '';
-            $customerId = $data['customer_id'] ?? '';
-            
-            if (str_contains(strtoupper($invoiceNumber), $prefix)) {
-                if ($customerFilter === '' || $customerId === $customerFilter) {
-                    $invoiceCount++;
-                    $total = floatval($data['total_amount'] ?? 0);
-                    $outstanding = floatval($data['outstanding_amount'] ?? 0);
-                    $invoiceValue += $total;
-                    $paymentValue += ($total - $outstanding);
-                }
-            }
-        }
-        
-        return [
-            'quotations' => $quotationCount,
-            'quotationValue' => $quotationValue,
-            'purchaseOrders' => $poCount,
-            'poValue' => $poValue,
-            'quotationToPO' => $quotationCount > 0 ? round(($poCount / $quotationCount) * 100) : 0,
-            'invoices' => $invoiceCount,
-            'invoiceValue' => $invoiceValue,
-            'poToInvoice' => $poCount > 0 ? round(($invoiceCount / $poCount) * 100) : 0,
-            'payments' => $paymentValue > 0 ? 1 : 0,
-            'paymentValue' => $paymentValue,
-            'invoiceToPayment' => $invoiceValue > 0 ? round(($paymentValue / $invoiceValue) * 100) : 0
-        ];
-    }
-    
-    private function getCustomerNamesMapping($db) {
-        $customerNames = [];
-        
-        // Get customer names from finance_customers table only
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
-        $stmt->execute();
-        $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        foreach ($customerResults as $row) {
-            $data = json_decode($row['data'], true);
-            $customerId = $data['id'] ?? '';
-            $customerName = $data['name'] ?? '';
-            
-            if ($customerId && $customerName) {
-                $customerNames[$customerId] = $customerName;
-            }
-        }
-        
-        return $customerNames;
-    }
-    
-    private function getCompanyPrefix() {
-        try {
-            $db = Database::connect();
-            $this->createTables($db);
-            
-            // Try to get existing prefix
-            $stmt = $db->prepare("SELECT company_prefix FROM finance_tables WHERE table_name = 'settings' LIMIT 1");
-            $stmt->execute();
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($result) {
-                return strtoupper($result['company_prefix']);
-            }
-            
-            // Create default settings record if not exists
-            $stmt = $db->prepare("INSERT INTO finance_tables (table_name, record_count, company_prefix) VALUES ('settings', 0, 'BKC')");
-            $stmt->execute();
-            
-            return 'BKC';
-        } catch (Exception $e) {
-            return 'BKC';
-        }
-    }
-    
-    private function createDemoData() {
-        try {
-            $db = Database::connect();
-            $this->createTables($db);
-            
-            $demoData = [
-                'finance_quotations' => [
-                    ['quotation_number' => 'BKC-Q-001', 'customer_id' => '1', 'total_amount' => 50000, 'status' => 'draft'],
-                    ['quotation_number' => 'BKC-Q-002', 'customer_id' => '2', 'total_amount' => 75000, 'status' => 'revised']
-                ],
-                'finance_invoices' => [
-                    ['invoice_number' => 'BKC-INV-001', 'customer_id' => '1', 'total_amount' => 50000, 'outstanding_amount' => 25000, 'due_date' => date('Y-m-d')],
-                    ['invoice_number' => 'BKC-INV-002', 'customer_id' => '2', 'total_amount' => 75000, 'outstanding_amount' => 0, 'due_date' => date('Y-m-d')]
-                ],
-                'finance_customers' => [
-                    ['id' => '1', 'name' => 'Demo Customer 1', 'display_name' => 'Demo Customer 1', 'gstin' => '29ABCDE1234F1Z5'],
-                    ['id' => '2', 'name' => 'Demo Customer 2', 'display_name' => 'Demo Customer 2', 'gstin' => '29ABCDE5678F1Z5']
-                ]
-            ];
-            
-            foreach ($demoData as $tableName => $records) {
-                $this->storeTableData($db, $tableName, $records);
-            }
-            
-        } catch (Exception $e) {
-            error_log('Demo data creation failed: ' . $e->getMessage());
-        }
+        $db->exec("CREATE TABLE IF NOT EXISTS dashboard_stats (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            company_prefix VARCHAR(10),
+            total_revenue DECIMAL(15,2) DEFAULT 0,
+            invoice_count INT DEFAULT 0,
+            average_invoice DECIMAL(15,2) DEFAULT 0,
+            amount_received DECIMAL(15,2) DEFAULT 0,
+            collection_rate DECIMAL(5,2) DEFAULT 0,
+            paid_invoices INT DEFAULT 0,
+            outstanding_amount DECIMAL(15,2) DEFAULT 0,
+            outstanding_percentage DECIMAL(5,2) DEFAULT 0,
+            overdue_amount DECIMAL(15,2) DEFAULT 0,
+            customer_count INT DEFAULT 0,
+            po_commitments DECIMAL(15,2) DEFAULT 0,
+            open_pos INT DEFAULT 0,
+            average_po DECIMAL(15,2) DEFAULT 0,
+            claimable_amount DECIMAL(15,2) DEFAULT 0,
+            claimable_pos INT DEFAULT 0,
+            claim_rate DECIMAL(5,2) DEFAULT 0,
+            generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_prefix (company_prefix)
+        )");
     }
     
     private function storeTableData($db, $tableName, $data) {
@@ -1337,4 +970,708 @@ class FinanceController extends Controller {
                              ON DUPLICATE KEY UPDATE record_count = ?, last_sync = NOW()");
         $stmt->execute([$tableName, count($data), count($data)]);
     }
+    
+    public function getPurchaseOrderChart() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (empty($results)) {
+                echo json_encode(['labels' => ['No Data'], 'data' => [0]]);
+                return;
+            }
+            
+            $monthlyData = [];
+            $totalCount = 0;
+            $totalAmount = 0;
+            
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                // Check multiple possible field names for PO number
+                $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($poNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                // Check multiple possible field names for date
+                $date = $data['created_date'] ?? $data['po_date'] ?? $data['date'] ?? $data['order_date'] ?? $data['created_at'] ?? date('Y-m-d');
+                $month = date('M Y', strtotime($date));
+                // Check multiple possible field names for amount
+                $amount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? $data['total'] ?? 0);
+                
+                if ($amount > 0) {
+                    $monthlyData[$month] = ($monthlyData[$month] ?? 0) + $amount;
+                    $totalCount++;
+                    $totalAmount += $amount;
+                }
+            }
+            
+            if (empty($monthlyData)) {
+                echo json_encode(['labels' => ['No Data'], 'data' => [0], 'total' => 0, 'count' => 0]);
+                return;
+            }
+            
+            echo json_encode([
+                'labels' => array_keys($monthlyData),
+                'data' => array_values($monthlyData),
+                'total' => $totalAmount,
+                'count' => $totalCount
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['labels' => ['Error'], 'data' => [0], 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function getInvoiceChart() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $paid = 0;
+            $unpaid = 0;
+            $overdue = 0;
+            
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                $total = floatval($data['total_amount'] ?? 0);
+                $dueDate = $data['due_date'] ?? date('Y-m-d');
+                $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
+                
+                if ($outstanding <= 0) {
+                    $paid += $total;
+                } elseif ($daysOverdue > 0) {
+                    $overdue += $outstanding;
+                } else {
+                    $unpaid += $outstanding;
+                }
+            }
+            
+            echo json_encode([
+                'labels' => ['Paid', 'Unpaid', 'Overdue'],
+                'data' => [$paid, $unpaid, $overdue]
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function getPaymentChart() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_payments'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (empty($results)) {
+                echo json_encode(['labels' => ['No Data'], 'data' => [0]]);
+                return;
+            }
+            
+            $monthlyData = [];
+            
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $paymentRef = $data['payment_reference'] ?? $data['reference'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($paymentRef, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $date = $data['payment_date'] ?? $data['date'] ?? date('Y-m-d');
+                $month = date('M Y', strtotime($date));
+                $amount = floatval($data['amount'] ?? $data['payment_amount'] ?? 0);
+                
+                $monthlyData[$month] = ($monthlyData[$month] ?? 0) + $amount;
+            }
+            
+            if (empty($monthlyData)) {
+                echo json_encode(['labels' => ['No Data'], 'data' => [0]]);
+                return;
+            }
+            
+            echo json_encode([
+                'labels' => array_keys($monthlyData),
+                'data' => array_values($monthlyData)
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['labels' => ['Error'], 'data' => [0], 'error' => $e->getMessage()]);
+        }
+    }
+    
+    // Route aliases for dashboard endpoints
+    public function companyPrefix() {
+        $this->updateCompanyPrefix();
+    }
+    
+    public function availablePrefixes() {
+        $this->getAvailablePrefixes();
+    }
+    
+    public function customers() {
+        $this->getCustomers();
+    }
+    
+    public function dashboardStats() {
+        $this->getDashboardStats();
+    }
+    
+    public function outstandingInvoices() {
+        $this->getOutstandingInvoices();
+    }
+    
+    public function outstandingByCustomer() {
+        $this->getOutstandingByCustomer();
+    }
+    
+    public function agingBuckets() {
+        $this->getAgingBuckets();
+    }
+    
+    public function debugPo() {
+        $this->debugPurchaseOrders();
+    }
+    
+    public function downloadTables() {
+        $this->downloadPgTables();
+    }
+    
+    public function refreshStats() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            $prefix = $this->getCompanyPrefix();
+            
+            $pgConn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango");
+            if ($pgConn) {
+                $this->calculateStatsForPrefix($db, $pgConn, $prefix);
+                @pg_close($pgConn);
+                echo json_encode(['success' => true, 'message' => 'Stats refreshed for prefix: ' . $prefix]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+    
+    private function calculateStatsForPrefix($db, $pgConn, $prefix) {
+        // Fetch raw invoice data
+        $invoiceQuery = "SELECT id, invoice_number, total_amount, amount_paid, cgst, sgst, customer_gstin, due_date FROM finance_invoices WHERE invoice_number LIKE '$prefix%'";
+        $invoiceResult = @pg_query($pgConn, $invoiceQuery);
+        $invoices = $invoiceResult ? pg_fetch_all($invoiceResult) : [];
+        
+        // Fetch raw PO data
+        $poQuery = "SELECT id, po_number, total_amount, amount_paid FROM finance_purchase_orders WHERE po_number LIKE '$prefix%'";
+        $poResult = @pg_query($pgConn, $poQuery);
+        $pos = $poResult ? pg_fetch_all($poResult) : [];
+        
+        // Calculate metrics
+        $stats = $this->calculateMetrics($invoices ?: [], $pos ?: []);
+        $stats['company_prefix'] = $prefix;
+        
+        // Save to dashboard_stats
+        $this->saveDashboardStats($db, $stats);
+    }
+    
+    private function calculateMetrics($invoices, $pos) {
+        $stats = [];
+        
+        // Stat Card 1: Total Invoice Amount
+        $totalRevenue = 0;
+        $invoiceCount = count($invoices);
+        foreach ($invoices as $inv) {
+            $totalRevenue += floatval($inv['total_amount'] ?? 0);
+        }
+        $stats['total_revenue'] = $totalRevenue;
+        $stats['invoice_count'] = $invoiceCount;
+        $stats['average_invoice'] = $invoiceCount > 0 ? $totalRevenue / $invoiceCount : 0;
+        
+        // Stat Card 2: Amount Received
+        $amountReceived = 0;
+        $paidInvoices = 0;
+        foreach ($invoices as $inv) {
+            $paid = floatval($inv['amount_paid'] ?? 0);
+            $amountReceived += $paid;
+            if ($paid > 0) $paidInvoices++;
+        }
+        $stats['amount_received'] = $amountReceived;
+        $stats['collection_rate'] = $totalRevenue > 0 ? ($amountReceived / $totalRevenue) * 100 : 0;
+        $stats['paid_invoices'] = $paidInvoices;
+        
+        // Stat Card 3: Outstanding Amount
+        $outstandingAmount = 0;
+        $overdueAmount = 0;
+        $uniqueCustomers = [];
+        $today = date('Y-m-d');
+        
+        foreach ($invoices as $inv) {
+            $total = floatval($inv['total_amount'] ?? 0);
+            $paid = floatval($inv['amount_paid'] ?? 0);
+            $pending = $total - $paid;
+            
+            if ($pending > 0) {
+                $outstandingAmount += $pending;
+                $uniqueCustomers[$inv['customer_gstin'] ?? ''] = true;
+                
+                if (($inv['due_date'] ?? '') < $today) {
+                    $overdueAmount += $pending;
+                }
+            }
+        }
+        
+        $stats['outstanding_amount'] = $outstandingAmount;
+        $stats['outstanding_percentage'] = $totalRevenue > 0 ? ($outstandingAmount / $totalRevenue) * 100 : 0;
+        $stats['overdue_amount'] = $overdueAmount;
+        $stats['customer_count'] = count($uniqueCustomers);
+        
+        // Stat Card 5: PO Commitments
+        $poCommitments = 0;
+        $openPos = 0;
+        foreach ($pos as $po) {
+            $total = floatval($po['total_amount'] ?? 0);
+            $paid = floatval($po['amount_paid'] ?? 0);
+            $poCommitments += $total;
+            if ($total > $paid) $openPos++;
+        }
+        $stats['po_commitments'] = $poCommitments;
+        $stats['open_pos'] = $openPos;
+        $stats['average_po'] = count($pos) > 0 ? $poCommitments / count($pos) : 0;
+        
+        // Stat Card 6: Claimable Amount
+        $claimableAmount = 0;
+        $claimablePos = 0;
+        foreach ($pos as $po) {
+            $total = floatval($po['total_amount'] ?? 0);
+            $paid = floatval($po['amount_paid'] ?? 0);
+            $claimable = $total - $paid;
+            if ($claimable > 0) {
+                $claimableAmount += $claimable;
+                $claimablePos++;
+            }
+        }
+        $stats['claimable_amount'] = $claimableAmount;
+        $stats['claimable_pos'] = $claimablePos;
+        $stats['claim_rate'] = $poCommitments > 0 ? ($claimableAmount / $poCommitments) * 100 : 0;
+        
+        return $stats;
+    }
+    
+    private function saveDashboardStats($db, $stats) {
+        $sql = "INSERT INTO dashboard_stats (
+                    company_prefix, total_revenue, invoice_count, average_invoice,
+                    amount_received, collection_rate, paid_invoices,
+                    outstanding_amount, outstanding_percentage, overdue_amount, customer_count,
+                    po_commitments, open_pos, average_po,
+                    claimable_amount, claimable_pos, claim_rate, generated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                    total_revenue = VALUES(total_revenue),
+                    invoice_count = VALUES(invoice_count),
+                    average_invoice = VALUES(average_invoice),
+                    amount_received = VALUES(amount_received),
+                    collection_rate = VALUES(collection_rate),
+                    paid_invoices = VALUES(paid_invoices),
+                    outstanding_amount = VALUES(outstanding_amount),
+                    outstanding_percentage = VALUES(outstanding_percentage),
+                    overdue_amount = VALUES(overdue_amount),
+                    customer_count = VALUES(customer_count),
+                    po_commitments = VALUES(po_commitments),
+                    open_pos = VALUES(open_pos),
+                    average_po = VALUES(average_po),
+                    claimable_amount = VALUES(claimable_amount),
+                    claimable_pos = VALUES(claimable_pos),
+                    claim_rate = VALUES(claim_rate),
+                    generated_at = NOW()";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            $stats['company_prefix'],
+            $stats['total_revenue'],
+            $stats['invoice_count'],
+            $stats['average_invoice'],
+            $stats['amount_received'],
+            $stats['collection_rate'],
+            $stats['paid_invoices'],
+            $stats['outstanding_amount'],
+            $stats['outstanding_percentage'],
+            $stats['overdue_amount'],
+            $stats['customer_count'],
+            $stats['po_commitments'],
+            $stats['open_pos'],
+            $stats['average_po'],
+            $stats['claimable_amount'],
+            $stats['claimable_pos'],
+            $stats['claim_rate']
+        ]);
+    }
+    
+    public function getAllPurchaseOrders() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $pos = [];
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $pos[] = [
+                    'internal_po_number' => $data['internal_po_number'] ?? 'N/A',
+                    'po_number' => $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? 'N/A',
+                    'amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? 0),
+                    'status' => $data['status'] ?? $data['po_status'] ?? 'unknown',
+                    'raw_data' => $data
+                ];
+            }
+            
+            echo json_encode([
+                'total_count' => count($pos),
+                'purchase_orders' => $pos
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+    
+    public function downloadPgTables() {
+        try {
+            $pgHost = '72.60.218.167';
+            $pgPort = '5432';
+            $pgDb = 'modernsap';
+            $pgUser = 'postgres';
+            $pgPass = 'mango';
+            
+            $pgConn = @pg_connect("host=$pgHost port=$pgPort dbname=$pgDb user=$pgUser password=$pgPass");
+            
+            if (!$pgConn) {
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'PostgreSQL connection failed']);
+                exit;
+            }
+            
+            $tables = ['finance_invoices', 'finance_quotations', 'finance_customers', 'finance_customer', 'finance_payments', 'finance_purchase_orders'];
+            
+            // Create ZIP file
+            $zipFile = tempnam(sys_get_temp_dir(), 'finance_tables_') . '.zip';
+            $zip = new ZipArchive();
+            
+            if ($zip->open($zipFile, ZipArchive::CREATE) !== TRUE) {
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Cannot create ZIP file']);
+                exit;
+            }
+            
+            foreach ($tables as $tableName) {
+                $result = @pg_query($pgConn, "SELECT * FROM $tableName");
+                if ($result && pg_num_rows($result) > 0) {
+                    $data = pg_fetch_all($result);
+                    
+                    // Convert to CSV
+                    $csvContent = '';
+                    if (!empty($data)) {
+                        // Header
+                        $csvContent .= implode(',', array_map(function($col) {
+                            return '"' . str_replace('"', '""', $col) . '"';
+                        }, array_keys($data[0]))) . "\n";
+                        
+                        // Data rows
+                        foreach ($data as $row) {
+                            $csvContent .= implode(',', array_map(function($val) {
+                                return '"' . str_replace('"', '""', $val ?? '') . '"';
+                            }, array_values($row))) . "\n";
+                        }
+                    }
+                    
+                    $zip->addFromString($tableName . '.csv', $csvContent);
+                }
+            }
+            
+            $zip->close();
+            @pg_close($pgConn);
+            
+            // Download ZIP file
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="finance_tables_' . date('Y-m-d_H-i-s') . '.zip"');
+            header('Content-Length: ' . filesize($zipFile));
+            
+            readfile($zipFile);
+            unlink($zipFile);
+            
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Download failed: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function recentActivities() {
+        $this->getRecentActivities();
+    }
+    
+    public function debugPurchaseOrders() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            // Check if table exists and has data
+            $stmt = $db->prepare("SELECT COUNT(*) as count FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+            $stmt->execute();
+            $count = $stmt->fetchColumn();
+            
+            // Get sample data
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders' LIMIT 5");
+            $stmt->execute();
+            $samples = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $sampleData = [];
+            $prefixMatches = 0;
+            foreach ($samples as $row) {
+                $data = json_decode($row['data'], true);
+                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+                
+                $matchesPrefix = false;
+                if ($prefix && !empty($prefix) && !empty($poNumber)) {
+                    $matchesPrefix = stripos($poNumber, $prefix) !== false;
+                    if ($matchesPrefix) $prefixMatches++;
+                }
+                
+                $sampleData[] = [
+                    'po_number' => $poNumber,
+                    'matches_prefix' => $matchesPrefix,
+                    'keys' => array_keys($data),
+                    'sample_values' => array_slice($data, 0, 8, true)
+                ];
+            }
+            
+            echo json_encode([
+                'total_records' => $count,
+                'current_prefix' => $prefix,
+                'prefix_matches' => $prefixMatches,
+                'sample_data' => $sampleData,
+                'table_exists' => $count > 0
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+    
+    private function calculateFunnelStats($db, $prefix) {
+        $quotations = $this->fetchQuotationData($db, $prefix);
+        $pos = $this->fetchPOData($db, $prefix);
+        $invoices = $this->fetchInvoiceData($db, $prefix);
+        
+        $quotation_count = count($quotations);
+        $quotation_value = array_sum(array_column($quotations, 'amount'));
+        
+        $po_count = count($pos);
+        $po_value = array_sum(array_column($pos, 'amount'));
+        $po_conversion_rate = $quotation_count > 0 ? ($po_count / $quotation_count) * 100 : 0;
+        
+        $invoice_count = count($invoices);
+        $invoice_value = array_sum(array_column($invoices, 'total'));
+        $invoice_conversion_rate = $po_count > 0 ? ($invoice_count / $po_count) * 100 : 0;
+        
+        $payment_count = count(array_filter($invoices, fn($inv) => $inv['paid'] > 0));
+        $payment_value = array_sum(array_column($invoices, 'paid'));
+        $payment_conversion_rate = $invoice_count > 0 ? ($payment_count / $invoice_count) * 100 : 0;
+        
+        return [
+            'quotations' => $quotation_count,
+            'quotationValue' => $quotation_value,
+            'purchaseOrders' => $po_count,
+            'poValue' => $po_value,
+            'quotationToPO' => round($po_conversion_rate),
+            'invoices' => $invoice_count,
+            'invoiceValue' => $invoice_value,
+            'poToInvoice' => round($invoice_conversion_rate),
+            'payments' => $payment_count,
+            'paymentValue' => $payment_value,
+            'invoiceToPayment' => round($payment_conversion_rate)
+        ];
+    }
+    
+    private function calculateChartStats($db, $prefix) {
+        return [
+            'quotationChart' => ['draft' => 0, 'revised' => 0, 'converted' => 0],
+            'poChart' => ['open' => 0, 'fulfilled' => 0],
+            'invoiceChart' => ['paid' => 0, 'unpaid' => 0, 'overdue' => 0],
+            'agingChart' => ['current' => 0, 'watch' => 0, 'concern' => 0, 'critical' => 0]
+        ];
+    }
+    
+    private function fetchQuotationData($db, $prefix) {
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $quotations = [];
+        foreach ($results as $row) {
+            $data = json_decode($row['data'], true);
+            $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+            if (!$prefix || strpos($quotationNumber, $prefix) === 0) {
+                $quotations[] = [
+                    'number' => $quotationNumber,
+                    'amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
+                    'status' => $data['status'] ?? 'Draft'
+                ];
+            }
+        }
+        return $quotations;
+    }
+    
+    private function fetchPOData($db, $prefix) {
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $pos = [];
+        foreach ($results as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+            
+            // Skip prefix check if no prefix or match any of the PO number fields
+            $matchesPrefix = !$prefix || 
+                            (!empty($poNumber) && stripos($poNumber, $prefix) !== false) ||
+                            (!empty($data['po_number']) && stripos($data['po_number'], $prefix) !== false) ||
+                            (!empty($data['internal_po_number']) && stripos($data['internal_po_number'], $prefix) !== false);
+            
+            if ($matchesPrefix) {
+                $amount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? 0);
+                if ($amount > 0) {
+                    $pos[] = [
+                        'number' => $poNumber,
+                        'amount' => $amount
+                    ];
+                }
+            }
+        }
+        return $pos;
+    }
+    
+    private function fetchInvoiceData($db, $prefix) {
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $invoices = [];
+        foreach ($results as $row) {
+            $data = json_decode($row['data'], true);
+            $invoiceNumber = $data['invoice_number'] ?? '';
+            if (!$prefix || strpos($invoiceNumber, $prefix) === 0) {
+                $total = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                $invoices[] = [
+                    'number' => $invoiceNumber,
+                    'total' => $total,
+                    'paid' => $total - $outstanding
+                ];
+            }
+        }
+        return $invoices;
+    }
+    
+    private function getCompanyPrefix() {
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $stmt = $db->prepare("SELECT company_prefix FROM finance_tables WHERE table_name = 'settings' LIMIT 1");
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $prefix = $result ? strtoupper(trim($result['company_prefix'])) : '';
+            
+            return $prefix;
+        } catch (Exception $e) {
+            error_log("Error fetching company prefix: " . $e->getMessage());
+            return '';
+        }
+    }
+    
+    public function structure() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $tables = [];
+            $stmt = $db->prepare("SELECT table_name, record_count, last_sync FROM finance_tables ORDER BY table_name");
+            $stmt->execute();
+            $tableInfo = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($tableInfo as $info) {
+                $tables[] = [
+                    'name' => $info['table_name'],
+                    'records' => $info['record_count'],
+                    'last_sync' => $info['last_sync']
+                ];
+            }
+            
+            // Get actual counts from finance_data
+            $actualCounts = [];
+            $stmt = $db->prepare("SELECT table_name, COUNT(*) as actual_count FROM finance_data GROUP BY table_name");
+            $stmt->execute();
+            $counts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($counts as $count) {
+                $actualCounts[$count['table_name']] = $count['actual_count'];
+            }
+            
+            echo json_encode([
+                'tables' => $tables,
+                'actual_counts' => $actualCounts,
+                'prefix' => $this->getCompanyPrefix()
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
 }
+?>

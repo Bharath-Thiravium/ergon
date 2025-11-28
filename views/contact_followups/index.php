@@ -9,6 +9,9 @@ ob_start();
         <p>Contact-centric follow-up management and tracking</p>
     </div>
     <div class="page-actions">
+        <button class="btn btn--secondary" onclick="showAddContactModal()">
+            <span>👤</span> Add Contact
+        </button>
         <a href="/ergon/contacts/followups/create" class="btn btn--primary">
             <span>➕</span> New Follow-up
         </a>
@@ -140,6 +143,19 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
                             </div>
                         </div>
                         <div class="contact-card__actions">
+                            <div class="ab-container">
+                                <button class="ab-btn ab-btn--view" onclick="viewContact(<?= $contact['id'] ?>)" title="View Contact Details">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                                <button class="ab-btn ab-btn--edit" onclick="editContact(<?= $contact['id'] ?>)" title="Edit Contact">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </button>
+                            </div>
                             <a href="/ergon/contacts/followups/view/<?= $contact['id'] ?>" class="btn btn--primary btn--sm">
                                 View Follow-ups
                             </a>
@@ -202,8 +218,21 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
                             <?php endif; ?>
                         </div>
                         <div class="contact-actions">
+                            <div class="ab-container">
+                                <button class="ab-btn ab-btn--view" onclick="viewContact(<?= $contact['id'] ?>)" title="View Contact Details">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                                <button class="ab-btn ab-btn--edit" onclick="editContact(<?= $contact['id'] ?>)" title="Edit Contact">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </button>
+                            </div>
                             <a href="/ergon/contacts/followups/view/<?= $contact['id'] ?>" class="btn btn--primary btn--sm">
-                                View
+                                Follow-ups
                             </a>
                             <?php if ($contact['phone']): ?>
                                 <a href="tel:<?= $contact['phone'] ?>" class="btn btn--secondary btn--sm">
@@ -222,6 +251,102 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
                 <a href="/ergon/contacts/followups/create" class="btn btn--primary">Create Follow-up</a>
             </div>
         <?php endif; ?>
+    </div>
+</div>
+
+<!-- View Contact Modal -->
+<div id="viewContactModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>👁️ View Contact Details</h3>
+            <button class="modal-close" onclick="closeModal('viewContactModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="contact-details">
+                <div class="detail-row">
+                    <label>Name:</label>
+                    <span id="viewContactName">-</span>
+                </div>
+                <div class="detail-row">
+                    <label>Phone:</label>
+                    <span id="viewContactPhone">-</span>
+                </div>
+                <div class="detail-row">
+                    <label>Email:</label>
+                    <span id="viewContactEmail">-</span>
+                </div>
+                <div class="detail-row">
+                    <label>Company:</label>
+                    <span id="viewContactCompany">-</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn--secondary" onclick="closeModal('viewContactModal')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Close
+            </button>
+            <button type="button" class="btn btn--warning" id="editFromViewBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit
+            </button>
+            <button type="button" class="btn btn--primary" id="viewFollowupsBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                View Follow-ups
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Contact Modal -->
+<div id="editContactModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>✏️ Edit Contact</h3>
+            <button class="modal-close" onclick="closeModal('editContactModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editContactForm">
+                <input type="hidden" id="editContactId" name="contact_id">
+                <div class="form-group">
+                    <label class="form-label">Name *</label>
+                    <input type="text" id="editContactName" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" id="editContactPhone" name="phone" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="editContactEmail" name="email" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Company</label>
+                    <input type="text" id="editContactCompany" name="company" class="form-control">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn--secondary" onclick="closeModal('editContactModal')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel
+            </button>
+            <button type="button" class="btn btn--success" onclick="saveContactChanges()">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                Save Changes
+            </button>
+        </div>
     </div>
 </div>
 
@@ -700,7 +825,434 @@ function showFollowupDetails(id) {
 function showHistory(id) {
     alert('History feature coming soon');
 }
+
+function viewContact(contactId) {
+    fetch(`/ergon/api/contacts/${contactId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.contact) {
+                const contact = data.contact;
+                document.getElementById('viewContactName').textContent = contact.name || 'N/A';
+                document.getElementById('viewContactPhone').textContent = contact.phone || 'N/A';
+                document.getElementById('viewContactEmail').textContent = contact.email || 'N/A';
+                document.getElementById('viewContactCompany').textContent = contact.company || 'N/A';
+                document.getElementById('viewFollowupsBtn').onclick = () => {
+                    window.location.href = `/ergon/contacts/followups/view/${contactId}`;
+                };
+                document.getElementById('editFromViewBtn').onclick = () => {
+                    closeModal('viewContactModal');
+                    editContact(contactId);
+                };
+                showModal('viewContactModal');
+            } else {
+                alert('Error loading contact details');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading contact:', error);
+            alert('Error loading contact details');
+        });
+}
+
+function editContact(contactId) {
+    fetch(`/ergon/api/contacts/${contactId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.contact) {
+                const contact = data.contact;
+                document.getElementById('editContactId').value = contact.id;
+                document.getElementById('editContactName').value = contact.name || '';
+                document.getElementById('editContactPhone').value = contact.phone || '';
+                document.getElementById('editContactEmail').value = contact.email || '';
+                document.getElementById('editContactCompany').value = contact.company || '';
+                showModal('editContactModal');
+            } else {
+                alert('Error loading contact details');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading contact:', error);
+            alert('Error loading contact details');
+        });
+}
+
+function saveContactChanges() {
+    const form = document.getElementById('editContactForm');
+    const formData = new FormData(form);
+    const contactId = document.getElementById('editContactId').value;
+    
+    if (!formData.get('name').trim()) {
+        alert('Name is required!');
+        return;
+    }
+    
+    fetch(`/ergon/api/contacts/${contactId}/update`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Contact details saved successfully!');
+            closeModal('editContactModal');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to update contact'));
+        }
+    })
+    .catch(error => {
+        console.error('Error updating contact:', error);
+        alert('Error updating contact');
+    });
+}
+
+function showModal(modalId) {
+    document.getElementById(modalId).style.display = 'block';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+
+
+function showAddContactModal() {
+    document.getElementById('addContactModal').style.display = 'block';
+}
+
+function closeAddContactModal() {
+    document.getElementById('addContactModal').style.display = 'none';
+    document.getElementById('addContactForm').reset();
+}
+
+function saveNewContact() {
+    const form = document.getElementById('addContactForm');
+    const formData = new FormData(form);
+    
+    const contactData = {
+        name: formData.get('name'),
+        phone: formData.get('phone'),
+        email: formData.get('email'),
+        company: formData.get('company')
+    };
+    
+    if (!contactData.name.trim()) {
+        alert('Name is required');
+        return;
+    }
+    
+    fetch('/ergon/api/contacts/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(contactData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeAddContactModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to create contact'));
+        }
+    })
+    .catch(error => {
+        console.error('Error creating contact:', error);
+        alert('Error creating contact');
+    });
+}
 </script>
+
+<!-- Add Contact Modal -->
+<div id="addContactModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>👤 Add New Contact</h3>
+            <button class="modal-close" onclick="closeAddContactModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="addContactForm">
+                <div class="form-group">
+                    <label class="form-label">Name *</label>
+                    <input type="text" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" name="phone" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Company</label>
+                    <input type="text" name="company" class="form-control">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn--secondary" onclick="closeAddContactModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel
+            </button>
+            <button type="button" class="btn btn--success" onclick="saveNewContact()">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                Save Contact
+            </button>
+        </div>
+    </div>
+</div>
+
+
+
+<style>
+.modal {
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 80px;
+}
+
+.modal-content {
+    background-color: var(--bg-primary);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border-color);
+    position: relative;
+    margin: 0;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.contact-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.detail-row label {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.detail-row span {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.ab-btn {
+    position: relative;
+}
+
+.ab-btn::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.ab-btn:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+
+
+.modal-content {
+    background-color: var(--bg-primary);
+    margin: 5% auto;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.contact-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.detail-row label {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.detail-row span {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+</style>
 
 <?php
 $content = ob_get_clean();

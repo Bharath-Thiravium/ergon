@@ -36,11 +36,25 @@ try {
                 echo json_encode(['success' => $result]);
                 break;
                 
+            case 'create-test':
+                $result = $notification->create([
+                    'sender_id' => 1,
+                    'receiver_id' => $userId,
+                    'type' => 'info',
+                    'category' => 'system',
+                    'title' => 'Test Notification',
+                    'message' => 'This is a test notification created at ' . date('Y-m-d H:i:s'),
+                    'reference_type' => 'task',
+                    'reference_id' => 1
+                ]);
+                echo json_encode(['success' => $result]);
+                break;
+                
             default:
                 echo json_encode(['success' => false, 'error' => 'Invalid action']);
         }
     } else {
-        $notifications = $notification->getForUser($userId, 10);
+        $notifications = $notification->getForDropdown($userId, 10);
         $unreadCount = $notification->getUnreadCount($userId);
         
         echo json_encode([

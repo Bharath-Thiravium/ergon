@@ -31,6 +31,9 @@ $router->post('/auth/forgot-password', 'AuthController', 'forgotPassword');
 
 // Dashboard Routes
 $router->get('/dashboard', 'DashboardController', 'index');
+$router->get('/dashboard/project-overview', 'DashboardController', 'projectOverview');
+$router->get('/dashboard/delayed-tasks-overview', 'DashboardController', 'delayedTasksOverview');
+$router->get('/dashboard/project-tasks-overview', 'DashboardController', 'projectTasksOverview');
 $router->get('/owner/dashboard', 'OwnerController', 'dashboard');
 $router->get('/admin/dashboard', 'AdminController', 'dashboard');
 $router->get('/user/dashboard', 'UserController', 'dashboard');
@@ -101,8 +104,6 @@ $router->post('/tasks/bulk-create', 'TasksController', 'bulkCreate');
 $router->get('/planner', 'PlannerController', 'index');
 $router->post('/planner/add-task', 'PlannerController', 'addTask');
 $router->post('/planner/update-status', 'PlannerController', 'updateStatus');
-$router->get('/daily-planner/project-overview', 'DashboardController', 'projectOverview');
-$router->get('/daily-planner/delayed-tasks-overview', 'DashboardController', 'delayedTasksOverview');
 
 
 
@@ -113,6 +114,7 @@ $router->post('/attendance/clock', 'SimpleAttendanceController', 'clock');
 $router->post('/attendance/manual', 'SimpleAttendanceController', 'manual');
 $router->post('/attendance/delete', 'SimpleAttendanceController', 'delete');
 $router->get('/attendance/status', 'SimpleAttendanceController', 'status');
+$router->get('/attendance/report', 'EnhancedAttendanceController', 'report');
 $router->get('/attendance/history/{id}', 'AttendanceController', 'history');
 $router->get('/attendance/export', 'AttendanceController', 'exportAttendance');
 $router->get('/attendance/conflicts', 'AttendanceController', 'conflicts');
@@ -203,17 +205,13 @@ $router->post('/profile/preferences', 'ProfileController', 'preferences');
 // Notifications
 $router->get('/notifications', 'NotificationController', 'index');
 $router->get('/api/notifications/unread-count', 'NotificationController', 'getUnreadCount');
-$router->post('/api/notifications/mark-read', 'NotificationController', 'markAsRead');
-$router->post('/api/notifications/mark-as-read', 'NotificationController', 'markAsRead');
+// The unified API handles all POST actions now
 $router->post('/api/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
-$router->post('/notifications/markAsRead', 'NotificationController', 'markAsRead');
-$router->post('/notifications/markAllAsRead', 'NotificationController', 'markAllAsRead');
-$router->post('/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
-$router->post('/notifications/mark-as-read', 'NotificationController', 'markAsRead');
 
 // Additional notification API routes
-$router->get('/api/notifications', 'NotificationController', 'getUnreadCount');
-$router->post('/api/notifications', 'NotificationController', 'markAllAsRead');
+// These are now handled by the unified API script directly and don't need a route
+// $router->get('/api/notifications', 'NotificationController', 'getUnreadCount');
+// $router->post('/api/notifications_unified.php', 'NotificationController', 'markAllAsRead');
 
 // Daily Workflow Management (New Integrated System)
 $router->get('/daily-workflow/morning-planner', 'PlannerController', 'index');
@@ -257,8 +255,11 @@ $router->post('/api/activity-log', 'ApiController', 'activityLog');
 $router->post('/api/session_from_jwt', 'ApiController', 'sessionFromJWT');
 $router->post('/api/test', 'ApiController', 'test');
 $router->post('/api/contacts/create', 'ContactFollowupController', 'createContact');
+$router->get('/api/contacts/{id}', 'ContactFollowupController', 'getContact');
+$router->post('/api/contacts/{id}/update', 'ContactFollowupController', 'updateContact');
 $router->get('/api/contact-persons', 'ApiController', 'contactPersons');
 $router->get('/api/companies', 'ApiController', 'companies');
+$router->get('/api/users', 'ApiController', 'users');
 
 // Unified Workflow API Routes
 $router->post('/api/update-task-status', 'UnifiedWorkflowController', 'updateTaskStatus');
@@ -363,9 +364,7 @@ $router->get('/gamification/individual', 'GamificationController', 'individual')
 
 // Finance Module Routes
 $router->get('/finance', 'FinanceController', 'dashboard');
-$router->get('/finance/dashboard-stats', 'FinanceController', 'getDashboardStats');
-$router->get('/finance/outstanding-invoices', 'FinanceController', 'getOutstandingInvoices');
-$router->get('/finance/recent-quotations', 'FinanceController', 'getRecentQuotations');
+$router->get('/finance/recent-quotations', 'FinanceController', 'recentQuotations');
 $router->get('/finance/export-table', 'FinanceController', 'exportTable');
 $router->get('/finance/export-dashboard', 'FinanceController', 'exportDashboard');
 $router->get('/finance/tables', 'FinanceController', 'getTables');
@@ -375,15 +374,25 @@ $router->get('/finance/chart', 'FinanceController', 'getChartData');
 $router->get('/finance/structure', 'FinanceController', 'getTableStructure');
 $router->post('/finance/sync', 'FinanceController', 'sync');
 $router->get('/finance/analyze', 'FinanceController', 'analyzeAllTables');
-$router->get('/finance/visualization', 'FinanceController', 'getVisualizationData');
+$router->get('/finance/visualization', 'FinanceController', 'visualization');
 $router->get('/finance/export', 'FinanceController', 'exportData');
-$router->get('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
-$router->post('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
-$router->get('/finance/customers', 'FinanceController', 'getCustomers');
 $router->get('/finance/download-database', 'FinanceController', 'downloadDatabase');
-// New finance visualization/export endpoints
-$router->get('/finance/outstanding-by-customer', 'FinanceController', 'getOutstandingByCustomer');
-$router->get('/finance/aging-buckets', 'FinanceController', 'getAgingBuckets');
 $router->get('/finance/export-outstanding', 'FinanceController', 'exportOutstanding');
+$router->get('/finance/import', 'FinanceController', 'importData');
+$router->post('/finance/import', 'FinanceController', 'importData');
+$router->get('/finance/available-prefixes', 'FinanceController', 'availablePrefixes');
+$router->get('/finance/dashboard-stats', 'FinanceController', 'dashboardStats');
+$router->get('/finance/outstanding-invoices', 'FinanceController', 'outstandingInvoices');
+$router->get('/finance/outstanding-by-customer', 'FinanceController', 'outstandingByCustomer');
+$router->get('/finance/aging-buckets', 'FinanceController', 'agingBuckets');
+$router->get('/finance/recent-activities', 'FinanceController', 'recentActivities');
+$router->get('/finance/customers', 'FinanceController', 'customers');
+$router->get('/finance/company-prefix', 'FinanceController', 'companyPrefix');
+$router->post('/finance/company-prefix', 'FinanceController', 'companyPrefix');
+$router->get('/finance/debug-po', 'FinanceController', 'debugPo');
+$router->get('/finance/all-pos', 'FinanceController', 'getAllPurchaseOrders');
+$router->get('/finance/download-pg-tables', 'FinanceController', 'downloadTables');
+$router->get('/finance/refresh-stats', 'FinanceController', 'refreshStats');
+$router->get('/finance/structure', 'FinanceController', 'structure');
 
 ?>

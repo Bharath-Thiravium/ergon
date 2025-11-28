@@ -102,12 +102,19 @@ try {
                 echo json_encode(['error' => 'missing task_id for timer']);
                 exit;
             }
+            
+            // Ensure planner instance is available
+            if (!isset($planner)) {
+                $planner = new DailyPlanner();
+            }
 
-            // ✅ REBUILT: Fetches comprehensive timer data directly from the database.
+            // Simple query with error handling
             $stmt = $db->prepare("
                 SELECT 
-                    dt.status, dt.start_time, dt.sla_end_time, dt.active_seconds, 
-                    dt.pause_duration, dt.pause_start_time,
+                    dt.status, dt.start_time, dt.sla_end_time, 
+                    COALESCE(dt.active_seconds, 0) as active_seconds, 
+                    COALESCE(dt.pause_duration, 0) as pause_duration, 
+                    dt.pause_start_time,
                     COALESCE(t.sla_hours, 0.25) as sla_hours
                 FROM daily_tasks dt
                 LEFT JOIN tasks t ON dt.original_task_id = t.id
@@ -125,33 +132,50 @@ try {
             $now = time();
             $remaining_seconds = 0;
             $current_pause_duration = 0;
+            $is_overdue = false;
 
-            if ($task['status'] === 'in_progress' && $task['sla_end_time']) {
-                $sla_end_timestamp = strtotime($task['sla_end_time']);
-                $remaining_seconds = max(0, $sla_end_timestamp - $now);
-            } elseif ($task['status'] === 'on_break') {
-                $pause_start_timestamp = strtotime($task['pause_start_time']);
-                if ($pause_start_timestamp) {
-                    $current_pause_duration = $now - $pause_start_timestamp;
-                }
-                // ✅ REBUILT: Correctly calculates remaining time even when paused.
+            if ($task['status'] === 'in_progress') {
                 if ($task['sla_end_time']) {
-                    $sla_end_timestamp = strtotime($task['sla_end_time']) + $current_pause_duration;
-                    $remaining_seconds = max(0, $sla_end_timestamp - $pause_start_timestamp);
+                    $sla_end_timestamp = strtotime($task['sla_end_time']);
+                    $remaining_seconds = $sla_end_timestamp - $now;
+                    
+                    if ($remaining_seconds <= 0) {
+                        $is_overdue = true;
+                        $remaining_seconds = 0;
+                        
+                        // Start overdue timer if not already started
+                        if (!$task['overdue_start_time']) {
+                            $planner->startOverdueTimer($taskId);
+                        }
+                    }
+                } else {
+                    $remaining_seconds = ($task['sla_hours'] * 3600);
                 }
+            } elseif ($task['status'] === 'on_break') {
+                if ($task['pause_start_time']) {
+                    $pause_start_timestamp = strtotime($task['pause_start_time']);
+                    if ($pause_start_timestamp > 0) {
+                        $current_pause_duration = $now - $pause_start_timestamp;
+                    }
+                }
+                // Calculate remaining from SLA end time
+                $remaining_seconds = ($task['sla_end_time']) 
+                    ? max(0, strtotime($task['sla_end_time']) - $now) 
+                    : ($task['sla_hours'] * 3600);
             } elseif ($task['status'] === 'not_started') {
                 $remaining_seconds = ($task['sla_hours'] * 3600);
             }
 
             $response = [
                 'success' => true,
-                'active_seconds' => (int) $task['active_seconds'],
-                'remaining_seconds' => (int) $remaining_seconds,
-                'status' => htmlspecialchars($task['status'], ENT_QUOTES, 'UTF-8'),
+                'active_seconds' => max(0, (int) $task['active_seconds']),
+                'remaining_seconds' => max(0, (int) $remaining_seconds),
+                'status' => $task['status'],
                 'sla_end_time' => $task['sla_end_time'],
-                'pause_duration' => (int) $task['pause_duration'],
+                'pause_duration' => max(0, (int) $task['pause_duration']),
                 'pause_start_time' => $task['pause_start_time'],
-                'current_pause_duration' => $current_pause_duration
+                'current_pause_duration' => max(0, (int) $current_pause_duration),
+                'is_overdue' => $is_overdue
             ];
 
             // ✅ REBUILT: Sanitizes all string outputs to prevent XSS.

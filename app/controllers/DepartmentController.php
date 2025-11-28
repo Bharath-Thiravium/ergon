@@ -168,12 +168,16 @@ class DepartmentController extends Controller {
         try {
             $db = Database::connect();
             
-            // Get department with head information
+            // Get department with head information and employee count
             $stmt = $db->prepare("
-                SELECT d.*, u.name as head_name, u.email as head_email, u.phone as head_phone
+                SELECT d.*, 
+                       u.name as head_name, u.email as head_email, u.phone as head_phone,
+                       COUNT(emp.id) as employee_count
                 FROM departments d 
                 LEFT JOIN users u ON d.head_id = u.id 
+                LEFT JOIN users emp ON emp.department_id = d.id AND emp.status = 'active'
                 WHERE d.id = ?
+                GROUP BY d.id, d.name, d.description, d.head_id, d.status, d.created_at, d.updated_at, u.name, u.email, u.phone
             ");
             $stmt->execute([$id]);
             $department = $stmt->fetch(PDO::FETCH_ASSOC);

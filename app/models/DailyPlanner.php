@@ -16,6 +16,7 @@ class DailyPlanner {
     
     public function __construct() {
         $this->db = Database::connect();
+        $this->ensureDailyTasksTable();
     }
     
     private function ensureDailyTasksTable() {
@@ -76,13 +77,16 @@ class DailyPlanner {
                 'original_task_id' => "ALTER TABLE daily_tasks ADD COLUMN original_task_id INT NULL",
                 'source_field' => "ALTER TABLE daily_tasks ADD COLUMN source_field VARCHAR(50) NULL",
                 'rollover_source_date' => "ALTER TABLE daily_tasks ADD COLUMN rollover_source_date DATE NULL",
-                'rollover_timestamp' => "ALTER TABLE daily_tasks ADD COLUMN rollover_timestamp TIMESTAMP NULL"
+                'rollover_timestamp' => "ALTER TABLE daily_tasks ADD COLUMN rollover_timestamp TIMESTAMP NULL",
+                'remaining_sla_time' => "ALTER TABLE daily_tasks ADD COLUMN remaining_sla_time INT DEFAULT 0",
+                'total_pause_duration' => "ALTER TABLE daily_tasks ADD COLUMN total_pause_duration INT DEFAULT 0",
+                'overdue_start_time' => "ALTER TABLE daily_tasks ADD COLUMN overdue_start_time TIMESTAMP NULL",
+                'time_used' => "ALTER TABLE daily_tasks ADD COLUMN time_used INT DEFAULT 0"
             ];
             
             foreach ($columns as $column => $sql) {
-                $stmt = $this->db->prepare("SHOW COLUMNS FROM daily_tasks LIKE '{$column}'");
-                $stmt->execute();
-                if (!$stmt->fetch()) {
+                $result = $this->db->query("SHOW COLUMNS FROM daily_tasks LIKE '{$column}'");
+                if (!$result->fetch()) {
                     $this->db->exec($sql);
                 }
             }
@@ -150,7 +154,7 @@ class DailyPlanner {
         }
     }
     
-    private function fetchAssignedTasksForDate($userId, $date) {
+    public function fetchAssignedTasksForDate($userId, $date) {
         try {
             $isCurrentDate = ($date === date('Y-m-d'));
             $isPastDate = ($date < date('Y-m-d'));
@@ -287,16 +291,18 @@ class DailyPlanner {
             }
             
             $now = date('Y-m-d H:i:s');
+            $slaSeconds = $task['sla_hours'] * 3600;
             $slaEndTime = date('Y-m-d H:i:s', strtotime($now . ' +' . $task['sla_hours'] . ' hours'));
             
-            // ✅ REBUILT: Consolidated update query
+            // Initialize SLA timer with remaining time
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
-                SET status = 'in_progress', start_time = ?, sla_end_time = ?, updated_at = NOW(),
+                SET status = 'in_progress', start_time = ?, sla_end_time = ?, 
+                    remaining_sla_time = ?, updated_at = NOW(),
                     resume_time = NULL, pause_start_time = NULL
                 WHERE id = ?
             ");
-            $result = $stmt->execute([$now, $slaEndTime, $taskId]);
+            $result = $stmt->execute([$now, $slaEndTime, $slaSeconds, $taskId]);
             
             if ($result && $stmt->rowCount() > 0) {
                 $this->logTaskHistory($taskId, $userId, 'started', 'not_started', 'in_progress', 'Task started at ' . $now);
@@ -322,39 +328,46 @@ class DailyPlanner {
             
             $now = date('Y-m-d H:i:s');
             
-            // Get current task state
+            // Get current task state with SLA info
             $stmt = $this->db->prepare("
-                SELECT start_time, resume_time, status 
-                FROM daily_tasks WHERE id = ?
+                SELECT dt.*, COALESCE(t.sla_hours, 0.25) as sla_hours
+                FROM daily_tasks dt
+                LEFT JOIN tasks t ON dt.original_task_id = t.id
+                WHERE dt.id = ?
             ");
             $stmt->execute([$taskId]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if (!$task || !in_array($task['status'], ['in_progress', 'on_break'])) {
+            if (!$task || $task['status'] !== 'in_progress') {
                 $this->db->rollback();
                 return false;
             }
             
-            // Calculate active time since start/resume
+            // Calculate remaining SLA time at pause
+            $remainingSlaTime = $this->calculateRemainingSlaTime($task);
             $activeTime = $this->calculateActiveTime($taskId);
             
-            // If task is already on break, do nothing.
-            if ($task['status'] === 'on_break') {
-                $this->db->commit(); // Commit to release lock, but no changes made.
-                return true;
+            // Ensure we have a valid remaining SLA time
+            if ($remainingSlaTime <= 0 && $task['sla_end_time']) {
+                $remainingSlaTime = max(0, strtotime($task['sla_end_time']) - time());
             }
-            // ✅ REBUILT: Correctly accumulates active_seconds before pausing
+            if ($remainingSlaTime <= 0) {
+                $remainingSlaTime = $task['sla_hours'] * 3600; // Fallback to full SLA
+            }
+            
+            // Save remaining SLA time and pause state
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
                 SET status = 'on_break', pause_start_time = ?, 
-                    active_seconds = active_seconds + ?, updated_at = NOW()
+                    remaining_sla_time = ?, active_seconds = active_seconds + ?, 
+                    time_used = time_used + ?, updated_at = NOW()
                 WHERE id = ?
             ");
-            $result = $stmt->execute([$now, $activeTime, $taskId]);
+            $result = $stmt->execute([$now, $remainingSlaTime, $activeTime, $activeTime, $taskId]);
             
             if ($result && $stmt->rowCount() > 0) {
                 $this->logTimeAction($taskId, $userId, 'pause', $now, $activeTime);
-                $this->logTaskHistory($taskId, $userId, 'paused', 'in_progress', 'on_break', 'Task paused at ' . $now);
+                $this->logTaskHistory($taskId, $userId, 'paused', 'in_progress', 'on_break', 'Task paused at ' . $now . ' with ' . $remainingSlaTime . 's remaining');
                 $this->db->commit();
                 return true;
             }
@@ -374,9 +387,9 @@ class DailyPlanner {
         try {
             $this->db->beginTransaction();
             
-            // Get current task state
+            // Get current task state with remaining SLA time
             $stmt = $this->db->prepare("
-                SELECT pause_start_time, status
+                SELECT pause_start_time, status, remaining_sla_time, total_pause_duration
                 FROM daily_tasks WHERE id = ?
             ");
             $stmt->execute([$taskId]);
@@ -384,29 +397,33 @@ class DailyPlanner {
             
             if (!$task || $task['status'] !== 'on_break') {
                 $this->db->rollback();
-                return false; // Silently fail if task is not on break, as it might be a duplicate request.
+                return false;
             }
             
             $now = date('Y-m-d H:i:s');
             
-            // Calculate pause duration
-            $additionalPauseDuration = 0;
+            // Calculate current pause duration
+            $currentPauseDuration = 0;
             if ($task['pause_start_time']) {
-                $additionalPauseDuration = time() - strtotime($task['pause_start_time']);
+                $currentPauseDuration = time() - strtotime($task['pause_start_time']);
             }
             
-            // ✅ REBUILT: Correctly calculates pause duration and resets pause state
+            // Calculate new SLA end time based on remaining time
+            $newSlaEndTime = date('Y-m-d H:i:s', time() + $task['remaining_sla_time']);
+            
+            // Update task with cumulative pause duration and new SLA end time
             $stmt = $this->db->prepare("
                 UPDATE daily_tasks 
                 SET status = 'in_progress', resume_time = ?, 
-                    pause_duration = pause_duration + ?, pause_start_time = NULL, updated_at = NOW()
+                    total_pause_duration = total_pause_duration + ?, 
+                    sla_end_time = ?, pause_start_time = NULL, updated_at = NOW()
                 WHERE id = ?
             ");
-            $result = $stmt->execute([$now, $additionalPauseDuration, $taskId]);
+            $result = $stmt->execute([$now, $currentPauseDuration, $newSlaEndTime, $taskId]);
             
             if ($result && $stmt->rowCount() > 0) {
                 $this->logTimeAction($taskId, $userId, 'resume', $now);
-                $this->logTaskHistory($taskId, $userId, 'resumed', 'on_break', 'in_progress', 'Task resumed at ' . $now);
+                $this->logTaskHistory($taskId, $userId, 'resumed', 'on_break', 'in_progress', 'Task resumed at ' . $now . ' with ' . $task['remaining_sla_time'] . 's remaining');
                 $this->db->commit();
                 return true;
             }
@@ -418,7 +435,7 @@ class DailyPlanner {
                 $this->db->rollback();
             }
             error_log("DailyPlanner resumeTask error: " . $e->getMessage());
-            throw $e;
+            return false;
         }
     }
     
@@ -755,7 +772,6 @@ class DailyPlanner {
                 return 0;
             }
 
-            // ✅ REBUILT: Correctly calculates active time for the current session.
             // Use resume_time if available, otherwise start_time
             $referenceTime = $task['resume_time'] ?: $task['start_time'];
             if (!$referenceTime) return 0;
@@ -767,6 +783,50 @@ class DailyPlanner {
         } catch (Exception $e) {
             error_log("calculateActiveTime error: " . $e->getMessage());
             return 0;
+        }
+    }
+    
+    private function calculateRemainingSlaTime($task) {
+        try {
+            $now = time();
+            
+            // If task has remaining_sla_time saved (from previous pause), use it
+            if ($task['remaining_sla_time'] > 0) {
+                return $task['remaining_sla_time'];
+            }
+            
+            // Calculate from SLA end time
+            if ($task['sla_end_time']) {
+                $slaEndTimestamp = strtotime($task['sla_end_time']);
+                $remaining = max(0, $slaEndTimestamp - $now);
+                return $remaining;
+            }
+            
+            // Fallback: calculate from SLA hours
+            $slaSeconds = $task['sla_hours'] * 3600;
+            $startTime = strtotime($task['start_time']);
+            $elapsed = $now - $startTime;
+            
+            return max(0, $slaSeconds - $elapsed);
+        } catch (Exception $e) {
+            error_log("calculateRemainingSlaTime error: " . $e->getMessage());
+            return 0;
+        }
+    }
+    
+    public function startOverdueTimer($taskId) {
+        try {
+            $now = date('Y-m-d H:i:s');
+            $stmt = $this->db->prepare("
+                UPDATE daily_tasks 
+                SET overdue_start_time = ?
+                WHERE id = ? AND overdue_start_time IS NULL
+            ");
+            $stmt->execute([$now, $taskId]);
+            return true;
+        } catch (Exception $e) {
+            error_log("startOverdueTimer error: " . $e->getMessage());
+            return false;
         }
     }
     

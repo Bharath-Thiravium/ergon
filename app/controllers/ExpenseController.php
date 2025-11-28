@@ -172,16 +172,22 @@ class ExpenseController extends Controller {
             ];
             
             if ($this->expense->create($data)) {
-                // Create notification for owners and admins
-                require_once __DIR__ . '/../helpers/NotificationHelper.php';
-                require_once __DIR__ . '/../config/database.php';
-                $db = Database::connect();
-                $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
-                $stmt->execute([$userId]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($user) {
-                    NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount);
+                // Create notification for owners and admins (suppress any warnings)
+                try {
+                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                    require_once __DIR__ . '/../config/database.php';
+                    $db = Database::connect();
+                    $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                    $stmt->execute([$userId]);
+                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($user) {
+                        $expenseId = $db->lastInsertId();
+                        NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount, $expenseId);
+                    }
+                } catch (Exception $notifError) {
+                    // Log but don't fail the expense creation - notification system may have table issues
+                    error_log('Notification error (non-critical): ' . $notifError->getMessage());
                 }
                 
                 echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => '/ergon/expenses']);
@@ -202,6 +208,23 @@ class ExpenseController extends Controller {
                     ]);
                     
                     if ($result) {
+                        $expenseId = $db->lastInsertId();
+                        
+                        // Create notification with expense ID
+                        try {
+                            require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                            $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                            $stmt->execute([$userId]);
+                            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                            
+                            if ($user) {
+                                NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount, $expenseId);
+                            }
+                        } catch (Exception $notifError) {
+                            // Silently fail notification - expense creation is more important
+                            error_log('Notification error (non-critical): ' . $notifError->getMessage());
+                        }
+                        
                         echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => '/ergon/expenses']);
                     } else {
                         error_log('Direct expense insert failed: ' . implode(' - ', $stmt->errorInfo()));
@@ -323,11 +346,11 @@ class ExpenseController extends Controller {
     }
     
     public function delete($id) {
+        header('Content-Type: application/json');
         AuthMiddleware::requireAuth();
         
-        $id = Security::validateInt($id);
-        if (!$id) {
-            echo json_encode(['success' => false, 'message' => 'Invalid ID']);
+        if (!$id || !is_numeric($id)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid expense ID']);
             exit;
         }
         
@@ -335,21 +358,40 @@ class ExpenseController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Check if user can delete this expense
-            if (in_array($_SESSION['role'], ['admin', 'owner'])) {
-                // Admin/Owner can delete any expense
-                $stmt = $db->prepare("DELETE FROM expenses WHERE id = ?");
-                $result = $stmt->execute([$id]);
-            } else {
-                // Users can only delete their own pending expenses
-                $stmt = $db->prepare("DELETE FROM expenses WHERE id = ? AND user_id = ? AND status = 'pending'");
-                $result = $stmt->execute([$id, $_SESSION['user_id']]);
+            // Check if expense exists and user has permission to delete
+            $stmt = $db->prepare("SELECT user_id, status FROM expenses WHERE id = ?");
+            $stmt->execute([$id]);
+            $expense = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$expense) {
+                echo json_encode(['success' => false, 'message' => 'Expense claim not found']);
+                exit;
             }
             
-            echo json_encode(['success' => $result && $stmt->rowCount() > 0]);
+            // Check permissions
+            if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+                if ($expense['user_id'] != $_SESSION['user_id']) {
+                    echo json_encode(['success' => false, 'message' => 'Access denied']);
+                    exit;
+                }
+                if ($expense['status'] !== 'pending') {
+                    echo json_encode(['success' => false, 'message' => 'Only pending expense claims can be deleted']);
+                    exit;
+                }
+            }
+            
+            // Delete the expense
+            $stmt = $db->prepare("DELETE FROM expenses WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
+            if ($result && $stmt->rowCount() > 0) {
+                echo json_encode(['success' => true, 'message' => 'Expense claim deleted successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to delete expense claim']);
+            }
         } catch (Exception $e) {
             error_log('Expense delete error: ' . $e->getMessage());
-            echo json_encode(['success' => false, 'message' => 'Delete failed']);
+            echo json_encode(['success' => false, 'message' => 'Database error occurred']);
         }
         exit;
     }

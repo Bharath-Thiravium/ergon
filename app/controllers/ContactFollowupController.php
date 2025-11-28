@@ -41,13 +41,11 @@ class ContactFollowupController extends Controller {
                 SELECT f.*, c.name as contact_name, c.phone as contact_phone, c.email as contact_email, c.company as contact_company,
                        'standalone' as followup_type
                 FROM followups f 
-                LEFT JOIN contacts c ON f.contact_id = c.id 
-                LEFT JOIN tasks t ON f.task_id = t.id
-                WHERE (f.task_id IS NULL OR t.id IS NOT NULL)
+                LEFT JOIN contacts c ON f.contact_id = c.id
             ";
             
             if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
-                $sql .= " AND f.user_id = ?";
+                $sql .= " WHERE f.user_id = ?";
                 $stmt = $db->prepare($sql . " ORDER BY f.follow_up_date DESC LIMIT 50");
                 $stmt->execute([$_SESSION['user_id']]);
             } else {
@@ -129,6 +127,10 @@ class ContactFollowupController extends Controller {
     }
     
     private function storeStandaloneFollowup() {
+        // Check if this is an AJAX request
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                 strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+        
         try {
             $db = Database::connect();
             
@@ -142,6 +144,11 @@ class ContactFollowupController extends Controller {
             $contact_id = !empty($_POST['contact_id']) ? intval($_POST['contact_id']) : null;
             
             if (empty($title)) {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Title is required']);
+                    exit;
+                }
                 $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=Title required" : '/ergon/contacts/followups/create?error=Title required';
                 header("Location: $redirectUrl");
                 exit;
@@ -165,14 +172,32 @@ class ContactFollowupController extends Controller {
                 // Log creation in history
                 $this->logHistory($followup_id, 'created', null, 'Follow-up created');
                 
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'message' => 'Follow-Up Details Saved Successfully']);
+                    exit;
+                }
+                
                 $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?success=Follow-up added" : '/ergon/contacts/followups/view?success=Follow-up created';
                 header("Location: $redirectUrl");
             } else {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Failed to save follow-up details']);
+                    exit;
+                }
                 $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=Failed to add follow-up" : '/ergon/contacts/followups/create?error=Failed to create';
                 header("Location: $redirectUrl");
             }
         } catch (Exception $e) {
             error_log('Store followup error: ' . $e->getMessage());
+            
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+                exit;
+            }
+            
             $task_id = !empty($_POST['task_id']) ? intval($_POST['task_id']) : null;
             $redirectUrl = $task_id ? "/ergon/tasks/view/$task_id?error=" . urlencode($e->getMessage()) : '/ergon/contacts/followups/create?error=' . urlencode($e->getMessage());
             header("Location: $redirectUrl");
@@ -456,11 +481,83 @@ class ContactFollowupController extends Controller {
             if ($result) {
                 echo json_encode(['success' => true, 'contact_id' => $db->lastInsertId()]);
             } else {
-                echo json_encode(['success' => false, 'error' => 'Failed to create']);
+                echo json_encode(['success' => false, 'error' => 'Failed to create contact']);
             }
         } catch (Exception $e) {
             error_log('Create contact error: ' . $e->getMessage());
             echo json_encode(['success' => false, 'error' => 'Failed to create']);
+        }
+        exit;
+    }
+    
+    public function getContact($id) {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
+        try {
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT * FROM contacts WHERE id = ?");
+            $stmt->execute([$id]);
+            $contact = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($contact) {
+                echo json_encode(['success' => true, 'contact' => $contact]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Contact not found']);
+            }
+        } catch (Exception $e) {
+            error_log('Get contact error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Failed to get contact']);
+        }
+        exit;
+    }
+    
+    public function updateContact($id) {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            exit;
+        }
+        
+        try {
+            $name = trim($_POST['name'] ?? '');
+            if (empty($name)) {
+                echo json_encode(['success' => false, 'message' => 'Name is required']);
+                exit;
+            }
+            
+            $db = Database::connect();
+            
+            // Check if contact exists
+            $checkStmt = $db->prepare("SELECT id FROM contacts WHERE id = ?");
+            $checkStmt->execute([$id]);
+            if (!$checkStmt->fetch()) {
+                echo json_encode(['success' => false, 'message' => 'Contact not found']);
+                exit;
+            }
+            
+            $stmt = $db->prepare("UPDATE contacts SET name = ?, phone = ?, email = ?, company = ? WHERE id = ?");
+            $result = $stmt->execute([
+                $name,
+                trim($_POST['phone'] ?? '') ?: null,
+                trim($_POST['email'] ?? '') ?: null,
+                trim($_POST['company'] ?? '') ?: null,
+                $id
+            ]);
+            
+            if ($result && $stmt->rowCount() > 0) {
+                echo json_encode(['success' => true, 'message' => 'Contact updated successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'No changes made or contact not found']);
+            }
+        } catch (Exception $e) {
+            error_log('Update contact error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         }
         exit;
     }
@@ -474,8 +571,6 @@ class ContactFollowupController extends Controller {
                    MAX(f.follow_up_date) as next_followup_date
             FROM contacts c
             LEFT JOIN followups f ON c.id = f.contact_id
-            LEFT JOIN tasks t ON f.task_id = t.id
-            WHERE (f.task_id IS NULL OR t.id IS NOT NULL)
         ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
@@ -495,8 +590,7 @@ class ContactFollowupController extends Controller {
             SELECT f.*, 
                    'standalone' as followup_type
             FROM followups f 
-            LEFT JOIN tasks t ON f.task_id = t.id
-            WHERE f.contact_id = ? AND (f.task_id IS NULL OR t.id IS NOT NULL)
+            WHERE f.contact_id = ?
         ";
         
         if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {

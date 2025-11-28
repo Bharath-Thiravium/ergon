@@ -314,6 +314,12 @@ class AttendanceController extends Controller {
             return;
         }
         
+        // Check location restriction
+        if (!$this->isWithinAllowedLocation($db)) {
+            echo json_encode(['success' => false, 'error' => 'Please move within the allowed area to continue.']);
+            return;
+        }
+        
         // Store in IST
         $currentTime = TimezoneHelper::nowIst();
         
@@ -337,6 +343,12 @@ class AttendanceController extends Controller {
         
         if (!$attendance) {
             echo json_encode(['success' => false, 'error' => 'No clock in record found for today']);
+            return;
+        }
+        
+        // Check location restriction
+        if (!$this->isWithinAllowedLocation($db)) {
+            echo json_encode(['success' => false, 'error' => 'Please move within the allowed area to continue.']);
             return;
         }
         
@@ -365,15 +377,31 @@ class AttendanceController extends Controller {
             $stmt->execute([$_SESSION['user_id'], $currentDate]);
             $todayAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            // Times are already in IST, no conversion needed
+            // Check if user is on leave
+            try {
+                $stmt = $db->prepare("SELECT id FROM leaves WHERE user_id = ? AND status = 'approved' AND CURDATE() BETWEEN start_date AND end_date");
+                $stmt->execute([$_SESSION['user_id']]);
+                $onLeave = $stmt->fetch() ? true : false;
+            } catch (Exception $e) {
+                $onLeave = false;
+            }
             
         } catch (Exception $e) {
             error_log('Today attendance fetch error: ' . $e->getMessage());
         }
         
+        // Prepare attendance status for JavaScript
+        $attendanceStatus = [
+            'has_clocked_in' => $todayAttendance ? true : false,
+            'has_clocked_out' => $todayAttendance && $todayAttendance['check_out'] ? true : false,
+            'on_leave' => $onLeave,
+            'is_completed' => $todayAttendance && $todayAttendance['check_out'] ? true : false
+        ];
+        
         $this->view('attendance/clock', [
             'today_attendance' => $todayAttendance, 
             'on_leave' => $onLeave, 
+            'attendance_status' => $attendanceStatus,
             'active_page' => 'attendance'
         ]);
     }
@@ -415,6 +443,76 @@ class AttendanceController extends Controller {
             default:
                 return "DATE(a.check_in) = CURDATE()";
         }
+    }
+    
+    private function isWithinAllowedLocation($db) {
+        // Get user's current location from POST data
+        $userLat = floatval($_POST['latitude'] ?? 0);
+        $userLng = floatval($_POST['longitude'] ?? 0);
+        
+        if ($userLat == 0 || $userLng == 0) {
+            error_log("Location validation failed: No location provided (lat: $userLat, lng: $userLng)");
+            return false; // No location provided
+        }
+        
+        // Ensure settings table exists
+        $this->ensureSettingsTable($db);
+        
+        // Get office location and radius from settings
+        $stmt = $db->prepare("SELECT base_location_lat, base_location_lng, attendance_radius FROM settings LIMIT 1");
+        $stmt->execute();
+        $settings = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$settings || $settings['base_location_lat'] == 0 || $settings['base_location_lng'] == 0) {
+            error_log("Location validation: No office location set, allowing attendance");
+            return true; // No location restrictions set
+        }
+        
+        $officeLat = floatval($settings['base_location_lat']);
+        $officeLng = floatval($settings['base_location_lng']);
+        $allowedRadius = intval($settings['attendance_radius']);
+        
+        // Calculate distance using Haversine formula
+        $distance = $this->calculateDistance($userLat, $userLng, $officeLat, $officeLng);
+        
+        error_log("Location validation: User($userLat,$userLng) Office($officeLat,$officeLng) Distance: {$distance}m Radius: {$allowedRadius}m Result: " . ($distance <= $allowedRadius ? 'ALLOWED' : 'BLOCKED'));
+        
+        return $distance <= $allowedRadius;
+    }
+    
+    private function ensureSettingsTable($db) {
+        try {
+            $db->exec("CREATE TABLE IF NOT EXISTS settings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                company_name VARCHAR(255) DEFAULT 'ERGON Company',
+                base_location_lat DECIMAL(10,8) DEFAULT 0,
+                base_location_lng DECIMAL(11,8) DEFAULT 0,
+                attendance_radius INT DEFAULT 5,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            
+            // Insert default settings if none exist
+            $stmt = $db->query("SELECT COUNT(*) as count FROM settings");
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($result['count'] == 0) {
+                $db->exec("INSERT INTO settings (company_name, base_location_lat, base_location_lng, attendance_radius) VALUES ('ERGON Company', 0, 0, 5)");
+            }
+        } catch (Exception $e) {
+            error_log('ensureSettingsTable error: ' . $e->getMessage());
+        }
+    }
+    
+    private function calculateDistance($lat1, $lng1, $lat2, $lng2) {
+        $earthRadius = 6371000; // Earth radius in meters
+        
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        
+        $a = sin($dLat/2) * sin($dLat/2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng/2) * sin($dLng/2);
+        $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+        
+        return $earthRadius * $c; // Distance in meters
     }
     
     private function calculateUserStats($attendance) {

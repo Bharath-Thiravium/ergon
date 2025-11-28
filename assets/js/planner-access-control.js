@@ -1,25 +1,34 @@
-// Planner Access Control - Hide timer buttons for Owner
+// Planner Access Control JavaScript
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if current user is Owner (User ID 1)
-    const isOwner = window.currentUserId === 1 || window.userRole === 'owner';
-    
-    if (isOwner) {
-        // Hide all planner timer buttons for Owner
-        const plannerButtons = document.querySelectorAll('.timer-start-btn, .timer-pause-btn, .timer-resume-btn, .planner-action-btn');
-        plannerButtons.forEach(btn => {
-            btn.style.display = 'none';
+    // Disable buttons in historical view
+    if (document.querySelector('.historical-view')) {
+        const buttons = document.querySelectorAll('.historical-view .btn:not(.btn--secondary):not(.btn--info)');
+        buttons.forEach(btn => {
+            btn.disabled = true;
+            btn.style.cursor = 'not-allowed';
         });
-        
-        // Hide planner navigation for Owner
-        const plannerNav = document.querySelector('a[href*="daily-planner"], a[href*="planner"]');
-        if (plannerNav) {
-            plannerNav.style.display = 'none';
-        }
-        
-        // Show message if Owner tries to access planner
-        const plannerContainer = document.querySelector('.daily-planner-container, .planner-container');
-        if (plannerContainer && window.location.href.includes('planner')) {
-            plannerContainer.innerHTML = '<div class="access-denied"><h3>⚠️ Access Restricted</h3><p>Planner functions are available only for Admin and User roles.</p><a href="/ergon/tasks" class="btn btn-primary">Go to Tasks</a></div>';
+    }
+    
+    // Add visual indicators for different modes
+    const plannerGrid = document.querySelector('.planner-grid');
+    if (plannerGrid) {
+        if (plannerGrid.classList.contains('historical-view')) {
+            console.log('Historical view mode active');
+        } else if (plannerGrid.classList.contains('planning-mode')) {
+            console.log('Planning mode active');
+        } else if (plannerGrid.classList.contains('execution-mode')) {
+            console.log('Execution mode active');
         }
     }
 });
+
+// Show history info modal
+function showHistoryInfo() {
+    alert('Historical View: This shows completed tasks from past dates. Task execution is disabled in this view.');
+}
+
+// Change date function
+function changeDate(date) {
+    const baseUrl = window.dailyPlannerBaseUrl || '/ergon/workflow/daily-planner/';
+    window.location.href = baseUrl + date;
+}

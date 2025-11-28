@@ -12,14 +12,20 @@ class UsersController extends Controller {
         }
         
         try {
-            $userModel = new User();
-            $users = $userModel->getAll();
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
             
-            // Debug logging
-            error_log('Users index: Retrieved ' . count($users) . ' users');
+            // Get users with DISTINCT to prevent duplicates
+            $stmt = $db->prepare("SELECT DISTINCT u.*, d.name as department_name FROM users u LEFT JOIN departments d ON u.department_id = d.id WHERE u.status != 'deleted' ORDER BY u.created_at DESC");
+            $stmt->execute();
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Remove any potential duplicates by ID
+            $uniqueUsers = [];
             foreach ($users as $user) {
-                error_log("User {$user['id']}: {$user['name']} - Status: {$user['status']}");
+                $uniqueUsers[$user['id']] = $user;
             }
+            $users = array_values($uniqueUsers);
             
             $data = [
                 'users' => $users,
@@ -155,11 +161,9 @@ class UsersController extends Controller {
                 
                 if ($result) {
                     $this->handleDocumentUploads($id);
-                    $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users';
-                    header('Location: ' . $redirectUrl . '?success=User updated successfully');
+                    header('Location: /ergon/users?success=User updated successfully');
                 } else {
-                    $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users';
-                    header('Location: ' . $redirectUrl . '?error=Failed to update user');
+                    header('Location: /ergon/users?error=Failed to update user');
                 }
                 exit;
             } catch (Exception $e) {
@@ -268,8 +272,7 @@ class UsersController extends Controller {
                         'password' => $tempPassword,
                         'employee_id' => $employeeId
                     ];
-                    $redirectUrl = in_array($_SESSION['role'] ?? '', ['admin', 'owner']) ? '/ergon/admin/management' : '/ergon/users';
-                    header('Location: ' . $redirectUrl . '?success=User created successfully');
+                    header('Location: /ergon/users?success=User created successfully');
                     exit;
                 } else {
                     $_SESSION['old_data'] = $_POST;
@@ -337,11 +340,16 @@ class UsersController extends Controller {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
                 
-                $stmt = $db->prepare("SELECT name, email FROM users WHERE id = ?");
+                $stmt = $db->prepare("SELECT name, email, role FROM users WHERE id = ?");
                 $stmt->execute([$userId]);
                 $user = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($user) {
+                    // Prevent admins from managing other admins/owners (owners have full access)
+                    if ($_SESSION['role'] === 'admin' && in_array($user['role'], ['admin', 'owner'])) {
+                        echo json_encode(['success' => false, 'message' => 'Admins cannot manage other admins or owners']);
+                        exit;
+                    }
                     $hashedPassword = password_hash($tempPassword, PASSWORD_BCRYPT);
                     $stmt = $db->prepare("UPDATE users SET password = ? WHERE id = ?");
                     $result = $stmt->execute([$hashedPassword, $userId]);
@@ -407,12 +415,18 @@ class UsersController extends Controller {
             $db = Database::connect();
             
             // First check if user exists and current status
-            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
+            $checkStmt = $db->prepare("SELECT id, status, role FROM users WHERE id = ?");
             $checkStmt->execute([$id]);
             $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$user) {
                 echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
+            }
+            
+            // Prevent admins from managing other admins/owners (owners have full access)
+            if ($_SESSION['role'] === 'admin' && in_array($user['role'], ['admin', 'owner'])) {
+                echo json_encode(['success' => false, 'message' => 'Admins cannot manage other admins or owners']);
                 exit;
             }
             
@@ -447,12 +461,18 @@ class UsersController extends Controller {
             $db = Database::connect();
             
             // First check if user exists and current status
-            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
+            $checkStmt = $db->prepare("SELECT id, status, role FROM users WHERE id = ?");
             $checkStmt->execute([$id]);
             $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$user) {
                 echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
+            }
+            
+            // Prevent admins from managing other admins/owners (owners have full access)
+            if ($_SESSION['role'] === 'admin' && in_array($user['role'], ['admin', 'owner'])) {
+                echo json_encode(['success' => false, 'message' => 'Admins cannot manage other admins or owners']);
                 exit;
             }
             
@@ -490,12 +510,18 @@ class UsersController extends Controller {
             $db = Database::connect();
             
             // First check if user exists and current status
-            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
+            $checkStmt = $db->prepare("SELECT id, status, role FROM users WHERE id = ?");
             $checkStmt->execute([$id]);
             $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$user) {
                 echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
+            }
+            
+            // Prevent admins from managing other admins/owners (owners have full access)
+            if ($_SESSION['role'] === 'admin' && in_array($user['role'], ['admin', 'owner'])) {
+                echo json_encode(['success' => false, 'message' => 'Admins cannot manage other admins or owners']);
                 exit;
             }
             
@@ -528,12 +554,18 @@ class UsersController extends Controller {
             $db = Database::connect();
             
             // First check if user exists and current status
-            $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ?");
+            $checkStmt = $db->prepare("SELECT id, status, role FROM users WHERE id = ?");
             $checkStmt->execute([$id]);
             $user = $checkStmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$user) {
                 echo json_encode(['success' => false, 'message' => 'User not found']);
+                exit;
+            }
+            
+            // Prevent admins from managing other admins/owners (owners have full access)
+            if ($_SESSION['role'] === 'admin' && in_array($user['role'], ['admin', 'owner'])) {
+                echo json_encode(['success' => false, 'message' => 'Admins cannot manage other admins or owners']);
                 exit;
             }
             
@@ -556,7 +588,6 @@ class UsersController extends Controller {
 
     
     public function export() {
-        
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             header('Location: /ergon/login');
             exit;

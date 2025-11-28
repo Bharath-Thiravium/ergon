@@ -40,10 +40,10 @@ class AdvanceController extends Controller {
             }
             
             if ($role === 'user') {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id WHERE a.user_id = ? ORDER BY a.created_at DESC");
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a JOIN users u ON a.user_id = u.id WHERE a.user_id = ? ORDER BY a.created_at DESC");
                 $stmt->execute([$user_id]);
             } else {
-                $stmt = $db->query("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC");
+                $stmt = $db->query("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC");
             }
             $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
@@ -78,6 +78,23 @@ class AdvanceController extends Controller {
                 ]);
                 
                 if ($result) {
+                    $advanceId = $db->lastInsertId();
+                    $amount = floatval($_POST['amount'] ?? 0);
+                    
+                    // Create notification with advance ID
+                    try {
+                        require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                        $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                        $stmt->execute([$_SESSION['user_id']]);
+                        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        if ($user) {
+                            NotificationHelper::notifyAdvanceRequest($_SESSION['user_id'], $user['name'], $amount, $advanceId);
+                        }
+                    } catch (Exception $notifError) {
+                        error_log('Notification error (non-critical): ' . $notifError->getMessage());
+                    }
+                    
                     header('Location: /ergon/advances?success=1');
                 } else {
                     header('Location: /ergon/advances/create?error=1');
@@ -263,10 +280,10 @@ class AdvanceController extends Controller {
             $db = Database::connect();
             
             if ($_SESSION['role'] === 'user') {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a LEFT JOIN users u ON a.user_id = u.id WHERE a.id = ? AND a.user_id = ?");
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a LEFT JOIN users u ON a.user_id = u.id WHERE a.id = ? AND a.user_id = ?");
                 $stmt->execute([$id, $_SESSION['user_id']]);
             } else {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a LEFT JOIN users u ON a.user_id = u.id WHERE a.id = ?");
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role FROM advances a LEFT JOIN users u ON a.user_id = u.id WHERE a.id = ?");
                 $stmt->execute([$id]);
             }
             

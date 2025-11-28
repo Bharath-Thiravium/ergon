@@ -154,13 +154,6 @@ $content = ob_start();
                         <label for="assigned_to">🎯 Assign To *</label>
                         <select id="assigned_to" name="assigned_to" required>
                             <option value="<?= $_SESSION['user_id'] ?>" selected><?= htmlspecialchars($_SESSION['user_name'] ?? 'You') ?></option>
-                            <?php if (!empty($users)): ?>
-                                <?php foreach ($users as $user): ?>
-                                    <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                        <option value="<?= $user['id'] ?>" style="display: none;"><?= htmlspecialchars($user['name']) ?></option>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
                         </select>
                     </div>
                     <div class="form-group">
@@ -480,22 +473,37 @@ function loadTaskCategories() {
 function handleAssignmentTypeChange() {
     const assignmentType = document.getElementById('assigned_for').value;
     const assignedToSelect = document.getElementById('assigned_to');
-    const options = assignedToSelect.querySelectorAll('option');
     
     if (assignmentType === 'self') {
         // Show only current user
-        options.forEach(option => {
-            option.hidden = (option.value !== '<?= $_SESSION['user_id'] ?>');
-        });
-        assignedToSelect.value = '<?= $_SESSION['user_id'] ?>';
+        assignedToSelect.innerHTML = '<option value="<?= $_SESSION['user_id'] ?>" selected><?= htmlspecialchars($_SESSION['user_name'] ?? 'You') ?></option>';
     } else {
-        // Show all users for delegation
-        options.forEach(option => {
-            option.hidden = false;
-        });
-        // Don't auto-select current user when delegating
-        assignedToSelect.value = '';
+        // Load all users for delegation
+        loadAllUsers();
     }
+}
+
+// Load all users for assignment
+function loadAllUsers() {
+    const assignedToSelect = document.getElementById('assigned_to');
+    
+    fetch('/ergon/api/users')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.users) {
+                assignedToSelect.innerHTML = '<option value="">Select User</option>';
+                data.users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = user.name + (user.email ? ' (' + user.email + ')' : '');
+                    assignedToSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading users:', error);
+            assignedToSelect.innerHTML = '<option value="">Error loading users</option>';
+        });
 }
 
 // Toggle recurring fields
@@ -713,8 +721,27 @@ function updateSLAHours() {
     document.getElementById('sla_hours').value = totalHours.toFixed(4);
 }
 
+// Check for URL parameters and show messages
+function checkUrlMessages() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+    
+    if (success) {
+        showMessage(success, 'success');
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error) {
+        showMessage(error, 'error');
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
 // Form initialization
 document.addEventListener('DOMContentLoaded', function() {
+    // Check for messages first
+    checkUrlMessages();
     // SLA time inputs event listeners
     document.getElementById('sla_hours_part').addEventListener('input', updateSLAHours);
     document.getElementById('sla_minutes_part').addEventListener('input', updateSLAHours);

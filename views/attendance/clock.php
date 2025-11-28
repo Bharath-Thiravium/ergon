@@ -84,9 +84,18 @@ function getLocation() {
             },
             function(error) {
                 document.getElementById('locationStatus').innerHTML = 
-                    '<span>⚠️</span> Location unavailable';
+                    '<span>⚠️</span> Location access denied - Required for attendance';
+                console.error('Location error:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000
             }
         );
+    } else {
+        document.getElementById('locationStatus').innerHTML = 
+            '<span>⚠️</span> Location not supported by browser';
     }
 }
 
@@ -147,6 +156,16 @@ function clockAction(type) {
     const btn = document.getElementById('clockBtn');
     const text = document.getElementById('clockBtnText');
     
+    // Check if location is available
+    if (!currentPosition) {
+        if (typeof showMessage === 'function') {
+            showMessage('Location required for attendance. Please enable location access.', 'error');
+        } else {
+            showLocationAlert('Location is required for attendance. Please enable location access and try again.');
+        }
+        return;
+    }
+    
     // Disable button and show loading
     btn.disabled = true;
     const originalText = text.textContent;
@@ -154,11 +173,8 @@ function clockAction(type) {
     
     const formData = new FormData();
     formData.append('type', type);
-    
-    if (currentPosition) {
-        formData.append('latitude', currentPosition.coords.latitude);
-        formData.append('longitude', currentPosition.coords.longitude);
-    }
+    formData.append('latitude', currentPosition.coords.latitude);
+    formData.append('longitude', currentPosition.coords.longitude);
     
     fetch('/ergon/attendance/clock', {
         method: 'POST',
@@ -192,10 +208,23 @@ function clockAction(type) {
                 }
             }
             
-            alert(`Clocked ${type} successfully!`);
+            if (typeof showMessage === 'function') {
+                showMessage(`Clocked ${type} successfully!`, 'success');
+            } else {
+                showSuccessAlert(`Clocked ${type} successfully!`);
+            }
             setTimeout(() => window.location.href = '/ergon/attendance', 1500);
         } else {
-            alert(data.error || 'An error occurred');
+            if (typeof showMessage === 'function') {
+                showMessage(data.error || 'An error occurred', 'error');
+            } else {
+                // Check if it's a location restriction error
+                if (data.error && data.error.includes('Please move within the allowed area')) {
+                    showLocationAlert(data.error);
+                } else {
+                    showErrorAlert(data.error || 'An error occurred');
+                }
+            }
             // Restore button state
             text.textContent = originalText;
             btn.disabled = false;
@@ -203,7 +232,11 @@ function clockAction(type) {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Server error occurred. Please try again.');
+        if (typeof showMessage === 'function') {
+            showMessage('Server error occurred. Please try again.', 'error');
+        } else {
+            showErrorAlert('Server error occurred. Please try again.');
+        }
         // Restore button state
         text.textContent = originalText;
         btn.disabled = false;
@@ -214,6 +247,48 @@ function clockAction(type) {
 // Initialize smart button
 updateClockButton(attendanceStatus);
 <?php endif; ?>
+
+// Alert functions
+function showLocationAlert(message) {
+    showModal(message, 'warning', '⚠️');
+}
+
+function showSuccessAlert(message) {
+    showModal(message, 'success', '✅');
+}
+
+function showErrorAlert(message) {
+    showModal(message, 'error', '❌');
+}
+
+function showModal(message, type, icon) {
+    // Remove existing modal if any
+    const existingModal = document.querySelector('.message-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = `message-modal ${type}`;
+    modal.innerHTML = `
+        <div class="message-content">
+            <div class="message-icon">${icon}</div>
+            <div class="message-text">${message}</div>
+            <button class="message-close" onclick="this.closest('.message-modal').remove()">OK</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Auto-close after 5 seconds for success messages
+    if (type === 'success') {
+        setTimeout(() => {
+            if (modal.parentNode) {
+                modal.remove();
+            }
+        }, 5000);
+    }
+}
 
 // Initialize
 updateTime();

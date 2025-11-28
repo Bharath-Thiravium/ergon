@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../app/config/database.php';
 require_once __DIR__ . '/../app/helpers/TimeHelper.php';
+require_once __DIR__ . '/../app/helpers/LocationHelper.php';
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
     echo json_encode(['success' => false, 'message' => 'Access denied']);
@@ -18,10 +19,22 @@ try {
     switch ($action) {
         case 'clock_in':
             $userId = $input['user_id'] ?? null;
+            $latitude = $input['latitude'] ?? null;
+            $longitude = $input['longitude'] ?? null;
             date_default_timezone_set('Asia/Kolkata');
             $date = $input['date'] ?? date('Y-m-d');
             $time = $input['time'] ?? date('H:i');
             if (!$userId || !$time) throw new Exception('User ID and time required');
+            
+            // Validate location if coordinates provided
+            if ($latitude && $longitude) {
+                $officeSettings = LocationHelper::getOfficeSettings($db);
+                $locationCheck = LocationHelper::isWithinAttendanceRadius($latitude, $longitude, $officeSettings);
+                
+                if (!$locationCheck['allowed']) {
+                    throw new Exception('Please move within the allowed area to continue.');
+                }
+            }
             
             $datetime = $date . ' ' . $time . ':00';
             
@@ -33,23 +46,41 @@ try {
                 throw new Exception('User already has attendance record for today');
             }
             
-            $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, status) VALUES (?, ?, 'present')");
-            $stmt->execute([$userId, $datetime]);
+            $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, latitude, longitude, status) VALUES (?, ?, ?, ?, 'present')");
+            $stmt->execute([$userId, $datetime, $latitude, $longitude]);
             
             echo json_encode(['success' => true, 'message' => 'User clocked in successfully']);
             break;
             
         case 'clock_out':
             $userId = $input['user_id'] ?? null;
+            $latitude = $input['latitude'] ?? null;
+            $longitude = $input['longitude'] ?? null;
             date_default_timezone_set('Asia/Kolkata');
             $date = $input['date'] ?? date('Y-m-d');
             $time = $input['time'] ?? date('H:i');
             if (!$userId || !$time) throw new Exception('User ID and time required');
             
+            // Validate location if coordinates provided
+            if ($latitude && $longitude) {
+                $officeSettings = LocationHelper::getOfficeSettings($db);
+                $locationCheck = LocationHelper::isWithinAttendanceRadius($latitude, $longitude, $officeSettings);
+                
+                if (!$locationCheck['allowed']) {
+                    throw new Exception('Please move within the allowed area to continue.');
+                }
+            }
+            
             $datetime = $date . ' ' . $time . ':00';
             
-            $stmt = $db->prepare("UPDATE attendance SET check_out = ? WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");
-            $stmt->execute([$datetime, $userId, $date]);
+            // Update with location if provided
+            if ($latitude && $longitude) {
+                $stmt = $db->prepare("UPDATE attendance SET check_out = ?, latitude = COALESCE(latitude, ?), longitude = COALESCE(longitude, ?) WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");
+                $stmt->execute([$datetime, $latitude, $longitude, $userId, $date]);
+            } else {
+                $stmt = $db->prepare("UPDATE attendance SET check_out = ? WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");
+                $stmt->execute([$datetime, $userId, $date]);
+            }
             
             if ($stmt->rowCount() === 0) {
                 throw new Exception('No active clock-in record found for today');

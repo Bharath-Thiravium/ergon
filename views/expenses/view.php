@@ -10,6 +10,24 @@ ob_start();
         <p>View expense claim information</p>
     </div>
     <div class="page-actions">
+        <?php 
+        $userRole = $_SESSION['role'] ?? '';
+        $expenseStatus = $expense['status'] ?? 'pending';
+        $isOwner = $userRole === 'owner';
+        $isAdmin = $userRole === 'admin';
+        $isPending = $expenseStatus === 'pending';
+        $isNotOwnExpense = ($expense['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0);
+        
+        $canApprove = $isPending && (($isOwner) || ($isAdmin && $isNotOwnExpense));
+        ?>
+        <?php if ($canApprove): ?>
+        <a href="/ergon/expenses/approve/<?= $expense['id'] ?>" class="btn btn--success">
+            <span>✅</span> Approve
+        </a>
+        <button class="btn btn--danger" onclick="showRejectModal(<?= $expense['id'] ?>)">
+            <span>❌</span> Reject
+        </button>
+        <?php endif; ?>
         <a href="/ergon/expenses" class="btn btn--secondary">
             <span>←</span> Back to Expenses
         </a>
@@ -101,6 +119,28 @@ ob_start();
             </div>
             <?php endif; ?>
         </div>
+    </div>
+</div>
+
+<!-- Rejection Modal -->
+<div id="rejectModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Reject Expense Claim</h3>
+            <span class="close" onclick="closeRejectModal()">&times;</span>
+        </div>
+        <form id="rejectForm" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="rejection_reason">Reason for Rejection:</label>
+                    <textarea id="rejection_reason" name="rejection_reason" class="form-control" rows="4" placeholder="Please provide a reason for rejecting this expense claim..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" onclick="closeRejectModal()">Cancel</button>
+                <button type="submit" class="btn btn--danger">Reject Expense</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -319,6 +359,30 @@ ob_start();
     padding: 1rem;
     text-align: center;
 }
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+.form-group {
+    margin-bottom: 1rem;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #374151;
+}
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    resize: vertical;
+}
 </style>
 
 <script>
@@ -331,10 +395,25 @@ function closeReceiptModal() {
     document.getElementById('receiptModal').style.display = 'none';
 }
 
+function showRejectModal(expenseId) {
+    document.getElementById('rejectForm').action = '/ergon/expenses/reject/' + expenseId;
+    document.getElementById('rejectModal').style.display = 'block';
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+    document.getElementById('rejection_reason').value = '';
+}
+
 window.onclick = function(event) {
-    const modal = document.getElementById('receiptModal');
-    if (event.target === modal) {
+    const receiptModal = document.getElementById('receiptModal');
+    const rejectModal = document.getElementById('rejectModal');
+    
+    if (event.target === receiptModal) {
         closeReceiptModal();
+    }
+    if (event.target === rejectModal) {
+        closeRejectModal();
     }
 }
 </script>

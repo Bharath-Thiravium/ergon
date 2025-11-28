@@ -1,38 +1,56 @@
 /* Planner Access Control Styles */
-.access-denied {
-  text-align: center;
-  padding: 60px 20px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border: 2px solid #e9ecef;
-  margin: 20px;
+.historical-view .btn:not(.btn--secondary):not(.btn--info) {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-.access-denied h3 {
-  color: #dc3545;
-  margin-bottom: 15px;
-  font-size: 1.5rem;
+.task-card--historical {
+    background: #f9fafb;
+    border-color: #d1d5db;
 }
 
-.access-denied p {
-  color: #6c757d;
-  margin-bottom: 25px;
-  font-size: 1.1rem;
+.planning-mode .task-card {
+    border-style: dashed;
 }
 
-.access-denied .btn {
-  padding: 12px 24px;
-  background: #007bff;
-  color: white;
-  text-decoration: none;
-  border-radius: 6px;
-  font-weight: 500;
+.execution-mode .task-card--active {
+    animation: pulse 2s infinite;
 }
 
-/* Hide planner elements for Owner */
-body.owner-role .timer-start-btn,
-body.owner-role .timer-pause-btn,
-body.owner-role .timer-resume-btn,
-body.owner-role .planner-action-btn {
-  display: none !important;
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.task-card--postponed {
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.task-card--postponed-active {
+    border-color: #10b981;
+    background: #f0fdf4;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+.alert-info {
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    color: #92400e;
 }

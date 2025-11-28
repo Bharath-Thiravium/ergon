@@ -210,18 +210,23 @@ document.getElementById('leaveForm').addEventListener('submit', function(e) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            alert('Leave request submitted successfully for ' + data.days + ' days!');
+            alert('✅ Leave request submitted successfully for ' + data.days + ' days!');
             window.location.href = '/ergon/leaves';
         } else {
-            alert('Error: ' + data.error);
+            alert('❌ Error: ' + (data.error || 'Failed to submit leave request'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while submitting the request.');
+        alert('❌ An error occurred while submitting the request. Please try again.');
     })
     .finally(() => {
         submitBtn.disabled = false;

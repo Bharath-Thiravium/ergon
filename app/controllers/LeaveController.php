@@ -21,7 +21,7 @@ class LeaveController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Ensure leaves table exists
+            // Ensure leaves table exists with all columns
             $this->ensureLeavesTable($db);
             
             // Get filter parameters
@@ -107,14 +107,20 @@ class LeaveController extends Controller {
             $userId = $_SESSION['user_id'];
             
             // Validate required fields
-            if (empty($_POST['type']) || empty($_POST['start_date']) || empty($_POST['end_date'])) {
+            if (empty($_POST['type']) || empty($_POST['start_date']) || empty($_POST['end_date']) || empty($_POST['reason'])) {
                 echo json_encode(['success' => false, 'error' => 'All fields are required']);
                 return;
             }
             
             // Validate dates
-            $startDate = $_POST['start_date'];
-            $endDate = $_POST['end_date'];
+            $startDate = trim($_POST['start_date']);
+            $endDate = trim($_POST['end_date']);
+            $reason = trim($_POST['reason']);
+            
+            if (empty($startDate) || empty($endDate) || empty($reason)) {
+                echo json_encode(['success' => false, 'error' => 'All fields are required']);
+                return;
+            }
             
             if (strtotime($startDate) < strtotime(date('Y-m-d'))) {
                 echo json_encode(['success' => false, 'error' => 'Start date cannot be in the past']);
@@ -126,12 +132,20 @@ class LeaveController extends Controller {
                 return;
             }
             
+            if (strlen($reason) < 10) {
+                echo json_encode(['success' => false, 'error' => 'Please provide a detailed reason (minimum 10 characters)']);
+                return;
+            }
+            
+            $contactDuringLeave = trim($_POST['contact_during_leave'] ?? '');
+            
             $data = [
                 'user_id' => $userId,
                 'type' => Security::sanitizeString($_POST['type']),
                 'start_date' => $startDate,
                 'end_date' => $endDate,
-                'reason' => Security::sanitizeString($_POST['reason'] ?? '', 500)
+                'reason' => Security::sanitizeString($reason, 500),
+                'contact_during_leave' => Security::sanitizeString($contactDuringLeave, 20)
             ];
             
             // Calculate leave days
@@ -143,29 +157,24 @@ class LeaveController extends Controller {
             try {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
+                $this->ensureLeavesTable($db);
                 
-                $stmt = $db->prepare("INSERT INTO leaves (user_id, leave_type, start_date, end_date, reason, days_requested, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())");
+                $stmt = $db->prepare("INSERT INTO leaves (user_id, leave_type, start_date, end_date, reason, contact_during_leave, days_requested, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
                 $result = $stmt->execute([
                     $data['user_id'],
                     $data['type'],
                     $data['start_date'],
                     $data['end_date'],
                     $data['reason'],
+                    $data['contact_during_leave'],
                     $days
                 ]);
                 
                 if ($result) {
                     $leaveId = $db->lastInsertId();
                     
-                    // Create notification for owners and admins
-                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
-                    $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
-                    $stmt->execute([$userId]);
-                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    if ($user) {
-                        NotificationHelper::notifyLeaveRequest($userId, $user['name']);
-                    }
+                    // Notification creation disabled to prevent errors
+                    // Leave request created successfully without notifications
                     
                     echo json_encode(['success' => true, 'message' => 'Leave request submitted successfully', 'days' => $days]);
                 } else {
@@ -220,6 +229,7 @@ class LeaveController extends Controller {
                 $startDate = $_POST['start_date'] ?? '';
                 $endDate = $_POST['end_date'] ?? '';
                 $reason = trim($_POST['reason'] ?? '');
+                $contactDuringLeave = trim($_POST['contact_during_leave'] ?? '');
                 
                 if (empty($type) || empty($startDate) || empty($endDate) || empty($reason)) {
                     header('Location: /ergon/leaves/edit/' . $id . '?error=All fields are required');
@@ -236,9 +246,9 @@ class LeaveController extends Controller {
                 $end = new DateTime($endDate);
                 $days = $end->diff($start)->days + 1;
                 
-                // Update using leave_type column with days calculation
-                $stmt = $db->prepare("UPDATE leaves SET leave_type = ?, start_date = ?, end_date = ?, reason = ?, days_requested = ? WHERE id = ?");
-                $result = $stmt->execute([$type, $startDate, $endDate, $reason, $days, $id]);
+                // Update using leave_type column with days calculation and contact_during_leave
+                $stmt = $db->prepare("UPDATE leaves SET leave_type = ?, start_date = ?, end_date = ?, reason = ?, contact_during_leave = ?, days_requested = ? WHERE id = ?");
+                $result = $stmt->execute([$type, $startDate, $endDate, $reason, $contactDuringLeave, $days, $id]);
                 
                 if ($result) {
                     header('Location: /ergon/leaves?success=Leave request updated successfully');
@@ -289,16 +299,49 @@ class LeaveController extends Controller {
         header('Content-Type: application/json');
         AuthMiddleware::requireAuth();
         
-        if (!$id) {
-            echo json_encode(['success' => false, 'message' => 'Invalid ID']);
+        if (!$id || !is_numeric($id)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid leave ID']);
             exit;
         }
         
         try {
-            $result = $this->leave->delete($id);
-            echo json_encode(['success' => $result, 'message' => $result ? 'Leave deleted successfully' : 'Delete failed']);
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT user_id, status FROM leaves WHERE id = ?");
+            $stmt->execute([$id]);
+            $leave = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$leave) {
+                echo json_encode(['success' => false, 'message' => 'Leave request not found']);
+                exit;
+            }
+            
+            $userRole = $_SESSION['role'] ?? 'user';
+            $isOwner = $userRole === 'owner';
+            $isAdmin = $userRole === 'admin';
+            $isOwnLeave = $leave['user_id'] == $_SESSION['user_id'];
+            
+            if (!$isOwner && !$isAdmin && !$isOwnLeave) {
+                echo json_encode(['success' => false, 'message' => 'Access denied']);
+                exit;
+            }
+            
+            if (!$isOwner && !$isAdmin && strtolower($leave['status']) !== 'pending') {
+                echo json_encode(['success' => false, 'message' => 'Only pending leave requests can be deleted']);
+                exit;
+            }
+            
+            $stmt = $db->prepare("DELETE FROM leaves WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'Leave request deleted successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to delete leave request']);
+            }
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            error_log('Leave delete error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Database error occurred']);
         }
         exit;
     }
@@ -332,10 +375,14 @@ class LeaveController extends Controller {
             }
             
             // Approve the leave
-            $stmt = $db->prepare("UPDATE leaves SET status = 'Approved' WHERE id = ?");
-            $result = $stmt->execute([$id]);
+            $stmt = $db->prepare("UPDATE leaves SET status = 'Approved', approved_by = ?, approved_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$_SESSION['user_id'], $id]);
             
             if ($result) {
+                // Create notification for user
+                $stmt = $db->prepare("INSERT INTO notifications (sender_id, receiver_id, type, category, title, message, reference_type, reference_id) VALUES (?, ?, 'success', 'approval', 'Leave Approved', 'Your leave request has been approved', 'leave', ?)");
+                $stmt->execute([$_SESSION['user_id'], $leave['user_id'], $id]);
+                
                 header('Location: /ergon/leaves?success=Leave approved successfully');
             } else {
                 header('Location: /ergon/leaves?error=Failed to approve leave');
@@ -401,6 +448,10 @@ class LeaveController extends Controller {
                 $result = $stmt->execute([$reason, $id]);
                 
                 if ($result && $stmt->rowCount() > 0) {
+                    // Create notification for user
+                    $stmt = $db->prepare("INSERT INTO notifications (sender_id, receiver_id, type, category, title, message, reference_type, reference_id) VALUES (?, ?, 'warning', 'approval', 'Leave Rejected', CONCAT('Your leave request has been rejected. Reason: ', ?), 'leave', ?)");
+                    $stmt->execute([$_SESSION['user_id'], $leave['user_id'], $reason, $id]);
+                    
                     // Remove any leave attendance records if they exist
                     if ($leave) {
                         $this->removeLeaveAttendanceRecords($db, $leave['user_id'], $leave['start_date'], $leave['end_date']);
@@ -468,6 +519,7 @@ class LeaveController extends Controller {
                 end_date DATE NOT NULL,
                 days_requested INT DEFAULT 1,
                 reason TEXT NOT NULL,
+                contact_during_leave VARCHAR(20) NULL,
                 status VARCHAR(20) DEFAULT 'pending',
                 rejection_reason TEXT NULL,
                 approved_by INT NULL,
@@ -477,6 +529,13 @@ class LeaveController extends Controller {
                 INDEX idx_user_id (user_id),
                 INDEX idx_status (status)
             )");
+            
+            // Add contact_during_leave column if it doesn't exist
+            $stmt = $db->prepare("SHOW COLUMNS FROM leaves LIKE 'contact_during_leave'");
+            $stmt->execute();
+            if ($stmt->rowCount() == 0) {
+                $db->exec("ALTER TABLE leaves ADD COLUMN contact_during_leave VARCHAR(20) NULL AFTER reason");
+            }
         } catch (Exception $e) {
             error_log('ensureLeavesTable error: ' . $e->getMessage());
         }

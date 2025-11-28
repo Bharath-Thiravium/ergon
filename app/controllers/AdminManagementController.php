@@ -11,36 +11,14 @@ class AdminManagementController extends Controller {
             session_start();
         }
         
-        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             header('Location: /ergon/login');
             exit;
         }
         
-        try {
-            // Ensure database schema supports terminated status
-            $this->ensureStatusColumn();
-            
-            $userModel = new User();
-            $users = $userModel->getAll();
-            
-            // Ensure users array is always valid
-            if (!is_array($users)) {
-                $users = [];
-            }
-            
-            // Add cache headers to prevent stale data
-            header('Cache-Control: no-cache, no-store, must-revalidate');
-            header('Pragma: no-cache');
-            header('Expires: 0');
-            
-            $data = ['users' => $users];
-            
-            include __DIR__ . '/../../views/admin/management.php';
-        } catch (Exception $e) {
-            error_log('AdminManagement Error: ' . $e->getMessage());
-            $data = ['users' => []];
-            include __DIR__ . '/../../views/admin/management.php';
-        }
+        // Redirect to unified users management
+        header('Location: /ergon/users');
+        exit;
     }
     
     private function ensureStatusColumn() {
