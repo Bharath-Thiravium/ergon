@@ -5,8 +5,8 @@
 
 class NotificationManager {
     constructor() {
-        this.apiEndpoint = '/ergon/api/notifications.php';
-        this.fallbackEndpoint = '/ergon/api/notifications_unified.php';
+        this.apiEndpoint = '/ergon/api/notifications_unified.php';
+        this.fallbackEndpoint = '/ergon/api/notifications.php';
         this.retryCount = 0;
         this.maxRetries = 3;
         this.cache = new Map();
@@ -18,18 +18,19 @@ class NotificationManager {
     
     init() {
         // Initialize notification system
-        this.updateBadge();
         this.setupEventListeners();
         
         // Auto-refresh every 60 seconds
         setInterval(() => {
             this.updateBadge();
         }, 60000);
+
+        // Perform the first update after initialization
+        this.updateBadge();
     }
     
     setupEventListeners() {
-        // Handle notification dropdown toggle
-        const notificationBtn = document.querySelector('[onclick*="toggleNotifications"]');
+        const notificationBtn = document.getElementById('notificationBtn');
         if (notificationBtn) {
             notificationBtn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -41,7 +42,7 @@ class NotificationManager {
         // Handle clicks outside dropdown to close it
         document.addEventListener('click', (e) => {
             const dropdown = document.getElementById('notificationDropdown');
-            if (dropdown && !e.target.closest('#notificationDropdown') && !e.target.closest('[onclick*="toggleNotifications"]')) {
+            if (dropdown && !e.target.closest('#notificationDropdown') && !e.target.closest('#notificationBtn')) {
                 dropdown.style.display = 'none';
             }
         });
@@ -121,10 +122,13 @@ class NotificationManager {
     
     async updateBadge() {
         try {
-            const data = await this.makeRequest(this.apiEndpoint);
+            const data = await this.makeRequest(this.apiEndpoint, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'get-unread-count' })
+            });
             
             if (data.success) {
-                this.setBadgeCount(data.unread_count || 0);
+                this.setBadgeCount(data.unread_count);
             }
         } catch (error) {
             console.warn('Failed to update notification badge:', error.message);
@@ -150,7 +154,7 @@ class NotificationManager {
             dropdown.style.display = 'none';
         } else {
             // Position dropdown
-            const button = document.querySelector('[onclick*="toggleNotifications"]');
+            const button = document.getElementById('notificationBtn');
             if (button) {
                 const rect = button.getBoundingClientRect();
                 dropdown.style.position = 'fixed';
@@ -447,7 +451,7 @@ class NotificationManager {
 // Initialize notification manager when DOM is ready
 let notificationManager;
 
-document.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('load', function() { // Use 'load' to prevent session race conditions
     notificationManager = new NotificationManager();
     
     // Make functions globally available for backward compatibility

@@ -205,17 +205,13 @@ $router->post('/profile/preferences', 'ProfileController', 'preferences');
 // Notifications
 $router->get('/notifications', 'NotificationController', 'index');
 $router->get('/api/notifications/unread-count', 'NotificationController', 'getUnreadCount');
-$router->post('/api/notifications/mark-read', 'NotificationController', 'markAsRead');
-$router->post('/api/notifications/mark-as-read', 'NotificationController', 'markAsRead');
+// The unified API handles all POST actions now
 $router->post('/api/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
-$router->post('/notifications/markAsRead', 'NotificationController', 'markAsRead');
-$router->post('/notifications/markAllAsRead', 'NotificationController', 'markAllAsRead');
-$router->post('/notifications/mark-all-read', 'NotificationController', 'markAllAsRead');
-$router->post('/notifications/mark-as-read', 'NotificationController', 'markAsRead');
 
 // Additional notification API routes
-$router->get('/api/notifications', 'NotificationController', 'getUnreadCount');
-$router->post('/api/notifications', 'NotificationController', 'markAllAsRead');
+// These are now handled by the unified API script directly and don't need a route
+// $router->get('/api/notifications', 'NotificationController', 'getUnreadCount');
+// $router->post('/api/notifications_unified.php', 'NotificationController', 'markAllAsRead');
 
 // Daily Workflow Management (New Integrated System)
 $router->get('/daily-workflow/morning-planner', 'PlannerController', 'index');
@@ -368,9 +364,7 @@ $router->get('/gamification/individual', 'GamificationController', 'individual')
 
 // Finance Module Routes
 $router->get('/finance', 'FinanceController', 'dashboard');
-$router->get('/finance/dashboard-stats', 'FinanceController', 'getDashboardStats');
-$router->get('/finance/outstanding-invoices', 'FinanceController', 'getOutstandingInvoices');
-$router->get('/finance/recent-quotations', 'FinanceController', 'getRecentQuotations');
+$router->get('/finance/recent-quotations', 'FinanceController', 'recentQuotations');
 $router->get('/finance/export-table', 'FinanceController', 'exportTable');
 $router->get('/finance/export-dashboard', 'FinanceController', 'exportDashboard');
 $router->get('/finance/tables', 'FinanceController', 'getTables');
@@ -380,17 +374,20 @@ $router->get('/finance/chart', 'FinanceController', 'getChartData');
 $router->get('/finance/structure', 'FinanceController', 'getTableStructure');
 $router->post('/finance/sync', 'FinanceController', 'sync');
 $router->get('/finance/analyze', 'FinanceController', 'analyzeAllTables');
-$router->get('/finance/visualization', 'FinanceController', 'getVisualizationData');
+$router->get('/finance/visualization', 'FinanceController', 'visualization');
 $router->get('/finance/export', 'FinanceController', 'exportData');
-$router->get('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
-$router->post('/finance/company-prefix', 'FinanceController', 'updateCompanyPrefix');
-$router->get('/finance/customers', 'FinanceController', 'getCustomers');
 $router->get('/finance/download-database', 'FinanceController', 'downloadDatabase');
-// New finance visualization/export endpoints
-$router->get('/finance/outstanding-by-customer', 'FinanceController', 'getOutstandingByCustomer');
-$router->get('/finance/aging-buckets', 'FinanceController', 'getAgingBuckets');
 $router->get('/finance/export-outstanding', 'FinanceController', 'exportOutstanding');
 $router->get('/finance/import', 'FinanceController', 'importData');
 $router->post('/finance/import', 'FinanceController', 'importData');
+$router->get('/finance/available-prefixes', 'FinanceController', 'availablePrefixes');
+$router->get('/finance/dashboard-stats', 'FinanceController', 'dashboardStats');
+$router->get('/finance/outstanding-invoices', 'FinanceController', 'outstandingInvoices');
+$router->get('/finance/outstanding-by-customer', 'FinanceController', 'outstandingByCustomer');
+$router->get('/finance/aging-buckets', 'FinanceController', 'agingBuckets');
+$router->get('/finance/recent-activities', 'FinanceController', 'recentActivities');
+$router->get('/finance/customers', 'FinanceController', 'customers');
+$router->get('/finance/company-prefix', 'FinanceController', 'companyPrefix');
+$router->post('/finance/company-prefix', 'FinanceController', 'companyPrefix');
 
 ?>

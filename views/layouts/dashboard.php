@@ -702,37 +702,6 @@ ob_end_clean();
     // Global variables - Initialize first
     let attendanceState = 'out'; // 'in' or 'out'
     
-    // Simple dropdown system
-    function toggleDropdown(id) {
-        var dropdown = document.getElementById(id);
-        if (!dropdown) return;
-        
-        var isOpen = dropdown.classList.contains('show');
-        
-        // Close all dropdowns
-        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
-            menu.classList.remove('show');
-            var btn = menu.previousElementSibling;
-            if (btn) btn.classList.remove('active');
-        });
-        
-        // Open this dropdown if it was closed
-        if (!isOpen) {
-            var btn = dropdown.previousElementSibling;
-            var rect = btn.getBoundingClientRect();
-            
-            dropdown.style.position = 'fixed';
-            dropdown.style.top = (rect.bottom + 8) + 'px';
-            dropdown.style.left = rect.left + 'px';
-            dropdown.style.zIndex = '99999';
-            
-            dropdown.classList.add('show');
-            btn.classList.add('active');
-        }
-    }
-    
-    window.toggleDropdown = toggleDropdown;
-    
     // Global back button function
     function goBack() {
         if (window.history.length > 1) {

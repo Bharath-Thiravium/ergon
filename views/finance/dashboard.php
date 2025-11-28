@@ -33,7 +33,7 @@
             </div>
             <div class="filter-group">
                 <div class="input-group">
-                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Company Prefix" maxlength="10">
+                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Company Prefix (e.g. BKC)" maxlength="10">
                     <button id="updatePrefixBtn" class="btn btn--secondary btn--sm">
                         <span class="btn__icon">🏢</span>
                     </button>
@@ -437,6 +437,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
     document.getElementById('exportBtn').addEventListener('click', exportDashboard);
     document.getElementById('updatePrefixBtn').addEventListener('click', updateCompanyPrefix);
+
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
     document.getElementById('customerFilter').addEventListener('change', filterByCustomer);
     // Outstanding top-N control
@@ -449,7 +450,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.open(`/ergon/finance/export-outstanding?limit=${limit}`, '_blank');
     });
     
-    // Load prefix first, then dashboard data
+    // Load current prefix, then dashboard data
     loadCompanyPrefix().then(() => {
         loadCustomers();
         loadDashboardData();
@@ -731,6 +732,8 @@ async function loadDashboardData() {
 }
 
 function updateKPICards(data) {
+    const funnel = data.conversionFunnel || {};
+    
     // Total Invoice Amount
     document.getElementById('totalInvoiceAmount').textContent = `₹${(data.totalInvoiceAmount || 0).toLocaleString()}`;
     
@@ -743,11 +746,27 @@ function updateKPICards(data) {
     // Pending GST Amount
     document.getElementById('pendingGSTAmount').textContent = `₹${(data.pendingGSTAmount || 0).toLocaleString()}`;
     
-    // Pending PO Value
-    document.getElementById('pendingPOValue').textContent = `₹${(data.pendingPOValue || 0).toLocaleString()}`;
+    // PO Commitments - Use funnel data
+    document.getElementById('pendingPOValue').textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
+    
+    // Update PO details
+    const openPOCount = document.getElementById('openPOCount');
+    const avgPOValue = document.getElementById('avgPOValue');
+    if (openPOCount) openPOCount.textContent = funnel.purchaseOrders || 0;
+    if (avgPOValue && funnel.purchaseOrders > 0) {
+        avgPOValue.textContent = `₹${Math.round((funnel.poValue || 0) / funnel.purchaseOrders).toLocaleString()}`;
+    } else if (avgPOValue) {
+        avgPOValue.textContent = '₹0';
+    }
     
     // Claimable Amount
     document.getElementById('claimableAmount').textContent = `₹${(data.claimableAmount || 0).toLocaleString()}`;
+    
+    // Update claimable details
+    const claimablePOCount = document.getElementById('claimablePOCount');
+    const claimRate = document.getElementById('claimRate');
+    if (claimablePOCount) claimablePOCount.textContent = data.claimablePOCount || 0;
+    if (claimRate) claimRate.textContent = `${data.claimRate || 0}%`;
 }
 
 function updateConversionFunnel(data) {
@@ -1033,11 +1052,13 @@ function getActivityIcon(type) {
 
 function updateCashFlow(data) {
     const cashFlow = data.cashFlow || {};
+    const funnel = data.conversionFunnel || {};
     
     document.getElementById('expectedInflow').textContent = `₹${(cashFlow.expectedInflow || 0).toLocaleString()}`;
-    document.getElementById('poCommitments').textContent = `₹${(cashFlow.poCommitments || 0).toLocaleString()}`;
+    // Use funnel PO value for consistency
+    document.getElementById('poCommitments').textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
     
-    const netFlow = (cashFlow.expectedInflow || 0) - (cashFlow.poCommitments || 0);
+    const netFlow = (cashFlow.expectedInflow || 0) - (funnel.poValue || 0);
     const netElement = document.getElementById('netCashFlow');
     netElement.textContent = `₹${netFlow.toLocaleString()}`;
     netElement.className = `flow-value ${netFlow >= 0 ? 'flow-positive' : 'flow-negative'}`;
@@ -1257,29 +1278,34 @@ function exportDashboard() {
     window.open('/ergon/finance/export-dashboard', '_blank');
 }
 
+
+
 async function loadCompanyPrefix() {
     try {
         const response = await fetch('/ergon/finance/company-prefix');
         const data = await response.json();
-        document.getElementById('companyPrefix').value = data.prefix || 'BKC';
-        return data.prefix || 'BKC';
+        const currentPrefix = data.prefix || '';
+        
+        document.getElementById('companyPrefix').value = currentPrefix;
+        return currentPrefix;
     } catch (error) {
         console.error('Failed to load company prefix:', error);
-        return 'BKC';
+        return '';
     }
 }
 
+
+
+
+
 async function updateCompanyPrefix() {
-    const prefix = document.getElementById('companyPrefix').value.trim().toUpperCase();
-    
-    if (!prefix) {
-        alert('Please enter a company prefix');
-        return;
-    }
+    const input = document.getElementById('companyPrefix');
+    const prefix = input.value.trim().toUpperCase();
     
     const btn = document.getElementById('updatePrefixBtn');
     btn.disabled = true;
-    btn.textContent = 'Updating...';
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="btn__icon">⏳</span>';
     
     try {
         const formData = new FormData();
@@ -1292,22 +1318,27 @@ async function updateCompanyPrefix() {
         const result = await response.json();
         
         if (result.success) {
-                alert(`Company prefix updated to: ${result.prefix}`);
-                // Refresh prefix and customer dropdown so filters reflect the new prefix
-                await loadCompanyPrefix();
-                await loadCustomers();
-                // Reset any selected customer filter when prefix changes
-                const select = document.getElementById('customerFilter');
-                if (select) select.value = '';
-                loadDashboardData(); // Reload dashboard with new prefix
+            if (prefix) {
+                showNotification(`Filtering by company: ${result.prefix}`, 'success');
+            } else {
+                showNotification('Showing all companies', 'success');
+            }
+            
+            await loadCustomers();
+            
+            // Reset customer filter
+            const customerSelect = document.getElementById('customerFilter');
+            if (customerSelect) customerSelect.value = '';
+            
+            loadDashboardData();
         } else {
-            alert('Failed to update prefix: ' + (result.error || 'Unknown error'));
+            showNotification('Failed to update prefix: ' + (result.error || 'Unknown error'), 'error');
         }
     } catch (error) {
-        alert('Failed to update prefix: ' + error.message);
+        showNotification('Failed to update prefix: ' + error.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = '🏢 Update Prefix';
+        btn.innerHTML = originalText;
     }
 }
 
@@ -1832,7 +1863,7 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 }
 
 .input-group {
-    display: flex;
+    display: blockruby;
     border: 1px solid var(--border-color);
     border-radius: 6px;
     overflow: hidden;
