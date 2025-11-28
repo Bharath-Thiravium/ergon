@@ -38,6 +38,9 @@ class FinanceController extends Controller {
                     $data = pg_fetch_all($result);
                     $this->storeTableData($db, $tableName, $data);
                     $syncCount++;
+                    error_log("Synced $tableName: " . count($data) . " records");
+                } else {
+                    error_log("No data found for table: $tableName");
                 }
             }
             
@@ -133,23 +136,29 @@ class FinanceController extends Controller {
             $claimableAmount = 0;
             $claimablePOCount = 0;
             $totalPOCount = 0;
+            $openPOCount = 0;
 
             foreach ($poResults as $row) {
                 $data = json_decode($row['data'], true);
-                $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+                // Check multiple possible field names for PO number
+                $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
                 if ($prefix && !empty($prefix) && strpos($poNumber, $prefix) !== 0) {
                     continue;
                 }
                 $totalPOCount++;
-                $status = strtolower($data['status'] ?? $data['po_status'] ?? 'open');
-                $totalAmount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
                 
-                if ($status === 'open' || $status === 'partially_billed' || $status === 'pending' || $status === 'approved') {
+                // Check multiple possible field names for status
+                $status = strtolower($data['status'] ?? $data['po_status'] ?? $data['order_status'] ?? 'open');
+                // Check multiple possible field names for amount
+                $totalAmount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? 0);
+                
+                if (in_array($status, ['open', 'partially_billed', 'pending', 'approved', 'active', 'confirmed'])) {
                     $pendingPOValue += $totalAmount;
+                    $openPOCount++;
                 }
-                if ($status === 'billed' || $status === 'partially_billed' || $status === 'completed') {
-                    $billedAmount = floatval($data['billed_amount'] ?? $data['invoiced_amount'] ?? $totalAmount);
-                    $paidAmount = floatval($data['paid_amount'] ?? $data['payment_amount'] ?? 0);
+                if (in_array($status, ['billed', 'partially_billed', 'completed', 'delivered', 'invoiced'])) {
+                    $billedAmount = floatval($data['billed_amount'] ?? $data['invoiced_amount'] ?? $data['delivered_amount'] ?? $totalAmount);
+                    $paidAmount = floatval($data['paid_amount'] ?? $data['payment_amount'] ?? $data['received_amount'] ?? 0);
                     $claimable = $billedAmount - $paidAmount;
                     if ($claimable > 0) {
                         $claimableAmount += $claimable;
@@ -168,6 +177,8 @@ class FinanceController extends Controller {
                 'pendingPOValue' => $pendingPOValue,
                 'claimableAmount' => $claimableAmount,
                 'claimablePOCount' => $claimablePOCount,
+                'openPOCount' => $openPOCount,
+                'totalPOCount' => $totalPOCount,
                 'claimRate' => $claimRate,
                 'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
                 'cashFlow' => [
@@ -217,11 +228,11 @@ class FinanceController extends Controller {
         $stmt->execute();
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $data = json_decode($row['data'], true);
-            $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+            $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
             if ($prefix && !empty($prefix) && strpos($poNumber, $prefix) !== 0) continue;
-            if ($customerFilter && ($data['customer_id'] ?? '') != $customerFilter) continue;
+            if ($customerFilter && ($data['customer_id'] ?? $data['supplier_id'] ?? '') != $customerFilter) continue;
             $funnel['purchaseOrders']++;
-            $funnel['poValue'] += floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
+            $funnel['poValue'] += floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? 0);
         }
 
         // Invoices and Payments
@@ -675,7 +686,7 @@ class FinanceController extends Controller {
             
             foreach ($pos as $row) {
                 $data = json_decode($row['data'], true);
-                $poNumber = $data['po_number'] ?? '';
+                $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? '';
                 
                 if ($prefix && !empty($prefix) && strpos($poNumber, $prefix) !== 0) {
                     continue;
@@ -684,9 +695,9 @@ class FinanceController extends Controller {
                 $activities[] = [
                     'type' => 'po',
                     'description' => "Purchase Order {$poNumber} created",
-                    'amount' => floatval($data['total_amount'] ?? 0),
-                    'date' => $data['po_date'] ?? $data['created_date'] ?? date('Y-m-d'),
-                    'status' => $data['status'] ?? 'open'
+                    'amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? 0),
+                    'date' => $data['po_date'] ?? $data['created_date'] ?? $data['date'] ?? $data['order_date'] ?? date('Y-m-d'),
+                    'status' => $data['status'] ?? $data['po_status'] ?? 'open'
                 ];
             }
             
@@ -923,15 +934,18 @@ class FinanceController extends Controller {
             
             foreach ($results as $row) {
                 $data = json_decode($row['data'], true);
-                $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+                // Check multiple possible field names for PO number
+                $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
                 
                 if ($prefix && !empty($prefix) && strpos($poNumber, $prefix) !== 0) {
                     continue;
                 }
                 
-                $date = $data['created_date'] ?? $data['po_date'] ?? $data['date'] ?? date('Y-m-d');
+                // Check multiple possible field names for date
+                $date = $data['created_date'] ?? $data['po_date'] ?? $data['date'] ?? $data['order_date'] ?? $data['created_at'] ?? date('Y-m-d');
                 $month = date('M Y', strtotime($date));
-                $amount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
+                // Check multiple possible field names for amount
+                $amount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? $data['total'] ?? 0);
                 
                 if ($amount > 0) {
                     $monthlyData[$month] = ($monthlyData[$month] ?? 0) + $amount;
@@ -1085,8 +1099,49 @@ class FinanceController extends Controller {
         $this->getAgingBuckets();
     }
     
+    public function debugPo() {
+        $this->debugPurchaseOrders();
+    }
+    
     public function recentActivities() {
         $this->getRecentActivities();
+    }
+    
+    public function debugPurchaseOrders() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            // Check if table exists and has data
+            $stmt = $db->prepare("SELECT COUNT(*) as count FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+            $stmt->execute();
+            $count = $stmt->fetchColumn();
+            
+            // Get sample data
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders' LIMIT 3");
+            $stmt->execute();
+            $samples = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $sampleData = [];
+            foreach ($samples as $row) {
+                $data = json_decode($row['data'], true);
+                $sampleData[] = [
+                    'keys' => array_keys($data),
+                    'sample_values' => array_slice($data, 0, 5, true)
+                ];
+            }
+            
+            echo json_encode([
+                'total_records' => $count,
+                'sample_data' => $sampleData,
+                'table_exists' => $count > 0
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
     }
     
     private function getCompanyPrefix() {
@@ -1104,6 +1159,47 @@ class FinanceController extends Controller {
         } catch (Exception $e) {
             error_log("Error fetching company prefix: " . $e->getMessage());
             return '';
+        }
+    }
+    
+    public function structure() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $tables = [];
+            $stmt = $db->prepare("SELECT table_name, record_count, last_sync FROM finance_tables ORDER BY table_name");
+            $stmt->execute();
+            $tableInfo = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($tableInfo as $info) {
+                $tables[] = [
+                    'name' => $info['table_name'],
+                    'records' => $info['record_count'],
+                    'last_sync' => $info['last_sync']
+                ];
+            }
+            
+            // Get actual counts from finance_data
+            $actualCounts = [];
+            $stmt = $db->prepare("SELECT table_name, COUNT(*) as actual_count FROM finance_data GROUP BY table_name");
+            $stmt->execute();
+            $counts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($counts as $count) {
+                $actualCounts[$count['table_name']] = $count['actual_count'];
+            }
+            
+            echo json_encode([
+                'tables' => $tables,
+                'actual_counts' => $actualCounts,
+                'prefix' => $this->getCompanyPrefix()
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
         }
     }
 }

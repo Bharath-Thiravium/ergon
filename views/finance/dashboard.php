@@ -411,9 +411,9 @@ function showNotification(message, type = 'info') {
         top: 20px;
         right: 20px;
         padding: 12px 20px;
-        background: ${type === 'error' ? '#f8d7da' : type === 'success' ? '#d4edda' : '#fff3cd'};
-        border: 1px solid ${type === 'error' ? '#f5c6cb' : type === 'success' ? '#c3e6cb' : '#ffeaa7'};
-        color: ${type === 'error' ? '#721c24' : type === 'success' ? '#155724' : '#856404'};
+        background: ${type === 'error' ? '#f8d7da' : type === 'success' ? '#d4edda' : type === 'warning' ? '#fff3cd' : '#d1ecf1'};
+        border: 1px solid ${type === 'error' ? '#f5c6cb' : type === 'success' ? '#c3e6cb' : type === 'warning' ? '#ffeaa7' : '#bee5eb'};
+        color: ${type === 'error' ? '#721c24' : type === 'success' ? '#155724' : type === 'warning' ? '#856404' : '#0c5460'};
         border-radius: 6px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         z-index: 10000;
@@ -454,6 +454,8 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCompanyPrefix().then(() => {
         loadCustomers();
         loadDashboardData();
+        // Debug purchase orders
+        debugPurchaseOrders();
     });
 });
 
@@ -541,6 +543,26 @@ function initCharts() {
     }
 }
 
+async function debugPurchaseOrders() {
+    try {
+        const response = await fetch('/ergon/finance/debug-po');
+        const data = await response.json();
+        console.log('Purchase Orders Debug:', data);
+        
+        if (data.total_records === 0) {
+            console.warn('No purchase order records found in database');
+            showNotification('No purchase order data found. Please sync data first.', 'warning');
+        } else {
+            console.log(`Found ${data.total_records} purchase order records`);
+            if (data.sample_data && data.sample_data.length > 0) {
+                console.log('Sample PO data structure:', data.sample_data[0]);
+            }
+        }
+    } catch (error) {
+        console.error('Debug PO error:', error);
+    }
+}
+
 async function showTableStructure() {
     const btn = document.getElementById('structureBtn');
     btn.disabled = true;
@@ -548,6 +570,164 @@ async function showTableStructure() {
     
     try {
         const response = await fetch('/ergon/finance/structure');
+        const data = await response.json();
+        
+        console.log('Table Structure:', data);
+        
+        let structureHtml = '<h3>Database Structure</h3>';
+        structureHtml += `<p><strong>Company Prefix:</strong> ${data.prefix || 'None set'}</p>`;
+        
+        if (data.tables && data.tables.length > 0) {
+            structureHtml += '<table class="table"><thead><tr><th>Table</th><th>Records</th><th>Last Sync</th><th>Actual Count</th></tr></thead><tbody>';
+            data.tables.forEach(table => {
+                const actualCount = data.actual_counts[table.name] || 0;
+                structureHtml += `<tr><td>${table.name}</td><td>${table.records}</td><td>${table.last_sync}</td><td>${actualCount}</td></tr>`;
+            });
+            structureHtml += '</tbody></table>';
+        }
+        
+        // Show in a modal or alert
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            max-width: 80%; max-height: 80%; overflow: auto; z-index: 10000;
+        `;
+        modal.innerHTML = structureHtml + '<button onclick="this.parentNode.remove()" style="margin-top: 15px; padding: 8px 16px;">Close</button>';
+        document.body.appendChild(modal);
+        
+        btn.disabled = false;
+        btn.textContent = 'Show Structure';
+        
+    } catch (error) {
+        console.error('Structure error:', error);
+        showNotification('Failed to load table structure', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Show Structure';
+    }
+}
+
+async function loadDashboardData() {
+    try {
+        const response = await fetch('/ergon/finance/dashboard-stats');
+        const data = await response.json();
+        
+        console.log('Dashboard Stats:', data);
+        
+        if (data.error) {
+            showNotification(data.error, 'error');
+            return;
+        }
+        
+        if (data.message) {
+            showNotification(data.message, 'info');
+        }
+        
+        // Update KPI cards
+        updateKPICard('totalInvoiceAmount', data.totalInvoiceAmount || 0);
+        updateKPICard('invoiceReceived', data.invoiceReceived || 0);
+        updateKPICard('pendingInvoiceAmount', data.pendingInvoiceAmount || 0);
+        updateKPICard('pendingGSTAmount', data.pendingGSTAmount || 0);
+        updateKPICard('pendingPOValue', data.pendingPOValue || 0);
+        updateKPICard('claimableAmount', data.claimableAmount || 0);
+        
+        // Update PO specific metrics
+        const openPOElement = document.getElementById('openPOCount');
+        if (openPOElement) {
+            openPOElement.textContent = data.openPOCount || 0;
+        }
+        
+        const totalPOElement = document.getElementById('totalPOCount');
+        if (totalPOElement) {
+            totalPOElement.textContent = data.totalPOCount || 0;
+        }
+        
+        // Update conversion funnel
+        if (data.conversionFunnel) {
+            updateConversionFunnel(data.conversionFunnel);
+        }
+        
+        // Update cash flow
+        if (data.cashFlow) {
+            updateCashFlow(data.cashFlow);
+        }
+        
+        // Load other data
+        loadOutstandingInvoices();
+        loadOutstandingByCustomer();
+        loadAgingBuckets();
+        loadRecentActivities();
+        loadCharts();
+        
+    } catch (error) {
+        console.error('Dashboard data error:', error);
+        showNotification('Failed to load dashboard data', 'error');
+    }
+}
+
+function updateKPICard(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        if (typeof value === 'number') {
+            element.textContent = '₹' + value.toLocaleString();
+        } else {
+            element.textContent = value;
+        }
+    }
+}
+
+function updateConversionFunnel(funnel) {
+    // Update quotations
+    const quotationsElement = document.querySelector('.funnel-item:nth-child(1) .funnel-value');
+    if (quotationsElement) {
+        quotationsElement.textContent = '₹' + (funnel.quotationValue || 0).toLocaleString();
+    }
+    
+    const quotationsCountElement = document.querySelector('.funnel-item:nth-child(1) .funnel-count');
+    if (quotationsCountElement) {
+        quotationsCountElement.textContent = (funnel.quotations || 0) + ' quotations';
+    }
+    
+    // Update purchase orders
+    const poElement = document.querySelector('.funnel-item:nth-child(2) .funnel-value');
+    if (poElement) {
+        poElement.textContent = '₹' + (funnel.poValue || 0).toLocaleString();
+    }
+    
+    const poCountElement = document.querySelector('.funnel-item:nth-child(2) .funnel-count');
+    if (poCountElement) {
+        poCountElement.textContent = (funnel.purchaseOrders || 0) + ' POs';
+    }
+    
+    // Update conversion percentages
+    const quotationToPOElement = document.querySelector('.funnel-item:nth-child(2) .funnel-percentage');
+    if (quotationToPOElement) {
+        quotationToPOElement.textContent = (funnel.quotationToPO || 0) + '%';
+    }
+}
+
+function updateCashFlow(cashFlow) {
+    const expectedInflowElement = document.getElementById('expectedInflow');
+    if (expectedInflowElement) {
+        expectedInflowElement.textContent = '₹' + (cashFlow.expectedInflow || 0).toLocaleString();
+    }
+    
+    const poCommitmentsElement = document.getElementById('poCommitments');
+    if (poCommitmentsElement) {
+        poCommitmentsElement.textContent = '₹' + (cashFlow.poCommitments || 0).toLocaleString();
+    }
+    
+    const netCashFlowElement = document.getElementById('netCashFlow');
+    if (netCashFlowElement) {
+        const netFlow = (cashFlow.expectedInflow || 0) - (cashFlow.poCommitments || 0);
+        netCashFlowElement.textContent = '₹' + netFlow.toLocaleString();
+        netCashFlowElement.className = 'flow-value ' + (netFlow >= 0 ? 'flow-positive' : 'flow-negative');
+    }
+}
+
+async function loadDashboardDataOld() {
+    try {
+        const response = await fetch('/ergon/finance/dashboard-stats');
         const data = await response.json();
         
         if (data.error) {
