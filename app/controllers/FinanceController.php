@@ -331,6 +331,113 @@ class FinanceController extends Controller {
         }
     }
     
+    public function getQuotationChart() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $chartData = ['labels' => [], 'data' => []];
+            $monthlyData = [];
+            
+            foreach ($results as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $date = $data['created_date'] ?? $data['date'] ?? date('Y-m-d');
+                $month = date('M Y', strtotime($date));
+                $amount = floatval($data['amount'] ?? $data['total_amount'] ?? 0);
+                
+                $monthlyData[$month] = ($monthlyData[$month] ?? 0) + $amount;
+            }
+            
+            $chartData['labels'] = array_keys($monthlyData);
+            $chartData['data'] = array_values($monthlyData);
+            
+            echo json_encode($chartData);
+            
+        } catch (Exception $e) {
+            echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
+    public function getRecentActivities() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            $activities = [];
+            
+            // Get recent invoices
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' ORDER BY id DESC LIMIT 5");
+            $stmt->execute();
+            $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($invoices as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $activities[] = [
+                    'type' => 'invoice',
+                    'description' => "Invoice {$invoiceNumber} created",
+                    'amount' => floatval($data['total_amount'] ?? 0),
+                    'date' => $data['invoice_date'] ?? date('Y-m-d'),
+                    'status' => $data['payment_status'] ?? 'pending'
+                ];
+            }
+            
+            // Get recent quotations
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 3");
+            $stmt->execute();
+            $quotations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($quotations as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $activities[] = [
+                    'type' => 'quotation',
+                    'description' => "Quotation {$quotationNumber} created",
+                    'amount' => floatval($data['amount'] ?? $data['total_amount'] ?? 0),
+                    'date' => $data['created_date'] ?? $data['date'] ?? date('Y-m-d'),
+                    'status' => $data['status'] ?? 'pending'
+                ];
+            }
+            
+            // Sort by date
+            usort($activities, function($a, $b) {
+                return strtotime($b['date']) - strtotime($a['date']);
+            });
+            
+            echo json_encode(['activities' => array_slice($activities, 0, 8)]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['activities' => [], 'error' => $e->getMessage()]);
+        }
+    }
+    
     public function updateCompanyPrefix() {
         header('Content-Type: application/json');
         
