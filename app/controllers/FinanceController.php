@@ -232,6 +232,64 @@ class FinanceController extends Controller {
         }
     }
     
+    public function getOutstandingByCustomer() {
+        header('Content-Type: application/json');
+        
+        try {
+            $db = Database::connect();
+            $this->createTables($db);
+            
+            $prefix = $this->getCompanyPrefix();
+            $customerFilter = $_GET['customer'] ?? '';
+            
+            // Build customer lookup map
+            $customerMap = [];
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
+            $stmt->execute();
+            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($customerResults as $row) {
+                $data = json_decode($row['data'], true);
+                $customerId = $data['id'] ?? '';
+                if ($customerId) {
+                    $customerMap[$customerId] = $data['display_name'] ?? $data['name'] ?? 'Unknown';
+                }
+            }
+            
+            // Aggregate outstanding amounts
+            $outstandingByCustomer = [];
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($invoiceResults as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                
+                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
+                    continue;
+                }
+                
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                if ($outstanding > 0) {
+                    $customerId = $data['customer_id'] ?? '';
+                    $customerName = $customerMap[$customerId] ?? 'Unknown Customer';
+                    
+                    if ($customerFilter && $customerName !== $customerFilter) {
+                        continue;
+                    }
+                    
+                    $outstandingByCustomer[$customerName] = ($outstandingByCustomer[$customerName] ?? 0) + $outstanding;
+                }
+            }
+            
+            echo json_encode(['success' => true, 'data' => $outstandingByCustomer]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Failed to load outstanding data', 'details' => $e->getMessage()]);
+        }
+    }
+    
     public function getCustomers() {
         header('Content-Type: application/json');
         

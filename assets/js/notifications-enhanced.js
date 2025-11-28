@@ -5,8 +5,8 @@
 
 class NotificationManager {
     constructor() {
-        this.apiEndpoint = '/ergon/api/notifications.php';
-        this.fallbackEndpoint = '/ergon/api/notifications_unified.php';
+        this.apiEndpoint = '/ergon/api/notifications_unified.php';
+        this.fallbackEndpoint = '/ergon/api/notifications.php';
         this.retryCount = 0;
         this.maxRetries = 3;
         this.cache = new Map();
@@ -121,10 +121,13 @@ class NotificationManager {
     
     async updateBadge() {
         try {
-            const data = await this.makeRequest(this.apiEndpoint);
+            const data = await this.makeRequest(this.apiEndpoint, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'get-unread-count' })
+            });
             
             if (data.success) {
-                this.setBadgeCount(data.unread_count || 0);
+                this.setBadgeCount(data.unread_count);
             }
         } catch (error) {
             console.warn('Failed to update notification badge:', error.message);
@@ -447,7 +450,7 @@ class NotificationManager {
 // Initialize notification manager when DOM is ready
 let notificationManager;
 
-document.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('load', function() { // Use 'load' to prevent session race conditions
     notificationManager = new NotificationManager();
     
     // Make functions globally available for backward compatibility
