@@ -300,64 +300,44 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customers = [];
             $customerMap = [];
-            
-            // Get primary customer data from finance_customer (note: debug shows no data here)
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
+
+            // Step 1 & 2: Read from both finance_customer and finance_customers
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
             $stmt->execute();
             $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             foreach ($customerResults as $row) {
                 $data = json_decode($row['data'], true);
                 $customerId = $data['id'] ?? '';
-                $customerCode = $data['customer_code'] ?? '';
-                
-                if ($prefix && !empty($prefix) && $customerCode && strpos($customerCode, $prefix) !== 0) {
-                    continue;
+
+                if ($customerId) {
+                    // Prefer display_name, then name, then fallback
+                    $displayName = $data['display_name'] ?? $data['name'] ?? 'Unknown Customer';
+                    $gstin = $data['gstin'] ?? '';
+                    
+                    // Step 3: Build a readable label
+                    $label = $displayName;
+                    if ($gstin) {
+                        $label .= " (gstin: $gstin)";
+                    }
+
+                    // Use existing entry to enrich data, but don't overwrite with less info
+                    $existing = $customerMap[$customerId] ?? [];
+                    
+                    $customerMap[$customerId] = [
+                        'id' => $customerId,
+                        'customer_code' => $data['customer_code'] ?? $existing['customer_code'] ?? '',
+                        'name' => $data['name'] ?? $existing['name'] ?? 'Unknown',
+                        'display_name' => $displayName,
+                        'label' => $label,
+                        'email' => $data['email'] ?? $existing['email'] ?? '',
+                        'phone' => $data['phone'] ?? $existing['phone'] ?? '',
+                        'gstin' => $gstin ?: ($existing['gstin'] ?? '')
+                    ];
                 }
-                
-                $displayName = $data['display_name'] ?? $data['name'] ?? 'Unknown';
-                $gstin = $data['gstin'] ?? '';
-                $label = $displayName . ($gstin ? " (gstin $gstin)" : '');
-                
-                $customerMap[$customerId] = [
-                    'id' => $customerId,
-                    'customer_code' => $customerCode,
-                    'name' => $data['name'] ?? 'Unknown',
-                    'display_name' => $displayName,
-                    'label' => $label,
-                    'email' => $data['email'] ?? '',
-                    'phone' => $data['phone'] ?? '',
-                    'gstin' => $gstin
-                ];
             }
             
-            // Get customers from finance_customers (this has the actual data)
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
-            $stmt->execute();
-            $customersResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($customersResults as $row) {
-                $data = json_decode($row['data'], true);
-                $customerId = $data['id'] ?? '';
-                
-                // Don't filter customers by prefix - show all for dropdown
-                $displayName = $data['display_name'] ?? $data['name'] ?? 'Unknown';
-                $gstin = $data['gstin'] ?? '';
-                $label = $displayName . ($gstin ? " (gstin $gstin)" : '');
-                
-                $customerMap[$customerId] = [
-                    'id' => $customerId,
-                    'customer_code' => $data['customer_code'] ?? '',
-                    'name' => $data['name'] ?? 'Unknown',
-                    'display_name' => $displayName,
-                    'label' => $label,
-                    'email' => $data['email'] ?? '',
-                    'phone' => $data['phone'] ?? '',
-                    'gstin' => $gstin
-                ];
-            }
-            
-            // Aggregate customers from quotations for linked customers
+            // Step 4: Aggregate customers from quotations to find linked/missing customers
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
             $stmt->execute();
             $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -365,15 +345,19 @@ class FinanceController extends Controller {
             foreach ($quotationResults as $row) {
                 $data = json_decode($row['data'], true);
                 $customerId = $data['customer_id'] ?? '';
-                $customerGstin = $data['customer_gstin'] ?? '';
                 
-                if ($customerId && !isset($customerMap[$customerId]) && $customerGstin) {
+                // If the customer from a quotation is not already in our map, create a fallback entry
+                if ($customerId && !isset($customerMap[$customerId])) {
+                    $customerName = $data['customer_name'] ?? 'Customer ' . $customerId;
+                    $customerGstin = $data['customer_gstin'] ?? '';
+                    $label = $customerName . ($customerGstin ? " (gstin: $customerGstin)" : '');
+
                     $customerMap[$customerId] = [
                         'id' => $customerId,
                         'customer_code' => '',
-                        'name' => 'Customer ' . $customerId,
-                        'display_name' => 'Customer ' . $customerId,
-                        'label' => "Customer $customerId (gstin $customerGstin)",
+                        'name' => $customerName,
+                        'display_name' => $customerName,
+                        'label' => $label,
                         'email' => '',
                         'phone' => '',
                         'gstin' => $customerGstin

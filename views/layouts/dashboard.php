@@ -248,7 +248,7 @@ ob_end_clean();
         
         <div class="header__nav-container">
             <nav class="header__nav">
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?> // OWNER VIEW
                     <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
                             <span class="nav-icon"><i class="bi bi-graph-up"></i></span>
@@ -267,7 +267,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('management')">
+                        <button class="nav-dropdown-btn">
                             <span class="nav-icon">🔧</span>
                             Management
                             <span class="dropdown-arrow">▼</span>
@@ -292,7 +292,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('operations')">
+                        <button class="nav-dropdown-btn">
                             <span class="nav-icon">✅</span>
                             Operations
                             <span class="dropdown-arrow">▼</span>
@@ -309,7 +309,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('hrfinance')">
+                        <button class="nav-dropdown-btn">
                             <span class="nav-icon">💰</span>
                             HR & Finance
                             <span class="dropdown-arrow">▼</span>
@@ -334,7 +334,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('analytics')">
+                        <button class="nav-dropdown-btn">
                             <span class="nav-icon">📈</span>
                             Analytics
                             <span class="dropdown-arrow">▼</span>
@@ -354,9 +354,9 @@ ob_end_clean();
                             </a>
                         </div>
                     </div>
-                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?> // ADMIN VIEW
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
+                        <button class="nav-dropdown-btn">
                             <span class="nav-icon">📊</span>
                             Overview
                             <span class="dropdown-arrow">▼</span>
@@ -373,7 +373,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('team')">
+                        <button class="nav-dropdown-btn">
                             <span class="nav-icon">👥</span>
                             Team
                             <span class="dropdown-arrow">▼</span>
@@ -390,7 +390,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('tasks')">
+                        <button class="nav-dropdown-btn">
                             <span class="nav-icon">✅</span>
                             Tasks
                             <span class="dropdown-arrow">▼</span>
@@ -411,7 +411,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('approvals')">
+                        <button class="nav-dropdown-btn">
                             <span class="nav-icon">📅</span>
                             Approvals
                             <span class="dropdown-arrow">▼</span>
@@ -439,9 +439,9 @@ ob_end_clean();
                             </a>
                         </div>
                     </div>
-                <?php else: ?>
+                <?php else: ?> // USER VIEW
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
+                        <button class="nav-dropdown-btn">
                             <span class="nav-icon">🏠</span>
                             Overview
                             <span class="dropdown-arrow">▼</span>
@@ -462,7 +462,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('work')">
+                        <button class="nav-dropdown-btn">
                             <span class="nav-icon">✅</span>
                             Work
                             <span class="dropdown-arrow">▼</span>
@@ -483,7 +483,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('personal')">
+                        <button class="nav-dropdown-btn">
                             <span class="nav-icon">📋</span>
                             Personal
                             <span class="dropdown-arrow">▼</span>
@@ -699,20 +699,6 @@ ob_end_clean();
     // Global variables - Initialize first
     let attendanceState = 'out'; // 'in' or 'out'
     
-    // Global back button function
-    function goBack() {
-        if (window.history.length > 1) {
-            window.history.back();
-        } else {
-            window.location.href = '/ergon/dashboard';
-        }
-    }
-    
-    // Global forward button function
-    function goForward() {
-        window.history.forward();
-    }
-    
     document.addEventListener('DOMContentLoaded', function() {
         checkAttendanceStatus();
 
@@ -753,25 +739,6 @@ ob_end_clean();
         menu.classList.toggle('show');
         console.log('Profile menu toggled, show class:', menu.classList.contains('show'));
     }
-    
-    // Make functions globally accessible
-    window.toggleProfile = toggleProfile;
-    
-    // Define missing dropdown functions
-    function showDropdown(element) {
-        if (element && element.nextElementSibling) {
-            element.nextElementSibling.classList.add('show');
-        }
-    }
-    
-    function hideDropdown(element) {
-        if (element && element.nextElementSibling) {
-            element.nextElementSibling.classList.remove('show');
-        }
-    }
-    
-    window.showDropdown = showDropdown;
-    window.hideDropdown = hideDropdown;
     
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.header__controls')) {
@@ -854,11 +821,6 @@ ob_end_clean();
         }
     }
 
-    function goBack() {
-        window.history.back();
-    }
-    window.goBack = goBack;
-    
     function toggleLeaveFilters() {
         const panel = document.getElementById('leaveFiltersPanel');
         if (panel) {

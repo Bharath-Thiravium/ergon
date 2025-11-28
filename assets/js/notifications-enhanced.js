@@ -18,18 +18,19 @@ class NotificationManager {
     
     init() {
         // Initialize notification system
-        this.updateBadge();
         this.setupEventListeners();
         
         // Auto-refresh every 60 seconds
         setInterval(() => {
             this.updateBadge();
         }, 60000);
+
+        // Perform the first update after initialization
+        this.updateBadge();
     }
     
     setupEventListeners() {
-        // Handle notification dropdown toggle
-        const notificationBtn = document.querySelector('[onclick*="toggleNotifications"]');
+        const notificationBtn = document.getElementById('notificationBtn');
         if (notificationBtn) {
             notificationBtn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -41,7 +42,7 @@ class NotificationManager {
         // Handle clicks outside dropdown to close it
         document.addEventListener('click', (e) => {
             const dropdown = document.getElementById('notificationDropdown');
-            if (dropdown && !e.target.closest('#notificationDropdown') && !e.target.closest('[onclick*="toggleNotifications"]')) {
+            if (dropdown && !e.target.closest('#notificationDropdown') && !e.target.closest('#notificationBtn')) {
                 dropdown.style.display = 'none';
             }
         });
@@ -153,7 +154,7 @@ class NotificationManager {
             dropdown.style.display = 'none';
         } else {
             // Position dropdown
-            const button = document.querySelector('[onclick*="toggleNotifications"]');
+            const button = document.getElementById('notificationBtn');
             if (button) {
                 const rect = button.getBoundingClientRect();
                 dropdown.style.position = 'fixed';
