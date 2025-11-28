@@ -84,7 +84,8 @@ ob_end_clean();
     @keyframes pulse-red{0%,100%{box-shadow:0 4px 16px rgba(220,38,38,0.6)}50%{box-shadow:0 6px 20px rgba(220,38,38,0.8)}}
     
     /* Simple Message Modal */
-    .message-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center}
+    .message-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99999;display:none;align-items:center;justify-content:center}
+    .message-modal.show{display:flex}
     .message-content{background:#fff;border-radius:12px;padding:24px;max-width:400px;width:90%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.3)}
     .message-icon{font-size:48px;margin-bottom:16px}
     .message-text{font-size:16px;margin-bottom:20px;color:#333;line-height:1.5}
@@ -94,14 +95,16 @@ ob_end_clean();
     .message-modal.error .message-icon{color:#dc3545}
     .message-modal.warning .message-icon{color:#ffc107}
     
-    /* Global Back Button - Desktop Only */
-    .global-back-btn{position:fixed !important;top:350px !important;right:30px !important;left:auto !important;z-index:1000;background:transparent;color:#000;border:2px solid #000;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s ease}
-    .global-back-btn:hover{background:rgba(0,0,0,0.1);border-color:#000;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
-    .global-back-btn svg{stroke:#000}
-    [data-theme="dark"] .global-back-btn{background:transparent;border-color:#fff;color:#fff}
-    [data-theme="dark"] .global-back-btn:hover{background:rgba(255,255,255,0.1);border-color:#fff}
-    [data-theme="dark"] .global-back-btn svg{stroke:#fff}
-    @media (max-width:768px){.global-back-btn{display:none}}
+    /* Global Navigation Buttons - Desktop Only */
+    .global-back-btn{position:fixed !important;top:120px !important;left:20px !important;right:auto !important;z-index:1000;background:rgba(255,255,255,0.95);color:#374151;border:1px solid rgba(0,0,0,0.1);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);backdrop-filter:blur(10px);transition:all 0.2s ease}
+    .global-forward-btn{position:fixed !important;top:120px !important;right:20px !important;left:auto !important;z-index:1000;background:rgba(255,255,255,0.95);color:#374151;border:1px solid rgba(0,0,0,0.1);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);backdrop-filter:blur(10px);transition:all 0.2s ease}
+    .global-back-btn:hover,.global-forward-btn:hover{background:rgba(255,255,255,1);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+    .global-back-btn svg,.global-forward-btn svg{stroke:#374151;transition:color 0.2s ease}
+    .global-back-btn:hover svg,.global-forward-btn:hover svg{stroke:#1f2937}
+    [data-theme="dark"] .global-back-btn,[data-theme="dark"] .global-forward-btn{background:rgba(31,41,55,0.95);border-color:rgba(255,255,255,0.1);color:#f1f5f9}
+    [data-theme="dark"] .global-back-btn:hover,[data-theme="dark"] .global-forward-btn:hover{background:rgba(31,41,55,1)}
+    [data-theme="dark"] .global-back-btn svg,[data-theme="dark"] .global-forward-btn svg{stroke:#f1f5f9}
+    @media (max-width:1024px){.global-back-btn,.global-forward-btn{display:none}}
     
     /* Notification Enhancements */
     .notification-item--unread{background:#f0f9ff;border-left:3px solid #0ea5e9}
@@ -197,7 +200,7 @@ ob_end_clean();
                 <button class="control-btn" id="theme-toggle" title="Toggle Theme">
                     <i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i>
                 </button>
-                <button class="control-btn notification-btn" onclick="toggleNotifications(event)" title="Notifications" style="position:relative;">
+                <button class="control-btn notification-btn" onclick="toggleNotifications(event)" title="Notifications">
                     <i class="bi bi-bell-fill"></i>
                     <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
                 </button>
@@ -235,7 +238,7 @@ ob_end_clean();
                 </div>
                 
                 <!-- Simple Message Modal -->
-                <div id="messageModal" class="message-modal" style="display: none;">
+                <div id="messageModal" class="message-modal">
                     <div class="message-content">
                         <div class="message-icon" id="messageIcon"></div>
                         <div class="message-text" id="messageText"></div>
