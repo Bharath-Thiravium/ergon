@@ -68,7 +68,7 @@ class OwnerController extends Controller {
             // Debug: Log the stats to see what's being fetched
             error_log('Owner Dashboard Stats: ' . json_encode($stats));
             
-            $this->view('owner/dashboard_clean', [
+            $this->view('owner/dashboard', [
                 'data' => [
                     'stats' => $stats,
                     'final_approvals' => $finalApprovals,
