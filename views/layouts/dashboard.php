@@ -94,11 +94,8 @@ ob_end_clean();
     .message-modal.error .message-icon{color:#dc3545}
     .message-modal.warning .message-icon{color:#ffc107}
     
-    /* Global Back Button - Mobile Header Only */
+    /* Global Back Button - Hidden */
     .global-back-btn{display:none}
-    @media (max-width:768px){.global-back-btn{display:flex;align-items:center;justify-content:center;background:transparent;color:#fff;border:2px solid rgba(255,255,255,0.3);border-radius:50%;width:36px;height:36px;cursor:pointer;transition:all 0.2s ease}
-    .global-back-btn:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.5)}
-    .global-back-btn svg{stroke:#fff;width:18px;height:18px}}
     
     /* Notification Enhancements */
     .notification-item--unread{background:#f0f9ff;border-left:3px solid #0ea5e9}
@@ -182,11 +179,6 @@ ob_end_clean();
             </div>
             
             <div class="header__controls">
-                <button class="global-back-btn" onclick="goBack()" title="Go Back">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M19 12H5M12 19l-7-7 7-7"/>
-                    </svg>
-                </button>
                 <div class="attendance-controls">
                     <button class="btn btn--attendance-toggle" id="attendanceToggle" onclick="toggleAttendance()" title="Toggle Attendance">
                         <div class="attendance-icon">
