@@ -16,7 +16,13 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
-            $pgConn = @pg_connect("host=localhost port=5432 dbname=postgres user=postgres password=postgres");
+            $pgHost = '72.60.218.167';
+            $pgPort = '5432';
+            $pgDb = 'modernsap';
+            $pgUser = 'postgres';
+            $pgPass = 'mango';
+            
+            $pgConn = @pg_connect("host=$pgHost port=$pgPort dbname=$pgDb user=$pgUser password=$pgPass");
             
             if (!$pgConn) {
                 echo json_encode(['success' => false, 'error' => 'PostgreSQL not available. Please install and configure PostgreSQL server.']);
