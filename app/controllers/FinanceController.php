@@ -243,7 +243,7 @@ class FinanceController extends Controller {
             $customers = [];
             $customerMap = [];
             
-            // Get primary customer data from finance_customer
+            // Get primary customer data from finance_customer (note: debug shows no data here)
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customer'");
             $stmt->execute();
             $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -273,7 +273,7 @@ class FinanceController extends Controller {
                 ];
             }
             
-            // Get additional customers from finance_customers if exists
+            // Get customers from finance_customers (this has the actual data)
             $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_customers'");
             $stmt->execute();
             $customersResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -282,28 +282,21 @@ class FinanceController extends Controller {
                 $data = json_decode($row['data'], true);
                 $customerId = $data['id'] ?? '';
                 
-                if (!isset($customerMap[$customerId])) {
-                    $customerCode = $data['customer_code'] ?? '';
-                    
-                    if ($prefix && !empty($prefix) && $customerCode && strpos($customerCode, $prefix) !== 0) {
-                        continue;
-                    }
-                    
-                    $displayName = $data['display_name'] ?? $data['name'] ?? 'Unknown';
-                    $gstin = $data['gstin'] ?? '';
-                    $label = $displayName . ($gstin ? " (gstin $gstin)" : '');
-                    
-                    $customerMap[$customerId] = [
-                        'id' => $customerId,
-                        'customer_code' => $customerCode,
-                        'name' => $data['name'] ?? 'Unknown',
-                        'display_name' => $displayName,
-                        'label' => $label,
-                        'email' => $data['email'] ?? '',
-                        'phone' => $data['phone'] ?? '',
-                        'gstin' => $gstin
-                    ];
-                }
+                // Don't filter customers by prefix - show all for dropdown
+                $displayName = $data['display_name'] ?? $data['name'] ?? 'Unknown';
+                $gstin = $data['gstin'] ?? '';
+                $label = $displayName . ($gstin ? " (gstin $gstin)" : '');
+                
+                $customerMap[$customerId] = [
+                    'id' => $customerId,
+                    'customer_code' => $data['customer_code'] ?? '',
+                    'name' => $data['name'] ?? 'Unknown',
+                    'display_name' => $displayName,
+                    'label' => $label,
+                    'email' => $data['email'] ?? '',
+                    'phone' => $data['phone'] ?? '',
+                    'gstin' => $gstin
+                ];
             }
             
             // Aggregate customers from quotations for linked customers
