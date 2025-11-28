@@ -62,8 +62,28 @@ class DashboardController extends Controller {
             $columnCheck = $db->query("SHOW COLUMNS FROM tasks LIKE 'project_name'");
             $hasProjectName = $columnCheck->rowCount() > 0;
             
-            if ($hasProjectName) {
-                // Use project_name column if it exists
+            // Check if projects table exists and use proper JOIN
+            $projectTableCheck = $db->query("SHOW TABLES LIKE 'projects'");
+            $hasProjectsTable = $projectTableCheck->rowCount() > 0;
+            
+            if ($hasProjectsTable) {
+                // Use JOIN with projects table for proper project names
+                $stmt = $db->prepare("
+                    SELECT 
+                        COALESCE(p.name, 'General Tasks') as project_name,
+                        COUNT(*) as total_tasks,
+                        SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
+                        SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
+                        SUM(CASE WHEN t.status NOT IN ('completed', 'in_progress') THEN 1 ELSE 0 END) as pending_tasks
+                    FROM tasks t
+                    LEFT JOIN projects p ON t.project_id = p.id
+                    GROUP BY COALESCE(p.name, 'General Tasks')
+                    HAVING COUNT(*) > 0
+                    ORDER BY total_tasks DESC
+                    LIMIT 10
+                ");
+            } else if ($hasProjectName) {
+                // Use project_name column if projects table doesn't exist
                 $stmt = $db->prepare("
                     SELECT 
                         COALESCE(NULLIF(TRIM(project_name), ''), 'General Tasks') as project_name,
