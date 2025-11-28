@@ -180,7 +180,7 @@ class LeaveController extends Controller {
                     $user = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if ($user) {
-                        NotificationHelper::notifyLeaveRequest($userId, $user['name']);
+                        NotificationHelper::notifyLeaveRequest($userId, $user['name'], $leaveId);
                     }
                     
                     echo json_encode(['success' => true, 'message' => 'Leave request submitted successfully', 'days' => $days]);

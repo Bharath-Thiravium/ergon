@@ -32,15 +32,7 @@ foreach ($projects as $project) {
 
 $overallCompletion = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0;
 
-// Fallback values if no data
-if ($totalProjects === 0) {
-    $totalProjects = 1;
-    $totalTasks = 10;
-    $completedTasks = 7;
-    $inProgressTasks = 2;
-    $pendingTasks = 1;
-    $overallCompletion = 70;
-}
+// Remove fallback - show actual data only
 ?>
 
 <div class="dashboard-grid">

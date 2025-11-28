@@ -9,6 +9,7 @@ ob_start();
         <p>Stay updated with your latest notifications</p>
     </div>
     <div class="page-actions">
+        <button class="btn btn--success" onclick="createTestNotification()">Create Test Notification</button>
         <button class="btn btn--secondary" onclick="markAllAsRead()" id="markAllBtn">Mark All Read</button>
         <button class="btn btn--primary" onclick="markSelectedAsRead()" id="markSelectedBtn" disabled>Mark Selected Read</button>
     </div>
@@ -39,20 +40,57 @@ ob_start();
                     <tbody>
                         <?php foreach ($notifications as $notification): 
                             $isUnread = !($notification['is_read'] ?? false);
-                            $moduleName = $notification['module_name'] ?? '';
+                            $referenceType = $notification['module_name'] ?? $notification['reference_type'] ?? '';
                             $moduleIcon = [
                                 'task' => '✅', 'tasks' => '✅',
                                 'leave' => '📅', 'leaves' => '📅', 
                                 'expense' => '💰', 'expenses' => '💰',
                                 'advance' => '💳', 'advances' => '💳',
                                 'system' => '⚙️'
-                            ][$moduleName] ?? '🔔';
-                            // Generate proper URL based on module and reference
-                            $viewUrl = '/ergon/dashboard';
+                            ][$referenceType] ?? '🔔';
+                            
+                            // Generate URL based on reference type and ID (same logic as tasks)
+                            $actionUrl = $notification['action_url'] ?? null;
                             $referenceId = $notification['reference_id'] ?? null;
                             
-                            if ($referenceId && $moduleName) {
-                                switch ($moduleName) {
+                            // Auto-populate missing reference_id for existing notifications
+                            if (!$referenceId && $referenceType && in_array($referenceType, ['expense', 'leave', 'advance'])) {
+                                try {
+                                    require_once __DIR__ . '/../../app/config/database.php';
+                                    $db = Database::connect();
+                                    $table = $referenceType === 'advance' ? 'advances' : $referenceType . 's';
+                                    
+                                    // Try to match by user and time proximity (within 1 hour)
+                                    $stmt = $db->prepare("SELECT id FROM {$table} WHERE user_id = ? AND ABS(TIMESTAMPDIFF(MINUTE, created_at, ?)) <= 60 ORDER BY ABS(TIMESTAMPDIFF(MINUTE, created_at, ?)) ASC LIMIT 1");
+                                    $stmt->execute([$notification['sender_id'], $notification['created_at'], $notification['created_at']]);
+                                    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                                    
+                                    // Fallback: get latest record for this user
+                                    if (!$result) {
+                                        $stmt = $db->prepare("SELECT id FROM {$table} WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
+                                        $stmt->execute([$notification['sender_id']]);
+                                        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                                    }
+                                    
+                                    if ($result) {
+                                        $referenceId = $result['id'];
+                                        $updateStmt = $db->prepare("UPDATE notifications SET reference_id = ? WHERE id = ?");
+                                        $updateStmt->execute([$referenceId, $notification['id']]);
+                                    }
+                                } catch (Exception $e) {
+                                    // Ignore errors, continue with null reference_id
+                                }
+                            }
+                            
+                            $viewUrl = '/ergon/dashboard'; // Default fallback
+                            
+                            // Debug: Check what we have
+                            // echo "<!-- Debug: ID={$referenceId}, Type={$referenceType}, ActionURL={$actionUrl} -->"
+                            
+                            if ($actionUrl) {
+                                $viewUrl = $actionUrl;
+                            } elseif ($referenceType && !empty($referenceId) && is_numeric($referenceId) && $referenceId > 0) {
+                                switch ($referenceType) {
                                     case 'task':
                                     case 'tasks':
                                         $viewUrl = "/ergon/tasks/view/{$referenceId}";
@@ -70,18 +108,25 @@ ob_start();
                                         $viewUrl = "/ergon/advances/view/{$referenceId}";
                                         break;
                                     default:
-                                        $viewUrl = "/ergon/{$moduleName}";
+                                        $pluralType = $referenceType . 's';
+                                        $viewUrl = "/ergon/{$pluralType}/view/{$referenceId}";
                                 }
-                            } elseif ($moduleName) {
-                                $viewUrl = "/ergon/{$moduleName}";
+                            } elseif ($referenceType) {
+                                $moduleUrls = [
+                                    'leave' => '/ergon/leaves',
+                                    'expense' => '/ergon/expenses', 
+                                    'advance' => '/ergon/advances',
+                                    'task' => '/ergon/tasks'
+                                ];
+                                $viewUrl = $moduleUrls[$referenceType] ?? "/ergon/{$referenceType}";
                             }
                         ?>
-                        <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= $notification['id'] ?>">
+                        <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= (int)$notification['id'] ?>">
                             <td>
-                                <input type="checkbox" class="notification-checkbox" name="notification_<?= $notification['id'] ?>" value="<?= $notification['id'] ?>" onchange="updateMarkSelectedButton()" style="margin-right: 8px; vertical-align: top;">
+                                <input type="checkbox" class="notification-checkbox" name="notification_<?= (int)$notification['id'] ?>" value="<?= (int)$notification['id'] ?>" onchange="updateMarkSelectedButton()" style="margin-right: 8px; vertical-align: top;">
                                 <div class="notification-content" style="display: inline-block; width: calc(100% - 30px);">
                                     <div class="notification-title">
-                                        <strong><?= ucfirst($moduleName ?: 'General') ?></strong>
+                                        <strong><?= htmlspecialchars($notification['title'] ?? ucfirst($referenceType ?: 'General')) ?></strong>
                                         <?php if ($isUnread): ?>
                                         <span class="badge badge--warning" style="margin-left: 8px;">New</span>
                                         <?php endif; ?>
@@ -108,18 +153,20 @@ ob_start();
                             <td>
                                 <div class="ab-container">
                                     <?php if ($isUnread): ?>
-                                    <button class="ab-btn ab-btn--success" onclick="markAsRead(<?= $notification['id'] ?>)" data-tooltip="Mark as read">
+                                    <button class="ab-btn ab-btn--success" onclick="markAsRead(<?= (int)$notification['id'] ?>)" data-tooltip="Mark as read">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <polyline points="20,6 9,17 4,12"/>
                                         </svg>
                                     </button>
                                     <?php endif; ?>
-                                    <a href="<?= $viewUrl ?>" class="ab-btn ab-btn--view" data-tooltip="View Details">
+                                    <?php if ($viewUrl && $viewUrl !== '/ergon/dashboard'): ?>
+                                    <a href="<?= htmlspecialchars($viewUrl, ENT_QUOTES, 'UTF-8') ?>" class="ab-btn ab-btn--view" data-tooltip="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                             <circle cx="12" cy="12" r="3"/>
                                         </svg>
                                     </a>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -168,6 +215,7 @@ ob_start();
     gap: 8px;
     margin-bottom: 4px;
 }
+
 </style>
 
 <?php
@@ -181,53 +229,33 @@ function timeAgo($datetime) {
 }
 ?>
 
+<script src="/ergon/assets/js/notifications-enhanced.js" defer></script>
 <script>
-function markAsRead(id) {
+function goBack() {
+    window.history.back();
+}
+window.goBack = goBack;
+
+function createTestNotification() {
     fetch('/ergon/api/notifications.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
         },
-        body: `action=mark-read&id=${id}`
+        body: 'action=create-test'
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            const row = document.querySelector(`[data-notification-id="${id}"]`);
-            if (row) {
-                row.classList.remove('notification--unread');
-                row.classList.add('notification--read');
-                const badge = row.querySelector('.badge--warning');
-                if (badge) badge.remove();
-                const button = row.querySelector('.ab-btn--success');
-                if (button) button.remove();
-            }
+            alert('✅ Test notification created!');
+            location.reload();
+        } else {
+            alert('❌ Failed to create notification: ' + (data.error || 'Unknown error'));
         }
-    });
-}
-
-function toggleSelectAll() {
-    const selectAll = document.getElementById('selectAll');
-    const checkboxes = document.querySelectorAll('.notification-checkbox');
-    checkboxes.forEach(cb => cb.checked = selectAll.checked);
-    updateMarkSelectedButton();
-}
-
-function updateMarkSelectedButton() {
-    const selected = document.querySelectorAll('.notification-checkbox:checked');
-    document.getElementById('markSelectedBtn').disabled = selected.length === 0;
-}
-
-function markSelectedAsRead() {
-    const selected = document.querySelectorAll('.notification-checkbox:checked');
-    selected.forEach(cb => markAsRead(cb.value));
-}
-
-function markAllAsRead() {
-    const unreadRows = document.querySelectorAll('.notification--unread');
-    unreadRows.forEach(row => {
-        const id = row.dataset.notificationId;
-        if (id) markAsRead(id);
+    })
+    .catch(error => {
+        alert('❌ Network error: ' + error.message);
     });
 }
 </script>

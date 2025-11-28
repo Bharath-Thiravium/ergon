@@ -17,13 +17,17 @@ class ThemeSwitcher {
         document.documentElement.className = 'theme-' + theme;
         document.body.setAttribute('data-theme', theme);
         
-
+        // Force repaint to ensure styles are applied
+        document.body.offsetHeight;
         
         // Update toggle button icon
         this.updateToggleButton(theme);
         
         // Save preference
         localStorage.setItem('ergon_theme', theme);
+        
+        // Trigger custom event for other components
+        window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme } }));
     }
     
     updateToggleButton(theme) {

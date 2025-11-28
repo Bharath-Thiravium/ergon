@@ -1,58 +1,26 @@
 <?php
 class RateLimiter {
-    private static $storage = [];
-    
-    public static function check($key, $maxAttempts = 5, $timeWindow = 900) {
+    public static function check($maxRequests = 100, $windowSeconds = 60) {
         $now = time();
-        $windowStart = $now - $timeWindow;
         
-        if (!isset(self::$storage[$key])) {
-            self::$storage[$key] = [];
+        if (!isset($_SESSION['api_requests'])) {
+            $_SESSION['api_requests'] = [];
         }
         
-        self::$storage[$key] = array_filter(self::$storage[$key], function($timestamp) use ($windowStart) {
-            return $timestamp > $windowStart;
-        });
+        // Clean old requests
+        $_SESSION['api_requests'] = array_filter($_SESSION['api_requests'], 
+            fn($timestamp) => ($now - $timestamp) < $windowSeconds
+        );
         
-        return count(self::$storage[$key]) < $maxAttempts;
-    }
-    
-    public static function hit($key) {
-        if (!isset(self::$storage[$key])) {
-            self::$storage[$key] = [];
+        // Check limit
+        if (count($_SESSION['api_requests']) >= $maxRequests) {
+            http_response_code(429);
+            echo json_encode(['success' => false, 'error' => 'Too many requests']);
+            exit;
         }
         
-        self::$storage[$key][] = time();
-    }
-    
-    public static function getRemainingAttempts($key, $maxAttempts = 5, $timeWindow = 900) {
-        $now = time();
-        $windowStart = $now - $timeWindow;
-        
-        if (!isset(self::$storage[$key])) {
-            return $maxAttempts;
-        }
-        
-        $attempts = array_filter(self::$storage[$key], function($timestamp) use ($windowStart) {
-            return $timestamp > $windowStart;
-        });
-        
-        return max(0, $maxAttempts - count($attempts));
-    }
-    
-    public static function getTimeUntilReset($key, $timeWindow = 900) {
-        if (!isset(self::$storage[$key]) || empty(self::$storage[$key])) {
-            return 0;
-        }
-        
-        $oldestAttempt = min(self::$storage[$key]);
-        $resetTime = $oldestAttempt + $timeWindow;
-        
-        return max(0, $resetTime - time());
-    }
-    
-    public static function clear($key) {
-        unset(self::$storage[$key]);
+        // Log current request
+        $_SESSION['api_requests'][] = $now;
     }
 }
 ?>

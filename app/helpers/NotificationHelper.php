@@ -5,27 +5,32 @@ require_once __DIR__ . '/../services/NotificationService.php';
 
 class NotificationHelper {
     
-    public static function notifyOwners($senderId, $module, $action, $message, $referenceId = null) {
+    public static function notifyOwners($senderId, $module, $action, $message, $referenceId = null, $actionUrl = null) {
         try {
             $db = Database::connect();
-            $stmt = $db->prepare("SELECT id FROM users WHERE role = 'owner' AND status = 'active'");
+            $stmt = $db->prepare("SELECT id FROM users WHERE role = 'owner' AND (status = 'active' OR status IS NULL OR status = '')");
             $stmt->execute();
             $owners = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
+            error_log("NotificationHelper: Found " . count($owners) . " owners for notification");
+            
             $notification = new Notification();
             foreach ($owners as $owner) {
-                $notification->create([
+                $result = $notification->create([
                     'sender_id' => $senderId,
                     'receiver_id' => $owner['id'],
-                    'module_name' => $module,
-                    'action_type' => $action,
+                    'title' => ucfirst($module) . ' ' . ucfirst(str_replace('_', ' ', $action)),
                     'message' => $message,
-                    'reference_id' => $referenceId
+                    'reference_type' => $module,
+                    'reference_id' => $referenceId,
+                    'action_url' => $actionUrl,
+                    'category' => 'approval'
                 ]);
+                error_log("NotificationHelper: Created notification for owner {$owner['id']}: " . ($result ? 'SUCCESS' : 'FAILED'));
             }
             
             // Also notify admins for all owner notifications
-            self::notifyAdmins($senderId, $module, $action, $message, $referenceId);
+            self::notifyAdmins($senderId, $module, $action, $message, $referenceId, $actionUrl);
         } catch (Exception $e) {
             error_log('NotificationHelper error: ' . $e->getMessage());
         }
@@ -37,33 +42,39 @@ class NotificationHelper {
             $notification->create([
                 'sender_id' => $senderId,
                 'receiver_id' => $receiverId,
-                'module_name' => $module,
-                'action_type' => $action,
+                'title' => ucfirst($module) . ' ' . ucfirst($action),
                 'message' => $message,
-                'reference_id' => $referenceId
+                'reference_type' => $module,
+                'reference_id' => $referenceId,
+                'category' => 'system'
             ]);
         } catch (Exception $e) {
             error_log('NotificationHelper error: ' . $e->getMessage());
         }
     }
     
-    public static function notifyAdmins($senderId, $module, $action, $message, $referenceId = null) {
+    public static function notifyAdmins($senderId, $module, $action, $message, $referenceId = null, $actionUrl = null) {
         try {
             $db = Database::connect();
-            $stmt = $db->prepare("SELECT id FROM users WHERE role = 'admin' AND status = 'active'");
+            $stmt = $db->prepare("SELECT id FROM users WHERE role = 'admin' AND (status = 'active' OR status IS NULL OR status = '')");
             $stmt->execute();
             $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
+            error_log("NotificationHelper: Found " . count($admins) . " admins for notification");
+            
             $notification = new Notification();
             foreach ($admins as $admin) {
-                $notification->create([
+                $result = $notification->create([
                     'sender_id' => $senderId,
                     'receiver_id' => $admin['id'],
-                    'module_name' => $module,
-                    'action_type' => $action,
+                    'title' => ucfirst($module) . ' ' . ucfirst(str_replace('_', ' ', $action)),
                     'message' => $message,
-                    'reference_id' => $referenceId
+                    'reference_type' => $module,
+                    'reference_id' => $referenceId,
+                    'action_url' => $actionUrl,
+                    'category' => 'approval'
                 ]);
+                error_log("NotificationHelper: Created notification for admin {$admin['id']}: " . ($result ? 'SUCCESS' : 'FAILED'));
             }
         } catch (Exception $e) {
             error_log('NotificationHelper error: ' . $e->getMessage());
@@ -71,82 +82,46 @@ class NotificationHelper {
     }
     
     // Specific notification methods for common events
-    public static function notifyLeaveRequest($userId, $userName, $leaveData = []) {
-        // Enhanced notification with queue
-        $event = [
-            'sender_id' => $userId,
-            'module' => 'leave',
-            'action' => 'approval_request',
-            'template' => 'leave.request_submitted',
-            'payload' => [
-                'userName' => $userName,
-                'startDate' => $leaveData['start_date'] ?? 'N/A',
-                'endDate' => $leaveData['end_date'] ?? 'N/A'
-            ],
-            'channels' => ['inapp', 'email'],
-            'priority' => 2
-        ];
+    public static function notifyLeaveRequest($userId, $userName, $leaveId = null) {
+        $message = "{$userName} submitted a leave request for approval";
+        $actionUrl = $leaveId ? "/ergon/leaves/view/{$leaveId}" : null;
         
-        // Send to owners and admins
-        self::sendToRoles($event, ['owner', 'admin']);
-        
-        // Fallback to old method if service fails
-        try {
-            self::notifyApprovalRequest($userId, $userName, 'leave', 'a leave request');
-        } catch (Exception $e) {
-            error_log('Fallback notification failed: ' . $e->getMessage());
-        }
+        self::notifyOwners(
+            $userId,
+            'leave',
+            'approval_request',
+            $message,
+            $leaveId,
+            $actionUrl
+        );
     }
     
-    public static function notifyExpenseClaim($userId, $userName, $amount, $category = 'General') {
-        // Enhanced notification with queue
-        $event = [
-            'sender_id' => $userId,
-            'module' => 'expense',
-            'action' => 'approval_request',
-            'template' => 'expense.claim_submitted',
-            'payload' => [
-                'userName' => $userName,
-                'amount' => $amount,
-                'category' => $category
-            ],
-            'channels' => ['inapp', 'email'],
-            'priority' => 2
-        ];
+    public static function notifyExpenseClaim($userId, $userName, $amount, $expenseId = null) {
+        $message = "{$userName} submitted an expense claim of ₹{$amount} for approval";
+        $actionUrl = $expenseId ? "/ergon/expenses/view/{$expenseId}" : null;
         
-        self::sendToRoles($event, ['owner', 'admin']);
-        
-        // Fallback
-        try {
-            self::notifyApprovalRequest($userId, $userName, 'expense', "an expense claim of ₹{$amount}");
-        } catch (Exception $e) {
-            error_log('Fallback notification failed: ' . $e->getMessage());
-        }
+        self::notifyOwners(
+            $userId,
+            'expense',
+            'approval_request',
+            $message,
+            $expenseId,
+            $actionUrl
+        );
     }
     
-    public static function notifyAdvanceRequest($userId, $userName, $amount) {
-        // Enhanced notification with queue
-        $event = [
-            'sender_id' => $userId,
-            'module' => 'advance',
-            'action' => 'approval_request',
-            'template' => 'advance.request_submitted',
-            'payload' => [
-                'userName' => $userName,
-                'amount' => $amount
-            ],
-            'channels' => ['inapp', 'email'],
-            'priority' => 2
-        ];
+    public static function notifyAdvanceRequest($userId, $userName, $amount, $advanceId = null) {
+        $message = "{$userName} submitted a salary advance request of ₹{$amount} for approval";
+        $actionUrl = $advanceId ? "/ergon/advances/view/{$advanceId}" : null;
         
-        self::sendToRoles($event, ['owner', 'admin']);
-        
-        // Fallback
-        try {
-            self::notifyApprovalRequest($userId, $userName, 'advance', "a salary advance request of ₹{$amount}");
-        } catch (Exception $e) {
-            error_log('Fallback notification failed: ' . $e->getMessage());
-        }
+        self::notifyOwners(
+            $userId,
+            'advance',
+            'approval_request',
+            $message,
+            $advanceId,
+            $actionUrl
+        );
     }
     
     public static function notifyApprovalDecision($approverId, $userId, $module, $decision, $itemDescription) {
