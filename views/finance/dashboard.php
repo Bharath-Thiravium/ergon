@@ -732,6 +732,8 @@ async function loadDashboardData() {
 }
 
 function updateKPICards(data) {
+    const funnel = data.conversionFunnel || {};
+    
     // Total Invoice Amount
     document.getElementById('totalInvoiceAmount').textContent = `₹${(data.totalInvoiceAmount || 0).toLocaleString()}`;
     
@@ -744,8 +746,18 @@ function updateKPICards(data) {
     // Pending GST Amount
     document.getElementById('pendingGSTAmount').textContent = `₹${(data.pendingGSTAmount || 0).toLocaleString()}`;
     
-    // Pending PO Value
-    document.getElementById('pendingPOValue').textContent = `₹${(data.pendingPOValue || 0).toLocaleString()}`;
+    // PO Commitments - Use funnel data
+    document.getElementById('pendingPOValue').textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
+    
+    // Update PO details
+    const openPOCount = document.getElementById('openPOCount');
+    const avgPOValue = document.getElementById('avgPOValue');
+    if (openPOCount) openPOCount.textContent = funnel.purchaseOrders || 0;
+    if (avgPOValue && funnel.purchaseOrders > 0) {
+        avgPOValue.textContent = `₹${Math.round((funnel.poValue || 0) / funnel.purchaseOrders).toLocaleString()}`;
+    } else if (avgPOValue) {
+        avgPOValue.textContent = '₹0';
+    }
     
     // Claimable Amount
     document.getElementById('claimableAmount').textContent = `₹${(data.claimableAmount || 0).toLocaleString()}`;
@@ -1034,11 +1046,13 @@ function getActivityIcon(type) {
 
 function updateCashFlow(data) {
     const cashFlow = data.cashFlow || {};
+    const funnel = data.conversionFunnel || {};
     
     document.getElementById('expectedInflow').textContent = `₹${(cashFlow.expectedInflow || 0).toLocaleString()}`;
-    document.getElementById('poCommitments').textContent = `₹${(cashFlow.poCommitments || 0).toLocaleString()}`;
+    // Use funnel PO value for consistency
+    document.getElementById('poCommitments').textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
     
-    const netFlow = (cashFlow.expectedInflow || 0) - (cashFlow.poCommitments || 0);
+    const netFlow = (cashFlow.expectedInflow || 0) - (funnel.poValue || 0);
     const netElement = document.getElementById('netCashFlow');
     netElement.textContent = `₹${netFlow.toLocaleString()}`;
     netElement.className = `flow-value ${netFlow >= 0 ? 'flow-positive' : 'flow-negative'}`;
