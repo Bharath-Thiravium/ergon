@@ -1929,10 +1929,6 @@ class FinanceController extends Controller {
                     rejected_quotations = VALUES(rejected_quotations),
                     pending_quotations = VALUES(pending_quotations),
                     total_quotations = VALUES(total_quotations),
-                    po_high_fulfillment_count = VALUES(po_high_fulfillment_count),
-                    po_mid_fulfillment_count = VALUES(po_mid_fulfillment_count),
-                    po_low_fulfillment_count = VALUES(po_low_fulfillment_count),
-                    po_total_count = VALUES(po_total_count),
                     generated_at = NOW()";
         
         $stmt = $db->prepare($sql);
@@ -1962,11 +1958,7 @@ class FinanceController extends Controller {
             $stats['placed_quotations'] ?? 0,
             $stats['rejected_quotations'] ?? 0,
             $stats['pending_quotations'] ?? 0,
-            $stats['total_quotations'] ?? 0,
-            $stats['po_high_fulfillment_count'] ?? 0,
-            $stats['po_mid_fulfillment_count'] ?? 0,
-            $stats['po_low_fulfillment_count'] ?? 0,
-            $stats['po_total_count'] ?? 0
+            $stats['total_quotations'] ?? 0
         ]);
     }
     
