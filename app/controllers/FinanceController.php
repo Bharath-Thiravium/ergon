@@ -1103,6 +1103,10 @@ class FinanceController extends Controller {
         $this->debugPurchaseOrders();
     }
     
+    public function downloadTables() {
+        $this->downloadPgTables();
+    }
+    
     public function getAllPurchaseOrders() {
         header('Content-Type: application/json');
         
@@ -1133,6 +1137,77 @@ class FinanceController extends Controller {
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
         }
+    }
+    
+    public function downloadPgTables() {
+        try {
+            $pgHost = '72.60.218.167';
+            $pgPort = '5432';
+            $pgDb = 'modernsap';
+            $pgUser = 'postgres';
+            $pgPass = 'mango';
+            
+            $pgConn = @pg_connect("host=$pgHost port=$pgPort dbname=$pgDb user=$pgUser password=$pgPass");
+            
+            if (!$pgConn) {
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'PostgreSQL connection failed']);
+                exit;
+            }
+            
+            $tables = ['finance_invoices', 'finance_quotations', 'finance_customers', 'finance_customer', 'finance_payments', 'finance_purchase_orders'];
+            
+            // Create ZIP file
+            $zipFile = tempnam(sys_get_temp_dir(), 'finance_tables_') . '.zip';
+            $zip = new ZipArchive();
+            
+            if ($zip->open($zipFile, ZipArchive::CREATE) !== TRUE) {
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Cannot create ZIP file']);
+                exit;
+            }
+            
+            foreach ($tables as $tableName) {
+                $result = @pg_query($pgConn, "SELECT * FROM $tableName");
+                if ($result && pg_num_rows($result) > 0) {
+                    $data = pg_fetch_all($result);
+                    
+                    // Convert to CSV
+                    $csvContent = '';
+                    if (!empty($data)) {
+                        // Header
+                        $csvContent .= implode(',', array_map(function($col) {
+                            return '"' . str_replace('"', '""', $col) . '"';
+                        }, array_keys($data[0]))) . "\n";
+                        
+                        // Data rows
+                        foreach ($data as $row) {
+                            $csvContent .= implode(',', array_map(function($val) {
+                                return '"' . str_replace('"', '""', $val ?? '') . '"';
+                            }, array_values($row))) . "\n";
+                        }
+                    }
+                    
+                    $zip->addFromString($tableName . '.csv', $csvContent);
+                }
+            }
+            
+            $zip->close();
+            @pg_close($pgConn);
+            
+            // Download ZIP file
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="finance_tables_' . date('Y-m-d_H-i-s') . '.zip"');
+            header('Content-Length: ' . filesize($zipFile));
+            
+            readfile($zipFile);
+            unlink($zipFile);
+            
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Download failed: ' . $e->getMessage()]);
+        }
+        exit;
     }
     
     public function recentActivities() {

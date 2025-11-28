@@ -26,6 +26,10 @@
                     <span class="btn__icon">💾</span>
                     <span class="btn__text">Download DB</span>
                 </button>
+                <button onclick="window.open('/ergon/finance/download-pg-tables', '_blank')" class="btn btn--warning btn--sm">
+                    <span class="btn__icon">📥</span>
+                    <span class="btn__text">Download PG Tables</span>
+                </button>
                 <a href="/ergon/finance/import" class="btn btn--success btn--sm">
                     <span class="btn__icon">📥</span>
                     <span class="btn__text">Import Data</span>
