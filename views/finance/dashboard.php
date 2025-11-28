@@ -136,11 +136,17 @@
             </div>
             <div class="kpi-card__value" id="pendingPOValue">₹0</div>
             <div class="kpi-card__label">PO Commitments</div>
-            <div class="kpi-card__description">Committed Purchase Orders</div>
+            <div class="kpi-card__description">Total Value of All Purchase Orders</div>
             <div class="kpi-card__details">
                 <div class="detail-item">Open POs: <span id="openPOCount">0</span></div>
-                <div class="detail-item">Avg PO: <span id="avgPOValue">₹0</span></div>
+                <div class="detail-item">Closed POs: <span id="closedPOCount">0</span></div>
             </div>
+            <!-- Stat Card 5 Implementation:
+                 - PO Commitments = sum(total_amount) for all POs
+                 - Open POs = count where (amount_paid < total_amount) OR received_date IS NULL
+                 - Closed POs = count where (amount_paid >= total_amount) AND received_date IS NOT NULL
+                 - All calculations done in backend, frontend reads from dashboard_stats only
+            -->
         </div>
         
         <div class="kpi-card kpi-card--secondary">
@@ -1008,17 +1014,12 @@ function updateKPICards(data) {
     const poValue = data.pendingPOValue || funnel.poValue || 0;
     document.getElementById('pendingPOValue').textContent = `₹${poValue.toLocaleString()}`;
     
-    // Update PO details
+    // Update PO details from backend calculations
     const openPOCount = document.getElementById('openPOCount');
-    const avgPOValue = document.getElementById('avgPOValue');
-    const openCount = data.openPOCount || funnel.purchaseOrders || 0;
+    const closedPOCount = document.getElementById('closedPOCount');
     
-    if (openPOCount) openPOCount.textContent = openCount;
-    if (avgPOValue && openCount > 0) {
-        avgPOValue.textContent = `₹${Math.round(poValue / openCount).toLocaleString()}`;
-    } else if (avgPOValue) {
-        avgPOValue.textContent = '₹0';
-    }
+    if (openPOCount) openPOCount.textContent = data.openPOCount || 0;
+    if (closedPOCount) closedPOCount.textContent = data.closedPOCount || 0;
     
     // Stat Card 6: Claimable Amount (Backend calculated from invoices)
     document.getElementById('claimableAmount').textContent = `₹${(data.claimableAmount || 0).toLocaleString()}`;

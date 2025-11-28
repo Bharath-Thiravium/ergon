@@ -79,7 +79,8 @@ class FinanceController extends Controller {
                     'claimablePOCount' => intval($dashboardStats['claimable_pos']),
                     'claimablePos' => intval($dashboardStats['claimable_pos']),
                     'openPOCount' => intval($dashboardStats['open_pos']),
-                    'totalPOCount' => intval($dashboardStats['open_pos']),
+                    'closedPOCount' => intval($dashboardStats['closed_pos']),
+                    'totalPOCount' => intval($dashboardStats['open_pos']) + intval($dashboardStats['closed_pos']),
                     'claimRate' => floatval($dashboardStats['claim_rate']),
                     'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
                     'cashFlow' => [
@@ -125,6 +126,8 @@ class FinanceController extends Controller {
                         'igstLiability' => floatval($dashboardStats['igst_liability']),
                         'cgstSgstTotal' => floatval($dashboardStats['cgst_sgst_total']),
                         'gstLiability' => floatval($dashboardStats['gst_liability']),
+                        'openPOCount' => intval($dashboardStats['open_pos']),
+                        'closedPOCount' => intval($dashboardStats['closed_pos']),
                         'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
                         'cashFlow' => ['expectedInflow' => floatval($dashboardStats['outstanding_amount']), 'poCommitments' => floatval($dashboardStats['po_commitments'])],
                         'source' => 'calculated'
@@ -1023,7 +1026,7 @@ class FinanceController extends Controller {
             customer_count INT DEFAULT 0,
             po_commitments DECIMAL(15,2) DEFAULT 0,
             open_pos INT DEFAULT 0,
-            average_po DECIMAL(15,2) DEFAULT 0,
+            closed_pos INT DEFAULT 0,
             claimable_amount DECIMAL(15,2) DEFAULT 0,
             claimable_pos INT DEFAULT 0,
             claim_rate DECIMAL(5,2) DEFAULT 0,
@@ -1062,6 +1065,13 @@ class FinanceController extends Controller {
         
         try {
             $db->exec("ALTER TABLE dashboard_stats ADD COLUMN gst_liability DECIMAL(15,2) DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        // Add closed_pos column for Stat Card 5
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN closed_pos INT DEFAULT 0");
         } catch (Exception $e) {
             // Column already exists
         }
@@ -1401,23 +1411,30 @@ class FinanceController extends Controller {
             if ($paid > 0) $paidInvoices++;
         }
         
-        // Fetch PO data for other cards
+        // Stat Card 5: PO Commitments (Backend calculations only)
         $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
         $stmt->execute();
         $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $poCommitments = 0;
         $openPos = 0;
+        $closedPos = 0;
         
         foreach ($poResults as $row) {
             $data = json_decode($row['data'], true);
             $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
             if (!$prefix || stripos($poNumber, $prefix) !== false) {
-                $total = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
-                $paid = floatval($data['amount_paid'] ?? 0);
-                $poCommitments += $total;
-                if ($total > $paid) {
+                $totalAmount = floatval($data['total_amount'] ?? 0);
+                $amountPaid = floatval($data['amount_paid'] ?? 0);
+                $receivedDate = $data['received_date'] ?? null;
+                
+                $poCommitments += $totalAmount;
+                
+                // Determine PO status
+                if (($amountPaid < $totalAmount) || empty($receivedDate)) {
                     $openPos++;
+                } else {
+                    $closedPos++;
                 }
             }
         }
@@ -1439,7 +1456,7 @@ class FinanceController extends Controller {
             'customer_count' => $customersPendingCount,
             'po_commitments' => $poCommitments,
             'open_pos' => $openPos,
-            'average_po' => $openPos > 0 ? $poCommitments / $openPos : 0,
+            'closed_pos' => $closedPos,
             'claimable_amount' => $claimableAmount,
             'claimable_pos' => $claimablePos,
             'claim_rate' => $claimRate,
@@ -1575,7 +1592,7 @@ class FinanceController extends Controller {
                     amount_received, collection_rate, paid_invoices,
                     outstanding_amount, outstanding_percentage, overdue_amount, 
                     pending_invoices, customers_pending, customer_count,
-                    po_commitments, open_pos, average_po,
+                    po_commitments, open_pos, closed_pos,
                     claimable_amount, claimable_pos, claim_rate,
                     igst_liability, cgst_sgst_total, gst_liability, generated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
@@ -1594,7 +1611,7 @@ class FinanceController extends Controller {
                     customer_count = VALUES(customer_count),
                     po_commitments = VALUES(po_commitments),
                     open_pos = VALUES(open_pos),
-                    average_po = VALUES(average_po),
+                    closed_pos = VALUES(closed_pos),
                     claimable_amount = VALUES(claimable_amount),
                     claimable_pos = VALUES(claimable_pos),
                     claim_rate = VALUES(claim_rate),
@@ -1620,7 +1637,7 @@ class FinanceController extends Controller {
             $stats['customer_count'],
             $stats['po_commitments'],
             $stats['open_pos'],
-            $stats['average_po'],
+            $stats['closed_pos'],
             $stats['claimable_amount'],
             $stats['claimable_pos'],
             $stats['claim_rate'],
