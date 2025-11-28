@@ -95,9 +95,9 @@ ob_end_clean();
     .message-modal.warning .message-icon{color:#ffc107}
     
     /* Global Back Button */
-    .global-back-btn{position:fixed !important;top:120px !important;right:10px !important;left:auto !important;z-index:1000;background:#fff;border:2px solid #e2e8f0;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s ease}
+    .global-back-btn{position:fixed !important;top:180px !important;right:30px !important;left:auto !important;z-index:1000;background:#fff;border:2px solid #e2e8f0;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s ease}
     .global-back-btn:hover{background:#f8fafc;border-color:#cbd5e0;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
-    .global-back-btn[data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#333;color:white;padding:4px 8px;border-radius:4px;font-size:12px;white-space:nowrap;z-index:1001;margin-bottom:8px}
+    .global-back-btn[data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;top:100%;left:50%;transform:translateX(-50%);background:#333;color:white;padding:4px 8px;border-radius:4px;font-size:12px;white-space:nowrap;z-index:1001;margin-top:8px}
     @media (max-width:768px){.global-back-btn{top:115px !important;right:8px !important;left:auto !important;width:40px;height:40px}}
     </style>
     
