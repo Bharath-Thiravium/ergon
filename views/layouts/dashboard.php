@@ -53,20 +53,6 @@ ob_end_clean();
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
     
-    <link href="/ergon/assets/css/bootstrap-icons.min.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/theme-enhanced.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/utilities-new.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/instant-theme.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/global-tooltips.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/_archive_legacy/css/user-management-mobile.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/_archive_legacy/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/ergon-overrides.css?v=<?= time() ?>" rel="stylesheet">
-    <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
-    <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
-    <?php endif; ?>
-    
     <script src="/ergon/assets/js/theme-preload.js"></script>
     <script>
     // Convert title attributes to data-tooltip for custom tooltips
@@ -159,6 +145,23 @@ ob_end_clean();
         .attendance-notification.show{transform:translateY(0)}
     }
     </style>
+    
+    <link href="/ergon/assets/css/bootstrap-icons.min.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/theme-enhanced.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/utilities-new.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/instant-theme.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/global-tooltips.css?v=1.0" rel="stylesheet">
+
+
+    <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/_archive_legacy/css/user-management-mobile.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/_archive_legacy/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
+    <!-- Dashboard overrides loaded last to ensure overrides on compiled CSS in deployments -->
+    <link href="/ergon/assets/css/ergon-overrides.css?v=<?= time() ?>" rel="stylesheet">
+    <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
+    <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
+    <?php endif; ?>
 
     <script src="/ergon/assets/js/theme-switcher.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=1.0" defer></script>
@@ -248,7 +251,7 @@ ob_end_clean();
         
         <div class="header__nav-container">
             <nav class="header__nav">
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?> // OWNER VIEW
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
                     <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
                             <span class="nav-icon"><i class="bi bi-graph-up"></i></span>
@@ -267,7 +270,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('management')">
                             <span class="nav-icon">🔧</span>
                             Management
                             <span class="dropdown-arrow">▼</span>
@@ -292,7 +295,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('operations')">
                             <span class="nav-icon">✅</span>
                             Operations
                             <span class="dropdown-arrow">▼</span>
@@ -309,7 +312,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('hrfinance')">
                             <span class="nav-icon">💰</span>
                             HR & Finance
                             <span class="dropdown-arrow">▼</span>
@@ -334,7 +337,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('analytics')">
                             <span class="nav-icon">📈</span>
                             Analytics
                             <span class="dropdown-arrow">▼</span>
@@ -354,9 +357,9 @@ ob_end_clean();
                             </a>
                         </div>
                     </div>
-                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?> // ADMIN VIEW
+                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
                             <span class="nav-icon">📊</span>
                             Overview
                             <span class="dropdown-arrow">▼</span>
@@ -373,7 +376,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('team')">
                             <span class="nav-icon">👥</span>
                             Team
                             <span class="dropdown-arrow">▼</span>
@@ -390,7 +393,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('tasks')">
                             <span class="nav-icon">✅</span>
                             Tasks
                             <span class="dropdown-arrow">▼</span>
@@ -411,7 +414,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('approvals')">
                             <span class="nav-icon">📅</span>
                             Approvals
                             <span class="dropdown-arrow">▼</span>
@@ -439,9 +442,9 @@ ob_end_clean();
                             </a>
                         </div>
                     </div>
-                <?php else: ?> // USER VIEW
+                <?php else: ?>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
                             <span class="nav-icon">🏠</span>
                             Overview
                             <span class="dropdown-arrow">▼</span>
@@ -462,7 +465,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('work')">
                             <span class="nav-icon">✅</span>
                             Work
                             <span class="dropdown-arrow">▼</span>
@@ -483,7 +486,7 @@ ob_end_clean();
                         </div>
                     </div>
                     <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('personal')">
                             <span class="nav-icon">📋</span>
                             Personal
                             <span class="dropdown-arrow">▼</span>
@@ -699,6 +702,20 @@ ob_end_clean();
     // Global variables - Initialize first
     let attendanceState = 'out'; // 'in' or 'out'
     
+    // Global back button function
+    function goBack() {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = '/ergon/dashboard';
+        }
+    }
+    
+    // Global forward button function
+    function goForward() {
+        window.history.forward();
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
         checkAttendanceStatus();
 
@@ -739,6 +756,25 @@ ob_end_clean();
         menu.classList.toggle('show');
         console.log('Profile menu toggled, show class:', menu.classList.contains('show'));
     }
+    
+    // Make functions globally accessible
+    window.toggleProfile = toggleProfile;
+    
+    // Define missing dropdown functions
+    function showDropdown(element) {
+        if (element && element.nextElementSibling) {
+            element.nextElementSibling.classList.add('show');
+        }
+    }
+    
+    function hideDropdown(element) {
+        if (element && element.nextElementSibling) {
+            element.nextElementSibling.classList.remove('show');
+        }
+    }
+    
+    window.showDropdown = showDropdown;
+    window.hideDropdown = hideDropdown;
     
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.header__controls')) {
@@ -821,6 +857,11 @@ ob_end_clean();
         }
     }
 
+    function goBack() {
+        window.history.back();
+    }
+    window.goBack = goBack;
+    
     function toggleLeaveFilters() {
         const panel = document.getElementById('leaveFiltersPanel');
         if (panel) {
