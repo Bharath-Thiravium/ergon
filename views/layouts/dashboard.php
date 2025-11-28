@@ -95,11 +95,12 @@ ob_end_clean();
     .message-modal.warning .message-icon{color:#ffc107}
     
     /* Global Back Button */
-    .global-back-btn{position:fixed !important;top:350px !important;right:30px !important;left:auto !important;z-index:1000;background:#007bff;color:#fff;border:2px solid #0056b3;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,123,255,0.3);transition:all 0.2s ease}
-    .global-back-btn:hover{background:#0056b3;border-color:#004085;box-shadow:0 4px 12px rgba(0,123,255,0.4)}
-    .global-back-btn svg{stroke:#fff}
-    [data-theme="dark"] .global-back-btn{background:#0d6efd;border-color:#0b5ed7;color:#fff}
-    [data-theme="dark"] .global-back-btn:hover{background:#0b5ed7;border-color:#0a58ca}
+    .global-back-btn{position:fixed !important;top:350px !important;right:30px !important;left:auto !important;z-index:1000;background:transparent;color:#000;border:2px solid #000;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s ease}
+    .global-back-btn:hover{background:rgba(0,0,0,0.1);border-color:#000;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+    .global-back-btn svg{stroke:#000}
+    [data-theme="dark"] .global-back-btn{background:transparent;border-color:#fff;color:#fff}
+    [data-theme="dark"] .global-back-btn:hover{background:rgba(255,255,255,0.1);border-color:#fff}
+    [data-theme="dark"] .global-back-btn svg{stroke:#fff}
     @media (max-width:768px){.global-back-btn{top:115px !important;right:8px !important;left:auto !important;width:40px;height:40px}}
     
     /* Notification Enhancements */
