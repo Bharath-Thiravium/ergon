@@ -314,62 +314,87 @@ class FinanceController extends Controller {
 
     private function getConversionFunnel($db, $customerFilter = '') {
         $prefix = $this->getCompanyPrefix();
-        $funnel = [
-            'quotations' => 0, 'quotationValue' => 0,
-            'purchaseOrders' => 0, 'poValue' => 0,
-            'invoices' => 0, 'invoiceValue' => 0,
-            'payments' => 0, 'paymentValue' => 0,
-            'quotationToPO' => 0, 'poToInvoice' => 0, 'invoiceToPayment' => 0
-        ];
-
-        // Quotations - check multiple number fields
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-        $stmt->execute();
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $data = json_decode($row['data'], true);
-            $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? $data['number'] ?? '';
-            if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) continue;
-            if ($customerFilter && ($data['customer_id'] ?? '') != $customerFilter) continue;
-            $funnel['quotations']++;
-            $funnel['quotationValue'] += floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
-        }
-
-        // Purchase Orders - check multiple number fields
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
-        $stmt->execute();
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $data = json_decode($row['data'], true);
-            $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
-            if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) continue;
-            if ($customerFilter && ($data['customer_id'] ?? $data['supplier_id'] ?? '') != $customerFilter) continue;
-            $funnel['purchaseOrders']++;
-            $funnel['poValue'] += floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? 0);
-        }
-
-        // Invoices and Payments
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-        $stmt->execute();
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $data = json_decode($row['data'], true);
-            $invoiceNumber = $data['invoice_number'] ?? $data['number'] ?? '';
-            if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) continue;
-            if ($customerFilter && ($data['customer_id'] ?? '') != $customerFilter) continue;
-            $funnel['invoices']++;
-            $total = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
-            $outstanding = floatval($data['outstanding_amount'] ?? $data['balance'] ?? 0);
-            $funnel['invoiceValue'] += $total;
-            $funnel['paymentValue'] += ($total - $outstanding);
-            if ($outstanding <= 0) {
-                $funnel['payments']++;
+        
+        // Read from dashboard_stats for consistency
+        $stmt = $db->prepare("SELECT * FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
+        $stmt->execute([$prefix]);
+        $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($dashboardStats) {
+            // Use backend-calculated values
+            $quotations = intval($dashboardStats['total_quotations'] ?? 0);
+            $purchaseOrders = intval($dashboardStats['po_total_count'] ?? 0);
+            $invoices = intval($dashboardStats['invoice_count'] ?? 0);
+            $payments = intval($dashboardStats['paid_invoices'] ?? 0);
+            
+            $quotationValue = 0; // Not stored, calculate if needed
+            $poValue = floatval($dashboardStats['po_commitments'] ?? 0);
+            $invoiceValue = floatval($dashboardStats['total_revenue'] ?? 0);
+            $paymentValue = floatval($dashboardStats['amount_received'] ?? 0);
+        } else {
+            // Fallback to direct calculation
+            $quotations = 0; $quotationValue = 0;
+            $purchaseOrders = 0; $poValue = 0;
+            $invoices = 0; $invoiceValue = 0;
+            $payments = 0; $paymentValue = 0;
+            
+            // Quick calculation from raw data
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? '';
+                if (!$prefix || strpos($quotationNumber, $prefix) === 0) {
+                    $quotations++;
+                    $quotationValue += floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+                }
+            }
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $data = json_decode($row['data'], true);
+                $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+                if (!$prefix || stripos($poNumber, $prefix) !== false) {
+                    $purchaseOrders++;
+                    $poValue += floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+                }
+            }
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                if (!$prefix || strpos($invoiceNumber, $prefix) === 0) {
+                    $invoices++;
+                    $total = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+                    $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                    $invoiceValue += $total;
+                    $paymentValue += ($total - $outstanding);
+                    if ($outstanding <= 0) $payments++;
+                }
             }
         }
-
+        
         // Calculate conversion rates
-        if ($funnel['quotations'] > 0) $funnel['quotationToPO'] = round(($funnel['purchaseOrders'] / $funnel['quotations']) * 100);
-        if ($funnel['purchaseOrders'] > 0) $funnel['poToInvoice'] = round(($funnel['invoices'] / $funnel['purchaseOrders']) * 100);
-        if ($funnel['invoices'] > 0) $funnel['invoiceToPayment'] = round(($funnel['payments'] / $funnel['invoices']) * 100);
-
-        return $funnel;
+        $quotationToPO = $quotations > 0 ? round(($purchaseOrders / $quotations) * 100) : 0;
+        $poToInvoice = $purchaseOrders > 0 ? round(($invoices / $purchaseOrders) * 100) : 0;
+        $invoiceToPayment = $invoices > 0 ? round(($payments / $invoices) * 100) : 0;
+        
+        return [
+            'quotations' => $quotations,
+            'quotationValue' => $quotationValue,
+            'purchaseOrders' => $purchaseOrders,
+            'poValue' => $poValue,
+            'invoices' => $invoices,
+            'invoiceValue' => $invoiceValue,
+            'payments' => $payments,
+            'paymentValue' => $paymentValue,
+            'quotationToPO' => $quotationToPO,
+            'poToInvoice' => $poToInvoice,
+            'invoiceToPayment' => $invoiceToPayment
+        ];
     }
     
     public function getOutstandingInvoices() {
@@ -1707,6 +1732,12 @@ class FinanceController extends Controller {
             $poStats = ['po_high_fulfillment_count' => 0, 'po_mid_fulfillment_count' => 0, 'po_low_fulfillment_count' => 0, 'po_total_count' => 0];
         }
         
+        // Calculate PO commitments from backend data
+        $poCommitments = 0;
+        foreach ($purchaseOrders as $po) {
+            $poCommitments += $po['po_amount'];
+        }
+        
         // Step 7: Store computed results in dashboard_stats table
         $stats = [
             'company_prefix' => $prefix,
@@ -1740,7 +1771,9 @@ class FinanceController extends Controller {
             'po_high_fulfillment_count' => $poStats['po_high_fulfillment_count'],
             'po_mid_fulfillment_count' => $poStats['po_mid_fulfillment_count'],
             'po_low_fulfillment_count' => $poStats['po_low_fulfillment_count'],
-            'po_total_count' => $poStats['po_total_count']
+            'po_total_count' => $poStats['po_total_count'],
+            // Update PO commitments with backend calculated value
+            'po_commitments' => $poCommitments
         ];
         
         $this->saveDashboardStats($db, $stats);
