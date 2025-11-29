@@ -85,15 +85,25 @@ ob_start();
                                 <td><?= htmlspecialchars($leave['end_date'] ?? '') ?></td>
                                 <td><?= htmlspecialchars($leave['reason'] ?? '') ?></td>
                                 <td>
-                                    <div class="btn-group">
-                                        <button class="btn btn--sm btn--primary" onclick="viewItem('leave', <?= $leave['id'] ?>)">
-                                            <span>👁️</span> View
+                                    <div class="ab-container">
+                                        <a class="ab-btn ab-btn--view" onclick="viewItem('leave', <?= $leave['id'] ?>)" data-tooltip="View Details">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14,2 14,8 20,8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            </svg>
+                                        </a>
+                                        <button class="ab-btn ab-btn--approve" onclick="approveItem('leave', <?= $leave['id'] ?>)" data-tooltip="Approve Leave">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <polyline points="20,6 9,17 4,12"></polyline>
+                                            </svg>
                                         </button>
-                                        <button class="btn btn--sm btn--success" onclick="approveItem('leave', <?= $leave['id'] ?>)">
-                                            <span>✅</span> Approve
-                                        </button>
-                                        <button class="btn btn--sm btn--danger" onclick="rejectItem('leave', <?= $leave['id'] ?>)">
-                                            <span>❌</span> Reject
+                                        <button class="ab-btn ab-btn--reject" onclick="rejectItem('leave', <?= $leave['id'] ?>)" data-tooltip="Reject Leave">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
                                         </button>
                                     </div>
                                 </td>
@@ -142,15 +152,25 @@ ob_start();
                                 <td><?= htmlspecialchars($expense['description'] ?? '') ?></td>
                                 <td><?= htmlspecialchars($expense['expense_date'] ?? $expense['created_at'] ?? '') ?></td>
                                 <td>
-                                    <div class="btn-group">
-                                        <button class="btn btn--sm btn--primary" onclick="viewItem('expense', <?= $expense['id'] ?>)">
-                                            <span>👁️</span> View
+                                    <div class="ab-container">
+                                        <a class="ab-btn ab-btn--view" onclick="viewItem('expense', <?= $expense['id'] ?>)" data-tooltip="View Details">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14,2 14,8 20,8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            </svg>
+                                        </a>
+                                        <button class="ab-btn ab-btn--approve" onclick="approveItem('expense', <?= $expense['id'] ?>)" data-tooltip="Approve Expense">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <polyline points="20,6 9,17 4,12"></polyline>
+                                            </svg>
                                         </button>
-                                        <button class="btn btn--sm btn--success" onclick="approveItem('expense', <?= $expense['id'] ?>)">
-                                            <span>✅</span> Approve
-                                        </button>
-                                        <button class="btn btn--sm btn--danger" onclick="rejectItem('expense', <?= $expense['id'] ?>)">
-                                            <span>❌</span> Reject
+                                        <button class="ab-btn ab-btn--reject" onclick="rejectItem('expense', <?= $expense['id'] ?>)" data-tooltip="Reject Expense">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
                                         </button>
                                     </div>
                                 </td>
@@ -197,15 +217,25 @@ ob_start();
                                 <td><?= htmlspecialchars($advance['reason'] ?? '') ?></td>
                                 <td><?= htmlspecialchars($advance['requested_date'] ?? $advance['created_at'] ?? '') ?></td>
                                 <td>
-                                    <div class="btn-group">
-                                        <button class="btn btn--sm btn--primary" onclick="viewItem('advance', <?= $advance['id'] ?>)">
-                                            <span>👁️</span> View
+                                    <div class="ab-container">
+                                        <a class="ab-btn ab-btn--view" onclick="viewItem('advance', <?= $advance['id'] ?>)" data-tooltip="View Details">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14,2 14,8 20,8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            </svg>
+                                        </a>
+                                        <button class="ab-btn ab-btn--approve" onclick="approveItem('advance', <?= $advance['id'] ?>)" data-tooltip="Approve Advance">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <polyline points="20,6 9,17 4,12"></polyline>
+                                            </svg>
                                         </button>
-                                        <button class="btn btn--sm btn--success" onclick="approveItem('advance', <?= $advance['id'] ?>)">
-                                            <span>✅</span> Approve
-                                        </button>
-                                        <button class="btn btn--sm btn--danger" onclick="rejectItem('advance', <?= $advance['id'] ?>)">
-                                            <span>❌</span> Reject
+                                        <button class="ab-btn ab-btn--reject" onclick="rejectItem('advance', <?= $advance['id'] ?>)" data-tooltip="Reject Advance">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
                                         </button>
                                     </div>
                                 </td>

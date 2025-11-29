@@ -257,6 +257,22 @@ class SystemAdminController extends Controller {
             
             try {
                 $db = Database::connect();
+                
+                // Check if admin is terminated
+                $checkStmt = $db->prepare("SELECT status FROM users WHERE id = ? AND role = 'admin'");
+                $checkStmt->execute([$adminId]);
+                $admin = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$admin) {
+                    echo json_encode(['success' => false, 'message' => 'Admin not found']);
+                    exit;
+                }
+                
+                if ($admin['status'] === 'terminated') {
+                    echo json_encode(['success' => false, 'message' => 'Cannot change password for terminated admin']);
+                    exit;
+                }
+                
                 $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
                 $stmt = $db->prepare("UPDATE users SET password = ? WHERE id = ? AND role = 'admin'");
                 $result = $stmt->execute([$hashedPassword, $adminId]);
@@ -276,26 +292,45 @@ class SystemAdminController extends Controller {
         }
     }
     
-    public function delete() {
+    public function suspendAdmin() {
+        header('Content-Type: application/json');
         $this->requireAuth();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $adminId = $_POST['admin_id'] ?? '';
             
             if (empty($adminId)) {
-                header('Location: /ergon/system-admin?error=Invalid admin ID');
+                echo json_encode(['success' => false, 'message' => 'Invalid admin ID']);
                 exit;
             }
             
             try {
                 $db = Database::connect();
-                $stmt = $db->prepare("DELETE FROM users WHERE id = ? AND role = 'admin'");
-                $stmt->execute([$adminId]);
                 
-                header('Location: /ergon/system-admin?success=Admin deleted successfully');
+                // Check if admin exists and current status
+                $checkStmt = $db->prepare("SELECT id, status FROM users WHERE id = ? AND role = 'admin'");
+                $checkStmt->execute([$adminId]);
+                $admin = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$admin) {
+                    echo json_encode(['success' => false, 'message' => 'Admin not found']);
+                    exit;
+                }
+                
+                // Suspend the admin
+                $stmt = $db->prepare("UPDATE users SET status = 'suspended', updated_at = NOW() WHERE id = ? AND role = 'admin'");
+                $result = $stmt->execute([$adminId]);
+                
+                if ($result) {
+                    error_log("Admin {$adminId} status changed from '{$admin['status']}' to 'suspended'");
+                    echo json_encode(['success' => true, 'message' => 'Admin suspended successfully']);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Failed to suspend admin']);
+                }
                 exit;
             } catch (Exception $e) {
-                header('Location: /ergon/system-admin?error=Failed to delete admin');
+                error_log('Suspend admin error: ' . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Failed to suspend admin']);
                 exit;
             }
         }

@@ -173,8 +173,19 @@ class LeaveController extends Controller {
                 if ($result) {
                     $leaveId = $db->lastInsertId();
                     
-                    // Notification creation disabled to prevent errors
-                    // Leave request created successfully without notifications
+                    // Create notification for admins and owners
+                    try {
+                        require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                        $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                        $stmt->execute([$userId]);
+                        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        if ($user) {
+                            NotificationHelper::notifyLeaveRequest($leaveId, $userId, $_SESSION['role']);
+                        }
+                    } catch (Exception $notifError) {
+                        error_log('Leave notification error (non-critical): ' . $notifError->getMessage());
+                    }
                     
                     echo json_encode(['success' => true, 'message' => 'Leave request submitted successfully', 'days' => $days]);
                 } else {
@@ -380,8 +391,12 @@ class LeaveController extends Controller {
             
             if ($result) {
                 // Create notification for user
-                $stmt = $db->prepare("INSERT INTO notifications (sender_id, receiver_id, type, category, title, message, reference_type, reference_id) VALUES (?, ?, 'success', 'approval', 'Leave Approved', 'Your leave request has been approved', 'leave', ?)");
-                $stmt->execute([$_SESSION['user_id'], $leave['user_id'], $id]);
+                try {
+                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                    NotificationHelper::notifyLeaveStatusChange($id, 'approved', $_SESSION['user_id']);
+                } catch (Exception $notifError) {
+                    error_log('Leave approval notification error: ' . $notifError->getMessage());
+                }
                 
                 header('Location: /ergon/leaves?success=Leave approved successfully');
             } else {
@@ -449,8 +464,12 @@ class LeaveController extends Controller {
                 
                 if ($result && $stmt->rowCount() > 0) {
                     // Create notification for user
-                    $stmt = $db->prepare("INSERT INTO notifications (sender_id, receiver_id, type, category, title, message, reference_type, reference_id) VALUES (?, ?, 'warning', 'approval', 'Leave Rejected', CONCAT('Your leave request has been rejected. Reason: ', ?), 'leave', ?)");
-                    $stmt->execute([$_SESSION['user_id'], $leave['user_id'], $reason, $id]);
+                    try {
+                        require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                        NotificationHelper::notifyLeaveStatusChange($id, 'rejected', $_SESSION['user_id']);
+                    } catch (Exception $notifError) {
+                        error_log('Leave rejection notification error: ' . $notifError->getMessage());
+                    }
                     
                     // Remove any leave attendance records if they exist
                     if ($leave) {

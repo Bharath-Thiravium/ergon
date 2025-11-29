@@ -49,7 +49,11 @@ class NotificationHelper {
         
         $type = $status === 'approved' ? 'success' : 'warning';
         $title = "Leave Request " . ucfirst($status);
-        $message = "Your leave request has been {$status} by {$leave['approver_name']}";
+        $message = "Your leave request ({$leave['leave_type']}) from {$leave['start_date']} to {$leave['end_date']} has been {$status} by {$leave['approver_name']}";
+        
+        if ($status === 'rejected' && !empty($leave['rejection_reason'])) {
+            $message .= ". Reason: {$leave['rejection_reason']}";
+        }
         
         $notification->create([
             'sender_id' => $approverId,
@@ -89,7 +93,7 @@ class NotificationHelper {
                 'type' => 'info',
                 'category' => 'approval',
                 'title' => 'New Expense Request',
-                'message' => "Expense request from {$expense['user_name']} - $" . number_format($expense['amount'], 2) . " for {$expense['description']}",
+                'message' => "Expense request from {$expense['user_name']} - ₹" . number_format($expense['amount'], 2) . " for {$expense['description']}",
                 'reference_type' => 'expense',
                 'reference_id' => $expenseId,
                 'action_url' => "/ergon/expenses/view/{$expenseId}"
@@ -145,7 +149,7 @@ class NotificationHelper {
         
         $type = $status === 'approved' ? 'success' : 'warning';
         $title = "Expense Request " . ucfirst($status);
-        $message = "Your expense request has been {$status} by {$expense['approver_name']} - Amount: $" . number_format($expense['amount'], 2);
+        $message = "Your expense request has been {$status} by {$expense['approver_name']} - Amount: ₹" . number_format($expense['amount'], 2);
         
         $notification->create([
             'sender_id' => $approverId,
@@ -185,7 +189,7 @@ class NotificationHelper {
                 'type' => 'info',
                 'category' => 'approval',
                 'title' => 'New Advance Request',
-                'message' => "Advance request from {$advance['user_name']} - $" . number_format($advance['amount'], 2) . " for {$advance['reason']}",
+                'message' => "Advance request from {$advance['user_name']} - ₹" . number_format($advance['amount'], 2) . " for {$advance['reason']}",
                 'reference_type' => 'advance',
                 'reference_id' => $advanceId,
                 'action_url' => "/ergon/advances/view/{$advanceId}"
@@ -243,6 +247,40 @@ class NotificationHelper {
             'reference_id' => $taskId,
             'action_url' => "/ergon/tasks/view/{$taskId}",
             'priority' => 2
+        ]);
+        
+        return true;
+    }
+    
+    public static function notifyAdvanceStatusChange($advanceId, $status, $approverId) {
+        $notification = new Notification();
+        
+        // Get advance details
+        $db = Database::connect();
+        $stmt = $db->prepare("SELECT a.*, u.name as user_name, ap.name as approver_name FROM advances a JOIN users u ON a.user_id = u.id JOIN users ap ON ap.id = ? WHERE a.id = ?");
+        $stmt->execute([$approverId, $advanceId]);
+        $advance = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$advance) return false;
+        
+        $type = $status === 'approved' ? 'success' : 'warning';
+        $title = "Advance Request " . ucfirst($status);
+        $message = "Your advance request has been {$status} by {$advance['approver_name']} - Amount: ₹" . number_format($advance['amount'], 2);
+        
+        if ($status === 'rejected' && !empty($advance['rejection_reason'])) {
+            $message .= ". Reason: {$advance['rejection_reason']}";
+        }
+        
+        $notification->create([
+            'sender_id' => $approverId,
+            'receiver_id' => $advance['user_id'],
+            'type' => $type,
+            'category' => 'approval',
+            'title' => $title,
+            'message' => $message,
+            'reference_type' => 'advance',
+            'reference_id' => $advanceId,
+            'action_url' => "/ergon/advances/view/{$advanceId}"
         ]);
         
         return true;

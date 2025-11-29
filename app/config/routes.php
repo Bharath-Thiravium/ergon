@@ -314,7 +314,7 @@ $router->post('/system-admin/create', 'SystemAdminController', 'create');
 $router->post('/system-admin/add-admin', 'SystemAdminController', 'addAdmin');
 $router->post('/system-admin/edit', 'SystemAdminController', 'edit');
 $router->post('/system-admin/change-password', 'SystemAdminController', 'changePassword');
-$router->post('/system-admin/delete', 'SystemAdminController', 'delete');
+$router->post('/system-admin/suspend-admin', 'SystemAdminController', 'suspendAdmin');
 $router->post('/system-admin/toggle-status', 'SystemAdminController', 'toggleStatus');
 $router->get('/system-admin/export', 'SystemAdminController', 'export');
 

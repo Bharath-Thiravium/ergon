@@ -1331,8 +1331,8 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .help-panel {
-    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-    border: 1px solid var(--primary-light);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     padding: 0.6rem;
     margin-bottom: 0.5rem;
@@ -1354,11 +1354,12 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .help-section {
-    background: white;
+    background: var(--bg-primary);
     padding: 0.6rem;
     border-radius: 4px;
     border-left: 2px solid var(--primary);
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    border: 1px solid var(--border-color);
 }
 
 .help-section h4 {
@@ -1386,7 +1387,7 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .help-tips {
-    background: white;
+    background: var(--bg-primary);
     padding: 1.5rem;
     border-radius: 8px;
     border: 2px dashed var(--primary-light);
