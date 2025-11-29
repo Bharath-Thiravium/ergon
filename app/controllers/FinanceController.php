@@ -244,8 +244,8 @@ class FinanceController extends Controller {
                 $internalPoNumber = $data['internal_po_number'] ?? '';
                 
                 $matchesPrefix = !$prefix || 
-                                stripos($poNumber, $prefix) !== false || 
-                                stripos($internalPoNumber, $prefix) !== false;
+                                $this->matchesCompanyPrefix($poNumber, $prefix) || 
+                                $this->matchesCompanyPrefix($internalPoNumber, $prefix);
                 
                 if (!$matchesPrefix) {
                     continue;
@@ -1096,8 +1096,8 @@ class FinanceController extends Controller {
                 $internalPoNumber = $data['internal_po_number'] ?? '';
                 
                 $matchesPrefix = !$prefix || 
-                                stripos($poNumber, $prefix) !== false || 
-                                stripos($internalPoNumber, $prefix) !== false;
+                                $this->matchesCompanyPrefix($poNumber, $prefix) || 
+                                $this->matchesCompanyPrefix($internalPoNumber, $prefix);
                 
                 if (!$matchesPrefix) {
                     continue;
@@ -1310,6 +1310,10 @@ class FinanceController extends Controller {
             $matchesPrefix = !$prefix || 
                             stripos($poNumber, $prefix) !== false || 
                             stripos($internalPoNumber, $prefix) !== false;
+            
+            $matchesPrefix = !$prefix || 
+                            $this->matchesCompanyPrefix($poNumber, $prefix) || 
+                            $this->matchesCompanyPrefix($internalPoNumber, $prefix);
             
             if ($matchesPrefix) {
                 $purchaseOrders[] = [
@@ -1662,7 +1666,7 @@ class FinanceController extends Controller {
             $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
             
             // Apply prefix filtering
-            if (!$prefix || stripos($poNumber, $prefix) !== false) {
+            if (!$prefix || $this->matchesCompanyPrefix($poNumber, $prefix) || $this->matchesCompanyPrefix($data['internal_po_number'] ?? '', $prefix)) {
                 $totalAmount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['subtotal'] ?? 0);
                 $amountPaid = floatval($data['amount_paid'] ?? 0);
                 $receivedDate = $data['received_date'] ?? null;
@@ -2233,6 +2237,23 @@ class FinanceController extends Controller {
             }
         }
         return $invoices;
+    }
+    
+    private function matchesCompanyPrefix($numberField, $prefix) {
+        if (!$prefix || !$numberField) return false;
+        
+        // Primary match: first 2 letters
+        $prefix2 = substr($prefix, 0, 2);
+        if (stripos($numberField, $prefix2) !== false) {
+            // If prefix is 2 letters, match found
+            if (strlen($prefix) <= 2) return true;
+            
+            // Secondary match: check 3rd letter if prefix is longer
+            $prefix3 = substr($prefix, 0, 3);
+            return stripos($numberField, $prefix3) !== false;
+        }
+        
+        return false;
     }
     
     public function getCompanyPrefix() {
