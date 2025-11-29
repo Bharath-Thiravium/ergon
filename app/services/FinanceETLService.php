@@ -8,6 +8,10 @@ class FinanceETLService {
     private $pgConn;
     
     public function __construct() {
+        // Suppress all errors and output
+        ini_set('display_errors', 0);
+        error_reporting(0);
+        
         $this->db = Database::connect();
         $this->createConsolidatedTable();
     }

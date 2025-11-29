@@ -7,6 +7,10 @@ class FinanceController {
     private $etl;
 
     public function __construct() {
+        // Suppress all output for API calls
+        ini_set('display_errors', 0);
+        error_reporting(0);
+        
         $this->etl = new FinanceETLService();
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -14,39 +18,59 @@ class FinanceController {
     }
 
     public function handleRequest() {
-        $action = $_GET['action'] ?? 'dashboard-stats';
-        header('Content-Type: application/json');
-
+        ini_set('display_errors', 0);
+        error_reporting(0);
+        
+        $action = $_GET['action'] ?? 'dashboard';
+        
         try {
             switch ($action) {
                 case 'sync':
-                    $this->sync();
+                    $this->jsonResponse($this->syncData());
                     break;
                 case 'dashboard-stats':
-                    $this->dashboardStats();
+                    $this->jsonResponse($this->getDashboardStatsData());
                     break;
                 case 'company-prefix':
-                    $this->companyPrefix();
+                    $this->jsonResponse($this->getCompanyPrefixData());
                     break;
                 case 'outstanding-invoices':
-                    $this->outstandingInvoices();
+                    $this->jsonResponse($this->getOutstandingInvoicesData());
                     break;
                 case 'customers':
-                    $this->customers();
+                    $this->jsonResponse($this->getCustomersData());
                     break;
                 case 'refresh-stats':
-                    $this->refreshStats();
+                    $this->jsonResponse($this->refreshStatsData());
                     break;
                 case 'funnel-containers':
-                    $this->funnelContainers();
+                    $this->jsonResponse($this->getFunnelContainersData());
                     break;
+                case 'dashboard':
                 default:
-                    $this->error('Unknown action');
+                    $this->dashboard();
+                    break;
             }
         } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            $this->jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
         }
+    }
+
+    private function jsonResponse($data, $status = 200) {
+        // Clean any existing output
+        if (ob_get_level()) {
+            ob_clean();
+        }
+        
+        // Set response headers
+        http_response_code($status);
+        header('Content-Type: application/json');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Pragma: no-cache');
+        
+        // Output JSON and exit immediately
+        echo json_encode($data);
+        exit;
     }
 
     private function validatePrefix($prefix) {
@@ -56,7 +80,7 @@ class FinanceController {
         return $prefix;
     }
 
-    private function sync() {
+    private function syncData() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             throw new Exception('POST method required');
         }
@@ -64,19 +88,18 @@ class FinanceController {
         $prefix = $this->validatePrefix($_POST['company_prefix'] ?? '');
         $result = $this->etl->runETL($prefix);
 
-        echo json_encode([
+        return [
             'success' => true,
             'records_processed' => $result['records_processed'] ?? 0,
             'prefix' => $prefix
-        ]);
+        ];
     }
 
-    private function dashboardStats() {
+    private function getDashboardStatsData() {
         $prefix = $_GET['prefix'] ?? $this->getDefaultPrefix();
         $prefix = $this->validatePrefix($prefix);
 
-        $stats = $this->getDashboardStats($prefix);
-        echo json_encode($stats);
+        return $this->getDashboardStats($prefix);
     }
 
     private function getDashboardStats($prefix) {
@@ -106,20 +129,20 @@ class FinanceController {
         return $row ?: ['source' => 'empty', 'message' => 'No data available'];
     }
 
-    private function companyPrefix() {
+    private function getCompanyPrefixData() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $prefix = $_POST['company_prefix'] ?? '';
             $prefix = $prefix ? $this->validatePrefix($prefix) : '';
             
             $_SESSION['company_prefix'] = $prefix;
-            echo json_encode(['success' => true, 'prefix' => $prefix]);
+            return ['success' => true, 'prefix' => $prefix];
         } else {
             $prefix = $_SESSION['company_prefix'] ?? $this->getDefaultPrefix();
-            echo json_encode(['success' => true, 'prefix' => $prefix]);
+            return ['success' => true, 'prefix' => $prefix];
         }
     }
 
-    private function outstandingInvoices() {
+    private function getOutstandingInvoicesData() {
         $prefix = $_GET['prefix'] ?? $this->getDefaultPrefix();
         $prefix = $this->validatePrefix($prefix);
 
@@ -134,10 +157,10 @@ class FinanceController {
         $stmt->execute([$prefix]);
         $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['success' => true, 'invoices' => $invoices]);
+        return ['success' => true, 'invoices' => $invoices];
     }
 
-    private function customers() {
+    private function getCustomersData() {
         $prefix = $_GET['prefix'] ?? $this->getDefaultPrefix();
         $prefix = $this->validatePrefix($prefix);
 
@@ -152,7 +175,7 @@ class FinanceController {
         $stmt->execute([$prefix]);
         $customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['success' => true, 'customers' => $customers]);
+        return ['success' => true, 'customers' => $customers];
     }
 
     private function getDefaultPrefix() {
@@ -160,21 +183,21 @@ class FinanceController {
         return $fallback->getLatestActivePrefix();
     }
 
-    private function refreshStats() {
+    private function refreshStatsData() {
         $prefix = $_GET['prefix'] ?? $this->getDefaultPrefix();
         $prefix = $this->validatePrefix($prefix);
         
         $result = $this->etl->runETL($prefix);
         
-        echo json_encode([
+        return [
             'success' => true,
             'records_processed' => $result['records_processed'] ?? 0,
             'prefix' => $prefix,
             'message' => 'ETL refresh completed'
-        ]);
+        ];
     }
 
-    private function funnelContainers() {
+    private function getFunnelContainersData() {
         require_once __DIR__ . '/../services/FunnelStatsService.php';
         
         $prefix = $_GET['prefix'] ?? $this->getDefaultPrefix();
@@ -207,14 +230,18 @@ class FinanceController {
                 ]
             ];
             
-            echo json_encode(['success' => true, 'containers' => $containers]);
+            return ['success' => true, 'containers' => $containers];
         } else {
-            echo json_encode(['success' => false, 'error' => 'No funnel data available']);
+            return ['success' => false, 'error' => 'No funnel data available'];
         }
     }
 
-    private function error($message) {
-        echo json_encode(['success' => false, 'error' => $message]);
-        exit;
+    private function dashboard() {
+        // Only show dashboard view for non-API requests
+        if (!isset($_GET['action']) || $_GET['action'] === 'dashboard') {
+            require_once __DIR__ . '/../../views/finance/dashboard.php';
+        }
     }
+
+
 }

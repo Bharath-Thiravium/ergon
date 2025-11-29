@@ -21,14 +21,24 @@ class Router {
         
         // Determine base path based on environment
         $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
-        $basePath = '/ergon';
-        $publicBasePath = $basePath . '/public';
+        $isLocalhost = strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
         
-        // Handle both base and public URLs
-        if (strpos($path, $publicBasePath) === 0) {
-            $path = substr($path, strlen($publicBasePath));
-        } elseif (strpos($path, $basePath) === 0) {
-            $path = substr($path, strlen($basePath));
+        if ($isLocalhost) {
+            // For localhost, remove /ergon prefix
+            $basePath = '/ergon';
+            if (strpos($path, $basePath) === 0) {
+                $path = substr($path, strlen($basePath));
+            }
+        } else {
+            // For production, handle both base and public URLs
+            $basePath = '/ergon';
+            $publicBasePath = $basePath . '/public';
+            
+            if (strpos($path, $publicBasePath) === 0) {
+                $path = substr($path, strlen($publicBasePath));
+            } elseif (strpos($path, $basePath) === 0) {
+                $path = substr($path, strlen($basePath));
+            }
         }
         
         if (empty($path) || $path[0] !== '/') {
