@@ -1061,19 +1061,20 @@ function updateKPICards(data) {
     if (openPOCount) openPOCount.textContent = data.openPOCount || 0;
     if (closedPOCount) closedPOCount.textContent = data.closedPOCount || 0;
     
-    // Stat Card 6: Claimable Amount (Backend calculated from invoices)
-    document.getElementById('claimableAmount').textContent = `₹${(data.claimableAmount || 0).toLocaleString()}`;
+    // Stat Card 6: Claimable Amount (Backend calculated - total_amount - amount_paid, GST included)
+    document.getElementById('claimableAmount').textContent = `₹${(data.claimable_amount || data.claimableAmount || 0).toLocaleString()}`;
     
     // Update claimable details with backend calculations
     const claimablePOCount = document.getElementById('claimablePOCount');
     const claimRate = document.getElementById('claimRate');
-    if (claimablePOCount) claimablePOCount.textContent = data.claimablePOCount || data.claimablePos || 0;
-    if (claimRate) claimRate.textContent = `${Math.round(data.claimRate || 0)}%`;
+    if (claimablePOCount) claimablePOCount.textContent = data.claimable_pos || data.claimablePOCount || data.claimablePos || 0;
+    if (claimRate) claimRate.textContent = `${Math.round(data.claim_rate || data.claimRate || 0)}%`;
     
     // Update trend for claim rate
     const claimableTrend = document.getElementById('claimableTrend');
-    if (claimableTrend && data.claimRate !== undefined) {
-        claimableTrend.textContent = `${Math.round(data.claimRate)}%`;
+    if (claimableTrend && (data.claim_rate !== undefined || data.claimRate !== undefined)) {
+        const rate = data.claim_rate || data.claimRate || 0;
+        claimableTrend.textContent = `${Math.round(rate)}%`;
     }
 }
 

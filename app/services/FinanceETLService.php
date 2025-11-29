@@ -235,6 +235,9 @@ class FinanceETLService {
         // Calculate Stat Card 3 using backend-only processing
         $statCard3 = $this->calculateStatCard3($prefix);
         
+        // Calculate Stat Card 6 using backend-only processing
+        $statCard6 = $this->calculateStatCard6($prefix);
+        
         // Revenue Analytics (other stats)
         $stmt = $this->db->prepare("
             SELECT 
@@ -250,8 +253,8 @@ class FinanceETLService {
         $stmt->execute([$prefix]);
         $invoiceStats = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        // Merge Stat Card 3 results
-        $invoiceStats = array_merge($invoiceStats, $statCard3);
+        // Merge Stat Card 3 and 6 results
+        $invoiceStats = array_merge($invoiceStats, $statCard3, $statCard6);
         
         // PO Analytics
         $stmt = $this->db->prepare("
@@ -364,6 +367,64 @@ class FinanceETLService {
     }
     
     /**
+     * Calculate Stat Card 6 using backend-only processing (no SQL aggregation)
+     */
+    private function calculateStatCard6($prefix) {
+        $this->connectToSAP();
+        
+        // Step 1: Fetch raw invoice rows without SQL aggregation
+        $query = "SELECT id, invoice_number, taxable_amount, total_amount, amount_paid, customer_gstin, invoice_date FROM finance_invoices WHERE invoice_number LIKE '$prefix%'";
+        $result = @pg_query($this->pgConn, $query);
+        
+        if (!$result) {
+            @pg_close($this->pgConn);
+            return [
+                'claimable_amount' => 0,
+                'claimable_pos' => 0,
+                'claim_rate' => 0
+            ];
+        }
+        
+        $invoices = pg_fetch_all($result);
+        @pg_close($this->pgConn);
+        
+        if (!$invoices) {
+            return [
+                'claimable_amount' => 0,
+                'claimable_pos' => 0,
+                'claim_rate' => 0
+            ];
+        }
+        
+        // Step 2: Backend calculations only
+        $totalInvoiceAmount = 0;
+        $claimableAmount = 0;
+        $claimablePos = 0;
+        
+        foreach ($invoices as $invoice) {
+            $totalAmount = floatval($invoice['total_amount'] ?? 0);
+            $amountPaid = floatval($invoice['amount_paid'] ?? 0);
+            
+            // Step 3: Calculate claimable amount (total_amount - amount_paid, GST included)
+            $claimable = $totalAmount - $amountPaid;
+            $totalInvoiceAmount += $totalAmount;
+            
+            if ($claimable > 0) {
+                // Step 4: Calculate metrics
+                $claimableAmount += $claimable;
+                $claimablePos++;
+            }
+        }
+        
+        // Step 5: Return computed results
+        return [
+            'claimable_amount' => $claimableAmount,
+            'claimable_pos' => $claimablePos,
+            'claim_rate' => $totalInvoiceAmount > 0 ? ($claimableAmount / $totalInvoiceAmount) * 100 : 0
+        ];
+    }
+    
+    /**
      * Save calculated analytics to dashboard_stats table
      */
     private function saveDashboardStats($prefix, $invoiceStats, $poStats, $quotationStats) {
@@ -371,11 +432,11 @@ class FinanceETLService {
             INSERT INTO dashboard_stats (
                 company_prefix, total_revenue, invoice_count, amount_received,
                 outstanding_amount, pending_invoices, customers_pending, overdue_amount, outstanding_percentage,
-                customer_count, po_commitments, open_pos, closed_pos, claimable_amount,
+                customer_count, po_commitments, open_pos, closed_pos, claimable_amount, claimable_pos, claim_rate,
                 igst_liability, cgst_sgst_total, gst_liability,
                 placed_quotations, rejected_quotations, pending_quotations, total_quotations,
                 generated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
                 total_revenue = VALUES(total_revenue),
                 invoice_count = VALUES(invoice_count),
@@ -390,6 +451,8 @@ class FinanceETLService {
                 open_pos = VALUES(open_pos),
                 closed_pos = VALUES(closed_pos),
                 claimable_amount = VALUES(claimable_amount),
+                claimable_pos = VALUES(claimable_pos),
+                claim_rate = VALUES(claim_rate),
                 igst_liability = VALUES(igst_liability),
                 cgst_sgst_total = VALUES(cgst_sgst_total),
                 gst_liability = VALUES(gst_liability),
@@ -416,7 +479,9 @@ class FinanceETLService {
             $poStats['po_commitments'] ?? 0,
             $poStats['open_pos'] ?? 0,
             $poStats['closed_pos'] ?? 0,
-            $poStats['claimable_amount'] ?? 0,
+            $invoiceStats['claimable_amount'] ?? 0,
+            $invoiceStats['claimable_pos'] ?? 0,
+            $invoiceStats['claim_rate'] ?? 0,
             $invoiceStats['igst_liability'] ?? 0,
             $invoiceStats['cgst_sgst_total'] ?? 0,
             $gstLiability,
@@ -526,6 +591,8 @@ class FinanceETLService {
                 open_pos INT DEFAULT 0,
                 closed_pos INT DEFAULT 0,
                 claimable_amount DECIMAL(15,2) DEFAULT 0,
+                claimable_pos INT DEFAULT 0,
+                claim_rate DECIMAL(5,2) DEFAULT 0,
                 igst_liability DECIMAL(15,2) DEFAULT 0,
                 cgst_sgst_total DECIMAL(15,2) DEFAULT 0,
                 gst_liability DECIMAL(15,2) DEFAULT 0,

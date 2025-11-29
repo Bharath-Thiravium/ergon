@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS dashboard_stats (
     open_pos INT DEFAULT 0,
     closed_pos INT DEFAULT 0,
     claimable_amount DECIMAL(15,2) DEFAULT 0,
+    claimable_pos INT DEFAULT 0,
+    claim_rate DECIMAL(5,2) DEFAULT 0,
     igst_liability DECIMAL(15,2) DEFAULT 0,
     cgst_sgst_total DECIMAL(15,2) DEFAULT 0,
     gst_liability DECIMAL(15,2) DEFAULT 0,
