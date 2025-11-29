@@ -1,323 +1,293 @@
 <?php
 
-require_once __DIR__ . '/../services/FinanceETLService.php';
-require_once __DIR__ . '/../services/PrefixFallback.php';
-
 class FinanceController {
-    private $etl;
-
+    private $mysqlConnection;
+    
     public function __construct() {
-        // Suppress all output for API calls
-        ini_set('display_errors', 0);
-        error_reporting(0);
+        $this->mysqlConnection = $this->getMysqlConnection();
+    }
+    
+    private function getMysqlConnection() {
+        $config = require_once __DIR__ . '/../config/database.php';
+        $mysql = $config['mysql'];
         
         try {
-            $this->etl = new FinanceETLService();
-        } catch (Exception $e) {
-            // ETL service failed, continue without it
-            $this->etl = null;
-        }
-        
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-    }
-
-    public function handleRequest() {
-        ini_set('display_errors', 0);
-        error_reporting(0);
-        
-        $action = $_GET['action'] ?? 'dashboard';
-        
-        try {
-            switch ($action) {
-                case 'sync':
-                    $this->jsonResponse($this->syncData());
-                    break;
-                case 'dashboard-stats':
-                    $this->jsonResponse($this->getDashboardStatsData());
-                    break;
-                case 'company-prefix':
-                    $this->jsonResponse($this->getCompanyPrefixData());
-                    break;
-                case 'outstanding-invoices':
-                    $this->jsonResponse($this->getOutstandingInvoicesData());
-                    break;
-                case 'customers':
-                    $this->jsonResponse($this->getCustomersData());
-                    break;
-                case 'refresh-stats':
-                    $this->jsonResponse($this->refreshStatsData());
-                    break;
-                case 'funnel-containers':
-                    $this->jsonResponse($this->getFunnelContainersData());
-                    break;
-                case 'debug-po':
-                    $this->jsonResponse([
-                        'success' => true, 
-                        'total_records' => 1, 
-                        'message' => 'Found 1 purchase order record',
-                        'sample_data' => [['po_number' => 'TC-PO001', 'amount' => 85000, 'status' => 'open']]
-                    ]);
-                    break;
-                case 'recent-activities':
-                    $this->jsonResponse([
-                        'success' => true, 
-                        'activities' => [
-                            ['type' => 'invoice', 'title' => 'Invoice TC001 created', 'description' => 'ABC Corp - ₹2,40,078', 'date' => '2024-11-29', 'status' => 'pending', 'icon' => '💰'],
-                            ['type' => 'payment', 'title' => 'Payment received', 'description' => 'XYZ Ltd - ₹59,000', 'date' => '2024-11-28', 'status' => 'completed', 'icon' => '💳']
-                        ]
-                    ]);
-                    break;
-                case 'visualization':
-                    $type = $_GET['type'] ?? 'quotations';
-                    if ($type === 'quotations') {
-                        $this->jsonResponse(['success' => true, 'data' => [1, 0, 0], 'labels' => ['Pending', 'Placed', 'Rejected']]);
-                    } else {
-                        $this->jsonResponse(['success' => true, 'data' => [85000], 'labels' => ['Nov 2024']]);
-                    }
-                    break;
-                case 'outstanding-by-customer':
-                    $this->jsonResponse([
-                        'success' => true, 
-                        'data' => [240078, 59000], 
-                        'labels' => ['ABC Corp', 'XYZ Ltd'], 
-                        'total' => 299078,
-                        'customerCount' => 2
-                    ]);
-                    break;
-                case 'aging-buckets':
-                    $this->jsonResponse([
-                        'success' => true, 
-                        'data' => [59000, 0, 0, 240078], 
-                        'labels' => ['0-30 Days', '31-60 Days', '61-90 Days', '90+ Days']
-                    ]);
-                    break;
-                case 'dashboard':
-                default:
-                    $this->dashboard();
-                    break;
-            }
-        } catch (Exception $e) {
-            $this->jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
-        }
-    }
-
-    private function jsonResponse($data, $status = 200) {
-        // Clean any existing output
-        if (ob_get_level()) {
-            ob_clean();
-        }
-        
-        // Set response headers
-        http_response_code($status);
-        header('Content-Type: application/json');
-        header('Cache-Control: no-cache, must-revalidate');
-        header('Pragma: no-cache');
-        
-        // Output JSON and exit immediately
-        echo json_encode($data);
-        exit;
-    }
-
-    private function validatePrefix($prefix) {
-        if (!$prefix || !preg_match('/^[A-Z]{2,4}$/', $prefix)) {
-            throw new Exception("Invalid prefix format");
-        }
-        return $prefix;
-    }
-
-    private function syncData() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            throw new Exception('POST method required');
-        }
-
-        $prefix = $_GET['prefix'] ?? 'TC';
-        
-        // Simulate ETL process with sample data
-        return [
-            'success' => true,
-            'records_processed' => 5,
-            'prefix' => $prefix,
-            'message' => 'Sample ETL completed successfully'
-        ];
-    }
-
-    private function getDashboardStatsData() {
-        $prefix = $_GET['prefix'] ?? $this->getDefaultPrefix();
-        $prefix = $this->validatePrefix($prefix);
-
-        $stats = $this->getDashboardStats($prefix);
-        
-        // Always return sample data for production or when database fails
-        if (!$stats || ($stats['total_revenue'] ?? 0) == 0 || $this->isProduction()) {
-            return [
-                'totalInvoiceAmount' => 358078,
-                'invoiceReceived' => 59000,
-                'pendingInvoiceAmount' => 299078,
-                'pendingGSTAmount' => 40078,
-                'pendingPOValue' => 85000,
-                'claimableAmount' => 299078,
-                'igstLiability' => 25000,
-                'cgstSgstTotal' => 15078,
-                'gstLiability' => 40078,
-                'openPOCount' => 1,
-                'closedPOCount' => 0,
-                'pendingInvoices' => 2,
-                'customersPending' => 2,
-                'overdueAmount' => 240078,
-                'outstandingPercentage' => 83.5,
-                'placedQuotations' => 0,
-                'rejectedQuotations' => 0,
-                'pendingQuotations' => 1,
-                'totalQuotations' => 1,
-                'source' => 'sample_data',
-                'message' => $this->isProduction() ? 'Production demo data for TC company' : 'Showing sample data for TC company'
-            ];
-        }
-        
-        return $stats;
-    }
-
-    private function getDashboardStats($prefix) {
-        if (!$this->etl) {
-            return null; // Will trigger sample data fallback
-        }
-        
-        try {
-            $pdo = $this->etl->getMysqlConnection();
-            $stmt = $pdo->prepare("SELECT * FROM dashboard_stats WHERE company_prefix = ?");
-            $stmt->execute([$prefix]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$row || ($row['total_revenue'] ?? 0) == 0) {
-                return null; // Will trigger sample data fallback
-            }
-
-            $row['source'] = 'etl_dashboard_stats';
-            return $row;
-        } catch (Exception $e) {
-            return null; // Will trigger sample data fallback
-        }
-    }
-
-    private function getCompanyPrefixData() {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $prefix = $_POST['company_prefix'] ?? '';
-            $prefix = $prefix ? $this->validatePrefix($prefix) : '';
-            
-            $_SESSION['company_prefix'] = $prefix;
-            return ['success' => true, 'prefix' => $prefix];
-        } else {
-            $prefix = $_SESSION['company_prefix'] ?? $this->getDefaultPrefix();
-            return ['success' => true, 'prefix' => $prefix];
-        }
-    }
-
-    private function getOutstandingInvoicesData() {
-        $invoices = [
-            [
-                'invoice_number' => 'TC001',
-                'customer_name' => 'ABC Corp',
-                'outstanding_amount' => 240078,
-                'due_date' => '2024-11-15',
-                'days_overdue' => 14,
-                'status' => 'overdue'
-            ],
-            [
-                'invoice_number' => 'TC002',
-                'customer_name' => 'XYZ Ltd',
-                'outstanding_amount' => 59000,
-                'due_date' => '2024-12-15',
-                'days_overdue' => 0,
-                'status' => 'pending'
-            ]
-        ];
-
-        return ['success' => true, 'invoices' => $invoices];
-    }
-
-    private function getCustomersData() {
-        $customers = [
-            [
-                'customer_id' => 'CUST001',
-                'customer_name' => 'ABC Corp',
-                'display' => 'ABC Corp (CUST001)'
-            ],
-            [
-                'customer_id' => 'CUST002',
-                'customer_name' => 'XYZ Ltd',
-                'display' => 'XYZ Ltd (CUST002)'
-            ],
-            [
-                'customer_id' => 'CUST003',
-                'customer_name' => 'DEF Industries',
-                'display' => 'DEF Industries (CUST003)'
-            ]
-        ];
-
-        return ['success' => true, 'customers' => $customers];
-    }
-
-    private function getDefaultPrefix() {
-        try {
-            $fallback = new PrefixFallback();
-            return $fallback->getLatestActivePrefix();
-        } catch (Exception $e) {
-            return 'TC';
+            $pdo = new PDO(
+                "mysql:host={$mysql['host']};port={$mysql['port']};dbname={$mysql['database']};charset=utf8mb4",
+                $mysql['username'],
+                $mysql['password'],
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false
+                ]
+            );
+            return $pdo;
+        } catch (PDOException $e) {
+            Logger::error("MySQL connection failed", ['error' => $e->getMessage()]);
+            throw new Exception("Database connection failed");
         }
     }
     
-    private function isProduction() {
-        $host = $_SERVER['HTTP_HOST'] ?? '';
-        return strpos($host, 'hostinger') !== false || 
-               strpos($host, '.com') !== false || 
-               strpos($host, '.net') !== false;
-    }
-
-    private function refreshStatsData() {
-        $prefix = $_GET['prefix'] ?? 'TC';
+    public function dashboardStats($request) {
+        $prefix = PrefixFallback::validateAndFallback($request->get('prefix'));
         
-        return [
-            'success' => true,
-            'records_processed' => 5,
-            'prefix' => $prefix,
-            'message' => 'ETL refresh completed successfully'
-        ];
-    }
-
-    private function getFunnelContainersData() {
-        $containers = [
-            'container1' => [
-                'quotations_count' => 1,
-                'quotations_total_value' => 150000
-            ],
-            'container2' => [
-                'po_count' => 1,
-                'po_total_value' => 85000,
-                'po_conversion_rate' => 56.7
-            ],
-            'container3' => [
-                'invoice_count' => 2,
-                'invoice_total_value' => 358078,
-                'invoice_conversion_rate' => 421.3
-            ],
-            'container4' => [
-                'payment_count' => 1,
-                'total_payment_received' => 59000,
-                'payment_conversion_rate' => 16.5
-            ]
-        ];
-        
-        return ['success' => true, 'containers' => $containers];
-    }
-
-    private function dashboard() {
-        // Only show dashboard view for non-API requests
-        if (!isset($_GET['action']) || $_GET['action'] === 'dashboard') {
-            require_once __DIR__ . '/../../views/finance/dashboard.php';
+        try {
+            $stmt = $this->mysqlConnection->prepare(
+                'SELECT * FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1'
+            );
+            $stmt->execute([$prefix]);
+            $row = $stmt->fetch();
+            
+            if (!$row) {
+                return $this->jsonResponse(404, ['error' => 'No data found for prefix: ' . $prefix]);
+            }
+            
+            // Convert numeric strings to proper numbers for JSON
+            $numericFields = [
+                'total_revenue', 'avg_invoice', 'amount_received', 'collection_rate',
+                'outstanding_amount', 'overdue_amount', 'outstanding_percentage',
+                'igst_liability', 'cgst_sgst_total', 'gst_liability', 'po_commitments',
+                'claimable_amount', 'claim_rate'
+            ];
+            
+            foreach ($numericFields as $field) {
+                if (isset($row[$field])) {
+                    $row[$field] = (float) $row[$field];
+                }
+            }
+            
+            return $this->jsonResponse(200, $row);
+            
+        } catch (Exception $e) {
+            Logger::error("dashboardStats error", ['prefix' => $prefix, 'error' => $e->getMessage()]);
+            return $this->jsonResponse(500, ['error' => 'Internal server error']);
         }
     }
-
-
+    
+    public function funnelStats($request) {
+        $prefix = PrefixFallback::validateAndFallback($request->get('prefix'));
+        
+        try {
+            $stmt = $this->mysqlConnection->prepare(
+                'SELECT * FROM funnel_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1'
+            );
+            $stmt->execute([$prefix]);
+            $row = $stmt->fetch();
+            
+            if (!$row) {
+                return $this->jsonResponse(404, ['error' => 'No funnel data found for prefix: ' . $prefix]);
+            }
+            
+            // Convert numeric fields
+            $numericFields = [
+                'quotation_value', 'po_value', 'po_conversion_rate',
+                'invoice_value', 'payment_value'
+            ];
+            
+            foreach ($numericFields as $field) {
+                if (isset($row[$field])) {
+                    $row[$field] = (float) $row[$field];
+                }
+            }
+            
+            return $this->jsonResponse(200, $row);
+            
+        } catch (Exception $e) {
+            Logger::error("funnelStats error", ['prefix' => $prefix, 'error' => $e->getMessage()]);
+            return $this->jsonResponse(500, ['error' => 'Internal server error']);
+        }
+    }
+    
+    public function chartStats($request) {
+        $prefix = PrefixFallback::validateAndFallback($request->get('prefix'));
+        
+        try {
+            $stmt = $this->mysqlConnection->prepare(
+                'SELECT * FROM chart_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1'
+            );
+            $stmt->execute([$prefix]);
+            $row = $stmt->fetch();
+            
+            if (!$row) {
+                return $this->jsonResponse(404, ['error' => 'No chart data found for prefix: ' . $prefix]);
+            }
+            
+            // Decode JSON fields
+            $jsonFields = [
+                'quotations_overview', 'po_fulfillment_buckets', 'invoice_distribution',
+                'outstanding_top_customers', 'aging_buckets'
+            ];
+            
+            foreach ($jsonFields as $field) {
+                if (isset($row[$field]) && is_string($row[$field])) {
+                    $row[$field] = json_decode($row[$field], true);
+                }
+            }
+            
+            return $this->jsonResponse(200, $row);
+            
+        } catch (Exception $e) {
+            Logger::error("chartStats error", ['prefix' => $prefix, 'error' => $e->getMessage()]);
+            return $this->jsonResponse(500, ['error' => 'Internal server error']);
+        }
+    }
+    
+    public function poStats($request) {
+        $prefix = PrefixFallback::validateAndFallback($request->get('prefix'));
+        
+        try {
+            // Optional detailed PO endpoint - fetch from dashboard_stats for now
+            $stmt = $this->mysqlConnection->prepare(
+                'SELECT company_prefix, generated_at, po_commitments, open_po, closed_po 
+                 FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1'
+            );
+            $stmt->execute([$prefix]);
+            $row = $stmt->fetch();
+            
+            if (!$row) {
+                return $this->jsonResponse(404, ['error' => 'No PO data found for prefix: ' . $prefix]);
+            }
+            
+            $row['po_commitments'] = (float) $row['po_commitments'];
+            
+            return $this->jsonResponse(200, $row);
+            
+        } catch (Exception $e) {
+            Logger::error("poStats error", ['prefix' => $prefix, 'error' => $e->getMessage()]);
+            return $this->jsonResponse(500, ['error' => 'Internal server error']);
+        }
+    }
+    
+    public function triggerSync($request) {
+        // CSRF protection
+        if (!$this->validateCSRFToken($request)) {
+            return $this->jsonResponse(403, ['error' => 'Invalid CSRF token']);
+        }
+        
+        // Authentication check
+        if (!$this->isAuthenticated($request)) {
+            return $this->jsonResponse(401, ['error' => 'Authentication required']);
+        }
+        
+        $prefix = $request->post('prefix');
+        if ($prefix) {
+            $prefix = PrefixFallback::validate($prefix);
+            if (!$prefix) {
+                return $this->jsonResponse(400, ['error' => 'Invalid prefix format']);
+            }
+        }
+        
+        try {
+            $etl = new FinanceETLService();
+            
+            if ($prefix) {
+                // Sync specific prefix
+                $etl->runForPrefix($prefix);
+                Logger::info("Manual ETL sync triggered", ['prefix' => $prefix, 'user' => $this->getCurrentUser()]);
+                return $this->jsonResponse(200, ['status' => 'started', 'prefix' => $prefix]);
+            } else {
+                // Sync all prefixes
+                $etl->runAllPrefixes();
+                Logger::info("Manual ETL sync triggered for all prefixes", ['user' => $this->getCurrentUser()]);
+                return $this->jsonResponse(200, ['status' => 'started', 'scope' => 'all_prefixes']);
+            }
+            
+        } catch (Exception $e) {
+            Logger::error("ETL sync trigger failed", [
+                'prefix' => $prefix,
+                'error' => $e->getMessage(),
+                'user' => $this->getCurrentUser()
+            ]);
+            return $this->jsonResponse(500, ['error' => 'Sync failed to start']);
+        }
+    }
+    
+    public function health($request) {
+        try {
+            $health = [
+                'status' => 'healthy',
+                'timestamp' => date('c'),
+                'database' => 'connected',
+                'last_etl_runs' => []
+            ];
+            
+            // Check database connectivity
+            $this->mysqlConnection->query('SELECT 1');
+            
+            // Get last ETL run status for each prefix
+            $stmt = $this->mysqlConnection->prepare(
+                'SELECT company_prefix, generated_at, 
+                        TIMESTAMPDIFF(MINUTE, generated_at, NOW()) as minutes_ago
+                 FROM dashboard_stats 
+                 ORDER BY generated_at DESC 
+                 LIMIT 10'
+            );
+            $stmt->execute();
+            $runs = $stmt->fetchAll();
+            
+            foreach ($runs as $run) {
+                $health['last_etl_runs'][] = [
+                    'prefix' => $run['company_prefix'],
+                    'generated_at' => $run['generated_at'],
+                    'minutes_ago' => (int) $run['minutes_ago'],
+                    'status' => $run['minutes_ago'] < 120 ? 'recent' : 'stale'
+                ];
+            }
+            
+            // Overall system status
+            $staleRuns = array_filter($health['last_etl_runs'], function($run) {
+                return $run['status'] === 'stale';
+            });
+            
+            if (count($staleRuns) > 2) {
+                $health['status'] = 'degraded';
+                $health['warning'] = 'Multiple prefixes have stale data';
+            }
+            
+            return $this->jsonResponse(200, $health);
+            
+        } catch (Exception $e) {
+            Logger::error("Health check failed", ['error' => $e->getMessage()]);
+            return $this->jsonResponse(500, [
+                'status' => 'unhealthy',
+                'error' => 'System check failed',
+                'timestamp' => date('c')
+            ]);
+        }
+    }
+    
+    private function validateCSRFToken($request) {
+        $token = $request->header('X-CSRF-Token') ?: $request->post('_token');
+        $sessionToken = $_SESSION['csrf_token'] ?? null;
+        
+        return $token && $sessionToken && hash_equals($sessionToken, $token);
+    }
+    
+    private function isAuthenticated($request) {
+        // Implement your authentication logic here
+        // For example, check session or JWT token
+        return isset($_SESSION['user_id']) || $this->validateJWTToken($request);
+    }
+    
+    private function validateJWTToken($request) {
+        $authHeader = $request->header('Authorization');
+        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+            return false;
+        }
+        
+        // Implement JWT validation logic
+        // Return true if valid, false otherwise
+        return false; // Placeholder
+    }
+    
+    private function getCurrentUser() {
+        return $_SESSION['username'] ?? 'unknown';
+    }
+    
+    private function jsonResponse($statusCode, $data) {
+        http_response_code($statusCode);
+        header('Content-Type: application/json');
+        return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
 }
