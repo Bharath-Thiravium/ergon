@@ -362,11 +362,8 @@ $router->post('/followups/delete/{id}', 'FollowupController', 'delete');
 $router->get('/gamification/team-competition', 'GamificationController', 'teamCompetition');
 $router->get('/gamification/individual', 'GamificationController', 'individual');
 
-// Finance Module Routes - New Rebuilt System
-$router->get('/finance', 'NewFinanceController', 'dashboard');
-$router->get('/finance/new', 'NewFinanceController', 'dashboard');
-$router->get('/finance/new/api', 'NewFinanceController', 'api');
-$router->post('/finance/new/api', 'NewFinanceController', 'api');
+// Finance Module Routes - Main
+$router->get('/finance', 'FinanceController', 'dashboard');
 
 // Finance Module Routes - Legacy (Old System)
 $router->get('/finance/old', 'FinanceController', 'dashboard');
