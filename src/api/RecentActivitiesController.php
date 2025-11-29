@@ -117,6 +117,298 @@ class RecentActivitiesController
     }
     
     /**
+     * Get outstanding invoices
+     */
+    public function getOutstandingInvoices(array $params = []): array
+    {
+        $companyPrefix = $params['prefix'] ?? $_ENV['COMPANY_PREFIX'] ?? null;
+        $limit = (int)($params['limit'] ?? 50);
+        
+        try {
+            $sql = "
+                SELECT 
+                    document_number as invoice_number,
+                    customer_name,
+                    due_date,
+                    outstanding_amount,
+                    status,
+                    CASE 
+                        WHEN due_date IS NULL THEN 0
+                        WHEN outstanding_amount <= 0 THEN 0
+                        ELSE DATEDIFF(CURDATE(), due_date)
+                    END as daysOverdue
+                FROM finance_consolidated
+                WHERE record_type = 'invoice'
+                AND outstanding_amount > 0
+            ";
+            
+            $params_array = [];
+            
+            if ($companyPrefix) {
+                $sql .= " AND company_prefix = ?";
+                $params_array[] = $companyPrefix;
+            }
+            
+            $sql .= " ORDER BY outstanding_amount DESC, due_date ASC LIMIT ?";
+            $params_array[] = $limit;
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params_array);
+            $invoices = $stmt->fetchAll();
+            
+            return $this->successResponse([
+                'invoices' => $invoices,
+                'count' => count($invoices),
+                'message' => count($invoices) > 0 ? null : 'No outstanding invoices found'
+            ]);
+            
+        } catch (\PDOException $e) {
+            $this->logger->error("Failed to fetch outstanding invoices: " . $e->getMessage());
+            return $this->errorResponse('Database error occurred', 500);
+        }
+    }
+    
+    /**
+     * Get funnel containers data
+     */
+    public function getFunnelContainers(array $params = []): array
+    {
+        $companyPrefix = $params['prefix'] ?? $_ENV['COMPANY_PREFIX'] ?? null;
+        
+        try {
+            // Container 1: Quotations
+            $sql1 = "
+                SELECT 
+                    COUNT(*) as quotations_count,
+                    COALESCE(SUM(amount), 0) as quotations_total_value
+                FROM finance_consolidated
+                WHERE record_type = 'quotation'
+            ";
+            
+            $params_array = [];
+            if ($companyPrefix) {
+                $sql1 .= " AND company_prefix = ?";
+                $params_array[] = $companyPrefix;
+            }
+            
+            $stmt1 = $this->pdo->prepare($sql1);
+            $stmt1->execute($params_array);
+            $container1 = $stmt1->fetch() ?: ['quotations_count' => 0, 'quotations_total_value' => 0];
+            
+            // Container 2: Purchase Orders
+            $sql2 = "
+                SELECT 
+                    COUNT(*) as po_count,
+                    COALESCE(SUM(amount), 0) as po_total_value
+                FROM finance_consolidated
+                WHERE record_type = 'purchase_order'
+            ";
+            
+            $params_array = [];
+            if ($companyPrefix) {
+                $sql2 .= " AND company_prefix = ?";
+                $params_array[] = $companyPrefix;
+            }
+            
+            $stmt2 = $this->pdo->prepare($sql2);
+            $stmt2->execute($params_array);
+            $container2 = $stmt2->fetch() ?: ['po_count' => 0, 'po_total_value' => 0];
+            
+            // Calculate conversion rate
+            $quotations_count = (int)$container1['quotations_count'];
+            $po_count = (int)$container2['po_count'];
+            $container2['po_conversion_rate'] = $quotations_count > 0 ? round(($po_count / $quotations_count) * 100, 1) : 0;
+            
+            // Container 3: Invoices
+            $sql3 = "
+                SELECT 
+                    COUNT(*) as invoice_count,
+                    COALESCE(SUM(amount), 0) as invoice_total_value
+                FROM finance_consolidated
+                WHERE record_type = 'invoice'
+            ";
+            
+            $params_array = [];
+            if ($companyPrefix) {
+                $sql3 .= " AND company_prefix = ?";
+                $params_array[] = $companyPrefix;
+            }
+            
+            $stmt3 = $this->pdo->prepare($sql3);
+            $stmt3->execute($params_array);
+            $container3 = $stmt3->fetch() ?: ['invoice_count' => 0, 'invoice_total_value' => 0];
+            
+            // Calculate conversion rate
+            $invoice_count = (int)$container3['invoice_count'];
+            $container3['invoice_conversion_rate'] = $po_count > 0 ? round(($invoice_count / $po_count) * 100, 1) : 0;
+            
+            // Container 4: Payments
+            $sql4 = "
+                SELECT 
+                    COUNT(*) as payment_count,
+                    COALESCE(SUM(amount_paid), 0) as total_payment_received
+                FROM finance_consolidated
+                WHERE record_type = 'invoice' AND amount_paid > 0
+            ";
+            
+            $params_array = [];
+            if ($companyPrefix) {
+                $sql4 .= " AND company_prefix = ?";
+                $params_array[] = $companyPrefix;
+            }
+            
+            $stmt4 = $this->pdo->prepare($sql4);
+            $stmt4->execute($params_array);
+            $container4 = $stmt4->fetch() ?: ['payment_count' => 0, 'total_payment_received' => 0];
+            
+            // Calculate conversion rate
+            $payment_count = (int)$container4['payment_count'];
+            $container4['payment_conversion_rate'] = $invoice_count > 0 ? round(($payment_count / $invoice_count) * 100, 1) : 0;
+            
+            return $this->successResponse([
+                'containers' => [
+                    'container1' => $container1,
+                    'container2' => $container2,
+                    'container3' => $container3,
+                    'container4' => $container4
+                ]
+            ]);
+            
+        } catch (\PDOException $e) {
+            $this->logger->error("Failed to fetch funnel containers: " . $e->getMessage());
+            return $this->errorResponse('Database error occurred', 500);
+        }
+    }
+    
+    /**
+     * Sync data - simulate ETL process
+     */
+    public function syncData(array $params = []): array
+    {
+        $companyPrefix = $params['prefix'] ?? $_ENV['COMPANY_PREFIX'] ?? 'ERGN';
+        
+        try {
+            // Simulate adding more sample data
+            $newRecords = [
+                [
+                    'record_type' => 'quotation',
+                    'document_number' => 'ERGN-Q002',
+                    'customer_id' => 'CUST002',
+                    'customer_name' => 'Sample Customer 2',
+                    'amount' => 15000.00,
+                    'taxable_amount' => 12711.86,
+                    'status' => 'pending',
+                    'company_prefix' => $companyPrefix
+                ],
+                [
+                    'record_type' => 'invoice',
+                    'document_number' => 'ERGN-INV002',
+                    'customer_id' => 'CUST002',
+                    'customer_name' => 'Sample Customer 2',
+                    'amount' => 12000.00,
+                    'taxable_amount' => 10169.49,
+                    'amount_paid' => 6000.00,
+                    'outstanding_amount' => 4169.49,
+                    'igst' => 1830.51,
+                    'due_date' => '2024-03-15',
+                    'invoice_date' => '2024-02-15',
+                    'status' => 'pending',
+                    'company_prefix' => $companyPrefix
+                ]
+            ];
+            
+            $insertSql = "INSERT IGNORE INTO finance_consolidated 
+                (record_type, document_number, customer_id, customer_name, amount, taxable_amount, amount_paid, outstanding_amount, igst, due_date, invoice_date, status, company_prefix, raw_data) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            
+            $stmt = $this->pdo->prepare($insertSql);
+            $recordsProcessed = 0;
+            
+            foreach ($newRecords as $data) {
+                $result = $stmt->execute([
+                    $data['record_type'],
+                    $data['document_number'],
+                    $data['customer_id'],
+                    $data['customer_name'],
+                    $data['amount'],
+                    $data['taxable_amount'],
+                    $data['amount_paid'] ?? 0,
+                    $data['outstanding_amount'] ?? 0,
+                    $data['igst'] ?? 0,
+                    $data['due_date'] ?? null,
+                    $data['invoice_date'] ?? null,
+                    $data['status'],
+                    $data['company_prefix'],
+                    json_encode($data)
+                ]);
+                
+                if ($result) {
+                    $recordsProcessed++;
+                }
+            }
+            
+            // Update dashboard stats
+            $this->updateDashboardStats($companyPrefix);
+            
+            return $this->successResponse([
+                'message' => 'ETL sync completed successfully',
+                'records_processed' => $recordsProcessed,
+                'prefix' => $companyPrefix
+            ]);
+            
+        } catch (\PDOException $e) {
+            $this->logger->error("Sync failed: " . $e->getMessage());
+            return $this->errorResponse('Sync failed: Database error', 500);
+        }
+    }
+    
+    /**
+     * Update dashboard stats after sync
+     */
+    private function updateDashboardStats(string $companyPrefix): void
+    {
+        try {
+            // Calculate expected inflow (outstanding invoices)
+            $stmt = $this->pdo->prepare("
+                SELECT COALESCE(SUM(outstanding_amount), 0) as expected_inflow
+                FROM finance_consolidated 
+                WHERE record_type = 'invoice' 
+                AND outstanding_amount > 0
+                AND company_prefix = ?
+            ");
+            $stmt->execute([$companyPrefix]);
+            $expectedInflow = $stmt->fetch()['expected_inflow'];
+            
+            // Calculate PO commitments
+            $stmt = $this->pdo->prepare("
+                SELECT COALESCE(SUM(amount), 0) as po_commitments
+                FROM finance_consolidated 
+                WHERE record_type = 'purchase_order'
+                AND company_prefix = ?
+            ");
+            $stmt->execute([$companyPrefix]);
+            $poCommitments = $stmt->fetch()['po_commitments'];
+            
+            // Calculate net cash flow
+            $netCashFlow = $expectedInflow - $poCommitments;
+            
+            // Update dashboard stats
+            $this->pdo->prepare("
+                INSERT INTO dashboard_stats (company_prefix, expected_inflow, po_commitments, net_cash_flow, last_computed_at) 
+                VALUES (?, ?, ?, ?, NOW()) 
+                ON DUPLICATE KEY UPDATE 
+                expected_inflow = VALUES(expected_inflow),
+                po_commitments = VALUES(po_commitments),
+                net_cash_flow = VALUES(net_cash_flow),
+                last_computed_at = VALUES(last_computed_at)
+            ")->execute([$companyPrefix, $expectedInflow, $poCommitments, $netCashFlow]);
+            
+        } catch (\PDOException $e) {
+            $this->logger->error("Failed to update dashboard stats: " . $e->getMessage());
+        }
+    }
+    
+    /**
      * Get dashboard cash flow stats
      */
     public function getDashboardStats(string $companyPrefix): array
@@ -255,8 +547,8 @@ class RecentActivitiesController
             exit;
         }
         
-        // Only allow GET requests
-        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        // Allow GET and POST requests
+        if (!in_array($_SERVER['REQUEST_METHOD'], ['GET', 'POST'])) {
             http_response_code(405);
             echo json_encode($this->errorResponse('Method not allowed', 405));
             exit;
@@ -286,6 +578,15 @@ class RecentActivitiesController
                     } else {
                         $response = $this->getDashboardStats($params['prefix']);
                     }
+                    break;
+                case 'outstanding-invoices':
+                    $response = $this->getOutstandingInvoices($params);
+                    break;
+                case 'funnel-containers':
+                    $response = $this->getFunnelContainers($params);
+                    break;
+                case 'sync':
+                    $response = $this->syncData($params);
                     break;
                 default:
                     $response = $this->errorResponse('Invalid action', 400);
