@@ -108,6 +108,22 @@ INSERT INTO dashboard_stats (company_prefix) VALUES
 ('BKGE'), ('SE'), ('TC'), ('BKC')
 ON DUPLICATE KEY UPDATE company_prefix = VALUES(company_prefix);
 
+-- Initialize funnel_stats with sample data
+INSERT INTO funnel_stats (company_prefix, quotation_count, quotation_value, po_count, po_value, po_conversion_rate, invoice_count, invoice_value, invoice_conversion_rate, payment_count, payment_value, payment_conversion_rate) VALUES 
+('TC', 1, 150000.00, 1, 85000.00, 56.7, 2, 358078.00, 421.3, 1, 59000.00, 16.5)
+ON DUPLICATE KEY UPDATE 
+    quotation_count = VALUES(quotation_count),
+    quotation_value = VALUES(quotation_value),
+    po_count = VALUES(po_count),
+    po_value = VALUES(po_value),
+    po_conversion_rate = VALUES(po_conversion_rate),
+    invoice_count = VALUES(invoice_count),
+    invoice_value = VALUES(invoice_value),
+    invoice_conversion_rate = VALUES(invoice_conversion_rate),
+    payment_count = VALUES(payment_count),
+    payment_value = VALUES(payment_value),
+    payment_conversion_rate = VALUES(payment_conversion_rate);
+
 -- Add performance indexes
 ALTER TABLE dashboard_stats ADD INDEX IF NOT EXISTS idx_generated_at (generated_at);
 ALTER TABLE finance_consolidated ADD INDEX IF NOT EXISTS idx_customer_name (customer_name);
@@ -115,5 +131,30 @@ ALTER TABLE finance_consolidated ADD INDEX IF NOT EXISTS idx_document_number (do
 ALTER TABLE finance_consolidated ADD INDEX IF NOT EXISTS idx_record_status (company_prefix, record_type, status);
 
 -- Sample Data Insert (for testing)
--- INSERT INTO finance_consolidated (record_type, document_number, customer_name, amount, company_prefix) 
--- VALUES ('invoice', 'BKC001', 'Test Customer', 10000.00, 'BKC');
+INSERT INTO finance_consolidated (record_type, document_number, customer_name, amount, taxable_amount, amount_paid, outstanding_amount, company_prefix, status) VALUES 
+('invoice', 'TC001', 'ABC Corp', 240078.00, 200000.00, 0.00, 240078.00, 'TC', 'pending'),
+('invoice', 'TC002', 'XYZ Ltd', 118000.00, 100000.00, 59000.00, 59000.00, 'TC', 'partial'),
+('quotation', 'TC-Q001', 'DEF Industries', 150000.00, 150000.00, 0.00, 0.00, 'TC', 'pending'),
+('purchase_order', 'TC-PO001', 'GHI Suppliers', 85000.00, 85000.00, 25000.00, 60000.00, 'TC', 'open'),
+('payment', 'TC-PAY001', 'ABC Corp', 59000.00, 59000.00, 59000.00, 0.00, 'TC', 'completed')
+ON DUPLICATE KEY UPDATE id=id;
+
+-- Update dashboard_stats with calculated values
+UPDATE dashboard_stats SET 
+    total_revenue = 358078.00,
+    invoice_count = 2,
+    amount_received = 59000.00,
+    outstanding_amount = 299078.00,
+    pending_invoices = 2,
+    customers_pending = 2,
+    overdue_amount = 240078.00,
+    outstanding_percentage = 83.5,
+    customer_count = 3,
+    po_commitments = 85000.00,
+    open_pos = 1,
+    closed_pos = 0,
+    claimable_amount = 299078.00,
+    claimable_pos = 2,
+    claim_rate = 83.5,
+    generated_at = NOW()
+WHERE company_prefix = 'TC';
