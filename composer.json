@@ -1,0 +1,36 @@
+{
+    "name": "ergon/finance-backend",
+    "description": "Production-ready PHP backend system with cash flow projections",
+    "type": "project",
+    "require": {
+        "php": ">=8.0",
+        "vlucas/phpdotenv": "^5.5",
+        "monolog/monolog": "^3.0",
+        "ext-bcmath": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Ergon\\FinanceSync\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Ergon\\FinanceSync\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test-unit": "phpunit --testsuite=unit",
+        "test-integration": "phpunit tests/IntegrationTest.php",
+        "sync-invoices": "php src/cli/sync_invoices.php",
+        "sync-activities": "php src/cli/sync_activities.php",
+        "compute-cashflow": "php src/cli/compute_cashflow.php"
+    },
+    "config": {
+        "secure-http": false,
+        "disable-tls": true
+    }
+}
