@@ -70,7 +70,7 @@ class FunnelStatsService {
                 $pos[] = [
                     'id' => $data['id'] ?? '',
                     'po_number' => $poNumber ?: $internalPoNumber,
-                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? $data['total'] ?? 0),
+                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? $data['total'] ?? $data['subtotal'] ?? 0),
                     'amount_paid' => floatval($data['amount_paid'] ?? 0)
                 ];
             }
