@@ -973,9 +973,12 @@ async function loadDashboardData() {
         }
         
         // Show source information for Stat Card 3
-        if (data.source === 'dashboard_stats') {
-            console.log('Stat Card 3: Using backend-calculated metrics from dashboard_stats table');
-            console.log('Outstanding Amount calculation: taxable_amount - amount_paid (no GST)');
+        if (data.source === 'dashboard_stats' || data.source === 'etl_dashboard_stats') {
+            console.log('✅ Stat Card 3: Using backend-calculated metrics from dashboard_stats table');
+            console.log('📊 Outstanding Amount = sum(taxable_amount - amount_paid) where pending > 0');
+            console.log('📋 Pending Invoices = count of invoices with pending_amount > 0');
+            console.log('👥 Customers Pending = count of unique customer_gstin with pending_amount > 0');
+            console.log('⏰ Overdue Amount = sum(pending_amount) where due_date < today');
         } else if (data.source === 'empty') {
             showNotification('Stat Card 3 requires backend calculation. Click "Refresh Stats" to calculate metrics.', 'warning');
         }
@@ -1019,22 +1022,23 @@ function updateKPICards(data) {
     }
     if (paidInvoiceCount) paidInvoiceCount.textContent = funnel.payments || 0;
     
-    // Stat Card 3: Outstanding Amount (Backend calculated)
-    document.getElementById('pendingInvoiceAmount').textContent = `₹${(data.outstandingAmount || data.pendingInvoiceAmount || 0).toLocaleString()}`;
+    // Stat Card 3: Outstanding Amount (Backend calculated - taxable only, no GST)
+    document.getElementById('pendingInvoiceAmount').textContent = `₹${(data.outstanding_amount || data.outstandingAmount || data.pendingInvoiceAmount || 0).toLocaleString()}`;
     
     // Update Stat Card 3 details with backend calculations
     const pendingInvoicesCount = document.getElementById('pendingInvoicesCount');
     const customersPendingCount = document.getElementById('customersPendingCount');
     const overdueAmount = document.getElementById('overdueAmount');
     
-    if (pendingInvoicesCount) pendingInvoicesCount.textContent = data.pendingInvoices || 0;
-    if (customersPendingCount) customersPendingCount.textContent = data.customersPending || 0;
-    if (overdueAmount) overdueAmount.textContent = `₹${(data.overdueAmount || 0).toLocaleString()}`;
+    if (pendingInvoicesCount) pendingInvoicesCount.textContent = data.pending_invoices || data.pendingInvoices || 0;
+    if (customersPendingCount) customersPendingCount.textContent = data.customers_pending || data.customersPending || 0;
+    if (overdueAmount) overdueAmount.textContent = `₹${(data.overdue_amount || data.overdueAmount || 0).toLocaleString()}`;
     
     // Update trend for outstanding percentage
     const pendingTrend = document.getElementById('pendingTrend');
-    if (pendingTrend && data.outstandingPercentage !== undefined) {
-        pendingTrend.textContent = `${Math.round(data.outstandingPercentage)}%`;
+    if (pendingTrend && (data.outstanding_percentage !== undefined || data.outstandingPercentage !== undefined)) {
+        const percentage = data.outstanding_percentage || data.outstandingPercentage || 0;
+        pendingTrend.textContent = `${Math.round(percentage)}%`;
     }
     
     // Stat Card 4: GST Liability (Backend calculated)

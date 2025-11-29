@@ -232,14 +232,15 @@ class FinanceETLService {
      * Calculate analytics metrics from consolidated data
      */
     private function calculateAnalytics($prefix) {
-        // Revenue Analytics
+        // Calculate Stat Card 3 using backend-only processing
+        $statCard3 = $this->calculateStatCard3($prefix);
+        
+        // Revenue Analytics (other stats)
         $stmt = $this->db->prepare("
             SELECT 
                 COUNT(*) as invoice_count,
                 SUM(amount) as total_revenue,
                 SUM(amount_paid) as amount_received,
-                SUM(outstanding_amount) as outstanding_amount,
-                SUM(CASE WHEN outstanding_amount > 0 THEN 1 ELSE 0 END) as pending_invoices,
                 COUNT(DISTINCT customer_id) as customer_count,
                 SUM(igst) as igst_liability,
                 SUM(cgst + sgst) as cgst_sgst_total
@@ -248,6 +249,9 @@ class FinanceETLService {
         ");
         $stmt->execute([$prefix]);
         $invoiceStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Merge Stat Card 3 results
+        $invoiceStats = array_merge($invoiceStats, $statCard3);
         
         // PO Analytics
         $stmt = $this->db->prepare("
@@ -281,24 +285,106 @@ class FinanceETLService {
     }
     
     /**
+     * Calculate Stat Card 3 using backend-only processing (no SQL aggregation)
+     */
+    private function calculateStatCard3($prefix) {
+        $this->connectToSAP();
+        
+        // Step 1: Fetch raw invoice rows without SQL aggregation
+        $query = "SELECT id, invoice_number, taxable_amount, amount_paid, cgst, sgst, total_amount, due_date, customer_gstin FROM finance_invoices WHERE invoice_number LIKE '$prefix%'";
+        $result = @pg_query($this->pgConn, $query);
+        
+        if (!$result) {
+            @pg_close($this->pgConn);
+            return [
+                'outstanding_amount' => 0,
+                'pending_invoices' => 0,
+                'customers_pending' => 0,
+                'overdue_amount' => 0,
+                'outstanding_percentage' => 0
+            ];
+        }
+        
+        $invoices = pg_fetch_all($result);
+        @pg_close($this->pgConn);
+        
+        if (!$invoices) {
+            return [
+                'outstanding_amount' => 0,
+                'pending_invoices' => 0,
+                'customers_pending' => 0,
+                'overdue_amount' => 0,
+                'outstanding_percentage' => 0
+            ];
+        }
+        
+        // Step 2: Backend calculations only
+        $totalTaxableAmount = 0;
+        $outstandingAmount = 0;
+        $pendingInvoices = 0;
+        $overdueAmount = 0;
+        $customersWithPending = [];
+        $today = date('Y-m-d');
+        
+        foreach ($invoices as $invoice) {
+            $taxableAmount = floatval($invoice['taxable_amount'] ?? 0);
+            $amountPaid = floatval($invoice['amount_paid'] ?? 0);
+            $dueDate = $invoice['due_date'] ?? null;
+            $customerGstin = $invoice['customer_gstin'] ?? '';
+            
+            // Step 3: Calculate pending amount (taxable only, no GST)
+            $pendingAmount = $taxableAmount - $amountPaid;
+            $totalTaxableAmount += $taxableAmount;
+            
+            if ($pendingAmount > 0) {
+                // Step 4: Calculate metrics
+                $outstandingAmount += $pendingAmount;
+                $pendingInvoices++;
+                
+                // Track unique customers with pending amounts
+                if ($customerGstin && !in_array($customerGstin, $customersWithPending)) {
+                    $customersWithPending[] = $customerGstin;
+                }
+                
+                // Calculate overdue amount
+                if ($dueDate && $dueDate < $today) {
+                    $overdueAmount += $pendingAmount;
+                }
+            }
+        }
+        
+        // Step 5: Return computed results
+        return [
+            'outstanding_amount' => $outstandingAmount,
+            'pending_invoices' => $pendingInvoices,
+            'customers_pending' => count($customersWithPending),
+            'overdue_amount' => $overdueAmount,
+            'outstanding_percentage' => $totalTaxableAmount > 0 ? ($outstandingAmount / $totalTaxableAmount) * 100 : 0
+        ];
+    }
+    
+    /**
      * Save calculated analytics to dashboard_stats table
      */
     private function saveDashboardStats($prefix, $invoiceStats, $poStats, $quotationStats) {
         $stmt = $this->db->prepare("
             INSERT INTO dashboard_stats (
                 company_prefix, total_revenue, invoice_count, amount_received,
-                outstanding_amount, pending_invoices, customer_count,
-                po_commitments, open_pos, closed_pos, claimable_amount,
+                outstanding_amount, pending_invoices, customers_pending, overdue_amount, outstanding_percentage,
+                customer_count, po_commitments, open_pos, closed_pos, claimable_amount,
                 igst_liability, cgst_sgst_total, gst_liability,
                 placed_quotations, rejected_quotations, pending_quotations, total_quotations,
                 generated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
                 total_revenue = VALUES(total_revenue),
                 invoice_count = VALUES(invoice_count),
                 amount_received = VALUES(amount_received),
                 outstanding_amount = VALUES(outstanding_amount),
                 pending_invoices = VALUES(pending_invoices),
+                customers_pending = VALUES(customers_pending),
+                overdue_amount = VALUES(overdue_amount),
+                outstanding_percentage = VALUES(outstanding_percentage),
                 customer_count = VALUES(customer_count),
                 po_commitments = VALUES(po_commitments),
                 open_pos = VALUES(open_pos),
@@ -323,6 +409,9 @@ class FinanceETLService {
             $invoiceStats['amount_received'] ?? 0,
             $invoiceStats['outstanding_amount'] ?? 0,
             $invoiceStats['pending_invoices'] ?? 0,
+            $invoiceStats['customers_pending'] ?? 0,
+            $invoiceStats['overdue_amount'] ?? 0,
+            $invoiceStats['outstanding_percentage'] ?? 0,
             $invoiceStats['customer_count'] ?? 0,
             $poStats['po_commitments'] ?? 0,
             $poStats['open_pos'] ?? 0,
@@ -429,6 +518,9 @@ class FinanceETLService {
                 amount_received DECIMAL(15,2) DEFAULT 0,
                 outstanding_amount DECIMAL(15,2) DEFAULT 0,
                 pending_invoices INT DEFAULT 0,
+                customers_pending INT DEFAULT 0,
+                overdue_amount DECIMAL(15,2) DEFAULT 0,
+                outstanding_percentage DECIMAL(5,2) DEFAULT 0,
                 customer_count INT DEFAULT 0,
                 po_commitments DECIMAL(15,2) DEFAULT 0,
                 open_pos INT DEFAULT 0,
