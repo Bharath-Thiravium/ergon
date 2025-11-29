@@ -209,104 +209,21 @@ window.openProgressModal = function(taskId, progress, status) {
     if (!document.getElementById('modal-styles')) {
         const styles = document.createElement('style');
         styles.id = 'modal-styles';
-        styles.textContent = `
-            .modal-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10001;
-            }
-            .modal-content {
-                background: white;
-                border-radius: 8px;
-                width: 400px;
-                max-width: 90vw;
-            }
-            .modal-header {
-                padding: 16px;
-                border-bottom: 1px solid #e5e7eb;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .modal-body {
-                padding: 16px;
-            }
-            .modal-body label {
-                display: block;
-                margin-bottom: 4px;
-                font-weight: 500;
-            }
-            .modal-body .form-input {
-                width: 100%;
-                margin-bottom: 12px;
-                padding: 8px;
-                border: 1px solid #d1d5db;
-                border-radius: 4px;
-            }
-            .modal-footer {
-                padding: 16px;
-                border-top: 1px solid #e5e7eb;
-                display: flex;
-                gap: 8px;
-                justify-content: flex-end;
-            }
-            .modal-close {
-                background: none;
-                border: none;
-                font-size: 24px;
-                cursor: pointer;
-                color: #6b7280;
-            }
-            .form-slider {
-                width: 100%;
-                margin-bottom: 12px;
-                -webkit-appearance: none;
-                height: 6px;
-                border-radius: 3px;
-                background: #e5e7eb;
-                outline: none;
-            }
-            .form-slider::-webkit-slider-thumb {
-                -webkit-appearance: none;
-                appearance: none;
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
-                background: #3b82f6;
-                cursor: pointer;
-            }
-            .form-slider::-moz-range-thumb {
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
-                background: #3b82f6;
-                cursor: pointer;
-                border: none;
-            }
-            .progress-presets {
-                display: flex;
-                gap: 8px;
-                margin-bottom: 12px;
-            }
-            .preset-btn {
-                padding: 6px 12px;
-                border: 1px solid #d1d5db;
-                background: #f9fafb;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 12px;
-            }
-            .preset-btn:hover {
-                background: #e5e7eb;
-            }
-        `;
+        // Use individual CSS rules to avoid parsing errors
+        styles.textContent = '.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10001; }' +
+        '.modal-content { background: white; border-radius: 8px; width: 400px; max-width: 90vw; }' +
+        '.modal-header { padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }' +
+        '.modal-body { padding: 16px; }' +
+        '.modal-body label { display: block; margin-bottom: 4px; font-weight: 500; }' +
+        '.modal-body .form-input { width: 100%; margin-bottom: 12px; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; }' +
+        '.modal-footer { padding: 16px; border-top: 1px solid #e5e7eb; display: flex; gap: 8px; justify-content: flex-end; }' +
+        '.modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; }' +
+        '.form-slider { width: 100%; margin-bottom: 12px; -webkit-appearance: none; height: 6px; border-radius: 3px; background: #e5e7eb; outline: none; }' +
+        '.form-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #3b82f6; cursor: pointer; }' +
+        '.form-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #3b82f6; cursor: pointer; border: none; }' +
+        '.progress-presets { display: flex; gap: 8px; margin-bottom: 12px; }' +
+        '.preset-btn { padding: 6px 12px; border: 1px solid #d1d5db; background: #f9fafb; border-radius: 4px; cursor: pointer; font-size: 12px; }' +
+        '.preset-btn:hover { background: #e5e7eb; }';
         document.head.appendChild(styles);
     }
     
@@ -472,25 +389,14 @@ function showNotification(message, type) {
     if (!document.getElementById('notification-styles')) {
         const styles = document.createElement('style');
         styles.id = 'notification-styles';
-        styles.textContent = `
-            .notification {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 12px 16px;
-                border-radius: 4px;
-                color: white;
-                z-index: 10000;
-                max-width: 300px;
-                animation: slideIn 0.3s ease;
-            }
-            .notification--success { background: #10b981; }
-            .notification--error { background: #ef4444; }
-            .notification--info { background: #3b82f6; }
-            .notification-content { display: flex; justify-content: space-between; align-items: center; }
-            .notification-close { background: none; border: none; color: white; font-size: 18px; cursor: pointer; }
-            @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-        `;
+        // Use concatenated strings to avoid CSS parsing errors
+        styles.textContent = '.notification { position: fixed; top: 20px; right: 20px; padding: 12px 16px; border-radius: 4px; color: white; z-index: 10000; max-width: 300px; animation: slideIn 0.3s ease; }' +
+        '.notification--success { background: #10b981; }' +
+        '.notification--error { background: #ef4444; }' +
+        '.notification--info { background: #3b82f6; }' +
+        '.notification-content { display: flex; justify-content: space-between; align-items: center; }' +
+        '.notification-close { background: none; border: none; color: white; font-size: 18px; cursor: pointer; }' +
+        '@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }';
         document.head.appendChild(styles);
     }
     

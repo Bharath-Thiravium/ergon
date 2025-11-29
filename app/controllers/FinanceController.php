@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../services/FunnelStatsService.php';
 
 class FinanceController extends Controller {
     
@@ -62,7 +63,101 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customerFilter = $_GET['customer'] ?? '';
             
-            // Calculate funnel stats directly
+            // Always ensure quotation and PO data is calculated
+            $quotationStats = $this->calculateQuotationOverview($db, $prefix);
+            $poStats = $this->calculatePurchaseOrderOverview($db, $prefix);
+            
+            // ALWAYS read from dashboard_stats table - never query finance_invoices directly
+            $stmt = $db->prepare("SELECT * FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
+            $stmt->execute([$prefix]);
+            $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($dashboardStats) {
+                // Return pre-calculated stats from dashboard_stats table
+                echo json_encode([
+                    'totalInvoiceAmount' => floatval($dashboardStats['total_revenue']),
+                    'invoiceReceived' => floatval($dashboardStats['amount_received']),
+                    'pendingInvoiceAmount' => floatval($dashboardStats['outstanding_amount']),
+                    'pendingGSTAmount' => floatval($dashboardStats['gst_liability']),
+                    'pendingPOValue' => floatval($dashboardStats['po_commitments']),
+                    'claimableAmount' => floatval($dashboardStats['claimable_amount']),
+                    'claimablePOCount' => intval($dashboardStats['claimable_pos']),
+                    'claimablePos' => intval($dashboardStats['claimable_pos']),
+                    'openPOCount' => intval($dashboardStats['open_pos']),
+                    'closedPOCount' => intval($dashboardStats['closed_pos']),
+                    'totalPOCount' => intval($dashboardStats['open_pos']) + intval($dashboardStats['closed_pos']),
+                    'claimRate' => floatval($dashboardStats['claim_rate']),
+                    'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
+                    'cashFlow' => [
+                        'expectedInflow' => floatval($dashboardStats['outstanding_amount']),
+                        'poCommitments' => floatval($dashboardStats['po_commitments'])
+                    ],
+                    // Stat Card 3 metrics from dashboard_stats (backend calculated)
+                    'outstandingAmount' => floatval($dashboardStats['outstanding_amount']),
+                    'pendingInvoices' => intval($dashboardStats['pending_invoices']),
+                    'customersPending' => intval($dashboardStats['customers_pending']),
+                    'overdueAmount' => floatval($dashboardStats['overdue_amount']),
+                    'outstandingPercentage' => floatval($dashboardStats['outstanding_percentage']),
+                    // Stat Card 4: GST Liability metrics from dashboard_stats (backend calculated)
+                    'igstLiability' => floatval($dashboardStats['igst_liability']),
+                    'cgstSgstTotal' => floatval($dashboardStats['cgst_sgst_total']),
+                    'gstLiability' => floatval($dashboardStats['gst_liability']),
+                    // Chart Card 1: Quotations Overview (NEW - backend calculated counts only)
+                    'placedQuotations' => intval($dashboardStats['placed_quotations'] ?? $quotationStats['placed_quotations'] ?? 0),
+                    'rejectedQuotations' => intval($dashboardStats['rejected_quotations'] ?? $quotationStats['rejected_quotations'] ?? 0),
+                    'pendingQuotations' => intval($dashboardStats['pending_quotations'] ?? $quotationStats['pending_quotations'] ?? 0),
+                    'totalQuotations' => intval($dashboardStats['total_quotations'] ?? $quotationStats['total_quotations'] ?? 0),
+                    // Chart Card 2: Purchase Orders Overview (NEW - backend calculated counts only)
+                    'poHighFulfillment' => intval($dashboardStats['po_high_fulfillment_count'] ?? $poStats['po_high_fulfillment_count'] ?? 0),
+                    'poMidFulfillment' => intval($dashboardStats['po_mid_fulfillment_count'] ?? $poStats['po_mid_fulfillment_count'] ?? 0),
+                    'poLowFulfillment' => intval($dashboardStats['po_low_fulfillment_count'] ?? $poStats['po_low_fulfillment_count'] ?? 0),
+                    'poTotalCount' => intval($dashboardStats['po_total_count'] ?? $poStats['po_total_count'] ?? 0),
+                    'source' => 'dashboard_stats',
+                    'generated_at' => $dashboardStats['generated_at']
+                ]);
+                return;
+            } else {
+                // Calculate stats immediately if none exist
+                $this->calculateStatCard3Pipeline($db, null, $prefix);
+                
+                // Try reading again
+                $stmt = $db->prepare("SELECT * FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
+                $stmt->execute([$prefix]);
+                $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($dashboardStats) {
+                    echo json_encode([
+                        'totalInvoiceAmount' => floatval($dashboardStats['total_revenue']),
+                        'invoiceReceived' => floatval($dashboardStats['amount_received']),
+                        'pendingInvoiceAmount' => floatval($dashboardStats['outstanding_amount']),
+                        'pendingGSTAmount' => floatval($dashboardStats['gst_liability']),
+                        'pendingPOValue' => floatval($dashboardStats['po_commitments']),
+                        'claimableAmount' => floatval($dashboardStats['claimable_amount']),
+                        'outstandingAmount' => floatval($dashboardStats['outstanding_amount']),
+                        'pendingInvoices' => intval($dashboardStats['pending_invoices']),
+                        'customersPending' => intval($dashboardStats['customers_pending']),
+                        'overdueAmount' => floatval($dashboardStats['overdue_amount']),
+                        'outstandingPercentage' => floatval($dashboardStats['outstanding_percentage']),
+                        'igstLiability' => floatval($dashboardStats['igst_liability']),
+                        'cgstSgstTotal' => floatval($dashboardStats['cgst_sgst_total']),
+                        'gstLiability' => floatval($dashboardStats['gst_liability']),
+                        'openPOCount' => intval($dashboardStats['open_pos']),
+                        'closedPOCount' => intval($dashboardStats['closed_pos']),
+                        'placedQuotations' => intval($dashboardStats['placed_quotations'] ?? 0),
+                        'rejectedQuotations' => intval($dashboardStats['rejected_quotations'] ?? 0),
+                        'pendingQuotations' => intval($dashboardStats['pending_quotations'] ?? 0),
+                        'totalQuotations' => intval($dashboardStats['total_quotations'] ?? 0),
+                        'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
+                        'cashFlow' => ['expectedInflow' => floatval($dashboardStats['outstanding_amount']), 'poCommitments' => floatval($dashboardStats['po_commitments'])],
+                        'source' => 'calculated'
+                    ]);
+                } else {
+                    echo json_encode(['message' => 'No data available', 'source' => 'empty']);
+                }
+                return;
+            }
+            
+            // Fallback to old calculation if no dashboard_stats found
             $funnelStats = $this->calculateFunnelStats($db, $prefix);
             $chartStats = $this->calculateChartStats($db, $prefix);
             
@@ -220,62 +315,87 @@ class FinanceController extends Controller {
 
     private function getConversionFunnel($db, $customerFilter = '') {
         $prefix = $this->getCompanyPrefix();
-        $funnel = [
-            'quotations' => 0, 'quotationValue' => 0,
-            'purchaseOrders' => 0, 'poValue' => 0,
-            'invoices' => 0, 'invoiceValue' => 0,
-            'payments' => 0, 'paymentValue' => 0,
-            'quotationToPO' => 0, 'poToInvoice' => 0, 'invoiceToPayment' => 0
-        ];
-
-        // Quotations - check multiple number fields
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-        $stmt->execute();
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $data = json_decode($row['data'], true);
-            $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? $data['number'] ?? '';
-            if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) continue;
-            if ($customerFilter && ($data['customer_id'] ?? '') != $customerFilter) continue;
-            $funnel['quotations']++;
-            $funnel['quotationValue'] += floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
-        }
-
-        // Purchase Orders - check multiple number fields
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
-        $stmt->execute();
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $data = json_decode($row['data'], true);
-            $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
-            if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) continue;
-            if ($customerFilter && ($data['customer_id'] ?? $data['supplier_id'] ?? '') != $customerFilter) continue;
-            $funnel['purchaseOrders']++;
-            $funnel['poValue'] += floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? 0);
-        }
-
-        // Invoices and Payments
-        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-        $stmt->execute();
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $data = json_decode($row['data'], true);
-            $invoiceNumber = $data['invoice_number'] ?? $data['number'] ?? '';
-            if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) continue;
-            if ($customerFilter && ($data['customer_id'] ?? '') != $customerFilter) continue;
-            $funnel['invoices']++;
-            $total = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
-            $outstanding = floatval($data['outstanding_amount'] ?? $data['balance'] ?? 0);
-            $funnel['invoiceValue'] += $total;
-            $funnel['paymentValue'] += ($total - $outstanding);
-            if ($outstanding <= 0) {
-                $funnel['payments']++;
+        
+        // Read from dashboard_stats for consistency
+        $stmt = $db->prepare("SELECT * FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
+        $stmt->execute([$prefix]);
+        $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($dashboardStats) {
+            // Use backend-calculated values
+            $quotations = intval($dashboardStats['total_quotations'] ?? 0);
+            $purchaseOrders = intval($dashboardStats['po_total_count'] ?? 0);
+            $invoices = intval($dashboardStats['invoice_count'] ?? 0);
+            $payments = intval($dashboardStats['paid_invoices'] ?? 0);
+            
+            $quotationValue = 0; // Not stored, calculate if needed
+            $poValue = floatval($dashboardStats['po_commitments'] ?? 0);
+            $invoiceValue = floatval($dashboardStats['total_revenue'] ?? 0);
+            $paymentValue = floatval($dashboardStats['amount_received'] ?? 0);
+        } else {
+            // Fallback to direct calculation
+            $quotations = 0; $quotationValue = 0;
+            $purchaseOrders = 0; $poValue = 0;
+            $invoices = 0; $invoiceValue = 0;
+            $payments = 0; $paymentValue = 0;
+            
+            // Quick calculation from raw data
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $data = json_decode($row['data'], true);
+                $quotationNumber = $data['quotation_number'] ?? '';
+                if (!$prefix || strpos($quotationNumber, $prefix) === 0) {
+                    $quotations++;
+                    $quotationValue += floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+                }
+            }
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $data = json_decode($row['data'], true);
+                $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+                if (!$prefix || stripos($poNumber, $prefix) !== false) {
+                    $purchaseOrders++;
+                    $poValue += floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+                }
+            }
+            
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $data = json_decode($row['data'], true);
+                $invoiceNumber = $data['invoice_number'] ?? '';
+                if (!$prefix || strpos($invoiceNumber, $prefix) === 0) {
+                    $invoices++;
+                    $total = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+                    $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                    $invoiceValue += $total;
+                    $paymentValue += ($total - $outstanding);
+                    if ($outstanding <= 0) $payments++;
+                }
             }
         }
-
+        
         // Calculate conversion rates
-        if ($funnel['quotations'] > 0) $funnel['quotationToPO'] = round(($funnel['purchaseOrders'] / $funnel['quotations']) * 100);
-        if ($funnel['purchaseOrders'] > 0) $funnel['poToInvoice'] = round(($funnel['invoices'] / $funnel['purchaseOrders']) * 100);
-        if ($funnel['invoices'] > 0) $funnel['invoiceToPayment'] = round(($funnel['payments'] / $funnel['invoices']) * 100);
-
-        return $funnel;
+        $quotationToPO = $quotations > 0 ? round(($purchaseOrders / $quotations) * 100) : 0;
+        $poToInvoice = $purchaseOrders > 0 ? round(($invoices / $purchaseOrders) * 100) : 0;
+        $invoiceToPayment = $invoices > 0 ? round(($payments / $invoices) * 100) : 0;
+        
+        return [
+            'quotations' => $quotations,
+            'quotationValue' => $quotationValue,
+            'purchaseOrders' => $purchaseOrders,
+            'poValue' => $poValue,
+            'invoices' => $invoices,
+            'invoiceValue' => $invoiceValue,
+            'payments' => $payments,
+            'paymentValue' => $paymentValue,
+            'quotationToPO' => $quotationToPO,
+            'poToInvoice' => $poToInvoice,
+            'invoiceToPayment' => $invoiceToPayment
+        ];
     }
     
     public function getOutstandingInvoices() {
@@ -618,45 +738,42 @@ class FinanceController extends Controller {
             
             $prefix = $this->getCompanyPrefix();
             
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
-            $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Read from dashboard_stats table (backend calculated)
+            $stmt = $db->prepare("SELECT placed_quotations, rejected_quotations, pending_quotations, total_quotations FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
+            $stmt->execute([$prefix]);
+            $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            $statusData = ['Draft' => 0, 'Revised' => 0, 'Converted' => 0];
-            $totalCount = 0;
-            $totalAmount = 0;
-            
-            foreach ($results as $row) {
-                $data = json_decode($row['data'], true);
-                $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? $data['number'] ?? '';
+            if ($dashboardStats) {
+                // Return count-based data from backend calculations
+                $statusData = [
+                    'Pending' => intval($dashboardStats['pending_quotations']),
+                    'Placed' => intval($dashboardStats['placed_quotations']),
+                    'Rejected' => intval($dashboardStats['rejected_quotations'])
+                ];
                 
-                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
-                    continue;
-                }
+                echo json_encode([
+                    'labels' => array_keys($statusData),
+                    'data' => array_values($statusData),
+                    'total' => intval($dashboardStats['total_quotations']),
+                    'count' => intval($dashboardStats['total_quotations'])
+                ]);
+            } else {
+                // Fallback: calculate directly if no dashboard_stats available
+                $quotationStats = $this->calculateQuotationOverview($db, $prefix);
                 
-                $amount = floatval($data['amount'] ?? $data['total_amount'] ?? $data['value'] ?? 0);
-                $status = strtolower($data['status'] ?? 'draft');
+                $statusData = [
+                    'Pending' => $quotationStats['pending_quotations'],
+                    'Placed' => $quotationStats['placed_quotations'],
+                    'Rejected' => $quotationStats['rejected_quotations']
+                ];
                 
-                if ($amount > 0) {
-                    $totalCount++;
-                    $totalAmount += $amount;
-                    
-                    if (in_array($status, ['converted', 'accepted', 'won'])) {
-                        $statusData['Converted'] += $amount;
-                    } elseif (in_array($status, ['revised', 'updated'])) {
-                        $statusData['Revised'] += $amount;
-                    } else {
-                        $statusData['Draft'] += $amount;
-                    }
-                }
+                echo json_encode([
+                    'labels' => array_keys($statusData),
+                    'data' => array_values($statusData),
+                    'total' => $quotationStats['total_quotations'],
+                    'count' => $quotationStats['total_quotations']
+                ]);
             }
-            
-            echo json_encode([
-                'labels' => array_keys($statusData),
-                'data' => array_values($statusData),
-                'total' => $totalAmount,
-                'count' => $totalCount
-            ]);
             
         } catch (Exception $e) {
             echo json_encode(['labels' => [], 'data' => [], 'error' => $e->getMessage()]);
@@ -669,99 +786,87 @@ class FinanceController extends Controller {
         try {
             $db = Database::connect();
             $this->createTables($db);
-            
             $prefix = $this->getCompanyPrefix();
             $activities = [];
             
-            // Get recent invoices
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' ORDER BY id DESC LIMIT 3");
+            // Recent Invoices
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices' ORDER BY id DESC LIMIT 5");
             $stmt->execute();
-            $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($invoices as $row) {
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $data = json_decode($row['data'], true);
                 $invoiceNumber = $data['invoice_number'] ?? '';
+                if ($prefix && strpos($invoiceNumber, $prefix) !== 0) continue;
                 
-                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
-                    continue;
-                }
-                
+                $outstanding = floatval($data['outstanding_amount'] ?? 0);
+                $total = floatval($data['total_amount'] ?? 0);
                 $activities[] = [
                     'type' => 'invoice',
-                    'description' => "Invoice {$invoiceNumber} created",
-                    'amount' => floatval($data['total_amount'] ?? 0),
-                    'date' => $data['invoice_date'] ?? date('Y-m-d'),
-                    'status' => $data['payment_status'] ?? 'pending'
+                    'icon' => '💰',
+                    'title' => "Invoice {$invoiceNumber}",
+                    'description' => $outstanding > 0 ? "₹{$total} - Outstanding: ₹{$outstanding}" : "₹{$total} - Paid",
+                    'date' => $data['invoice_date'] ?? $data['created_date'] ?? date('Y-m-d'),
+                    'status' => $outstanding > 0 ? 'pending' : 'completed'
                 ];
             }
             
-            // Get recent quotations
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 2");
+            // Recent Quotations
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations' ORDER BY id DESC LIMIT 3");
             $stmt->execute();
-            $quotations = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($quotations as $row) {
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $data = json_decode($row['data'], true);
                 $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
+                if ($prefix && strpos($quotationNumber, $prefix) !== 0) continue;
                 
-                if ($prefix && !empty($prefix) && strpos($quotationNumber, $prefix) !== 0) {
-                    continue;
-                }
-                
+                $amount = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
                 $activities[] = [
                     'type' => 'quotation',
-                    'description' => "Quotation {$quotationNumber} created",
-                    'amount' => floatval($data['amount'] ?? $data['total_amount'] ?? 0),
+                    'icon' => '📝',
+                    'title' => "Quotation {$quotationNumber}",
+                    'description' => "₹{$amount} - " . ucfirst($data['status'] ?? 'draft'),
                     'date' => $data['created_date'] ?? $data['date'] ?? date('Y-m-d'),
-                    'status' => $data['status'] ?? 'pending'
+                    'status' => strtolower($data['status'] ?? 'draft')
                 ];
             }
             
-            // Get recent purchase orders
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders' ORDER BY id DESC LIMIT 2");
+            // Recent Purchase Orders
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders' ORDER BY id DESC LIMIT 3");
             $stmt->execute();
-            $pos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($pos as $row) {
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $data = json_decode($row['data'], true);
-                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+                $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+                if ($prefix && !stripos($poNumber, $prefix)) continue;
                 
-                if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) {
-                    continue;
-                }
-                
+                $total = floatval($data['total_amount'] ?? 0);
+                $paid = floatval($data['amount_paid'] ?? 0);
                 $activities[] = [
-                    'type' => 'po',
-                    'description' => "Purchase Order {$poNumber} created",
-                    'amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? 0),
-                    'date' => $data['po_date'] ?? $data['created_date'] ?? $data['date'] ?? $data['order_date'] ?? date('Y-m-d'),
-                    'status' => $data['status'] ?? $data['po_status'] ?? 'open'
+                    'type' => 'purchase_order',
+                    'icon' => '🛒',
+                    'title' => "PO {$poNumber}",
+                    'description' => "₹{$total}" . ($paid > 0 ? " - Paid: ₹{$paid}" : " - Open"),
+                    'date' => $data['po_date'] ?? $data['created_date'] ?? date('Y-m-d'),
+                    'status' => ($paid >= $total && !empty($data['received_date'])) ? 'completed' : 'open'
                 ];
             }
             
-            // Get recent payments
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_payments' ORDER BY id DESC LIMIT 1");
+            // Recent Payments
+            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_payments' ORDER BY id DESC LIMIT 2");
             $stmt->execute();
-            $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($payments as $row) {
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $data = json_decode($row['data'], true);
-                $paymentRef = $data['payment_reference'] ?? $data['reference'] ?? '';
+                $paymentRef = $data['payment_reference'] ?? $data['reference'] ?? 'Payment';
                 
-                if ($prefix && !empty($prefix) && strpos($paymentRef, $prefix) !== 0) {
-                    continue;
-                }
-                
+                $amount = floatval($data['amount'] ?? $data['payment_amount'] ?? 0);
                 $activities[] = [
                     'type' => 'payment',
-                    'description' => "Payment {$paymentRef} received",
-                    'amount' => floatval($data['amount'] ?? $data['payment_amount'] ?? 0),
+                    'icon' => '💳',
+                    'title' => "Payment Received",
+                    'description' => "₹{$amount} - {$paymentRef}",
                     'date' => $data['payment_date'] ?? $data['date'] ?? date('Y-m-d'),
                     'status' => 'completed'
                 ];
             }
             
-            // Sort by date
+            // Sort by date (newest first)
             usort($activities, function($a, $b) {
                 return strtotime($b['date']) - strtotime($a['date']);
             });
@@ -910,7 +1015,7 @@ class FinanceController extends Controller {
         }
     }
     
-    private function createTables($db) {
+    public function createTables($db) {
         $db->exec("CREATE TABLE IF NOT EXISTS finance_tables (
             id INT AUTO_INCREMENT PRIMARY KEY,
             table_name VARCHAR(100) UNIQUE,
@@ -945,16 +1050,60 @@ class FinanceController extends Controller {
             outstanding_amount DECIMAL(15,2) DEFAULT 0,
             outstanding_percentage DECIMAL(5,2) DEFAULT 0,
             overdue_amount DECIMAL(15,2) DEFAULT 0,
+            pending_invoices INT DEFAULT 0,
+            customers_pending INT DEFAULT 0,
             customer_count INT DEFAULT 0,
             po_commitments DECIMAL(15,2) DEFAULT 0,
             open_pos INT DEFAULT 0,
-            average_po DECIMAL(15,2) DEFAULT 0,
+            closed_pos INT DEFAULT 0,
             claimable_amount DECIMAL(15,2) DEFAULT 0,
             claimable_pos INT DEFAULT 0,
             claim_rate DECIMAL(5,2) DEFAULT 0,
+            igst_liability DECIMAL(15,2) DEFAULT 0,
+            cgst_sgst_total DECIMAL(15,2) DEFAULT 0,
+            gst_liability DECIMAL(15,2) DEFAULT 0,
             generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY unique_prefix (company_prefix)
         )");
+        
+        // Add new columns for Stat Card 3 if they don't exist
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN pending_invoices INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN customers_pending INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        // Add GST liability columns for Stat Card 4
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN igst_liability DECIMAL(15,2) DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN cgst_sgst_total DECIMAL(15,2) DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN gst_liability DECIMAL(15,2) DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        // Add closed_pos column for Stat Card 5
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN closed_pos INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
     }
     
     private function storeTableData($db, $tableName, $data) {
@@ -997,8 +1146,13 @@ class FinanceController extends Controller {
                 $data = json_decode($row['data'], true);
                 // Check multiple possible field names for PO number
                 $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
+                $internalPoNumber = $data['internal_po_number'] ?? '';
                 
-                if ($prefix && !empty($prefix) && strpos($poNumber, $prefix) !== 0) {
+                $matchesPrefix = !$prefix || 
+                                stripos($poNumber, $prefix) !== false || 
+                                stripos($internalPoNumber, $prefix) !== false;
+                
+                if (!$matchesPrefix) {
                     continue;
                 }
                 
@@ -1176,22 +1330,464 @@ class FinanceController extends Controller {
             $this->createTables($db);
             $prefix = $this->getCompanyPrefix();
             
-            $pgConn = @pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango");
-            if ($pgConn) {
-                $this->calculateStatsForPrefix($db, $pgConn, $prefix);
-                @pg_close($pgConn);
-                echo json_encode(['success' => true, 'message' => 'Stats refreshed for prefix: ' . $prefix]);
-            } else {
-                echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed']);
-            }
+            // Calculate all stats including quotations
+            $this->calculateStatCard3Pipeline($db, null, $prefix);
+            
+            echo json_encode(['success' => true, 'message' => 'Stats refreshed for prefix: ' . $prefix]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
     
+    /**
+     * Implements Chart Card 2 (Purchase Orders) - Revised Logic
+     * Fetches PO + Invoice/Claim data first, then computes results in backend logic
+     * New field mappings:
+     * - Fulfillment Rate (OLD) → POs claimed > 80% (NEW): count
+     * - Avg Lead Time (OLD) → POs claimed > 50% (NEW): count
+     * - Open Commitments (OLD) → POs claimed < 50% (NEW): count
+     */
+    private function calculatePurchaseOrderOverview($db, $prefix) {
+        // Step 1: Fetch all Purchase Orders using company prefix (no SQL aggregation)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $purchaseOrders = [];
+        foreach ($poResults as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+            
+            // Apply prefix filtering - check both po_number and internal_po_number
+            $matchesPrefix = !$prefix || 
+                            stripos($poNumber, $prefix) !== false || 
+                            stripos($data['internal_po_number'] ?? '', $prefix) !== false;
+            
+            if ($matchesPrefix) {
+                $purchaseOrders[] = [
+                    'po_number' => $poNumber,
+                    'po_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
+                    'company_prefix' => $prefix
+                ];
+            }
+        }
+        
+        // Step 2: Fetch matched invoice/claim details per PO (no SQL aggregation)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        $stmt->execute();
+        $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $invoiceClaims = [];
+        foreach ($invoiceResults as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['po_number'] ?? '';
+            $invoiceAmount = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
+            
+            if ($poNumber && $invoiceAmount > 0) {
+                if (!isset($invoiceClaims[$poNumber])) {
+                    $invoiceClaims[$poNumber] = 0;
+                }
+                $invoiceClaims[$poNumber] += $invoiceAmount;
+            }
+        }
+        
+        // Step 3: Join both datasets in backend (NOT SQL join)
+        $count_high_fulfillment = 0; // > 80%
+        $count_mid_fulfillment = 0;  // > 50%
+        $count_low_fulfillment = 0;  // < 50%
+        $po_total_count = count($purchaseOrders);
+        
+        foreach ($purchaseOrders as $po) {
+            $claimed_amount = $invoiceClaims[$po['po_number']] ?? 0;
+            $fulfillment_percentage = $po['po_amount'] > 0 ? ($claimed_amount / $po['po_amount']) * 100 : 0;
+            
+            // Step 4: New KPI Classification Rules
+            if ($fulfillment_percentage > 80) {
+                $count_high_fulfillment++;
+            } elseif ($fulfillment_percentage > 50) {
+                $count_mid_fulfillment++;
+            } else {
+                $count_low_fulfillment++;
+            }
+        }
+        
+        // Step 5: Save to dashboard_stats table
+        $this->updatePurchaseOrderStats($db, $prefix, [
+            'po_high_fulfillment_count' => $count_high_fulfillment,
+            'po_mid_fulfillment_count' => $count_mid_fulfillment,
+            'po_low_fulfillment_count' => $count_low_fulfillment,
+            'po_total_count' => $po_total_count
+        ]);
+        
+        return [
+            'po_high_fulfillment_count' => $count_high_fulfillment,
+            'po_mid_fulfillment_count' => $count_mid_fulfillment,
+            'po_low_fulfillment_count' => $count_low_fulfillment,
+            'po_total_count' => $po_total_count
+        ];
+    }
+    
+    private function updatePurchaseOrderStats($db, $prefix, $stats) {
+        // Add PO columns to dashboard_stats if they don't exist
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_high_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_mid_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_low_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_total_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        
+        // Update dashboard_stats with new PO metrics
+        $stmt = $db->prepare("
+            INSERT INTO dashboard_stats (company_prefix, po_high_fulfillment_count, po_mid_fulfillment_count, po_low_fulfillment_count, po_total_count, generated_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+                po_high_fulfillment_count = VALUES(po_high_fulfillment_count),
+                po_mid_fulfillment_count = VALUES(po_mid_fulfillment_count),
+                po_low_fulfillment_count = VALUES(po_low_fulfillment_count),
+                po_total_count = VALUES(po_total_count),
+                generated_at = NOW()
+        ");
+        
+        $stmt->execute([
+            $prefix,
+            $stats['po_high_fulfillment_count'],
+            $stats['po_mid_fulfillment_count'],
+            $stats['po_low_fulfillment_count'],
+            $stats['po_total_count']
+        ]);
+    }
+
+    /**
+     * Implements Chart Card 1 (Quotations Overview) - Revised Logic
+     * Fetches raw quotation rows first, then computes metrics in backend/service layer
+     * New field mappings:
+     * - Win Rate (OLD) → Placed Quotations (NEW): count of placed quotations
+     * - Avg Deal Size (OLD) → Rejected Quotations (NEW): count of rejected quotations  
+     * - Pipeline Value (OLD) → Pending Quotations (NEW): count of pending quotations
+     */
+    private function calculateQuotationOverview($db, $prefix) {
+        // Step 1: Fetch raw quotation rows using prefix-based filtering (no SQL aggregation)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+        $stmt->execute();
+        $quotationResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $quotations = [];
+        foreach ($quotationResults as $row) {
+            $data = json_decode($row['data'], true);
+            $quotationNumber = $data['quotation_number'] ?? '';
+            
+            // Apply prefix-based filtering
+            if (!$prefix || strpos($quotationNumber, $prefix) === 0) {
+                $quotations[] = [
+                    'id' => $data['id'] ?? '',
+                    'quotation_number' => $quotationNumber,
+                    'amount' => floatval($data['amount'] ?? $data['total_amount'] ?? 0),
+                    'status' => strtolower($data['status'] ?? 'draft')
+                ];
+            }
+        }
+        
+        // Step 2: Move all calculations to backend logic (no SQL aggregation functions)
+        $placed_count = 0;
+        $rejected_count = 0;
+        $pending_count = 0;
+        $total_quotations = count($quotations);
+        
+        // Step 3: Calculate counts based on status
+        foreach ($quotations as $quotation) {
+            $status = $quotation['status'];
+            
+            if ($status === 'placed') {
+                $placed_count++;
+            } elseif ($status === 'rejected') {
+                $rejected_count++;
+            } elseif (in_array($status, ['pending', 'draft', 'revised'])) {
+                $pending_count++;
+            }
+        }
+        
+        // Step 4: Store calculated values into dashboard_stats
+        $this->updateQuotationStats($db, $prefix, [
+            'placed_quotations' => $placed_count,
+            'rejected_quotations' => $rejected_count, 
+            'pending_quotations' => $pending_count,
+            'total_quotations' => $total_quotations
+        ]);
+        
+        return [
+            'placed_quotations' => $placed_count,
+            'rejected_quotations' => $rejected_count,
+            'pending_quotations' => $pending_count,
+            'total_quotations' => $total_quotations
+        ];
+    }
+    
+    private function updateQuotationStats($db, $prefix, $stats) {
+        // Add quotation columns to dashboard_stats if they don't exist
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN placed_quotations INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN rejected_quotations INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN pending_quotations INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN total_quotations INT DEFAULT 0");
+        } catch (Exception $e) {
+            // Column already exists
+        }
+        
+        // Update the dashboard_stats table with new quotation metrics
+        $stmt = $db->prepare("
+            INSERT INTO dashboard_stats (company_prefix, placed_quotations, rejected_quotations, pending_quotations, total_quotations, generated_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+                placed_quotations = VALUES(placed_quotations),
+                rejected_quotations = VALUES(rejected_quotations),
+                pending_quotations = VALUES(pending_quotations),
+                total_quotations = VALUES(total_quotations),
+                generated_at = NOW()
+        ");
+        
+        $stmt->execute([
+            $prefix,
+            $stats['placed_quotations'],
+            $stats['rejected_quotations'],
+            $stats['pending_quotations'],
+            $stats['total_quotations']
+        ]);
+    }
+
+    /**
+     * Implements Stat Card 3 & 4 pipeline with backend calculations only
+     * Follows the exact specification: fetch raw data, calculate in backend, store results
+     */
+    private function calculateStatCard3Pipeline($db, $pgConn, $prefix) {
+        // Step 1: Fetch raw invoice rows from existing finance_data table
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        $stmt->execute();
+        $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $invoices = [];
+        foreach ($invoiceResults as $row) {
+            $data = json_decode($row['data'], true);
+            $invoiceNumber = $data['invoice_number'] ?? '';
+            if (!$prefix || strpos($invoiceNumber, $prefix) === 0) {
+                // Calculate GST components from available data
+                $totalAmount = floatval($data['total_amount'] ?? 0);
+                $taxableAmount = floatval($data['taxable_amount'] ?? $totalAmount);
+                $totalTax = floatval($data['total_tax'] ?? $data['tax_amount'] ?? $data['gst_amount'] ?? 0);
+                
+                // If no explicit tax, calculate 18% GST on taxable amount
+                if ($totalTax == 0 && $taxableAmount > 0) {
+                    $totalTax = $taxableAmount * 0.18;
+                }
+                
+                // Extract individual GST components or split total tax
+                $igst = floatval($data['igst'] ?? 0);
+                $cgst = floatval($data['cgst'] ?? 0);
+                $sgst = floatval($data['sgst'] ?? 0);
+                
+                // If individual components not available, assume CGST+SGST (9% each)
+                if ($igst == 0 && $cgst == 0 && $sgst == 0 && $totalTax > 0) {
+                    $cgst = $totalTax / 2;
+                    $sgst = $totalTax / 2;
+                }
+                
+                $invoices[] = [
+                    'invoice_number' => $invoiceNumber,
+                    'taxable_amount' => $taxableAmount,
+                    'amount_paid' => floatval($data['amount_paid'] ?? 0),
+                    'total_amount' => $totalAmount,
+                    'due_date' => $data['due_date'] ?? '',
+                    'customer_gstin' => $data['customer_gstin'] ?? $data['customer_id'] ?? '',
+                    'igst' => $igst,
+                    'cgst' => $cgst,
+                    'sgst' => $sgst
+                ];
+            }
+        }
+        
+        // Step 2: Perform all calculations in backend/service layer
+        $outstandingAmount = 0;
+        $pendingInvoices = 0;
+        $customersPending = [];
+        $overdueAmount = 0;
+        $totalTaxableAmount = 0;
+        $claimableAmount = 0;
+        $claimablePos = 0;
+        $totalInvoiceAmount = 0;
+        $today = date('Y-m-d');
+        
+        // Stat Card 4: GST Liability calculations
+        $igstLiability = 0;
+        $cgstSgstTotal = 0;
+        
+        foreach ($invoices as $invoice) {
+            $taxableAmount = floatval($invoice['taxable_amount'] ?? 0);
+            $totalAmount = floatval($invoice['total_amount'] ?? 0);
+            $amountPaid = floatval($invoice['amount_paid'] ?? 0);
+            $dueDate = $invoice['due_date'] ?? '';
+            $customerGstin = $invoice['customer_gstin'] ?? '';
+            $igst = floatval($invoice['igst'] ?? 0);
+            $cgst = floatval($invoice['cgst'] ?? 0);
+            $sgst = floatval($invoice['sgst'] ?? 0);
+            
+            // Stat Card 3: Outstanding amount uses only taxable_amount (no GST)
+            $pendingAmount = $taxableAmount - $amountPaid;
+            $totalTaxableAmount += $taxableAmount;
+            
+            // Stat Card 6: Claimable amount uses total_amount (includes GST)
+            $claimable = $totalAmount - $amountPaid;
+            $totalInvoiceAmount += $totalAmount;
+            
+            if ($pendingAmount > 0) {
+                $outstandingAmount += $pendingAmount;
+                $pendingInvoices++;
+                
+                if ($customerGstin) {
+                    $customersPending[$customerGstin] = true;
+                }
+                
+                if ($dueDate && $dueDate < $today) {
+                    $overdueAmount += $pendingAmount;
+                }
+                
+                // Stat Card 4: GST liability only on outstanding invoices
+                $igstLiability += $igst;
+                $cgstSgstTotal += ($cgst + $sgst);
+            }
+            
+            if ($claimable > 0) {
+                $claimableAmount += $claimable;
+                $claimablePos++;
+            }
+        }
+        
+        $customersPendingCount = count($customersPending);
+        $outstandingPercentage = $totalTaxableAmount > 0 ? ($outstandingAmount / $totalTaxableAmount) * 100 : 0;
+        $claimRate = $totalInvoiceAmount > 0 ? ($claimableAmount / $totalInvoiceAmount) * 100 : 0;
+        
+        // Stat Card 4: Total GST Liability
+        $gstLiability = $igstLiability + $cgstSgstTotal;
+        
+        // Calculate other stats
+        $amountReceived = 0;
+        $paidInvoices = 0;
+        
+        foreach ($invoices as $invoice) {
+            $paid = floatval($invoice['amount_paid'] ?? 0);
+            $amountReceived += $paid;
+            if ($paid > 0) $paidInvoices++;
+        }
+        
+        // Stat Card 5: PO Commitments (Backend calculations only)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $poCommitments = 0;
+        $openPos = 0;
+        $closedPos = 0;
+        
+        foreach ($poResults as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+            if (!$prefix || stripos($poNumber, $prefix) !== false) {
+                $totalAmount = floatval($data['total_amount'] ?? 0);
+                $amountPaid = floatval($data['amount_paid'] ?? 0);
+                $receivedDate = $data['received_date'] ?? null;
+                
+                $poCommitments += $totalAmount;
+                
+                // Determine PO status
+                if (($amountPaid < $totalAmount) || empty($receivedDate)) {
+                    $openPos++;
+                } else {
+                    $closedPos++;
+                }
+            }
+        }
+        
+        // Step 6: Calculate Chart Card 1 (Quotations Overview) metrics
+        $quotationStats = $this->calculateQuotationOverview($db, $prefix);
+        
+        // Ensure quotation stats are always included
+        if (empty($quotationStats)) {
+            $quotationStats = ['placed_quotations' => 0, 'rejected_quotations' => 0, 'pending_quotations' => 0, 'total_quotations' => 0];
+        }
+        
+        // Step 7: Calculate Chart Card 2 (Purchase Orders Overview) metrics
+        $poStats = $this->calculatePurchaseOrderOverview($db, $prefix);
+        
+        // Ensure PO stats are always included
+        if (empty($poStats)) {
+            $poStats = ['po_high_fulfillment_count' => 0, 'po_mid_fulfillment_count' => 0, 'po_low_fulfillment_count' => 0, 'po_total_count' => 0];
+        }
+        
+        // PO commitments already calculated above in the loop
+        
+        // Step 7: Store computed results in dashboard_stats table
+        $stats = [
+            'company_prefix' => $prefix,
+            'total_revenue' => $totalInvoiceAmount,
+            'invoice_count' => count($invoices),
+            'average_invoice' => count($invoices) > 0 ? $totalInvoiceAmount / count($invoices) : 0,
+            'amount_received' => $amountReceived,
+            'collection_rate' => $totalInvoiceAmount > 0 ? ($amountReceived / $totalInvoiceAmount) * 100 : 0,
+            'paid_invoices' => $paidInvoices,
+            'outstanding_amount' => $outstandingAmount,
+            'pending_invoices' => $pendingInvoices,
+            'customers_pending' => $customersPendingCount,
+            'overdue_amount' => $overdueAmount,
+            'outstanding_percentage' => $outstandingPercentage,
+            'customer_count' => $customersPendingCount,
+            'po_commitments' => $poCommitments,
+            'open_pos' => $openPos,
+            'closed_pos' => $closedPos,
+            'claimable_amount' => $claimableAmount,
+            'claimable_pos' => $claimablePos,
+            'claim_rate' => $claimRate,
+            'igst_liability' => $igstLiability,
+            'cgst_sgst_total' => $cgstSgstTotal,
+            'gst_liability' => $gstLiability,
+            // Chart Card 1: Quotations Overview (NEW)
+            'placed_quotations' => $quotationStats['placed_quotations'],
+            'rejected_quotations' => $quotationStats['rejected_quotations'],
+            'pending_quotations' => $quotationStats['pending_quotations'],
+            'total_quotations' => $quotationStats['total_quotations'],
+            // Chart Card 2: Purchase Orders Overview (NEW)
+            'po_high_fulfillment_count' => $poStats['po_high_fulfillment_count'],
+            'po_mid_fulfillment_count' => $poStats['po_mid_fulfillment_count'],
+            'po_low_fulfillment_count' => $poStats['po_low_fulfillment_count'],
+            'po_total_count' => $poStats['po_total_count'],
+            // Update PO commitments with backend calculated value
+            'po_commitments' => $poCommitments
+        ];
+        
+        $this->saveDashboardStats($db, $stats);
+    }
+    
     private function calculateStatsForPrefix($db, $pgConn, $prefix) {
-        // Fetch raw invoice data
-        $invoiceQuery = "SELECT id, invoice_number, total_amount, amount_paid, cgst, sgst, customer_gstin, due_date FROM finance_invoices WHERE invoice_number LIKE '$prefix%'";
+        // Fetch raw invoice data using simple SELECT without aggregation
+        $invoiceQuery = "SELECT id, invoice_number, taxable_amount, amount_paid, cgst, sgst, total_amount, due_date, customer_gstin FROM finance_invoices WHERE invoice_number LIKE '$prefix%'";
         $invoiceResult = @pg_query($pgConn, $invoiceQuery);
         $invoices = $invoiceResult ? pg_fetch_all($invoiceResult) : [];
         
@@ -1233,31 +1829,47 @@ class FinanceController extends Controller {
         $stats['collection_rate'] = $totalRevenue > 0 ? ($amountReceived / $totalRevenue) * 100 : 0;
         $stats['paid_invoices'] = $paidInvoices;
         
-        // Stat Card 3: Outstanding Amount
+        // Stat Card 3: Outstanding Amount (Backend calculations only)
         $outstandingAmount = 0;
+        $pendingInvoices = 0;
+        $customersPending = [];
         $overdueAmount = 0;
-        $uniqueCustomers = [];
+        $totalTaxableAmount = 0;
         $today = date('Y-m-d');
         
         foreach ($invoices as $inv) {
-            $total = floatval($inv['total_amount'] ?? 0);
-            $paid = floatval($inv['amount_paid'] ?? 0);
-            $pending = $total - $paid;
+            $taxableAmount = floatval($inv['taxable_amount'] ?? 0);
+            $amountPaid = floatval($inv['amount_paid'] ?? 0);
+            $dueDate = $inv['due_date'] ?? '';
+            $customerGstin = $inv['customer_gstin'] ?? '';
             
-            if ($pending > 0) {
-                $outstandingAmount += $pending;
-                $uniqueCustomers[$inv['customer_gstin'] ?? ''] = true;
+            // Calculate pending amount using only taxable_amount (no GST)
+            $pendingAmount = $taxableAmount - $amountPaid;
+            
+            $totalTaxableAmount += $taxableAmount;
+            
+            if ($pendingAmount > 0) {
+                $outstandingAmount += $pendingAmount;
+                $pendingInvoices++;
                 
-                if (($inv['due_date'] ?? '') < $today) {
-                    $overdueAmount += $pending;
+                // Track unique customers with pending amounts
+                if ($customerGstin) {
+                    $customersPending[$customerGstin] = true;
+                }
+                
+                // Calculate overdue amount
+                if ($dueDate && $dueDate < $today) {
+                    $overdueAmount += $pendingAmount;
                 }
             }
         }
         
         $stats['outstanding_amount'] = $outstandingAmount;
-        $stats['outstanding_percentage'] = $totalRevenue > 0 ? ($outstandingAmount / $totalRevenue) * 100 : 0;
-        $stats['overdue_amount'] = $overdueAmount;
-        $stats['customer_count'] = count($uniqueCustomers);
+        $stats['pending_invoices'] = $pendingInvoices; // Renamed from overdue
+        $stats['customers_pending'] = count($customersPending);
+        $stats['overdue_amount'] = $overdueAmount; // Raw overdue in money
+        $stats['outstanding_percentage'] = $totalTaxableAmount > 0 ? ($outstandingAmount / $totalTaxableAmount) * 100 : 0;
+        $stats['customer_count'] = count($customersPending); // For backward compatibility
         
         // Stat Card 5: PO Commitments
         $poCommitments = 0;
@@ -1292,13 +1904,44 @@ class FinanceController extends Controller {
     }
     
     private function saveDashboardStats($db, $stats) {
+        // Add quotation columns if they don't exist
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN placed_quotations INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN rejected_quotations INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN pending_quotations INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN total_quotations INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_high_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_mid_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_low_fulfillment_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_total_count INT DEFAULT 0");
+        } catch (Exception $e) {}
+        
         $sql = "INSERT INTO dashboard_stats (
                     company_prefix, total_revenue, invoice_count, average_invoice,
                     amount_received, collection_rate, paid_invoices,
-                    outstanding_amount, outstanding_percentage, overdue_amount, customer_count,
-                    po_commitments, open_pos, average_po,
-                    claimable_amount, claimable_pos, claim_rate, generated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    outstanding_amount, outstanding_percentage, overdue_amount, 
+                    pending_invoices, customers_pending, customer_count,
+                    po_commitments, open_pos, closed_pos,
+                    claimable_amount, claimable_pos, claim_rate,
+                    igst_liability, cgst_sgst_total, gst_liability,
+                    placed_quotations, rejected_quotations, pending_quotations, total_quotations,
+                    po_high_fulfillment_count, po_mid_fulfillment_count, po_low_fulfillment_count, po_total_count,
+                    generated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
                     total_revenue = VALUES(total_revenue),
                     invoice_count = VALUES(invoice_count),
@@ -1309,13 +1952,22 @@ class FinanceController extends Controller {
                     outstanding_amount = VALUES(outstanding_amount),
                     outstanding_percentage = VALUES(outstanding_percentage),
                     overdue_amount = VALUES(overdue_amount),
+                    pending_invoices = VALUES(pending_invoices),
+                    customers_pending = VALUES(customers_pending),
                     customer_count = VALUES(customer_count),
                     po_commitments = VALUES(po_commitments),
                     open_pos = VALUES(open_pos),
-                    average_po = VALUES(average_po),
+                    closed_pos = VALUES(closed_pos),
                     claimable_amount = VALUES(claimable_amount),
                     claimable_pos = VALUES(claimable_pos),
                     claim_rate = VALUES(claim_rate),
+                    igst_liability = VALUES(igst_liability),
+                    cgst_sgst_total = VALUES(cgst_sgst_total),
+                    gst_liability = VALUES(gst_liability),
+                    placed_quotations = VALUES(placed_quotations),
+                    rejected_quotations = VALUES(rejected_quotations),
+                    pending_quotations = VALUES(pending_quotations),
+                    total_quotations = VALUES(total_quotations),
                     generated_at = NOW()";
         
         $stmt = $db->prepare($sql);
@@ -1330,13 +1982,22 @@ class FinanceController extends Controller {
             $stats['outstanding_amount'],
             $stats['outstanding_percentage'],
             $stats['overdue_amount'],
+            $stats['pending_invoices'],
+            $stats['customers_pending'],
             $stats['customer_count'],
             $stats['po_commitments'],
             $stats['open_pos'],
-            $stats['average_po'],
+            $stats['closed_pos'],
             $stats['claimable_amount'],
             $stats['claimable_pos'],
-            $stats['claim_rate']
+            $stats['claim_rate'],
+            $stats['igst_liability'],
+            $stats['cgst_sgst_total'],
+            $stats['gst_liability'],
+            $stats['placed_quotations'] ?? 0,
+            $stats['rejected_quotations'] ?? 0,
+            $stats['pending_quotations'] ?? 0,
+            $stats['total_quotations'] ?? 0
         ]);
     }
     
@@ -1615,7 +2276,7 @@ class FinanceController extends Controller {
         return $invoices;
     }
     
-    private function getCompanyPrefix() {
+    public function getCompanyPrefix() {
         try {
             $db = Database::connect();
             $this->createTables($db);
@@ -1672,6 +2333,106 @@ class FinanceController extends Controller {
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);
         }
+    }
+    
+    /**
+     * Get funnel container stats (4 boxes)
+     * UI reads ONLY from funnel_stats table
+     */
+    public function getFunnelContainers() {
+        header('Content-Type: application/json');
+        
+        try {
+            $prefix = $this->getCompanyPrefix();
+            $funnelService = new FunnelStatsService();
+            
+            $containers = $funnelService->getFunnelContainers($prefix);
+            
+            echo json_encode([
+                'success' => true,
+                'containers' => $containers,
+                'prefix' => $prefix
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'containers' => [
+                    'container1' => ['title' => 'Quotations', 'quotations_count' => 0, 'quotations_total_value' => 0],
+                    'container2' => ['title' => 'Purchase Orders', 'po_count' => 0, 'po_total_value' => 0, 'po_conversion_rate' => 0],
+                    'container3' => ['title' => 'Invoices', 'invoice_count' => 0, 'invoice_total_value' => 0, 'invoice_conversion_rate' => 0],
+                    'container4' => ['title' => 'Payments', 'payment_count' => 0, 'total_payment_received' => 0, 'payment_conversion_rate' => 0]
+                ]
+            ]);
+        }
+    }
+    
+    /**
+     * Calculate and refresh funnel stats
+     * Backend calculations → stored → UI reads
+     */
+    public function refreshFunnelStats() {
+        header('Content-Type: application/json');
+        
+        try {
+            $prefix = $this->getCompanyPrefix();
+            $funnelService = new FunnelStatsService();
+            
+            $stats = $funnelService->calculateFunnelStats($prefix);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Funnel stats refreshed successfully',
+                'stats' => $stats,
+                'prefix' => $prefix
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get raw funnel stats from funnel_stats table
+     */
+    public function getFunnelStats() {
+        header('Content-Type: application/json');
+        
+        try {
+            $prefix = $this->getCompanyPrefix();
+            $funnelService = new FunnelStatsService();
+            
+            $stats = $funnelService->getFunnelStats($prefix);
+            
+            echo json_encode([
+                'success' => true,
+                'stats' => $stats,
+                'prefix' => $prefix
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    // Route aliases for funnel endpoints
+    public function funnelContainers() {
+        $this->getFunnelContainers();
+    }
+    
+    public function funnelStats() {
+        $this->getFunnelStats();
+    }
+    
+    public function refreshFunnel() {
+        $this->refreshFunnelStats();
     }
 }
 ?>

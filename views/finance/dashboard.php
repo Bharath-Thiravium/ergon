@@ -93,11 +93,19 @@
             </div>
             <div class="kpi-card__value" id="pendingInvoiceAmount">₹0</div>
             <div class="kpi-card__label">Outstanding Amount</div>
-            <div class="kpi-card__description">Awaiting Customer Payment</div>
+            <div class="kpi-card__description">Taxable Amount Pending (No GST)</div>
             <div class="kpi-card__details">
-                <div class="detail-item">Overdue: <span id="overdueAmount">₹0</span></div>
-                <div class="detail-item">Customers: <span id="pendingCustomers">0</span></div>
+                <div class="detail-item">Pending Invoices: <span id="pendingInvoicesCount">0</span></div>
+                <div class="detail-item">Customers: <span id="customersPendingCount">0</span></div>
+                <div class="detail-item">Overdue Amount: <span id="overdueAmount">₹0</span></div>
             </div>
+            <!-- Stat Card 3 Implementation:
+                 - Outstanding Amount = sum(taxable_amount - amount_paid) where pending > 0
+                 - Pending Invoices = count of invoices with pending_amount > 0
+                 - Customers = count of unique customer_gstin with pending_amount > 0
+                 - Overdue Amount = sum(pending_amount) where due_date < today
+                 - All calculations done in backend, frontend reads from dashboard_stats only
+            -->
         </div>
         
         <div class="kpi-card kpi-card--info">
@@ -107,11 +115,18 @@
             </div>
             <div class="kpi-card__value" id="pendingGSTAmount">₹0</div>
             <div class="kpi-card__label">GST Liability</div>
-            <div class="kpi-card__description">Tax Liability on Outstanding</div>
+            <div class="kpi-card__description">Tax Liability on Outstanding Invoices Only</div>
             <div class="kpi-card__details">
-                <div class="detail-item">CGST: <span id="pendingCGST">₹0</span></div>
-                <div class="detail-item">SGST: <span id="pendingSGST">₹0</span></div>
+                <div class="detail-item">IGST: <span id="igstLiability">₹0</span></div>
+                <div class="detail-item">CGST+SGST: <span id="cgstSgstTotal">₹0</span></div>
             </div>
+            <!-- Stat Card 4 Implementation:
+                 - GST Liability calculated only on outstanding invoices
+                 - IGST = sum(igst) where pending_base > 0
+                 - CGST+SGST = sum(cgst + sgst) where pending_base > 0
+                 - Total GST Liability = IGST + CGST+SGST
+                 - All calculations done in backend, frontend reads from dashboard_stats only
+            -->
         </div>
         
         <div class="kpi-card kpi-card--primary">
@@ -121,11 +136,17 @@
             </div>
             <div class="kpi-card__value" id="pendingPOValue">₹0</div>
             <div class="kpi-card__label">PO Commitments</div>
-            <div class="kpi-card__description">Committed Purchase Orders</div>
+            <div class="kpi-card__description">Total Value of All Purchase Orders</div>
             <div class="kpi-card__details">
                 <div class="detail-item">Open POs: <span id="openPOCount">0</span></div>
-                <div class="detail-item">Avg PO: <span id="avgPOValue">₹0</span></div>
+                <div class="detail-item">Closed POs: <span id="closedPOCount">0</span></div>
             </div>
+            <!-- Stat Card 5 Implementation:
+                 - PO Commitments = sum(total_amount) for all POs
+                 - Open POs = count where (amount_paid < total_amount) OR received_date IS NULL
+                 - Closed POs = count where (amount_paid >= total_amount) AND received_date IS NOT NULL
+                 - All calculations done in backend, frontend reads from dashboard_stats only
+            -->
         </div>
         
         <div class="kpi-card kpi-card--secondary">
@@ -135,7 +156,7 @@
             </div>
             <div class="kpi-card__value" id="claimableAmount">₹0</div>
             <div class="kpi-card__label">Claimable Amount</div>
-            <div class="kpi-card__description">Available for Invoice Claims</div>
+            <div class="kpi-card__description">Total Invoice Amount - Payments Received</div>
             <div class="kpi-card__details">
                 <div class="detail-item">Claimable POs: <span id="claimablePOCount">0</span></div>
                 <div class="detail-item">Claim Rate: <span id="claimRate">0%</span></div>
@@ -194,22 +215,22 @@
                     <div class="chart-card__icon">📝</div>
                     <div class="chart-card__title">Quotations Overview</div>
                     <div class="chart-card__value" id="quotationsTotal">0</div>
-                    <div class="chart-card__subtitle">Sales Pipeline Status Distribution</div>
+                    <div class="chart-card__subtitle">Quotation Status Count Distribution</div>
                 </div>
                 <div class="chart-card__trend" id="quotationsTrend">+0%</div>
             </div>
             <div class="chart-card__chart">
                 <canvas id="quotationsChart"></canvas>
                 <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color" style="background:#3b82f6"></span>Draft (Initial)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Revised (Updated)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Converted (Won)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#3b82f6"></span>Pending (Draft/Revised)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Placed (Approved)</div>
+                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Rejected</div>
                 </div>
             </div>
             <div class="chart-card__meta">
-                <div class="meta-item"><span>Win Rate:</span><strong id="quotationWinRate">0%</strong></div>
-                <div class="meta-item"><span>Avg Deal Size:</span><strong id="quotationsAvg">₹0</strong></div>
-                <div class="meta-item"><span>Pipeline Value:</span><strong id="pipelineValue">₹0</strong></div>
+                <div class="meta-item"><span>Placed Quotations:</span><strong id="placedQuotations">0</strong></div>
+                <div class="meta-item"><span>Rejected Quotations:</span><strong id="rejectedQuotations">0</strong></div>
+                <div class="meta-item"><span>Pending Quotations:</span><strong id="pendingQuotations">0</strong></div>
             </div>
         </div>
         
@@ -362,11 +383,11 @@
             <div class="card__header">
                 <h2 class="card__title">📈 Recent Activities</h2>
                 <div class="activity-filters">
-                    <button class="filter-btn active" data-type="all">All</button>
-                    <button class="filter-btn" data-type="quotation">📝</button>
-                    <button class="filter-btn" data-type="po">🛒</button>
-                    <button class="filter-btn" data-type="invoice">💰</button>
-                    <button class="filter-btn" data-type="payment">💳</button>
+                    <button class="filter-btn active" data-type="all" onclick="loadRecentActivities('all')">All</button>
+                    <button class="filter-btn" data-type="quotation" onclick="loadRecentActivities('quotation')">📝</button>
+                    <button class="filter-btn" data-type="purchase_order" onclick="loadRecentActivities('purchase_order')">🛒</button>
+                    <button class="filter-btn" data-type="invoice" onclick="loadRecentActivities('invoice')">💰</button>
+                    <button class="filter-btn" data-type="payment" onclick="loadRecentActivities('payment')">💳</button>
                 </div>
             </div>
             <div class="card__body">
@@ -414,20 +435,36 @@ let agingBucketsChart;
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification notification--${type}`;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        background: ${type === 'error' ? '#f8d7da' : type === 'success' ? '#d4edda' : type === 'warning' ? '#fff3cd' : '#d1ecf1'};
-        border: 1px solid ${type === 'error' ? '#f5c6cb' : type === 'success' ? '#c3e6cb' : type === 'warning' ? '#ffeaa7' : '#bee5eb'};
-        color: ${type === 'error' ? '#721c24' : type === 'success' ? '#155724' : type === 'warning' ? '#856404' : '#0c5460'};
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 10000;
-        max-width: 400px;
-        font-size: 14px;
-    `;
+    // Use CSS classes instead of inline styles to avoid parsing errors
+    notification.className = `notification notification--${type}`;
+    notification.style.position = 'fixed';
+    notification.style.top = '20px';
+    notification.style.right = '20px';
+    notification.style.padding = '12px 20px';
+    notification.style.borderRadius = '6px';
+    notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    notification.style.zIndex = '10000';
+    notification.style.maxWidth = '400px';
+    notification.style.fontSize = '14px';
+    
+    // Set colors based on type
+    if (type === 'error') {
+        notification.style.background = '#f8d7da';
+        notification.style.border = '1px solid #f5c6cb';
+        notification.style.color = '#721c24';
+    } else if (type === 'success') {
+        notification.style.background = '#d4edda';
+        notification.style.border = '1px solid #c3e6cb';
+        notification.style.color = '#155724';
+    } else if (type === 'warning') {
+        notification.style.background = '#fff3cd';
+        notification.style.border = '1px solid #ffeaa7';
+        notification.style.color = '#856404';
+    } else {
+        notification.style.background = '#d1ecf1';
+        notification.style.border = '1px solid #bee5eb';
+        notification.style.color = '#0c5460';
+    }
     notification.textContent = message;
     
     document.body.appendChild(notification);
@@ -495,7 +532,7 @@ function initCharts() {
     if (quotationsCtx) {
         quotationsChart = new Chart(quotationsCtx.getContext('2d'), {
             type: 'pie',
-            data: { labels: ['Draft','Revised','Converted'], datasets: [{ data: [0,0,0], backgroundColor: ['#3b82f6','#f59e0b','#10b981'] }] },
+            data: { labels: ['Pending','Placed','Rejected'], datasets: [{ data: [0,0,0], backgroundColor: ['#3b82f6','#10b981','#ef4444'] }] },
             options: chartDefaults
         });
     }
@@ -602,11 +639,19 @@ async function showTableStructure() {
         
         // Show in a modal or alert
         const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            max-width: 80%; max-height: 80%; overflow: auto; z-index: 10000;
-        `;
+            // Use individual style properties to avoid CSS parsing errors
+        modal.style.position = 'fixed';
+        modal.style.top = '50%';
+        modal.style.left = '50%';
+        modal.style.transform = 'translate(-50%, -50%)';
+        modal.style.background = 'white';
+        modal.style.padding = '20px';
+        modal.style.borderRadius = '8px';
+        modal.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)';
+        modal.style.maxWidth = '80%';
+        modal.style.maxHeight = '80%';
+        modal.style.overflow = 'auto';
+        modal.style.zIndex = '10000';
         modal.innerHTML = structureHtml + '<button onclick="this.parentNode.remove()" style="margin-top: 15px; padding: 8px 16px;">Close</button>';
         document.body.appendChild(modal);
         
@@ -915,6 +960,14 @@ async function loadDashboardData() {
             showNotification(data.message, 'info');
         }
         
+        // Show source information for Stat Card 3
+        if (data.source === 'dashboard_stats') {
+            console.log('Stat Card 3: Using backend-calculated metrics from dashboard_stats table');
+            console.log('Outstanding Amount calculation: taxable_amount - amount_paid (no GST)');
+        } else if (data.source === 'empty') {
+            showNotification('Stat Card 3 requires backend calculation. Click "Refresh Stats" to calculate metrics.', 'warning');
+        }
+        
     } catch (error) {
         console.error('Failed to load dashboard data:', error);
         showNotification('Failed to load dashboard data: ' + error.message, 'error');
@@ -954,48 +1007,58 @@ function updateKPICards(data) {
     }
     if (paidInvoiceCount) paidInvoiceCount.textContent = funnel.payments || 0;
     
-    // Pending Invoice Amount
-    document.getElementById('pendingInvoiceAmount').textContent = `₹${(data.pendingInvoiceAmount || 0).toLocaleString()}`;
+    // Stat Card 3: Outstanding Amount (Backend calculated)
+    document.getElementById('pendingInvoiceAmount').textContent = `₹${(data.outstandingAmount || data.pendingInvoiceAmount || 0).toLocaleString()}`;
     
-    // Update pending details
+    // Update Stat Card 3 details with backend calculations
+    const pendingInvoicesCount = document.getElementById('pendingInvoicesCount');
+    const customersPendingCount = document.getElementById('customersPendingCount');
     const overdueAmount = document.getElementById('overdueAmount');
-    const pendingCustomers = document.getElementById('pendingCustomers');
-    if (overdueAmount) overdueAmount.textContent = `₹${((data.pendingInvoiceAmount || 0) * 0.3).toLocaleString()}`; // Estimate
-    if (pendingCustomers) pendingCustomers.textContent = Math.ceil((funnel.invoices - funnel.payments) / 2) || 0; // Estimate
     
-    // Pending GST Amount
-    document.getElementById('pendingGSTAmount').textContent = `₹${(data.pendingGSTAmount || 0).toLocaleString()}`;
+    if (pendingInvoicesCount) pendingInvoicesCount.textContent = data.pendingInvoices || 0;
+    if (customersPendingCount) customersPendingCount.textContent = data.customersPending || 0;
+    if (overdueAmount) overdueAmount.textContent = `₹${(data.overdueAmount || 0).toLocaleString()}`;
     
-    // Update GST details
-    const pendingCGST = document.getElementById('pendingCGST');
-    const pendingSGST = document.getElementById('pendingSGST');
-    if (pendingCGST) pendingCGST.textContent = `₹${Math.round((data.pendingGSTAmount || 0) / 2).toLocaleString()}`;
-    if (pendingSGST) pendingSGST.textContent = `₹${Math.round((data.pendingGSTAmount || 0) / 2).toLocaleString()}`;
+    // Update trend for outstanding percentage
+    const pendingTrend = document.getElementById('pendingTrend');
+    if (pendingTrend && data.outstandingPercentage !== undefined) {
+        pendingTrend.textContent = `${Math.round(data.outstandingPercentage)}%`;
+    }
+    
+    // Stat Card 4: GST Liability (Backend calculated)
+    document.getElementById('pendingGSTAmount').textContent = `₹${(data.gstLiability || data.pendingGSTAmount || 0).toLocaleString()}`;
+    
+    // Update GST details from backend calculations
+    const igstLiability = document.getElementById('igstLiability');
+    const cgstSgstTotal = document.getElementById('cgstSgstTotal');
+    if (igstLiability) igstLiability.textContent = `₹${(data.igstLiability || 0).toLocaleString()}`;
+    if (cgstSgstTotal) cgstSgstTotal.textContent = `₹${(data.cgstSgstTotal || 0).toLocaleString()}`;
     
     // PO Commitments - Use both dashboard data and funnel data
     const poValue = data.pendingPOValue || funnel.poValue || 0;
     document.getElementById('pendingPOValue').textContent = `₹${poValue.toLocaleString()}`;
     
-    // Update PO details
+    // Update PO details from backend calculations
     const openPOCount = document.getElementById('openPOCount');
-    const avgPOValue = document.getElementById('avgPOValue');
-    const openCount = data.openPOCount || funnel.purchaseOrders || 0;
+    const closedPOCount = document.getElementById('closedPOCount');
     
-    if (openPOCount) openPOCount.textContent = openCount;
-    if (avgPOValue && openCount > 0) {
-        avgPOValue.textContent = `₹${Math.round(poValue / openCount).toLocaleString()}`;
-    } else if (avgPOValue) {
-        avgPOValue.textContent = '₹0';
-    }
+    if (openPOCount) openPOCount.textContent = data.openPOCount || 0;
+    if (closedPOCount) closedPOCount.textContent = data.closedPOCount || 0;
     
-    // Claimable Amount
+    // Stat Card 6: Claimable Amount (Backend calculated from invoices)
     document.getElementById('claimableAmount').textContent = `₹${(data.claimableAmount || 0).toLocaleString()}`;
     
-    // Update claimable details
+    // Update claimable details with backend calculations
     const claimablePOCount = document.getElementById('claimablePOCount');
     const claimRate = document.getElementById('claimRate');
-    if (claimablePOCount) claimablePOCount.textContent = data.claimablePOCount || 0;
-    if (claimRate) claimRate.textContent = `${data.claimRate || 0}%`;
+    if (claimablePOCount) claimablePOCount.textContent = data.claimablePOCount || data.claimablePos || 0;
+    if (claimRate) claimRate.textContent = `${Math.round(data.claimRate || 0)}%`;
+    
+    // Update trend for claim rate
+    const claimableTrend = document.getElementById('claimableTrend');
+    if (claimableTrend && data.claimRate !== undefined) {
+        claimableTrend.textContent = `${Math.round(data.claimRate)}%`;
+    }
 }
 
 function updateConversionFunnel(data) {
@@ -1031,21 +1094,26 @@ async function updateCharts(data) {
             quotationsChart.update();
         }
         
-        // Update quotation metrics from funnel data
-        const funnel = data.conversionFunnel || {};
-        const winRateEl = document.getElementById('quotationWinRate');
-        const avgEl = document.getElementById('quotationsAvg');
-        const pipelineEl = document.getElementById('pipelineValue');
+        // Update Chart Card 1: Quotations Overview (NEW - backend calculated counts)
+        const placedEl = document.getElementById('placedQuotations');
+        const rejectedEl = document.getElementById('rejectedQuotations');
+        const pendingEl = document.getElementById('pendingQuotations');
         const totalEl = document.getElementById('quotationsTotal');
         
-        if (winRateEl) winRateEl.textContent = `${funnel.quotationToPO || 0}%`;
-        if (avgEl && funnel.quotations > 0) {
-            avgEl.textContent = `₹${Math.round((funnel.quotationValue || 0) / funnel.quotations).toLocaleString()}`;
-        } else if (avgEl) {
-            avgEl.textContent = '₹0';
+        if (placedEl) placedEl.textContent = data.placedQuotations || 0;
+        if (rejectedEl) rejectedEl.textContent = data.rejectedQuotations || 0;
+        if (pendingEl) pendingEl.textContent = data.pendingQuotations || 0;
+        if (totalEl) totalEl.textContent = data.totalQuotations || 0;
+        
+        // Update quotations chart with count data
+        if (quotationsChart) {
+            quotationsChart.data.datasets[0].data = [
+                data.pendingQuotations || 0,
+                data.placedQuotations || 0, 
+                data.rejectedQuotations || 0
+            ];
+            quotationsChart.update();
         }
-        if (pipelineEl) pipelineEl.textContent = `₹${(funnel.quotationValue || 0).toLocaleString()}`;
-        if (totalEl) totalEl.textContent = funnel.quotations || 0;
         
         // Update Purchase Orders Chart
         const poResponse = await fetch('/ergon/finance/visualization?type=purchase_orders');
@@ -1280,37 +1348,93 @@ async function loadOutstandingByCustomer(limit = 10) {
 
 async function loadRecentActivities(type = 'all') {
     try {
-        // Use existing quotations endpoint as fallback until backend is implemented
-        const response = await fetch('/ergon/finance/recent-quotations');
+        const response = await fetch('/ergon/finance/recent-activities');
         if (!response.ok) {
             throw new Error('Recent activities API not available');
         }
-        const activityText = await response.text();
-        const data = activityText ? JSON.parse(activityText) : {};
+        const data = await response.json();
         
         const container = document.getElementById('recentActivities');
-        if (data.quotations && data.quotations.length > 0) {
-            container.innerHTML = data.quotations.map(quote => `
-                <div class="activity-item activity-item--quotation">
-                    <div class="activity-icon">📝</div>
-                    <div class="activity-content">
-                        <div class="activity-title">${quote.quotation_number}</div>
-                        <div class="activity-details">₹${quote.total_amount.toLocaleString()} - ${quote.customer_name}</div>
-                        <div class="activity-meta">
-                            <span class="activity-type">Quotation</span>
-                            <span class="activity-date">Expires: ${quote.valid_until}</span>
+        if (data.activities && data.activities.length > 0) {
+            let filteredActivities = data.activities;
+            if (type !== 'all') {
+                filteredActivities = data.activities.filter(activity => activity.type === type);
+            }
+            
+            container.innerHTML = filteredActivities.map(activity => {
+                const statusClass = getActivityStatusClass(activity.status);
+                const timeAgo = getTimeAgo(activity.date);
+                
+                return `
+                    <div class="activity-item activity-item--${activity.type}">
+                        <div class="activity-icon">${activity.icon}</div>
+                        <div class="activity-content">
+                            <div class="activity-title">${activity.title}</div>
+                            <div class="activity-details">${activity.description}</div>
+                            <div class="activity-meta">
+                                <span class="activity-type">${getActivityTypeLabel(activity.type)}</span>
+                                <span class="activity-date">${timeAgo}</span>
+                            </div>
                         </div>
+                        <div class="activity-status ${statusClass}">${getStatusLabel(activity.status)}</div>
                     </div>
-                    <div class="activity-status activity-status--pending">Active</div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
-            container.innerHTML = '<div class="activity-item"><div class="activity-loading">No recent activities</div></div>';
+            container.innerHTML = '<div class="activity-item"><div class="activity-loading">No recent activities found</div></div>';
         }
+        
+        // Update filter button states
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === type);
+        });
+        
     } catch (error) {
         console.error('Failed to load recent activities:', error);
-        document.getElementById('recentActivities').innerHTML = '<div class="activity-item"><div class="activity-loading">No activities available</div></div>';
+        document.getElementById('recentActivities').innerHTML = '<div class="activity-item"><div class="activity-loading">Error loading activities</div></div>';
     }
+}
+
+function getActivityStatusClass(status) {
+    const statusMap = {
+        'completed': 'activity-status--completed',
+        'pending': 'activity-status--pending',
+        'open': 'activity-status--pending',
+        'draft': 'activity-status--draft'
+    };
+    return statusMap[status] || 'activity-status--pending';
+}
+
+function getStatusLabel(status) {
+    const labelMap = {
+        'completed': 'Completed',
+        'pending': 'Pending',
+        'open': 'Open',
+        'draft': 'Draft'
+    };
+    return labelMap[status] || 'Active';
+}
+
+function getActivityTypeLabel(type) {
+    const typeMap = {
+        'invoice': 'Invoice',
+        'quotation': 'Quotation',
+        'purchase_order': 'Purchase Order',
+        'payment': 'Payment'
+    };
+    return typeMap[type] || 'Activity';
+}
+
+function getTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString();
 }
 
 function getActivityIcon(type) {
@@ -2368,6 +2492,11 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 .activity-status--completed {
     background: rgba(16, 185, 129, 0.1);
     color: var(--success);
+}
+
+.activity-status--draft {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--text-muted);
 }
 
 .activity-loading {
