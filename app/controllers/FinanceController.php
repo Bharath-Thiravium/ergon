@@ -1098,12 +1098,16 @@ class FinanceController extends Controller {
             // Column already exists
         }
         
-        // Add closed_pos column for Stat Card 5
+        // Add Stat Card 5 columns
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN po_commitments DECIMAL(15,2) DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $db->exec("ALTER TABLE dashboard_stats ADD COLUMN open_pos INT DEFAULT 0");
+        } catch (Exception $e) {}
         try {
             $db->exec("ALTER TABLE dashboard_stats ADD COLUMN closed_pos INT DEFAULT 0");
-        } catch (Exception $e) {
-            // Column already exists
-        }
+        } catch (Exception $e) {}
     }
     
     private function storeTableData($db, $tableName, $data) {
@@ -1698,7 +1702,7 @@ class FinanceController extends Controller {
             if ($paid > 0) $paidInvoices++;
         }
         
-        // Stat Card 5: PO Commitments (Backend calculations only)
+        // Stat Card 5: PO Commitments (Backend calculations only - NO SQL aggregation)
         $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
         $stmt->execute();
         $poResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1709,16 +1713,23 @@ class FinanceController extends Controller {
         
         foreach ($poResults as $row) {
             $data = json_decode($row['data'], true);
+            if (!$data) continue;
+            
             $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+            
+            // Apply prefix filtering
             if (!$prefix || stripos($poNumber, $prefix) !== false) {
-                $totalAmount = floatval($data['total_amount'] ?? 0);
+                $totalAmount = floatval($data['total_amount'] ?? $data['amount'] ?? 0);
                 $amountPaid = floatval($data['amount_paid'] ?? 0);
                 $receivedDate = $data['received_date'] ?? null;
                 
+                // PO commitment = sum of all total_amount
                 $poCommitments += $totalAmount;
                 
-                // Determine PO status
-                if (($amountPaid < $totalAmount) || empty($receivedDate)) {
+                // Determine PO status as per specification
+                $isOpen = ($amountPaid < $totalAmount) || empty($receivedDate);
+                
+                if ($isOpen) {
                     $openPos++;
                 } else {
                     $closedPos++;
