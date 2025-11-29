@@ -1,129 +1,45 @@
-# Cron Examples
-# =============
+# Cron Configuration (Recommended)
 
-# Run invoice sync every 10 minutes for ERGN prefix
+# Invoice sync every 10 minutes
 */10 * * * * /usr/bin/php /var/www/ergon/src/cli/sync_invoices.php --prefix=ERGN >> /var/log/finance_sync_ERGN.log 2>&1
 
-# Run activities sync every 5 minutes for ERGN prefix
+# Activities sync every 5 minutes
 */5 * * * * /usr/bin/php /var/www/ergon/src/cli/sync_activities.php --prefix=ERGN >> /var/log/finance_activities_ERGN.log 2>&1
 
-# Run cashflow computation every 15 minutes for ERGN prefix
+# Cashflow computation every 15 minutes
 */15 * * * * /usr/bin/php /var/www/ergon/src/cli/compute_cashflow.php --prefix=ERGN >> /var/log/finance_cashflow_ERGN.log 2>&1
 
-# Run full invoice sync daily at 2 AM
+# Full syncs daily
 0 2 * * * /usr/bin/php /var/www/ergon/src/cli/sync_invoices.php --prefix=ERGN --full >> /var/log/finance_sync_ERGN_full.log 2>&1
-
-# Run full activities sync daily at 3 AM
 0 3 * * * /usr/bin/php /var/www/ergon/src/cli/sync_activities.php --prefix=ERGN --full >> /var/log/finance_activities_ERGN_full.log 2>&1
-
-# Run full cashflow computation daily at 4 AM
 0 4 * * * /usr/bin/php /var/www/ergon/src/cli/compute_cashflow.php --prefix=ERGN --full >> /var/log/finance_cashflow_ERGN_full.log 2>&1
 
-# Run sync for multiple prefixes
-*/15 * * * * /usr/bin/php /var/www/ergon/src/cli/sync_invoices.php --prefix=ERGN >> /var/log/finance_sync_ERGN.log 2>&1
-*/15 * * * * /usr/bin/php /var/www/ergon/src/cli/sync_invoices.php --prefix=COMP2 >> /var/log/finance_sync_COMP2.log 2>&1
+# Systemd Service Configuration (Alternative)
 
-# Test sync with limited rows (useful for monitoring)
-0 */6 * * * /usr/bin/php /var/www/ergon/src/cli/sync_invoices.php --prefix=ERGN --limit=10 >> /var/log/finance_sync_test.log 2>&1
-
-# Systemd Service File
-# ===================
-# Save as: /etc/systemd/system/finance-sync@.service
-
+# /etc/systemd/system/finance-sync-invoices@.service
 [Unit]
 Description=Finance Invoice Sync for %i
-After=network.target mysql.service postgresql.service
+After=network.target
 
 [Service]
 Type=oneshot
 User=www-data
-Group=www-data
-WorkingDirectory=/var/www/ergon
-Environment=PATH=/usr/local/bin:/usr/bin:/bin
 ExecStart=/usr/bin/php /var/www/ergon/src/cli/sync_invoices.php --prefix=%i
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=finance-sync-%i
 
-# Security settings
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/var/log /tmp
-
-[Install]
-WantedBy=multi-user.target
-
-# Systemd Timer File
-# ==================
-# Save as: /etc/systemd/system/finance-sync@.timer
-
+# /etc/systemd/system/finance-sync-invoices@.timer
 [Unit]
 Description=Run Finance Invoice Sync for %i every 10 minutes
-Requires=finance-sync@%i.service
+Requires=finance-sync-invoices@%i.service
 
 [Timer]
 OnCalendar=*:0/10
 Persistent=true
-RandomizedDelaySec=30
 
 [Install]
 WantedBy=timers.target
 
-# Usage Commands
-# ==============
-
-# Enable and start timer for ERGN prefix
-sudo systemctl enable finance-sync@ERGN.timer
-sudo systemctl start finance-sync@ERGN.timer
-
-# Check timer status
-sudo systemctl status finance-sync@ERGN.timer
-
-# Run sync manually
-sudo systemctl start finance-sync@ERGN.service
-
-# View logs
-sudo journalctl -u finance-sync@ERGN.service -f
-
-# Stop and disable
-sudo systemctl stop finance-sync@ERGN.timer
-sudo systemctl disable finance-sync@ERGN.timer
-
-# Docker Compose Example (Optional)
-# =================================
-# If running databases in containers
-
-version: '3.8'
-services:
-  finance-sync:
-    build: .
-    environment:
-      - PG_DSN=pgsql:host=postgres;port=5432;dbname=sap_source
-      - PG_USER=postgres
-      - PG_PASS=password
-      - MYSQL_DSN=mysql:host=mysql;port=3306;dbname=finance_db;charset=utf8mb4
-      - MYSQL_USER=finance_user
-      - MYSQL_PASS=password
-      - COMPANY_PREFIX=ERGN
-      - BATCH_SIZE=500
-    depends_on:
-      - postgres
-      - mysql
-    command: php src/cli/sync_invoices.php --prefix=ERGN
-    
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: sap_source
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-    
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_DATABASE: finance_db
-      MYSQL_USER: finance_user
-      MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: rootpassword
+# Enable and start
+# systemctl enable finance-sync-invoices@ERGN.timer
+# systemctl start finance-sync-invoices@ERGN.timer
