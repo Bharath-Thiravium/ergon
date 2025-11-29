@@ -64,6 +64,9 @@ class FinanceController extends Controller {
                     $etlService->getAnalytics($prefix, ['customer' => $customerFilter])['funnel'] : 
                     $this->getConversionFunnel($db, $customerFilter);
                 
+                // Debug: Log current prefix and available data
+                error_log("Dashboard Stats - Prefix: $prefix, Stats found for: {$dashboardStats['company_prefix']}");
+                
                 echo json_encode([
                     'totalInvoiceAmount' => floatval($dashboardStats['total_revenue']),
                     'invoiceReceived' => floatval($dashboardStats['amount_received']),
@@ -100,12 +103,31 @@ class FinanceController extends Controller {
                 ]);
                 return;
             } else {
-                // No data available - suggest running ETL
-                echo json_encode([
-                    'message' => 'No analytics data available. Please run ETL sync first.',
-                    'source' => 'empty',
-                    'suggestion' => 'Click "Sync Data" to run ETL process'
-                ]);
+                // Check if data exists for other prefixes
+                $stmt = $db->prepare("SELECT company_prefix, total_revenue FROM dashboard_stats ORDER BY generated_at DESC");
+                $stmt->execute();
+                $availableData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (!empty($availableData)) {
+                    // Use the most recent data available
+                    $latestStats = $availableData[0];
+                    $actualPrefix = $latestStats['company_prefix'];
+                    
+                    echo json_encode([
+                        'message' => "No data for prefix '$prefix'. Using latest available data for '$actualPrefix'",
+                        'totalInvoiceAmount' => floatval($latestStats['total_revenue']),
+                        'source' => 'fallback_latest',
+                        'actual_prefix' => $actualPrefix,
+                        'requested_prefix' => $prefix,
+                        'available_prefixes' => array_column($availableData, 'company_prefix')
+                    ]);
+                } else {
+                    echo json_encode([
+                        'message' => 'No analytics data available. Please run ETL sync first.',
+                        'source' => 'empty',
+                        'suggestion' => 'Click "Sync Data" to run ETL process'
+                    ]);
+                }
                 return;
             }
             
