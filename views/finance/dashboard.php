@@ -685,7 +685,7 @@ async function showTableStructure() {
 
 async function loadDashboardData() {
     try {
-        const response = await fetch('../src/api/?action=dashboard&prefix=ERGN');
+        const response = await fetch('../src/api/simple_api.php?action=dashboard&prefix=ERGN');
         const data = await response.json();
         
         console.log('Dashboard Stats:', data);
@@ -911,7 +911,7 @@ async function syncFinanceData() {
     btn.innerHTML = '<span class="btn__icon">⚡</span><span class="btn__text">Running ETL...</span>';
     
     try {
-        const response = await fetch('../src/api/?action=sync', {method: 'POST'});
+        const response = await fetch('../src/api/simple_api.php?action=sync', {method: 'POST'});
         const result = await response.json();
         
         if (result.success) {
@@ -1069,7 +1069,7 @@ function updateKPITrend(elementId, value, suffix = '') {
 
 async function updateConversionFunnel(data) {
     try {
-        const response = await fetch('../src/api/?action=funnel-containers&prefix=ERGN');
+        const response = await fetch('../src/api/simple_api.php?action=funnel-containers&prefix=ERGN');
         const funnelData = await response.json();
         
         if (funnelData.success && funnelData.containers) {
@@ -1143,7 +1143,7 @@ async function updateCharts(data) {
     const funnel = data.conversionFunnel || {};
     try {
         // Update Quotations Chart
-        const quotationsResponse = await fetch('../src/api/?action=visualization&type=quotations&prefix=ERGN');
+        const quotationsResponse = await fetch('../src/api/simple_api.php?action=visualization&type=quotations&prefix=ERGN');
         if (!quotationsResponse.ok) throw new Error('Quotations API not available');
         const quotationsText = await quotationsResponse.text();
         const quotationsData = quotationsText ? JSON.parse(quotationsText) : {};
@@ -1175,7 +1175,7 @@ async function updateCharts(data) {
         }
         
         // Update Purchase Orders Chart
-        const poResponse = await fetch('../src/api/?action=visualization&type=purchase_orders&prefix=ERGN');
+        const poResponse = await fetch('../src/api/simple_api.php?action=visualization&type=purchase_orders&prefix=ERGN');
         if (!poResponse.ok) throw new Error('PO API not available');
         const poText = await poResponse.text();
         const poData = poText ? JSON.parse(poText) : {};
@@ -1204,7 +1204,7 @@ async function updateCharts(data) {
         if (poTotalEl) poTotalEl.textContent = funnel.purchaseOrders || 0;
         
         // Update Invoices Chart
-        const invoicesResponse = await fetch('../src/api/?action=visualization&type=invoices&prefix=ERGN');
+        const invoicesResponse = await fetch('../src/api/simple_api.php?action=visualization&type=invoices&prefix=ERGN');
         if (!invoicesResponse.ok) throw new Error('Invoices API not available');
         const invoicesText = await invoicesResponse.text();
         const invoicesData = invoicesText ? JSON.parse(invoicesText) : {};
@@ -1233,7 +1233,7 @@ async function updateCharts(data) {
         if (invoicesTotalEl) invoicesTotalEl.textContent = funnel.invoices || 0;
         
         // Update Outstanding by Customer Chart
-        const outstandingResp = await fetch('../src/api/?action=outstanding-by-customer&limit=10&prefix=ERGN');
+        const outstandingResp = await fetch('../src/api/simple_api.php?action=outstanding-by-customer&limit=10&prefix=ERGN');
         if (!outstandingResp.ok) throw new Error('Outstanding API not available');
         const outstandingText = await outstandingResp.text();
         const outstandingData = outstandingText ? JSON.parse(outstandingText) : {};
@@ -1265,7 +1265,7 @@ async function updateCharts(data) {
         if (outTotalEl) outTotalEl.textContent = `₹${(outstandingData.data?.total || 0).toLocaleString()}`;
 
         // Update Aging Buckets Chart
-        const agingResp = await fetch('../src/api/?action=aging-buckets&prefix=ERGN');
+        const agingResp = await fetch('../src/api/simple_api.php?action=aging-buckets&prefix=ERGN');
         if (!agingResp.ok) throw new Error('Aging API not available');
         const agingText = await agingResp.text();
         const agingData = agingText ? JSON.parse(agingText) : {};
@@ -1298,7 +1298,7 @@ async function updateCharts(data) {
         if (agingTotalEl) agingTotalEl.textContent = `₹${agingTotal.toLocaleString()}`;
         
         // Update Payments Chart
-        const paymentsResp = await fetch('../src/api/?action=visualization&type=payments&prefix=ERGN');
+        const paymentsResp = await fetch('../src/api/simple_api.php?action=visualization&type=payments&prefix=ERGN');
         if (!paymentsResp.ok) throw new Error('Payments API not available');
         const paymentsText = await paymentsResp.text();
         const paymentsData = paymentsText ? JSON.parse(paymentsText) : {};
@@ -1348,7 +1348,7 @@ async function updateCharts(data) {
 
 async function loadOutstandingInvoices() {
     try {
-        const response = await fetch('../src/api/?action=outstanding-invoices&prefix=ERGN');
+        const response = await fetch('../src/api/simple_api.php?action=outstanding-invoices&prefix=ERGN');
         if (!response.ok) {
             console.warn('Outstanding invoices API not implemented yet');
             const tbody = document.querySelector('#outstandingTable tbody');
@@ -1394,7 +1394,7 @@ async function loadOutstandingInvoices() {
 // Load outstanding-by-customer and update chart
 async function loadOutstandingByCustomer(limit = 10) {
     try {
-        const resp = await fetch(`../src/api/?action=outstanding-by-customer&limit=${limit}&prefix=ERGN`);
+        const resp = await fetch(`../src/api/simple_api.php?action=outstanding-by-customer&limit=${limit}&prefix=ERGN`);
         const data = await resp.json();
         if (outstandingByCustomerChart && data.data && data.data.labels) {
             outstandingByCustomerChart.data.labels = data.data.labels;
@@ -1410,7 +1410,7 @@ async function loadOutstandingByCustomer(limit = 10) {
 
 async function loadRecentActivities(type = 'all') {
     try {
-        const response = await fetch('../src/api/?action=activities&prefix=ERGN');
+        const response = await fetch('../src/api/simple_api.php?action=activities&prefix=ERGN');
         if (!response.ok) {
             throw new Error('Recent activities API not available');
         }

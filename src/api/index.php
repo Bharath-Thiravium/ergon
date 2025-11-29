@@ -1,13 +1,27 @@
 <?php
 
-require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../../app/config/database.php';
+require_once __DIR__ . '/RecentActivitiesController.php';
 
 use Ergon\FinanceSync\Api\RecentActivitiesController;
 
+// Simple logger class implementing PSR-3 interface
+class SimpleLogger implements \Psr\Log\LoggerInterface {
+    public function emergency($message, array $context = []) { error_log("EMERGENCY: $message"); }
+    public function alert($message, array $context = []) { error_log("ALERT: $message"); }
+    public function critical($message, array $context = []) { error_log("CRITICAL: $message"); }
+    public function error($message, array $context = []) { error_log("ERROR: $message"); }
+    public function warning($message, array $context = []) { error_log("WARNING: $message"); }
+    public function notice($message, array $context = []) { error_log("NOTICE: $message"); }
+    public function info($message, array $context = []) { error_log("INFO: $message"); }
+    public function debug($message, array $context = []) { error_log("DEBUG: $message"); }
+    public function log($level, $message, array $context = []) { error_log("$level: $message"); }
+}
+
 try {
-    // Create MySQL connection and logger
-    $mysqlConnection = createMysqlConnection();
-    $logger = createLogger();
+    // Use existing database connection
+    $mysqlConnection = Database::connect();
+    $logger = new SimpleLogger();
     
     // Create controller
     $controller = new RecentActivitiesController($mysqlConnection, $logger);
@@ -17,9 +31,7 @@ try {
     
 } catch (Exception $e) {
     // Log error and return generic error response
-    if (isset($logger)) {
-        $logger->error("API bootstrap failed: " . $e->getMessage());
-    }
+    error_log("API bootstrap failed: " . $e->getMessage());
     
     header('Content-Type: application/json');
     http_response_code(500);

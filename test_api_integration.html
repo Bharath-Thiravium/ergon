@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Integration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 8px 16px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+    </style>
+</head>
+<body>
+    <h1>API Integration Test</h1>
+    
+    <div class="test-section">
+        <h3>Test Controls</h3>
+        <button class="btn-primary" onclick="testDashboardAPI()">Test Dashboard API</button>
+        <button class="btn-primary" onclick="testActivitiesAPI()">Test Activities API</button>
+        <button class="btn-primary" onclick="testFunnelAPI()">Test Funnel API</button>
+        <button class="btn-success" onclick="testAllAPIs()">Test All APIs</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        function addResult(title, content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const section = document.createElement('div');
+            section.className = `test-section ${type}`;
+            section.innerHTML = `<h3>${title}</h3><div>${content}</div>`;
+            resultsDiv.appendChild(section);
+        }
+
+        async function testDashboardAPI() {
+            try {
+                addResult('Dashboard API Test', 'Testing...', 'info');
+                
+                const response = await fetch('../src/api/?action=dashboard&prefix=ERGN');
+                const data = await response.json();
+                
+                if (data.success) {
+                    let content = '<strong>✅ Dashboard API Success</strong><br>';
+                    content += `<strong>Data Structure:</strong><br>`;
+                    content += `- Total Invoice Amount: ₹${data.data.totalInvoiceAmount?.toLocaleString() || 0}<br>`;
+                    content += `- Invoice Received: ₹${data.data.invoiceReceived?.toLocaleString() || 0}<br>`;
+                    content += `- Outstanding Amount: ₹${data.data.pendingInvoiceAmount?.toLocaleString() || 0}<br>`;
+                    content += `- GST Liability: ₹${data.data.pendingGSTAmount?.toLocaleString() || 0}<br>`;
+                    content += `- PO Commitments: ₹${data.data.pendingPOValue?.toLocaleString() || 0}<br>`;
+                    content += `- Claimable Amount: ₹${data.data.claimableAmount?.toLocaleString() || 0}<br>`;
+                    
+                    if (data.data.conversionFunnel) {
+                        content += `<br><strong>Conversion Funnel:</strong><br>`;
+                        content += `- Quotations: ${data.data.conversionFunnel.quotations} (₹${data.data.conversionFunnel.quotationValue?.toLocaleString()})<br>`;
+                        content += `- Purchase Orders: ${data.data.conversionFunnel.purchaseOrders} (₹${data.data.conversionFunnel.poValue?.toLocaleString()})<br>`;
+                        content += `- Invoices: ${data.data.conversionFunnel.invoices} (₹${data.data.conversionFunnel.invoiceValue?.toLocaleString()})<br>`;
+                        content += `- Payments: ${data.data.conversionFunnel.payments} (₹${data.data.conversionFunnel.paymentValue?.toLocaleString()})<br>`;
+                    }
+                    
+                    content += '<br><strong>Raw Response:</strong><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    addResult('Dashboard API Test - SUCCESS', content, 'success');
+                } else {
+                    addResult('Dashboard API Test - ERROR', `❌ ${data.error}<br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'error');
+                }
+            } catch (error) {
+                addResult('Dashboard API Test - ERROR', `❌ Network/Parse Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testActivitiesAPI() {
+            try {
+                addResult('Activities API Test', 'Testing...', 'info');
+                
+                const response = await fetch('../src/api/?action=activities&prefix=ERGN&limit=5');
+                const data = await response.json();
+                
+                if (data.success) {
+                    let content = '<strong>✅ Activities API Success</strong><br>';
+                    content += `<strong>Activities Count:</strong> ${data.data.length}<br><br>`;
+                    
+                    if (data.data.length > 0) {
+                        content += '<strong>Sample Activities:</strong><br>';
+                        data.data.slice(0, 3).forEach((activity, index) => {
+                            content += `${index + 1}. ${activity.icon} ${activity.document_number} - ${activity.customer_name} (₹${activity.formatted_amount})<br>`;
+                        });
+                    }
+                    
+                    content += '<br><strong>Raw Response:</strong><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    addResult('Activities API Test - SUCCESS', content, 'success');
+                } else {
+                    addResult('Activities API Test - ERROR', `❌ ${data.error}<br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'error');
+                }
+            } catch (error) {
+                addResult('Activities API Test - ERROR', `❌ Network/Parse Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFunnelAPI() {
+            try {
+                addResult('Funnel API Test', 'Testing...', 'info');
+                
+                const response = await fetch('../src/api/?action=funnel-containers&prefix=ERGN');
+                const data = await response.json();
+                
+                if (data.success) {
+                    let content = '<strong>✅ Funnel API Success</strong><br>';
+                    
+                    if (data.data.containers) {
+                        const containers = data.data.containers;
+                        content += '<strong>Funnel Containers:</strong><br>';
+                        content += `- Container 1 (Quotations): ${containers.container1?.quotations_count || 0} items, ₹${containers.container1?.quotations_total_value?.toLocaleString() || 0}<br>`;
+                        content += `- Container 2 (POs): ${containers.container2?.po_count || 0} items, ₹${containers.container2?.po_total_value?.toLocaleString() || 0}<br>`;
+                        content += `- Container 3 (Invoices): ${containers.container3?.invoice_count || 0} items, ₹${containers.container3?.invoice_total_value?.toLocaleString() || 0}<br>`;
+                        content += `- Container 4 (Payments): ${containers.container4?.payment_count || 0} items, ₹${containers.container4?.total_payment_received?.toLocaleString() || 0}<br>`;
+                    }
+                    
+                    content += '<br><strong>Raw Response:</strong><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    addResult('Funnel API Test - SUCCESS', content, 'success');
+                } else {
+                    addResult('Funnel API Test - ERROR', `❌ ${data.error}<br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'error');
+                }
+            } catch (error) {
+                addResult('Funnel API Test - ERROR', `❌ Network/Parse Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAllAPIs() {
+            document.getElementById('results').innerHTML = '';
+            await testDashboardAPI();
+            await testActivitiesAPI();
+            await testFunnelAPI();
+            
+            // Test data flow integration
+            addResult('Integration Test', 'Testing data flow integration...', 'info');
+            
+            try {
+                const dashboardResponse = await fetch('../src/api/?action=dashboard&prefix=ERGN');
+                const dashboardData = await dashboardResponse.json();
+                
+                if (dashboardData.success) {
+                    // Simulate KPI card updates
+                    let integrationContent = '<strong>✅ Data Flow Integration Test</strong><br>';
+                    integrationContent += '<strong>Simulated KPI Card Updates:</strong><br>';
+                    
+                    const data = dashboardData.data;
+                    const funnel = data.conversionFunnel || {};
+                    
+                    // Simulate the updateKPICards function logic
+                    const kpiUpdates = {
+                        totalInvoiceAmount: data.totalInvoiceAmount || 0,
+                        invoiceReceived: data.invoiceReceived || 0,
+                        pendingInvoiceAmount: data.pendingInvoiceAmount || 0,
+                        pendingGSTAmount: data.pendingGSTAmount || 0,
+                        pendingPOValue: data.pendingPOValue || 0,
+                        claimableAmount: data.claimableAmount || 0
+                    };
+                    
+                    Object.entries(kpiUpdates).forEach(([id, value]) => {
+                        integrationContent += `- ${id}: ₹${Number(value).toLocaleString()}<br>`;
+                    });
+                    
+                    // Test detail calculations
+                    integrationContent += '<br><strong>Detail Calculations:</strong><br>';
+                    integrationContent += `- Total Invoice Count: ${funnel.invoices || 0}<br>`;
+                    integrationContent += `- Average Invoice: ₹${funnel.invoices > 0 ? Math.round((data.totalInvoiceAmount || 0) / funnel.invoices).toLocaleString() : 0}<br>`;
+                    integrationContent += `- Collection Rate: ${data.totalInvoiceAmount > 0 ? Math.round((data.invoiceReceived / data.totalInvoiceAmount) * 100) : 0}%<br>`;
+                    integrationContent += `- Paid Invoices: ${funnel.payments || 0}<br>`;
+                    
+                    addResult('Data Flow Integration - SUCCESS', integrationContent, 'success');
+                } else {
+                    addResult('Data Flow Integration - ERROR', `❌ Dashboard API failed: ${dashboardData.error}`, 'error');
+                }
+            } catch (error) {
+                addResult('Data Flow Integration - ERROR', `❌ Integration test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run tests on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(testAllAPIs, 1000);
+        });
+    </script>
+</body>
+</html>
