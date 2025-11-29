@@ -57,111 +57,8 @@
     </div>
 
     <!-- Top-Level KPI Cards -->
-    <div class="dashboard-grid">
-        <div class="kpi-card kpi-card--success">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">💰</div>
-                <div class="kpi-card__trend" id="invoiceTrend">↗ +0%</div>
-            </div>
-            <div class="kpi-card__value" id="totalInvoiceAmount">₹0</div>
-            <div class="kpi-card__label">Total Invoice Amount</div>
-            <div class="kpi-card__description">Total Revenue Generated</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">Count: <span id="totalInvoiceCount">0</span></div>
-                <div class="detail-item">Avg: <span id="avgInvoiceAmount">₹0</span></div>
-            </div>
-        </div>
-        
-        <div class="kpi-card kpi-card--success">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">✅</div>
-                <div class="kpi-card__trend" id="receivedTrend">↗ +0%</div>
-            </div>
-            <div class="kpi-card__value" id="invoiceReceived">₹0</div>
-            <div class="kpi-card__label">Amount Received</div>
-            <div class="kpi-card__description">Successfully Collected Revenue</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">Collection Rate: <span id="collectionRateKPI">0%</span></div>
-                <div class="detail-item">Paid Invoices: <span id="paidInvoiceCount">0</span></div>
-            </div>
-        </div>
-        
-        <div class="kpi-card kpi-card--warning">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">⏳</div>
-                <div class="kpi-card__trend" id="pendingTrend">— 0%</div>
-            </div>
-            <div class="kpi-card__value" id="pendingInvoiceAmount">₹0</div>
-            <div class="kpi-card__label">Outstanding Amount</div>
-            <div class="kpi-card__description">Taxable Amount Pending (No GST)</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">Pending Invoices: <span id="pendingInvoicesCount">0</span></div>
-                <div class="detail-item">Customers: <span id="customersPendingCount">0</span></div>
-                <div class="detail-item">Overdue Amount: <span id="overdueAmount">₹0</span></div>
-            </div>
-            <!-- Stat Card 3 Implementation:
-                 - Outstanding Amount = sum(taxable_amount - amount_paid) where pending > 0
-                 - Pending Invoices = count of invoices with pending_amount > 0
-                 - Customers = count of unique customer_gstin with pending_amount > 0
-                 - Overdue Amount = sum(pending_amount) where due_date < today
-                 - All calculations done in backend, frontend reads from dashboard_stats only
-            -->
-        </div>
-        
-        <div class="kpi-card kpi-card--info">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">🏛️</div>
-                <div class="kpi-card__trend" id="gstTrend">— 0%</div>
-            </div>
-            <div class="kpi-card__value" id="pendingGSTAmount">₹0</div>
-            <div class="kpi-card__label">GST Liability</div>
-            <div class="kpi-card__description">Tax Liability on Outstanding Invoices Only</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">IGST: <span id="igstLiability">₹0</span></div>
-                <div class="detail-item">CGST+SGST: <span id="cgstSgstTotal">₹0</span></div>
-            </div>
-            <!-- Stat Card 4 Implementation:
-                 - GST Liability calculated only on outstanding invoices
-                 - IGST = sum(igst) where pending_base > 0
-                 - CGST+SGST = sum(cgst + sgst) where pending_base > 0
-                 - Total GST Liability = IGST + CGST+SGST
-                 - All calculations done in backend, frontend reads from dashboard_stats only
-            -->
-        </div>
-        
-        <div class="kpi-card kpi-card--primary">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">🛒</div>
-                <div class="kpi-card__trend" id="poTrend">↗ +0%</div>
-            </div>
-            <div class="kpi-card__value" id="pendingPOValue">₹0</div>
-            <div class="kpi-card__label">PO Commitments</div>
-            <div class="kpi-card__description">Total Value of All Purchase Orders</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">Open POs: <span id="openPOCount">0</span></div>
-                <div class="detail-item">Closed POs: <span id="closedPOCount">0</span></div>
-            </div>
-            <!-- Stat Card 5 Implementation:
-                 - PO Commitments = sum(total_amount) for all POs
-                 - Open POs = count where (amount_paid < total_amount) OR received_date IS NULL
-                 - Closed POs = count where (amount_paid >= total_amount) AND received_date IS NOT NULL
-                 - All calculations done in backend, frontend reads from dashboard_stats only
-            -->
-        </div>
-        
-        <div class="kpi-card kpi-card--secondary">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">💸</div>
-                <div class="kpi-card__trend" id="claimableTrend">— 0%</div>
-            </div>
-            <div class="kpi-card__value" id="claimableAmount">₹0</div>
-            <div class="kpi-card__label">Claimable Amount</div>
-            <div class="kpi-card__description">Total Invoice Amount - Payments Received</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">Claimable POs: <span id="claimablePOCount">0</span></div>
-                <div class="detail-item">Claim Rate: <span id="claimRate">0%</span></div>
-            </div>
-        </div>
+    <div class="dashboard-grid" id="kpiCardsContainer">
+        <!-- KPI cards will be dynamically generated -->
     </div>
 
     <!-- Conversion Funnel -->
@@ -492,6 +389,7 @@ function showNotification(message, type = 'info') {
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
+    initKPICards();
     
     document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
     document.getElementById('exportBtn').addEventListener('click', exportDashboard);
@@ -517,6 +415,111 @@ document.addEventListener('DOMContentLoaded', function() {
         debugPurchaseOrders();
     });
 });
+
+// KPI Card Configuration
+const KPI_CARDS_CONFIG = [
+    {
+        id: 'totalInvoiceAmount',
+        icon: '💰',
+        label: 'Total Invoice Amount',
+        description: 'Total Revenue Generated',
+        variant: 'success',
+        trendId: 'invoiceTrend',
+        details: [
+            { label: 'Count', valueId: 'totalInvoiceCount' },
+            { label: 'Avg', valueId: 'avgInvoiceAmount' }
+        ]
+    },
+    {
+        id: 'invoiceReceived',
+        icon: '✅',
+        label: 'Amount Received',
+        description: 'Successfully Collected Revenue',
+        variant: 'success',
+        trendId: 'receivedTrend',
+        details: [
+            { label: 'Collection Rate', valueId: 'collectionRateKPI' },
+            { label: 'Paid Invoices', valueId: 'paidInvoiceCount' }
+        ]
+    },
+    {
+        id: 'pendingInvoiceAmount',
+        icon: '⏳',
+        label: 'Outstanding Amount',
+        description: 'Taxable Amount Pending (No GST)',
+        variant: 'warning',
+        trendId: 'pendingTrend',
+        details: [
+            { label: 'Pending Invoices', valueId: 'pendingInvoicesCount' },
+            { label: 'Customers', valueId: 'customersPendingCount' },
+            { label: 'Overdue Amount', valueId: 'overdueAmount' }
+        ]
+    },
+    {
+        id: 'pendingGSTAmount',
+        icon: '🏛️',
+        label: 'GST Liability',
+        description: 'Tax Liability on Outstanding Invoices Only',
+        variant: 'info',
+        trendId: 'gstTrend',
+        details: [
+            { label: 'IGST', valueId: 'igstLiability' },
+            { label: 'CGST+SGST', valueId: 'cgstSgstTotal' }
+        ]
+    },
+    {
+        id: 'pendingPOValue',
+        icon: '🛒',
+        label: 'PO Commitments',
+        description: 'Total Value of All Purchase Orders',
+        variant: 'primary',
+        trendId: 'poTrend',
+        details: [
+            { label: 'Open POs', valueId: 'openPOCount' },
+            { label: 'Closed POs', valueId: 'closedPOCount' }
+        ]
+    },
+    {
+        id: 'claimableAmount',
+        icon: '💸',
+        label: 'Claimable Amount',
+        description: 'Total Invoice Amount - Payments Received',
+        variant: 'secondary',
+        trendId: 'claimableTrend',
+        details: [
+            { label: 'Claimable POs', valueId: 'claimablePOCount' },
+            { label: 'Claim Rate', valueId: 'claimRate' }
+        ]
+    }
+];
+
+function initKPICards() {
+    const container = document.getElementById('kpiCardsContainer');
+    if (!container) return;
+    
+    container.innerHTML = KPI_CARDS_CONFIG.map(card => createKPICardHTML(card)).join('');
+}
+
+function createKPICardHTML(config) {
+    const detailsHTML = config.details.map(detail => 
+        `<div class="detail-item">${detail.label}: <span id="${detail.valueId}">${detail.label.includes('Rate') || detail.label.includes('%') ? '0%' : (detail.label.includes('Amount') ? '₹0' : '0')}</span></div>`
+    ).join('');
+    
+    return `
+        <div class="kpi-card kpi-card--${config.variant}">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">${config.icon}</div>
+                <div class="kpi-card__trend" id="${config.trendId}">↗ +0%</div>
+            </div>
+            <div class="kpi-card__value" id="${config.id}">₹0</div>
+            <div class="kpi-card__label">${config.label}</div>
+            <div class="kpi-card__description">${config.description}</div>
+            <div class="kpi-card__details">
+                ${detailsHTML}
+            </div>
+        </div>
+    `;
+}
 
 function initCharts() {
     const chartDefaults = {
@@ -697,23 +700,9 @@ async function loadDashboardData() {
         }
         
         // Update KPI cards
-        updateKPICard('totalInvoiceAmount', data.totalInvoiceAmount || 0);
-        updateKPICard('invoiceReceived', data.invoiceReceived || 0);
-        updateKPICard('pendingInvoiceAmount', data.pendingInvoiceAmount || 0);
-        updateKPICard('pendingGSTAmount', data.pendingGSTAmount || 0);
-        updateKPICard('pendingPOValue', data.pendingPOValue || 0);
-        updateKPICard('claimableAmount', data.claimableAmount || 0);
+        updateKPICards(data);
         
-        // Update PO specific metrics
-        const openPOElement = document.getElementById('openPOCount');
-        if (openPOElement) {
-            openPOElement.textContent = data.openPOCount || 0;
-        }
-        
-        const totalPOElement = document.getElementById('totalPOCount');
-        if (totalPOElement) {
-            totalPOElement.textContent = data.totalPOCount || 0;
-        }
+
         
         // Update conversion funnel
         if (data.conversionFunnel) {
@@ -750,16 +739,7 @@ async function loadDashboardData() {
     }
 }
 
-function updateKPICard(elementId, value) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        if (typeof value === 'number') {
-            element.textContent = '₹' + value.toLocaleString();
-        } else {
-            element.textContent = value;
-        }
-    }
-}
+
 
 function updateConversionFunnel(funnel) {
     // Update quotations
@@ -1010,85 +990,80 @@ async function loadDashboardData() {
 function updateKPICards(data) {
     const funnel = data.conversionFunnel || {};
     
-    // Total Invoice Amount
-    document.getElementById('totalInvoiceAmount').textContent = `₹${(data.totalInvoiceAmount || 0).toLocaleString()}`;
+    // Update main KPI values using the configuration
+    const kpiUpdates = {
+        totalInvoiceAmount: data.totalInvoiceAmount || 0,
+        invoiceReceived: data.invoiceReceived || 0,
+        pendingInvoiceAmount: data.outstanding_amount || data.outstandingAmount || data.pendingInvoiceAmount || 0,
+        pendingGSTAmount: data.gstLiability || data.pendingGSTAmount || 0,
+        pendingPOValue: data.pendingPOValue || funnel.poValue || 0,
+        claimableAmount: data.claimable_amount || data.claimableAmount || 0
+    };
     
-    // Update invoice details
-    const totalInvoiceCount = document.getElementById('totalInvoiceCount');
-    const avgInvoiceAmount = document.getElementById('avgInvoiceAmount');
-    if (totalInvoiceCount) totalInvoiceCount.textContent = funnel.invoices || 0;
-    if (avgInvoiceAmount && funnel.invoices > 0) {
-        avgInvoiceAmount.textContent = `₹${Math.round((data.totalInvoiceAmount || 0) / funnel.invoices).toLocaleString()}`;
-    } else if (avgInvoiceAmount) {
-        avgInvoiceAmount.textContent = '₹0';
+    // Update main values
+    Object.entries(kpiUpdates).forEach(([id, value]) => {
+        updateKPIValue(id, value);
+    });
+    
+    // Update detail values
+    updateKPIDetail('totalInvoiceCount', funnel.invoices || 0);
+    updateKPIDetail('avgInvoiceAmount', funnel.invoices > 0 ? Math.round((data.totalInvoiceAmount || 0) / funnel.invoices) : 0, true);
+    
+    updateKPIDetail('collectionRateKPI', data.totalInvoiceAmount > 0 ? Math.round((data.invoiceReceived / data.totalInvoiceAmount) * 100) : 0, false, '%');
+    updateKPIDetail('paidInvoiceCount', funnel.payments || 0);
+    
+    updateKPIDetail('pendingInvoicesCount', data.pending_invoices || data.pendingInvoices || 0);
+    updateKPIDetail('customersPendingCount', data.customers_pending || data.customersPending || 0);
+    updateKPIDetail('overdueAmount', data.overdue_amount || data.overdueAmount || 0, true);
+    
+    updateKPIDetail('igstLiability', data.igstLiability || 0, true);
+    updateKPIDetail('cgstSgstTotal', data.cgstSgstTotal || 0, true);
+    
+    updateKPIDetail('openPOCount', data.openPOCount || 0);
+    updateKPIDetail('closedPOCount', data.closedPOCount || 0);
+    
+    updateKPIDetail('claimablePOCount', data.claimable_pos || data.claimablePOCount || data.claimablePos || 0);
+    updateKPIDetail('claimRate', Math.round(data.claim_rate || data.claimRate || 0), false, '%');
+    
+    // Update trends
+    updateKPITrend('pendingTrend', data.outstanding_percentage || data.outstandingPercentage || 0, '%');
+    updateKPITrend('claimableTrend', data.claim_rate || data.claimRate || 0, '%');
+}
+
+function updateKPIValue(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = `₹${Number(value).toLocaleString()}`;
     }
-    
-    // Invoice Amount Received
-    document.getElementById('invoiceReceived').textContent = `₹${(data.invoiceReceived || 0).toLocaleString()}`;
-    
-    // Update received details
-    const collectionRateKPI = document.getElementById('collectionRateKPI');
-    const paidInvoiceCount = document.getElementById('paidInvoiceCount');
-    if (collectionRateKPI && data.totalInvoiceAmount > 0) {
-        collectionRateKPI.textContent = `${Math.round((data.invoiceReceived / data.totalInvoiceAmount) * 100)}%`;
-    } else if (collectionRateKPI) {
-        collectionRateKPI.textContent = '0%';
+}
+
+function updateKPIDetail(elementId, value, isCurrency = false, suffix = '') {
+    const element = document.getElementById(elementId);
+    if (element) {
+        let displayValue = value;
+        if (isCurrency) {
+            displayValue = `₹${Number(value).toLocaleString()}`;
+        } else if (suffix) {
+            displayValue = `${value}${suffix}`;
+        }
+        element.textContent = displayValue;
     }
-    if (paidInvoiceCount) paidInvoiceCount.textContent = funnel.payments || 0;
-    
-    // Stat Card 3: Outstanding Amount (Backend calculated - taxable only, no GST)
-    document.getElementById('pendingInvoiceAmount').textContent = `₹${(data.outstanding_amount || data.outstandingAmount || data.pendingInvoiceAmount || 0).toLocaleString()}`;
-    
-    // Update Stat Card 3 details with backend calculations
-    const pendingInvoicesCount = document.getElementById('pendingInvoicesCount');
-    const customersPendingCount = document.getElementById('customersPendingCount');
-    const overdueAmount = document.getElementById('overdueAmount');
-    
-    if (pendingInvoicesCount) pendingInvoicesCount.textContent = data.pending_invoices || data.pendingInvoices || 0;
-    if (customersPendingCount) customersPendingCount.textContent = data.customers_pending || data.customersPending || 0;
-    if (overdueAmount) overdueAmount.textContent = `₹${(data.overdue_amount || data.overdueAmount || 0).toLocaleString()}`;
-    
-    // Update trend for outstanding percentage
-    const pendingTrend = document.getElementById('pendingTrend');
-    if (pendingTrend && (data.outstanding_percentage !== undefined || data.outstandingPercentage !== undefined)) {
-        const percentage = data.outstanding_percentage || data.outstandingPercentage || 0;
-        pendingTrend.textContent = `${Math.round(percentage)}%`;
-    }
-    
-    // Stat Card 4: GST Liability (Backend calculated)
-    document.getElementById('pendingGSTAmount').textContent = `₹${(data.gstLiability || data.pendingGSTAmount || 0).toLocaleString()}`;
-    
-    // Update GST details from backend calculations
-    const igstLiability = document.getElementById('igstLiability');
-    const cgstSgstTotal = document.getElementById('cgstSgstTotal');
-    if (igstLiability) igstLiability.textContent = `₹${(data.igstLiability || 0).toLocaleString()}`;
-    if (cgstSgstTotal) cgstSgstTotal.textContent = `₹${(data.cgstSgstTotal || 0).toLocaleString()}`;
-    
-    // PO Commitments - Use both dashboard data and funnel data
-    const poValue = data.pendingPOValue || funnel.poValue || 0;
-    document.getElementById('pendingPOValue').textContent = `₹${poValue.toLocaleString()}`;
-    
-    // Update PO details from backend calculations
-    const openPOCount = document.getElementById('openPOCount');
-    const closedPOCount = document.getElementById('closedPOCount');
-    
-    if (openPOCount) openPOCount.textContent = data.openPOCount || 0;
-    if (closedPOCount) closedPOCount.textContent = data.closedPOCount || 0;
-    
-    // Stat Card 6: Claimable Amount (Backend calculated - total_amount - amount_paid, GST included)
-    document.getElementById('claimableAmount').textContent = `₹${(data.claimable_amount || data.claimableAmount || 0).toLocaleString()}`;
-    
-    // Update claimable details with backend calculations
-    const claimablePOCount = document.getElementById('claimablePOCount');
-    const claimRate = document.getElementById('claimRate');
-    if (claimablePOCount) claimablePOCount.textContent = data.claimable_pos || data.claimablePOCount || data.claimablePos || 0;
-    if (claimRate) claimRate.textContent = `${Math.round(data.claim_rate || data.claimRate || 0)}%`;
-    
-    // Update trend for claim rate
-    const claimableTrend = document.getElementById('claimableTrend');
-    if (claimableTrend && (data.claim_rate !== undefined || data.claimRate !== undefined)) {
-        const rate = data.claim_rate || data.claimRate || 0;
-        claimableTrend.textContent = `${Math.round(rate)}%`;
+}
+
+function updateKPITrend(elementId, value, suffix = '') {
+    const element = document.getElementById(elementId);
+    if (element) {
+        const displayValue = `${Math.round(value)}${suffix}`;
+        element.textContent = displayValue;
+        
+        // Update trend direction
+        if (value > 0) {
+            element.textContent = `↗ +${displayValue}`;
+        } else if (value < 0) {
+            element.textContent = `↘ ${displayValue}`;
+        } else {
+            element.textContent = `— ${displayValue}`;
+        }
     }
 }
 

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPI Cards Test</title>
+    <link rel="stylesheet" href="assets/css/ergon.css">
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem;
+        }
+        
+        .kpi-card {
+            background: var(--bg-primary, #fff);
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .kpi-card--success { border-left: 4px solid #10b981; }
+        .kpi-card--warning { border-left: 4px solid #f59e0b; }
+        .kpi-card--info { border-left: 4px solid #3b82f6; }
+        .kpi-card--primary { border-left: 4px solid #8b5cf6; }
+        .kpi-card--secondary { border-left: 4px solid #6b7280; }
+        
+        .kpi-card__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .kpi-card__icon {
+            font-size: 1.5rem;
+        }
+        
+        .kpi-card__trend {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+        }
+        
+        .kpi-card__value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary, #111827);
+            margin-bottom: 0.5rem;
+        }
+        
+        .kpi-card__label {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-secondary, #6b7280);
+            margin-bottom: 0.5rem;
+        }
+        
+        .kpi-card__description {
+            font-size: 0.8rem;
+            color: var(--text-muted, #9ca3af);
+            margin-bottom: 1rem;
+        }
+        
+        .kpi-card__details {
+            display: flex;
+            justify-content: space-between;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color, #e5e7eb);
+        }
+        
+        .detail-item {
+            font-size: 0.8rem;
+            color: var(--text-secondary, #6b7280);
+        }
+        
+        .detail-item span {
+            font-weight: 600;
+            color: var(--text-primary, #111827);
+        }
+        
+        .test-controls {
+            margin: 2rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            border: none;
+            border-radius: 6px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+        }
+        
+        .btn:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-controls">
+        <h2>KPI Cards Refactoring Test</h2>
+        <p>This page tests the refactored KPI cards functionality.</p>
+        <button class="btn" onclick="initKPICards()">Initialize KPI Cards</button>
+        <button class="btn" onclick="updateWithTestData()">Update with Test Data</button>
+        <button class="btn" onclick="clearCards()">Clear Cards</button>
+    </div>
+
+    <div class="dashboard-grid" id="kpiCardsContainer">
+        <!-- KPI cards will be dynamically generated here -->
+    </div>
+
+    <script>
+        // KPI Card Configuration (copied from dashboard.php)
+        const KPI_CARDS_CONFIG = [
+            {
+                id: 'totalInvoiceAmount',
+                icon: '💰',
+                label: 'Total Invoice Amount',
+                description: 'Total Revenue Generated',
+                variant: 'success',
+                trendId: 'invoiceTrend',
+                details: [
+                    { label: 'Count', valueId: 'totalInvoiceCount' },
+                    { label: 'Avg', valueId: 'avgInvoiceAmount' }
+                ]
+            },
+            {
+                id: 'invoiceReceived',
+                icon: '✅',
+                label: 'Amount Received',
+                description: 'Successfully Collected Revenue',
+                variant: 'success',
+                trendId: 'receivedTrend',
+                details: [
+                    { label: 'Collection Rate', valueId: 'collectionRateKPI' },
+                    { label: 'Paid Invoices', valueId: 'paidInvoiceCount' }
+                ]
+            },
+            {
+                id: 'pendingInvoiceAmount',
+                icon: '⏳',
+                label: 'Outstanding Amount',
+                description: 'Taxable Amount Pending (No GST)',
+                variant: 'warning',
+                trendId: 'pendingTrend',
+                details: [
+                    { label: 'Pending Invoices', valueId: 'pendingInvoicesCount' },
+                    { label: 'Customers', valueId: 'customersPendingCount' },
+                    { label: 'Overdue Amount', valueId: 'overdueAmount' }
+                ]
+            },
+            {
+                id: 'pendingGSTAmount',
+                icon: '🏛️',
+                label: 'GST Liability',
+                description: 'Tax Liability on Outstanding Invoices Only',
+                variant: 'info',
+                trendId: 'gstTrend',
+                details: [
+                    { label: 'IGST', valueId: 'igstLiability' },
+                    { label: 'CGST+SGST', valueId: 'cgstSgstTotal' }
+                ]
+            },
+            {
+                id: 'pendingPOValue',
+                icon: '🛒',
+                label: 'PO Commitments',
+                description: 'Total Value of All Purchase Orders',
+                variant: 'primary',
+                trendId: 'poTrend',
+                details: [
+                    { label: 'Open POs', valueId: 'openPOCount' },
+                    { label: 'Closed POs', valueId: 'closedPOCount' }
+                ]
+            },
+            {
+                id: 'claimableAmount',
+                icon: '💸',
+                label: 'Claimable Amount',
+                description: 'Total Invoice Amount - Payments Received',
+                variant: 'secondary',
+                trendId: 'claimableTrend',
+                details: [
+                    { label: 'Claimable POs', valueId: 'claimablePOCount' },
+                    { label: 'Claim Rate', valueId: 'claimRate' }
+                ]
+            }
+        ];
+
+        function initKPICards() {
+            const container = document.getElementById('kpiCardsContainer');
+            if (!container) return;
+            
+            container.innerHTML = KPI_CARDS_CONFIG.map(card => createKPICardHTML(card)).join('');
+            console.log('KPI Cards initialized successfully');
+        }
+
+        function createKPICardHTML(config) {
+            const detailsHTML = config.details.map(detail => 
+                `<div class="detail-item">${detail.label}: <span id="${detail.valueId}">${detail.label.includes('Rate') || detail.label.includes('%') ? '0%' : (detail.label.includes('Amount') ? '₹0' : '0')}</span></div>`
+            ).join('');
+            
+            return `
+                <div class="kpi-card kpi-card--${config.variant}">
+                    <div class="kpi-card__header">
+                        <div class="kpi-card__icon">${config.icon}</div>
+                        <div class="kpi-card__trend" id="${config.trendId}">↗ +0%</div>
+                    </div>
+                    <div class="kpi-card__value" id="${config.id}">₹0</div>
+                    <div class="kpi-card__label">${config.label}</div>
+                    <div class="kpi-card__description">${config.description}</div>
+                    <div class="kpi-card__details">
+                        ${detailsHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateWithTestData() {
+            const testData = {
+                totalInvoiceAmount: 2400780,
+                invoiceReceived: 1800000,
+                outstanding_amount: 600780,
+                pending_invoices: 5,
+                customers_pending: 3,
+                overdue_amount: 150000,
+                gstLiability: 108140,
+                igstLiability: 50000,
+                cgstSgstTotal: 58140,
+                pendingPOValue: 1200000,
+                openPOCount: 8,
+                closedPOCount: 12,
+                claimable_amount: 600780,
+                claimable_pos: 5,
+                claim_rate: 75,
+                conversionFunnel: {
+                    invoices: 25,
+                    payments: 20,
+                    poValue: 1200000
+                }
+            };
+
+            updateKPICards(testData);
+            console.log('KPI Cards updated with test data');
+        }
+
+        function updateKPICards(data) {
+            const funnel = data.conversionFunnel || {};
+            
+            // Update main KPI values using the configuration
+            const kpiUpdates = {
+                totalInvoiceAmount: data.totalInvoiceAmount || 0,
+                invoiceReceived: data.invoiceReceived || 0,
+                pendingInvoiceAmount: data.outstanding_amount || data.outstandingAmount || data.pendingInvoiceAmount || 0,
+                pendingGSTAmount: data.gstLiability || data.pendingGSTAmount || 0,
+                pendingPOValue: data.pendingPOValue || funnel.poValue || 0,
+                claimableAmount: data.claimable_amount || data.claimableAmount || 0
+            };
+            
+            // Update main values
+            Object.entries(kpiUpdates).forEach(([id, value]) => {
+                updateKPIValue(id, value);
+            });
+            
+            // Update detail values
+            updateKPIDetail('totalInvoiceCount', funnel.invoices || 0);
+            updateKPIDetail('avgInvoiceAmount', funnel.invoices > 0 ? Math.round((data.totalInvoiceAmount || 0) / funnel.invoices) : 0, true);
+            
+            updateKPIDetail('collectionRateKPI', data.totalInvoiceAmount > 0 ? Math.round((data.invoiceReceived / data.totalInvoiceAmount) * 100) : 0, false, '%');
+            updateKPIDetail('paidInvoiceCount', funnel.payments || 0);
+            
+            updateKPIDetail('pendingInvoicesCount', data.pending_invoices || data.pendingInvoices || 0);
+            updateKPIDetail('customersPendingCount', data.customers_pending || data.customersPending || 0);
+            updateKPIDetail('overdueAmount', data.overdue_amount || data.overdueAmount || 0, true);
+            
+            updateKPIDetail('igstLiability', data.igstLiability || 0, true);
+            updateKPIDetail('cgstSgstTotal', data.cgstSgstTotal || 0, true);
+            
+            updateKPIDetail('openPOCount', data.openPOCount || 0);
+            updateKPIDetail('closedPOCount', data.closedPOCount || 0);
+            
+            updateKPIDetail('claimablePOCount', data.claimable_pos || data.claimablePOCount || data.claimablePos || 0);
+            updateKPIDetail('claimRate', Math.round(data.claim_rate || data.claimRate || 0), false, '%');
+            
+            // Update trends
+            updateKPITrend('pendingTrend', data.outstanding_percentage || data.outstandingPercentage || 0, '%');
+            updateKPITrend('claimableTrend', data.claim_rate || data.claimRate || 0, '%');
+        }
+
+        function updateKPIValue(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = `₹${Number(value).toLocaleString()}`;
+            }
+        }
+
+        function updateKPIDetail(elementId, value, isCurrency = false, suffix = '') {
+            const element = document.getElementById(elementId);
+            if (element) {
+                let displayValue = value;
+                if (isCurrency) {
+                    displayValue = `₹${Number(value).toLocaleString()}`;
+                } else if (suffix) {
+                    displayValue = `${value}${suffix}`;
+                }
+                element.textContent = displayValue;
+            }
+        }
+
+        function updateKPITrend(elementId, value, suffix = '') {
+            const element = document.getElementById(elementId);
+            if (element) {
+                const displayValue = `${Math.round(value)}${suffix}`;
+                
+                // Update trend direction
+                if (value > 0) {
+                    element.textContent = `↗ +${displayValue}`;
+                } else if (value < 0) {
+                    element.textContent = `↘ ${displayValue}`;
+                } else {
+                    element.textContent = `— ${displayValue}`;
+                }
+            }
+        }
+
+        function clearCards() {
+            document.getElementById('kpiCardsContainer').innerHTML = '<p style="text-align: center; color: #6b7280; padding: 2rem;">KPI Cards cleared. Click "Initialize KPI Cards" to rebuild.</p>';
+            console.log('KPI Cards cleared');
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initKPICards();
+        });
+    </script>
+</body>
+</html>
