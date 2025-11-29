@@ -409,42 +409,314 @@ class RecentActivitiesController
     }
     
     /**
+     * Get visualization data for charts
+     */
+    public function getVisualizationData(array $params = []): array
+    {
+        $type = $params['type'] ?? 'quotations';
+        $companyPrefix = $params['prefix'] ?? $_ENV['COMPANY_PREFIX'] ?? 'ERGN';
+        
+        try {
+            switch ($type) {
+                case 'quotations':
+                    return $this->getQuotationsChart($companyPrefix);
+                case 'invoices':
+                    return $this->getInvoicesChart($companyPrefix);
+                case 'purchase_orders':
+                    return $this->getPurchaseOrdersChart($companyPrefix);
+                case 'payments':
+                    return $this->getPaymentsChart($companyPrefix);
+                default:
+                    return $this->errorResponse('Invalid visualization type', 400);
+            }
+        } catch (\PDOException $e) {
+            $this->logger->error("Visualization failed: " . $e->getMessage());
+            return $this->errorResponse('Database error', 500);
+        }
+    }
+    
+    private function getQuotationsChart(string $companyPrefix): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT 
+                CASE 
+                    WHEN status IN ('approved', 'placed') THEN 'Placed'
+                    WHEN status = 'rejected' THEN 'Rejected'
+                    ELSE 'Pending'
+                END as status_group,
+                COUNT(*) as count
+            FROM finance_consolidated 
+            WHERE record_type = 'quotation' AND company_prefix = ?
+            GROUP BY status_group
+        ");
+        $stmt->execute([$companyPrefix]);
+        $data = $stmt->fetchAll();
+        
+        $chartData = ['Pending' => 0, 'Placed' => 0, 'Rejected' => 0];
+        foreach ($data as $row) {
+            $chartData[$row['status_group']] = (int)$row['count'];
+        }
+        
+        return $this->successResponse([
+            'labels' => array_keys($chartData),
+            'data' => array_values($chartData)
+        ]);
+    }
+    
+    private function getInvoicesChart(string $companyPrefix): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT 
+                CASE 
+                    WHEN outstanding_amount <= 0 THEN 'Paid'
+                    WHEN due_date < CURDATE() AND outstanding_amount > 0 THEN 'Overdue'
+                    ELSE 'Unpaid'
+                END as status_group,
+                COUNT(*) as count
+            FROM finance_consolidated 
+            WHERE record_type = 'invoice' AND company_prefix = ?
+            GROUP BY status_group
+        ");
+        $stmt->execute([$companyPrefix]);
+        $data = $stmt->fetchAll();
+        
+        $chartData = ['Paid' => 0, 'Unpaid' => 0, 'Overdue' => 0];
+        foreach ($data as $row) {
+            $chartData[$row['status_group']] = (int)$row['count'];
+        }
+        
+        return $this->successResponse([
+            'labels' => array_keys($chartData),
+            'data' => array_values($chartData)
+        ]);
+    }
+    
+    private function getPurchaseOrdersChart(string $companyPrefix): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT DATE(created_at) as date, SUM(amount) as total
+            FROM finance_consolidated 
+            WHERE record_type = 'purchase_order' AND company_prefix = ?
+            GROUP BY DATE(created_at)
+            ORDER BY date DESC
+            LIMIT 7
+        ");
+        $stmt->execute([$companyPrefix]);
+        $data = $stmt->fetchAll();
+        
+        $labels = [];
+        $values = [];
+        foreach (array_reverse($data) as $row) {
+            $labels[] = date('M j', strtotime($row['date']));
+            $values[] = (float)$row['total'];
+        }
+        
+        return $this->successResponse([
+            'labels' => $labels,
+            'data' => $values
+        ]);
+    }
+    
+    private function getPaymentsChart(string $companyPrefix): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT DATE(created_at) as date, SUM(amount_paid) as total
+            FROM finance_consolidated 
+            WHERE record_type = 'invoice' AND amount_paid > 0 AND company_prefix = ?
+            GROUP BY DATE(created_at)
+            ORDER BY date DESC
+            LIMIT 7
+        ");
+        $stmt->execute([$companyPrefix]);
+        $data = $stmt->fetchAll();
+        
+        $labels = [];
+        $values = [];
+        foreach (array_reverse($data) as $row) {
+            $labels[] = date('M j', strtotime($row['date']));
+            $values[] = (float)$row['total'];
+        }
+        
+        return $this->successResponse([
+            'labels' => $labels,
+            'data' => $values
+        ]);
+    }
+    
+    /**
+     * Get outstanding by customer data
+     */
+    public function getOutstandingByCustomer(array $params = []): array
+    {
+        $companyPrefix = $params['prefix'] ?? $_ENV['COMPANY_PREFIX'] ?? 'ERGN';
+        $limit = (int)($params['limit'] ?? 10);
+        
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT customer_name, SUM(outstanding_amount) as total_outstanding
+                FROM finance_consolidated 
+                WHERE record_type = 'invoice' AND outstanding_amount > 0 AND company_prefix = ?
+                GROUP BY customer_name
+                ORDER BY total_outstanding DESC
+                LIMIT ?
+            ");
+            $stmt->execute([$companyPrefix, $limit]);
+            $data = $stmt->fetchAll();
+            
+            $labels = [];
+            $values = [];
+            $total = 0;
+            
+            foreach ($data as $row) {
+                $labels[] = $row['customer_name'];
+                $values[] = (float)$row['total_outstanding'];
+                $total += (float)$row['total_outstanding'];
+            }
+            
+            return $this->successResponse([
+                'labels' => $labels,
+                'data' => $values,
+                'total' => $total,
+                'customerCount' => count($data)
+            ]);
+            
+        } catch (\PDOException $e) {
+            $this->logger->error("Outstanding by customer failed: " . $e->getMessage());
+            return $this->errorResponse('Database error', 500);
+        }
+    }
+    
+    /**
+     * Get aging buckets data
+     */
+    public function getAgingBuckets(array $params = []): array
+    {
+        $companyPrefix = $params['prefix'] ?? $_ENV['COMPANY_PREFIX'] ?? 'ERGN';
+        
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    CASE 
+                        WHEN DATEDIFF(CURDATE(), due_date) <= 30 THEN '0-30 Days'
+                        WHEN DATEDIFF(CURDATE(), due_date) <= 60 THEN '31-60 Days'
+                        WHEN DATEDIFF(CURDATE(), due_date) <= 90 THEN '61-90 Days'
+                        ELSE '90+ Days'
+                    END as aging_bucket,
+                    SUM(outstanding_amount) as total_amount
+                FROM finance_consolidated 
+                WHERE record_type = 'invoice' 
+                AND outstanding_amount > 0 
+                AND due_date IS NOT NULL 
+                AND company_prefix = ?
+                GROUP BY aging_bucket
+                ORDER BY 
+                    CASE aging_bucket
+                        WHEN '0-30 Days' THEN 1
+                        WHEN '31-60 Days' THEN 2
+                        WHEN '61-90 Days' THEN 3
+                        WHEN '90+ Days' THEN 4
+                    END
+            ");
+            $stmt->execute([$companyPrefix]);
+            $data = $stmt->fetchAll();
+            
+            $buckets = ['0-30 Days' => 0, '31-60 Days' => 0, '61-90 Days' => 0, '90+ Days' => 0];
+            foreach ($data as $row) {
+                $buckets[$row['aging_bucket']] = (float)$row['total_amount'];
+            }
+            
+            return $this->successResponse([
+                'labels' => array_keys($buckets),
+                'data' => array_values($buckets)
+            ]);
+            
+        } catch (\PDOException $e) {
+            $this->logger->error("Aging buckets failed: " . $e->getMessage());
+            return $this->errorResponse('Database error', 500);
+        }
+    }
+    
+    /**
      * Get dashboard cash flow stats
      */
     public function getDashboardStats(string $companyPrefix): array
     {
         try {
-            $sql = "
-                SELECT 
-                    expected_inflow,
-                    po_commitments,
-                    net_cash_flow,
-                    last_computed_at
-                FROM dashboard_stats
-                WHERE company_prefix = ?
-            ";
+            // Get comprehensive dashboard data
+            $dashboardData = [];
             
-            $stmt = $this->pdo->prepare($sql);
+            // Total invoice amount
+            $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM finance_consolidated WHERE record_type = 'invoice' AND company_prefix = ?");
             $stmt->execute([$companyPrefix]);
-            $stats = $stmt->fetch();
+            $dashboardData['totalInvoiceAmount'] = (float)$stmt->fetch()['total'];
             
-            if (!$stats) {
-                return $this->errorResponse('No dashboard stats found for this prefix', 404);
+            // Invoice received (amount paid)
+            $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(amount_paid), 0) as total FROM finance_consolidated WHERE record_type = 'invoice' AND company_prefix = ?");
+            $stmt->execute([$companyPrefix]);
+            $dashboardData['invoiceReceived'] = (float)$stmt->fetch()['total'];
+            
+            // Outstanding amount
+            $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(outstanding_amount), 0) as total FROM finance_consolidated WHERE record_type = 'invoice' AND outstanding_amount > 0 AND company_prefix = ?");
+            $stmt->execute([$companyPrefix]);
+            $dashboardData['pendingInvoiceAmount'] = (float)$stmt->fetch()['total'];
+            
+            // GST liability on outstanding invoices
+            $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(igst + cgst + sgst), 0) as total FROM finance_consolidated WHERE record_type = 'invoice' AND outstanding_amount > 0 AND company_prefix = ?");
+            $stmt->execute([$companyPrefix]);
+            $dashboardData['pendingGSTAmount'] = (float)$stmt->fetch()['total'];
+            
+            // PO commitments
+            $stmt = $this->pdo->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM finance_consolidated WHERE record_type = 'purchase_order' AND company_prefix = ?");
+            $stmt->execute([$companyPrefix]);
+            $dashboardData['pendingPOValue'] = (float)$stmt->fetch()['total'];
+            
+            // Claimable amount (total invoice - paid)
+            $dashboardData['claimableAmount'] = $dashboardData['totalInvoiceAmount'] - $dashboardData['invoiceReceived'];
+            
+            // Conversion funnel data
+            $stmt = $this->pdo->prepare("SELECT record_type, COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM finance_consolidated WHERE company_prefix = ? GROUP BY record_type");
+            $stmt->execute([$companyPrefix]);
+            $funnelData = $stmt->fetchAll();
+            
+            $funnel = ['quotations' => 0, 'quotationValue' => 0, 'purchaseOrders' => 0, 'poValue' => 0, 'invoices' => 0, 'invoiceValue' => 0, 'payments' => 0, 'paymentValue' => 0];
+            
+            foreach ($funnelData as $row) {
+                switch ($row['record_type']) {
+                    case 'quotation':
+                        $funnel['quotations'] = (int)$row['count'];
+                        $funnel['quotationValue'] = (float)$row['total'];
+                        break;
+                    case 'purchase_order':
+                        $funnel['purchaseOrders'] = (int)$row['count'];
+                        $funnel['poValue'] = (float)$row['total'];
+                        break;
+                    case 'invoice':
+                        $funnel['invoices'] = (int)$row['count'];
+                        $funnel['invoiceValue'] = (float)$row['total'];
+                        // Count payments as invoices with amount_paid > 0
+                        $stmt2 = $this->pdo->prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_paid), 0) as total FROM finance_consolidated WHERE record_type = 'invoice' AND amount_paid > 0 AND company_prefix = ?");
+                        $stmt2->execute([$companyPrefix]);
+                        $paymentData = $stmt2->fetch();
+                        $funnel['payments'] = (int)$paymentData['count'];
+                        $funnel['paymentValue'] = (float)$paymentData['total'];
+                        break;
+                }
             }
             
-            $formattedStats = [
-                'expected_inflow' => (float)$stats['expected_inflow'],
-                'po_commitments' => (float)$stats['po_commitments'],
-                'net_cash_flow' => (float)$stats['net_cash_flow'],
-                'last_computed_at' => $stats['last_computed_at'],
-                'formatted' => [
-                    'expected_inflow' => number_format($stats['expected_inflow'], 2),
-                    'po_commitments' => number_format($stats['po_commitments'], 2),
-                    'net_cash_flow' => number_format($stats['net_cash_flow'], 2)
-                ]
+            // Calculate conversion rates
+            $funnel['quotationToPO'] = $funnel['quotations'] > 0 ? round(($funnel['purchaseOrders'] / $funnel['quotations']) * 100, 1) : 0;
+            $funnel['poToInvoice'] = $funnel['purchaseOrders'] > 0 ? round(($funnel['invoices'] / $funnel['purchaseOrders']) * 100, 1) : 0;
+            $funnel['invoiceToPayment'] = $funnel['invoices'] > 0 ? round(($funnel['payments'] / $funnel['invoices']) * 100, 1) : 0;
+            
+            $dashboardData['conversionFunnel'] = $funnel;
+            
+            // Cash flow data
+            $dashboardData['cashFlow'] = [
+                'expectedInflow' => $dashboardData['pendingInvoiceAmount'],
+                'poCommitments' => $dashboardData['pendingPOValue']
             ];
             
-            return $this->successResponse($formattedStats);
+            return $this->successResponse($dashboardData);
             
         } catch (\PDOException $e) {
             $this->logger->error("Failed to fetch dashboard stats: " . $e->getMessage());
@@ -587,6 +859,15 @@ class RecentActivitiesController
                     break;
                 case 'sync':
                     $response = $this->syncData($params);
+                    break;
+                case 'visualization':
+                    $response = $this->getVisualizationData($params);
+                    break;
+                case 'outstanding-by-customer':
+                    $response = $this->getOutstandingByCustomer($params);
+                    break;
+                case 'aging-buckets':
+                    $response = $this->getAgingBuckets($params);
                     break;
                 default:
                     $response = $this->errorResponse('Invalid action', 400);

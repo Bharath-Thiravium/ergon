@@ -1,1 +1,6 @@
 [2025-11-29T14:39:47.578148+00:00] finance_sync.INFO: Retrieved recent activities {"company_prefix":"ERGN","record_type":null,"count":3} []
+[2025-11-29T14:49:51.822886+00:00] finance_sync.INFO: Retrieved recent activities {"company_prefix":"ERGN","record_type":null,"count":5} []
+[2025-11-29T14:51:44.816232+00:00] finance_sync.INFO: Retrieved recent activities {"company_prefix":"ERGN","record_type":null,"count":5} []
+[2025-11-29T14:52:32.599010+00:00] finance_sync.INFO: Retrieved recent activities {"company_prefix":"ERGN","record_type":null,"count":5} []
+[2025-11-29T14:52:38.511849+00:00] finance_sync.INFO: Retrieved recent activities {"company_prefix":"ERGN","record_type":null,"count":5} []
+[2025-11-29T14:52:47.384148+00:00] finance_sync.INFO: Retrieved recent activities {"company_prefix":"ERGN","record_type":null,"count":5} []
