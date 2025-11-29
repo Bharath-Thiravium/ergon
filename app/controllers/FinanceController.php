@@ -8,25 +8,8 @@ class FinanceController {
     }
     
     private function getMysqlConnection() {
-        $config = require_once __DIR__ . '/../config/database.php';
-        $mysql = $config['mysql'];
-        
-        try {
-            $pdo = new PDO(
-                "mysql:host={$mysql['host']};port={$mysql['port']};dbname={$mysql['database']};charset=utf8mb4",
-                $mysql['username'],
-                $mysql['password'],
-                [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false
-                ]
-            );
-            return $pdo;
-        } catch (PDOException $e) {
-            Logger::error("MySQL connection failed", ['error' => $e->getMessage()]);
-            throw new Exception("Database connection failed");
-        }
+        require_once __DIR__ . '/../config/database.php';
+        return Database::connect();
     }
     
     public function dashboardStats($request) {
