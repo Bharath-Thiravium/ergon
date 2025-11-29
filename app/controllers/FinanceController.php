@@ -46,6 +46,21 @@ class FinanceController {
                 case 'funnel-containers':
                     $this->jsonResponse($this->getFunnelContainersData());
                     break;
+                case 'debug-po':
+                    $this->jsonResponse(['success' => true, 'total_records' => 0, 'message' => 'Debug endpoint']);
+                    break;
+                case 'recent-activities':
+                    $this->jsonResponse(['success' => true, 'activities' => []]);
+                    break;
+                case 'visualization':
+                    $this->jsonResponse(['success' => true, 'data' => [], 'labels' => []]);
+                    break;
+                case 'outstanding-by-customer':
+                    $this->jsonResponse(['success' => true, 'data' => [], 'labels' => [], 'total' => 0]);
+                    break;
+                case 'aging-buckets':
+                    $this->jsonResponse(['success' => true, 'data' => [0,0,0,0], 'labels' => ['0-30','31-60','61-90','90+']]);
+                    break;
                 case 'dashboard':
                 default:
                     $this->dashboard();
