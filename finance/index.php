@@ -1,8 +1,12 @@
 <?php
-// Simple check for API vs frontend
+// Check if this is an API request or frontend request
 $action = $_GET['action'] ?? '';
+$requestUri = $_SERVER['REQUEST_URI'];
+$path = parse_url($requestUri, PHP_URL_PATH);
+$path = str_replace('/ergon/finance/', '', $path);
+$path = trim($path, '/');
 
-// Mock data
+// Mock data for API responses
 $mockData = [
     'company_prefix' => 'BKGE',
     'generated_at' => date('c'),
@@ -28,69 +32,50 @@ $mockData = [
     'claim_rate' => 1.0
 ];
 
-// API requests
-if ($action === 'dashboard-stats') {
+// Handle API requests
+if ($action === 'dashboard-stats' || $path === 'dashboard-stats') {
     header('Content-Type: application/json');
     echo json_encode($mockData);
     exit;
 }
 
-if ($action) {
+if ($action === 'health' || $path === 'health') {
     header('Content-Type: application/json');
-    echo json_encode(['error' => 'API endpoint not implemented yet']);
+    echo json_encode([
+        'status' => 'healthy',
+        'timestamp' => date('c'),
+        'database' => 'mock_mode',
+        'message' => 'API working, database connection needs configuration'
+    ]);
     exit;
 }
 
-// Frontend - simple HTML
-?>
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Finance Dashboard</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .card { background: white; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
-        .amount { font-size: 24px; font-weight: bold; color: #2563eb; }
-    </style>
-</head>
-<body>
-    <h1>Finance Dashboard</h1>
-    <div id="loading">Loading...</div>
-    <div id="dashboard" class="grid" style="display: none;"></div>
+// Handle other API actions the frontend expects
+if ($action) {
+    header('Content-Type: application/json');
+    switch ($action) {
+        case 'funnel-containers':
+            echo json_encode(['success' => true, 'containers' => []]);
+            break;
+        case 'customers':
+            echo json_encode(['customers' => []]);
+            break;
+        case 'company-prefix':
+            echo json_encode(['prefix' => 'BKGE']);
+            break;
+        default:
+            echo json_encode(['error' => 'API endpoint not implemented yet']);
+    }
+    exit;
+}
 
-    <script>
-        fetch('/ergon/finance/?action=dashboard-stats')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'grid';
-                document.getElementById('dashboard').innerHTML = `
-                    <div class="card">
-                        <h3>💰 Total Revenue</h3>
-                        <div class="amount">₹${data.total_revenue.toLocaleString()}</div>
-                        <p>Invoices: ${data.invoice_count}</p>
-                    </div>
-                    <div class="card">
-                        <h3>⏳ Outstanding</h3>
-                        <div class="amount">₹${data.outstanding_amount.toLocaleString()}</div>
-                        <p>Pending: ${data.pending_invoices}</p>
-                    </div>
-                    <div class="card">
-                        <h3>🏛️ GST Liability</h3>
-                        <div class="amount">₹${data.gst_liability.toLocaleString()}</div>
-                        <p>CGST+SGST: ₹${data.cgst_sgst_total.toLocaleString()}</p>
-                    </div>
-                    <div class="card">
-                        <h3>🛒 PO Commitments</h3>
-                        <div class="amount">₹${data.po_commitments.toLocaleString()}</div>
-                        <p>Open: ${data.open_po}</p>
-                    </div>
-                `;
-            })
-            .catch(e => {
-                document.getElementById('loading').innerHTML = 'Error: ' + e.message;
-            });
-    </script>
-</body>
-</html>
+// If no action, show the frontend dashboard
+if (empty($path)) {
+    require_once __DIR__ . '/../views/finance/dashboard.php';
+    exit;
+}
+
+// Default JSON response for direct API calls
+header('Content-Type: application/json');
+echo json_encode($mockData);
+?>
