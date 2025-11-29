@@ -58,12 +58,19 @@ class FunnelStatsService {
         $pos = [];
         foreach ($poRows as $row) {
             $data = json_decode($row['data'], true);
-            $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
-            if (!$prefix || stripos($poNumber, $prefix) !== false) {
+            // Use consistent field mapping across all PO methods
+            $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
+            $internalPoNumber = $data['internal_po_number'] ?? '';
+            
+            $matchesPrefix = !$prefix || 
+                            stripos($poNumber, $prefix) !== false || 
+                            stripos($internalPoNumber, $prefix) !== false;
+            
+            if ($matchesPrefix) {
                 $pos[] = [
                     'id' => $data['id'] ?? '',
-                    'po_number' => $poNumber,
-                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
+                    'po_number' => $poNumber ?: $internalPoNumber,
+                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? $data['total'] ?? 0),
                     'amount_paid' => floatval($data['amount_paid'] ?? 0)
                 ];
             }

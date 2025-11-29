@@ -239,17 +239,23 @@ class FinanceController extends Controller {
 
             foreach ($poResults as $row) {
                 $data = json_decode($row['data'], true);
-                // Check multiple possible field names for PO number
-                $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
-                if ($prefix && !empty($prefix) && !empty($poNumber) && stripos($poNumber, $prefix) === false) {
+                // Use consistent field mapping as getPurchaseOrderChart
+                $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
+                $internalPoNumber = $data['internal_po_number'] ?? '';
+                
+                $matchesPrefix = !$prefix || 
+                                stripos($poNumber, $prefix) !== false || 
+                                stripos($internalPoNumber, $prefix) !== false;
+                
+                if (!$matchesPrefix) {
                     continue;
                 }
                 $totalPOCount++;
                 
                 // Check multiple possible field names for status
                 $status = strtolower($data['status'] ?? $data['po_status'] ?? $data['order_status'] ?? 'open');
-                // Check multiple possible field names for amount
-                $totalAmount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? 0);
+                // Use consistent amount field mapping
+                $totalAmount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? $data['total'] ?? 0);
                 
                 if (in_array($status, ['open', 'partially_billed', 'pending', 'approved', 'active', 'confirmed'])) {
                     $pendingPOValue += $totalAmount;
@@ -1360,17 +1366,18 @@ class FinanceController extends Controller {
         $purchaseOrders = [];
         foreach ($poResults as $row) {
             $data = json_decode($row['data'], true);
-            $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+            // Use consistent field mapping
+            $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
+            $internalPoNumber = $data['internal_po_number'] ?? '';
             
-            // Apply prefix filtering - check both po_number and internal_po_number
             $matchesPrefix = !$prefix || 
                             stripos($poNumber, $prefix) !== false || 
-                            stripos($data['internal_po_number'] ?? '', $prefix) !== false;
+                            stripos($internalPoNumber, $prefix) !== false;
             
             if ($matchesPrefix) {
                 $purchaseOrders[] = [
-                    'po_number' => $poNumber,
-                    'po_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
+                    'po_number' => $poNumber ?: $internalPoNumber,
+                    'po_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? $data['total'] ?? 0),
                     'company_prefix' => $prefix
                 ];
             }
@@ -2244,19 +2251,19 @@ class FinanceController extends Controller {
         $pos = [];
         foreach ($results as $row) {
             $data = json_decode($row['data'], true);
-            $poNumber = $data['internal_po_number'] ?? $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? '';
+            // Use same field mapping as getPurchaseOrderChart for consistency
+            $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
+            $internalPoNumber = $data['internal_po_number'] ?? '';
             
-            // Skip prefix check if no prefix or match any of the PO number fields
             $matchesPrefix = !$prefix || 
-                            (!empty($poNumber) && stripos($poNumber, $prefix) !== false) ||
-                            (!empty($data['po_number']) && stripos($data['po_number'], $prefix) !== false) ||
-                            (!empty($data['internal_po_number']) && stripos($data['internal_po_number'], $prefix) !== false);
+                            stripos($poNumber, $prefix) !== false || 
+                            stripos($internalPoNumber, $prefix) !== false;
             
             if ($matchesPrefix) {
-                $amount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? 0);
+                $amount = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? $data['total'] ?? 0);
                 if ($amount > 0) {
                     $pos[] = [
-                        'number' => $poNumber,
+                        'number' => $poNumber ?: $internalPoNumber,
                         'amount' => $amount
                     ];
                 }
