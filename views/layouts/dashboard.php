@@ -8,6 +8,20 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) { header('Location: /ergon/login'); exit; }
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) { session_unset(); session_destroy(); header('Location: /ergon/login?timeout=1'); exit; }
 
+// Clear any error/success messages to prevent popup alerts
+if (isset($_GET['error'])) {
+    unset($_GET['error']);
+}
+if (isset($_GET['success'])) {
+    unset($_GET['success']);
+}
+if (isset($_SESSION['error'])) {
+    unset($_SESSION['error']);
+}
+if (isset($_SESSION['success'])) {
+    unset($_SESSION['success']);
+}
+
 // Check if user is still active and role hasn't changed
 try {
     require_once __DIR__ . '/../../app/config/database.php';
@@ -113,6 +127,15 @@ ob_end_clean();
     .notification-badge.has-notifications{animation:pulse 2s infinite}
     .notification-dropdown{max-height:400px;overflow-y:auto;box-shadow:0 10px 25px rgba(0,0,0,0.15);background:#fff;border-radius:8px;border:1px solid #e2e8f0;min-width:320px}
     @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
+    .control-btn{position:relative}
+    
+    /* Hide any alert popups */
+    .alert, .alert--error, .alert--success, .alert--warning, .alert--info {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+    }
+    
     .control-btn{position:relative}
     
     /* Attendance Notification Styles */

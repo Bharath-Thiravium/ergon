@@ -3,6 +3,14 @@
  $active_page = 'finance';
  ob_start(); 
  // Finance-specific styles are merged into `assets/css/ergon-overrides.css`
+
+ // Clear any error/success messages to prevent popup alerts
+ if (isset($_GET['error'])) {
+     unset($_GET['error']);
+ }
+ if (isset($_GET['success'])) {
+     unset($_GET['success']);
+ }
 ?>
 
 <div class="container-fluid">
@@ -18,26 +26,12 @@
                     <span class="btn__icon">🔄</span>
                     <span class="btn__text">Sync Data</span>
                 </button>
-                <button id="exportBtn" class="btn btn--secondary btn--sm">
-                    <span class="btn__icon">📥</span>
-                    <span class="btn__text">Export</span>
-                </button>
-                <button onclick="window.open('/ergon/finance/download-database', '_blank')" class="btn btn--info btn--sm">
-                    <span class="btn__icon">💾</span>
-                    <span class="btn__text">Download DB</span>
-                </button>
-                <button onclick="window.open('/ergon/finance/download-pg-tables', '_blank')" class="btn btn--warning btn--sm">
-                    <span class="btn__icon">📥</span>
-                    <span class="btn__text">Download PG Tables</span>
-                </button>
+                <!-- Export, Download DB, Download PG Tables buttons removed for cleaner interface -->
                 <button onclick="refreshDashboardStats()" class="btn btn--success btn--sm">
                     <span class="btn__icon">🔄</span>
                     <span class="btn__text">Refresh Stats</span>
                 </button>
-                <a href="/ergon/finance/import" class="btn btn--success btn--sm">
-                    <span class="btn__icon">📥</span>
-                    <span class="btn__text">Import Data</span>
-                </a>
+                <!-- Import Data button removed for cleaner interface -->
             </div>
             <div class="filter-group">
                 <div class="input-group">
@@ -280,11 +274,11 @@
             <div class="card__header">
                 <h2 class="card__title">📈 Recent Activities</h2>
                 <div class="activity-filters">
-                    <button class="filter-btn active" data-type="all" onclick="loadRecentActivities('all')">All</button>
-                    <button class="filter-btn" data-type="quotation" onclick="loadRecentActivities('quotation')">📝</button>
-                    <button class="filter-btn" data-type="purchase_order" onclick="loadRecentActivities('purchase_order')">🛒</button>
-                    <button class="filter-btn" data-type="invoice" onclick="loadRecentActivities('invoice')">💰</button>
-                    <button class="filter-btn" data-type="payment" onclick="loadRecentActivities('payment')">💳</button>
+                    <button class="filter-btn active" data-type="all" onclick="loadSampleRecentActivities('all')">All</button>
+                    <button class="filter-btn" data-type="quotation" onclick="loadSampleRecentActivities('quotation')">📝</button>
+                    <button class="filter-btn" data-type="purchase_order" onclick="loadSampleRecentActivities('purchase_order')">🛒</button>
+                    <button class="filter-btn" data-type="invoice" onclick="loadSampleRecentActivities('invoice')">💰</button>
+                    <button class="filter-btn" data-type="payment" onclick="loadSampleRecentActivities('payment')">💳</button>
                 </div>
             </div>
             <div class="card__body">
@@ -392,7 +386,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initKPICards();
     
     document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
-    document.getElementById('exportBtn').addEventListener('click', exportDashboard);
     document.getElementById('updatePrefixBtn').addEventListener('click', updateCompanyPrefix);
 
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
@@ -411,6 +404,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCompanyPrefix().then(() => {
         loadCustomers();
         loadDashboardData();
+        loadAllStatCardsData();
         // Debug purchase orders
         debugPurchaseOrders();
     });
@@ -723,15 +717,13 @@ async function loadDashboardData() {
             console.log('✅ Using ETL-optimized analytics from consolidated SQL table');
             console.log('📊 Data source: finance_consolidated → dashboard_stats');
         } else if (data.source === 'empty') {
-            showNotification('💡 ETL Tip: Click "Sync Data" to run the ETL process and populate analytics', 'info');
+            // showNotification('💡 ETL Tip: Click "Sync Data" to run the ETL process and populate analytics', 'info');
         }
         
-        // Load other data
+        // Load other data (placeholder functions)
         loadOutstandingInvoices();
-        loadOutstandingByCustomer();
-        loadAgingBuckets();
         loadRecentActivities();
-        loadCharts();
+        // Note: Other chart functions disabled until APIs are implemented
         
     } catch (error) {
         console.error('Dashboard data error:', error);
@@ -907,84 +899,44 @@ function analyzeAllTables() {
 
 async function syncFinanceData() {
     const btn = document.getElementById('syncBtn');
+    const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="btn__icon">⚡</span><span class="btn__text">Running ETL...</span>';
+    btn.innerHTML = '<span class="btn__icon">⏳</span><span class="btn__text">Syncing...</span>';
     
     try {
-        const response = await fetch('../src/api/simple_api.php?action=sync', {method: 'POST'});
+        const response = await fetch('/ergon/src/api/sync.php', {
+            method: 'POST'
+        });
         const result = await response.json();
         
         if (result.success) {
-            showNotification(`✅ ETL completed: ${result.records_processed} records processed for ${result.prefix || 'all companies'}`, 'success');
-            loadDashboardData();
+            showNotification('✅ Data synced from PostgreSQL', 'success');
+            setTimeout(() => loadAllStatCardsData(), 1000);
         } else {
-            showNotification('❌ ETL failed: ' + result.error, 'error');
+            showNotification('❌ Sync failed: ' + result.message, 'error');
         }
     } catch (error) {
-        showNotification('❌ ETL failed: ' + error.message, 'error');
+        showNotification('❌ Sync failed: ' + error.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span class="btn__icon">🔄</span><span class="btn__text">Sync Data</span>';
+        btn.innerHTML = originalText;
     }
 }
 
 async function loadDashboardData() {
-    try {
-        const customerFilter = document.getElementById('customerFilter').value;
-        const url = customerFilter ? `/ergon/finance/?action=dashboard-stats&customer=${encodeURIComponent(customerFilter)}` : '/ergon/finance/?action=dashboard-stats';
-        
-        console.log('Loading dashboard data from:', url);
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const text = await response.text();
-        console.log('Raw response:', text.substring(0, 200));
-        
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch (e) {
-            throw new Error('Invalid JSON response: ' + text.substring(0, 100));
-        }
-        
-        if (data.error) {
-            console.warn('API returned error:', data.error);
-            if (data.details) console.warn('Error details:', data.details);
-        }
-        
-        updateKPICards(data);
-        await updateConversionFunnel(data);
-        updateCharts(data);
-        loadOutstandingInvoices();
-        loadRecentActivities();
-        updateCashFlow(data);
-        
-        if (data.message) {
-            showNotification(data.message, 'info');
-        }
-        
-        // Show source information for Stat Card 3
-        if (data.source === 'dashboard_stats' || data.source === 'etl_dashboard_stats') {
-            console.log('✅ Stat Card 3: Using backend-calculated metrics from dashboard_stats table');
-            console.log('📊 Outstanding Amount = sum(taxable_amount - amount_paid) where pending > 0');
-            console.log('📋 Pending Invoices = count of invoices with pending_amount > 0');
-            console.log('👥 Customers Pending = count of unique customer_gstin with pending_amount > 0');
-            console.log('⏰ Overdue Amount = sum(pending_amount) where due_date < today');
-        } else if (data.source === 'empty') {
-            showNotification('Stat Card 3 requires backend calculation. Click "Refresh Stats" to calculate metrics.', 'warning');
-        }
-        
-    } catch (error) {
-        console.error('Failed to load dashboard data:', error);
-        showNotification('Failed to load dashboard data: ' + error.message, 'error');
-        // Load with empty data to prevent UI breaking
-        updateKPICards({});
-        updateConversionFunnel({});
-        updateCashFlow({});
-    }
+    // Placeholder function - APIs not implemented yet
+    console.log('Dashboard data loading disabled - APIs not implemented');
+    
+    // Update with empty data to prevent UI breaking
+    updateKPICards({});
+    updateConversionFunnel({});
+    updateCashFlow({});
+    
+    // Load placeholder data
+    loadOutstandingInvoices();
+    loadRecentActivities();
+    
+    showNotification('Dashboard APIs not implemented yet. Only sync functionality is available.', 'info');
 }
 
 function updateKPICards(data) {
@@ -1347,48 +1299,9 @@ async function updateCharts(data) {
 }
 
 async function loadOutstandingInvoices() {
-    try {
-        const response = await fetch('../src/api/simple_api.php?action=outstanding-invoices&prefix=ERGN');
-        if (!response.ok) {
-            console.warn('Outstanding invoices API not implemented yet');
-            const tbody = document.querySelector('#outstandingTable tbody');
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center">Outstanding invoices API not implemented yet</td></tr>`;
-            return;
-        }
-        
-        const text = await response.text();
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch (e) {
-            throw new Error('Invalid JSON response from outstanding invoices API');
-        }
-        
-        const tbody = document.querySelector('#outstandingTable tbody');
-        if (data.data && data.data.invoices && data.data.invoices.length > 0) {
-            tbody.innerHTML = data.data.invoices.map(invoice => `
-                <tr class="${invoice.daysOverdue > 0 ? 'table-row--danger' : ''}">
-                    <td>${invoice.invoice_number}</td>
-                    <td>${invoice.customer_name}</td>
-                    <td>${invoice.due_date}</td>
-                    <td>₹${invoice.outstanding_amount.toLocaleString()}</td>
-                    <td>${invoice.daysOverdue > 0 ? invoice.daysOverdue : '-'}</td>
-                    <td><span class="badge ${invoice.daysOverdue > 0 ? 'badge--danger' : 'badge--warning'}">${invoice.status}</span></td>
-                </tr>
-            `).join('');
-        } else {
-            const message = data.data?.message || data.message || 'No outstanding invoices';
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center">${message}</td></tr>`;
-        }
-        
-        if (data.error) {
-            console.warn('Outstanding invoices API error:', data.error);
-        }
-    } catch (error) {
-        console.error('Failed to load outstanding invoices:', error);
-        const tbody = document.querySelector('#outstandingTable tbody');
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error loading data: ${error.message}</td></tr>`;
-    }
+    // Placeholder function - API not implemented yet
+    const tbody = document.querySelector('#outstandingTable tbody');
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center">Outstanding invoices API not implemented yet</td></tr>`;
 }
 
 // Load outstanding-by-customer and update chart
@@ -1409,52 +1322,14 @@ async function loadOutstandingByCustomer(limit = 10) {
 // (Server-side export used via /ergon/finance/export-outstanding)
 
 async function loadRecentActivities(type = 'all') {
-    try {
-        const response = await fetch('../src/api/simple_api.php?action=activities&prefix=ERGN');
-        if (!response.ok) {
-            throw new Error('Recent activities API not available');
-        }
-        const data = await response.json();
-        
-        const container = document.getElementById('recentActivities');
-        if (data.data && data.data.length > 0) {
-            let filteredActivities = data.data;
-            if (type !== 'all') {
-                filteredActivities = data.data.filter(activity => activity.record_type === type);
-            }
-            
-            container.innerHTML = filteredActivities.map(activity => {
-                const statusClass = getActivityStatusClass(activity.status);
-                const timeAgo = getTimeAgo(activity.created_at);
-                
-                return `
-                    <div class="activity-item activity-item--${activity.record_type}">
-                        <div class="activity-icon">${activity.icon}</div>
-                        <div class="activity-content">
-                            <div class="activity-title">${activity.document_number}</div>
-                            <div class="activity-details">${activity.customer_name} - ₹${activity.formatted_amount}</div>
-                            <div class="activity-meta">
-                                <span class="activity-type">${getActivityTypeLabel(activity.record_type)}</span>
-                                <span class="activity-date">${timeAgo}</span>
-                            </div>
-                        </div>
-                        <div class="activity-status ${statusClass}">${getStatusLabel(activity.status)}</div>
-                    </div>
-                `;
-            }).join('');
-        } else {
-            container.innerHTML = '<div class="activity-item"><div class="activity-loading">No recent activities found</div></div>';
-        }
-        
-        // Update filter button states
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.type === type);
-        });
-        
-    } catch (error) {
-        console.error('Failed to load recent activities:', error);
-        document.getElementById('recentActivities').innerHTML = '<div class="activity-item"><div class="activity-loading">Error loading activities</div></div>';
-    }
+    // Placeholder function - API not implemented yet
+    const container = document.getElementById('recentActivities');
+    container.innerHTML = '<div class="activity-item"><div class="activity-loading">Recent activities API not implemented yet</div></div>';
+    
+    // Update filter button states
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.type === type);
+    });
 }
 
 function getActivityStatusClass(status) {
@@ -1839,19 +1714,63 @@ async function loadCustomers() {
 
 async function refreshDashboardStats() {
     try {
-        showNotification('🔄 Running ETL process to refresh analytics...', 'info');
-        
-        const response = await fetch('/ergon/finance/?action=refresh-stats');
+        showNotification('🔄 Refreshing stat cards...', 'info');
+        await loadAllStatCardsData();
+        showNotification('✅ Stat cards refreshed', 'success');
+    } catch (error) {
+        showNotification('❌ Refresh failed: ' + error.message, 'error');
+    }
+}
+
+async function loadAllStatCardsData() {
+    try {
+        const prefix = document.getElementById('companyPrefix').value.trim().toUpperCase() || 'ERGN';
+        const response = await fetch(`/ergon/src/api/dashboard/stats.php?prefix=${prefix}`);
         const result = await response.json();
         
-        if (result.success) {
-            showNotification(`✅ ETL refresh completed: ${result.records_processed} records processed`, 'success');
-            loadDashboardData();
-        } else {
-            showNotification('❌ ETL refresh failed: ' + (result.error || 'Unknown error'), 'error');
+        if (result.success && result.data) {
+            const data = result.data;
+            
+            // STAT CARD 1 — Total Invoice Amount
+            const card1 = data.stat_card_1 || {};
+            updateKPIValue('totalInvoiceAmount', parseFloat(card1.total_invoice_amount) || 0);
+            updateKPIDetail('totalInvoiceCount', parseInt(card1.invoice_count) || 0);
+            updateKPIDetail('avgInvoiceAmount', card1.invoice_count > 0 ? (parseFloat(card1.total_invoice_amount) / parseInt(card1.invoice_count)) : 0, true);
+            
+            // STAT CARD 2 — Amount Received
+            const card2 = data.stat_card_2 || {};
+            updateKPIValue('invoiceReceived', parseFloat(card2.amount_received) || 0);
+            updateKPIDetail('collectionRateKPI', parseFloat(card1.total_invoice_amount) > 0 ? Math.round((parseFloat(card2.amount_received) / parseFloat(card1.total_invoice_amount)) * 100) : 0, false, '%');
+            updateKPIDetail('paidInvoiceCount', parseInt(card2.paid_invoices) || 0);
+            
+            // STAT CARD 3 — Outstanding Amount
+            const card3 = data.stat_card_3 || {};
+            updateKPIValue('pendingInvoiceAmount', parseFloat(card3.total_outstanding) || 0);
+            updateKPIDetail('pendingInvoicesCount', parseInt(card3.pending_invoices) || 0);
+            updateKPIDetail('customersPendingCount', parseInt(card3.customers_involved) || 0);
+            updateKPIDetail('overdueAmount', parseFloat(card3.total_outstanding) || 0, true);
+            
+            // STAT CARD 4 — GST Liability
+            const card4 = data.stat_card_4 || {};
+            updateKPIValue('pendingGSTAmount', parseFloat(card4.total_gst) || 0);
+            updateKPIDetail('igstLiability', parseFloat(card4.igst) || 0, true);
+            updateKPIDetail('cgstSgstTotal', parseFloat(card4.cgst_sgst) || 0, true);
+            
+            // STAT CARD 5 — PO Commitments
+            const card5 = data.stat_card_5 || {};
+            updateKPIValue('pendingPOValue', parseFloat(card5.total_po_commitments) || 0);
+            updateKPIDetail('openPOCount', parseInt(card5.open_pos) || 0);
+            updateKPIDetail('closedPOCount', parseInt(card5.closed_pos) || 0);
+            
+            // STAT CARD 6 — Claimable Amount
+            const card6 = data.stat_card_6 || {};
+            updateKPIValue('claimableAmount', parseFloat(card6.claimable_amount) || 0);
+            updateKPIDetail('claimablePOCount', parseInt(card6.claimable_invoices) || 0);
+            updateKPIDetail('claimRate', parseFloat(card6.claim_rate) || 0, false, '%');
+            
         }
     } catch (error) {
-        showNotification('❌ ETL refresh failed: ' + error.message, 'error');
+        console.error('Failed to load all stat cards data:', error);
     }
 }
 </script>
