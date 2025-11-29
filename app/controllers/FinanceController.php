@@ -57,6 +57,16 @@ class FinanceController extends Controller {
             $stmt->execute([$prefix]);
             $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
             
+            // If no data for current prefix, get the most recent data available
+            if (!$dashboardStats) {
+                $stmt = $db->prepare("SELECT * FROM dashboard_stats ORDER BY generated_at DESC LIMIT 1");
+                $stmt->execute();
+                $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($dashboardStats) {
+                    $prefix = $dashboardStats['company_prefix']; // Update prefix to match data
+                }
+            }
+            
             if ($dashboardStats) {
                 // Use ETL service for customer filtering if needed
                 $etlService = new FinanceETLService();
@@ -2201,16 +2211,25 @@ class FinanceController extends Controller {
             $db = Database::connect();
             $this->createTables($db);
             
+            // First check settings table
             $stmt = $db->prepare("SELECT company_prefix FROM finance_tables WHERE table_name = 'settings' LIMIT 1");
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             
             $prefix = $result ? strtoupper(trim($result['company_prefix'])) : '';
             
+            // If no prefix set, use the most recent one from dashboard_stats
+            if (empty($prefix)) {
+                $stmt = $db->prepare("SELECT company_prefix FROM dashboard_stats ORDER BY generated_at DESC LIMIT 1");
+                $stmt->execute();
+                $latestResult = $stmt->fetch(PDO::FETCH_ASSOC);
+                $prefix = $latestResult ? $latestResult['company_prefix'] : 'BKGE';
+            }
+            
             return $prefix;
         } catch (Exception $e) {
             error_log("Error fetching company prefix: " . $e->getMessage());
-            return '';
+            return 'BKGE'; // Default to most active prefix
         }
     }
     
