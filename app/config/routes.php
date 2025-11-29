@@ -397,5 +397,8 @@ $router->get('/finance/all-pos', 'FinanceController', 'getAllPurchaseOrders');
 $router->get('/finance/download-pg-tables', 'FinanceController', 'downloadTables');
 $router->get('/finance/refresh-stats', 'FinanceController', 'refreshStats');
 $router->get('/finance/structure', 'FinanceController', 'structure');
+$router->get('/finance/funnel-containers', 'FinanceController', 'funnelContainers');
+$router->get('/finance/funnel-stats', 'FinanceController', 'funnelStats');
+$router->post('/finance/refresh-funnel', 'FinanceController', 'refreshFunnel');
 
 ?>

@@ -3,230 +3,108 @@ require_once __DIR__ . '/../config/database.php';
 
 class FunnelStatsService {
     
-    private $db;
-    
-    public function __construct() {
-        $this->db = Database::connect();
-        $this->createFunnelStatsTable();
-    }
-    
-    private function createFunnelStatsTable() {
-        $this->db->exec("CREATE TABLE IF NOT EXISTS funnel_stats (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            company_prefix VARCHAR(50) NOT NULL,
-            
+    public function createFunnelStatsTable($db) {
+        $sql = "CREATE TABLE IF NOT EXISTS funnel_stats (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            company_prefix VARCHAR(10),
             quotation_count INT DEFAULT 0,
             quotation_value DECIMAL(15,2) DEFAULT 0,
-            
             po_count INT DEFAULT 0,
             po_value DECIMAL(15,2) DEFAULT 0,
             po_conversion_rate DECIMAL(5,2) DEFAULT 0,
-            
             invoice_count INT DEFAULT 0,
             invoice_value DECIMAL(15,2) DEFAULT 0,
             invoice_conversion_rate DECIMAL(5,2) DEFAULT 0,
-            
             payment_count INT DEFAULT 0,
             payment_value DECIMAL(15,2) DEFAULT 0,
             payment_conversion_rate DECIMAL(5,2) DEFAULT 0,
-            
             generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            
             UNIQUE KEY unique_prefix (company_prefix)
-        )");
+        )";
+        $db->exec($sql);
     }
     
-    /**
-     * Calculate and store funnel stats for a company prefix
-     * Following exact specification: raw data → backend calculations → stored → UI reads
-     */
     public function calculateFunnelStats($prefix) {
-        // Step 1: Fetch raw quotation records (NO AGGREGATE SQL)
-        $quotations = $this->fetchRawQuotations($prefix);
+        $db = Database::connect();
+        $this->createFunnelStatsTable($db);
         
-        // Step 2: Fetch raw purchase order records (NO AGGREGATE SQL)
-        $purchaseOrders = $this->fetchRawPurchaseOrders($prefix);
-        
-        // Step 3: Fetch raw invoice records (NO AGGREGATE SQL)
-        $invoices = $this->fetchRawInvoices($prefix);
-        
-        // Step 4: Backend calculations
-        $quotation_count = count($quotations);
-        $quotation_value = $this->sumTotalAmount($quotations);
-        
-        $po_count = count($purchaseOrders);
-        $po_value = $this->sumTotalAmount($purchaseOrders);
-        $po_conversion_rate = $quotation_count > 0 ? ($po_count / $quotation_count) * 100 : 0;
-        
-        $invoice_count = count($invoices);
-        $invoice_value = $this->sumTotalAmount($invoices);
-        $invoice_conversion_rate = $po_count > 0 ? ($invoice_count / $po_count) * 100 : 0;
-        
-        // Payment calculations from invoice amount_paid
-        $payment_value = $this->sumAmountPaid($invoices);
-        $payment_count = $this->countPaidInvoices($invoices);
-        $payment_conversion_rate = $invoice_count > 0 ? ($payment_count / $invoice_count) * 100 : 0;
-        
-        // Step 5: Save calculated results to funnel_stats
-        $this->saveFunnelStats($prefix, [
-            'quotation_count' => $quotation_count,
-            'quotation_value' => $quotation_value,
-            'po_count' => $po_count,
-            'po_value' => $po_value,
-            'po_conversion_rate' => round($po_conversion_rate, 2),
-            'invoice_count' => $invoice_count,
-            'invoice_value' => $invoice_value,
-            'invoice_conversion_rate' => round($invoice_conversion_rate, 2),
-            'payment_count' => $payment_count,
-            'payment_value' => $payment_value,
-            'payment_conversion_rate' => round($payment_conversion_rate, 2)
-        ]);
-        
-        return [
-            'quotation_count' => $quotation_count,
-            'quotation_value' => $quotation_value,
-            'po_count' => $po_count,
-            'po_value' => $po_value,
-            'po_conversion_rate' => round($po_conversion_rate, 2),
-            'invoice_count' => $invoice_count,
-            'invoice_value' => $invoice_value,
-            'invoice_conversion_rate' => round($invoice_conversion_rate, 2),
-            'payment_count' => $payment_count,
-            'payment_value' => $payment_value,
-            'payment_conversion_rate' => round($payment_conversion_rate, 2)
-        ];
-    }
-    
-    /**
-     * Fetch raw quotation records with prefix filtering (NO AGGREGATE SQL)
-     */
-    private function fetchRawQuotations($prefix) {
-        $stmt = $this->db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+        // 1. Fetch Raw Quotations (NO AGGREGATE SQL)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
         $stmt->execute();
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $quotationRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $quotations = [];
-        foreach ($results as $row) {
+        foreach ($quotationRows as $row) {
             $data = json_decode($row['data'], true);
-            if (!$data) continue;
-            
-            $quotationNumber = $data['quotation_number'] ?? $data['quote_number'] ?? '';
-            
-            // Apply prefix filtering - if no prefix, include all
-            if (!$prefix || empty($prefix) || strpos($quotationNumber, $prefix) === 0) {
+            $quotationNumber = $data['quotation_number'] ?? '';
+            if (!$prefix || strpos($quotationNumber, $prefix) === 0) {
                 $quotations[] = [
                     'id' => $data['id'] ?? '',
                     'quotation_number' => $quotationNumber,
-                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0)
+                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0)
                 ];
             }
         }
         
-        return $quotations;
-    }
-    
-    /**
-     * Fetch raw purchase order records with prefix filtering (NO AGGREGATE SQL)
-     */
-    private function fetchRawPurchaseOrders($prefix) {
-        $stmt = $this->db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
-        $stmt->execute();
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Backend computes quotation stats
+        $quotation_count = count($quotations);
+        $quotation_value = array_sum(array_column($quotations, 'total_amount'));
         
-        $purchaseOrders = [];
-        foreach ($results as $row) {
+        // 2. Fetch Raw Purchase Orders (NO AGGREGATE SQL)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        $poRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $pos = [];
+        foreach ($poRows as $row) {
             $data = json_decode($row['data'], true);
-            if (!$data) continue;
-            
-            $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? $data['purchase_order_number'] ?? '';
-            
-            // Apply prefix filtering - if no prefix, include all
-            if (!$prefix || empty($prefix) || strpos($poNumber, $prefix) === 0 || stripos($poNumber, $prefix) !== false) {
-                $purchaseOrders[] = [
+            $poNumber = $data['po_number'] ?? $data['internal_po_number'] ?? '';
+            if (!$prefix || stripos($poNumber, $prefix) !== false) {
+                $pos[] = [
                     'id' => $data['id'] ?? '',
                     'po_number' => $poNumber,
-                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0),
+                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
                     'amount_paid' => floatval($data['amount_paid'] ?? 0)
                 ];
             }
         }
         
-        return $purchaseOrders;
-    }
-    
-    /**
-     * Fetch raw invoice records with prefix filtering (NO AGGREGATE SQL)
-     */
-    private function fetchRawInvoices($prefix) {
-        $stmt = $this->db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        // Backend computes PO stats
+        $po_count = count($pos);
+        $po_value = array_sum(array_column($pos, 'total_amount'));
+        $po_conversion_rate = $quotation_count > 0 ? round(($po_count / $quotation_count) * 100, 2) : 0;
+        
+        // 3. Fetch Raw Invoices (NO AGGREGATE SQL)
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
         $stmt->execute();
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $invoiceRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $invoices = [];
-        foreach ($results as $row) {
+        foreach ($invoiceRows as $row) {
             $data = json_decode($row['data'], true);
-            if (!$data) continue;
-            
-            $invoiceNumber = $data['invoice_number'] ?? $data['number'] ?? '';
-            
-            // Apply prefix filtering - if no prefix, include all
-            if (!$prefix || empty($prefix) || strpos($invoiceNumber, $prefix) === 0) {
-                $total = floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? 0);
-                $outstanding = floatval($data['outstanding_amount'] ?? $data['balance'] ?? 0);
-                $paid = $total - $outstanding;
-                
+            $invoiceNumber = $data['invoice_number'] ?? '';
+            if (!$prefix || strpos($invoiceNumber, $prefix) === 0) {
                 $invoices[] = [
                     'id' => $data['id'] ?? '',
                     'invoice_number' => $invoiceNumber,
-                    'total_amount' => $total,
-                    'amount_paid' => $paid > 0 ? $paid : floatval($data['amount_paid'] ?? 0)
+                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
+                    'amount_paid' => floatval($data['amount_paid'] ?? 0)
                 ];
             }
         }
         
-        return $invoices;
-    }
-    
-    /**
-     * Sum total_amount from array of records
-     */
-    private function sumTotalAmount($records) {
-        $total = 0;
-        foreach ($records as $record) {
-            $total += $record['total_amount'];
-        }
-        return $total;
-    }
-    
-    /**
-     * Sum amount_paid from array of records
-     */
-    private function sumAmountPaid($records) {
-        $total = 0;
-        foreach ($records as $record) {
-            $total += $record['amount_paid'];
-        }
-        return $total;
-    }
-    
-    /**
-     * Count records with amount_paid > 0
-     */
-    private function countPaidInvoices($invoices) {
-        $count = 0;
-        foreach ($invoices as $invoice) {
-            if ($invoice['amount_paid'] > 0) {
-                $count++;
-            }
-        }
-        return $count;
-    }
-    
-    /**
-     * Save calculated funnel stats to database
-     */
-    private function saveFunnelStats($prefix, $stats) {
-        $stmt = $this->db->prepare("
+        // Backend computes invoice stats
+        $invoice_count = count($invoices);
+        $invoice_value = array_sum(array_column($invoices, 'total_amount'));
+        $invoice_conversion_rate = $po_count > 0 ? round(($invoice_count / $po_count) * 100, 2) : 0;
+        
+        // 4. Backend computes payment stats from invoices
+        $payment_value = array_sum(array_column($invoices, 'amount_paid'));
+        $payment_count = count(array_filter($invoices, function($inv) { return $inv['amount_paid'] > 0; }));
+        $payment_conversion_rate = $invoice_count > 0 ? round(($payment_count / $invoice_count) * 100, 2) : 0;
+        
+        // 5. Save calculated results into funnel_stats
+        $stmt = $db->prepare("
             INSERT INTO funnel_stats (
                 company_prefix, quotation_count, quotation_value,
                 po_count, po_value, po_conversion_rate,
@@ -250,26 +128,33 @@ class FunnelStatsService {
         ");
         
         $stmt->execute([
-            $prefix,
-            $stats['quotation_count'],
-            $stats['quotation_value'],
-            $stats['po_count'],
-            $stats['po_value'],
-            $stats['po_conversion_rate'],
-            $stats['invoice_count'],
-            $stats['invoice_value'],
-            $stats['invoice_conversion_rate'],
-            $stats['payment_count'],
-            $stats['payment_value'],
-            $stats['payment_conversion_rate']
+            $prefix, $quotation_count, $quotation_value,
+            $po_count, $po_value, $po_conversion_rate,
+            $invoice_count, $invoice_value, $invoice_conversion_rate,
+            $payment_count, $payment_value, $payment_conversion_rate
         ]);
+        
+        return [
+            'quotation_count' => $quotation_count,
+            'quotation_value' => $quotation_value,
+            'po_count' => $po_count,
+            'po_value' => $po_value,
+            'po_conversion_rate' => $po_conversion_rate,
+            'invoice_count' => $invoice_count,
+            'invoice_value' => $invoice_value,
+            'invoice_conversion_rate' => $invoice_conversion_rate,
+            'payment_count' => $payment_count,
+            'payment_value' => $payment_value,
+            'payment_conversion_rate' => $payment_conversion_rate
+        ];
     }
     
-    /**
-     * Get funnel stats from database (UI reads ONLY from funnel_stats)
-     */
     public function getFunnelStats($prefix) {
-        $stmt = $this->db->prepare("
+        $db = Database::connect();
+        $this->createFunnelStatsTable($db);
+        
+        // UI reads ONLY from funnel_stats
+        $stmt = $db->prepare("
             SELECT * FROM funnel_stats 
             WHERE company_prefix = ? 
             ORDER BY generated_at DESC 
@@ -279,29 +164,13 @@ class FunnelStatsService {
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$result) {
-            // Calculate if no stats exist
+            // Calculate if no data exists
             return $this->calculateFunnelStats($prefix);
         }
         
-        return [
-            'quotation_count' => intval($result['quotation_count']),
-            'quotation_value' => floatval($result['quotation_value']),
-            'po_count' => intval($result['po_count']),
-            'po_value' => floatval($result['po_value']),
-            'po_conversion_rate' => floatval($result['po_conversion_rate']),
-            'invoice_count' => intval($result['invoice_count']),
-            'invoice_value' => floatval($result['invoice_value']),
-            'invoice_conversion_rate' => floatval($result['invoice_conversion_rate']),
-            'payment_count' => intval($result['payment_count']),
-            'payment_value' => floatval($result['payment_value']),
-            'payment_conversion_rate' => floatval($result['payment_conversion_rate']),
-            'generated_at' => $result['generated_at']
-        ];
+        return $result;
     }
     
-    /**
-     * Get funnel container data mapped to UI format
-     */
     public function getFunnelContainers($prefix) {
         $stats = $this->getFunnelStats($prefix);
         

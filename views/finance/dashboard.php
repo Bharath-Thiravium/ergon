@@ -950,7 +950,7 @@ async function loadDashboardData() {
         }
         
         updateKPICards(data);
-        updateConversionFunnel(data);
+        await updateConversionFunnel(data);
         updateCharts(data);
         loadOutstandingInvoices();
         loadRecentActivities();
@@ -1061,23 +1061,49 @@ function updateKPICards(data) {
     }
 }
 
-function updateConversionFunnel(data) {
-    const funnel = data.conversionFunnel || {};
-    
-    document.getElementById('funnelQuotations').textContent = funnel.quotations || 0;
-    document.getElementById('funnelQuotationValue').textContent = `₹${(funnel.quotationValue || 0).toLocaleString()}`;
-    
-    document.getElementById('funnelPOs').textContent = funnel.purchaseOrders || 0;
-    document.getElementById('funnelPOValue').textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
-    document.getElementById('quotationToPO').textContent = `${funnel.quotationToPO || 0}%`;
-    
-    document.getElementById('funnelInvoices').textContent = funnel.invoices || 0;
-    document.getElementById('funnelInvoiceValue').textContent = `₹${(funnel.invoiceValue || 0).toLocaleString()}`;
-    document.getElementById('poToInvoice').textContent = `${funnel.poToInvoice || 0}%`;
-    
-    document.getElementById('funnelPayments').textContent = funnel.payments || 0;
-    document.getElementById('funnelPaymentValue').textContent = `₹${(funnel.paymentValue || 0).toLocaleString()}`;
-    document.getElementById('invoiceToPayment').textContent = `${funnel.invoiceToPayment || 0}%`;
+async function updateConversionFunnel(data) {
+    try {
+        const response = await fetch('/ergon/finance/funnel-containers');
+        const funnelData = await response.json();
+        
+        if (funnelData.success && funnelData.containers) {
+            const containers = funnelData.containers;
+            
+            // Container 1 - Quotations
+            document.getElementById('funnelQuotations').textContent = containers.container1.quotations_count || 0;
+            document.getElementById('funnelQuotationValue').textContent = `₹${(containers.container1.quotations_total_value || 0).toLocaleString()}`;
+            
+            // Container 2 - Purchase Orders
+            document.getElementById('funnelPOs').textContent = containers.container2.po_count || 0;
+            document.getElementById('funnelPOValue').textContent = `₹${(containers.container2.po_total_value || 0).toLocaleString()}`;
+            document.getElementById('quotationToPO').textContent = `${containers.container2.po_conversion_rate || 0}%`;
+            
+            // Container 3 - Invoices
+            document.getElementById('funnelInvoices').textContent = containers.container3.invoice_count || 0;
+            document.getElementById('funnelInvoiceValue').textContent = `₹${(containers.container3.invoice_total_value || 0).toLocaleString()}`;
+            document.getElementById('poToInvoice').textContent = `${containers.container3.invoice_conversion_rate || 0}%`;
+            
+            // Container 4 - Payments
+            document.getElementById('funnelPayments').textContent = containers.container4.payment_count || 0;
+            document.getElementById('funnelPaymentValue').textContent = `₹${(containers.container4.total_payment_received || 0).toLocaleString()}`;
+            document.getElementById('invoiceToPayment').textContent = `${containers.container4.payment_conversion_rate || 0}%`;
+        }
+    } catch (error) {
+        console.warn('Funnel data not available:', error.message);
+        // Fallback to legacy data if available
+        const funnel = data.conversionFunnel || {};
+        document.getElementById('funnelQuotations').textContent = funnel.quotations || 0;
+        document.getElementById('funnelQuotationValue').textContent = `₹${(funnel.quotationValue || 0).toLocaleString()}`;
+        document.getElementById('funnelPOs').textContent = funnel.purchaseOrders || 0;
+        document.getElementById('funnelPOValue').textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
+        document.getElementById('quotationToPO').textContent = `${funnel.quotationToPO || 0}%`;
+        document.getElementById('funnelInvoices').textContent = funnel.invoices || 0;
+        document.getElementById('funnelInvoiceValue').textContent = `₹${(funnel.invoiceValue || 0).toLocaleString()}`;
+        document.getElementById('poToInvoice').textContent = `${funnel.poToInvoice || 0}%`;
+        document.getElementById('funnelPayments').textContent = funnel.payments || 0;
+        document.getElementById('funnelPaymentValue').textContent = `₹${(funnel.paymentValue || 0).toLocaleString()}`;
+        document.getElementById('invoiceToPayment').textContent = `${funnel.invoiceToPayment || 0}%`;
+    }
 }
 
 async function updateCharts(data) {
