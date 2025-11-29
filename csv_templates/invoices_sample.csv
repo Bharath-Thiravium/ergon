@@ -1,0 +1,4 @@
+invoice_number,total_amount,amount_paid,taxable_amount,igst,cgst,sgst,due_date,invoice_date,customer_id,customer_name,customer_gstin,status
+ERGN001,10000.00,5000.00,8474.58,1525.42,0.00,0.00,2024-02-15,2024-01-15,CUST001,ABC Corporation,29ABCDE1234F1Z5,pending
+ERGN002,25000.00,0.00,21186.44,3813.56,0.00,0.00,2024-02-20,2024-01-20,CUST002,XYZ Industries,27XYZAB5678G2H6,pending
+ERGN003,15000.00,15000.00,12711.86,2288.14,0.00,0.00,2024-01-25,2024-01-10,CUST003,PQR Limited,19PQRCD9012I3J7,paid
