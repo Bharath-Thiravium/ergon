@@ -172,21 +172,20 @@ class ExpenseController extends Controller {
             ];
             
             if ($this->expense->create($data)) {
-                // Create notification for owners and admins (suppress any warnings)
+                // Get the expense ID and create notification
                 try {
                     require_once __DIR__ . '/../helpers/NotificationHelper.php';
                     require_once __DIR__ . '/../config/database.php';
                     $db = Database::connect();
+                    $expenseId = $db->lastInsertId();
                     $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
                     $stmt->execute([$userId]);
                     $user = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if ($user) {
-                        $expenseId = $db->lastInsertId();
                         NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount, $expenseId);
                     }
                 } catch (Exception $notifError) {
-                    // Log but don't fail the expense creation - notification system may have table issues
                     error_log('Notification error (non-critical): ' . $notifError->getMessage());
                 }
                 
@@ -208,23 +207,6 @@ class ExpenseController extends Controller {
                     ]);
                     
                     if ($result) {
-                        $expenseId = $db->lastInsertId();
-                        
-                        // Create notification with expense ID
-                        try {
-                            require_once __DIR__ . '/../helpers/NotificationHelper.php';
-                            $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
-                            $stmt->execute([$userId]);
-                            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-                            
-                            if ($user) {
-                                NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount, $expenseId);
-                            }
-                        } catch (Exception $notifError) {
-                            // Silently fail notification - expense creation is more important
-                            error_log('Notification error (non-critical): ' . $notifError->getMessage());
-                        }
-                        
                         echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => '/ergon/expenses']);
                     } else {
                         error_log('Direct expense insert failed: ' . implode(' - ', $stmt->errorInfo()));
@@ -433,6 +415,14 @@ class ExpenseController extends Controller {
             $result = $stmt->execute([$_SESSION['user_id'], $id]);
             
             if ($result && $stmt->rowCount() > 0) {
+                // Create notification for user
+                try {
+                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                    NotificationHelper::notifyExpenseStatusChange($id, 'approved', $_SESSION['user_id']);
+                } catch (Exception $notifError) {
+                    error_log('Expense approval notification error: ' . $notifError->getMessage());
+                }
+                
                 // Try accounting integration but don't fail if it doesn't work
                 try {
                     require_once __DIR__ . '/../helpers/AccountingHelper.php';
@@ -500,6 +490,14 @@ class ExpenseController extends Controller {
                 $result = $stmt->execute([$reason, $id]);
                 
                 if ($result && $stmt->rowCount() > 0) {
+                    // Create notification for user
+                    try {
+                        require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                        NotificationHelper::notifyExpenseStatusChange($id, 'rejected', $_SESSION['user_id']);
+                    } catch (Exception $notifError) {
+                        error_log('Expense rejection notification error: ' . $notifError->getMessage());
+                    }
+                    
                     $db->commit();
                     header('Location: /ergon/expenses?success=Expense rejected successfully');
                 } else {

@@ -40,6 +40,9 @@ ob_start();
             <button class="btn btn--secondary" onclick="nextMonth()">
                 Next <span>▶</span>
             </button>
+            <button class="btn btn--primary" onclick="loadTasks()" title="Refresh tasks">
+                🔄 Refresh
+            </button>
         </div>
     </div>
     <div class="card__body">
@@ -221,15 +224,26 @@ ob_start();
 let currentDate = new Date();
 let tasks = <?= json_encode($tasks ?? []) ?>;
 
+// Debug: Log tasks data
+console.log('Tasks loaded:', tasks);
+
 document.addEventListener('DOMContentLoaded', function() {
     renderCalendar();
 });
 
 function loadTasks() {
-    fetch('/ergon/api/tasks')
+    const userId = <?= $_SESSION['user_id'] ?? 'null' ?>;
+    if (!userId) {
+        console.error('No user ID available');
+        return;
+    }
+    
+    fetch('/ergon/api/tasks?user_id=' + userId)
         .then(response => response.json())
         .then(data => {
+            console.log('API Response:', data);
             tasks = data.tasks || [];
+            console.log('Updated tasks:', tasks);
             renderCalendar();
         })
         .catch(error => console.error('Error loading tasks:', error));
@@ -297,11 +311,17 @@ function createDayElement(date) {
     const dayTasks = document.createElement('div');
     dayTasks.className = 'day-tasks';
     
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local date to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const dayNum = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${dayNum}`;
+    
     const dayTaskList = tasks.filter(task => {
-        const taskDate = task.deadline || task.due_date;
+        const taskDate = task.planned_date || task.deadline || task.due_date;
         if (!taskDate) return false;
         const taskDateStr = taskDate.split(' ')[0]; // Handle datetime format
+        
         return taskDateStr === dateStr;
     });
     
@@ -326,6 +346,14 @@ function createDayElement(date) {
     }
     
     day.appendChild(dayTasks);
+    
+    // Add click handler for creating tasks on empty days
+    if (dayTaskList.length === 0 && isCurrentMonth) {
+        day.onclick = () => createTaskForDate(date);
+        day.style.cursor = 'pointer';
+        day.title = 'Click to add task for ' + date.toLocaleDateString();
+    }
+    
     return day;
 }
 
@@ -341,6 +369,15 @@ function nextMonth() {
 
 function viewTask(taskId) {
     window.location.href = `/ergon/tasks/view/${taskId}`;
+}
+
+function createTaskForDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const dayNum = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${dayNum}`;
+    const url = `/ergon/tasks/create?planned_date=${dateStr}`;
+    window.location.href = url;
 }
 
 function showDayTasks(date, dayTasks) {
@@ -366,6 +403,11 @@ function showDayTasks(date, dayTasks) {
                         <div class="task-meta">Status: ${task.status} | Progress: ${task.progress || 0}% | Priority: ${task.priority}</div>
                     </div>
                 `).join('')}
+                <div class="task-modal-actions">
+                    <button class="btn btn--primary" onclick="createTaskForDate(new Date('${date.toISOString()}'))">
+                        ➕ Add Task for This Date
+                    </button>
+                </div>
             </div>
         </div>
     `;

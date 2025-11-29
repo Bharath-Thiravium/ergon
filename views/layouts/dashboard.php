@@ -157,6 +157,10 @@ ob_end_clean();
     <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/_archive_legacy/css/user-management-mobile.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/_archive_legacy/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
+    <!-- Mobile Dark Theme Fixes - Critical for visibility -->
+    <link href="/ergon/assets/css/mobile-dark-theme-fixes.css?v=<?= time() ?>" rel="stylesheet">
+    <!-- Modal Dialog Fixes - Ensures dialog visibility -->
+    <link href="/ergon/assets/css/modal-dialog-fixes.css?v=<?= time() ?>" rel="stylesheet">
     <!-- Dashboard overrides loaded last to ensure overrides on compiled CSS in deployments -->
     <link href="/ergon/assets/css/ergon-overrides.css?v=<?= time() ?>" rel="stylesheet">
     <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
@@ -592,18 +596,41 @@ ob_end_clean();
                     Finance
                 </a>
             <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                <div class="sidebar__divider">Overview</div>
                 <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
                     <span class="sidebar__icon">📊</span>
                     Dashboard
                 </a>
-                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
-                    <span class="sidebar__icon">✅</span>
-                    Tasks
+                <a href="/ergon/gamification/team-competition" class="sidebar__link <?= ($active_page ?? '') === 'team-competition' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🏆</span>
+                    Competition
                 </a>
+                
+                <div class="sidebar__divider">Team</div>
                 <a href="/ergon/users" class="sidebar__link <?= ($active_page ?? '') === 'users' ? 'sidebar__link--active' : '' ?>">
                     <span class="sidebar__icon">👥</span>
-                    Users
+                    Members
                 </a>
+                <a href="/ergon/departments" class="sidebar__link <?= ($active_page ?? '') === 'departments' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🏢</span>
+                    Departments
+                </a>
+                
+                <div class="sidebar__divider">Tasks</div>
+                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">✅</span>
+                    Overall Tasks
+                </a>
+                <a href="/ergon/workflow/daily-planner" class="sidebar__link <?= ($active_page ?? '') === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🌅</span>
+                    Daily Planner
+                </a>
+                <a href="/ergon/contacts/followups" class="sidebar__link <?= ($active_page ?? '') === 'contact_followups' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📞</span>
+                    Follow-ups
+                </a>
+                
+                <div class="sidebar__divider">Approvals</div>
                 <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
                     <span class="sidebar__icon">📅</span>
                     Leaves
@@ -611,6 +638,18 @@ ob_end_clean();
                 <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
                     <span class="sidebar__icon">💰</span>
                     Expenses
+                </a>
+                <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💳</span>
+                    Advances
+                </a>
+                <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📍</span>
+                    Attendance
+                </a>
+                <a href="/ergon/reports/activity" class="sidebar__link <?= ($active_page ?? '') === 'activity' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">⏱️</span>
+                    Reports
                 </a>
             <?php else: ?>
                 <div class="sidebar__divider">Overview</div>

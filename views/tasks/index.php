@@ -237,22 +237,24 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
 }
 
 .dialog-content {
-    background: white;
+    background: var(--bg-primary);
     padding: 2rem;
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     min-width: 300px;
     max-width: 400px;
+    border: 1px solid var(--border-color);
 }
 
 .dialog-content h4 {
     margin: 0 0 1rem 0;
-    color: #1f2937;
+    color: var(--text-primary);
 }
 
 .dialog-content p {
     margin: 0 0 1rem 0;
     font-weight: 500;
+    color: var(--text-primary);
 }
 
 #progressSlider {
@@ -276,13 +278,15 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
 }
 
 .dialog-buttons button:first-child {
-    background: #f3f4f6;
-    color: #374151;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
 }
 
 .dialog-buttons button:last-child {
-    background: #3b82f6;
+    background: var(--primary);
     color: white;
+    border: 1px solid var(--primary);
 }
 
 .dialog-buttons button:hover {

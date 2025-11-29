@@ -661,6 +661,18 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
         grid-template-columns: 1fr;
     }
     
+    .contacts-list {
+        display: flex !important;
+    }
+    
+    #gridView[style*="display: none"] {
+        display: none !important;
+    }
+    
+    #listView[style*="display: none"] {
+        display: none !important;
+    }
+    
     .contact-card__header {
         flex-direction: column;
         gap: 0.75rem;

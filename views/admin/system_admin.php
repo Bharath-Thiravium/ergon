@@ -101,12 +101,21 @@ ob_start();
                         <p class="admin-card__date">Created: <?= date('M d, Y', strtotime($admin['created_at'])) ?></p>
                     </div>
                     <div class="admin-card__actions">
-                        <button class="btn btn--sm btn--secondary" onclick="changePassword(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>')">
-                            <span>🔑</span> Change Password
-                        </button>
-                        <button class="btn btn--sm btn--delete" onclick="deleteAdmin(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>')">
-                            <span>🗑️</span> Delete
-                        </button>
+                        <?php if ($admin['status'] === 'terminated'): ?>
+                            <button class="btn btn--sm btn--secondary" disabled title="Terminated admins cannot be managed">
+                                <span>🔑</span> Change Password
+                            </button>
+                            <button class="btn btn--sm btn--delete" disabled title="Terminated admins cannot be managed">
+                                <span>⏸️</span> Suspend
+                            </button>
+                        <?php else: ?>
+                            <button class="btn btn--sm btn--secondary" onclick="changePassword(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>')">
+                                <span>🔑</span> Change Password
+                            </button>
+                            <button class="btn btn--sm btn--delete" onclick="suspendAdmin(<?= $admin['id'] ?>, '<?= htmlspecialchars($admin['name']) ?>')">
+                                <span>⏸️</span> Suspend
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -125,6 +134,16 @@ ob_start();
     background: #fef2f2 !important;
     border-color: #fecaca !important;
     color: #b91c1c !important;
+}
+.btn:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+.btn:disabled:hover {
+    background: #f3f4f6 !important;
+    border-color: #e5e7eb !important;
+    color: #9ca3af !important;
 }
 .toggle-switch {
     position: relative;
@@ -199,7 +218,7 @@ ob_start();
 }
 #createAdminModal .modal-content {
     position: relative !important;
-    background: white !important;
+    background: var(--bg-primary, white) !important;
     margin: 5% auto !important;
     padding: 0 !important;
     width: 90% !important;
@@ -207,25 +226,28 @@ ob_start();
     border-radius: 8px !important;
     z-index: 1001 !important;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid var(--border-color, #e5e7eb) !important;
 }
 .modal-header {
     padding: 1rem 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: var(--bg-primary, white);
 }
 .modal-header h3 {
     margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
+    color: var(--text-primary, #111827);
 }
 .modal-close {
     background: none;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: #6b7280;
+    color: var(--text-secondary, #6b7280);
     padding: 0;
     width: 24px;
     height: 24px;
@@ -234,17 +256,69 @@ ob_start();
     justify-content: center;
 }
 .modal-close:hover {
-    color: #374151;
+    color: var(--text-primary, #374151);
 }
 .modal-body {
     padding: 1.5rem;
+    background: var(--bg-primary, white);
+}
+.modal-body .form-label {
+    color: var(--text-primary, #111827);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+.modal-body .form-control {
+    background: var(--bg-primary, white);
+    border: 1px solid var(--border-color, #d1d5db);
+    color: var(--text-primary, #111827);
+    border-radius: 6px;
+    padding: 0.75rem;
+    width: 100%;
+    font-size: 0.875rem;
+}
+.modal-body .form-control:focus {
+    outline: none;
+    border-color: var(--primary, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 .modal-footer {
     padding: 1rem 1.5rem;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--border-color, #e5e7eb);
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
+    background: var(--bg-primary, white);
+}
+
+/* Dark theme specific styles */
+[data-theme="dark"] #createAdminModal .modal-content {
+    background: var(--bg-primary) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-body,
+[data-theme="dark"] .modal-footer {
+    background: var(--bg-primary);
+    border-color: var(--border-color);
+}
+[data-theme="dark"] .modal-header h3,
+[data-theme="dark"] .modal-body .form-label {
+    color: var(--text-primary);
+}
+[data-theme="dark"] .modal-body .form-control {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+[data-theme="dark"] .modal-body .form-control::placeholder {
+    color: var(--text-secondary);
+}
+[data-theme="dark"] .password-toggle {
+    color: var(--text-secondary);
+}
+[data-theme="dark"] .password-toggle:hover {
+    color: var(--text-primary);
 }
 .admin-grid {
     display: grid;
@@ -415,6 +489,13 @@ function closeModal(modalId) {
 }
 
 function changePassword(userId, userName) {
+    // Check if button is disabled (for terminated admins)
+    const button = event.target;
+    if (button.disabled) {
+        alert('Cannot change password for terminated admins.');
+        return;
+    }
+    
     const newPassword = prompt(`Enter new password for ${userName}:`);
     if (!newPassword) return;
     
@@ -455,12 +536,12 @@ function changePassword(userId, userName) {
     }
 }
 
-function deleteAdmin(adminId, adminName) {
-    if (confirm(`Are you sure you want to permanently delete admin "${adminName}"? This action cannot be undone and will remove all associated data.`)) {
+function suspendAdmin(adminId, adminName) {
+    if (confirm(`Are you sure you want to suspend admin "${adminName}"? They will not be able to login until reactivated.`)) {
         const formData = new FormData();
         formData.append('admin_id', adminId);
         
-        fetch('/ergon/system-admin/delete-admin', {
+        fetch('/ergon/system-admin/suspend-admin', {
             method: 'POST',
             body: formData
         })
@@ -475,7 +556,7 @@ function deleteAdmin(adminId, adminName) {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to delete admin. Please try again.');
+            alert('Failed to suspend admin. Please try again.');
         });
     }
 }

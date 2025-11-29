@@ -94,10 +94,10 @@ class OwnerController extends Controller {
         try {
             $db = Database::connect();
             
-            // Only get items that need final owner approval
-            $pendingLeaves = $this->getPendingLeaves($db, 'final');
-            $pendingExpenses = $this->getPendingExpenses($db, 'final');
-            $pendingAdvances = $this->getPendingAdvances($db, 'final');
+            // Get all pending requests for owner approval
+            $pendingLeaves = $this->getPendingLeaves($db);
+            $pendingExpenses = $this->getPendingExpenses($db);
+            $pendingAdvances = $this->getPendingAdvances($db);
             
             $this->view('owner/approvals', [
                 'leaves' => $pendingLeaves,
@@ -108,7 +108,7 @@ class OwnerController extends Controller {
             
         } catch (Exception $e) {
             error_log('Owner approvals error: ' . $e->getMessage());
-            $this->view('owner/approvals', ['error' => 'Unable to load approvals']);
+            $this->view('owner/approvals', ['error' => 'Unable to load approvals: ' . $e->getMessage()]);
         }
     }
     
@@ -260,13 +260,87 @@ class OwnerController extends Controller {
     
     // Legacy methods for backward compatibility
     public function approveRequest() {
-        $this->finalApprove();
+        AuthMiddleware::requireRole('owner');
+        
+        if (!$this->isPost()) {
+            $this->json(['success' => false, 'message' => 'Invalid request method']);
+            return;
+        }
+        
+        try {
+            $type = $_POST['type'];
+            $id = (int)$_POST['id'];
+            
+            $db = Database::connect();
+            
+            switch ($type) {
+                case 'leave':
+                    $stmt = $db->prepare("UPDATE leaves SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ? AND status = 'pending'");
+                    break;
+                case 'expense':
+                    $stmt = $db->prepare("UPDATE expenses SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ? AND status = 'pending'");
+                    break;
+                case 'advance':
+                    $stmt = $db->prepare("UPDATE advances SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ? AND status = 'pending'");
+                    break;
+                default:
+                    throw new Exception('Invalid approval type');
+            }
+            
+            $result = $stmt->execute([$_SESSION['user_id'], $id]);
+            
+            if ($result && $stmt->rowCount() > 0) {
+                $this->json(['success' => true, 'message' => ucfirst($type) . ' approved successfully']);
+            } else {
+                $this->json(['success' => false, 'message' => 'Failed to approve ' . $type . ' or already processed']);
+            }
+            
+        } catch (Exception $e) {
+            error_log('Owner approve request error: ' . $e->getMessage());
+            $this->json(['success' => false, 'message' => $e->getMessage()]);
+        }
     }
     
     public function rejectRequest() {
-        if ($this->isPost()) {
-            $_POST['action'] = 'reject';
-            $this->finalApprove();
+        AuthMiddleware::requireRole('owner');
+        
+        if (!$this->isPost()) {
+            $this->json(['success' => false, 'message' => 'Invalid request method']);
+            return;
+        }
+        
+        try {
+            $type = $_POST['type'];
+            $id = (int)$_POST['id'];
+            $reason = $_POST['remarks'] ?? 'Rejected by owner';
+            
+            $db = Database::connect();
+            
+            switch ($type) {
+                case 'leave':
+                    $stmt = $db->prepare("UPDATE leaves SET status = 'rejected', rejection_reason = ?, approved_by = ?, approved_at = NOW() WHERE id = ? AND status = 'pending'");
+                    break;
+                case 'expense':
+                    $stmt = $db->prepare("UPDATE expenses SET status = 'rejected', rejection_reason = ?, approved_by = ?, approved_at = NOW() WHERE id = ? AND status = 'pending'");
+                    break;
+                case 'advance':
+                    $stmt = $db->prepare("UPDATE advances SET status = 'rejected', rejection_reason = ?, approved_by = ?, approved_at = NOW() WHERE id = ? AND status = 'pending'");
+                    break;
+                default:
+                    throw new Exception('Invalid approval type');
+            }
+            
+            $result = $stmt->execute([$reason, $_SESSION['user_id'], $id]);
+            
+            if ($result && $stmt->rowCount() > 0) {
+                $this->json(['success' => true, 'message' => ucfirst($type) . ' rejected successfully']);
+            } else {
+                $this->json(['success' => false, 'message' => 'Failed to reject ' . $type . ' or already processed']);
+            }
+            
+        } catch (Exception $e) {
+            error_log('Owner reject request error: ' . $e->getMessage());
+            $this->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
     
@@ -385,31 +459,22 @@ class OwnerController extends Controller {
     }
     
     private function getPendingLeaves($db, $level = 'all') {
-        if ($level === 'final') {
-            $stmt = $db->prepare("SELECT l.*, u.name as user_name FROM leaves l JOIN users u ON l.user_id = u.id WHERE l.admin_approval = 'approved' AND l.owner_approval = 'pending' ORDER BY l.created_at DESC");
-        } else {
-            $stmt = $db->prepare("SELECT l.*, u.name as user_name FROM leaves l JOIN users u ON l.user_id = u.id WHERE l.status = 'pending' ORDER BY l.created_at DESC");
-        }
+        // Always fetch pending leaves for owner approval
+        $stmt = $db->prepare("SELECT l.*, u.name as user_name, l.leave_type as type FROM leaves l JOIN users u ON l.user_id = u.id WHERE l.status = 'pending' ORDER BY l.created_at DESC");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     private function getPendingExpenses($db, $level = 'all') {
-        if ($level === 'final') {
-            $stmt = $db->prepare("SELECT e.*, u.name as user_name FROM expenses e JOIN users u ON e.user_id = u.id WHERE e.admin_approval = 'approved' AND e.owner_approval = 'pending' ORDER BY e.created_at DESC");
-        } else {
-            $stmt = $db->prepare("SELECT e.*, u.name as user_name FROM expenses e JOIN users u ON e.user_id = u.id WHERE e.status = 'pending' ORDER BY e.created_at DESC");
-        }
+        // Always fetch pending expenses for owner approval
+        $stmt = $db->prepare("SELECT e.*, u.name as user_name FROM expenses e JOIN users u ON e.user_id = u.id WHERE e.status = 'pending' ORDER BY e.created_at DESC");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     private function getPendingAdvances($db, $level = 'all') {
-        if ($level === 'final') {
-            $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id WHERE a.admin_approval = 'approved' AND a.owner_approval = 'pending' ORDER BY a.created_at DESC");
-        } else {
-            $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id WHERE a.status = 'pending' ORDER BY a.created_at DESC");
-        }
+        // Always fetch pending advances for owner approval
+        $stmt = $db->prepare("SELECT a.*, u.name as user_name FROM advances a JOIN users u ON a.user_id = u.id WHERE a.status = 'pending' ORDER BY a.created_at DESC");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

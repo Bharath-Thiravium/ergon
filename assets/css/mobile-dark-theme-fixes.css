@@ -1,0 +1,511 @@
+/* 📱🌙 Mobile View & Dark Theme Visibility Fixes */
+
+/* ===== PAGE ACTIONS FIXES ===== */
+
+/* Base page-actions styling improvements */
+.page-actions {
+  display: flex !important;
+  gap: 0.75rem !important;
+  flex-shrink: 0 !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  background: var(--bg-primary) !important;
+  padding: 0.75rem !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Dark theme page-actions */
+[data-theme='dark'] .page-actions,
+.theme-dark .page-actions {
+  background: var(--gray-800) !important;
+  border-color: var(--gray-600) !important;
+  color: var(--white) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Page-actions buttons */
+.page-actions .btn,
+.page-actions button,
+.page-actions a {
+  color: var(--text-primary) !important;
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  transition: all 0.2s ease !important;
+  min-height: 40px !important;
+}
+
+/* Dark theme page-actions buttons */
+[data-theme='dark'] .page-actions .btn,
+[data-theme='dark'] .page-actions button,
+[data-theme='dark'] .page-actions a,
+.theme-dark .page-actions .btn,
+.theme-dark .page-actions button,
+.theme-dark .page-actions a {
+  color: var(--white) !important;
+  background: var(--gray-700) !important;
+  border-color: var(--gray-600) !important;
+}
+
+/* Page-actions button hover states */
+.page-actions .btn:hover,
+.page-actions button:hover,
+.page-actions a:hover {
+  background: var(--bg-hover) !important;
+  border-color: var(--primary) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme='dark'] .page-actions .btn:hover,
+[data-theme='dark'] .page-actions button:hover,
+[data-theme='dark'] .page-actions a:hover,
+.theme-dark .page-actions .btn:hover,
+.theme-dark .page-actions button:hover,
+.theme-dark .page-actions a:hover {
+  background: var(--gray-600) !important;
+  border-color: var(--primary-light) !important;
+  color: var(--white) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Primary button variants */
+.page-actions .btn--primary,
+.page-actions .btn.btn--primary {
+  background: var(--primary) !important;
+  color: var(--white) !important;
+  border-color: var(--primary) !important;
+}
+
+.page-actions .btn--primary:hover,
+.page-actions .btn.btn--primary:hover {
+  background: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
+}
+
+/* Secondary button variants */
+.page-actions .btn--secondary,
+.page-actions .btn.btn--secondary {
+  background: var(--gray-100) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--gray-300) !important;
+}
+
+[data-theme='dark'] .page-actions .btn--secondary,
+[data-theme='dark'] .page-actions .btn.btn--secondary,
+.theme-dark .page-actions .btn--secondary,
+.theme-dark .page-actions .btn.btn--secondary {
+  background: var(--gray-600) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-500) !important;
+}
+
+/* Success button variants */
+.page-actions .btn--success,
+.page-actions .btn.btn--success {
+  background: var(--success) !important;
+  color: var(--white) !important;
+  border-color: var(--success) !important;
+}
+
+/* Danger button variants */
+.page-actions .btn--danger,
+.page-actions .btn.btn--danger {
+  background: var(--error) !important;
+  color: var(--white) !important;
+  border-color: var(--error) !important;
+}
+
+/* Warning button variants */
+.page-actions .btn--warning,
+.page-actions .btn.btn--warning {
+  background: var(--warning) !important;
+  color: var(--white) !important;
+  border-color: var(--warning) !important;
+}
+
+/* ===== DIALOG CONTENT FIXES ===== */
+
+/* Base dialog-content styling */
+.dialog-content,
+.modal-content,
+.modal .modal-content {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  padding: 1.5rem !important;
+  max-width: 90vw !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
+/* Dialog body specific fixes */
+.dialog-body {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  padding: 1.5rem !important;
+}
+
+/* Dark theme dialog-content */
+[data-theme='dark'] .dialog-content,
+[data-theme='dark'] .modal-content,
+[data-theme='dark'] .modal .modal-content,
+.theme-dark .dialog-content,
+.theme-dark .modal-content,
+.theme-dark .modal .modal-content {
+  background: var(--gray-800) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-600) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Dark theme dialog-body */
+[data-theme='dark'] .dialog-body,
+.theme-dark .dialog-body {
+  background: var(--gray-800) !important;
+  color: var(--white) !important;
+}
+
+/* Stat item fixes for daily planner */
+.stat-item {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  padding: 1rem !important;
+  text-align: center !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme='dark'] .stat-item,
+.theme-dark .stat-item {
+  background: var(--gray-800) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-600) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+.stat-item .stat-value {
+  color: var(--text-primary) !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 0.25rem !important;
+  display: block !important;
+}
+
+[data-theme='dark'] .stat-item .stat-value,
+.theme-dark .stat-item .stat-value {
+  color: var(--white) !important;
+}
+
+.stat-item .stat-label {
+  color: var(--text-secondary) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  display: block !important;
+}
+
+[data-theme='dark'] .stat-item .stat-label,
+.theme-dark .stat-item .stat-label {
+  color: var(--gray-300) !important;
+}
+
+.stats-grid {
+  display: grid !important;
+  gap: 1rem !important;
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+.stats-grid--2x2 {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+
+[data-theme='dark'] .stats-grid,
+.theme-dark .stats-grid {
+  background: transparent !important;
+}
+
+/* Override sla-dashboard-improvements.css hardcoded colors */
+[data-theme='dark'] .stats-grid--2x2 .stat-item,
+.theme-dark .stats-grid--2x2 .stat-item {
+  background: var(--gray-800) !important;
+  border-color: var(--gray-600) !important;
+  color: var(--white) !important;
+}
+
+[data-theme='dark'] .stats-grid--2x2 .stat-item:hover,
+.theme-dark .stats-grid--2x2 .stat-item:hover {
+  background: var(--gray-700) !important;
+  border-color: var(--gray-500) !important;
+}
+
+[data-theme='dark'] .stats-grid--2x2 .stat-value,
+.theme-dark .stats-grid--2x2 .stat-value {
+  color: var(--white) !important;
+}
+
+[data-theme='dark'] .stats-grid--2x2 .stat-label,
+.theme-dark .stats-grid--2x2 .stat-label {
+  color: var(--gray-300) !important;
+}
+
+/* Dialog headers */
+.dialog-content .modal-header,
+.modal-content .modal-header,
+.dialog-header {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 1rem 1.5rem !important;
+  margin: -1.5rem -1.5rem 1rem -1.5rem !important;
+  border-radius: 12px 12px 0 0 !important;
+}
+
+[data-theme='dark'] .dialog-content .modal-header,
+[data-theme='dark'] .modal-content .modal-header,
+[data-theme='dark'] .dialog-header,
+.theme-dark .dialog-content .modal-header,
+.theme-dark .modal-content .modal-header,
+.theme-dark .dialog-header {
+  background: var(--gray-700) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-600) !important;
+}
+
+/* Dialog body content */
+.dialog-content .modal-body,
+.modal-content .modal-body,
+.dialog-body {
+  color: var(--text-primary) !important;
+  line-height: 1.6 !important;
+}
+
+[data-theme='dark'] .dialog-content .modal-body,
+[data-theme='dark'] .modal-content .modal-body,
+[data-theme='dark'] .dialog-body,
+.theme-dark .dialog-content .modal-body,
+.theme-dark .modal-content .modal-body,
+.theme-dark .dialog-body {
+  color: var(--white) !important;
+}
+
+/* Dialog footer */
+.dialog-content .modal-footer,
+.modal-content .modal-footer,
+.dialog-footer {
+  background: var(--bg-secondary) !important;
+  border-top: 1px solid var(--border-color) !important;
+  padding: 1rem 1.5rem !important;
+  margin: 1rem -1.5rem -1.5rem -1.5rem !important;
+  border-radius: 0 0 12px 12px !important;
+  display: flex !important;
+  gap: 0.75rem !important;
+  justify-content: flex-end !important;
+}
+
+[data-theme='dark'] .dialog-content .modal-footer,
+[data-theme='dark'] .modal-content .modal-footer,
+[data-theme='dark'] .dialog-footer,
+.theme-dark .dialog-content .modal-footer,
+.theme-dark .modal-content .modal-footer,
+.theme-dark .dialog-footer {
+  background: var(--gray-700) !important;
+  border-color: var(--gray-600) !important;
+}
+
+/* Form elements in dialogs */
+.dialog-content .form-control,
+.modal-content .form-control,
+.dialog-content input,
+.modal-content input,
+.dialog-content textarea,
+.modal-content textarea,
+.dialog-content select,
+.modal-content select {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px !important;
+  padding: 0.75rem !important;
+  font-size: 0.875rem !important;
+}
+
+[data-theme='dark'] .dialog-content .form-control,
+[data-theme='dark'] .modal-content .form-control,
+[data-theme='dark'] .dialog-content input,
+[data-theme='dark'] .modal-content input,
+[data-theme='dark'] .dialog-content textarea,
+[data-theme='dark'] .modal-content textarea,
+[data-theme='dark'] .dialog-content select,
+[data-theme='dark'] .modal-content select,
+.theme-dark .dialog-content .form-control,
+.theme-dark .modal-content .form-control,
+.theme-dark .dialog-content input,
+.theme-dark .modal-content input,
+.theme-dark .dialog-content textarea,
+.theme-dark .modal-content textarea,
+.theme-dark .dialog-content select,
+.theme-dark .modal-content select {
+  background: var(--gray-700) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-600) !important;
+}
+
+/* Form labels in dialogs */
+.dialog-content label,
+.modal-content label,
+.dialog-content .form-label,
+.modal-content .form-label {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+  margin-bottom: 0.5rem !important;
+  display: block !important;
+}
+
+[data-theme='dark'] .dialog-content label,
+[data-theme='dark'] .modal-content label,
+[data-theme='dark'] .dialog-content .form-label,
+[data-theme='dark'] .modal-content .form-label,
+.theme-dark .dialog-content label,
+.theme-dark .modal-content label,
+.theme-dark .dialog-content .form-label,
+.theme-dark .modal-content .form-label {
+  color: var(--white) !important;
+}
+
+/* ===== MOBILE RESPONSIVE FIXES ===== */
+
+@media (max-width: 768px) {
+  .stats-grid--2x2 {
+    grid-template-columns: 1fr !important;
+  }
+  .stat-item {
+    padding: 0.75rem !important;
+  }
+  
+  /* Mobile page-actions */
+  .page-actions {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    padding: 1rem !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 100 !important;
+    margin: 1rem -12px -12px -12px !important;
+    border-radius: 12px 12px 0 0 !important;
+    border-bottom: none !important;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  [data-theme='dark'] .page-actions,
+  .theme-dark .page-actions {
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  /* Mobile page-actions buttons */
+  .page-actions .btn,
+  .page-actions button,
+  .page-actions a {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 48px !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    padding: 0.75rem 1rem !important;
+  }
+
+  /* Mobile dialog adjustments */
+  .dialog-content,
+  .modal-content,
+  .modal .modal-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: 2.5vh auto !important;
+    max-height: 95vh !important;
+    padding: 1rem !important;
+  }
+
+  /* Mobile dialog headers */
+  .dialog-content .modal-header,
+  .modal-content .modal-header,
+  .dialog-header {
+    margin: -1rem -1rem 1rem -1rem !important;
+    padding: 0.75rem 1rem !important;
+  }
+
+  /* Mobile dialog footers */
+  .dialog-content .modal-footer,
+  .modal-content .modal-footer,
+  .dialog-footer {
+    margin: 1rem -1rem -1rem -1rem !important;
+    padding: 0.75rem 1rem !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+
+  /* Mobile dialog footer buttons */
+  .dialog-content .modal-footer .btn,
+  .modal-content .modal-footer .btn,
+  .dialog-footer .btn {
+    width: 100% !important;
+    min-height: 48px !important;
+    justify-content: center !important;
+  }
+
+  /* Mobile form elements */
+  .dialog-content .form-control,
+  .modal-content .form-control,
+  .dialog-content input,
+  .modal-content input,
+  .dialog-content textarea,
+  .modal-content textarea,
+  .dialog-content select,
+  .modal-content select {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 0.875rem !important;
+    min-height: 48px !important;
+  }
+}
+
+/* ===== ICON AND TEXT VISIBILITY ===== */
+
+/* Ensure all icons are visible */
+.page-actions i,
+.page-actions .bi,
+.page-actions svg,
+.dialog-content i,
+.dialog-content .bi,
+.dialog-content svg,
+.modal-content i,
+.modal-content .bi,
+.modal-content svg {
+  color: inherit !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure all text is visible */
+.page-actions span,
+.page-actions .btn-text,
+.dialog-content span,
+.dialog-content .text,
+.modal-content span,
+.modal-content .text {
+  color: inherit !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
