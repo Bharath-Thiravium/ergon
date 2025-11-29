@@ -2,11 +2,11 @@
 
 return [
     'mysql' => [
-        'host' => $_ENV['MYSQL_HOST'] ?? 'localhost',
+        'host' => $_ENV['DB_HOST'] ?? 'localhost',
         'port' => $_ENV['MYSQL_PORT'] ?? 3306,
-        'database' => $_ENV['MYSQL_DATABASE'] ?? 'ergon_analytics',
-        'username' => $_ENV['MYSQL_USERNAME'] ?? 'root',
-        'password' => $_ENV['MYSQL_PASSWORD'] ?? '',
+        'database' => $_ENV['DB_NAME'] ?? 'ergon',
+        'username' => $_ENV['DB_USER'] ?? 'root',
+        'password' => $_ENV['DB_PASS'] ?? '',
         'charset' => 'utf8mb4',
         'options' => [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
