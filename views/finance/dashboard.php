@@ -1789,7 +1789,7 @@ async function loadCustomers() {
         if (select) select.innerHTML = '<option value="">All Customers</option>';
         if (data.customers) {
             data.customers.forEach(customer => {
-                select.innerHTML += `<option value="${customer.id}">${customer.display}</option>`;
+                select.innerHTML += `<option value="${customer.display_name}">${customer.display}</option>`;
             });
         }
     } catch (error) {

@@ -239,16 +239,18 @@ class FunnelStatsService {
         $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $targetCustomerId = null;
+        $targetCustomerName = null;
         foreach ($customerResults as $row) {
             $data = json_decode($row['data'], true);
             $customerName = $data['display_name'] ?? $data['name'] ?? '';
             if ($customerName === $customerFilter) {
                 $targetCustomerId = $data['id'] ?? '';
+                $targetCustomerName = $customerName;
                 break;
             }
         }
         
-        if (!$targetCustomerId) {
+        if (!$targetCustomerId && !$targetCustomerName) {
             // Return empty stats if customer not found
             return [
                 'container1' => ['title' => 'Quotations', 'quotations_count' => 0, 'quotations_total_value' => 0],
@@ -268,8 +270,11 @@ class FunnelStatsService {
             $data = json_decode($row['data'], true);
             $quotationNumber = $data['quotation_number'] ?? '';
             $customerId = $data['customer_id'] ?? '';
+            $customerName = $data['customer_name'] ?? $data['name'] ?? $data['display_name'] ?? '';
             
-            if ((!$prefix || strpos($quotationNumber, $prefix) === 0) && $customerId === $targetCustomerId) {
+            $customerMatches = ($customerId === $targetCustomerId) || ($customerName === $targetCustomerName);
+            
+            if ((!$prefix || strpos($quotationNumber, $prefix) === 0) && $customerMatches) {
                 $quotations[] = ['total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0)];
             }
         }
@@ -285,12 +290,15 @@ class FunnelStatsService {
             $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
             $internalPoNumber = $data['internal_po_number'] ?? '';
             $customerId = $data['customer_id'] ?? '';
+            $customerName = $data['customer_name'] ?? $data['name'] ?? $data['display_name'] ?? '';
             
             $matchesPrefix = !$prefix || 
                             $this->matchesCompanyPrefix($poNumber, $prefix) || 
                             $this->matchesCompanyPrefix($internalPoNumber, $prefix);
             
-            if ($matchesPrefix && $customerId === $targetCustomerId) {
+            $customerMatches = ($customerId === $targetCustomerId) || ($customerName === $targetCustomerName);
+            
+            if ($matchesPrefix && $customerMatches) {
                 $pos[] = ['total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? $data['total'] ?? $data['subtotal'] ?? 0)];
             }
         }
@@ -305,8 +313,11 @@ class FunnelStatsService {
             $data = json_decode($row['data'], true);
             $invoiceNumber = $data['invoice_number'] ?? '';
             $customerId = $data['customer_id'] ?? '';
+            $customerName = $data['customer_name'] ?? $data['name'] ?? $data['display_name'] ?? '';
             
-            if ((!$prefix || strpos($invoiceNumber, $prefix) === 0) && $customerId === $targetCustomerId) {
+            $customerMatches = ($customerId === $targetCustomerId) || ($customerName === $targetCustomerName);
+            
+            if ((!$prefix || strpos($invoiceNumber, $prefix) === 0) && $customerMatches) {
                 $invoices[] = [
                     'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
                     'amount_paid' => floatval($data['amount_paid'] ?? 0)
