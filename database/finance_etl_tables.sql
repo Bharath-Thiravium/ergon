@@ -103,6 +103,17 @@ CREATE TABLE IF NOT EXISTS finance_data (
     INDEX(table_name)
 );
 
+-- Initialize dashboard_stats for all company prefixes
+INSERT INTO dashboard_stats (company_prefix) VALUES 
+('BKGE'), ('SE'), ('TC'), ('BKC')
+ON DUPLICATE KEY UPDATE company_prefix = VALUES(company_prefix);
+
+-- Add performance indexes
+ALTER TABLE dashboard_stats ADD INDEX IF NOT EXISTS idx_generated_at (generated_at);
+ALTER TABLE finance_consolidated ADD INDEX IF NOT EXISTS idx_customer_name (customer_name);
+ALTER TABLE finance_consolidated ADD INDEX IF NOT EXISTS idx_document_number (document_number);
+ALTER TABLE finance_consolidated ADD INDEX IF NOT EXISTS idx_record_status (company_prefix, record_type, status);
+
 -- Sample Data Insert (for testing)
 -- INSERT INTO finance_consolidated (record_type, document_number, customer_name, amount, company_prefix) 
 -- VALUES ('invoice', 'BKC001', 'Test Customer', 10000.00, 'BKC');

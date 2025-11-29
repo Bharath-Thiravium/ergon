@@ -633,4 +633,11 @@ class FinanceETLService {
         
         return stripos($documentNumber, $prefix) === 0;
     }
+    
+    /**
+     * Get MySQL connection for controller integration
+     */
+    public function getMysqlConnection() {
+        return $this->db;
+    }
 }
