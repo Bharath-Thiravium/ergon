@@ -2324,14 +2324,16 @@ class FinanceController extends Controller {
         
         try {
             $prefix = $this->getCompanyPrefix();
+            $customerFilter = $_GET['customer'] ?? '';
             $funnelService = new FunnelStatsService();
             
-            $containers = $funnelService->getFunnelContainers($prefix);
+            $containers = $funnelService->getFunnelContainers($prefix, $customerFilter);
             
             echo json_encode([
                 'success' => true,
                 'containers' => $containers,
-                'prefix' => $prefix
+                'prefix' => $prefix,
+                'customer_filter' => $customerFilter
             ]);
             
         } catch (Exception $e) {

@@ -195,7 +195,12 @@ class FunnelStatsService {
         return $result;
     }
     
-    public function getFunnelContainers($prefix) {
+    public function getFunnelContainers($prefix, $customerFilter = '') {
+        if ($customerFilter) {
+            // Calculate filtered stats on-the-fly for customer filtering
+            return $this->calculateFilteredFunnelStats($prefix, $customerFilter);
+        }
+        
         $stats = $this->getFunnelStats($prefix);
         
         return [
@@ -222,6 +227,112 @@ class FunnelStatsService {
                 'total_payment_received' => $stats['payment_value'],
                 'payment_conversion_rate' => $stats['payment_conversion_rate']
             ]
+        ];
+    }
+    
+    private function calculateFilteredFunnelStats($prefix, $customerFilter) {
+        $db = Database::connect();
+        
+        // Get customer ID from customer name
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
+        $stmt->execute();
+        $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $targetCustomerId = null;
+        foreach ($customerResults as $row) {
+            $data = json_decode($row['data'], true);
+            $customerName = $data['display_name'] ?? $data['name'] ?? '';
+            if ($customerName === $customerFilter) {
+                $targetCustomerId = $data['id'] ?? '';
+                break;
+            }
+        }
+        
+        if (!$targetCustomerId) {
+            // Return empty stats if customer not found
+            return [
+                'container1' => ['title' => 'Quotations', 'quotations_count' => 0, 'quotations_total_value' => 0],
+                'container2' => ['title' => 'Purchase Orders', 'po_count' => 0, 'po_total_value' => 0, 'po_conversion_rate' => 0],
+                'container3' => ['title' => 'Invoices', 'invoice_count' => 0, 'invoice_total_value' => 0, 'invoice_conversion_rate' => 0],
+                'container4' => ['title' => 'Payments', 'payment_count' => 0, 'total_payment_received' => 0, 'payment_conversion_rate' => 0]
+            ];
+        }
+        
+        // Filter quotations by customer
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_quotations'");
+        $stmt->execute();
+        $quotationRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $quotations = [];
+        foreach ($quotationRows as $row) {
+            $data = json_decode($row['data'], true);
+            $quotationNumber = $data['quotation_number'] ?? '';
+            $customerId = $data['customer_id'] ?? '';
+            
+            if ((!$prefix || strpos($quotationNumber, $prefix) === 0) && $customerId === $targetCustomerId) {
+                $quotations[] = ['total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0)];
+            }
+        }
+        
+        // Filter POs by customer
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_purchase_orders'");
+        $stmt->execute();
+        $poRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $pos = [];
+        foreach ($poRows as $row) {
+            $data = json_decode($row['data'], true);
+            $poNumber = $data['po_number'] ?? $data['purchase_order_number'] ?? $data['number'] ?? $data['po_id'] ?? $data['id'] ?? '';
+            $internalPoNumber = $data['internal_po_number'] ?? '';
+            $customerId = $data['customer_id'] ?? '';
+            
+            $matchesPrefix = !$prefix || 
+                            $this->matchesCompanyPrefix($poNumber, $prefix) || 
+                            $this->matchesCompanyPrefix($internalPoNumber, $prefix);
+            
+            if ($matchesPrefix && $customerId === $targetCustomerId) {
+                $pos[] = ['total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? $data['value'] ?? $data['po_amount'] ?? $data['order_amount'] ?? $data['total'] ?? $data['subtotal'] ?? 0)];
+            }
+        }
+        
+        // Filter invoices by customer
+        $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
+        $stmt->execute();
+        $invoiceRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $invoices = [];
+        foreach ($invoiceRows as $row) {
+            $data = json_decode($row['data'], true);
+            $invoiceNumber = $data['invoice_number'] ?? '';
+            $customerId = $data['customer_id'] ?? '';
+            
+            if ((!$prefix || strpos($invoiceNumber, $prefix) === 0) && $customerId === $targetCustomerId) {
+                $invoices[] = [
+                    'total_amount' => floatval($data['total_amount'] ?? $data['amount'] ?? 0),
+                    'amount_paid' => floatval($data['amount_paid'] ?? 0)
+                ];
+            }
+        }
+        
+        // Calculate stats
+        $quotation_count = count($quotations);
+        $quotation_value = array_sum(array_column($quotations, 'total_amount'));
+        $po_count = count($pos);
+        $po_value = array_sum(array_column($pos, 'total_amount'));
+        $invoice_count = count($invoices);
+        $invoice_value = array_sum(array_column($invoices, 'total_amount'));
+        $payment_value = array_sum(array_column($invoices, 'amount_paid'));
+        $payment_count = count(array_filter($invoices, function($inv) { return $inv['amount_paid'] > 0; }));
+        
+        $po_conversion_rate = $quotation_count > 0 ? round(($po_count / $quotation_count) * 100, 2) : 0;
+        $invoice_conversion_rate = $po_count > 0 ? round(($invoice_count / $po_count) * 100, 2) : 0;
+        $payment_conversion_rate = $invoice_count > 0 ? round(($payment_count / $invoice_count) * 100, 2) : 0;
+        
+        return [
+            'container1' => ['title' => 'Quotations', 'quotations_count' => $quotation_count, 'quotations_total_value' => $quotation_value],
+            'container2' => ['title' => 'Purchase Orders', 'po_count' => $po_count, 'po_total_value' => $po_value, 'po_conversion_rate' => $po_conversion_rate],
+            'container3' => ['title' => 'Invoices', 'invoice_count' => $invoice_count, 'invoice_total_value' => $invoice_value, 'invoice_conversion_rate' => $invoice_conversion_rate],
+            'container4' => ['title' => 'Payments', 'payment_count' => $payment_count, 'total_payment_received' => $payment_value, 'payment_conversion_rate' => $payment_conversion_rate]
         ];
     }
 }
