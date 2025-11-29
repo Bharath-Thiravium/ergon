@@ -711,6 +711,18 @@ async function loadDashboardData() {
             updateCashFlow(data.cashFlow);
         }
         
+        if (data.message) {
+            showNotification(data.message, 'info');
+        }
+        
+        // Show ETL source information
+        if (data.source === 'etl_dashboard_stats') {
+            console.log('✅ Using ETL-optimized analytics from consolidated SQL table');
+            console.log('📊 Data source: finance_consolidated → dashboard_stats');
+        } else if (data.source === 'empty') {
+            showNotification('💡 ETL Tip: Click "Sync Data" to run the ETL process and populate analytics', 'info');
+        }
+        
         // Load other data
         loadOutstandingInvoices();
         loadOutstandingByCustomer();
@@ -902,23 +914,23 @@ function analyzeAllTables() {
 async function syncFinanceData() {
     const btn = document.getElementById('syncBtn');
     btn.disabled = true;
-    btn.textContent = 'Syncing...';
+    btn.innerHTML = '<span class="btn__icon">⚡</span><span class="btn__text">Running ETL...</span>';
     
     try {
         const response = await fetch('/ergon/finance/sync', {method: 'POST'});
         const result = await response.json();
         
-        if (result.error) {
-            alert('Sync failed: ' + result.error);
-        } else {
-            alert(`Synced ${result.tables} finance tables successfully`);
+        if (result.success) {
+            showNotification(`✅ ETL completed: ${result.records_processed} records processed for ${result.prefix || 'all companies'}`, 'success');
             loadDashboardData();
+        } else {
+            showNotification('❌ ETL failed: ' + result.error, 'error');
         }
     } catch (error) {
-        alert('Sync failed: ' + error.message);
+        showNotification('❌ ETL failed: ' + error.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = '🔄 Sync Data';
+        btn.innerHTML = '<span class="btn__icon">🔄</span><span class="btn__text">Sync Data</span>';
     }
 }
 
@@ -1803,17 +1815,19 @@ async function loadCustomers() {
 
 async function refreshDashboardStats() {
     try {
+        showNotification('🔄 Running ETL process to refresh analytics...', 'info');
+        
         const response = await fetch('/ergon/finance/refresh-stats');
         const result = await response.json();
         
         if (result.success) {
-            showNotification('Dashboard stats refreshed successfully!', 'success');
+            showNotification(`✅ ETL refresh completed: ${result.records_processed} records processed`, 'success');
             loadDashboardData();
         } else {
-            showNotification('Failed to refresh stats: ' + (result.error || 'Unknown error'), 'error');
+            showNotification('❌ ETL refresh failed: ' + (result.error || 'Unknown error'), 'error');
         }
     } catch (error) {
-        showNotification('Failed to refresh stats: ' + error.message, 'error');
+        showNotification('❌ ETL refresh failed: ' + error.message, 'error');
     }
 }
 </script>

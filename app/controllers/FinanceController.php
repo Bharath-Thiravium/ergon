@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../services/FunnelStatsService.php';
+require_once __DIR__ . '/../services/FinanceETLService.php';
 
 class FinanceController extends Controller {
     
@@ -14,42 +15,30 @@ class FinanceController extends Controller {
         header('Content-Type: application/json');
         
         try {
-            $db = Database::connect();
-            $this->createTables($db);
+            $prefix = $this->getCompanyPrefix();
+            $etlService = new FinanceETLService();
             
-            $pgHost = '72.60.218.167';
-            $pgPort = '5432';
-            $pgDb = 'modernsap';
-            $pgUser = 'postgres';
-            $pgPass = 'mango';
+            $result = $etlService->runETL($prefix);
             
-            $pgConn = @pg_connect("host=$pgHost port=$pgPort dbname=$pgDb user=$pgUser password=$pgPass");
-            
-            if (!$pgConn) {
-                echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed']);
-                exit;
+            if ($result['success']) {
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'ETL completed successfully',
+                    'records_processed' => $result['records_processed'],
+                    'prefix' => $result['prefix']
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => false, 
+                    'error' => $result['error']
+                ]);
             }
-            
-            $syncCount = 0;
-            $financeTables = ['finance_invoices', 'finance_quotations', 'finance_customers', 'finance_customer', 'finance_payments', 'finance_purchase_orders'];
-            
-            foreach ($financeTables as $tableName) {
-                $result = @pg_query($pgConn, "SELECT * FROM $tableName");
-                if ($result && pg_num_rows($result) > 0) {
-                    $data = pg_fetch_all($result);
-                    $this->storeTableData($db, $tableName, $data);
-                    $syncCount++;
-                    error_log("Synced $tableName: " . count($data) . " records");
-                } else {
-                    error_log("No data found for table: $tableName");
-                }
-            }
-            
-            @pg_close($pgConn);
-            echo json_encode(['success' => true, 'tables' => $syncCount]);
             
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => 'PostgreSQL connection failed: ' . $e->getMessage()]);
+            echo json_encode([
+                'success' => false, 
+                'error' => 'ETL process failed: ' . $e->getMessage()
+            ]);
         }
         exit;
     }
@@ -63,17 +52,18 @@ class FinanceController extends Controller {
             $prefix = $this->getCompanyPrefix();
             $customerFilter = $_GET['customer'] ?? '';
             
-            // Always ensure quotation and PO data is calculated
-            $quotationStats = $this->calculateQuotationOverview($db, $prefix);
-            $poStats = $this->calculatePurchaseOrderOverview($db, $prefix);
-            
-            // ALWAYS read from dashboard_stats table - never query finance_invoices directly
+            // Read from dashboard_stats table (pre-calculated by ETL)
             $stmt = $db->prepare("SELECT * FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
             $stmt->execute([$prefix]);
             $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($dashboardStats) {
-                // Return pre-calculated stats from dashboard_stats table
+                // Use ETL service for customer filtering if needed
+                $etlService = new FinanceETLService();
+                $conversionFunnel = $customerFilter ? 
+                    $etlService->getAnalytics($prefix, ['customer' => $customerFilter])['funnel'] : 
+                    $this->getConversionFunnel($db, $customerFilter);
+                
                 echo json_encode([
                     'totalInvoiceAmount' => floatval($dashboardStats['total_revenue']),
                     'invoiceReceived' => floatval($dashboardStats['amount_received']),
@@ -81,79 +71,41 @@ class FinanceController extends Controller {
                     'pendingGSTAmount' => floatval($dashboardStats['gst_liability']),
                     'pendingPOValue' => floatval($dashboardStats['po_commitments']),
                     'claimableAmount' => floatval($dashboardStats['claimable_amount']),
-                    'claimablePOCount' => intval($dashboardStats['claimable_pos']),
-                    'claimablePos' => intval($dashboardStats['claimable_pos']),
                     'openPOCount' => intval($dashboardStats['open_pos']),
                     'closedPOCount' => intval($dashboardStats['closed_pos']),
                     'totalPOCount' => intval($dashboardStats['open_pos']) + intval($dashboardStats['closed_pos']),
-                    'claimRate' => floatval($dashboardStats['claim_rate']),
-                    'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
+                    'conversionFunnel' => $conversionFunnel,
                     'cashFlow' => [
                         'expectedInflow' => floatval($dashboardStats['outstanding_amount']),
                         'poCommitments' => floatval($dashboardStats['po_commitments'])
                     ],
-                    // Stat Card 3 metrics from dashboard_stats (backend calculated)
+                    // Stat Card 3 metrics from ETL-calculated dashboard_stats
                     'outstandingAmount' => floatval($dashboardStats['outstanding_amount']),
                     'pendingInvoices' => intval($dashboardStats['pending_invoices']),
-                    'customersPending' => intval($dashboardStats['customers_pending']),
-                    'overdueAmount' => floatval($dashboardStats['overdue_amount']),
-                    'outstandingPercentage' => floatval($dashboardStats['outstanding_percentage']),
-                    // Stat Card 4: GST Liability metrics from dashboard_stats (backend calculated)
+                    'customersPending' => intval($dashboardStats['customer_count']),
+                    'overdueAmount' => 0, // Calculate separately if needed
+                    'outstandingPercentage' => $dashboardStats['total_revenue'] > 0 ? 
+                        (floatval($dashboardStats['outstanding_amount']) / floatval($dashboardStats['total_revenue'])) * 100 : 0,
+                    // Stat Card 4: GST Liability metrics from ETL
                     'igstLiability' => floatval($dashboardStats['igst_liability']),
                     'cgstSgstTotal' => floatval($dashboardStats['cgst_sgst_total']),
                     'gstLiability' => floatval($dashboardStats['gst_liability']),
-                    // Chart Card 1: Quotations Overview (NEW - backend calculated counts only)
-                    'placedQuotations' => intval($dashboardStats['placed_quotations'] ?? $quotationStats['placed_quotations'] ?? 0),
-                    'rejectedQuotations' => intval($dashboardStats['rejected_quotations'] ?? $quotationStats['rejected_quotations'] ?? 0),
-                    'pendingQuotations' => intval($dashboardStats['pending_quotations'] ?? $quotationStats['pending_quotations'] ?? 0),
-                    'totalQuotations' => intval($dashboardStats['total_quotations'] ?? $quotationStats['total_quotations'] ?? 0),
-                    // Chart Card 2: Purchase Orders Overview (NEW - backend calculated counts only)
-                    'poHighFulfillment' => intval($dashboardStats['po_high_fulfillment_count'] ?? $poStats['po_high_fulfillment_count'] ?? 0),
-                    'poMidFulfillment' => intval($dashboardStats['po_mid_fulfillment_count'] ?? $poStats['po_mid_fulfillment_count'] ?? 0),
-                    'poLowFulfillment' => intval($dashboardStats['po_low_fulfillment_count'] ?? $poStats['po_low_fulfillment_count'] ?? 0),
-                    'poTotalCount' => intval($dashboardStats['po_total_count'] ?? $poStats['po_total_count'] ?? 0),
-                    'source' => 'dashboard_stats',
+                    // Chart Card 1: Quotations Overview from ETL
+                    'placedQuotations' => intval($dashboardStats['placed_quotations']),
+                    'rejectedQuotations' => intval($dashboardStats['rejected_quotations']),
+                    'pendingQuotations' => intval($dashboardStats['pending_quotations']),
+                    'totalQuotations' => intval($dashboardStats['total_quotations']),
+                    'source' => 'etl_dashboard_stats',
                     'generated_at' => $dashboardStats['generated_at']
                 ]);
                 return;
             } else {
-                // Calculate stats immediately if none exist
-                $this->calculateStatCard3Pipeline($db, null, $prefix);
-                
-                // Try reading again
-                $stmt = $db->prepare("SELECT * FROM dashboard_stats WHERE company_prefix = ? ORDER BY generated_at DESC LIMIT 1");
-                $stmt->execute([$prefix]);
-                $dashboardStats = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($dashboardStats) {
-                    echo json_encode([
-                        'totalInvoiceAmount' => floatval($dashboardStats['total_revenue']),
-                        'invoiceReceived' => floatval($dashboardStats['amount_received']),
-                        'pendingInvoiceAmount' => floatval($dashboardStats['outstanding_amount']),
-                        'pendingGSTAmount' => floatval($dashboardStats['gst_liability']),
-                        'pendingPOValue' => floatval($dashboardStats['po_commitments']),
-                        'claimableAmount' => floatval($dashboardStats['claimable_amount']),
-                        'outstandingAmount' => floatval($dashboardStats['outstanding_amount']),
-                        'pendingInvoices' => intval($dashboardStats['pending_invoices']),
-                        'customersPending' => intval($dashboardStats['customers_pending']),
-                        'overdueAmount' => floatval($dashboardStats['overdue_amount']),
-                        'outstandingPercentage' => floatval($dashboardStats['outstanding_percentage']),
-                        'igstLiability' => floatval($dashboardStats['igst_liability']),
-                        'cgstSgstTotal' => floatval($dashboardStats['cgst_sgst_total']),
-                        'gstLiability' => floatval($dashboardStats['gst_liability']),
-                        'openPOCount' => intval($dashboardStats['open_pos']),
-                        'closedPOCount' => intval($dashboardStats['closed_pos']),
-                        'placedQuotations' => intval($dashboardStats['placed_quotations'] ?? 0),
-                        'rejectedQuotations' => intval($dashboardStats['rejected_quotations'] ?? 0),
-                        'pendingQuotations' => intval($dashboardStats['pending_quotations'] ?? 0),
-                        'totalQuotations' => intval($dashboardStats['total_quotations'] ?? 0),
-                        'conversionFunnel' => $this->getConversionFunnel($db, $customerFilter),
-                        'cashFlow' => ['expectedInflow' => floatval($dashboardStats['outstanding_amount']), 'poCommitments' => floatval($dashboardStats['po_commitments'])],
-                        'source' => 'calculated'
-                    ]);
-                } else {
-                    echo json_encode(['message' => 'No data available', 'source' => 'empty']);
-                }
+                // No data available - suggest running ETL
+                echo json_encode([
+                    'message' => 'No analytics data available. Please run ETL sync first.',
+                    'source' => 'empty',
+                    'suggestion' => 'Click "Sync Data" to run ETL process'
+                ]);
                 return;
             }
             
@@ -365,68 +317,28 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
-            $this->createTables($db);
-            
             $prefix = $this->getCompanyPrefix();
             
-            // Build customer lookup map with prefix filtering
-            $customerMap = [];
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
-            $stmt->execute();
-            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach ($customerResults as $row) {
-                $data = json_decode($row['data'], true);
-                $customerId = $data['id'] ?? '';
-                $customerCode = $data['customer_code'] ?? '';
-                
-                // Filter by customer_code prefix
-                if ($prefix && !empty($prefix) && !empty($customerCode) && stripos($customerCode, $prefix) === false) {
-                    continue;
-                }
-                
-                if ($customerId) {
-                    $customerMap[$customerId] = $data['display_name'] ?? $data['name'] ?? 'Unknown';
-                }
-            }
-            
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-            $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Use ETL service to get outstanding invoices from consolidated table
+            $etlService = new FinanceETLService();
+            $analytics = $etlService->getAnalytics($prefix);
             
             $invoices = [];
-            foreach ($results as $row) {
-                $data = json_decode($row['data'], true);
-                $invoiceNumber = $data['invoice_number'] ?? 'N/A';
-                
-                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
-                    continue;
-                }
-                
-                $outstanding = floatval($data['outstanding_amount'] ?? 0);
-                
-                if ($outstanding > 0) {
-                    $customerId = $data['customer_id'] ?? '';
-                    $customerName = $customerMap[$customerId] ?? 'Unknown';
-                    
-                    $dueDate = $data['due_date'] ?? date('Y-m-d');
-                    $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
-                    
-                    $invoices[] = [
-                        'invoice_number' => $invoiceNumber,
-                        'customer_name' => $customerName,
-                        'due_date' => $dueDate,
-                        'outstanding_amount' => $outstanding,
-                        'daysOverdue' => floor($daysOverdue),
-                        'status' => $daysOverdue > 0 ? 'Overdue' : 'Pending'
-                    ];
-                }
+            foreach ($analytics['outstanding_invoices'] as $invoice) {
+                $invoices[] = [
+                    'invoice_number' => $invoice['document_number'],
+                    'customer_name' => $invoice['customer_name'] ?: 'Unknown',
+                    'due_date' => $invoice['due_date'] ?: date('Y-m-d'),
+                    'outstanding_amount' => floatval($invoice['outstanding_amount']),
+                    'daysOverdue' => max(0, intval($invoice['days_overdue'] ?? 0)),
+                    'status' => ($invoice['days_overdue'] ?? 0) > 0 ? 'Overdue' : 'Pending'
+                ];
             }
             
             echo json_encode(['invoices' => $invoices]);
             
         } catch (Exception $e) {
-            echo json_encode(['invoices' => [], 'error' => 'Failed to load outstanding invoices']);
+            echo json_encode(['invoices' => [], 'error' => 'Failed to load outstanding invoices: ' . $e->getMessage()]);
         }
     }
     
@@ -473,69 +385,49 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
-            $this->createTables($db);
-            
             $prefix = $this->getCompanyPrefix();
             $customerFilter = $_GET['customer'] ?? '';
             $limit = intval($_GET['limit'] ?? 10);
             
-            // Build customer lookup map with prefix filtering
-            $customerMap = [];
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name IN ('finance_customer', 'finance_customers')");
-            $stmt->execute();
-            $customerResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Use consolidated table for fast aggregation
+            $whereClause = "WHERE company_prefix = ? AND record_type = 'invoice' AND outstanding_amount > 0";
+            $params = [$prefix];
             
-            foreach ($customerResults as $row) {
-                $data = json_decode($row['data'], true);
-                $customerId = $data['id'] ?? '';
-                $customerCode = $data['customer_code'] ?? '';
-                
-                // Filter by customer_code prefix
-                if ($prefix && !empty($prefix) && !empty($customerCode) && stripos($customerCode, $prefix) === false) {
-                    continue;
-                }
-                
-                if ($customerId) {
-                    $customerMap[$customerId] = $data['display_name'] ?? $data['name'] ?? 'Unknown';
-                }
+            if ($customerFilter) {
+                $whereClause .= " AND customer_name = ?";
+                $params[] = $customerFilter;
             }
             
-            // Aggregate outstanding amounts
-            $outstandingByCustomer = [];
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-            $stmt->execute();
-            $invoiceResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt = $db->prepare("
+                SELECT 
+                    customer_name,
+                    SUM(outstanding_amount) as total_outstanding
+                FROM finance_consolidated 
+                $whereClause
+                GROUP BY customer_name
+                ORDER BY total_outstanding DESC
+                LIMIT ?
+            ");
+            $params[] = $limit;
+            $stmt->execute($params);
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            foreach ($invoiceResults as $row) {
-                $data = json_decode($row['data'], true);
-                $invoiceNumber = $data['invoice_number'] ?? '';
-                
-                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
-                    continue;
-                }
-                
-                $outstanding = floatval($data['outstanding_amount'] ?? 0);
-                if ($outstanding > 0) {
-                    $customerId = $data['customer_id'] ?? '';
-                    $customerName = $customerMap[$customerId] ?? 'Unknown Customer';
-                    
-                    if ($customerFilter && $customerName !== $customerFilter) {
-                        continue;
-                    }
-                    
-                    $outstandingByCustomer[$customerName] = ($outstandingByCustomer[$customerName] ?? 0) + $outstanding;
-                }
+            $labels = [];
+            $data = [];
+            $total = 0;
+            
+            foreach ($results as $row) {
+                $labels[] = $row['customer_name'] ?: 'Unknown Customer';
+                $amount = floatval($row['total_outstanding']);
+                $data[] = $amount;
+                $total += $amount;
             }
-            
-            // Sort by amount descending and limit
-            arsort($outstandingByCustomer);
-            $outstandingByCustomer = array_slice($outstandingByCustomer, 0, $limit, true);
             
             echo json_encode([
-                'labels' => array_keys($outstandingByCustomer),
-                'data' => array_values($outstandingByCustomer),
-                'total' => array_sum($outstandingByCustomer),
-                'customerCount' => count($outstandingByCustomer)
+                'labels' => $labels,
+                'data' => $data,
+                'total' => $total,
+                'customerCount' => count($labels)
             ]);
             
         } catch (Exception $e) {
@@ -905,12 +797,30 @@ class FinanceController extends Controller {
         
         try {
             $db = Database::connect();
-            $this->createTables($db);
-            
             $prefix = $this->getCompanyPrefix();
             
-            $stmt = $db->prepare("SELECT data FROM finance_data WHERE table_name = 'finance_invoices'");
-            $stmt->execute();
+            // Use consolidated table for fast aging calculation
+            $stmt = $db->prepare("
+                SELECT 
+                    CASE 
+                        WHEN DATEDIFF(NOW(), due_date) <= 30 THEN '0-30'
+                        WHEN DATEDIFF(NOW(), due_date) <= 60 THEN '31-60'
+                        WHEN DATEDIFF(NOW(), due_date) <= 90 THEN '61-90'
+                        ELSE '90+'
+                    END as age_bucket,
+                    SUM(outstanding_amount) as total_amount
+                FROM finance_consolidated 
+                WHERE company_prefix = ? AND record_type = 'invoice' AND outstanding_amount > 0
+                GROUP BY age_bucket
+                ORDER BY 
+                    CASE age_bucket
+                        WHEN '0-30' THEN 1
+                        WHEN '31-60' THEN 2
+                        WHEN '61-90' THEN 3
+                        WHEN '90+' THEN 4
+                    END
+            ");
+            $stmt->execute([$prefix]);
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $buckets = [
@@ -921,28 +831,7 @@ class FinanceController extends Controller {
             ];
             
             foreach ($results as $row) {
-                $data = json_decode($row['data'], true);
-                $invoiceNumber = $data['invoice_number'] ?? '';
-                
-                if ($prefix && !empty($prefix) && strpos($invoiceNumber, $prefix) !== 0) {
-                    continue;
-                }
-                
-                $outstanding = floatval($data['outstanding_amount'] ?? 0);
-                if ($outstanding > 0) {
-                    $dueDate = $data['due_date'] ?? date('Y-m-d');
-                    $daysOverdue = max(0, (time() - strtotime($dueDate)) / (24 * 3600));
-                    
-                    if ($daysOverdue <= 30) {
-                        $buckets['0-30'] += $outstanding;
-                    } elseif ($daysOverdue <= 60) {
-                        $buckets['31-60'] += $outstanding;
-                    } elseif ($daysOverdue <= 90) {
-                        $buckets['61-90'] += $outstanding;
-                    } else {
-                        $buckets['90+'] += $outstanding;
-                    }
-                }
+                $buckets[$row['age_bucket']] = floatval($row['total_amount']);
             }
             
             echo json_encode([
@@ -1292,14 +1181,24 @@ class FinanceController extends Controller {
         header('Content-Type: application/json');
         
         try {
-            $db = Database::connect();
-            $this->createTables($db);
             $prefix = $this->getCompanyPrefix();
+            $etlService = new FinanceETLService();
             
-            // Calculate all stats including quotations
-            $this->calculateStatCard3Pipeline($db, null, $prefix);
+            // Run ETL process to refresh all stats
+            $result = $etlService->runETL($prefix);
             
-            echo json_encode(['success' => true, 'message' => 'Stats refreshed for prefix: ' . $prefix]);
+            if ($result['success']) {
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'ETL stats refreshed for prefix: ' . $prefix,
+                    'records_processed' => $result['records_processed']
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => false, 
+                    'error' => $result['error']
+                ]);
+            }
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -2434,6 +2333,61 @@ class FinanceController extends Controller {
     
     public function refreshFunnel() {
         $this->refreshFunnelStats();
+    }
+    
+    /**
+     * ETL Analytics API - Fast SQL-based analytics
+     */
+    public function etlAnalytics() {
+        header('Content-Type: application/json');
+        
+        try {
+            $prefix = $this->getCompanyPrefix();
+            $customerFilter = $_GET['customer'] ?? '';
+            
+            $etlService = new FinanceETLService();
+            $filters = [];
+            
+            if ($customerFilter) {
+                $filters['customer'] = $customerFilter;
+            }
+            
+            $analytics = $etlService->getAnalytics($prefix, $filters);
+            
+            echo json_encode([
+                'success' => true,
+                'analytics' => $analytics,
+                'source' => 'etl_consolidated_table'
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Run ETL process manually
+     */
+    public function runETL() {
+        header('Content-Type: application/json');
+        
+        try {
+            $prefix = $this->getCompanyPrefix();
+            $etlService = new FinanceETLService();
+            
+            $result = $etlService->runETL($prefix);
+            
+            echo json_encode($result);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }
 ?>

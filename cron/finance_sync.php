@@ -1,79 +1,72 @@
 <?php
 /**
- * Automated PostgreSQL to MySQL Finance Sync
+ * Automated SAP Finance ETL Process
+ * Extract from SAP API → Transform → Load to SQL → Calculate Analytics
  * Run this via cron job on Hostinger
  */
 
 require_once __DIR__ . '/../app/config/database.php';
+require_once __DIR__ . '/../app/services/FinanceETLService.php';
 
-function syncFinanceData() {
+function runFinanceETL() {
     try {
-        // PostgreSQL connection
-        $conn = pg_connect("host=72.60.218.167 port=5432 dbname=modernsap user=postgres password=mango");
+        echo "Starting Finance ETL Process...\n";
         
-        if (!$conn) {
-            throw new Exception('PostgreSQL connection failed');
-        }
+        $etlService = new FinanceETLService();
         
-        // MySQL connection
-        $db = Database::connect();
+        // Get available company prefixes from existing data or run for all
+        $prefixes = getCompanyPrefixes();
         
-        // Create tables if not exist
-        $db->exec("CREATE TABLE IF NOT EXISTS finance_tables (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            table_name VARCHAR(100) UNIQUE,
-            record_count INT,
-            last_sync TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )");
-        
-        $db->exec("CREATE TABLE IF NOT EXISTS finance_data (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            table_name VARCHAR(100),
-            data JSON,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX(table_name)
-        )");
-        
-        // Get PostgreSQL tables
-        $result = pg_query($conn, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
-        
-        $syncCount = 0;
-        while ($row = pg_fetch_assoc($result)) {
-            $tableName = $row['table_name'];
+        if (empty($prefixes)) {
+            // Run ETL without prefix filter (all companies)
+            echo "Running ETL for all companies...\n";
+            $result = $etlService->runETL(null);
             
-            // Get table data
-            $dataResult = pg_query($conn, "SELECT * FROM $tableName LIMIT 1000");
-            
-            // Clear existing MySQL data
-            $stmt = $db->prepare("DELETE FROM finance_data WHERE table_name = ?");
-            $stmt->execute([$tableName]);
-            
-            $recordCount = 0;
-            while ($dataRow = pg_fetch_assoc($dataResult)) {
-                $stmt = $db->prepare("INSERT INTO finance_data (table_name, data) VALUES (?, ?)");
-                $stmt->execute([$tableName, json_encode($dataRow)]);
-                $recordCount++;
+            if ($result['success']) {
+                echo "ETL completed successfully: {$result['records_processed']} records processed\n";
+            } else {
+                echo "ETL failed: {$result['error']}\n";
             }
-            
-            // Update table info
-            $stmt = $db->prepare("INSERT INTO finance_tables (table_name, record_count) VALUES (?, ?) 
-                                 ON DUPLICATE KEY UPDATE record_count = ?, last_sync = NOW()");
-            $stmt->execute([$tableName, $recordCount, $recordCount]);
-            
-            $syncCount++;
-            echo "Synced table: $tableName ($recordCount records)\n";
+        } else {
+            // Run ETL for each company prefix
+            foreach ($prefixes as $prefix) {
+                echo "Running ETL for company prefix: $prefix\n";
+                $result = $etlService->runETL($prefix);
+                
+                if ($result['success']) {
+                    echo "ETL completed for $prefix: {$result['records_processed']} records processed\n";
+                } else {
+                    echo "ETL failed for $prefix: {$result['error']}\n";
+                }
+            }
         }
         
-        pg_close($conn);
-        echo "Finance sync completed: $syncCount tables\n";
+        echo "Finance ETL Process completed\n";
         
     } catch (Exception $e) {
-        echo "Sync error: " . $e->getMessage() . "\n";
+        echo "ETL error: " . $e->getMessage() . "\n";
+    }
+}
+
+function getCompanyPrefixes() {
+    try {
+        $db = Database::connect();
+        
+        // Get distinct prefixes from existing dashboard_stats
+        $stmt = $db->prepare("SELECT DISTINCT company_prefix FROM dashboard_stats WHERE company_prefix IS NOT NULL AND company_prefix != ''");
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        return $results ?: ['BKC']; // Default to BKC if no prefixes found
+        
+    } catch (Exception $e) {
+        echo "Warning: Could not get company prefixes: " . $e->getMessage() . "\n";
+        return ['BKC']; // Default fallback
     }
 }
 
 // Run if called directly
 if (php_sapi_name() === 'cli') {
-    syncFinanceData();
+    runFinanceETL();
 }
 ?>
