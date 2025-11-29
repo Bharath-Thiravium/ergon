@@ -152,6 +152,11 @@ ob_start();
                     </div>
                 </div>
             </th>
+                        <th class="table-header__cell">
+                <div class="table-header__content">
+                    <span class="table-header__text">Actions</span>
+                </div>
+            </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -169,7 +174,7 @@ ob_start();
                     ?>
                     <?php if (empty($adminPersonalAttendance)): ?>
                                             <tr>
-                        <td colspan="4" class="text-center">
+                        <td colspan="5" class="text-center">
                             <div class="empty-state">
                                 <div class="empty-icon">📍</div>
                                 <h3>No Personal Records</h3>
@@ -203,6 +208,16 @@ ob_start();
                                 <div class="cell-meta">
                                     <div class="cell-primary">In: <?= ($record['check_in'] && $record['check_in'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_in']) : 'Not clocked in' ?></div>
                                     <div class="cell-secondary">Out: <?= ($record['check_out'] && $record['check_out'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_out']) : 'Not clocked out' ?></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="ab-container">
+                                    <button class="ab-btn ab-btn--info" onclick="generateAttendanceReport(<?= $_SESSION['user_id'] ?>)" title="Generate Report">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                            <polyline points="14,2 14,8 20,8"/>
+                                        </svg>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -247,12 +262,8 @@ ob_start();
                     <?php elseif ($is_grouped ?? false): ?>
                         <!-- Admin Users Section -->
                         <?php if (!empty($attendance['admin'])): ?>
-                        <tr class="group-header">
-                            <td colspan="<?= in_array($user_role ?? '', ['owner', 'admin']) ? '5' : '4' ?>" style="background: #f8fafc; font-weight: 600; color: #374151; padding: 0.75rem 1rem; border-top: 2px solid #e5e7eb;">
-                                <span>👔</span> Admin Users
-                            </td>
-                        </tr>
                         <?php foreach ($attendance['admin'] as $record): ?>
+                        <?php if ($record['user_id'] != $_SESSION['user_id']): ?>
                         <tr>
                             <td>
                                 <strong><?= htmlspecialchars($record['name'] ?? 'Unknown') ?></strong>
@@ -322,6 +333,7 @@ ob_start();
                             </td>
                             <?php endif; ?>
                         </tr>
+                        <?php endif; ?>
                         <?php endforeach; ?>
                         <?php endif; ?>
                         

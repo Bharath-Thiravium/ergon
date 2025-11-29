@@ -66,6 +66,43 @@ ob_start();
     </div>
 </div>
 
+<!-- Department Members Section -->
+<div class="card">
+    <div class="card__header">
+        <h3 class="card__title">👥 Department Members</h3>
+        <span class="badge badge--info"><?= count($employees ?? []) ?> members</span>
+    </div>
+    <div class="card__body">
+        <?php if (empty($employees)): ?>
+            <div class="empty-state">
+                <p>No employees assigned to this department yet.</p>
+            </div>
+        <?php else: ?>
+            <div class="employees-grid">
+                <?php foreach ($employees as $employee): ?>
+                    <div class="employee-card">
+                        <div class="employee-info">
+                            <h4 class="employee-name"><?= htmlspecialchars($employee['name']) ?></h4>
+                            <p class="employee-email"><?= htmlspecialchars($employee['email']) ?></p>
+                            <?php if (!empty($employee['phone'])): ?>
+                                <p class="employee-phone">📞 <?= htmlspecialchars($employee['phone']) ?></p>
+                            <?php endif; ?>
+                        </div>
+                        <div class="employee-badges">
+                            <span class="badge badge--<?= $employee['role'] === 'admin' ? 'primary' : 'secondary' ?>">
+                                <?= $employee['role'] === 'admin' ? '👑' : '👤' ?> <?= ucfirst($employee['role']) ?>
+                            </span>
+                            <span class="badge badge--<?= $employee['status'] === 'active' ? 'success' : 'warning' ?>">
+                                <?= $employee['status'] === 'active' ? '✅' : '⚠️' ?> <?= ucfirst($employee['status']) ?>
+                            </span>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <style>
 .department-compact {
     max-width: 1000px;
@@ -170,6 +207,70 @@ ob_start();
     font-size: 0.8rem;
 }
 
+/* Department Members Styles */
+.card:has(.employees-grid) {
+    width: 1000px;
+    height: 3349.05px;
+    overflow-y: auto;
+    margin: 0 auto;
+}
+
+.employees-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.employee-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.2s ease;
+}
+
+.employee-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary);
+}
+
+.employee-info {
+    margin-bottom: 0.75rem;
+}
+
+.employee-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.25rem 0;
+}
+
+.employee-email {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.25rem 0;
+}
+
+.employee-phone {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.employee-badges {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
 @media (max-width: 768px) {
     .department-title-row {
         flex-direction: column;
@@ -191,6 +292,10 @@ ob_start();
     }
     
     .details-compact {
+        grid-template-columns: 1fr;
+    }
+    
+    .employees-grid {
         grid-template-columns: 1fr;
     }
 }

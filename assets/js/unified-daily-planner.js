@@ -419,64 +419,85 @@ function forceSLARefresh() {
 }
 
 window.forceSLARefresh = function() {
-    // Show loading state
-    const dashboardCards = document.querySelectorAll('.sla-card');
-    dashboardCards.forEach(card => {
-        const valueElement = card.querySelector('.sla-value');
-        if (valueElement) {
-            valueElement.textContent = 'Loading...';
+    // Show loading state for SLA metrics
+    const slaElements = {
+        totalTime: document.querySelector('.sla-total-time'),
+        usedTime: document.querySelector('.sla-used-time'),
+        remainingTime: document.querySelector('.sla-remaining-time'),
+        pauseTime: document.querySelector('.sla-pause-time')
+    };
+    
+    // Set loading state
+    Object.values(slaElements).forEach(element => {
+        if (element) {
+            element.textContent = 'Loading...';
         }
     });
     
+    // Get current date from page context
+    const plannerGrid = document.querySelector('.planner-grid');
+    const selectedDate = plannerGrid ? plannerGrid.dataset.selectedDate : new Date().toISOString().split('T')[0];
+    
     // Fetch updated SLA data
-    fetch('/ergon/api/sla_dashboard.php')
-        .then(response => response.json())
+    fetch(`/ergon/api/sla_dashboard.php?date=${selectedDate}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.success) {
-                updateSLADashboard(data.sla_data);
+            if (data.success && data.sla_data) {
+                updateSLADashboardFromAPI(data.sla_data);
             } else {
-                console.error('Failed to refresh SLA dashboard:', data.message);
-                // Reset loading states on error
-                dashboardCards.forEach(card => {
-                    const valueElement = card.querySelector('.sla-value');
-                    if (valueElement && valueElement.textContent === 'Loading...') {
-                        valueElement.textContent = '0';
-                    }
-                });
+                console.error('Failed to refresh SLA dashboard:', data.message || 'Unknown error');
+                resetSLAToDefaults();
             }
         })
         .catch(error => {
             console.error('SLA refresh error:', error);
-            // Reset loading states on error
-            dashboardCards.forEach(card => {
-                const valueElement = card.querySelector('.sla-value');
-                if (valueElement && valueElement.textContent === 'Loading...') {
-                    valueElement.textContent = '0';
-                }
-            });
+            resetSLAToDefaults();
         });
 };
 
+// Helper function to update SLA dashboard from API data
+function updateSLADashboardFromAPI(slaData) {
+    const slaElements = {
+        totalTime: document.querySelector('.sla-total-time'),
+        usedTime: document.querySelector('.sla-used-time'),
+        remainingTime: document.querySelector('.sla-remaining-time'),
+        pauseTime: document.querySelector('.sla-pause-time')
+    };
+    
+    if (slaElements.totalTime) slaElements.totalTime.textContent = slaData.total_sla_time || '00:00:00';
+    if (slaElements.usedTime) slaElements.usedTime.textContent = slaData.total_time_used || '00:00:00';
+    if (slaElements.remainingTime) slaElements.remainingTime.textContent = slaData.total_remaining_time || '00:00:00';
+    if (slaElements.pauseTime) slaElements.pauseTime.textContent = slaData.total_pause_time || '00:00:00';
+}
+
+// Helper function to reset SLA values to defaults on error
+function resetSLAToDefaults() {
+    const slaElements = {
+        totalTime: document.querySelector('.sla-total-time'),
+        usedTime: document.querySelector('.sla-used-time'),
+        remainingTime: document.querySelector('.sla-remaining-time'),
+        pauseTime: document.querySelector('.sla-pause-time')
+    };
+    
+    Object.values(slaElements).forEach(element => {
+        if (element && element.textContent === 'Loading...') {
+            element.textContent = '00:00:00';
+        }
+    });
+}
+
 function updateSLADashboard(slaData) {
-    // Update dashboard cards with new data
-    if (slaData.total_tasks !== undefined) {
-        const totalElement = document.querySelector('[data-sla="total"] .sla-value');
-        if (totalElement) totalElement.textContent = slaData.total_tasks;
-    }
-    
-    if (slaData.overdue_tasks !== undefined) {
-        const overdueElement = document.querySelector('[data-sla="overdue"] .sla-value');
-        if (overdueElement) overdueElement.textContent = slaData.overdue_tasks;
-    }
-    
-    if (slaData.on_time_tasks !== undefined) {
-        const onTimeElement = document.querySelector('[data-sla="on_time"] .sla-value');
-        if (onTimeElement) onTimeElement.textContent = slaData.on_time_tasks;
-    }
-    
-    if (slaData.completion_rate !== undefined) {
-        const rateElement = document.querySelector('[data-sla="completion"] .sla-value');
-        if (rateElement) rateElement.textContent = slaData.completion_rate + '%';
+    // Legacy function - redirect to new API-based update
+    if (slaData && typeof slaData === 'object') {
+        updateSLADashboardFromAPI(slaData);
+    } else {
+        // Fallback to manual calculation
+        updateSLADashboard();
     }
 }
 
