@@ -58,14 +58,27 @@ class ApiController extends Controller {
     }
     
     public function tasks() {
-        $userId = $_GET['user_id'] ?? '';
+        $userId = $_GET['user_id'] ?? $_SESSION['user_id'] ?? '';
         if (empty($userId)) {
             $this->json(['error' => 'User ID required'], 400);
             return;
         }
         
-        $tasks = $this->taskModel->getByUserId($userId);
-        $this->json(['tasks' => $tasks]);
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            // Get tasks with planned_date included
+            $stmt = $db->prepare("SELECT t.*, u.name as assigned_by_name FROM tasks t LEFT JOIN users u ON t.assigned_by = u.id WHERE t.assigned_to = ? ORDER BY COALESCE(t.planned_date, t.deadline, t.created_at) DESC");
+            $stmt->execute([$userId]);
+            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->json(['tasks' => $tasks]);
+        } catch (Exception $e) {
+            error_log('API tasks error: ' . $e->getMessage());
+            $tasks = $this->taskModel->getByUserId($userId);
+            $this->json(['tasks' => $tasks]);
+        }
     }
     
     public function updateTask() {

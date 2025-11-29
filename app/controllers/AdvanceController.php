@@ -84,13 +84,7 @@ class AdvanceController extends Controller {
                     // Create notification with advance ID
                     try {
                         require_once __DIR__ . '/../helpers/NotificationHelper.php';
-                        $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
-                        $stmt->execute([$_SESSION['user_id']]);
-                        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-                        
-                        if ($user) {
-                            NotificationHelper::notifyAdvanceRequest($_SESSION['user_id'], $user['name'], $amount, $advanceId);
-                        }
+                        NotificationHelper::notifyAdvanceRequest($advanceId, $_SESSION['user_id']);
                     } catch (Exception $notifError) {
                         error_log('Notification error (non-critical): ' . $notifError->getMessage());
                     }
@@ -217,10 +211,28 @@ class AdvanceController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
+            // Get advance details first
+            $stmt = $db->prepare("SELECT user_id FROM advances WHERE id = ? AND status = 'pending'");
+            $stmt->execute([$id]);
+            $advance = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$advance) {
+                header('Location: /ergon/advances?error=Advance not found or already processed');
+                exit;
+            }
+            
             $stmt = $db->prepare("UPDATE advances SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ? AND status = 'pending'");
             $result = $stmt->execute([$_SESSION['user_id'], $id]);
             
             if ($result && $stmt->rowCount() > 0) {
+                // Create notification for user
+                try {
+                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                    NotificationHelper::notifyAdvanceStatusChange($id, 'approved', $_SESSION['user_id']);
+                } catch (Exception $notifError) {
+                    error_log('Advance approval notification error: ' . $notifError->getMessage());
+                }
+                
                 header('Location: /ergon/advances?success=Advance approved successfully');
             } else {
                 header('Location: /ergon/advances?error=Advance not found or already processed');
@@ -257,10 +269,28 @@ class AdvanceController extends Controller {
             
             $reason = $_POST['rejection_reason'] ?? 'Rejected by administrator';
             
+            // Get advance details first
+            $stmt = $db->prepare("SELECT user_id FROM advances WHERE id = ? AND status = 'pending'");
+            $stmt->execute([$id]);
+            $advance = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$advance) {
+                header('Location: /ergon/advances?error=Advance not found or already processed');
+                exit;
+            }
+            
             $stmt = $db->prepare("UPDATE advances SET status = 'rejected', rejection_reason = ?, rejected_by = ?, rejected_at = NOW() WHERE id = ? AND status = 'pending'");
             $result = $stmt->execute([$reason, $_SESSION['user_id'], $id]);
             
             if ($result && $stmt->rowCount() > 0) {
+                // Create notification for user
+                try {
+                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                    NotificationHelper::notifyAdvanceStatusChange($id, 'rejected', $_SESSION['user_id']);
+                } catch (Exception $notifError) {
+                    error_log('Advance rejection notification error: ' . $notifError->getMessage());
+                }
+                
                 header('Location: /ergon/advances?success=Advance rejected successfully');
             } else {
                 header('Location: /ergon/advances?error=Advance not found or already processed');

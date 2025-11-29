@@ -444,7 +444,7 @@ class TasksController extends Controller {
             $db = Database::connect();
             $this->ensureTasksTable($db);
             
-            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.assigned_to = ? AND (t.deadline IS NOT NULL OR t.due_date IS NOT NULL) ORDER BY COALESCE(t.deadline, t.due_date) ASC");
+            $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.assigned_to = ? AND (t.deadline IS NOT NULL OR t.due_date IS NOT NULL OR t.planned_date IS NOT NULL) ORDER BY COALESCE(t.planned_date, t.deadline, t.due_date) ASC");
             $stmt->execute([$_SESSION['user_id']]);
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
