@@ -682,7 +682,7 @@ async function showTableStructure() {
 
 async function loadDashboardData() {
     try {
-        const response = await fetch('/ergon/src/api/?action=dashboard&prefix=ERGN');
+        const response = await fetch('../src/api/?action=dashboard&prefix=ERGN');
         const data = await response.json();
         
         console.log('Dashboard Stats:', data);
@@ -931,7 +931,7 @@ async function syncFinanceData() {
     btn.innerHTML = '<span class="btn__icon">⚡</span><span class="btn__text">Running ETL...</span>';
     
     try {
-        const response = await fetch('/ergon/src/api/?action=sync', {method: 'POST'});
+        const response = await fetch('../src/api/?action=sync', {method: 'POST'});
         const result = await response.json();
         
         if (result.success) {
@@ -1094,7 +1094,7 @@ function updateKPICards(data) {
 
 async function updateConversionFunnel(data) {
     try {
-        const response = await fetch('/ergon/src/api/?action=funnel-containers&prefix=ERGN');
+        const response = await fetch('../src/api/?action=funnel-containers&prefix=ERGN');
         const funnelData = await response.json();
         
         if (funnelData.success && funnelData.containers) {
@@ -1168,13 +1168,13 @@ async function updateCharts(data) {
     const funnel = data.conversionFunnel || {};
     try {
         // Update Quotations Chart
-        const quotationsResponse = await fetch('/ergon/src/api/?action=visualization&type=quotations&prefix=ERGN');
+        const quotationsResponse = await fetch('../src/api/?action=visualization&type=quotations&prefix=ERGN');
         if (!quotationsResponse.ok) throw new Error('Quotations API not available');
         const quotationsText = await quotationsResponse.text();
         const quotationsData = quotationsText ? JSON.parse(quotationsText) : {};
         
-        if (quotationsChart && quotationsData.data) {
-            quotationsChart.data.datasets[0].data = quotationsData.data;
+        if (quotationsChart && quotationsData.data && quotationsData.data.data) {
+            quotationsChart.data.datasets[0].data = quotationsData.data.data;
             quotationsChart.update();
         }
         
@@ -1200,15 +1200,15 @@ async function updateCharts(data) {
         }
         
         // Update Purchase Orders Chart
-        const poResponse = await fetch('/ergon/src/api/?action=visualization&type=purchase_orders&prefix=ERGN');
+        const poResponse = await fetch('../src/api/?action=visualization&type=purchase_orders&prefix=ERGN');
         if (!poResponse.ok) throw new Error('PO API not available');
         const poText = await poResponse.text();
         const poData = poText ? JSON.parse(poText) : {};
         
         if (purchaseOrdersChart) {
-            if (poData.labels && poData.data) {
-                purchaseOrdersChart.data.labels = poData.labels;
-                purchaseOrdersChart.data.datasets[0].data = poData.data;
+            if (poData.data && poData.data.labels && poData.data.data) {
+                purchaseOrdersChart.data.labels = poData.data.labels;
+                purchaseOrdersChart.data.datasets[0].data = poData.data.data;
                 purchaseOrdersChart.update();
             } else {
                 purchaseOrdersChart.data.labels = ['No Data'];
@@ -1229,13 +1229,13 @@ async function updateCharts(data) {
         if (poTotalEl) poTotalEl.textContent = funnel.purchaseOrders || 0;
         
         // Update Invoices Chart
-        const invoicesResponse = await fetch('/ergon/src/api/?action=visualization&type=invoices&prefix=ERGN');
+        const invoicesResponse = await fetch('../src/api/?action=visualization&type=invoices&prefix=ERGN');
         if (!invoicesResponse.ok) throw new Error('Invoices API not available');
         const invoicesText = await invoicesResponse.text();
         const invoicesData = invoicesText ? JSON.parse(invoicesText) : {};
         
-        if (invoicesChart && invoicesData.data) {
-            invoicesChart.data.datasets[0].data = invoicesData.data;
+        if (invoicesChart && invoicesData.data && invoicesData.data.data) {
+            invoicesChart.data.datasets[0].data = invoicesData.data.data;
             invoicesChart.update();
         }
         
@@ -1258,13 +1258,13 @@ async function updateCharts(data) {
         if (invoicesTotalEl) invoicesTotalEl.textContent = funnel.invoices || 0;
         
         // Update Outstanding by Customer Chart
-        const outstandingResp = await fetch('/ergon/src/api/?action=outstanding-by-customer&limit=10&prefix=ERGN');
+        const outstandingResp = await fetch('../src/api/?action=outstanding-by-customer&limit=10&prefix=ERGN');
         if (!outstandingResp.ok) throw new Error('Outstanding API not available');
         const outstandingText = await outstandingResp.text();
         const outstandingData = outstandingText ? JSON.parse(outstandingText) : {};
-        if (outstandingByCustomerChart && outstandingData.labels) {
-            outstandingByCustomerChart.data.labels = outstandingData.labels;
-            outstandingByCustomerChart.data.datasets[0].data = outstandingData.data;
+        if (outstandingByCustomerChart && outstandingData.data && outstandingData.data.labels) {
+            outstandingByCustomerChart.data.labels = outstandingData.data.labels;
+            outstandingByCustomerChart.data.datasets[0].data = outstandingData.data.data;
             outstandingByCustomerChart.update();
         }
         
@@ -1274,29 +1274,29 @@ async function updateCharts(data) {
         const diversityEl = document.getElementById('customerDiversity');
         const outTotalEl = document.getElementById('outstandingTotal');
         
-        if (concentrationEl && outstandingData.total > 0) {
-            const topCustomer = Math.max(...(outstandingData.data || [0]));
-            concentrationEl.textContent = `${Math.round((topCustomer / outstandingData.total) * 100)}%`;
+        if (concentrationEl && outstandingData.data && outstandingData.data.total > 0) {
+            const topCustomer = Math.max(...(outstandingData.data.data || [0]));
+            concentrationEl.textContent = `${Math.round((topCustomer / outstandingData.data.total) * 100)}%`;
         } else if (concentrationEl) {
             concentrationEl.textContent = '0%';
         }
-        if (exposureEl && outstandingData.data) {
-            const top3 = outstandingData.data.slice(0, 3).reduce((sum, val) => sum + val, 0);
+        if (exposureEl && outstandingData.data && outstandingData.data.data) {
+            const top3 = outstandingData.data.data.slice(0, 3).reduce((sum, val) => sum + val, 0);
             exposureEl.textContent = `₹${top3.toLocaleString()}`;
         } else if (exposureEl) {
             exposureEl.textContent = '₹0';
         }
-        if (diversityEl) diversityEl.textContent = outstandingData.customerCount || 0;
-        if (outTotalEl) outTotalEl.textContent = `₹${(outstandingData.total || 0).toLocaleString()}`;
+        if (diversityEl) diversityEl.textContent = outstandingData.data?.customerCount || 0;
+        if (outTotalEl) outTotalEl.textContent = `₹${(outstandingData.data?.total || 0).toLocaleString()}`;
 
         // Update Aging Buckets Chart
-        const agingResp = await fetch('/ergon/src/api/?action=aging-buckets&prefix=ERGN');
+        const agingResp = await fetch('../src/api/?action=aging-buckets&prefix=ERGN');
         if (!agingResp.ok) throw new Error('Aging API not available');
         const agingText = await agingResp.text();
         const agingData = agingText ? JSON.parse(agingText) : {};
-        if (agingBucketsChart && agingData.labels) {
-            agingBucketsChart.data.labels = agingData.labels;
-            agingBucketsChart.data.datasets[0].data = agingData.data;
+        if (agingBucketsChart && agingData.data && agingData.data.labels) {
+            agingBucketsChart.data.labels = agingData.data.labels;
+            agingBucketsChart.data.datasets[0].data = agingData.data.data;
             agingBucketsChart.update();
         }
         
@@ -1306,12 +1306,12 @@ async function updateCharts(data) {
         const qualityEl = document.getElementById('creditQuality');
         const agingTotalEl = document.getElementById('agingTotal');
         
-        const agingTotal = agingData.data ? agingData.data.reduce((sum, val) => sum + val, 0) : 0;
-        const criticalAmount = agingData.data ? agingData.data[3] || 0 : 0; // 90+ days
+        const agingTotal = agingData.data && agingData.data.data ? agingData.data.data.reduce((sum, val) => sum + val, 0) : 0;
+        const criticalAmount = agingData.data && agingData.data.data ? agingData.data.data[3] || 0 : 0; // 90+ days
         
         if (provisionEl) provisionEl.textContent = `₹${Math.round(criticalAmount * 0.1).toLocaleString()}`; // 10% provision
         if (recoveryEl && agingTotal > 0) {
-            const goodDebt = (agingData.data ? agingData.data[0] + agingData.data[1] : 0) || 0;
+            const goodDebt = (agingData.data && agingData.data.data ? agingData.data.data[0] + agingData.data.data[1] : 0) || 0;
             recoveryEl.textContent = `${Math.round((goodDebt / agingTotal) * 100)}%`;
         } else if (recoveryEl) {
             recoveryEl.textContent = '100%';
@@ -1323,14 +1323,14 @@ async function updateCharts(data) {
         if (agingTotalEl) agingTotalEl.textContent = `₹${agingTotal.toLocaleString()}`;
         
         // Update Payments Chart
-        const paymentsResp = await fetch('/ergon/src/api/?action=visualization&type=payments&prefix=ERGN');
+        const paymentsResp = await fetch('../src/api/?action=visualization&type=payments&prefix=ERGN');
         if (!paymentsResp.ok) throw new Error('Payments API not available');
         const paymentsText = await paymentsResp.text();
         const paymentsData = paymentsText ? JSON.parse(paymentsText) : {};
         if (paymentsChart) {
-            if (paymentsData.labels && paymentsData.data) {
-                paymentsChart.data.labels = paymentsData.labels;
-                paymentsChart.data.datasets[0].data = paymentsData.data;
+            if (paymentsData.data && paymentsData.data.labels && paymentsData.data.data) {
+                paymentsChart.data.labels = paymentsData.data.labels;
+                paymentsChart.data.datasets[0].data = paymentsData.data.data;
                 paymentsChart.update();
             } else {
                 paymentsChart.data.labels = ['No Data'];
@@ -1373,7 +1373,7 @@ async function updateCharts(data) {
 
 async function loadOutstandingInvoices() {
     try {
-        const response = await fetch('/ergon/src/api/?action=outstanding-invoices&prefix=ERGN');
+        const response = await fetch('../src/api/?action=outstanding-invoices&prefix=ERGN');
         if (!response.ok) {
             console.warn('Outstanding invoices API not implemented yet');
             const tbody = document.querySelector('#outstandingTable tbody');
@@ -1390,8 +1390,8 @@ async function loadOutstandingInvoices() {
         }
         
         const tbody = document.querySelector('#outstandingTable tbody');
-        if (data.invoices && data.invoices.length > 0) {
-            tbody.innerHTML = data.invoices.map(invoice => `
+        if (data.data && data.data.invoices && data.data.invoices.length > 0) {
+            tbody.innerHTML = data.data.invoices.map(invoice => `
                 <tr class="${invoice.daysOverdue > 0 ? 'table-row--danger' : ''}">
                     <td>${invoice.invoice_number}</td>
                     <td>${invoice.customer_name}</td>
@@ -1402,7 +1402,7 @@ async function loadOutstandingInvoices() {
                 </tr>
             `).join('');
         } else {
-            const message = data.message || 'No outstanding invoices';
+            const message = data.data?.message || data.message || 'No outstanding invoices';
             tbody.innerHTML = `<tr><td colspan="6" class="text-center">${message}</td></tr>`;
         }
         
@@ -1419,11 +1419,11 @@ async function loadOutstandingInvoices() {
 // Load outstanding-by-customer and update chart
 async function loadOutstandingByCustomer(limit = 10) {
     try {
-        const resp = await fetch(`/ergon/src/api/?action=outstanding-by-customer&limit=${limit}&prefix=ERGN`);
+        const resp = await fetch(`../src/api/?action=outstanding-by-customer&limit=${limit}&prefix=ERGN`);
         const data = await resp.json();
-        if (outstandingByCustomerChart && data.labels) {
-            outstandingByCustomerChart.data.labels = data.labels;
-            outstandingByCustomerChart.data.datasets[0].data = data.data;
+        if (outstandingByCustomerChart && data.data && data.data.labels) {
+            outstandingByCustomerChart.data.labels = data.data.labels;
+            outstandingByCustomerChart.data.datasets[0].data = data.data.data;
             outstandingByCustomerChart.update();
         }
     } catch (err) {
@@ -1435,31 +1435,31 @@ async function loadOutstandingByCustomer(limit = 10) {
 
 async function loadRecentActivities(type = 'all') {
     try {
-        const response = await fetch('/ergon/src/api/?action=activities&prefix=ERGN');
+        const response = await fetch('../src/api/?action=activities&prefix=ERGN');
         if (!response.ok) {
             throw new Error('Recent activities API not available');
         }
         const data = await response.json();
         
         const container = document.getElementById('recentActivities');
-        if (data.activities && data.activities.length > 0) {
-            let filteredActivities = data.activities;
+        if (data.data && data.data.length > 0) {
+            let filteredActivities = data.data;
             if (type !== 'all') {
-                filteredActivities = data.activities.filter(activity => activity.type === type);
+                filteredActivities = data.data.filter(activity => activity.record_type === type);
             }
             
             container.innerHTML = filteredActivities.map(activity => {
                 const statusClass = getActivityStatusClass(activity.status);
-                const timeAgo = getTimeAgo(activity.date);
+                const timeAgo = getTimeAgo(activity.created_at);
                 
                 return `
-                    <div class="activity-item activity-item--${activity.type}">
+                    <div class="activity-item activity-item--${activity.record_type}">
                         <div class="activity-icon">${activity.icon}</div>
                         <div class="activity-content">
-                            <div class="activity-title">${activity.title}</div>
-                            <div class="activity-details">${activity.description}</div>
+                            <div class="activity-title">${activity.document_number}</div>
+                            <div class="activity-details">${activity.customer_name} - ₹${activity.formatted_amount}</div>
                             <div class="activity-meta">
-                                <span class="activity-type">${getActivityTypeLabel(activity.type)}</span>
+                                <span class="activity-type">${getActivityTypeLabel(activity.record_type)}</span>
                                 <span class="activity-date">${timeAgo}</span>
                             </div>
                         </div>
