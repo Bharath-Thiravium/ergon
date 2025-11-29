@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Dark Theme Test - Ergon</title>
+    <link href="/ergon/assets/css/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/ergon/assets/css/ergon.css" rel="stylesheet">
+    <link href="/ergon/assets/css/theme-enhanced.css" rel="stylesheet">
+    <link href="/ergon/assets/css/mobile-dark-theme-fixes.css" rel="stylesheet">
+    <link href="/ergon/assets/css/modal-dialog-fixes.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 2rem;
+            background: var(--bg-secondary);
+        }
+        .test-section {
+            margin-bottom: 3rem;
+            padding: 1.5rem;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <button class="btn btn--primary theme-toggle" onclick="toggleTheme()">
+        <i class="bi bi-moon-fill"></i> Toggle Dark Theme
+    </button>
+
+    <h1>Mobile Dark Theme Visibility Test</h1>
+    <p>This page tests the visibility fixes for page-actions and dialog-content in both light and dark themes on mobile devices.</p>
+
+    <!-- Test Page Actions -->
+    <div class="test-section">
+        <h2>Page Actions Test</h2>
+        <div class="page-actions">
+            <a href="#" class="btn btn--primary">
+                <span>➕</span> Create New
+            </a>
+            <button class="btn btn--secondary">
+                <span>📊</span> Export Data
+            </button>
+            <button class="btn btn--success">
+                <span>✅</span> Approve
+            </button>
+            <button class="btn btn--danger">
+                <span>❌</span> Reject
+            </button>
+            <button class="btn btn--warning">
+                <span>⚠️</span> Warning
+            </button>
+        </div>
+    </div>
+
+    <!-- Test Dialog Content -->
+    <div class="test-section">
+        <h2>Dialog Content Test</h2>
+        <button class="btn btn--primary" onclick="showTestModal()">
+            <span>🔧</span> Open Test Modal
+        </button>
+    </div>
+
+    <!-- Test Form Elements -->
+    <div class="test-section">
+        <h2>Form Elements Test</h2>
+        <div class="form-group">
+            <label for="testInput">Test Input Field</label>
+            <input type="text" id="testInput" class="form-control" placeholder="Enter text here">
+        </div>
+        <div class="form-group">
+            <label for="testSelect">Test Select Field</label>
+            <select id="testSelect" class="form-control">
+                <option>Option 1</option>
+                <option>Option 2</option>
+                <option>Option 3</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="testTextarea">Test Textarea</label>
+            <textarea id="testTextarea" class="form-control" rows="3" placeholder="Enter description here"></textarea>
+        </div>
+    </div>
+
+    <!-- Test Modal -->
+    <div id="testModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Test Modal Dialog</h3>
+                <button class="modal-close" onclick="closeTestModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>This is a test modal to verify that dialog content is properly visible in both light and dark themes.</p>
+                <div class="form-group">
+                    <label for="modalInput">Modal Input Field</label>
+                    <input type="text" id="modalInput" class="form-control" placeholder="Test input in modal">
+                </div>
+                <div class="form-group">
+                    <label for="modalTextarea">Modal Textarea</label>
+                    <textarea id="modalTextarea" class="form-control" rows="3" placeholder="Test textarea in modal"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn--secondary" onclick="closeTestModal()">Cancel</button>
+                <button class="btn btn--primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Cards -->
+    <div class="test-section">
+        <h2>Card Elements Test</h2>
+        <div class="dashboard-grid">
+            <div class="kpi-card">
+                <div class="kpi-card__value">42</div>
+                <div class="kpi-card__label">Test Metric</div>
+                <div class="kpi-card__status">Active</div>
+            </div>
+            <div class="card">
+                <div class="card__header">
+                    <h3 class="card__title">Test Card</h3>
+                </div>
+                <div class="card__body">
+                    <p>This is a test card to verify visibility in dark theme.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            body.setAttribute('data-theme', newTheme);
+            
+            const button = document.querySelector('.theme-toggle i');
+            button.className = newTheme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+        }
+
+        function showTestModal() {
+            document.getElementById('testModal').style.display = 'flex';
+        }
+
+        function closeTestModal() {
+            document.getElementById('testModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('testModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTestModal();
+            }
+        });
+    </script>
+</body>
+</html>

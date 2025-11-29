@@ -157,6 +157,10 @@ ob_end_clean();
     <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/_archive_legacy/css/user-management-mobile.css?v=1.0" rel="stylesheet">
     <link href="/ergon/assets/_archive_legacy/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
+    <!-- Mobile Dark Theme Fixes - Critical for visibility -->
+    <link href="/ergon/assets/css/mobile-dark-theme-fixes.css?v=<?= time() ?>" rel="stylesheet">
+    <!-- Modal Dialog Fixes - Ensures dialog visibility -->
+    <link href="/ergon/assets/css/modal-dialog-fixes.css?v=<?= time() ?>" rel="stylesheet">
     <!-- Dashboard overrides loaded last to ensure overrides on compiled CSS in deployments -->
     <link href="/ergon/assets/css/ergon-overrides.css?v=<?= time() ?>" rel="stylesheet">
     <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>

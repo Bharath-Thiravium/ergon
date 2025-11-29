@@ -1,0 +1,564 @@
+/* 🔧 Modal Dialog Specific Fixes for Project Management & Other Modules */
+
+/* ===== MODAL OVERLAY FIXES ===== */
+
+/* Ensure modal overlays are visible */
+.modal,
+.modal-overlay,
+.dialog-overlay,
+.dialog {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(2px) !important;
+  z-index: 99999 !important;
+}
+
+[data-theme='dark'] .modal,
+[data-theme='dark'] .modal-overlay,
+[data-theme='dark'] .dialog-overlay,
+[data-theme='dark'] .dialog,
+.theme-dark .modal,
+.theme-dark .modal-overlay,
+.theme-dark .dialog-overlay,
+.theme-dark .dialog {
+  background: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ===== PROJECT MANAGEMENT SPECIFIC FIXES ===== */
+
+/* Project creation/edit modals */
+#projectModal .modal-content,
+#projectModal .dialog-content,
+#editProjectModal .modal-content,
+#editProjectModal .dialog-content,
+#taskModal .modal-content,
+#taskModal .dialog-content,
+#editTaskModal .modal-content,
+#editTaskModal .dialog-content {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  max-width: 90vw !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
+/* Project modal dialog-body */
+#projectModal .dialog-body,
+#editProjectModal .dialog-body,
+#taskModal .dialog-body,
+#editTaskModal .dialog-body {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  padding: 1.5rem !important;
+}
+
+[data-theme='dark'] #projectModal .modal-content,
+[data-theme='dark'] #projectModal .dialog-content,
+[data-theme='dark'] #editProjectModal .modal-content,
+[data-theme='dark'] #editProjectModal .dialog-content,
+[data-theme='dark'] #taskModal .modal-content,
+[data-theme='dark'] #taskModal .dialog-content,
+[data-theme='dark'] #editTaskModal .modal-content,
+[data-theme='dark'] #editTaskModal .dialog-content,
+.theme-dark #projectModal .modal-content,
+.theme-dark #projectModal .dialog-content,
+.theme-dark #editProjectModal .modal-content,
+.theme-dark #editProjectModal .dialog-content,
+.theme-dark #taskModal .modal-content,
+.theme-dark #taskModal .dialog-content,
+.theme-dark #editTaskModal .modal-content,
+.theme-dark #editTaskModal .dialog-content {
+  background: var(--gray-800) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-600) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Dark theme project modal dialog-body */
+[data-theme='dark'] #projectModal .dialog-body,
+[data-theme='dark'] #editProjectModal .dialog-body,
+[data-theme='dark'] #taskModal .dialog-body,
+[data-theme='dark'] #editTaskModal .dialog-body,
+.theme-dark #projectModal .dialog-body,
+.theme-dark #editProjectModal .dialog-body,
+.theme-dark #taskModal .dialog-body,
+.theme-dark #editTaskModal .dialog-body {
+  background: var(--gray-800) !important;
+  color: var(--white) !important;
+}
+
+/* ===== FOLLOWUP MODALS ===== */
+
+#followupModal .modal-content,
+#rescheduleModal .modal-content,
+#historyModal .modal-content {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme='dark'] #followupModal .modal-content,
+[data-theme='dark'] #rescheduleModal .modal-content,
+[data-theme='dark'] #historyModal .modal-content,
+.theme-dark #followupModal .modal-content,
+.theme-dark #rescheduleModal .modal-content,
+.theme-dark #historyModal .modal-content {
+  background: var(--gray-800) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-600) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ===== REJECTION/APPROVAL MODALS ===== */
+
+#rejectModal .modal-content,
+#approveModal .modal-content,
+#confirmModal .modal-content {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme='dark'] #rejectModal .modal-content,
+[data-theme='dark'] #approveModal .modal-content,
+[data-theme='dark'] #confirmModal .modal-content,
+.theme-dark #rejectModal .modal-content,
+.theme-dark #approveModal .modal-content,
+.theme-dark #confirmModal .modal-content {
+  background: var(--gray-800) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-600) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ===== MODAL CLOSE BUTTONS ===== */
+
+.modal-close,
+.close,
+.btn-close {
+  color: var(--text-secondary) !important;
+  background: transparent !important;
+  border: none !important;
+  font-size: 1.5rem !important;
+  cursor: pointer !important;
+  padding: 0.5rem !important;
+  border-radius: 50% !important;
+  transition: all 0.2s ease !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+[data-theme='dark'] .modal-close,
+[data-theme='dark'] .close,
+[data-theme='dark'] .btn-close,
+.theme-dark .modal-close,
+.theme-dark .close,
+.theme-dark .btn-close {
+  color: var(--gray-300) !important;
+}
+
+.modal-close:hover,
+.close:hover,
+.btn-close:hover {
+  background: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+  transform: scale(1.1) !important;
+}
+
+[data-theme='dark'] .modal-close:hover,
+[data-theme='dark'] .close:hover,
+[data-theme='dark'] .btn-close:hover,
+.theme-dark .modal-close:hover,
+.theme-dark .close:hover,
+.theme-dark .btn-close:hover {
+  background: var(--gray-700) !important;
+  color: var(--white) !important;
+}
+
+/* ===== MODAL TITLES ===== */
+
+.modal-title,
+.modal-header h3,
+.modal-header h4,
+.dialog-title {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+  font-size: 1.125rem !important;
+}
+
+[data-theme='dark'] .modal-title,
+[data-theme='dark'] .modal-header h3,
+[data-theme='dark'] .modal-header h4,
+[data-theme='dark'] .dialog-title,
+.theme-dark .modal-title,
+.theme-dark .modal-header h3,
+.theme-dark .modal-header h4,
+.theme-dark .dialog-title {
+  color: var(--white) !important;
+}
+
+/* ===== MODAL FORM ELEMENTS ===== */
+
+.modal .form-group,
+.dialog .form-group {
+  margin-bottom: 1rem !important;
+}
+
+.modal .form-group label,
+.dialog .form-group label {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+  margin-bottom: 0.5rem !important;
+  display: block !important;
+}
+
+[data-theme='dark'] .modal .form-group label,
+[data-theme='dark'] .dialog .form-group label,
+.theme-dark .modal .form-group label,
+.theme-dark .dialog .form-group label {
+  color: var(--white) !important;
+}
+
+.modal .form-control,
+.modal input,
+.modal textarea,
+.modal select,
+.dialog .form-control,
+.dialog input,
+.dialog textarea,
+.dialog select {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px !important;
+  padding: 0.75rem !important;
+  font-size: 0.875rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+[data-theme='dark'] .modal .form-control,
+[data-theme='dark'] .modal input,
+[data-theme='dark'] .modal textarea,
+[data-theme='dark'] .modal select,
+[data-theme='dark'] .dialog .form-control,
+[data-theme='dark'] .dialog input,
+[data-theme='dark'] .dialog textarea,
+[data-theme='dark'] .dialog select,
+.theme-dark .modal .form-control,
+.theme-dark .modal input,
+.theme-dark .modal textarea,
+.theme-dark .modal select,
+.theme-dark .dialog .form-control,
+.theme-dark .dialog input,
+.theme-dark .dialog textarea,
+.theme-dark .dialog select {
+  background: var(--gray-700) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-600) !important;
+}
+
+.modal .form-control:focus,
+.modal input:focus,
+.modal textarea:focus,
+.modal select:focus,
+.dialog .form-control:focus,
+.dialog input:focus,
+.dialog textarea:focus,
+.dialog select:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  outline: none !important;
+}
+
+[data-theme='dark'] .modal .form-control:focus,
+[data-theme='dark'] .modal input:focus,
+[data-theme='dark'] .modal textarea:focus,
+[data-theme='dark'] .modal select:focus,
+[data-theme='dark'] .dialog .form-control:focus,
+[data-theme='dark'] .dialog input:focus,
+[data-theme='dark'] .dialog textarea:focus,
+[data-theme='dark'] .dialog select:focus,
+.theme-dark .modal .form-control:focus,
+.theme-dark .modal input:focus,
+.theme-dark .modal textarea:focus,
+.theme-dark .modal select:focus,
+.theme-dark .dialog .form-control:focus,
+.theme-dark .dialog input:focus,
+.theme-dark .dialog textarea:focus,
+.theme-dark .dialog select:focus {
+  background: var(--gray-600) !important;
+  border-color: var(--primary-light) !important;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2) !important;
+}
+
+/* ===== MODAL BUTTONS ===== */
+
+.modal .btn,
+.dialog .btn {
+  padding: 0.75rem 1.5rem !important;
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  transition: all 0.2s ease !important;
+  min-height: 44px !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  border: 1px solid transparent !important;
+}
+
+.modal .btn--primary,
+.dialog .btn--primary {
+  background: var(--primary) !important;
+  color: var(--white) !important;
+  border-color: var(--primary) !important;
+}
+
+.modal .btn--primary:hover,
+.dialog .btn--primary:hover {
+  background: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+}
+
+.modal .btn--secondary,
+.dialog .btn--secondary {
+  background: var(--gray-100) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--gray-300) !important;
+}
+
+[data-theme='dark'] .modal .btn--secondary,
+[data-theme='dark'] .dialog .btn--secondary,
+.theme-dark .modal .btn--secondary,
+.theme-dark .dialog .btn--secondary {
+  background: var(--gray-600) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-500) !important;
+}
+
+.modal .btn--secondary:hover,
+.dialog .btn--secondary:hover {
+  background: var(--gray-200) !important;
+  border-color: var(--gray-400) !important;
+  transform: translateY(-1px) !important;
+}
+
+[data-theme='dark'] .modal .btn--secondary:hover,
+[data-theme='dark'] .dialog .btn--secondary:hover,
+.theme-dark .modal .btn--secondary:hover,
+.theme-dark .dialog .btn--secondary:hover {
+  background: var(--gray-500) !important;
+  border-color: var(--gray-400) !important;
+}
+
+.modal .btn--danger,
+.dialog .btn--danger {
+  background: var(--error) !important;
+  color: var(--white) !important;
+  border-color: var(--error) !important;
+}
+
+.modal .btn--danger:hover,
+.dialog .btn--danger:hover {
+  background: #b91c1c !important;
+  border-color: #b91c1c !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3) !important;
+}
+
+.modal .btn--success,
+.dialog .btn--success {
+  background: var(--success) !important;
+  color: var(--white) !important;
+  border-color: var(--success) !important;
+}
+
+.modal .btn--success:hover,
+.dialog .btn--success:hover {
+  background: #047857 !important;
+  border-color: #047857 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3) !important;
+}
+
+/* ===== MOBILE MODAL FIXES ===== */
+
+@media (max-width: 768px) {
+  .modal-content,
+  .dialog-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: 2.5vh auto !important;
+    max-height: 95vh !important;
+    padding: 1rem !important;
+  }
+
+  .modal-header,
+  .dialog-header {
+    padding: 0.75rem 1rem !important;
+    margin: -1rem -1rem 1rem -1rem !important;
+  }
+
+  .modal-footer,
+  .dialog-footer {
+    padding: 0.75rem 1rem !important;
+    margin: 1rem -1rem -1rem -1rem !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+
+  .modal-footer .btn,
+  .dialog-footer .btn {
+    width: 100% !important;
+    min-height: 48px !important;
+    justify-content: center !important;
+  }
+
+  .modal .form-control,
+  .modal input,
+  .modal textarea,
+  .modal select,
+  .dialog .form-control,
+  .dialog input,
+  .dialog textarea,
+  .dialog select {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 0.875rem !important;
+    min-height: 48px !important;
+  }
+}
+
+/* ===== SPECIFIC MODAL IDS ===== */
+
+/* Ensure all common modal IDs are covered */
+#modal,
+#confirmModal,
+#deleteModal,
+#editModal,
+#createModal,
+#viewModal,
+#detailsModal {
+  z-index: 99999 !important;
+}
+
+#modal .modal-content,
+#confirmModal .modal-content,
+#deleteModal .modal-content,
+#editModal .modal-content,
+#createModal .modal-content,
+#viewModal .modal-content,
+#detailsModal .modal-content {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+[data-theme='dark'] #modal .modal-content,
+[data-theme='dark'] #confirmModal .modal-content,
+[data-theme='dark'] #deleteModal .modal-content,
+[data-theme='dark'] #editModal .modal-content,
+[data-theme='dark'] #createModal .modal-content,
+[data-theme='dark'] #viewModal .modal-content,
+[data-theme='dark'] #detailsModal .modal-content,
+.theme-dark #modal .modal-content,
+.theme-dark #confirmModal .modal-content,
+.theme-dark #deleteModal .modal-content,
+.theme-dark #editModal .modal-content,
+.theme-dark #createModal .modal-content,
+.theme-dark #viewModal .modal-content,
+.theme-dark #detailsModal .modal-content {
+  background: var(--gray-800) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-600) !important;
+}
+
+/* ===== LOADING STATES ===== */
+
+.modal .loading,
+.dialog .loading,
+.modal .spinner,
+.dialog .spinner {
+  color: var(--text-secondary) !important;
+  text-align: center !important;
+  padding: 2rem !important;
+}
+
+[data-theme='dark'] .modal .loading,
+[data-theme='dark'] .dialog .loading,
+[data-theme='dark'] .modal .spinner,
+[data-theme='dark'] .dialog .spinner,
+.theme-dark .modal .loading,
+.theme-dark .dialog .loading,
+.theme-dark .modal .spinner,
+.theme-dark .dialog .spinner {
+  color: var(--gray-300) !important;
+}
+
+/* ===== ERROR STATES ===== */
+
+.modal .error,
+.dialog .error,
+.modal .alert-danger,
+.dialog .alert-danger {
+  background: rgba(220, 38, 38, 0.1) !important;
+  color: var(--error) !important;
+  border: 1px solid rgba(220, 38, 38, 0.2) !important;
+  border-radius: 6px !important;
+  padding: 0.75rem !important;
+  margin-bottom: 1rem !important;
+}
+
+[data-theme='dark'] .modal .error,
+[data-theme='dark'] .dialog .error,
+[data-theme='dark'] .modal .alert-danger,
+[data-theme='dark'] .dialog .alert-danger,
+.theme-dark .modal .error,
+.theme-dark .dialog .error,
+.theme-dark .modal .alert-danger,
+.theme-dark .dialog .alert-danger {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* ===== SUCCESS STATES ===== */
+
+.modal .success,
+.dialog .success,
+.modal .alert-success,
+.dialog .alert-success {
+  background: rgba(5, 150, 105, 0.1) !important;
+  color: var(--success) !important;
+  border: 1px solid rgba(5, 150, 105, 0.2) !important;
+  border-radius: 6px !important;
+  padding: 0.75rem !important;
+  margin-bottom: 1rem !important;
+}
+
+[data-theme='dark'] .modal .success,
+[data-theme='dark'] .dialog .success,
+[data-theme='dark'] .modal .alert-success,
+[data-theme='dark'] .dialog .alert-success,
+.theme-dark .modal .success,
+.theme-dark .dialog .success,
+.theme-dark .modal .alert-success,
+.theme-dark .dialog .alert-success {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
