@@ -322,8 +322,27 @@ class FinanceController extends Controller {
     private function getConversionFunnel($db, $customerFilter = '') {
         $prefix = $this->getCompanyPrefix();
         
-        // Use FunnelStatsService for consistent calculations
+        // Use FunnelStatsService for consistent calculations with customer filtering
         $funnelService = new FunnelStatsService();
+        
+        if ($customerFilter) {
+            // Get filtered containers and extract the data
+            $containers = $funnelService->getFunnelContainers($prefix, $customerFilter);
+            return [
+                'quotations' => intval($containers['container1']['quotations_count'] ?? 0),
+                'quotationValue' => floatval($containers['container1']['quotations_total_value'] ?? 0),
+                'purchaseOrders' => intval($containers['container2']['po_count'] ?? 0),
+                'poValue' => floatval($containers['container2']['po_total_value'] ?? 0),
+                'invoices' => intval($containers['container3']['invoice_count'] ?? 0),
+                'invoiceValue' => floatval($containers['container3']['invoice_total_value'] ?? 0),
+                'payments' => intval($containers['container4']['payment_count'] ?? 0),
+                'paymentValue' => floatval($containers['container4']['total_payment_received'] ?? 0),
+                'quotationToPO' => intval($containers['container2']['po_conversion_rate'] ?? 0),
+                'poToInvoice' => intval($containers['container3']['invoice_conversion_rate'] ?? 0),
+                'invoiceToPayment' => intval($containers['container4']['payment_conversion_rate'] ?? 0)
+            ];
+        }
+        
         $funnelStats = $funnelService->getFunnelStats($prefix);
         
         return [
