@@ -385,8 +385,15 @@ document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     initKPICards();
     
-    document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
-    document.getElementById('updatePrefixBtn').addEventListener('click', updateCompanyPrefix);
+    const syncBtn = document.getElementById('syncBtn');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', syncFinanceData);
+    }
+    
+    const updateBtn = document.getElementById('updatePrefixBtn');
+    if (updateBtn) {
+        updateBtn.addEventListener('click', updateCompanyPrefix);
+    }
 
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
     document.getElementById('customerFilter').addEventListener('change', filterByCustomer);
@@ -897,30 +904,33 @@ function analyzeAllTables() {
     }, 1000);
 }
 
-async function syncFinanceData() {
+function syncFinanceData() {
     const btn = document.getElementById('syncBtn');
+    if (!btn) return;
+    
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<span class="btn__icon">⏳</span><span class="btn__text">Syncing...</span>';
     
-    try {
-        const response = await fetch('/ergon/src/api/sync.php', {
-            method: 'POST'
-        });
-        const result = await response.json();
-        
+    fetch('/ergon/src/api/sync.php', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(result => {
         if (result.success) {
-            showNotification('✅ Data synced from PostgreSQL', 'success');
-            setTimeout(() => loadAllStatCardsData(), 1000);
+            showNotification('✅ ' + result.message, 'success');
+            setTimeout(() => loadAllStatCardsData(), 500);
         } else {
             showNotification('❌ Sync failed: ' + result.message, 'error');
         }
-    } catch (error) {
+    })
+    .catch(error => {
         showNotification('❌ Sync failed: ' + error.message, 'error');
-    } finally {
+    })
+    .finally(() => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-    }
+    });
 }
 
 async function loadDashboardData() {
