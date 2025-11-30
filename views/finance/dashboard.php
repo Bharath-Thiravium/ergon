@@ -1816,7 +1816,8 @@ async function updateAnalyticsWidgets() {
         
         // Update quotations chart
         try {
-            const quotationsResp = await fetch(`/ergon/src/api/analytics.php?type=quotations&prefix=${prefix}${customerId ? '&customer_id=' + customerId : ''}`);
+            const quotationsResp = await fetch(`/ergon/src/api/analytics.php?type=quotations&prefix=${prefix}`);
+            if (!quotationsResp.ok) throw new Error('API not available');
             const quotationsData = await quotationsResp.json();
             console.log('Quotations data:', quotationsData);
             
@@ -1838,7 +1839,8 @@ async function updateAnalyticsWidgets() {
         
         // Update PO claims chart
         try {
-            const poResp = await fetch(`/ergon/src/api/analytics.php?type=po_claims&prefix=${prefix}${customerId ? '&customer_id=' + customerId : ''}`);
+            const poResp = await fetch(`/ergon/src/api/analytics.php?type=po_claims&prefix=${prefix}`);
+            if (!poResp.ok) throw new Error('API not available');
             const poData = await poResp.json();
             console.log('PO claims data:', poData);
             
@@ -1852,7 +1854,8 @@ async function updateAnalyticsWidgets() {
         
         // Update invoice metrics
         try {
-            const invoiceResp = await fetch(`/ergon/src/api/analytics.php?type=invoices&prefix=${prefix}${customerId ? '&customer_id=' + customerId : ''}`);
+            const invoiceResp = await fetch(`/ergon/src/api/analytics.php?type=invoices&prefix=${prefix}`);
+            if (!invoiceResp.ok) throw new Error('API not available');
             const invoiceData = await invoiceResp.json();
             console.log('Invoice data:', invoiceData);
             
@@ -1874,7 +1877,8 @@ async function updateAnalyticsWidgets() {
         
         // Update customer outstanding chart
         try {
-            const custResp = await fetch(`/ergon/src/api/analytics.php?type=customer_outstanding&prefix=${prefix}${customerId ? '&customer_id=' + customerId : ''}`);
+            const custResp = await fetch(`/ergon/src/api/analytics.php?type=customer_outstanding&prefix=${prefix}`);
+            if (!custResp.ok) throw new Error('API not available');
             const custData = await custResp.json();
             console.log('Customer outstanding data:', custData);
             
