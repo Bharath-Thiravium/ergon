@@ -61,6 +61,45 @@ CREATE TABLE IF NOT EXISTS finance_payments (
   INDEX idx_customer_id (customer_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS finance_consolidated (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  record_type VARCHAR(32) NOT NULL,
+  document_number VARCHAR(128) NOT NULL,
+  customer_id VARCHAR(64) DEFAULT NULL,
+  customer_name VARCHAR(255) DEFAULT NULL,
+  customer_gstin VARCHAR(64) DEFAULT NULL,
+  amount DECIMAL(18,2) DEFAULT 0.00,
+  taxable_amount DECIMAL(18,2) DEFAULT 0.00,
+  amount_paid DECIMAL(18,2) DEFAULT 0.00,
+  outstanding_amount DECIMAL(18,2) DEFAULT 0.00,
+  igst DECIMAL(18,2) DEFAULT 0.00,
+  cgst DECIMAL(18,2) DEFAULT 0.00,
+  sgst DECIMAL(18,2) DEFAULT 0.00,
+  due_date DATE DEFAULT NULL,
+  invoice_date DATE DEFAULT NULL,
+  status VARCHAR(64) DEFAULT NULL,
+  company_prefix VARCHAR(32) NOT NULL,
+  raw_data JSON DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_record (record_type, document_number, company_prefix),
+  INDEX idx_company_prefix (company_prefix),
+  INDEX idx_created_at (created_at),
+  INDEX idx_record_type (record_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS dashboard_stats (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  company_id INT DEFAULT NULL,
+  expected_inflow DECIMAL(18,2) DEFAULT 0.00,
+  po_commitments DECIMAL(18,2) DEFAULT 0.00,
+  net_cash_flow DECIMAL(18,2) DEFAULT 0.00,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_company (company_id),
+  INDEX idx_company_id (company_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS sync_log (
   id INT AUTO_INCREMENT PRIMARY KEY,
   table_name VARCHAR(64) NOT NULL,

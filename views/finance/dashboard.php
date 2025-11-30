@@ -91,11 +91,6 @@
         </div>
     </div>
 
-    <!-- Charts Section -->
-    <div class="dashboard-grid dashboard-grid--2-col">
-        <?php include __DIR__ . '/dashboard-charts.php'; ?>
-    </div>
-
     <!-- Outstanding Invoices Table -->
     <div class="dashboard-grid">
         <div class="card card--full-width">
@@ -110,6 +105,7 @@
                             <tr>
                                 <th>Invoice #</th>
                                 <th>Customer</th>
+                                <th>Shipping Address</th>
                                 <th>Invoice Date</th>
                                 <th>Total Amount</th>
                                 <th>Outstanding Amount</th>
@@ -119,7 +115,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="6" class="text-center">Loading outstanding invoices...</td>
+                                <td colspan="8" class="text-center">Loading outstanding invoices...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -172,29 +168,18 @@
             </div>
         </div>
     </div>
+
+    <!-- Charts Section (Moved to Bottom) -->
+    <div class="dashboard-grid dashboard-grid--2-col">
+        <?php include __DIR__ . '/dashboard-charts.php'; ?>
+    </div>
 </div>
 
+<link rel="stylesheet" href="/ergon/views/finance/funnel-styles.css">
+<script src="/ergon/views/finance/dashboard-charts.js"></script>
+<script src="/ergon/views/finance/cashflow-listener.js"></script>
+<script src="/ergon/views/finance/test-svg-tooltips.js"></script>
 <script>
-// Disable charts to avoid CSP issues - focus on data display
-window.Chart = function(ctx, config) {
-    return {
-        data: config.data || {datasets: [{data: []}]},
-        update: function() {},
-        destroy: function() {}
-    };
-};
-Chart.defaults = {};
-
-
-let quotationsChart, purchaseOrdersChart, invoicesChart, paymentsChart;
-let outstandingByCustomerChart;
-let agingBucketsChart;
-
-// Chart.js compatibility layer
-Chart.defaults = {
-    responsive: true,
-    maintainAspectRatio: false
-};
 
 // Notification function
 function debounce(func, wait) {
@@ -253,8 +238,7 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    initCharts();
+window.addEventListener('load', function() {
     initKPICards();
     
     const syncBtn = document.getElementById('syncBtn');
@@ -307,6 +291,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCompanyPrefix().then(() => {
         loadAllStatCardsData();
         loadCustomersForFunnel();
+        loadCashFlow();
     });
 });
 
@@ -415,95 +400,7 @@ function createKPICardHTML(config) {
     `;
 }
 
-function initCharts() {
-    const chartDefaults = {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 250 },
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        const v = context.raw || 0;
-                        if (typeof v === 'number') return '₹' + Number(v).toLocaleString();
-                        return String(v);
-                    }
-                }
-            }
-        },
-        scales: {
-            x: { display: false },
-            y: { display: false }
-        }
-    };
 
-    // Quotations Pie Chart
-    const quotationsCtx = document.getElementById('quotationsChart');
-    if (quotationsCtx) {
-        quotationsChart = new Chart(quotationsCtx.getContext('2d'), {
-            type: 'pie',
-            data: { labels: ['Pending','Placed','Rejected'], datasets: [{ data: [0,0,0], backgroundColor: ['#3b82f6','#10b981','#ef4444'] }] },
-            options: chartDefaults
-        });
-    }
-
-    // Purchase Orders Area Chart
-    const poCtx = document.getElementById('purchaseOrdersChart');
-    if (poCtx) {
-        purchaseOrdersChart = new Chart(poCtx.getContext('2d'), {
-            type: 'line',
-            data: { labels: [], datasets: [{ label: 'PO Amount', data: [], borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.1)', fill: true, tension: 0.3 }] },
-            options: chartDefaults
-        });
-    }
-
-    // Invoices Donut Chart
-    const invoicesCtx = document.getElementById('invoicesChart');
-    if (invoicesCtx) {
-        invoicesChart = new Chart(invoicesCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: { labels: ['Paid','Unpaid','Overdue'], datasets: [{ data: [0,0,0], backgroundColor: ['#10b981','#f59e0b','#ef4444'] }] },
-            options: { ...chartDefaults, cutout: '70%' }
-        });
-    }
-
-    // Outstanding by Customer Donut Chart
-    const outstandingCtx = document.getElementById('outstandingByCustomerChart');
-    if (outstandingCtx) {
-        outstandingByCustomerChart = new Chart(outstandingCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: { 
-                labels: [], 
-                datasets: [{ 
-                    data: [], 
-                    backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e']
-                }] 
-            },
-            options: { ...chartDefaults, cutout: '60%' }
-        });
-    }
-
-    // Aging Buckets Donut Chart
-    const agingCtx = document.getElementById('agingBucketsChart');
-    if (agingCtx) {
-        agingBucketsChart = new Chart(agingCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: { labels: ['0-30 Days','31-60 Days','61-90 Days','90+ Days'], datasets: [{ data: [0,0,0,0], backgroundColor: ['#10b981','#f59e0b','#fb923c','#ef4444'] }] },
-            options: { ...chartDefaults, cutout: '70%' }
-        });
-    }
-
-    // Payments Chart
-    const paymentsCtx = document.getElementById('paymentsChart');
-    if (paymentsCtx) {
-        paymentsChart = new Chart(paymentsCtx.getContext('2d'), {
-            type: 'bar',
-            data: { labels: [], datasets: [{ label: 'Payments', data: [], backgroundColor: '#3b82f6' }] },
-            options: chartDefaults
-        });
-    }
-}
 
 
 
@@ -976,219 +873,17 @@ async function updateConversionFunnel(data) {
     }
 }
 
-async function updateCharts(data) {
-    const funnel = data.conversionFunnel || {};
-    try {
-        // Update Quotations Chart
-        const quotationsResponse = await fetch('../src/api/simple_api.php?action=visualization&type=quotations&prefix=BKGE');
-        if (!quotationsResponse.ok) throw new Error('Quotations API not available');
-        const quotationsText = await quotationsResponse.text();
-        const quotationsData = quotationsText ? JSON.parse(quotationsText) : {};
-        
-        if (quotationsChart && quotationsData.data && quotationsData.data.data) {
-            quotationsChart.data.datasets[0].data = quotationsData.data.data;
-            quotationsChart.update();
-        }
-        
-        // Update Chart Card 1: Quotations Overview (NEW - backend calculated counts)
-        const placedEl = document.getElementById('placedQuotations');
-        const rejectedEl = document.getElementById('rejectedQuotations');
-        const pendingEl = document.getElementById('pendingQuotations');
-        const totalEl = document.getElementById('quotationsTotal');
-        
-        if (placedEl) placedEl.textContent = data.placedQuotations || 0;
-        if (rejectedEl) rejectedEl.textContent = data.rejectedQuotations || 0;
-        if (pendingEl) pendingEl.textContent = data.pendingQuotations || 0;
-        if (totalEl) totalEl.textContent = data.totalQuotations || 0;
-        
-        // Update quotations chart with count data
-        if (quotationsChart) {
-            quotationsChart.data.datasets[0].data = [
-                data.pendingQuotations || 0,
-                data.placedQuotations || 0, 
-                data.rejectedQuotations || 0
-            ];
-            quotationsChart.update();
-        }
-        
-        // Update Purchase Orders Chart
-        const poResponse = await fetch('../src/api/simple_api.php?action=visualization&type=purchase_orders&prefix=BKGE');
-        if (!poResponse.ok) throw new Error('PO API not available');
-        const poText = await poResponse.text();
-        const poData = poText ? JSON.parse(poText) : {};
-        
-        if (purchaseOrdersChart) {
-            if (poData.data && poData.data.labels && poData.data.data) {
-                purchaseOrdersChart.data.labels = poData.data.labels;
-                purchaseOrdersChart.data.datasets[0].data = poData.data.data;
-                purchaseOrdersChart.update();
-            } else {
-                purchaseOrdersChart.data.labels = ['No Data'];
-                purchaseOrdersChart.data.datasets[0].data = [0];
-                purchaseOrdersChart.update();
-            }
-        }
-        
-        // Update PO metrics from funnel data
-        const fulfillmentEl = document.getElementById('poFulfillmentRate');
-        const leadTimeEl = document.getElementById('avgLeadTime');
-        const commitmentsEl = document.getElementById('openCommitments');
-        const poTotalEl = document.getElementById('poTotal');
-        
-        if (fulfillmentEl) fulfillmentEl.textContent = `${funnel.poToInvoice || 0}%`;
-        if (leadTimeEl) leadTimeEl.textContent = '15 days'; // Default estimate
-        if (commitmentsEl) commitmentsEl.textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
-        if (poTotalEl) poTotalEl.textContent = funnel.purchaseOrders || 0;
-        
-        // Update Invoices Chart
-        const invoicesResponse = await fetch('../src/api/simple_api.php?action=visualization&type=invoices&prefix=BKGE');
-        if (!invoicesResponse.ok) throw new Error('Invoices API not available');
-        const invoicesText = await invoicesResponse.text();
-        const invoicesData = invoicesText ? JSON.parse(invoicesText) : {};
-        
-        if (invoicesChart && invoicesData.data && invoicesData.data.data) {
-            invoicesChart.data.datasets[0].data = invoicesData.data.data;
-            invoicesChart.update();
-        }
-        
-        // Update invoice metrics from dashboard data
-        const dsoEl = document.getElementById('dsoMetric');
-        const badDebtEl = document.getElementById('badDebtRisk');
-        const efficiencyEl = document.getElementById('collectionEfficiency');
-        const invoicesTotalEl = document.getElementById('invoicesTotal');
-        
-        if (dsoEl) {
-            const dso = data.totalInvoiceAmount > 0 ? Math.round((data.pendingInvoiceAmount / data.totalInvoiceAmount) * 365) : 0;
-            dsoEl.textContent = `${dso} days`;
-        }
-        if (badDebtEl) badDebtEl.textContent = `₹${Math.round((data.pendingInvoiceAmount || 0) * 0.05).toLocaleString()}`; // 5% estimate
-        if (efficiencyEl && data.totalInvoiceAmount > 0) {
-            efficiencyEl.textContent = `${Math.round((data.invoiceReceived / data.totalInvoiceAmount) * 100)}%`;
-        } else if (efficiencyEl) {
-            efficiencyEl.textContent = '0%';
-        }
-        if (invoicesTotalEl) invoicesTotalEl.textContent = funnel.invoices || 0;
-        
-        // Update Outstanding by Customer Chart
-        const outstandingResp = await fetch('../src/api/simple_api.php?action=outstanding-by-customer&limit=10&prefix=BKGE');
-        if (!outstandingResp.ok) throw new Error('Outstanding API not available');
-        const outstandingText = await outstandingResp.text();
-        const outstandingData = outstandingText ? JSON.parse(outstandingText) : {};
-        if (outstandingByCustomerChart && outstandingData.data && outstandingData.data.labels) {
-            outstandingByCustomerChart.data.labels = outstandingData.data.labels;
-            outstandingByCustomerChart.data.datasets[0].data = outstandingData.data.data;
-            outstandingByCustomerChart.update();
-        }
-        
-        // Update outstanding metrics
-        const concentrationEl = document.getElementById('concentrationRisk');
-        const exposureEl = document.getElementById('top3Exposure');
-        const diversityEl = document.getElementById('customerDiversity');
-        const outTotalEl = document.getElementById('outstandingTotal');
-        
-        if (concentrationEl && outstandingData.data && outstandingData.data.total > 0) {
-            const topCustomer = Math.max(...(outstandingData.data.data || [0]));
-            concentrationEl.textContent = `${Math.round((topCustomer / outstandingData.data.total) * 100)}%`;
-        } else if (concentrationEl) {
-            concentrationEl.textContent = '0%';
-        }
-        if (exposureEl && outstandingData.data && outstandingData.data.data) {
-            const top3 = outstandingData.data.data.slice(0, 3).reduce((sum, val) => sum + val, 0);
-            exposureEl.textContent = `₹${top3.toLocaleString()}`;
-        } else if (exposureEl) {
-            exposureEl.textContent = '₹0';
-        }
-        if (diversityEl) diversityEl.textContent = outstandingData.data?.customerCount || 0;
-        if (outTotalEl) outTotalEl.textContent = `₹${(outstandingData.data?.total || 0).toLocaleString()}`;
 
-        // Update Aging Buckets Chart
-        const agingResp = await fetch('../src/api/simple_api.php?action=aging-buckets&prefix=BKGE');
-        if (!agingResp.ok) throw new Error('Aging API not available');
-        const agingText = await agingResp.text();
-        const agingData = agingText ? JSON.parse(agingText) : {};
-        if (agingBucketsChart && agingData.data && agingData.data.labels) {
-            agingBucketsChart.data.labels = agingData.data.labels;
-            agingBucketsChart.data.datasets[0].data = agingData.data.data;
-            agingBucketsChart.update();
-        }
-        
-        // Update aging metrics
-        const provisionEl = document.getElementById('provisionRequired');
-        const recoveryEl = document.getElementById('recoveryRate');
-        const qualityEl = document.getElementById('creditQuality');
-        const agingTotalEl = document.getElementById('agingTotal');
-        
-        const agingTotal = agingData.data && agingData.data.data ? agingData.data.data.reduce((sum, val) => sum + val, 0) : 0;
-        const criticalAmount = agingData.data && agingData.data.data ? agingData.data.data[3] || 0 : 0; // 90+ days
-        
-        if (provisionEl) provisionEl.textContent = `₹${Math.round(criticalAmount * 0.1).toLocaleString()}`; // 10% provision
-        if (recoveryEl && agingTotal > 0) {
-            const goodDebt = (agingData.data && agingData.data.data ? agingData.data.data[0] + agingData.data.data[1] : 0) || 0;
-            recoveryEl.textContent = `${Math.round((goodDebt / agingTotal) * 100)}%`;
-        } else if (recoveryEl) {
-            recoveryEl.textContent = '100%';
-        }
-        if (qualityEl) {
-            const riskRatio = agingTotal > 0 ? criticalAmount / agingTotal : 0;
-            qualityEl.textContent = riskRatio > 0.2 ? 'Poor' : (riskRatio > 0.1 ? 'Fair' : 'Good');
-        }
-        if (agingTotalEl) agingTotalEl.textContent = `₹${agingTotal.toLocaleString()}`;
-        
-        // Update Payments Chart
-        const paymentsResp = await fetch('../src/api/simple_api.php?action=visualization&type=payments&prefix=BKGE');
-        if (!paymentsResp.ok) throw new Error('Payments API not available');
-        const paymentsText = await paymentsResp.text();
-        const paymentsData = paymentsText ? JSON.parse(paymentsText) : {};
-        if (paymentsChart) {
-            if (paymentsData.data && paymentsData.data.labels && paymentsData.data.data) {
-                paymentsChart.data.labels = paymentsData.data.labels;
-                paymentsChart.data.datasets[0].data = paymentsData.data.data;
-                paymentsChart.update();
-            } else {
-                paymentsChart.data.labels = ['No Data'];
-                paymentsChart.data.datasets[0].data = [0];
-                paymentsChart.update();
-            }
-        }
-        
-        // Update payment metrics from funnel data
-        const velocityEl = document.getElementById('paymentVelocity');
-        const accuracyEl = document.getElementById('forecastAccuracy');
-        const conversionEl = document.getElementById('cashConversion');
-        const paymentsTotalEl = document.getElementById('paymentsTotal');
-        
-        if (velocityEl) {
-            const dailyVelocity = (funnel.paymentValue || 0) / 30; // Monthly average
-            velocityEl.textContent = `₹${Math.round(dailyVelocity).toLocaleString()}/day`;
-        }
-        if (accuracyEl) accuracyEl.textContent = `${funnel.invoiceToPayment || 0}%`;
-        if (conversionEl) {
-            const conversionDays = data.totalInvoiceAmount > 0 ? Math.round((data.pendingInvoiceAmount / data.totalInvoiceAmount) * 30) : 0;
-            conversionEl.textContent = `${conversionDays} days`;
-        }
-        if (paymentsTotalEl) paymentsTotalEl.textContent = `₹${(funnel.paymentValue || 0).toLocaleString()}`;
-        
-    } catch (error) {
-        console.warn('Charts not available:', error.message);
-        // Initialize charts with empty data
-        if (quotationsChart) {
-            quotationsChart.data.datasets[0].data = [0,0,0];
-            quotationsChart.update();
-        }
-        if (purchaseOrdersChart) {
-            purchaseOrdersChart.data.labels = ['No Data'];
-            purchaseOrdersChart.data.datasets[0].data = [0];
-            purchaseOrdersChart.update();
-        }
-    }
-}
 
 async function loadOutstandingInvoices() {
     try {
         const prefix = document.getElementById('companyPrefix').value;
         if (!prefix) return;
         
-        const response = await fetch(`/ergon/src/api/outstanding.php?prefix=${prefix}&limit=20`);
+        const response = await fetch(`/ergon/src/api/outstanding.php?prefix=${encodeURIComponent(prefix)}&limit=20`, {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Outstanding API unavailable');
         const result = await response.json();
         
         const tbody = document.querySelector('#outstandingTable tbody');
@@ -1198,6 +893,7 @@ async function loadOutstandingInvoices() {
                 <tr class="${invoice.status === 'Overdue' ? 'table-row--danger' : ''}">
                     <td>${invoice.invoice_number}</td>
                     <td>${invoice.customer_name}</td>
+                    <td><small>📍 ${invoice.shipping_address || 'N/A'}</small></td>
                     <td>${invoice.invoice_date}</td>
                     <td>₹${parseFloat(invoice.total_amount).toLocaleString()}</td>
                     <td>₹${parseFloat(invoice.outstanding_amount).toLocaleString()}</td>
@@ -1206,12 +902,12 @@ async function loadOutstandingInvoices() {
                 </tr>
             `).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center">No outstanding invoices found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">No outstanding invoices found</td></tr>';
         }
     } catch (error) {
-        console.error('Failed to load outstanding invoices:', error);
+        console.warn('Outstanding invoices load failed:', error.message);
         const tbody = document.querySelector('#outstandingTable tbody');
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Error loading data</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center">Unable to load data</td></tr>';
     }
 }
 
@@ -1232,28 +928,38 @@ async function loadOutstandingByCustomer(limit = 10) {
 
 // (Server-side export used via /ergon/finance/export-outstanding)
 
+
 async function loadRecentActivities(type = 'all') {
     try {
         const prefix = document.getElementById('companyPrefix').value;
-        if (!prefix) return;
-        
-        let url = `/ergon/src/api/activities.php?prefix=${prefix}&limit=20`;
-        if (type !== 'all') {
-            url += `&record_type=${type}`;
-        }
-        
-        const response = await fetch(url);
-        const result = await response.json();
-        
         const container = document.getElementById('recentActivities');
         
-        if (result.success && result.data.length > 0) {
+        if (!prefix) {
+            if (container) container.innerHTML = '<div class="activity-item"><div class="activity-loading">Select a company prefix to view activities</div></div>';
+            return;
+        }
+        
+        let url = `/ergon/src/api/activities.php?prefix=${encodeURIComponent(prefix)}&limit=20`;
+        if (type !== 'all') {
+            url += `&record_type=${encodeURIComponent(type)}`;
+        }
+        
+        const response = await fetch(url, {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Activities API unavailable');
+        const result = await response.json();
+        
+        if (!result.success) throw new Error(result.error || 'API returned error');
+        
+        if (result.data && result.data.length > 0) {
             container.innerHTML = result.data.map(activity => `
                 <div class="activity-item">
                     <div class="activity-icon">${activity.icon}</div>
                     <div class="activity-content">
                         <div class="activity-title">${activity.document_number}</div>
                         <div class="activity-details">${activity.customer_name || 'N/A'} • ₹${activity.formatted_amount}</div>
+                        ${activity.shipping_address ? `<div class="activity-address">📍 ${activity.shipping_address}</div>` : ''}
                         <div class="activity-meta">
                             <span class="activity-type">${getActivityTypeLabel(activity.record_type)}</span>
                             <span>${getTimeAgo(activity.created_at)}</span>
@@ -1274,9 +980,9 @@ async function loadRecentActivities(type = 'all') {
         });
         
     } catch (error) {
-        console.error('Failed to load activities:', error);
+        console.warn('Activities load failed:', error.message);
         const container = document.getElementById('recentActivities');
-        container.innerHTML = '<div class="activity-item"><div class="activity-loading">Error loading activities</div></div>';
+        if (container) container.innerHTML = '<div class="activity-item"><div class="activity-loading">Unable to load activities</div></div>';
     }
 }
 
@@ -1566,7 +1272,10 @@ let prefixTree = {};
 
 async function loadCompanyPrefix() {
     try {
-        const response = await fetch('/ergon/src/api/prefixes.php');
+        const response = await fetch('/ergon/src/api/prefixes.php', {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Prefixes API unavailable');
         const data = await response.json();
         const datalist = document.getElementById('prefixSuggestions');
         const input = document.getElementById('companyPrefix');
@@ -1595,6 +1304,7 @@ async function loadCompanyPrefix() {
                 loadAllStatCardsData();
                 loadCustomersForFunnel();
                 updateConversionFunnel();
+                loadRecentActivities();
             }, 100);
             return prefixToUse;
         } else {
@@ -1602,9 +1312,11 @@ async function loadCompanyPrefix() {
             return '';
         }
     } catch (error) {
-        console.error('Failed to load prefixes:', error);
+        console.warn('Prefixes load failed:', error.message);
         const input = document.getElementById('companyPrefix');
-        input.placeholder = 'Enter prefix manually';
+        if (input) input.placeholder = 'Enter prefix manually';
+        const container = document.getElementById('recentActivities');
+        if (container) container.innerHTML = '<div class="activity-item"><div class="activity-loading">Enter a company prefix to load activities</div></div>';
         return '';
     }
 }
@@ -1720,7 +1432,10 @@ async function loadCustomersForFunnel() {
         const customerSelect = document.getElementById('customerFilter');
         if (!customerSelect) return;
         
-        const response = await fetch(`/ergon/src/api/customers.php?prefix=${prefix}`);
+        const response = await fetch(`/ergon/src/api/customers.php?prefix=${encodeURIComponent(prefix)}`, {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Customers API unavailable');
         const result = await response.json();
         
         if (result.success) {
@@ -1730,7 +1445,7 @@ async function loadCustomersForFunnel() {
             });
         }
     } catch (error) {
-        console.warn('Failed to load customers:', error);
+        console.warn('Customers load failed:', error.message);
     }
 }
 
@@ -1742,12 +1457,15 @@ async function updateConversionFunnel() {
         const customerSelect = document.getElementById('customerFilter');
         const customerId = customerSelect ? customerSelect.value : '';
         
-        let url = `/ergon/src/api/funnel.php?prefix=${prefix}`;
+        let url = `/ergon/src/api/funnel.php?prefix=${encodeURIComponent(prefix)}`;
         if (customerId) {
-            url += `&customer_id=${customerId}`;
+            url += `&customer_id=${encodeURIComponent(customerId)}`;
         }
         
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Funnel API unavailable');
         const result = await response.json();
         
         if (result.success && result.data) {
@@ -1785,12 +1503,10 @@ async function updateConversionFunnel() {
         }
         
         // Update all analytics widgets and activities
-        setTimeout(() => {
-            updateAnalyticsWidgets();
-            loadRecentActivities();
-        }, 100);
+        updateAnalyticsWidgets().catch(e => console.warn('Analytics update failed:', e));
+        loadRecentActivities().catch(e => console.warn('Activities load failed:', e));
     } catch (error) {
-        console.warn('Funnel API error:', error);
+        console.warn('Funnel update failed:', error.message);
     }
 }
 
@@ -1814,91 +1530,9 @@ async function updateAnalyticsWidgets() {
             aging: {}
         };
         
-        // Update quotations chart
-        try {
-            const quotationsResp = await fetch(`/ergon/src/api/analytics.php?type=quotations&prefix=${prefix}`);
-            if (!quotationsResp.ok) throw new Error('API not available');
-            const quotationsData = await quotationsResp.json();
-            console.log('Quotations data:', quotationsData);
-            
-            if (quotationsData.success) {
-                analyticsData.quotations.statusCounts = quotationsData.data;
-                const el1 = document.getElementById('placedQuotations');
-                const el2 = document.getElementById('rejectedQuotations');
-                const el3 = document.getElementById('pendingQuotations');
-                const el4 = document.getElementById('quotationsTotal');
-                
-                if (el1) el1.textContent = quotationsData.data.placed || 0;
-                if (el2) el2.textContent = quotationsData.data.rejected || 0;
-                if (el3) el3.textContent = quotationsData.data.pending || 0;
-                if (el4) el4.textContent = (quotationsData.data.placed + quotationsData.data.rejected + quotationsData.data.pending) || 0;
-            }
-        } catch (e) {
-            console.error('Quotations API error:', e);
-        }
+        // Charts are auto-rendered by dashboard-charts.js
         
-        // Update PO claims chart
-        try {
-            const poResp = await fetch(`/ergon/src/api/analytics.php?type=po_claims&prefix=${prefix}`);
-            if (!poResp.ok) throw new Error('API not available');
-            const poData = await poResp.json();
-            console.log('PO claims data:', poData);
-            
-            if (poData.success) {
-                const fulfillmentEl = document.getElementById('poFulfillmentRate');
-                if (fulfillmentEl) fulfillmentEl.textContent = `${poData.data.fulfillment_rate || 0}%`;
-            }
-        } catch (e) {
-            console.error('PO claims API error:', e);
-        }
-        
-        // Update invoice metrics
-        try {
-            const invoiceResp = await fetch(`/ergon/src/api/analytics.php?type=invoices&prefix=${prefix}`);
-            if (!invoiceResp.ok) throw new Error('API not available');
-            const invoiceData = await invoiceResp.json();
-            console.log('Invoice data:', invoiceData);
-            
-            if (invoiceData.success) {
-                analyticsData.invoices.statusCounts = {
-                    paid_count: invoiceData.data.collected_amount || 0,
-                    unpaid_count: (invoiceData.data.pending_invoice_value || 0) * 0.7,
-                    overdue_count: (invoiceData.data.pending_invoice_value || 0) * 0.3
-                };
-                const dsoEl = document.getElementById('dsoMetric');
-                const totalEl = document.getElementById('invoicesTotal');
-                
-                if (dsoEl) dsoEl.textContent = `${invoiceData.data.dso || 0} days`;
-                if (totalEl) totalEl.textContent = `₹${(invoiceData.data.total_invoice_value || 0).toLocaleString()}`;
-            }
-        } catch (e) {
-            console.error('Invoice API error:', e);
-        }
-        
-        // Update customer outstanding chart
-        try {
-            const custResp = await fetch(`/ergon/src/api/analytics.php?type=customer_outstanding&prefix=${prefix}`);
-            if (!custResp.ok) throw new Error('API not available');
-            const custData = await custResp.json();
-            console.log('Customer outstanding data:', custData);
-            
-            if (custData.success && custData.data) {
-                analyticsData.outstanding.topCustomers = custData.data;
-                const totalEl = document.getElementById('outstandingTotal');
-                const diversityEl = document.getElementById('customerDiversity');
-                
-                const total = custData.data.reduce((sum, c) => sum + (parseFloat(c.outstanding_amount) || 0), 0);
-                if (totalEl) totalEl.textContent = `₹${total.toLocaleString()}`;
-                if (diversityEl) diversityEl.textContent = custData.data.length;
-            }
-        } catch (e) {
-            console.error('Customer outstanding API error:', e);
-        }
-        
-        // Update all charts with collected analytics data
-        if (typeof updateChartsWithAnalytics === 'function') {
-            updateChartsWithAnalytics(analyticsData);
-        }
+
         
     } catch (error) {
         console.error('Analytics widgets update failed:', error);
@@ -1912,7 +1546,10 @@ async function loadAllStatCardsData() {
             console.log('No prefix selected, skipping stat cards update');
             return;
         }
-        const response = await fetch(`/ergon/src/api/dashboard/stats.php?prefix=${prefix}`);
+        const response = await fetch(`/ergon/src/api/dashboard/stats.php?prefix=${encodeURIComponent(prefix)}`, {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Stats API unavailable');
         const result = await response.json();
         
         if (result.success && result.data) {
@@ -1958,8 +1595,8 @@ async function loadAllStatCardsData() {
         
         // Update analytics widgets after stat cards
         setTimeout(() => {
-            updateAnalyticsWidgets();
-            loadOutstandingInvoices();
+            updateAnalyticsWidgets().catch(e => console.warn('Analytics update failed:', e));
+            loadOutstandingInvoices().catch(e => console.warn('Outstanding invoices failed:', e));
         }, 100);
     } catch (error) {
         console.error('Failed to load all stat cards data:', error);
@@ -2083,56 +1720,88 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 0;
+    gap: 0.75rem;
+    padding: 1.5rem 0;
 }
 
 .funnel-stage {
     text-align: center;
     flex: 1;
-    padding: 1rem;
-    background: var(--bg-secondary);
-    border-radius: 8px;
+    padding: 1.25rem 0.75rem;
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(255,255,255,0.5) 100%);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
     transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.funnel-stage::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .funnel-stage:hover {
-    background: var(--primary-light);
-    transform: translateY(-2px);
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-3px);
+}
+
+.funnel-stage:hover::before {
+    /*opacity: 1;*/
 }
 
 .funnel-number {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary);
-    margin-bottom: 0.25rem;
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary), var(--success));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
 }
 
 .funnel-label {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    font-weight: 600;
 }
 
 .funnel-value {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 1rem;
+    font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+    font-family: 'Courier New', monospace;
 }
 
 .funnel-conversion {
-    font-size: 0.75rem;
-    color: var(--success);
-    font-weight: 600;
+    display: inline-block;
+    font-size: 0.8rem;
+    color: white;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--success), #059669);
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    margin-top: 0.25rem;
 }
 
 .funnel-arrow {
-    font-size: 1.5rem;
-    color: var(--text-muted);
-    margin: 0 0.5rem;
+    font-size: 1.75rem;
+    color: var(--primary);
+    margin: 0 -0.25rem;
+    font-weight: 300;
+    opacity: 0.6;
 }
 
 /* Chart Summary */
@@ -2262,7 +1931,6 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 0.75rem;
-    height: 220px;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -2705,6 +2373,12 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     text-align: center;
     color: var(--text-muted);
     font-style: italic;
+}
+
+.activity-address {
+    margin-top: 0.25rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
 }
 
 @media (max-width: 768px) {

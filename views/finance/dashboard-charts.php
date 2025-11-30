@@ -1,139 +1,124 @@
 <?php
-// Chart cards configuration
-$CHART_CARDS = [
-    [
-        'id' => 'quotations',
-        'icon' => '📝',
-        'title' => 'Quotations Overview',
-        'subtitle' => 'Quotation Status Count Distribution',
-        'valueId' => 'quotationsTotal',
-        'trendId' => 'quotationsTrend',
-        'chartId' => 'quotationsChart',
-        'chartType' => 'pie',
-        'meta' => [
-            ['label' => 'Placed Quotations:', 'id' => 'placedQuotations'],
-            ['label' => 'Rejected Quotations:', 'id' => 'rejectedQuotations'],
-            ['label' => 'Pending Quotations:', 'id' => 'pendingQuotations']
-        ],
-        'legend' => [
-            ['color' => '#3b82f6', 'label' => 'Pending (Draft/Revised)'],
-            ['color' => '#10b981', 'label' => 'Placed (Approved)'],
-            ['color' => '#ef4444', 'label' => 'Rejected']
-        ]
-    ],
-    [
-        'id' => 'po',
-        'icon' => '🛒',
-        'title' => 'Purchase Orders',
-        'subtitle' => 'Procurement Commitment Timeline',
-        'valueId' => 'poTotal',
-        'trendId' => 'poTrendChart',
-        'chartId' => 'purchaseOrdersChart',
-        'chartType' => 'line',
-        'meta' => [
-            ['label' => 'Fulfillment Rate:', 'id' => 'poFulfillmentRate'],
-            ['label' => 'Avg Lead Time:', 'id' => 'avgLeadTime'],
-            ['label' => 'Open Commitments:', 'id' => 'openCommitments']
-        ]
-    ],
-    [
-        'id' => 'invoices',
-        'icon' => '💰',
-        'title' => 'Invoice Status',
-        'subtitle' => 'Revenue Collection Health',
-        'valueId' => 'invoicesTotal',
-        'trendId' => 'invoicesTrendChart',
-        'chartId' => 'invoicesChart',
-        'chartType' => 'doughnut',
-        'meta' => [
-            ['label' => 'DSO:', 'id' => 'dsoMetric'],
-            ['label' => 'Bad Debt Risk:', 'id' => 'badDebtRisk'],
-            ['label' => 'Collection Efficiency:', 'id' => 'collectionEfficiency']
-        ],
-        'legend' => [
-            ['color' => '#10b981', 'label' => 'Paid (Collected)'],
-            ['color' => '#f59e0b', 'label' => 'Unpaid (Due)'],
-            ['color' => '#ef4444', 'label' => 'Overdue (Risk)']
-        ]
-    ],
-    [
-        'id' => 'outstanding',
-        'icon' => '📊',
-        'title' => 'Outstanding Distribution',
-        'subtitle' => 'Top Customer Outstanding Amounts',
-        'valueId' => 'outstandingTotal',
-        'trendId' => 'outstandingTrend',
-        'chartId' => 'outstandingByCustomerChart',
-        'chartType' => 'doughnut',
-        'meta' => [
-            ['label' => 'Concentration Risk:', 'id' => 'concentrationRisk'],
-            ['label' => 'Top 3 Exposure:', 'id' => 'top3Exposure'],
-            ['label' => 'Customer Diversity:', 'id' => 'customerDiversity']
-        ]
-    ],
-    [
-        'id' => 'aging',
-        'icon' => '⏳',
-        'title' => 'Aging Buckets',
-        'subtitle' => 'Credit Risk Assessment Matrix',
-        'valueId' => 'agingTotal',
-        'trendId' => 'agingTrend',
-        'chartId' => 'agingBucketsChart',
-        'chartType' => 'doughnut',
-        'meta' => [
-            ['label' => 'Provision Req:', 'id' => 'provisionRequired'],
-            ['label' => 'Recovery Rate:', 'id' => 'recoveryRate'],
-            ['label' => 'Credit Quality:', 'id' => 'creditQuality']
-        ],
-        'legend' => [
-            ['color' => '#10b981', 'label' => 'Current (0-30)'],
-            ['color' => '#f59e0b', 'label' => 'Watch (31-60)'],
-            ['color' => '#fb923c', 'label' => 'Concern (61-90)'],
-            ['color' => '#ef4444', 'label' => 'Critical (90+)']
-        ]
-    ],
-    [
-        'id' => 'payments',
-        'icon' => '💳',
-        'title' => 'Payments',
-        'subtitle' => 'Cash Flow Realization Pattern',
-        'valueId' => 'paymentsTotal',
-        'trendId' => 'paymentsTrend',
-        'chartId' => 'paymentsChart',
-        'chartType' => 'bar',
-        'meta' => [
-            ['label' => 'Velocity:', 'id' => 'paymentVelocity'],
-            ['label' => 'Forecast Accuracy:', 'id' => 'forecastAccuracy'],
-            ['label' => 'Cash Conversion:', 'id' => 'cashConversion']
-        ]
-    ]
-];
+// Chart Cards - HTML Only (Canvas elements)
+// All chart rendering logic moved to dashboard-charts.js
+?>
 
-foreach ($CHART_CARDS as $card): ?>
 <div class="chart-card">
     <div class="chart-card__header">
         <div class="chart-card__info">
-            <div class="chart-card__icon"><?php echo $card['icon']; ?></div>
-            <div class="chart-card__title"><?php echo $card['title']; ?></div>
-            <div class="chart-card__value" id="<?php echo $card['valueId']; ?>">0</div>
-            <div class="chart-card__subtitle"><?php echo $card['subtitle']; ?></div>
+            <div class="chart-card__icon">📝</div>
+            <div class="chart-card__title">Quotations Status</div>
+            <div class="chart-card__value" id="quotationsTotal">₹0</div>
+            <div class="chart-card__subtitle">Status Distribution</div>
         </div>
-        <div class="chart-card__trend" id="<?php echo $card['trendId']; ?>">+0%</div>
+        <div class="chart-card__trend" id="quotationsTrend">+0%</div>
     </div>
-    <div class="chart-card__chart">
-        <canvas id="<?php echo $card['chartId']; ?>"></canvas>
-        <?php if (!empty($card['legend'])): ?>
-        <div class="chart-legend">
-            <?php foreach ($card['legend'] as $item): ?>
-            <div class="legend-item"><span class="legend-color" style="background:<?php echo $item['color']; ?>"></span><?php echo $item['label']; ?></div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
+    <div class="chart-container">
+        <svg class="chart-svg" viewBox="0 0 200 120" id="quotationsChart" preserveAspectRatio="xMidYMid meet"></svg>
     </div>
     <div class="chart-card__meta">
-        <?php foreach ($card['meta'] as $meta): ?>
-        <div class="meta-item"><span><?php echo $meta['label']; ?></span><strong id="<?php echo $meta['id']; ?>">0</strong></div>
-        <?php endforeach; ?>
+        <div class="meta-item"><span>Pending:</span><strong id="quotationsPending">0</strong></div>
+        <div class="meta-item"><span>Placed:</span><strong id="quotationsPlaced">0</strong></div>
+        <div class="meta-item"><span>Rejected:</span><strong id="quotationsRejected">0</strong></div>
     </div>
 </div>
-<?php endforeach; ?>
+
+<div class="chart-card">
+    <div class="chart-card__header">
+        <div class="chart-card__info">
+            <div class="chart-card__icon">🛒</div>
+            <div class="chart-card__title">Purchase Orders</div>
+            <div class="chart-card__value" id="poTotal">₹0</div>
+            <div class="chart-card__subtitle">Fulfillment Rate</div>
+        </div>
+        <div class="chart-card__trend" id="poTrend">+0%</div>
+    </div>
+    <div class="chart-container">
+        <svg class="chart-svg" viewBox="0 0 200 120" id="purchaseOrdersChart" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card__meta">
+        <div class="meta-item"><span>Open:</span><strong id="poOpen">0</strong></div>
+        <div class="meta-item"><span>Fulfilled:</span><strong id="poFulfilled">0</strong></div>
+        <div class="meta-item"><span>Rate:</span><strong id="poFulfillmentRate">0%</strong></div>
+    </div>
+</div>
+
+<div class="chart-card">
+    <div class="chart-card__header">
+        <div class="chart-card__info">
+            <div class="chart-card__icon">💰</div>
+            <div class="chart-card__title">Invoice Status</div>
+            <div class="chart-card__value" id="invoicesTotal">₹0</div>
+            <div class="chart-card__subtitle">Revenue Collection</div>
+        </div>
+        <div class="chart-card__trend" id="invoicesTrend">+0%</div>
+    </div>
+    <div class="chart-container">
+        <svg class="chart-svg" viewBox="0 0 200 120" id="invoicesChart" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card__meta">
+        <div class="meta-item"><span>Paid:</span><strong id="invoicesPaid">0</strong></div>
+        <div class="meta-item"><span>Unpaid:</span><strong id="invoicesUnpaid">0</strong></div>
+        <div class="meta-item"><span>Overdue:</span><strong id="invoicesOverdue">0</strong></div>
+    </div>
+</div>
+
+<div class="chart-card">
+    <div class="chart-card__header">
+        <div class="chart-card__info">
+            <div class="chart-card__icon">📊</div>
+            <div class="chart-card__title">Outstanding by Customer</div>
+            <div class="chart-card__value" id="outstandingTotal">₹0</div>
+            <div class="chart-card__subtitle">Top Customers</div>
+        </div>
+        <div class="chart-card__trend" id="outstandingTrend">+0%</div>
+    </div>
+    <div class="chart-container">
+        <svg class="chart-svg" viewBox="0 0 200 120" id="outstandingByCustomerChart" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card__meta">
+        <div class="meta-item"><span>Customers:</span><strong id="outstandingCustomers">0</strong></div>
+        <div class="meta-item"><span>Concentration:</span><strong id="concentrationRisk">0%</strong></div>
+        <div class="meta-item"><span>Top 3:</span><strong id="top3Exposure">0%</strong></div>
+    </div>
+</div>
+
+<div class="chart-card">
+    <div class="chart-card__header">
+        <div class="chart-card__info">
+            <div class="chart-card__icon">⏳</div>
+            <div class="chart-card__title">Aging Buckets</div>
+            <div class="chart-card__value" id="agingTotal">₹0</div>
+            <div class="chart-card__subtitle">Credit Risk</div>
+        </div>
+        <div class="chart-card__trend" id="agingTrend">+0%</div>
+    </div>
+    <div class="chart-container">
+        <svg class="chart-svg" viewBox="0 0 200 120" id="agingBucketsChart" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card__meta">
+        <div class="meta-item"><span>0-30d:</span><strong id="aging0to30">0</strong></div>
+        <div class="meta-item"><span>31-60d:</span><strong id="aging31to60">0</strong></div>
+        <div class="meta-item"><span>90+d:</span><strong id="aging90plus">0</strong></div>
+    </div>
+</div>
+
+<div class="chart-card">
+    <div class="chart-card__header">
+        <div class="chart-card__info">
+            <div class="chart-card__icon">💳</div>
+            <div class="chart-card__title">Payments Trend</div>
+            <div class="chart-card__value" id="paymentsTotal">₹0</div>
+            <div class="chart-card__subtitle">Cash Flow Pattern</div>
+        </div>
+        <div class="chart-card__trend" id="paymentsTrend">+0%</div>
+    </div>
+    <div class="chart-container">
+        <svg class="chart-svg" viewBox="0 0 200 120" id="paymentsChart" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card__meta">
+        <div class="meta-item"><span>Velocity:</span><strong id="paymentVelocity">0</strong></div>
+        <div class="meta-item"><span>Avg:</span><strong id="paymentAvg">₹0</strong></div>
+        <div class="meta-item"><span>Count:</span><strong id="paymentCount">0</strong></div>
+    </div>
+</div>

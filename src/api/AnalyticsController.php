@@ -19,12 +19,17 @@ class AnalyticsController
     {
         $prefix = $params['prefix'] ?? null;
         $customerId = $params['customer_id'] ?? null;
+        $widget = $params['widget'] ?? null;
         
         if (!$prefix) {
             return $this->errorResponse('Company prefix is required', 400);
         }
         
         try {
+            if ($widget) {
+                return $this->getWidgetData($widget, $prefix, $customerId);
+            }
+            
             return $this->successResponse([
                 'quotations' => $this->getQuotationsAnalytics($customerId),
                 'purchaseOrders' => $this->getPurchaseOrdersAnalytics($customerId),
@@ -32,12 +37,27 @@ class AnalyticsController
                 'outstanding' => $this->getOutstandingAnalytics($customerId),
                 'aging' => $this->getAgingAnalytics($customerId),
                 'payments' => $this->getPaymentsAnalytics($customerId),
-                'conversionFunnel' => $this->getConversionFunnel($customerId)
+                'conversionFunnel' => $this->getConversionFunnel($customerId),
+                'quotationDonut' => $this->getQuotationDonut($prefix, $customerId),
+                'poClaimDistribution' => $this->getPOClaimDistribution($prefix, $customerId),
+                'invoiceCollections' => $this->getInvoiceCollections($prefix, $customerId),
+                'customerOutstanding' => $this->getCustomerOutstanding($prefix, $customerId)
             ]);
         } catch (\PDOException $e) {
             $this->logger->error("Analytics failed: " . $e->getMessage());
             return $this->errorResponse('Database error: ' . $e->getMessage(), 500);
         }
+    }
+    
+    private function getWidgetData(string $widget, string $prefix, ?string $customerId): array
+    {
+        return match($widget) {
+            'quotation_donut' => $this->successResponse($this->getQuotationDonut($prefix, $customerId)),
+            'po_claims' => $this->successResponse($this->getPOClaimDistribution($prefix, $customerId)),
+            'invoice_collections' => $this->successResponse($this->getInvoiceCollections($prefix, $customerId)),
+            'customer_outstanding' => $this->successResponse($this->getCustomerOutstanding($prefix, $customerId)),
+            default => $this->errorResponse('Invalid widget type', 400)
+        };
     }
     
     private function getQuotationsAnalytics(?string $customerId): array
@@ -389,6 +409,122 @@ class AnalyticsController
                 'invoiceToPayment' => $this->pct($funnel['invoices']['count'], $funnel['payments']['count'])
             ]
         ];
+    }
+    
+    private function getQuotationDonut(string $prefix, ?string $customerId): array
+    {
+        $sql = "SELECT 
+                    SUM(CASE WHEN status='PLACED' THEN 1 ELSE 0 END) AS placed_count,
+                    SUM(CASE WHEN status='REJECTED' THEN 1 ELSE 0 END) AS rejected_count,
+                    SUM(CASE WHEN status IN ('PENDING','DRAFT','REVISED') THEN 1 ELSE 0 END) AS pending_count
+                FROM finance_quotations
+                WHERE company_prefix = ?";
+        $params = [$prefix];
+        
+        if ($customerId) {
+            $sql .= " AND customer_id = ?";
+            $params[] = $customerId;
+        }
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        return [
+            'placed' => (int)($result['placed_count'] ?? 0),
+            'rejected' => (int)($result['rejected_count'] ?? 0),
+            'pending' => (int)($result['pending_count'] ?? 0)
+        ];
+    }
+    
+    private function getPOClaimDistribution(string $prefix, ?string $customerId): array
+    {
+        $sql = "SELECT
+                  CASE
+                    WHEN (amount_paid / NULLIF(po_amount, 0)) * 100 < 40 THEN '<40%'
+                    WHEN (amount_paid / NULLIF(po_amount, 0)) * 100 BETWEEN 40 AND 60 THEN '40-60%'
+                    WHEN (amount_paid / NULLIF(po_amount, 0)) * 100 BETWEEN 60 AND 80 THEN '60-80%'
+                    WHEN (amount_paid / NULLIF(po_amount, 0)) * 100 BETWEEN 80 AND 99 THEN '80-99%'
+                    WHEN (amount_paid / NULLIF(po_amount, 0)) * 100 >= 100 THEN '100%'
+                  END AS bucket,
+                  COUNT(*) AS count
+                FROM finance_purchase_orders
+                WHERE company_prefix = ?";
+        $params = [$prefix];
+        
+        if ($customerId) {
+            $sql .= " AND customer_id = ?";
+            $params[] = $customerId;
+        }
+        
+        $sql .= " GROUP BY bucket ORDER BY FIELD(bucket, '<40%', '40-60%', '60-80%', '80-99%', '100%')";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $distribution = [];
+        foreach ($results as $row) {
+            $distribution[$row['bucket']] = (int)$row['count'];
+        }
+        
+        return $distribution;
+    }
+    
+    private function getInvoiceCollections(string $prefix, ?string $customerId): array
+    {
+        $sql = "SELECT
+                  SUM(total_amount) AS total_invoice_value,
+                  SUM(taxable_amount - amount_paid) AS pending_invoice_value,
+                  CASE 
+                    WHEN SUM(total_amount) > 0 
+                    THEN (SUM(taxable_amount - amount_paid) / (SUM(total_amount) / 30))
+                    ELSE 0
+                  END AS dso
+                FROM finance_invoices
+                WHERE company_prefix = ?";
+        $params = [$prefix];
+        
+        if ($customerId) {
+            $sql .= " AND customer_id = ?";
+            $params[] = $customerId;
+        }
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        return [
+            'total_invoice_value' => (float)($result['total_invoice_value'] ?? 0),
+            'pending_invoice_value' => (float)($result['pending_invoice_value'] ?? 0),
+            'dso' => round((float)($result['dso'] ?? 0), 1)
+        ];
+    }
+    
+    private function getCustomerOutstanding(string $prefix, ?string $customerId): array
+    {
+        $sql = "SELECT 
+                  customer_id,
+                  SUM(taxable_amount - amount_paid) AS outstanding
+                FROM finance_invoices
+                WHERE company_prefix = ?";
+        $params = [$prefix];
+        
+        if ($customerId) {
+            $sql .= " AND customer_id = ?";
+            $params[] = $customerId;
+        }
+        
+        $sql .= " GROUP BY customer_id ORDER BY outstanding DESC LIMIT 10";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        return array_map(fn($row) => [
+            'customer_id' => $row['customer_id'],
+            'outstanding' => (float)$row['outstanding']
+        ], $results);
     }
     
     private function pct(int $numerator, int $denominator): float

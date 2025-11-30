@@ -26,9 +26,11 @@ try {
                 CASE 
                     WHEN (i.total_amount - i.paid_amount) > 0 AND i.due_date < CURDATE() THEN 'Overdue'
                     ELSE i.status
-                END AS status
+                END AS status,
+                CONCAT_WS(', ', sa.shipping_address_line1, sa.shipping_address_line2, sa.shipping_city, sa.shipping_state) AS shipping_address
             FROM finance_invoices i
             LEFT JOIN finance_customer c ON i.customer_id = c.id
+            LEFT JOIN finance_customer sa ON sa.id = i.customer_id
             WHERE LEFT(i.invoice_number, $len) = ?
               AND (i.total_amount - i.paid_amount) > 0
             ORDER BY days_overdue DESC, outstanding_amount DESC

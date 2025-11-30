@@ -1,0 +1,77 @@
+/* Conversion Funnel - Modern Design */
+.funnel-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 2rem 1rem;
+    background: transparent;
+}
+
+.funnel-stage {
+    text-align: center;
+    flex: 1;
+    padding: 1.5rem 1rem;
+    background: white;
+    border-radius: 12px;
+    position: relative;
+}
+
+.funnel-stage::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #059669;
+    border-radius: 12px 12px 0 0;
+}
+
+.funnel-stage:hover::before {
+    /*opacity: 0.7;*/
+}
+
+.funnel-number {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #059669;
+    margin-bottom: 0.25rem;
+    letter-spacing: -1px;
+}
+
+.funnel-label {
+    font-size: 0.7rem;
+    color: #6b7280;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    font-weight: 700;
+}
+
+.funnel-value {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 0.75rem;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.funnel-conversion {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: white;
+    font-weight: 800;
+    background: #059669;
+    padding: 0.4rem 0.9rem;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+    letter-spacing: 0.5px;
+}
+
+.funnel-arrow {
+    font-size: 1.5rem;
+    color: #d1d5db;
+    margin: 0 -0.5rem;
+    font-weight: 400;
+}

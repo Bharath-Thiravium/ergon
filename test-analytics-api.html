@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Analytics API</title>
+</head>
+<body>
+<h1>Analytics API Test</h1>
+<pre id="output"></pre>
+
+<script>
+async function testAPI() {
+    try {
+        const response = await fetch('/ergon/src/api/index.php?action=analytics&prefix=ERGN');
+        const data = await response.json();
+        document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+    } catch (error) {
+        document.getElementById('output').textContent = 'Error: ' + error.message;
+    }
+}
+
+testAPI();
+</script>
+</body>
+</html>
