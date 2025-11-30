@@ -15,37 +15,30 @@
 
 <div class="container-fluid">
     <!-- Header Actions -->
-    <div class="dashboard-header">
-        <div class="dashboard-header__title">
-            <h1>Finance Dashboard</h1>
-            <p>Real-time financial insights and analytics</p>
-        </div>
-        <div class="dashboard-header__actions">
-            <div class="action-group">
+    <div class="page-header-modern">
+        <div class="page-header-content">
+            <div class="page-title-section">
+                <h1 class="page-title">Finance Dashboard</h1>
+                <span class="page-subtitle">Real-time financial insights and analytics</span>
+            </div>
+            <div class="page-actions-section">
                 <button id="syncBtn" class="btn btn--primary btn--sm">
                     <span class="btn__icon">🔄</span>
                     <span class="btn__text">Sync Data</span>
                 </button>
-                <!-- Export, Download DB, Download PG Tables buttons removed for cleaner interface -->
-                <button onclick="refreshDashboardStats()" class="btn btn--success btn--sm">
-                    <span class="btn__icon">🔄</span>
-                    <span class="btn__text">Refresh Stats</span>
-                </button>
-                <!-- Import Data button removed for cleaner interface -->
-            </div>
-            <div class="filter-group">
-                <div class="input-group">
-                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Company Prefix (e.g. BKC)" maxlength="10">
-                    <button id="updatePrefixBtn" class="btn btn--secondary btn--sm">
-                        <span class="btn__icon">🏢</span>
-                    </button>
+                <div class="filter-controls">
+                    <div class="form-group">
+                        <input type="text" id="companyPrefix" class="form-control" placeholder="Prefix (SE, BK)" list="prefixSuggestions" maxlength="10">
+                        <datalist id="prefixSuggestions"></datalist>
+                        <div id="letterSelectors" class="letter-selectors"></div>
+                    </div>
+                    <select id="dateFilter" class="form-control">
+                        <option value="all">All Time</option>
+                        <option value="30">30 Days</option>
+                        <option value="90">90 Days</option>
+                        <option value="365">1 Year</option>
+                    </select>
                 </div>
-                <select id="dateFilter" class="form-control form-control--sm">
-                    <option value="all">All Time</option>
-                    <option value="30">Last 30 Days</option>
-                    <option value="90">Last 90 Days</option>
-                    <option value="365">Last Year</option>
-                </select>
             </div>
         </div>
     </div>
@@ -100,141 +93,7 @@
 
     <!-- Charts Section -->
     <div class="dashboard-grid dashboard-grid--2-col">
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">📝</div>
-                    <div class="chart-card__title">Quotations Overview</div>
-                    <div class="chart-card__value" id="quotationsTotal">0</div>
-                    <div class="chart-card__subtitle">Quotation Status Count Distribution</div>
-                </div>
-                <div class="chart-card__trend" id="quotationsTrend">+0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="quotationsChart"></canvas>
-                <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color" style="background:#3b82f6"></span>Pending (Draft/Revised)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Placed (Approved)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Rejected</div>
-                </div>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>Placed Quotations:</span><strong id="placedQuotations">0</strong></div>
-                <div class="meta-item"><span>Rejected Quotations:</span><strong id="rejectedQuotations">0</strong></div>
-                <div class="meta-item"><span>Pending Quotations:</span><strong id="pendingQuotations">0</strong></div>
-            </div>
-        </div>
-        
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">🛒</div>
-                    <div class="chart-card__title">Purchase Orders</div>
-                    <div class="chart-card__value" id="poTotal">0</div>
-                    <div class="chart-card__subtitle">Procurement Commitment Timeline</div>
-                </div>
-                <div class="chart-card__trend" id="poTrendChart">+0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="purchaseOrdersChart"></canvas>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>Fulfillment Rate:</span><strong id="poFulfillmentRate">0%</strong></div>
-                <div class="meta-item"><span>Avg Lead Time:</span><strong id="avgLeadTime">0 days</strong></div>
-                <div class="meta-item"><span>Open Commitments:</span><strong id="openCommitments">₹0</strong></div>
-            </div>
-        </div>
-        
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">💰</div>
-                    <div class="chart-card__title">Invoice Status</div>
-                    <div class="chart-card__value" id="invoicesTotal">0</div>
-                    <div class="chart-card__subtitle">Revenue Collection Health</div>
-                </div>
-                <div class="chart-card__trend" id="invoicesTrendChart">0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="invoicesChart"></canvas>
-                <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Paid (Collected)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Unpaid (Due)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Overdue (Risk)</div>
-                </div>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>DSO:</span><strong id="dsoMetric">0 days</strong></div>
-                <div class="meta-item"><span>Bad Debt Risk:</span><strong id="badDebtRisk">₹0</strong></div>
-                <div class="meta-item"><span>Collection Efficiency:</span><strong id="collectionEfficiency">0%</strong></div>
-            </div>
-        </div>
-        
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">📊</div>
-                    <div class="chart-card__title">Outstanding Distribution</div>
-                    <div class="chart-card__value" id="outstandingTotal">₹0</div>
-                    <div class="chart-card__subtitle">Top Customer Outstanding Amounts</div>
-                </div>
-                <div class="chart-card__trend" id="outstandingTrend">0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="outstandingByCustomerChart"></canvas>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>Concentration Risk:</span><strong id="concentrationRisk">0%</strong></div>
-                <div class="meta-item"><span>Top 3 Exposure:</span><strong id="top3Exposure">₹0</strong></div>
-                <div class="meta-item"><span>Customer Diversity:</span><strong id="customerDiversity">0</strong></div>
-            </div>
-        </div>
-        
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">⏳</div>
-                    <div class="chart-card__title">Aging Buckets</div>
-                    <div class="chart-card__value" id="agingTotal">₹0</div>
-                    <div class="chart-card__subtitle">Credit Risk Assessment Matrix</div>
-                </div>
-                <div class="chart-card__trend" id="agingTrend">0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="agingBucketsChart"></canvas>
-                <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Current (0-30)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Watch (31-60)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#fb923c"></span>Concern (61-90)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Critical (90+)</div>
-                </div>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>Provision Req:</span><strong id="provisionRequired">₹0</strong></div>
-                <div class="meta-item"><span>Recovery Rate:</span><strong id="recoveryRate">0%</strong></div>
-                <div class="meta-item"><span>Credit Quality:</span><strong id="creditQuality">Good</strong></div>
-            </div>
-        </div>
-        
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">💳</div>
-                    <div class="chart-card__title">Payments</div>
-                    <div class="chart-card__value" id="paymentsTotal">₹0</div>
-                    <div class="chart-card__subtitle">Cash Flow Realization Pattern</div>
-                </div>
-                <div class="chart-card__trend" id="paymentsTrend">+0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="paymentsChart"></canvas>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>Velocity:</span><strong id="paymentVelocity">₹0/day</strong></div>
-                <div class="meta-item"><span>Forecast Accuracy:</span><strong id="forecastAccuracy">0%</strong></div>
-                <div class="meta-item"><span>Cash Conversion:</span><strong id="cashConversion">0 days</strong></div>
-            </div>
-        </div>
+        <?php include __DIR__ . '/dashboard-charts.php'; ?>
     </div>
 
     <!-- Outstanding Invoices Table -->
@@ -251,7 +110,8 @@
                             <tr>
                                 <th>Invoice #</th>
                                 <th>Customer</th>
-                                <th>Due Date</th>
+                                <th>Invoice Date</th>
+                                <th>Total Amount</th>
                                 <th>Outstanding Amount</th>
                                 <th>Days Overdue</th>
                                 <th>Status</th>
@@ -274,11 +134,11 @@
             <div class="card__header">
                 <h2 class="card__title">📈 Recent Activities</h2>
                 <div class="activity-filters">
-                    <button class="filter-btn active" data-type="all" onclick="loadSampleRecentActivities('all')">All</button>
-                    <button class="filter-btn" data-type="quotation" onclick="loadSampleRecentActivities('quotation')">📝</button>
-                    <button class="filter-btn" data-type="purchase_order" onclick="loadSampleRecentActivities('purchase_order')">🛒</button>
-                    <button class="filter-btn" data-type="invoice" onclick="loadSampleRecentActivities('invoice')">💰</button>
-                    <button class="filter-btn" data-type="payment" onclick="loadSampleRecentActivities('payment')">💳</button>
+                    <button class="filter-btn active" data-type="all" onclick="loadRecentActivities('all')" title="All Activities">All</button>
+                    <button class="filter-btn" data-type="quotation" onclick="loadRecentActivities('quotation')" title="Quotations">📝</button>
+                    <button class="filter-btn" data-type="purchase_order" onclick="loadRecentActivities('purchase_order')" title="Purchase Orders">🛒</button>
+                    <button class="filter-btn" data-type="invoice" onclick="loadRecentActivities('invoice')" title="Invoices">💰</button>
+                    <button class="filter-btn" data-type="payment" onclick="loadRecentActivities('payment')" title="Payments">💳</button>
                 </div>
             </div>
             <div class="card__body">
@@ -337,6 +197,18 @@ Chart.defaults = {
 };
 
 // Notification function
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification notification--${type}`;
@@ -390,13 +262,37 @@ document.addEventListener('DOMContentLoaded', function() {
         syncBtn.addEventListener('click', syncFinanceData);
     }
     
-    const updateBtn = document.getElementById('updatePrefixBtn');
-    if (updateBtn) {
-        updateBtn.addEventListener('click', updateCompanyPrefix);
+
+    
+    const prefixInput = document.getElementById('companyPrefix');
+    if (prefixInput) {
+        prefixInput.addEventListener('input', function() {
+            const value = this.value.trim().toUpperCase();
+            localStorage.setItem('financePrefix', value);
+            if (value.length >= 2) {
+                updateLetterSelectors(value);
+                loadAllStatCardsData();
+                loadCustomersForFunnel();
+                updateConversionFunnel();
+            }
+            debounce(updateCompanyPrefix, 500)();
+        });
+        prefixInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                localStorage.setItem('financePrefix', this.value.trim().toUpperCase());
+                updateCompanyPrefix();
+                loadAllStatCardsData();
+                loadCustomersForFunnel();
+                updateConversionFunnel();
+            }
+        });
     }
 
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
-    document.getElementById('customerFilter').addEventListener('change', filterByCustomer);
+    const customerFilter = document.getElementById('customerFilter');
+    if (customerFilter) {
+        customerFilter.addEventListener('change', updateConversionFunnel);
+    }
     // Outstanding top-N control
     const topN = document.getElementById('outstandingTopN');
     if (topN) topN.addEventListener('change', () => loadOutstandingByCustomer(parseInt(topN.value, 10)));
@@ -409,11 +305,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load current prefix, then dashboard data
     loadCompanyPrefix().then(() => {
-        loadCustomers();
-        loadDashboardData();
         loadAllStatCardsData();
-        // Debug purchase orders
-        debugPurchaseOrders();
+        loadCustomersForFunnel();
     });
 });
 
@@ -612,25 +505,7 @@ function initCharts() {
     }
 }
 
-async function debugPurchaseOrders() {
-    try {
-        const response = await fetch('/ergon/finance/?action=debug-po');
-        const data = await response.json();
-        console.log('Purchase Orders Debug:', data);
-        
-        if (data.total_records === 0) {
-            console.warn('No purchase order records found in database');
-            showNotification('No purchase order data found. Please sync data first.', 'warning');
-        } else {
-            console.log(`Found ${data.total_records} purchase order records`);
-            if (data.sample_data && data.sample_data.length > 0) {
-                console.log('Sample PO data structure:', data.sample_data[0]);
-            }
-        }
-    } catch (error) {
-        console.error('Debug PO error:', error);
-    }
-}
+
 
 async function showTableStructure() {
     const btn = document.getElementById('structureBtn');
@@ -686,7 +561,7 @@ async function showTableStructure() {
 
 async function loadDashboardData() {
     try {
-        const response = await fetch('../src/api/simple_api.php?action=dashboard&prefix=ERGN');
+        const response = await fetch('../src/api/simple_api.php?action=dashboard&prefix=BKGE');
         const data = await response.json();
         
         console.log('Dashboard Stats:', data);
@@ -1031,7 +906,7 @@ function updateKPITrend(elementId, value, suffix = '') {
 
 async function updateConversionFunnel(data) {
     try {
-        const response = await fetch('../src/api/simple_api.php?action=funnel-containers&prefix=ERGN');
+        const response = await fetch('../src/api/simple_api.php?action=funnel-containers&prefix=BKGE');
         const funnelData = await response.json();
         
         if (funnelData.success && funnelData.containers) {
@@ -1105,7 +980,7 @@ async function updateCharts(data) {
     const funnel = data.conversionFunnel || {};
     try {
         // Update Quotations Chart
-        const quotationsResponse = await fetch('../src/api/simple_api.php?action=visualization&type=quotations&prefix=ERGN');
+        const quotationsResponse = await fetch('../src/api/simple_api.php?action=visualization&type=quotations&prefix=BKGE');
         if (!quotationsResponse.ok) throw new Error('Quotations API not available');
         const quotationsText = await quotationsResponse.text();
         const quotationsData = quotationsText ? JSON.parse(quotationsText) : {};
@@ -1137,7 +1012,7 @@ async function updateCharts(data) {
         }
         
         // Update Purchase Orders Chart
-        const poResponse = await fetch('../src/api/simple_api.php?action=visualization&type=purchase_orders&prefix=ERGN');
+        const poResponse = await fetch('../src/api/simple_api.php?action=visualization&type=purchase_orders&prefix=BKGE');
         if (!poResponse.ok) throw new Error('PO API not available');
         const poText = await poResponse.text();
         const poData = poText ? JSON.parse(poText) : {};
@@ -1166,7 +1041,7 @@ async function updateCharts(data) {
         if (poTotalEl) poTotalEl.textContent = funnel.purchaseOrders || 0;
         
         // Update Invoices Chart
-        const invoicesResponse = await fetch('../src/api/simple_api.php?action=visualization&type=invoices&prefix=ERGN');
+        const invoicesResponse = await fetch('../src/api/simple_api.php?action=visualization&type=invoices&prefix=BKGE');
         if (!invoicesResponse.ok) throw new Error('Invoices API not available');
         const invoicesText = await invoicesResponse.text();
         const invoicesData = invoicesText ? JSON.parse(invoicesText) : {};
@@ -1195,7 +1070,7 @@ async function updateCharts(data) {
         if (invoicesTotalEl) invoicesTotalEl.textContent = funnel.invoices || 0;
         
         // Update Outstanding by Customer Chart
-        const outstandingResp = await fetch('../src/api/simple_api.php?action=outstanding-by-customer&limit=10&prefix=ERGN');
+        const outstandingResp = await fetch('../src/api/simple_api.php?action=outstanding-by-customer&limit=10&prefix=BKGE');
         if (!outstandingResp.ok) throw new Error('Outstanding API not available');
         const outstandingText = await outstandingResp.text();
         const outstandingData = outstandingText ? JSON.parse(outstandingText) : {};
@@ -1227,7 +1102,7 @@ async function updateCharts(data) {
         if (outTotalEl) outTotalEl.textContent = `₹${(outstandingData.data?.total || 0).toLocaleString()}`;
 
         // Update Aging Buckets Chart
-        const agingResp = await fetch('../src/api/simple_api.php?action=aging-buckets&prefix=ERGN');
+        const agingResp = await fetch('../src/api/simple_api.php?action=aging-buckets&prefix=BKGE');
         if (!agingResp.ok) throw new Error('Aging API not available');
         const agingText = await agingResp.text();
         const agingData = agingText ? JSON.parse(agingText) : {};
@@ -1260,7 +1135,7 @@ async function updateCharts(data) {
         if (agingTotalEl) agingTotalEl.textContent = `₹${agingTotal.toLocaleString()}`;
         
         // Update Payments Chart
-        const paymentsResp = await fetch('../src/api/simple_api.php?action=visualization&type=payments&prefix=ERGN');
+        const paymentsResp = await fetch('../src/api/simple_api.php?action=visualization&type=payments&prefix=BKGE');
         if (!paymentsResp.ok) throw new Error('Payments API not available');
         const paymentsText = await paymentsResp.text();
         const paymentsData = paymentsText ? JSON.parse(paymentsText) : {};
@@ -1309,15 +1184,41 @@ async function updateCharts(data) {
 }
 
 async function loadOutstandingInvoices() {
-    // Placeholder function - API not implemented yet
-    const tbody = document.querySelector('#outstandingTable tbody');
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center">Outstanding invoices API not implemented yet</td></tr>`;
+    try {
+        const prefix = document.getElementById('companyPrefix').value;
+        if (!prefix) return;
+        
+        const response = await fetch(`/ergon/src/api/outstanding.php?prefix=${prefix}&limit=20`);
+        const result = await response.json();
+        
+        const tbody = document.querySelector('#outstandingTable tbody');
+        
+        if (result.success && result.data.length > 0) {
+            tbody.innerHTML = result.data.map(invoice => `
+                <tr class="${invoice.status === 'Overdue' ? 'table-row--danger' : ''}">
+                    <td>${invoice.invoice_number}</td>
+                    <td>${invoice.customer_name}</td>
+                    <td>${invoice.invoice_date}</td>
+                    <td>₹${parseFloat(invoice.total_amount).toLocaleString()}</td>
+                    <td>₹${parseFloat(invoice.outstanding_amount).toLocaleString()}</td>
+                    <td>${invoice.days_overdue > 0 ? invoice.days_overdue + ' days' : '-'}</td>
+                    <td><span class="list-status">${invoice.status}</span></td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">No outstanding invoices found</td></tr>';
+        }
+    } catch (error) {
+        console.error('Failed to load outstanding invoices:', error);
+        const tbody = document.querySelector('#outstandingTable tbody');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Error loading data</td></tr>';
+    }
 }
 
 // Load outstanding-by-customer and update chart
 async function loadOutstandingByCustomer(limit = 10) {
     try {
-        const resp = await fetch(`../src/api/simple_api.php?action=outstanding-by-customer&limit=${limit}&prefix=ERGN`);
+        const resp = await fetch(`../src/api/simple_api.php?action=outstanding-by-customer&limit=${limit}&prefix=BKGE`);
         const data = await resp.json();
         if (outstandingByCustomerChart && data.data && data.data.labels) {
             outstandingByCustomerChart.data.labels = data.data.labels;
@@ -1332,14 +1233,51 @@ async function loadOutstandingByCustomer(limit = 10) {
 // (Server-side export used via /ergon/finance/export-outstanding)
 
 async function loadRecentActivities(type = 'all') {
-    // Placeholder function - API not implemented yet
-    const container = document.getElementById('recentActivities');
-    container.innerHTML = '<div class="activity-item"><div class="activity-loading">Recent activities API not implemented yet</div></div>';
-    
-    // Update filter button states
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.type === type);
-    });
+    try {
+        const prefix = document.getElementById('companyPrefix').value;
+        if (!prefix) return;
+        
+        let url = `/ergon/src/api/activities.php?prefix=${prefix}&limit=20`;
+        if (type !== 'all') {
+            url += `&record_type=${type}`;
+        }
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        const container = document.getElementById('recentActivities');
+        
+        if (result.success && result.data.length > 0) {
+            container.innerHTML = result.data.map(activity => `
+                <div class="activity-item">
+                    <div class="activity-icon">${activity.icon}</div>
+                    <div class="activity-content">
+                        <div class="activity-title">${activity.document_number}</div>
+                        <div class="activity-details">${activity.customer_name || 'N/A'} • ₹${activity.formatted_amount}</div>
+                        <div class="activity-meta">
+                            <span class="activity-type">${getActivityTypeLabel(activity.record_type)}</span>
+                            <span>${getTimeAgo(activity.created_at)}</span>
+                        </div>
+                    </div>
+                    <div class="activity-status activity-status--${getActivityStatusClass(activity.status)}">
+                        ${getStatusLabel(activity.status)}
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<div class="activity-item"><div class="activity-loading">No recent activities found</div></div>';
+        }
+        
+        // Update filter button states
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === type);
+        });
+        
+    } catch (error) {
+        console.error('Failed to load activities:', error);
+        const container = document.getElementById('recentActivities');
+        container.innerHTML = '<div class="activity-item"><div class="activity-loading">Error loading activities</div></div>';
+    }
 }
 
 function getActivityStatusClass(status) {
@@ -1624,17 +1562,80 @@ function exportDashboard() {
 
 
 
+let prefixTree = {};
+
 async function loadCompanyPrefix() {
     try {
-        const response = await fetch('/ergon/finance/?action=company-prefix');
+        const response = await fetch('/ergon/src/api/prefixes.php');
         const data = await response.json();
-        const currentPrefix = data.prefix || '';
+        const datalist = document.getElementById('prefixSuggestions');
+        const input = document.getElementById('companyPrefix');
         
-        document.getElementById('companyPrefix').value = currentPrefix;
-        return currentPrefix;
+        if (data.success && data.prefixes.length > 0) {
+            datalist.innerHTML = '';
+            data.prefixes.forEach(prefix => {
+                datalist.innerHTML += `<option value="${prefix}">`;
+            });
+            
+            // Store prefix tree
+            prefixTree = data.prefix_tree || {};
+            
+            // Check for saved prefix in localStorage
+            const savedPrefix = localStorage.getItem('financePrefix');
+            const prefixToUse = savedPrefix || data.prefixes[0];
+            
+            // Save the prefix if it wasn't already saved
+            if (!savedPrefix) {
+                localStorage.setItem('financePrefix', prefixToUse);
+            }
+            
+            input.value = prefixToUse;
+            updateLetterSelectors(prefixToUse);
+            setTimeout(() => {
+                loadAllStatCardsData();
+                loadCustomersForFunnel();
+                updateConversionFunnel();
+            }, 100);
+            return prefixToUse;
+        } else {
+            input.placeholder = 'No prefixes found';
+            return '';
+        }
     } catch (error) {
-        console.error('Failed to load company prefix:', error);
+        console.error('Failed to load prefixes:', error);
+        const input = document.getElementById('companyPrefix');
+        input.placeholder = 'Enter prefix manually';
         return '';
+    }
+}
+
+function updateLetterSelectors(currentPrefix) {
+    const container = document.getElementById('letterSelectors');
+    container.innerHTML = '';
+    
+    if (prefixTree[currentPrefix] && Array.isArray(prefixTree[currentPrefix])) {
+        const select = document.createElement('select');
+        select.className = 'form-control form-control--sm';
+        select.style.maxWidth = '60px';
+        select.innerHTML = '<option value="">+</option>';
+        
+        prefixTree[currentPrefix].forEach(letter => {
+            select.innerHTML += `<option value="${letter}">${letter}</option>`;
+        });
+        
+        select.addEventListener('change', function() {
+            if (this.value) {
+                const input = document.getElementById('companyPrefix');
+                const newPrefix = currentPrefix + this.value;
+                input.value = newPrefix;
+                localStorage.setItem('financePrefix', newPrefix);
+                updateLetterSelectors(newPrefix);
+                updateCompanyPrefix();
+                loadAllStatCardsData();
+            }
+        });
+        
+        container.appendChild(select);
     }
 }
 
@@ -1645,11 +1646,6 @@ async function loadCompanyPrefix() {
 async function updateCompanyPrefix() {
     const input = document.getElementById('companyPrefix');
     const prefix = input.value.trim().toUpperCase();
-    
-    const btn = document.getElementById('updatePrefixBtn');
-    btn.disabled = true;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<span class="btn__icon">⏳</span>';
     
     try {
         const formData = new FormData();
@@ -1662,27 +1658,22 @@ async function updateCompanyPrefix() {
         const result = await response.json();
         
         if (result.success) {
+            // Save prefix to localStorage
             if (prefix) {
-                showNotification(`Filtering by company: ${result.prefix}`, 'success');
+                localStorage.setItem('financePrefix', prefix);
+                showNotification(`Filtering by: ${prefix}`, 'success');
             } else {
+                localStorage.removeItem('financePrefix');
                 showNotification('Showing all companies', 'success');
             }
             
-            await loadCustomers();
-            
-            // Reset customer filter
-            const customerSelect = document.getElementById('customerFilter');
-            if (customerSelect) customerSelect.value = '';
-            
-            loadDashboardData();
+            loadAllStatCardsData();
+            loadCustomersForFunnel();
         } else {
             showNotification('Failed to update prefix: ' + (result.error || 'Unknown error'), 'error');
         }
     } catch (error) {
         showNotification('Failed to update prefix: ' + error.message, 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
     }
 }
 
@@ -1697,30 +1688,7 @@ function filterByCustomer() {
     loadDashboardData();
 }
 
-async function loadCustomers() {
-    const select = document.getElementById('customerFilter');
-    const loader = document.getElementById('customerLoader');
-    try {
-        if (loader) { loader.style.display = 'inline-block'; loader.innerHTML = '<span class="mini-spinner" aria-hidden="true"></span>'; }
-        if (select) { select.disabled = true; select.innerHTML = '<option value="">Loading customers...</option>'; }
 
-        const response = await fetch('/ergon/finance/?action=customers');
-        const data = await response.json();
-
-        if (select) select.innerHTML = '<option value="">All Customers</option>';
-        if (data.customers) {
-            data.customers.forEach(customer => {
-                select.innerHTML += `<option value="${customer.display_name}">${customer.display}</option>`;
-            });
-        }
-    } catch (error) {
-        console.error('Failed to load customers:', error);
-        if (select) select.innerHTML = '<option value="">Failed to load</option>';
-    } finally {
-        if (loader) loader.style.display = 'none';
-        if (select) select.disabled = false;
-    }
-}
 
 async function refreshDashboardStats() {
     try {
@@ -1732,9 +1700,214 @@ async function refreshDashboardStats() {
     }
 }
 
+function forceUpdateStats() {
+    const prefix = document.getElementById('companyPrefix').value.trim();
+    if (!prefix) {
+        showNotification('Please enter a prefix first', 'warning');
+        return;
+    }
+    console.log('Force updating with prefix:', prefix);
+    loadAllStatCardsData();
+    loadCustomersForFunnel();
+    updateConversionFunnel();
+}
+
+async function loadCustomersForFunnel() {
+    try {
+        const prefix = document.getElementById('companyPrefix').value;
+        if (!prefix) return;
+        
+        const customerSelect = document.getElementById('customerFilter');
+        if (!customerSelect) return;
+        
+        const response = await fetch(`/ergon/src/api/customers.php?prefix=${prefix}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            customerSelect.innerHTML = '<option value="">All Customers</option>';
+            result.customers.forEach(customer => {
+                customerSelect.innerHTML += `<option value="${customer.id}">${customer.display_name}</option>`;
+            });
+        }
+    } catch (error) {
+        console.warn('Failed to load customers:', error);
+    }
+}
+
+async function updateConversionFunnel() {
+    try {
+        const prefix = document.getElementById('companyPrefix').value;
+        if (!prefix) return;
+        
+        const customerSelect = document.getElementById('customerFilter');
+        const customerId = customerSelect ? customerSelect.value : '';
+        
+        let url = `/ergon/src/api/funnel.php?prefix=${prefix}`;
+        if (customerId) {
+            url += `&customer_id=${customerId}`;
+        }
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const data = result.data;
+            
+            // Container 1 - Quotations
+            const quotationsEl = document.getElementById('funnelQuotations');
+            const quotationValueEl = document.getElementById('funnelQuotationValue');
+            if (quotationsEl) quotationsEl.textContent = data.container1.quotation_count;
+            if (quotationValueEl) quotationValueEl.textContent = `₹${data.container1.quotation_value.toLocaleString()}`;
+            
+            // Container 2 - Purchase Orders
+            const posEl = document.getElementById('funnelPOs');
+            const poValueEl = document.getElementById('funnelPOValue');
+            const quotationToPOEl = document.getElementById('quotationToPO');
+            if (posEl) posEl.textContent = data.container2.po_count;
+            if (poValueEl) poValueEl.textContent = `₹${data.container2.po_value.toLocaleString()}`;
+            if (quotationToPOEl) quotationToPOEl.textContent = `${data.container2.conversion_rate}%`;
+            
+            // Container 3 - Invoices
+            const invoicesEl = document.getElementById('funnelInvoices');
+            const invoiceValueEl = document.getElementById('funnelInvoiceValue');
+            const poToInvoiceEl = document.getElementById('poToInvoice');
+            if (invoicesEl) invoicesEl.textContent = data.container3.invoice_count;
+            if (invoiceValueEl) invoiceValueEl.textContent = `₹${data.container3.invoice_value.toLocaleString()}`;
+            if (poToInvoiceEl) poToInvoiceEl.textContent = `${data.container3.conversion_rate}%`;
+            
+            // Container 4 - Payments
+            const paymentsEl = document.getElementById('funnelPayments');
+            const paymentValueEl = document.getElementById('funnelPaymentValue');
+            const invoiceToPaymentEl = document.getElementById('invoiceToPayment');
+            if (paymentsEl) paymentsEl.textContent = data.container4.payment_count;
+            if (paymentValueEl) paymentValueEl.textContent = `₹${data.container4.received_amount.toLocaleString()}`;
+            if (invoiceToPaymentEl) invoiceToPaymentEl.textContent = `${data.container4.conversion_rate}%`;
+        }
+        
+        // Update all analytics widgets and activities
+        setTimeout(() => {
+            updateAnalyticsWidgets();
+            loadRecentActivities();
+        }, 100);
+    } catch (error) {
+        console.warn('Funnel API error:', error);
+    }
+}
+
+async function updateAnalyticsWidgets() {
+    try {
+        const prefix = document.getElementById('companyPrefix').value;
+        const customerSelect = document.getElementById('customerFilter');
+        const customerId = customerSelect ? customerSelect.value : '';
+        
+        if (!prefix) {
+            console.log('No prefix for analytics widgets');
+            return;
+        }
+        
+        console.log('Updating analytics widgets for prefix:', prefix);
+        
+        const analyticsData = {
+            quotations: {},
+            invoices: {},
+            outstanding: {},
+            aging: {}
+        };
+        
+        // Update quotations chart
+        try {
+            const quotationsResp = await fetch(`/ergon/src/api/analytics.php?type=quotations&prefix=${prefix}${customerId ? '&customer_id=' + customerId : ''}`);
+            const quotationsData = await quotationsResp.json();
+            console.log('Quotations data:', quotationsData);
+            
+            if (quotationsData.success) {
+                analyticsData.quotations.statusCounts = quotationsData.data;
+                const el1 = document.getElementById('placedQuotations');
+                const el2 = document.getElementById('rejectedQuotations');
+                const el3 = document.getElementById('pendingQuotations');
+                const el4 = document.getElementById('quotationsTotal');
+                
+                if (el1) el1.textContent = quotationsData.data.placed || 0;
+                if (el2) el2.textContent = quotationsData.data.rejected || 0;
+                if (el3) el3.textContent = quotationsData.data.pending || 0;
+                if (el4) el4.textContent = (quotationsData.data.placed + quotationsData.data.rejected + quotationsData.data.pending) || 0;
+            }
+        } catch (e) {
+            console.error('Quotations API error:', e);
+        }
+        
+        // Update PO claims chart
+        try {
+            const poResp = await fetch(`/ergon/src/api/analytics.php?type=po_claims&prefix=${prefix}${customerId ? '&customer_id=' + customerId : ''}`);
+            const poData = await poResp.json();
+            console.log('PO claims data:', poData);
+            
+            if (poData.success) {
+                const fulfillmentEl = document.getElementById('poFulfillmentRate');
+                if (fulfillmentEl) fulfillmentEl.textContent = `${poData.data.fulfillment_rate || 0}%`;
+            }
+        } catch (e) {
+            console.error('PO claims API error:', e);
+        }
+        
+        // Update invoice metrics
+        try {
+            const invoiceResp = await fetch(`/ergon/src/api/analytics.php?type=invoices&prefix=${prefix}${customerId ? '&customer_id=' + customerId : ''}`);
+            const invoiceData = await invoiceResp.json();
+            console.log('Invoice data:', invoiceData);
+            
+            if (invoiceData.success) {
+                analyticsData.invoices.statusCounts = {
+                    paid_count: invoiceData.data.collected_amount || 0,
+                    unpaid_count: (invoiceData.data.pending_invoice_value || 0) * 0.7,
+                    overdue_count: (invoiceData.data.pending_invoice_value || 0) * 0.3
+                };
+                const dsoEl = document.getElementById('dsoMetric');
+                const totalEl = document.getElementById('invoicesTotal');
+                
+                if (dsoEl) dsoEl.textContent = `${invoiceData.data.dso || 0} days`;
+                if (totalEl) totalEl.textContent = `₹${(invoiceData.data.total_invoice_value || 0).toLocaleString()}`;
+            }
+        } catch (e) {
+            console.error('Invoice API error:', e);
+        }
+        
+        // Update customer outstanding chart
+        try {
+            const custResp = await fetch(`/ergon/src/api/analytics.php?type=customer_outstanding&prefix=${prefix}${customerId ? '&customer_id=' + customerId : ''}`);
+            const custData = await custResp.json();
+            console.log('Customer outstanding data:', custData);
+            
+            if (custData.success && custData.data) {
+                analyticsData.outstanding.topCustomers = custData.data;
+                const totalEl = document.getElementById('outstandingTotal');
+                const diversityEl = document.getElementById('customerDiversity');
+                
+                const total = custData.data.reduce((sum, c) => sum + (parseFloat(c.outstanding_amount) || 0), 0);
+                if (totalEl) totalEl.textContent = `₹${total.toLocaleString()}`;
+                if (diversityEl) diversityEl.textContent = custData.data.length;
+            }
+        } catch (e) {
+            console.error('Customer outstanding API error:', e);
+        }
+        
+        // Update all charts with collected analytics data
+        if (typeof updateChartsWithAnalytics === 'function') {
+            updateChartsWithAnalytics(analyticsData);
+        }
+        
+    } catch (error) {
+        console.error('Analytics widgets update failed:', error);
+    }
+}
+
 async function loadAllStatCardsData() {
     try {
-        const prefix = document.getElementById('companyPrefix').value.trim().toUpperCase() || 'ERGN';
+        const prefix = document.getElementById('companyPrefix').value.trim() || '';
+        if (!prefix) {
+            console.log('No prefix selected, skipping stat cards update');
+            return;
+        }
         const response = await fetch(`/ergon/src/api/dashboard/stats.php?prefix=${prefix}`);
         const result = await response.json();
         
@@ -1777,8 +1950,13 @@ async function loadAllStatCardsData() {
             updateKPIValue('claimableAmount', parseFloat(card6.claimable_amount) || 0);
             updateKPIDetail('claimablePOCount', parseInt(card6.claimable_invoices) || 0);
             updateKPIDetail('claimRate', parseFloat(card6.claim_rate) || 0, false, '%');
-            
         }
+        
+        // Update analytics widgets after stat cards
+        setTimeout(() => {
+            updateAnalyticsWidgets();
+            loadOutstandingInvoices();
+        }, 100);
     } catch (error) {
         console.error('Failed to load all stat cards data:', error);
     }
@@ -2210,7 +2388,10 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 
 .kpi-card__details {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
     margin-top: 0.5rem;
     padding-top: 0.5rem;
     border-top: 1px solid var(--border-color);
@@ -2226,95 +2407,94 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     color: var(--text-primary);
 }
 
-/* Dashboard Header */
-.dashboard-header {
+.page-header-modern {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.75rem 1.5rem;
+    height: 60px;
+}
+
+.page-header-content {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    align-items: center;
+    height: 100%;
+    gap: 2rem;
 }
 
-.dashboard-header__title h1 {
-    margin: 0 0 0.25rem 0;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.dashboard-header__title p {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-}
-
-.dashboard-header__actions {
+.page-title-section {
     display: flex;
+    align-items: center;
     gap: 1rem;
-    align-items: flex-start;
 }
 
-.action-group {
+.page-title-section .page-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.page-title-section .page-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0;
+    white-space: nowrap;
+}
+
+.page-actions-section {
     display: flex;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
 }
 
-.filter-group {
+.filter-controls {
     display: flex;
     gap: 0.5rem;
     align-items: center;
 }
 
-.input-group {
-    display: flex;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.input-group .form-control {
-    border: none;
-    border-radius: 0;
+.filter-controls .form-group {
     margin: 0;
+    position: relative;
 }
 
-.input-group .btn {
-    border-radius: 0;
-    border-left: 1px solid var(--border-color);
-}
-
-.btn--sm {
-    padding: 0.5rem 0.75rem;
+.filter-controls .form-control {
+    width: 150px;
     font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+    height: 32px;
 }
 
-.btn__icon {
-    margin-right: 0.25rem;
+.filter-controls #companyPrefix {
+    width: 180px;
 }
 
-.form-control--sm {
-    padding: 0.5rem;
-    font-size: 0.8rem;
-    min-width: 120px;
+.letter-selectors {
+    display: flex;
+    gap: 2px;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 10;
+}
+
+.letter-selectors select {
+    width: 40px;
+    font-size: 0.7rem;
+    padding: 0.2rem;
+    height: 24px;
 }
 
 @media (max-width: 768px) {
-    .dashboard-header {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .dashboard-header__actions {
-        flex-direction: column;
-        width: 100%;
-    }
-    
-    .action-group,
-    .filter-group {
-        flex-wrap: wrap;
+    .page-header-content {
+        overflow-x: auto;
+        flex-wrap: nowrap;
     }
 }
 
@@ -2408,12 +2588,37 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.2s ease;
+    position: relative;
 }
 
 .filter-btn.active {
     background: var(--primary);
     color: white;
     border-color: var(--primary);
+}
+
+.filter-btn::after {
+    content: attr(title);
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease;
+    z-index: 1000;
+    margin-top: 0.25rem;
+}
+
+.filter-btn:hover::after {
+    opacity: 1;
+    visibility: visible;
 }
 
 /* Activity Items */

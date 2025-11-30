@@ -2,35 +2,40 @@
 
 require_once __DIR__ . '/../../app/config/database.php';
 require_once __DIR__ . '/RecentActivitiesController.php';
+require_once __DIR__ . '/AnalyticsController.php';
+require_once __DIR__ . '/SimpleLogger.php';
 
 use Ergon\FinanceSync\Api\RecentActivitiesController;
-
-// Simple logger class implementing PSR-3 interface
-class SimpleLogger implements \Psr\Log\LoggerInterface {
-    public function emergency($message, array $context = []) { error_log("EMERGENCY: $message"); }
-    public function alert($message, array $context = []) { error_log("ALERT: $message"); }
-    public function critical($message, array $context = []) { error_log("CRITICAL: $message"); }
-    public function error($message, array $context = []) { error_log("ERROR: $message"); }
-    public function warning($message, array $context = []) { error_log("WARNING: $message"); }
-    public function notice($message, array $context = []) { error_log("NOTICE: $message"); }
-    public function info($message, array $context = []) { error_log("INFO: $message"); }
-    public function debug($message, array $context = []) { error_log("DEBUG: $message"); }
-    public function log($level, $message, array $context = []) { error_log("$level: $message"); }
-}
+use Ergon\FinanceSync\Api\AnalyticsController;
+use Ergon\FinanceSync\Api\SimpleLogger;
 
 try {
-    // Use existing database connection
     $mysqlConnection = Database::connect();
     $logger = new SimpleLogger();
     
-    // Create controller
-    $controller = new RecentActivitiesController($mysqlConnection, $logger);
+    $action = $_GET['action'] ?? 'activities';
     
-    // Handle the request
-    $controller->handleRequest();
+    if ($action === 'analytics') {
+        header('Content-Type: application/json');
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type');
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            http_response_code(200);
+            exit;
+        }
+        
+        $controller = new AnalyticsController($mysqlConnection, $logger);
+        $response = $controller->getAnalytics($_GET);
+        http_response_code($response['success'] ? 200 : ($response['code'] ?? 400));
+        echo json_encode($response);
+    } else {
+        $controller = new RecentActivitiesController($mysqlConnection, $logger);
+        $controller->handleRequest();
+    }
     
 } catch (Exception $e) {
-    // Log error and return generic error response
     error_log("API bootstrap failed: " . $e->getMessage());
     
     header('Content-Type: application/json');
