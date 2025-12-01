@@ -6,9 +6,15 @@ try {
     require_once __DIR__ . '/../../app/config/database.php';
     
     $chart = $_GET['chart'] ?? '';
+    $prefix = $_GET['prefix'] ?? '';
     if (!$chart) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Chart type required']);
+        exit;
+    }
+    if (!$prefix) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Prefix required']);
         exit;
     }
     
@@ -18,9 +24,9 @@ try {
     switch ($chart) {
         case 'quotations':
             try {
-                $sql = "SELECT COALESCE(status, 'unknown') as status, COUNT(*) as count, COALESCE(SUM(quotation_amount), 0) as total FROM finance_quotations GROUP BY status";
+                $sql = "SELECT COALESCE(status, 'unknown') as status, COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM finance_consolidated WHERE company_prefix = ? AND record_type = 'quotation' GROUP BY status";
                 $stmt = $mysql->prepare($sql);
-                $stmt->execute();
+                $stmt->execute([$prefix]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 $result = ['pending' => 0, 'placed' => 0, 'rejected' => 0, 'total' => 0];
@@ -38,9 +44,9 @@ try {
             
         case 'purchase_orders':
             try {
-                $sql = "SELECT DATE_FORMAT(po_date, '%Y-%m') as month, COALESCE(SUM(po_total_value), 0) as amount FROM finance_purchase_orders WHERE po_date IS NOT NULL AND po_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH) GROUP BY month ORDER BY month";
+                $sql = "SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COALESCE(SUM(amount), 0) as amount FROM finance_consolidated WHERE company_prefix = ? AND record_type = 'purchase_order' AND created_at IS NOT NULL AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH) GROUP BY month ORDER BY month";
                 $stmt = $mysql->prepare($sql);
-                $stmt->execute();
+                $stmt->execute([$prefix]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $result = array_map(fn($r) => (float)$r['amount'], $rows);
             } catch (Exception $e) {
@@ -50,9 +56,9 @@ try {
             
         case 'invoices':
             try {
-                $sql = "SELECT COALESCE(status, 'unknown') as status, COUNT(*) as count, COALESCE(SUM(total_amount), 0) as total FROM finance_invoices GROUP BY status";
+                $sql = "SELECT COALESCE(status, 'unknown') as status, COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM finance_consolidated WHERE company_prefix = ? AND record_type = 'invoice' GROUP BY status";
                 $stmt = $mysql->prepare($sql);
-                $stmt->execute();
+                $stmt->execute([$prefix]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 $result = ['paid' => 0, 'unpaid' => 0, 'overdue' => 0, 'total' => 0];
@@ -70,9 +76,9 @@ try {
             
         case 'outstanding':
             try {
-                $sql = "SELECT COALESCE(c.customer_name, 'Unknown') as customer_name, COALESCE(SUM(i.total_amount - COALESCE(i.amount_paid, 0)), 0) as outstanding FROM finance_invoices i LEFT JOIN finance_customers c ON i.customer_id = c.customer_id WHERE (i.total_amount - COALESCE(i.amount_paid, 0)) > 0 GROUP BY i.customer_id, c.customer_name ORDER BY outstanding DESC LIMIT 5";
+                $sql = "SELECT COALESCE(customer_name, 'Unknown') as customer_name, COALESCE(SUM(outstanding_amount), 0) as outstanding FROM finance_consolidated WHERE company_prefix = ? AND record_type = 'invoice' AND outstanding_amount > 0 GROUP BY customer_id, customer_name ORDER BY outstanding DESC LIMIT 5";
                 $stmt = $mysql->prepare($sql);
-                $stmt->execute();
+                $stmt->execute([$prefix]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $result = array_map(fn($r) => ['customer' => $r['customer_name'], 'amount' => (float)$r['outstanding']], $rows);
             } catch (Exception $e) {
@@ -82,9 +88,9 @@ try {
             
         case 'aging':
             try {
-                $sql = "SELECT SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) BETWEEN 0 AND 30 THEN (total_amount - COALESCE(amount_paid, 0)) ELSE 0 END) as current, SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) BETWEEN 31 AND 60 THEN (total_amount - COALESCE(amount_paid, 0)) ELSE 0 END) as watch, SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) BETWEEN 61 AND 90 THEN (total_amount - COALESCE(amount_paid, 0)) ELSE 0 END) as concern, SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) > 90 THEN (total_amount - COALESCE(amount_paid, 0)) ELSE 0 END) as critical FROM finance_invoices WHERE (total_amount - COALESCE(amount_paid, 0)) > 0";
+                $sql = "SELECT SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) BETWEEN 0 AND 30 THEN outstanding_amount ELSE 0 END) as current, SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) BETWEEN 31 AND 60 THEN outstanding_amount ELSE 0 END) as watch, SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) BETWEEN 61 AND 90 THEN outstanding_amount ELSE 0 END) as concern, SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) > 90 THEN outstanding_amount ELSE 0 END) as critical FROM finance_consolidated WHERE company_prefix = ? AND record_type = 'invoice' AND outstanding_amount > 0";
                 $stmt = $mysql->prepare($sql);
-                $stmt->execute();
+                $stmt->execute([$prefix]);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 $result = [
                     'current' => (float)($row['current'] ?? 0),
@@ -99,9 +105,9 @@ try {
             
         case 'payments':
             try {
-                $sql = "SELECT DATE_FORMAT(payment_date, '%Y-%m') as month, COALESCE(SUM(amount), 0) as total FROM finance_payments WHERE payment_date IS NOT NULL AND payment_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH) GROUP BY month ORDER BY month";
+                $sql = "SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COALESCE(SUM(amount), 0) as total FROM finance_consolidated WHERE company_prefix = ? AND record_type = 'payment' AND created_at IS NOT NULL AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH) GROUP BY month ORDER BY month";
                 $stmt = $mysql->prepare($sql);
-                $stmt->execute();
+                $stmt->execute([$prefix]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $result = array_map(fn($r) => (float)$r['total'], $rows);
             } catch (Exception $e) {

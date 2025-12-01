@@ -1,7 +1,8 @@
 <?php 
  $title = 'Finance Dashboard';
  $active_page = 'finance';
- ob_start(); 
+ ob_start();
+ error_log('Finance Dashboard: ob_start called'); 
  // Finance-specific styles are merged into `assets/css/ergon-overrides.css`
 
  // Clear any error/success messages to prevent popup alerts
@@ -125,8 +126,8 @@
     </div>
     
     <!-- Recent Activities -->
-    <div class="dashboard-grid">
-        <div class="card">
+    <div class="dashboard-grid" style="grid-auto-rows: auto;">
+        <div class="card" style="display: flex; flex-direction: column; height: 400px;">
             <div class="card__header">
                 <h2 class="card__title">📈 Recent Activities</h2>
                 <div class="activity-filters">
@@ -137,7 +138,7 @@
                     <button class="filter-btn" data-type="payment" onclick="loadRecentActivities('payment')" title="Payments">💳</button>
                 </div>
             </div>
-            <div class="card__body">
+            <div class="card__body" style="flex: 1; overflow-y: scroll; min-height: 0;">
                 <div id="recentActivities">
                     <div class="activity-item">
                         <div class="activity-loading">Loading recent activities...</div>
@@ -171,14 +172,136 @@
 
     <!-- Charts Section (Moved to Bottom) -->
     <div class="dashboard-grid dashboard-grid--2-col">
-        <?php include __DIR__ . '/dashboard-charts.php'; ?>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">📝</div>
+                    <div class="chart-card__title">Quotations Status</div>
+                    <div class="chart-card__value" id="quotationsTotal">₹0</div>
+                    <div class="chart-card__subtitle">Status Distribution</div>
+                </div>
+                <div class="chart-card__trend" id="quotationsTrend">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="quotationsChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>Pending:</span><strong id="quotationsPending">0</strong></div>
+                <div class="meta-item"><span>Placed:</span><strong id="quotationsPlaced">0</strong></div>
+                <div class="meta-item"><span>Rejected:</span><strong id="quotationsRejected">0</strong></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">🛒</div>
+                    <div class="chart-card__title">Purchase Orders</div>
+                    <div class="chart-card__value" id="poTotal">₹0</div>
+                    <div class="chart-card__subtitle">Fulfillment Rate</div>
+                </div>
+                <div class="chart-card__trend" id="poTrend">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="purchaseOrdersChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>Open:</span><strong id="poOpen">0</strong></div>
+                <div class="meta-item"><span>Fulfilled:</span><strong id="poFulfilled">0</strong></div>
+                <div class="meta-item"><span>Rate:</span><strong id="poFulfillmentRate">0%</strong></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">📈</div>
+                    <div class="chart-card__title">Invoice Trend</div>
+                    <div class="chart-card__value" id="invoiceTrendTotal">₹0</div>
+                    <div class="chart-card__subtitle">Amount Over Time</div>
+                </div>
+                <div class="chart-card__trend" id="invoiceTrendPercent">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="invoiceTrendChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>Days:</span><strong id="invoiceTrendDays">0</strong></div>
+                <div class="meta-item"><span>Avg:</span><strong id="invoiceTrendAvg">₹0</strong></div>
+                <div class="meta-item"><span>Peak:</span><strong id="invoiceTrendPeak">₹0</strong></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">📊</div>
+                    <div class="chart-card__title">Outstanding by Customer</div>
+                    <div class="chart-card__value" id="outstandingTotal">₹0</div>
+                    <div class="chart-card__subtitle">Top Customers</div>
+                </div>
+                <div class="chart-card__trend" id="outstandingTrend">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="outstandingByCustomerChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>Customers:</span><strong id="outstandingCustomers">0</strong></div>
+                <div class="meta-item"><span>Concentration:</span><strong id="concentrationRisk">0%</strong></div>
+                <div class="meta-item"><span>Top 3:</span><strong id="top3Exposure">0%</strong></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">⏳</div>
+                    <div class="chart-card__title">Aging Buckets</div>
+                    <div class="chart-card__value" id="agingTotal">₹0</div>
+                    <div class="chart-card__subtitle">Credit Risk</div>
+                </div>
+                <div class="chart-card__trend" id="agingTrend">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="agingBucketsChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>0-30d:</span><strong id="aging0to30">0</strong></div>
+                <div class="meta-item"><span>31-60d:</span><strong id="aging31to60">0</strong></div>
+                <div class="meta-item"><span>90+d:</span><strong id="aging90plus">0</strong></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">💳</div>
+                    <div class="chart-card__title">Payments Trend</div>
+                    <div class="chart-card__value" id="paymentsTotal">₹0</div>
+                    <div class="chart-card__subtitle">Cash Flow Pattern</div>
+                </div>
+                <div class="chart-card__trend" id="paymentsTrend">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="paymentsChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>Velocity:</span><strong id="paymentVelocity">0</strong></div>
+                <div class="meta-item"><span>Avg:</span><strong id="paymentAvg">₹0</strong></div>
+                <div class="meta-item"><span>Count:</span><strong id="paymentCount">0</strong></div>
+            </div>
+        </div>
     </div>
 </div>
 
 <link rel="stylesheet" href="/ergon/views/finance/funnel-styles.css">
-<script src="/ergon/views/finance/dashboard-charts.js"></script>
+<script src="/ergon/views/finance/dashboard-svg-charts.js"></script>
+<script src="/ergon/views/finance/dashboard-loader.js"></script>
 <script src="/ergon/views/finance/cashflow-listener.js"></script>
-<script src="/ergon/views/finance/test-svg-tooltips.js"></script>
+<script>
+setTimeout(() => {
+    const prefix = document.getElementById('companyPrefix')?.value;
+    if (prefix) {
+        console.log('Auto-loading charts for prefix:', prefix);
+        loadAllCharts();
+    }
+}, 2000);
+</script>
 <script>
 
 // Notification function
@@ -258,6 +381,7 @@ window.addEventListener('load', function() {
                 loadAllStatCardsData();
                 loadCustomersForFunnel();
                 updateConversionFunnel();
+                loadAllCharts();
             }
             debounce(updateCompanyPrefix, 500)();
         });
@@ -268,6 +392,7 @@ window.addEventListener('load', function() {
                 loadAllStatCardsData();
                 loadCustomersForFunnel();
                 updateConversionFunnel();
+                loadAllCharts();
             }
         });
     }
@@ -292,6 +417,7 @@ window.addEventListener('load', function() {
         loadAllStatCardsData();
         loadCustomersForFunnel();
         loadCashFlow();
+        loadAllCharts();
     });
 });
 

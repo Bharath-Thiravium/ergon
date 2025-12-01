@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chart API Test</title>
+</head>
+<body>
+    <h1>Chart API Test</h1>
+    <div id="results"></div>
+    <script>
+        async function testCharts() {
+            const prefix = 'ERGN';
+            const charts = ['quotations', 'invoices', 'purchase_orders', 'outstanding', 'aging', 'payments'];
+            const results = document.getElementById('results');
+            
+            for (const chart of charts) {
+                try {
+                    const url = `/ergon/src/api/charts.php?chart=${chart}&prefix=${prefix}`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    results.innerHTML += `<h3>${chart}</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } catch (e) {
+                    results.innerHTML += `<h3>${chart} - ERROR</h3><pre>${e.message}</pre>`;
+                }
+            }
+        }
+        testCharts();
+    </script>
+</body>
+</html>

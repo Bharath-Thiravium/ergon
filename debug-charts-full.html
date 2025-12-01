@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Charts Debug - Full Investigation</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .section { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #007bff; }
+        .pass { border-left-color: #28a745; }
+        .fail { border-left-color: #dc3545; }
+        .warn { border-left-color: #ffc107; }
+        h2 { margin-top: 0; color: #333; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; font-size: 12px; }
+        .status { font-weight: bold; padding: 5px 10px; border-radius: 3px; display: inline-block; }
+        .pass .status { background: #d4edda; color: #155724; }
+        .fail .status { background: #f8d7da; color: #721c24; }
+        .warn .status { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Charts Debug - Full Investigation</h1>
+    <div id="results"></div>
+
+    <script>
+        const results = document.getElementById('results');
+        const prefix = 'ERGN';
+        let allPass = true;
+
+        function addResult(title, status, details) {
+            const section = document.createElement('div');
+            section.className = `section ${status}`;
+            const statusText = status === 'pass' ? '✅ PASS' : status === 'fail' ? '❌ FAIL' : '⚠️ WARN';
+            section.innerHTML = `
+                <h2>${title}</h2>
+                <div class="status">${statusText}</div>
+                <pre>${details}</pre>
+            `;
+            results.appendChild(section);
+            if (status === 'fail') allPass = false;
+        }
+
+        async function runTests() {
+            // Test 1: Check if SVG elements exist
+            const svgElements = ['quotationsChart', 'purchaseOrdersChart', 'invoicesChart', 'outstandingByCustomerChart', 'agingBucketsChart', 'paymentsChart'];
+            const svgStatus = svgElements.map(id => {
+                const el = document.getElementById(id);
+                return `${id}: ${el ? '✓ FOUND' : '✗ MISSING'}`;
+            }).join('\n');
+            addResult('1. SVG Elements in DOM', svgElements.every(id => document.getElementById(id)) ? 'pass' : 'fail', svgStatus);
+
+            // Test 2: Check if loadAllCharts function exists
+            const hasLoadAllCharts = typeof loadAllCharts === 'function';
+            addResult('2. loadAllCharts Function', hasLoadAllCharts ? 'pass' : 'fail', `loadAllCharts: ${hasLoadAllCharts ? 'DEFINED' : 'UNDEFINED'}`);
+
+            // Test 3: Check if fetchChartData function exists
+            const hasFetchChartData = typeof fetchChartData === 'function';
+            addResult('3. fetchChartData Function', hasFetchChartData ? 'pass' : 'fail', `fetchChartData: ${hasFetchChartData ? 'DEFINED' : 'UNDEFINED'}`);
+
+            // Test 4: Check prefix input
+            const prefixInput = document.getElementById('companyPrefix');
+            const prefixValue = prefixInput?.value || '';
+            addResult('4. Prefix Input', prefixInput && prefixValue ? 'pass' : 'warn', `Input found: ${!!prefixInput}\nValue: "${prefixValue}"\nLength: ${prefixValue.length}`);
+
+            // Test 5: Test API endpoints
+            const charts = ['quotations', 'invoices', 'purchase_orders', 'outstanding', 'aging', 'payments'];
+            let apiResults = '';
+            for (const chart of charts) {
+                try {
+                    const response = await fetch(`/ergon/src/api/charts.php?chart=${chart}&prefix=${prefix}`);
+                    const data = await response.json();
+                    apiResults += `${chart}: ${data.success ? '✓ OK' : '✗ FAILED'} - ${JSON.stringify(data.data).substring(0, 50)}\n`;
+                } catch (e) {
+                    apiResults += `${chart}: ✗ ERROR - ${e.message}\n`;
+                }
+            }
+            addResult('5. API Endpoints', apiResults.includes('✗') ? 'fail' : 'pass', apiResults);
+
+            // Test 6: Test render functions
+            const renderFuncs = ['renderQuotationsChart', 'renderPurchaseOrdersChart', 'renderInvoicesChart', 'renderOutstandingChart', 'renderAgingChart', 'renderPaymentsChart'];
+            const renderStatus = renderFuncs.map(fn => `${fn}: ${typeof window[fn] === 'function' ? '✓' : '✗'}`).join('\n');
+            addResult('6. Render Functions', renderFuncs.every(fn => typeof window[fn] === 'function') ? 'pass' : 'fail', renderStatus);
+
+            // Test 7: Manual chart load test
+            try {
+                console.log('Starting manual chart load test...');
+                const q = await fetch(`/ergon/src/api/charts.php?chart=quotations&prefix=${prefix}`).then(r => r.json());
+                console.log('Quotations data:', q);
+                
+                if (typeof renderQuotationsChart === 'function') {
+                    renderQuotationsChart(q.data);
+                    const svg = document.getElementById('quotationsChart');
+                    const hasContent = svg && svg.innerHTML.length > 0;
+                    addResult('7. Manual Render Test', hasContent ? 'pass' : 'fail', `SVG content length: ${svg?.innerHTML.length || 0}\nSVG found: ${!!svg}`);
+                } else {
+                    addResult('7. Manual Render Test', 'fail', 'renderQuotationsChart function not found');
+                }
+            } catch (e) {
+                addResult('7. Manual Render Test', 'fail', `Error: ${e.message}`);
+            }
+
+            // Test 8: Check if loadAllCharts can be called
+            try {
+                console.log('Testing loadAllCharts call...');
+                if (typeof loadAllCharts === 'function') {
+                    loadAllCharts();
+                    addResult('8. loadAllCharts Call', 'pass', 'Function called successfully');
+                } else {
+                    addResult('8. loadAllCharts Call', 'fail', 'Function not defined');
+                }
+            } catch (e) {
+                addResult('8. loadAllCharts Call', 'fail', `Error: ${e.message}`);
+            }
+
+            // Summary
+            const summary = document.createElement('div');
+            summary.className = `section ${allPass ? 'pass' : 'fail'}`;
+            summary.innerHTML = `<h2>Summary</h2><div class="status">${allPass ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}</div>`;
+            results.appendChild(summary);
+        }
+
+        // Wait for page to load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', runTests);
+        } else {
+            runTests();
+        }
+    </script>
+</body>
+</html>

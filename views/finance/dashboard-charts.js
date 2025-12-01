@@ -15,14 +15,21 @@ function initCharts() {
 }
 
 function loadAllCharts() {
+    const prefix = document.getElementById('companyPrefix')?.value?.trim() || '';
+    console.log('loadAllCharts called with prefix:', prefix);
+    if (!prefix) {
+        console.log('No prefix selected, skipping chart load');
+        return;
+    }
     Promise.all([
-        fetchChartData('quotations'),
-        fetchChartData('purchase_orders'),
-        fetchChartData('invoices'),
-        fetchChartData('outstanding'),
-        fetchChartData('aging'),
-        fetchChartData('payments')
+        fetchChartData('quotations', prefix),
+        fetchChartData('purchase_orders', prefix),
+        fetchChartData('invoices', prefix),
+        fetchChartData('outstanding', prefix),
+        fetchChartData('aging', prefix),
+        fetchChartData('payments', prefix)
     ]).then(([q, po, inv, out, age, pay]) => {
+        console.log('Chart data received:', {q, po, inv, out, age, pay});
         renderQuotationsChart(q);
         renderPurchaseOrdersChart(po);
         renderInvoicesChart(inv);
@@ -35,13 +42,16 @@ function loadAllCharts() {
     });
 }
 
-async function fetchChartData(chart) {
+async function fetchChartData(chart, prefix) {
     try {
-        const response = await fetch(`/ergon/src/api/charts.php?chart=${chart}`, {
+        const url = `/ergon/src/api/charts.php?chart=${chart}&prefix=${encodeURIComponent(prefix)}`;
+        console.log(`Fetching ${chart} from:`, url);
+        const response = await fetch(url, {
             signal: AbortSignal.timeout(5000)
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const res = await response.json();
+        console.log(`${chart} response:`, res);
         if (!res.success) throw new Error(res.error || 'API error');
         return res.data || null;
     } catch (e) {
@@ -104,6 +114,7 @@ function addInteractive(el, text) {
 function renderQuotationsChart(data) {
     if (!data) data = { pending: 0, placed: 0, rejected: 0, total: 0 };
     const svg = document.getElementById('quotationsChart');
+    console.log('renderQuotationsChart - svg element:', svg ? 'found' : 'NOT FOUND');
     if (!svg) return;
     
     const total = (data.pending || 0) + (data.placed || 0) + (data.rejected || 0) || 1;
@@ -132,6 +143,7 @@ function renderQuotationsChart(data) {
 function renderPurchaseOrdersChart(data) {
     if (!data || !Array.isArray(data)) data = [0];
     const svg = document.getElementById('purchaseOrdersChart');
+    console.log('renderPurchaseOrdersChart - svg element:', svg ? 'found' : 'NOT FOUND');
     if (!svg) return;
     
     data = data.map(v => Number(v) || 0);
@@ -154,6 +166,7 @@ function renderPurchaseOrdersChart(data) {
 function renderInvoicesChart(data) {
     if (!data) data = { paid: 0, unpaid: 0, overdue: 0, total: 0 };
     const svg = document.getElementById('invoicesChart');
+    console.log('renderInvoicesChart - svg element:', svg ? 'found' : 'NOT FOUND');
     if (!svg) return;
     
     const total = (data.paid || 0) + (data.unpaid || 0) + (data.overdue || 0) || 1;
@@ -272,6 +285,9 @@ function loadDemoCharts() {
     renderPaymentsChart([12000, 18000, 15000, 22000, 19000, 14000, 11000]);
 }
 
-document.addEventListener('DOMContentLoaded', initCharts);
+document.addEventListener('DOMContentLoaded', () => {
+    // Don't auto-load charts on page load - wait for prefix to be set
+    // Charts will be loaded when prefix changes
+});
 
 window.refreshCharts = loadAllCharts;
