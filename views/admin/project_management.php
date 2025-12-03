@@ -87,13 +87,13 @@ ob_start();
                         <td><?= date('M j, Y', strtotime($project['created_at'])) ?></td>
                         <td>
                             <div class="ab-container">
-                                <button class="ab-btn ab-btn--edit" onclick="editProject(<?= $project['id'] ?>, <?= json_encode($project['name']) ?>, <?= json_encode($project['description']) ?>, <?= $project['department_id'] ?? 'null' ?>, <?= json_encode($project['status']) ?>)" title="Edit Project">
+                                <button class="ab-btn ab-btn--edit" data-id="<?= $project['id'] ?>" data-name="<?= htmlspecialchars($project['name'], ENT_QUOTES) ?>" data-description="<?= htmlspecialchars($project['description'], ENT_QUOTES) ?>" data-dept="<?= $project['department_id'] ?? '' ?>" data-status="<?= $project['status'] ?>" onclick="editProjectFromButton(this)" title="Edit Project">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                         <path d="M15 5l4 4"/>
                                     </svg>
                                 </button>
-                                <button class="ab-btn ab-btn--danger" onclick="deleteProject(<?= $project['id'] ?>, <?= json_encode($project['name']) ?>)" title="Delete Project">
+                                <button class="ab-btn ab-btn--danger" data-id="<?= $project['id'] ?>" data-name="<?= htmlspecialchars($project['name'], ENT_QUOTES) ?>" onclick="deleteProjectFromButton(this)" title="Delete Project">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <polyline points="3,6 5,6 21,6"/>
                                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -112,7 +112,6 @@ ob_start();
 </div>
 
 <?php
-// Project Modal Content
 $projectContent = '
 <form id="projectForm">
     <input type="hidden" id="projectId" name="project_id">
@@ -157,7 +156,6 @@ $projectFooter = '
     <span id="submitText">Add Project</span>
 </button>';
 
-// Render Modal with dynamic title
 renderModal('projectModal', '<span id="modalTitle">Add New Project</span>', $projectContent, $projectFooter, ['icon' => '📁']);
 ?>
 
@@ -174,6 +172,10 @@ function showAddProjectModal() {
     showModal('projectModal');
 }
 
+function editProjectFromButton(btn) {
+    editProject(btn.dataset.id, btn.dataset.name, btn.dataset.description, btn.dataset.dept, btn.dataset.status);
+}
+
 function editProject(id, name, description, deptId, status) {
     isEditing = true;
     document.getElementById('modalTitle').textContent = 'Edit Project';
@@ -185,6 +187,10 @@ function editProject(id, name, description, deptId, status) {
     document.getElementById('projectStatus').value = status;
     document.getElementById('statusGroup').style.display = 'block';
     showModal('projectModal');
+}
+
+function deleteProjectFromButton(btn) {
+    deleteProject(btn.dataset.id, btn.dataset.name);
 }
 
 function deleteProject(id, name) {
@@ -217,9 +223,6 @@ document.getElementById('projectForm').addEventListener('submit', function(e) {
     const formData = new FormData(this);
     const url = isEditing ? '/ergon/project-management/update' : '/ergon/project-management/create';
     
-    console.log('Submitting to URL:', url);
-    console.log('Form data:', Object.fromEntries(formData));
-    
     fetch(url, {
         method: 'POST',
         body: formData,
@@ -228,9 +231,6 @@ document.getElementById('projectForm').addEventListener('submit', function(e) {
         }
     })
     .then(response => {
-        console.log('Response status:', response.status);
-        console.log('Response URL:', response.url);
-        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -240,13 +240,11 @@ document.getElementById('projectForm').addEventListener('submit', function(e) {
             return response.json();
         } else {
             return response.text().then(text => {
-                console.log('Non-JSON response:', text);
                 throw new Error('Expected JSON response but got: ' + text.substring(0, 100));
             });
         }
     })
     .then(data => {
-        console.log('Response data:', data);
         if (data.success) {
             closeModal('projectModal');
             location.reload();
