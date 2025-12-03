@@ -19,26 +19,10 @@ class Router {
         error_log("Router Debug - Method: " . $method);
         error_log("Router Debug - Parsed Path: " . $path);
         
-        // Determine base path based on environment
-        $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
-        $isLocalhost = strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
-        
-        if ($isLocalhost) {
-            // For localhost, remove /ergon prefix
-            $basePath = '/ergon';
-            if (strpos($path, $basePath) === 0) {
-                $path = substr($path, strlen($basePath));
-            }
-        } else {
-            // For production, handle both base and public URLs
-            $basePath = '/ergon';
-            $publicBasePath = $basePath . '/public';
-            
-            if (strpos($path, $publicBasePath) === 0) {
-                $path = substr($path, strlen($publicBasePath));
-            } elseif (strpos($path, $basePath) === 0) {
-                $path = substr($path, strlen($basePath));
-            }
+        // Remove /ergon prefix from path (works for both localhost and production)
+        $basePath = '/ergon';
+        if (strpos($path, $basePath) === 0) {
+            $path = substr($path, strlen($basePath));
         }
         
         if (empty($path) || $path[0] !== '/') {
@@ -135,9 +119,7 @@ class Router {
             echo "<!DOCTYPE html><html><head><title>404 - Page Not Found</title></head>";
             echo "<body><h1>404 - Page Not Found</h1>";
             echo "<p>The requested page could not be found.</p>";
-            $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
-            $basePath = '/ergon';
-            echo "<a href='{$basePath}/login'>Return to Login</a></body></html>";
+            echo "<a href='/ergon/login'>Return to Login</a></body></html>";
         }
     }
     
