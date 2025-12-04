@@ -32,13 +32,14 @@ try {
     $mysql->exec('TRUNCATE TABLE finance_customer');
     $mysql->exec('TRUNCATE TABLE finance_payments');
     $mysql->exec('TRUNCATE TABLE finance_quotations');
+    $mysql->exec('TRUNCATE TABLE finance_customershippingaddress');
     
     $invoiceCount = $poCount = $customerCount = 0;
     
     $paymentCount = $quotationCount = 0;
     
     // Direct 1:1 sync - all columns
-    $tables = ['finance_invoices', 'finance_purchase_orders', 'finance_customer', 'finance_payments', 'finance_quotations'];
+    $tables = ['finance_invoices', 'finance_purchase_orders', 'finance_customer', 'finance_payments', 'finance_quotations', 'finance_customershippingaddress'];
     $counts = [];
     
     foreach ($tables as $table) {
@@ -86,10 +87,11 @@ try {
     $customerCount = $counts['finance_customer'] ?? 0;
     $paymentCount = $counts['finance_payments'] ?? 0;
     $quotationCount = $counts['finance_quotations'] ?? 0;
+    $shippingCount = $counts['finance_customershippingaddress'] ?? 0;
     
     echo json_encode([
         'success' => true,
-        'message' => "Synced {$invoiceCount} invoices, {$poCount} POs, {$customerCount} customers, {$paymentCount} payments, {$quotationCount} quotations from PostgreSQL"
+        'message' => "Synced {$invoiceCount} invoices, {$poCount} POs, {$customerCount} customers, {$paymentCount} payments, {$quotationCount} quotations, {$shippingCount} shipping addresses from PostgreSQL"
     ]);
     
 } catch (Exception $e) {
