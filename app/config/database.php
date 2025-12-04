@@ -23,8 +23,8 @@ class Database {
                 $this->password = '';
             } else {
                 $this->host = 'localhost';
-                $this->db_name = 'u494785662_ergon';
-                $this->username = 'u494785662_ergon';
+                $this->db_name = 'u494785662_ergon_site';
+                $this->username = 'u494785662_ergon_site';
                 $this->password = '@Admin@2025@';
             }
         } catch (Exception $e) {
