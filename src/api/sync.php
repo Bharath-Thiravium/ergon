@@ -68,7 +68,7 @@ try {
                     }
                 }
                 // Convert booleans
-                if (in_array($key, ['is_filed_in_gstr1', 'reverse_charge_applicable', 'is_rejected', 'is_revised', 'shipping_same_as_billing', 'is_active', 'is_gst_registered', 'statement_import_enabled', 'is_tds_received', 'tds_certificate_issued', 'invoice_created', 'po_created', 'proforma_created'])) {
+                if (in_array($key, ['is_filed_in_gstr1', 'reverse_charge_applicable', 'is_rejected', 'is_revised', 'shipping_same_as_billing', 'is_active', 'is_gst_registered', 'statement_import_enabled', 'is_tds_received', 'tds_certificate_issued', 'invoice_created', 'po_created', 'proforma_created', 'is_default'])) {
                     if ($value === 't' || $value === true || $value === '1') {
                         $row[$key] = 1;
                     } else {

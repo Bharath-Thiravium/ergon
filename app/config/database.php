@@ -18,7 +18,7 @@ class Database {
         try {
             if (Environment::isDevelopment()) {
                 $this->host = 'localhost';
-                $this->db_name = 'ergon_db';
+                $this->db_name = 'ergon-site_db';
                 $this->username = 'root';
                 $this->password = '';
             } else {
