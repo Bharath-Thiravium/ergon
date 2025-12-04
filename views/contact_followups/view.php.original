@@ -13,7 +13,7 @@ ob_start();
         <a href="/ergon/contacts/followups" class="btn btn--secondary">
             <span>←</span> Back to Contacts
         </a>
-        <a href="/ergon/contacts/followups/create?contact_id=C_<?= $contact['id'] ?>" class="btn btn--primary">
+        <a href="/ergon/contacts/followups/create?contact_id=<?= $contact['id'] ?>" class="btn btn--primary">
             <span>➕</span> New Follow-up
         </a>
     </div>
@@ -26,9 +26,6 @@ ob_start();
             <div class="contact-title-row">
                 <h2 class="contact-title">👤 <?= htmlspecialchars($contact['name']) ?></h2>
                 <div class="contact-badges">
-                    <button class="btn btn--info" onclick="editContact('C_<?= $contact['id'] ?>')">
-                        ✏️ Edit Contact
-                    </button>
                     <?php if ($contact['phone']): ?>
                         <a href="tel:<?= $contact['phone'] ?>" class="btn btn--success">
                             📞 Call Now
@@ -143,30 +140,30 @@ ob_start();
                         
                         <div class="followup-actions">
                             <?php if ($followup['status'] !== 'completed' && $followup['status'] !== 'cancelled'): ?>
-                                <button class="btn btn--success btn--modern" onclick="completeFollowup('F_<?= $followup['id'] ?>')">
+                                <button class="btn btn--success btn--modern" onclick="completeFollowup(<?= $followup['id'] ?>)">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
                                     </svg>
                                     Complete
                                 </button>
-                                <button class="btn btn--warning btn--modern" onclick="rescheduleFollowup('F_<?= $followup['id'] ?>')">
+                                <button class="btn btn--warning btn--modern" onclick="rescheduleFollowup(<?= $followup['id'] ?>)">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
                                     </svg>
                                     Reschedule
                                 </button>
-                                <button class="btn btn--danger btn--modern" onclick="cancelFollowup('F_<?= $followup['id'] ?>')">
+                                <button class="btn btn--danger btn--modern" onclick="cancelFollowup(<?= $followup['id'] ?>)">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
                                     </svg>
                                     Cancel
                                 </button>
                             <?php endif; ?>
-                            <button class="btn btn--info btn--modern btn--outline" onclick="window.location.href='/ergon/contacts/followups/view?id=F_<?= $followup['id'] ?>'">
+                            <button class="btn btn--info btn--modern btn--outline" onclick="showHistory(<?= $followup['id'] ?>)">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                                    <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
                                 </svg>
-                                View Details
+                                History
                             </button>
                         </div>
                     </div>
@@ -177,15 +174,13 @@ ob_start();
                 <div class="empty-icon">📞</div>
                 <h3>No Follow-ups Yet</h3>
                 <p>Create the first follow-up for <?= htmlspecialchars($contact['name']) ?></p>
-                <a href="/ergon/contacts/followups/create?contact_id=C_<?= $contact['id'] ?>" class="btn btn--primary">
+                <a href="/ergon/contacts/followups/create?contact_id=<?= $contact['id'] ?>" class="btn btn--primary">
                     Create Follow-up
                 </a>
             </div>
         <?php endif; ?>
     </div>
 </div>
-
-
 
 <?php renderModalCSS(); ?>
 
@@ -276,6 +271,205 @@ ob_start();
     font-size: 0.8rem;
 }
 
+/* Enhanced button styles for better visibility */
+.btn--danger {
+    background: #ef4444 !important;
+    color: white !important;
+    border: 1px solid #dc2626 !important;
+}
+
+.btn--danger:hover {
+    background: #dc2626 !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+}
+
+.btn--info {
+    background: #3b82f6 !important;
+    color: white !important;
+    border: 1px solid #2563eb !important;
+}
+
+.btn--info:hover {
+    background: #2563eb !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+.btn--info.btn--outline {
+    background: transparent !important;
+    color: #3b82f6 !important;
+    border: 2px solid #3b82f6 !important;
+}
+
+.btn--info.btn--outline:hover {
+    background: #3b82f6 !important;
+    color: white !important;
+    border-color: #3b82f6 !important;
+}
+
+/* Form validation styles */
+.form-text {
+    font-size: 0.75rem;
+    color: var(--text-muted, #6b7280);
+    margin-top: 0.25rem;
+}
+
+.text-muted {
+    color: var(--text-muted, #6b7280) !important;
+}
+
+.form-control:invalid {
+    border-color: var(--danger, #ef4444);
+}
+
+.form-control:valid {
+    border-color: var(--success, #10b981);
+}
+
+/* Loading state for buttons */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Better modal form spacing */
+.ergon-modal .form-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Modern History Timeline Styles */
+.modern-history-timeline {
+    position: relative;
+    padding: 0;
+    margin: 0;
+}
+
+.history-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    position: relative;
+}
+
+.history-entry:last-child {
+    border-bottom: none;
+}
+
+.history-entry:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 1.25rem;
+    top: 3rem;
+    bottom: -1rem;
+    width: 2px;
+    background: linear-gradient(to bottom, #e2e8f0, transparent);
+    z-index: 1;
+}
+
+.history-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+}
+
+.history-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    gap: 1rem;
+}
+
+.history-action {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #1e293b;
+    text-transform: capitalize;
+}
+
+.history-date {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.history-notes {
+    font-size: 0.875rem;
+    color: #475569;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+    background: #f8fafc;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border-left: 3px solid #e2e8f0;
+}
+
+.history-user {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Empty state for history */
+.history-empty {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+}
+
+.history-empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+    .history-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .history-entry {
+        gap: 0.75rem;
+    }
+    
+    .history-icon {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.875rem;
+    }
+    
+    .history-entry:not(:last-child)::after {
+        left: 1rem;
+    }
+}
+
 @media (max-width: 768px) {
     .contact-title-row {
         flex-direction: column;
@@ -302,10 +496,10 @@ ob_start();
 }
 </style>
 
+<?php renderModalJS(); ?>
+
 <script>
 function completeFollowup(id) {
-    // Strip F_ prefix if present
-    id = id.replace('F_', '');
     if (confirm('Mark this follow-up as completed?')) {
         fetch(`/ergon/contacts/followups/complete/${id}`, {
             method: 'POST',
@@ -330,54 +524,29 @@ function completeFollowup(id) {
 }
 
 function rescheduleFollowup(id) {
-    // Strip F_ prefix if present
-    id = id.replace('F_', '');
     showModal('rescheduleModal');
     document.getElementById('rescheduleFollowupId').value = id;
-    document.getElementById('rescheduleForm').action = `/ergon/contacts/followups/reschedule/${id}`;
     
-    // Add form submit handler
+    const dateInput = document.querySelector('#rescheduleForm input[name="new_date"]');
+    if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
+        dateInput.value = today;
+    }
+    
     const form = document.getElementById('rescheduleForm');
     form.onsubmit = function(e) {
         e.preventDefault();
-        const formData = new FormData(form);
         
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            if (response.ok) {
-                closeModal('rescheduleModal');
-                location.reload();
-            } else {
-                alert('Error: Failed to reschedule follow-up');
-            }
-        })
-        .catch(error => {
-            console.error('Reschedule error:', error);
-            alert('An error occurred while rescheduling the follow-up.');
-        });
-    };
-}
-
-function cancelFollowup(id) {
-    // Strip F_ prefix if present
-    id = id.replace('F_', '');
-    showModal('cancelModal');
-    document.getElementById('cancelFollowupId').value = id;
-    document.getElementById('cancelForm').action = `/ergon/contacts/followups/cancel/${id}`;
-    
-    // Add form submit handler
-    const form = document.getElementById('cancelForm');
-    form.onsubmit = function(e) {
-        e.preventDefault();
         const formData = new FormData(form);
+        const submitBtn = document.querySelector('button[form="rescheduleForm"]');
         
-        fetch(form.action, {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Rescheduling...';
+        }
+        
+        fetch(`/ergon/contacts/followups/reschedule/${id}`, {
             method: 'POST',
             body: formData,
             headers: {
@@ -387,66 +556,119 @@ function cancelFollowup(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                closeModal('cancelModal');
+                closeModal('rescheduleModal');
                 location.reload();
             } else {
-                alert('Error: ' + (data.error || 'Failed to cancel follow-up'));
+                alert('Error: ' + (data.error || 'Failed to reschedule'));
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '📅 Reschedule';
+                }
             }
         })
         .catch(error => {
-            console.error('Cancel error:', error);
-            alert('An error occurred while cancelling the follow-up.');
+            console.error('Error:', error);
+            alert('Network error occurred');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📅 Reschedule';
+            }
         });
     };
 }
 
-
-function editContact(contactId) {
-    // Strip C_ prefix if present
-    contactId = contactId.replace('C_', '');
-    // Load contact data
-    fetch(`/ergon/api/contacts/${contactId}`)
-        .then(response => response.json())
+function cancelFollowup(id) {
+    console.log('Cancel function called with ID:', id);
+    
+    if (!id || isNaN(id)) {
+        alert('Invalid follow-up ID');
+        return;
+    }
+    
+    showModal('cancelModal');
+    document.getElementById('cancelFollowupId').value = id;
+    document.getElementById('cancelForm').action = `/ergon/contacts/followups/cancel/${id}`;
+    
+    // Add form submit handler
+    const form = document.getElementById('cancelForm');
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const reason = formData.get('reason');
+        const submitBtn = document.querySelector('button[form="cancelForm"]');
+        
+        // Validate reason
+        if (!reason || reason.trim().length === 0) {
+            alert('Please provide a reason for cancellation');
+            return;
+        }
+        
+        console.log('Submitting cancel request for ID:', id, 'Reason:', reason);
+        
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Cancelling...';
+        }
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            console.log('Cancel response status:', response.status);
+            return response.json();
+        })
         .then(data => {
-            if (data.success && data.contact) {
-                const contact = data.contact;
-                document.getElementById('editContactId').value = contact.id;
-                document.getElementById('editContactName').value = contact.name || '';
-                document.getElementById('editContactPhone').value = contact.phone || '';
-                document.getElementById('editContactEmail').value = contact.email || '';
-                document.getElementById('editContactCompany').value = contact.company || '';
-                showModal('editContactModal');
+            console.log('Cancel response data:', data);
+            
+            if (data.success) {
+                closeModal('cancelModal');
+                alert('Follow-up cancelled successfully!');
+                location.reload();
             } else {
-                alert('Error loading contact details');
+                alert('Error: ' + (data.error || 'Failed to cancel follow-up'));
+                console.error('Cancel error:', data);
             }
         })
         .catch(error => {
-            console.error('Error loading contact:', error);
-            alert('Error loading contact details');
+            console.error('Cancel network error:', error);
+            alert('Network error occurred. Please try again.');
+        })
+        .finally(() => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '❌ Cancel Follow-up';
+            }
         });
+    };
 }
 
-function saveContactChanges() {
-    const form = document.getElementById('editContactForm');
-    const formData = new FormData(form);
-    const contactId = document.getElementById('editContactId').value;
+function showHistory(id) {
+    showModal('historyModal');
+    document.getElementById('historyContent').innerHTML = 'Loading...';
     
-    fetch(`/ergon/api/contacts/${contactId}/update`, {
-        method: 'POST',
-        body: formData
+    fetch(`/ergon/contacts/followups/history/${id}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            closeModal('editContactModal');
-            location.reload();
+            const content = data.html || '<div class="history-empty"><div class="history-empty-icon">📋</div><h4>No History Available</h4><p>This follow-up has no recorded history yet.</p></div>';
+            document.getElementById('historyContent').innerHTML = content;
         } else {
-            alert('Error: ' + (data.message || 'Failed to update contact'));
+            document.getElementById('historyContent').innerHTML = '<div class="history-empty"><div class="history-empty-icon">⚠️</div><h4>Error Loading History</h4><p>' + (data.error || 'Failed to load history') + '</p></div>';
         }
     })
     .catch(error => {
-        console.error('Error updating contact:', error);
-        alert('Error updating contact');
+        console.error('Error loading history:', error);
+        document.getElementById('historyContent').innerHTML = 'Error loading history';
     });
 }
 </script>
@@ -467,59 +689,43 @@ $cancelContent = '
     </div>
 </form>';
 
-$cancelFooter = createFormModalFooter('Cancel', '❌ Cancel Follow-up', 'cancelModal', 'danger');
+$cancelFooter = '
+<button type="button" onclick="closeModal(\'cancelModal\')" class="btn btn--secondary">
+    Cancel
+</button>
+<button type="submit" form="cancelForm" class="btn btn--danger">
+    ❌ Cancel Follow-up
+</button>';
 
 // Reschedule Modal Content
 $rescheduleContent = '
 <form method="POST" id="rescheduleForm" action="">
     <input type="hidden" name="followup_id" id="rescheduleFollowupId">
-    <div class="form-group">
-        <label class="form-label">New Date *</label>
-        <input type="date" name="new_date" class="form-control" required>
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">New Date *</label>
+        <input type="date" name="new_date" required min="' . date('Y-m-d') . '" 
+               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
     </div>
-    <div class="form-group">
-        <label class="form-label">Reason for Rescheduling</label>
-        <textarea name="reason" class="form-control" rows="3" placeholder="Why is this being rescheduled?"></textarea>
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Reason for Rescheduling</label>
+        <textarea name="reason" rows="3" placeholder="Why is this being rescheduled?"
+                  style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
     </div>
 </form>';
 
-$rescheduleFooter = createFormModalFooter('Cancel', '📅 Reschedule', 'rescheduleModal', 'warning');
+$rescheduleFooter = '
+<button type="button" onclick="closeModal(\'rescheduleModal\')" class="btn btn--secondary">
+    Cancel
+</button>
+<button type="submit" form="rescheduleForm" class="btn btn--warning">
+    📅 Reschedule
+</button>';
 
 // History Modal Content
-$historyContent = '<div id="historyContent">Loading...</div>';
-
-// Edit Contact Modal Content
-$editContactContent = '
-<form id="editContactForm">
-    <input type="hidden" id="editContactId" name="contact_id">
-    <div class="form-group">
-        <label class="form-label">Name *</label>
-        <input type="text" id="editContactName" name="name" class="form-control" required>
-    </div>
-    <div class="form-group">
-        <label class="form-label">Phone</label>
-        <input type="tel" id="editContactPhone" name="phone" class="form-control">
-    </div>
-    <div class="form-group">
-        <label class="form-label">Email</label>
-        <input type="email" id="editContactEmail" name="email" class="form-control">
-    </div>
-    <div class="form-group">
-        <label class="form-label">Company</label>
-        <input type="text" id="editContactCompany" name="company" class="form-control">
-    </div>
-</form>';
-
-$editContactFooter = '
-<button type="button" class="btn btn--secondary" onclick="closeModal(\'editContactModal\')">Cancel</button>
-<button type="button" class="btn btn--primary" onclick="saveContactChanges()">💾 Save Changes</button>';
+$historyContent = '<div id="historyContent" style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: #64748b;">📋 Loading history...</div>';
 
 // Render Modals
 renderModal('cancelModal', 'Cancel Follow-up', $cancelContent, $cancelFooter, ['icon' => '❌']);
 renderModal('rescheduleModal', 'Reschedule Follow-up', $rescheduleContent, $rescheduleFooter, ['icon' => '📅']);
-renderModal('historyModal', 'Follow-up History', $historyContent, '', ['icon' => '📋']);
-renderModal('editContactModal', 'Edit Contact Details', $editContactContent, $editContactFooter, ['icon' => '✏️']);
+renderModal('historyModal', 'Follow-up History', $historyContent, '', ['icon' => '📋', 'size' => 'large']);
 ?>
-
-<?php include __DIR__ . '/followup_details_modal.php'; ?>
-<?php renderModalJS(); ?>

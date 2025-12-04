@@ -134,7 +134,7 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
                                     <span class="count"><?= $contact['total_followups'] ?></span>
                                     <span class="label">Total Follow-ups</span>
                                 </div>
-                                <?php if ($contact['next_followup_date']): ?>
+                                <?php if ($contact['next_followup_date'] && strtotime($contact['next_followup_date']) > time()): ?>
                                     <div class="summary-item">
                                         <span class="date"><?= date('M d', strtotime($contact['next_followup_date'])) ?></span>
                                         <span class="label">Next Follow-up</span>
@@ -144,19 +144,19 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
                         </div>
                         <div class="contact-card__actions">
                             <div class="ab-container">
-                                <button class="ab-btn ab-btn--view" onclick="viewContact(<?= $contact['id'] ?>)" title="View Contact Details">
+                                <button class="ab-btn ab-btn--view" onclick="viewContact('C_<?= $contact['id'] ?>')" title="View Contact Details">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
                                 </button>
-                                <button class="ab-btn ab-btn--edit" onclick="editContact(<?= $contact['id'] ?>)" title="Edit Contact">
+                                <button class="ab-btn ab-btn--edit" onclick="editContact('C_<?= $contact['id'] ?>')" title="Edit Contact">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                 </button>
                             </div>
-                            <a href="/ergon/contacts/followups/view/<?= $contact['id'] ?>" class="btn btn--primary btn--sm">
+                            <a href="/ergon/contacts/followups/view/C_<?= $contact['id'] ?>" class="btn btn--primary btn--sm">
                                 View Follow-ups
                             </a>
                             <?php if ($contact['phone']): ?>
@@ -202,7 +202,7 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
                                 <span class="stat-value"><?= $contact['total_followups'] ?></span>
                                 <span class="stat-label">Follow-ups</span>
                             </div>
-                            <?php if ($contact['next_followup_date']): ?>
+                            <?php if ($contact['next_followup_date'] && strtotime($contact['next_followup_date']) > time()): ?>
                                 <div class="stat-item">
                                     <span class="stat-value"><?= date('M d', strtotime($contact['next_followup_date'])) ?></span>
                                     <span class="stat-label">Next</span>
@@ -219,19 +219,19 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
                         </div>
                         <div class="contact-actions">
                             <div class="ab-container">
-                                <button class="ab-btn ab-btn--view" onclick="viewContact(<?= $contact['id'] ?>)" title="View Contact Details">
+                                <button class="ab-btn ab-btn--view" onclick="viewContact('C_<?= $contact['id'] ?>')" title="View Contact Details">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
                                 </button>
-                                <button class="ab-btn ab-btn--edit" onclick="editContact(<?= $contact['id'] ?>)" title="Edit Contact">
+                                <button class="ab-btn ab-btn--edit" onclick="editContact('C_<?= $contact['id'] ?>')" title="Edit Contact">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                 </button>
                             </div>
-                            <a href="/ergon/contacts/followups/view/<?= $contact['id'] ?>" class="btn btn--primary btn--sm">
+                            <a href="/ergon/contacts/followups/view/C_<?= $contact['id'] ?>" class="btn btn--primary btn--sm">
                                 Follow-ups
                             </a>
                             <?php if ($contact['phone']): ?>
@@ -839,6 +839,8 @@ function showHistory(id) {
 }
 
 function viewContact(contactId) {
+    // Strip C_ prefix if present
+    contactId = contactId.replace('C_', '');
     fetch(`/ergon/api/contacts/${contactId}`)
         .then(response => response.json())
         .then(data => {
@@ -849,7 +851,7 @@ function viewContact(contactId) {
                 document.getElementById('viewContactEmail').textContent = contact.email || 'N/A';
                 document.getElementById('viewContactCompany').textContent = contact.company || 'N/A';
                 document.getElementById('viewFollowupsBtn').onclick = () => {
-                    window.location.href = `/ergon/contacts/followups/view/${contactId}`;
+                    window.location.href = `/ergon/contacts/followups/view/C_${contactId}`;
                 };
                 document.getElementById('editFromViewBtn').onclick = () => {
                     closeModal('viewContactModal');
@@ -867,6 +869,8 @@ function viewContact(contactId) {
 }
 
 function editContact(contactId) {
+    // Strip C_ prefix if present
+    contactId = contactId.replace('C_', '');
     fetch(`/ergon/api/contacts/${contactId}`)
         .then(response => response.json())
         .then(data => {

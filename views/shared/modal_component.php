@@ -76,14 +76,14 @@ function renderModalCSS() {
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     min-width: 300px;
-    max-width: 500px;
+    max-width: 480px;
     width: 90%;
     max-height: 80vh;
     overflow-y: auto;
 }
 
 .dialog-content--small {
-    max-width: 400px;
+    max-width: 450px;
 }
 
 .dialog-content--large {

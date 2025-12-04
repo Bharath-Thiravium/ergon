@@ -84,6 +84,9 @@ class ContactFollowupController extends Controller {
         try {
             $db = Database::connect();
             
+            // Strip C_ prefix if present
+            $contact_id = str_replace('C_', '', $contact_id);
+            
             $stmt = $db->prepare("SELECT * FROM contacts WHERE id = ?");
             $stmt->execute([$contact_id]);
             $contact = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -108,7 +111,7 @@ class ContactFollowupController extends Controller {
     
     public function createStandaloneFollowup() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            return $this->storeStandaloneFollowup();
+            return $this->storeStandaloneFollowupOld();
         }
         
         try {
@@ -126,7 +129,7 @@ class ContactFollowupController extends Controller {
         }
     }
     
-    private function storeStandaloneFollowup() {
+    public function storeStandaloneFollowup() {
         // Check if this is an AJAX request
         $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
                  strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
@@ -203,6 +206,10 @@ class ContactFollowupController extends Controller {
             header("Location: $redirectUrl");
         }
         exit;
+    }
+    
+    private function storeStandaloneFollowupOld() {
+        return $this->storeStandaloneFollowup();
     }
     
     private function createOrFindContact($db, $postData) {
@@ -404,6 +411,9 @@ class ContactFollowupController extends Controller {
         
         try {
             $db = Database::connect();
+            
+            // Strip F_ prefix if present
+            $id = str_replace('F_', '', $id);
             
             $stmt = $db->prepare("SELECT id FROM followups WHERE id = ?");
             $stmt->execute([$id]);
@@ -727,6 +737,194 @@ class ContactFollowupController extends Controller {
         } catch (Exception $e) {
             error_log('Update linked task status error: ' . $e->getMessage());
         }
+    }
+    
+    public function viewFollowupHistory($id) {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
+        try {
+            $db = Database::connect();
+            
+            // Handle URL encoding - underscore might be encoded
+            $id = urldecode($id);
+            
+            // Determine if ID is a contact (C_) or followup (F_) or raw ID
+            $isContact = strpos($id, 'C_') === 0;
+            $isFollowup = strpos($id, 'F_') === 0;
+            $isRawId = !$isContact && !$isFollowup;
+            
+            // Strip prefix
+            $actualId = str_replace(['C_', 'F_'], '', $id);
+            
+            if ($isFollowup) {
+                // Check if ID is a followup ID
+                $stmt = $db->prepare("SELECT id, contact_id FROM followups WHERE id = ?");
+                $stmt->execute([$actualId]);
+                $followup = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+                if ($followup) {
+                    // ID is a followup ID - show individual followup details
+                    $stmt = $db->prepare("SELECT f.*, c.name as contact_name, c.phone as contact_phone, c.email as contact_email, c.company as contact_company FROM followups f LEFT JOIN contacts c ON f.contact_id = c.id WHERE f.id = ?");
+                    $stmt->execute([$actualId]);
+                    $followupDetail = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    $stmt = $db->prepare("SELECT h.*, u.name as user_name FROM followup_history h LEFT JOIN users u ON h.created_by = u.id WHERE h.followup_id = ? ORDER BY h.created_at DESC");
+                    $stmt->execute([$actualId]);
+                    $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    $this->view('contact_followups/details', [
+                        'followup' => $followupDetail,
+                        'history' => $history
+                    ]);
+                } else {
+                    header('Location: /ergon/contacts/followups?error=Follow-up not found');
+                    exit;
+                }
+            } elseif ($isContact || $isRawId) {
+                // ID is a contact ID - show all followups for contact
+                $stmt = $db->prepare("SELECT * FROM contacts WHERE id = ?");
+                $stmt->execute([$actualId]);
+                $contact = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$contact) {
+                    header('Location: /ergon/contacts/followups?error=Contact not found');
+                    exit;
+                }
+                
+                $followups = $this->getContactFollowups($db, $actualId);
+                
+                $this->view('contact_followups/view', [
+                    'contact' => $contact,
+                    'followups' => $followups
+                ]);
+            } else {
+                header('Location: /ergon/contacts/followups?error=Invalid ID format');
+                exit;
+            }
+        } catch (Exception $e) {
+            error_log('View followup history error: ' . $e->getMessage());
+            header('Location: /ergon/contacts/followups?error=Error loading follow-up');
+            exit;
+        }
+    }
+    
+    public function getFollowup($id) {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
+        try {
+            $db = Database::connect();
+            $stmt = $db->prepare("SELECT id, title, description, follow_up_date FROM followups WHERE id = ?");
+            $stmt->execute([$id]);
+            $followup = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($followup) {
+                echo json_encode(['success' => true, 'data' => $followup]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Follow-up not found']);
+            }
+        } catch (Exception $e) {
+            error_log('Get followup error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Database error occurred']);
+        }
+        exit;
+    }
+    
+    public function editFollowup($id) {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
+        try {
+            $db = Database::connect();
+            
+            $title = trim($_POST['title'] ?? '');
+            $description = trim($_POST['description'] ?? '');
+            $follow_up_date = $_POST['follow_up_date'] ?? null;
+            
+            if (empty($title)) {
+                echo json_encode(['success' => false, 'error' => 'Title is required']);
+                exit;
+            }
+            
+            if (!$follow_up_date) {
+                echo json_encode(['success' => false, 'error' => 'Follow-up date is required']);
+                exit;
+            }
+            
+            $stmt = $db->prepare("SELECT id, title, description, follow_up_date FROM followups WHERE id = ?");
+            $stmt->execute([$id]);
+            $followup = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$followup) {
+                echo json_encode(['success' => false, 'error' => 'Follow-up not found']);
+                exit;
+            }
+            
+            $stmt = $db->prepare("UPDATE followups SET title = ?, description = ?, follow_up_date = ?, updated_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$title, $description, $follow_up_date, $id]);
+            
+            if ($result && $stmt->rowCount() > 0) {
+                $this->logHistory($id, 'edited', null, "Updated title and date");
+                echo json_encode(['success' => true, 'message' => 'Follow-up updated successfully']);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'No changes made']);
+            }
+        } catch (Exception $e) {
+            error_log('Edit followup error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Database error occurred']);
+        }
+        exit;
+    }
+    
+    public function deleteFollowup($id) {
+        header('Content-Type: application/json');
+        
+        if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
+        try {
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("SELECT id FROM followups WHERE id = ?");
+            $stmt->execute([$id]);
+            $followup = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$followup) {
+                echo json_encode(['success' => false, 'error' => 'Follow-up not found']);
+                exit;
+            }
+            
+            // Delete history first
+            $stmt = $db->prepare("DELETE FROM followup_history WHERE followup_id = ?");
+            $stmt->execute([$id]);
+            
+            // Delete followup
+            $stmt = $db->prepare("DELETE FROM followups WHERE id = ?");
+            $result = $stmt->execute([$id]);
+            
+            if ($result && $stmt->rowCount() > 0) {
+                echo json_encode(['success' => true, 'message' => 'Follow-up deleted successfully']);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Failed to delete follow-up']);
+            }
+        } catch (Exception $e) {
+            error_log('Delete followup error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Database error occurred']);
+        }
+        exit;
     }
     
     public function getStatusBadgeClass($status) {

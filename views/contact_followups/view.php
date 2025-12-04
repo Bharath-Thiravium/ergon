@@ -5,62 +5,27 @@ ob_start();
 ?>
 
 <div class="page-header">
-    <div class="page-title">
-        <h1><span>👤</span> <?= htmlspecialchars($contact['name']) ?> - Follow-ups</h1>
-        <p>All follow-up history and communications for this contact</p>
+    <div class="page-title" style="display:block;align-items:center;gap:0.5rem;flex-wrap:nowrap">
+        <h1 style="margin:0;font-size:1.25rem;white-space:nowrap"><span>👤</span> <?= htmlspecialchars($contact['name']) ?></h1>
+        <div style="display:block;gap:0.5rem;font-size:0.75rem;color:#6b7280;white-space:nowrap">
+            <?php if ($contact['phone']): ?><span>📞 <?= htmlspecialchars($contact['phone']) ?></span><?php endif; ?>
+            <?php if ($contact['email']): ?><span>✉️ <?= htmlspecialchars($contact['email']) ?></span><?php endif; ?>
+            <?php if ($contact['company']): ?><span>🏢 <?= htmlspecialchars($contact['company']) ?></span><?php endif; ?>
+        </div>
     </div>
-    <div class="page-actions">
-        <a href="/ergon/contacts/followups" class="btn btn--secondary">
-            <span>←</span> Back to Contacts
-        </a>
-        <a href="/ergon/contacts/followups/create?contact_id=<?= $contact['id'] ?>" class="btn btn--primary">
-            <span>➕</span> New Follow-up
-        </a>
+    <div class="page-actions" style="gap:0.25rem">
+        <button class="btn btn--secondary view-toggle" data-view="list" title="List View" style="padding:0.5rem 0.75rem">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/></svg>
+        </button>
+        <button class="btn btn--secondary view-toggle" data-view="grid" title="Grid View" style="padding:0.5rem 0.75rem">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>
+        </button>
+        <a href="/ergon/contacts/followups" class="btn btn--secondary" style="padding:0.5rem 0.75rem" title="Back">←</a>
+        <a href="/ergon/contacts/followups/create?contact_id=C_<?= $contact['id'] ?>" class="btn btn--primary" style="padding:0.5rem 0.75rem" title="New Follow-up">➕</a>
     </div>
 </div>
 
-<!-- Contact Info Card -->
-<div class="contact-compact">
-    <div class="card">
-        <div class="card__header">
-            <div class="contact-title-row">
-                <h2 class="contact-title">👤 <?= htmlspecialchars($contact['name']) ?></h2>
-                <div class="contact-badges">
-                    <?php if ($contact['phone']): ?>
-                        <a href="tel:<?= $contact['phone'] ?>" class="btn btn--success">
-                            📞 Call Now
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-        <div class="card__body">
-            <div class="details-compact">
-                <div class="detail-group">
-                    <h4>👤 Contact Information</h4>
-                    <div class="detail-items">
-                        <span><strong>Name:</strong> 👤 <?= htmlspecialchars($contact['name']) ?></span>
-                        <?php if ($contact['phone']): ?>
-                        <span><strong>Phone:</strong> 📞 <a href="tel:<?= $contact['phone'] ?>" class="phone-link"><?= htmlspecialchars($contact['phone']) ?></a></span>
-                        <?php endif; ?>
-                        <?php if ($contact['email']): ?>
-                        <span><strong>Email:</strong> ✉️ <a href="mailto:<?= $contact['email'] ?>"><?= htmlspecialchars($contact['email']) ?></a></span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                
-                <?php if ($contact['company']): ?>
-                <div class="detail-group">
-                    <h4>🏢 Company</h4>
-                    <div class="detail-items">
-                        <span><strong>Company:</strong> 🏢 <?= htmlspecialchars($contact['company']) ?></span>
-                    </div>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <!-- Follow-ups Timeline -->
 <div class="card">
@@ -72,7 +37,7 @@ ob_start();
     </div>
     <div class="card__body followups-timeline">
         <?php if (!empty($followups)): ?>
-            <div class="followups-modern">
+            <div class="followups-modern" id="followupsContainer">
                 <?php foreach ($followups as $followup): ?>
                     <?php 
                     $statusClass = match($followup['status']) {
@@ -92,7 +57,7 @@ ob_start();
                     $typeIcon = ($followup['followup_type'] === 'task' || $followup['followup_type'] === 'task-linked') ? '🔗' : '📞';
                     $isOverdue = strtotime($followup['follow_up_date']) < strtotime('today') && $followup['status'] !== 'completed';
                     ?>
-                    <div class="followup-card <?= $followup['status'] ?> <?= $isOverdue ? 'overdue' : '' ?>">
+                    <div class="followup-card <?= $followup['status'] ?> <?= $isOverdue ? 'overdue' : '' ?>" style="max-width:500px">
                         <div class="followup-card__header">
                             <div class="followup-icon <?= $followup['followup_type'] ?>">
                                 <?= $typeIcon ?>
@@ -122,8 +87,30 @@ ob_start();
                         </div>
                         
                         <?php if ($followup['description']): ?>
-                            <div class="followup-description">
-                                <?= nl2br(htmlspecialchars($followup['description'])) ?>
+                            <div class="followup-description" style="display:flex;gap:0.5rem;align-items:flex-start">
+                                <div style="flex:1"><?= nl2br(htmlspecialchars($followup['description'])) ?></div>
+                                <div class="ab-container" style="flex-shrink:0;display:flex;gap:0.25rem">
+                                    <?php if ($followup['status'] !== 'completed' && $followup['status'] !== 'cancelled'): ?>
+                                        <button class="ab-btn ab-btn--success" onclick="completeFollowup('F_<?= $followup['id'] ?>')" title="Complete" style="width:20px;height:20px;padding:0;display:flex;align-items:center;justify-content:center">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                        </button>
+                                        <button class="ab-btn ab-btn--warning" onclick="rescheduleFollowup('F_<?= $followup['id'] ?>')" title="Reschedule" style="width:20px;height:20px;padding:0;display:flex;align-items:center;justify-content:center">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+                                        </button>
+                                        <button class="ab-btn ab-btn--delete" onclick="cancelFollowup('F_<?= $followup['id'] ?>')" title="Cancel" style="width:20px;height:20px;padding:0;display:flex;align-items:center;justify-content:center">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                                        </button>
+                                    <?php endif; ?>
+                                    <button class="ab-btn ab-btn--edit" onclick="editFollowup('F_<?= $followup['id'] ?>')" title="Edit" style="width:20px;height:20px;padding:0;display:flex;align-items:center;justify-content:center">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                    </button>
+                                    <button class="ab-btn ab-btn--delete" onclick="deleteFollowup('F_<?= $followup['id'] ?>')" title="Delete" style="width:20px;height:20px;padding:0;display:flex;align-items:center;justify-content:center">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-9l-1 1H5v2h14V4z"/></svg>
+                                    </button>
+                                    <button class="ab-btn ab-btn--view" onclick="window.location.href='/ergon/contacts/followups/view/F_<?= $followup['id'] ?>'" title="View Details" style="width:20px;height:20px;padding:0;display:flex;align-items:center;justify-content:center">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                                    </button>
+                                </div>
                             </div>
                         <?php endif; ?>
                         
@@ -137,35 +124,6 @@ ob_start();
                                 <span>Linked to task: <strong><?= htmlspecialchars($followup['task_title']) ?></strong></span>
                             </div>
                         <?php endif; ?>
-                        
-                        <div class="followup-actions">
-                            <?php if ($followup['status'] !== 'completed' && $followup['status'] !== 'cancelled'): ?>
-                                <button class="btn btn--success btn--modern" onclick="completeFollowup(<?= $followup['id'] ?>)">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                                    </svg>
-                                    Complete
-                                </button>
-                                <button class="btn btn--warning btn--modern" onclick="rescheduleFollowup(<?= $followup['id'] ?>)">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
-                                    </svg>
-                                    Reschedule
-                                </button>
-                                <button class="btn btn--danger btn--modern" onclick="cancelFollowup(<?= $followup['id'] ?>)">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                                    </svg>
-                                    Cancel
-                                </button>
-                            <?php endif; ?>
-                            <button class="btn btn--info btn--modern btn--outline" onclick="showHistory(<?= $followup['id'] ?>)">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
-                                </svg>
-                                History
-                            </button>
-                        </div>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -174,7 +132,7 @@ ob_start();
                 <div class="empty-icon">📞</div>
                 <h3>No Follow-ups Yet</h3>
                 <p>Create the first follow-up for <?= htmlspecialchars($contact['name']) ?></p>
-                <a href="/ergon/contacts/followups/create?contact_id=<?= $contact['id'] ?>" class="btn btn--primary">
+                <a href="/ergon/contacts/followups/create?contact_id=C_<?= $contact['id'] ?>" class="btn btn--primary">
                     Create Follow-up
                 </a>
             </div>
@@ -184,493 +142,89 @@ ob_start();
 
 <?php renderModalCSS(); ?>
 
-<style>
-.contact-compact {
-    max-width: 1000px;
-    margin: 0 auto 2rem auto;
-}
-
-.contact-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    width: 100%;
-    gap: 1.5rem;
-    min-height: 2rem;
-}
-
-.contact-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-    flex: 1 1 auto;
-    min-width: 200px;
-    max-width: calc(100% - 200px);
-    overflow-wrap: break-word;
-    word-break: break-word;
-    line-height: 1.3;
-}
-
-.contact-badges {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex: 0 0 auto;
-    min-width: 120px;
-    justify-content: flex-end;
-}
-
-.phone-link {
-    color: #059669;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.phone-link:hover {
-    text-decoration: underline;
-}
-
-.details-compact {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-}
-
-.detail-group {
-    background: var(--bg-secondary);
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-}
-
-.detail-group h4 {
-    margin: 0 0 0.75rem 0;
-    font-size: 0.9rem;
-    color: var(--primary);
-    font-weight: 600;
-}
-
-.detail-items {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.detail-items span {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.detail-items strong {
-    color: var(--text-primary);
-    min-width: 60px;
-    font-size: 0.8rem;
-}
-
-/* Enhanced button styles for better visibility */
-.btn--danger {
-    background: #ef4444 !important;
-    color: white !important;
-    border: 1px solid #dc2626 !important;
-}
-
-.btn--danger:hover {
-    background: #dc2626 !important;
-    color: white !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
-}
-
-.btn--info {
-    background: #3b82f6 !important;
-    color: white !important;
-    border: 1px solid #2563eb !important;
-}
-
-.btn--info:hover {
-    background: #2563eb !important;
-    color: white !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
-}
-
-.btn--info.btn--outline {
-    background: transparent !important;
-    color: #3b82f6 !important;
-    border: 2px solid #3b82f6 !important;
-}
-
-.btn--info.btn--outline:hover {
-    background: #3b82f6 !important;
-    color: white !important;
-    border-color: #3b82f6 !important;
-}
-
-/* Form validation styles */
-.form-text {
-    font-size: 0.75rem;
-    color: var(--text-muted, #6b7280);
-    margin-top: 0.25rem;
-}
-
-.text-muted {
-    color: var(--text-muted, #6b7280) !important;
-}
-
-.form-control:invalid {
-    border-color: var(--danger, #ef4444);
-}
-
-.form-control:valid {
-    border-color: var(--success, #10b981);
-}
-
-/* Loading state for buttons */
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* Better modal form spacing */
-.ergon-modal .form-group:last-child {
-    margin-bottom: 0;
-}
-
-/* Modern History Timeline Styles */
-.modern-history-timeline {
-    position: relative;
-    padding: 0;
-    margin: 0;
-}
-
-.history-entry {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid #f1f5f9;
-    position: relative;
-}
-
-.history-entry:last-child {
-    border-bottom: none;
-}
-
-.history-entry:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    left: 1.25rem;
-    top: 3rem;
-    bottom: -1rem;
-    width: 2px;
-    background: linear-gradient(to bottom, #e2e8f0, transparent);
-    z-index: 1;
-}
-
-.history-icon {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    color: white;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    position: relative;
-    z-index: 2;
-    flex-shrink: 0;
-}
-
-.history-content {
-    flex: 1;
-    min-width: 0;
-}
-
-.history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    gap: 1rem;
-}
-
-.history-action {
-    font-weight: 600;
-    font-size: 0.95rem;
-    color: #1e293b;
-    text-transform: capitalize;
-}
-
-.history-date {
-    font-size: 0.8rem;
-    color: #64748b;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-.history-notes {
-    font-size: 0.875rem;
-    color: #475569;
-    line-height: 1.5;
-    margin-bottom: 0.5rem;
-    background: #f8fafc;
-    padding: 0.75rem;
-    border-radius: 6px;
-    border-left: 3px solid #e2e8f0;
-}
-
-.history-user {
-    font-size: 0.8rem;
-    color: #64748b;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-/* Empty state for history */
-.history-empty {
-    text-align: center;
-    padding: 2rem;
-    color: #64748b;
-}
-
-.history-empty-icon {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-    opacity: 0.5;
-}
-
-/* Mobile responsive */
-@media (max-width: 640px) {
-    .history-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.25rem;
-    }
-    
-    .history-entry {
-        gap: 0.75rem;
-    }
-    
-    .history-icon {
-        width: 2rem;
-        height: 2rem;
-        font-size: 0.875rem;
-    }
-    
-    .history-entry:not(:last-child)::after {
-        left: 1rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .contact-title-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-        min-height: auto;
-    }
-    
-    .contact-title {
-        max-width: 100%;
-        min-width: auto;
-    }
-    
-    .contact-badges {
-        width: 100%;
-        min-width: auto;
-        justify-content: flex-start;
-        flex-wrap: wrap;
-    }
-    
-    .details-compact {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
-
 <?php renderModalJS(); ?>
 
 <script>
 function completeFollowup(id) {
+    id = id.replace('F_', '');
     if (confirm('Mark this follow-up as completed?')) {
         fetch(`/ergon/contacts/followups/complete/${id}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error: ' + (data.error || 'Failed to complete follow-up'));
-            }
-        })
-        .catch(error => {
-            console.error('Complete error:', error);
-            alert('An error occurred while completing the follow-up.');
-        });
+        .then(data => { if (data.success) { location.reload(); } else { alert('Error: ' + (data.error || 'Failed to complete follow-up')); } })
+        .catch(error => { console.error('Complete error:', error); alert('An error occurred while completing the follow-up.'); });
     }
 }
 
 function rescheduleFollowup(id) {
+    id = id.replace('F_', '');
     showModal('rescheduleModal');
     document.getElementById('rescheduleFollowupId').value = id;
-    
-    const dateInput = document.querySelector('#rescheduleForm input[name="new_date"]');
-    if (dateInput) {
-        const today = new Date().toISOString().split('T')[0];
-        dateInput.min = today;
-        dateInput.value = today;
-    }
-    
     const form = document.getElementById('rescheduleForm');
     form.onsubmit = function(e) {
         e.preventDefault();
-        
         const formData = new FormData(form);
-        const submitBtn = document.querySelector('button[form="rescheduleForm"]');
-        
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Rescheduling...';
-        }
-        
-        fetch(`/ergon/contacts/followups/reschedule/${id}`, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
+        fetch(`/ergon/contacts/followups/reschedule/${id}`, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                closeModal('rescheduleModal');
-                location.reload();
-            } else {
-                alert('Error: ' + (data.error || 'Failed to reschedule'));
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '📅 Reschedule';
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Network error occurred');
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '📅 Reschedule';
-            }
-        });
+        .then(data => { if (data.success) { closeModal('rescheduleModal'); location.reload(); } else { alert('Error: ' + (data.error || 'Failed to reschedule')); } })
+        .catch(error => { console.error('Error:', error); alert('Network error occurred'); });
     };
 }
 
 function cancelFollowup(id) {
-    console.log('Cancel function called with ID:', id);
-    
-    if (!id || isNaN(id)) {
-        alert('Invalid follow-up ID');
-        return;
-    }
-    
+    id = id.replace('F_', '');
     showModal('cancelModal');
     document.getElementById('cancelFollowupId').value = id;
-    document.getElementById('cancelForm').action = `/ergon/contacts/followups/cancel/${id}`;
-    
-    // Add form submit handler
     const form = document.getElementById('cancelForm');
     form.onsubmit = function(e) {
         e.preventDefault();
-        
         const formData = new FormData(form);
-        const reason = formData.get('reason');
-        const submitBtn = document.querySelector('button[form="cancelForm"]');
-        
-        // Validate reason
-        if (!reason || reason.trim().length === 0) {
-            alert('Please provide a reason for cancellation');
-            return;
-        }
-        
-        console.log('Submitting cancel request for ID:', id, 'Reason:', reason);
-        
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Cancelling...';
-        }
-        
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            console.log('Cancel response status:', response.status);
-            return response.json();
-        })
-        .then(data => {
-            console.log('Cancel response data:', data);
-            
-            if (data.success) {
-                closeModal('cancelModal');
-                alert('Follow-up cancelled successfully!');
-                location.reload();
-            } else {
-                alert('Error: ' + (data.error || 'Failed to cancel follow-up'));
-                console.error('Cancel error:', data);
-            }
-        })
-        .catch(error => {
-            console.error('Cancel network error:', error);
-            alert('Network error occurred. Please try again.');
-        })
-        .finally(() => {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '❌ Cancel Follow-up';
-            }
-        });
+        fetch(`/ergon/contacts/followups/cancel/${id}`, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(response => response.json())
+        .then(data => { if (data.success) { closeModal('cancelModal'); location.reload(); } else { alert('Error: ' + (data.error || 'Failed to cancel follow-up')); } })
+        .catch(error => { console.error('Cancel error:', error); alert('Network error occurred'); });
     };
 }
 
-function showHistory(id) {
-    showModal('historyModal');
-    document.getElementById('historyContent').innerHTML = 'Loading...';
-    
-    fetch(`/ergon/contacts/followups/history/${id}`, {
-        method: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const content = data.html || '<div class="history-empty"><div class="history-empty-icon">📋</div><h4>No History Available</h4><p>This follow-up has no recorded history yet.</p></div>';
-            document.getElementById('historyContent').innerHTML = content;
-        } else {
-            document.getElementById('historyContent').innerHTML = '<div class="history-empty"><div class="history-empty-icon">⚠️</div><h4>Error Loading History</h4><p>' + (data.error || 'Failed to load history') + '</p></div>';
-        }
-    })
-    .catch(error => {
-        console.error('Error loading history:', error);
-        document.getElementById('historyContent').innerHTML = 'Error loading history';
-    });
+function editFollowup(id) {
+    id = id.replace('F_', '');
+    showModal('editModal');
+    document.getElementById('editFollowupId').value = id;
+    const form = document.getElementById('editForm');
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        const formData = new FormData(form);
+        fetch(`/ergon/contacts/followups/edit/${id}`, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(response => response.json())
+        .then(data => { if (data.success) { closeModal('editModal'); location.reload(); } else { alert('Error: ' + (data.error || 'Failed to update follow-up')); } })
+        .catch(error => { console.error('Edit error:', error); alert('Network error occurred'); });
+    };
 }
+
+function deleteFollowup(id) {
+    id = id.replace('F_', '');
+    if (confirm('Are you sure you want to delete this follow-up? This action cannot be undone.')) {
+        fetch(`/ergon/contacts/followups/delete/${id}`, { method: 'POST', body: new FormData(), headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(response => response.json())
+        .then(data => { if (data.success) { alert('Follow-up deleted successfully!'); location.reload(); } else { alert('Error: ' + (data.error || 'Failed to delete follow-up')); } })
+        .catch(error => { console.error('Delete error:', error); alert('Network error occurred'); });
+    }
+}
+
+document.querySelectorAll('.view-toggle').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const view = this.dataset.view;
+        const container = document.getElementById('followupsContainer');
+        document.querySelectorAll('.view-toggle').forEach(b => b.classList.remove('btn--primary'));
+        this.classList.add('btn--primary');
+        localStorage.setItem('followupView', view);
+        container.className = 'followups-' + view;
+    });
+});
+const savedView = localStorage.getItem('followupView') || 'list';
+document.querySelector('[data-view="' + savedView + '"]').click();
 </script>
 
 <?php
@@ -679,53 +233,23 @@ include __DIR__ . '/../layouts/dashboard.php';
 ?>
 
 <?php
-// Cancel Modal Content
-$cancelContent = '
-<form method="POST" id="cancelForm" action="">
-    <input type="hidden" name="followup_id" id="cancelFollowupId">
-    <div class="form-group">
-        <label class="form-label">Reason for Cancellation *</label>
-        <textarea name="reason" class="form-control" rows="3" placeholder="Please provide a reason for cancelling this follow-up..." required></textarea>
-    </div>
-</form>';
+$cancelContent = '<form method="POST" id="cancelForm" action=""><input type="hidden" name="followup_id" id="cancelFollowupId"><div class="form-group"><label class="form-label">Reason for Cancellation *</label><textarea name="reason" class="form-control" rows="3" placeholder="Please provide a reason for cancelling this follow-up..." required></textarea></div></form>';
+$cancelFooter = '<button type="button" onclick="closeModal(\'cancelModal\')" class="btn btn--secondary">Cancel</button><button type="submit" form="cancelForm" class="btn btn--danger">❌ Cancel Follow-up</button>';
+$rescheduleContent = '<form method="POST" id="rescheduleForm" action=""><input type="hidden" name="followup_id" id="rescheduleFollowupId"><div class="form-group"><label class="form-label">New Date *</label><input type="date" name="new_date" class="form-control" required></div><div class="form-group"><label class="form-label">Reason for Rescheduling</label><textarea name="reason" class="form-control" rows="3" placeholder="Why is this being rescheduled?"></textarea></div></form>';
+$rescheduleFooter = '<button type="button" onclick="closeModal(\'rescheduleModal\')" class="btn btn--secondary">Cancel</button><button type="submit" form="rescheduleForm" class="btn btn--warning">📅 Reschedule</button>';
+$editContent = '<form method="POST" id="editForm" action=""><input type="hidden" name="followup_id" id="editFollowupId"><div class="form-group"><label class="form-label">Follow-up Type *</label><select name="followup_type" id="editFollowupType" class="form-control" disabled><option value="standalone">Standalone Follow-up</option><option value="task">Task-linked Follow-up</option></select></div><div class="form-group"><label class="form-label">Contact *</label><select name="contact_id" id="editContactId" class="form-control" disabled><option value="">Select a contact</option></select></div><div class="form-group"><label class="form-label">Title *</label><input type="text" name="title" class="form-control" placeholder="e.g., Follow up on proposal discussion" required></div><div class="form-group"><label class="form-label">Follow-up Date *</label><input type="date" name="follow_up_date" class="form-control" required></div><div class="form-group"><label class="form-label">Description</label><textarea name="description" class="form-control" rows="4" placeholder="Additional details about this follow-up..."></textarea></div></form>';
+$editFooter = '<button type="button" onclick="closeModal(\'editModal\')" class="btn btn--secondary">Cancel</button><button type="submit" form="editForm" class="btn btn--primary">✏️ Update</button>';
 
-$cancelFooter = '
-<button type="button" onclick="closeModal(\'cancelModal\')" class="btn btn--secondary">
-    Cancel
-</button>
-<button type="submit" form="cancelForm" class="btn btn--danger">
-    ❌ Cancel Follow-up
-</button>';
-
-// Reschedule Modal Content
-$rescheduleContent = '
-<form method="POST" id="rescheduleForm" action="">
-    <input type="hidden" name="followup_id" id="rescheduleFollowupId">
-    <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: bold;">New Date *</label>
-        <input type="date" name="new_date" required min="' . date('Y-m-d') . '" 
-               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-    </div>
-    <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Reason for Rescheduling</label>
-        <textarea name="reason" rows="3" placeholder="Why is this being rescheduled?"
-                  style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
-    </div>
-</form>';
-
-$rescheduleFooter = '
-<button type="button" onclick="closeModal(\'rescheduleModal\')" class="btn btn--secondary">
-    Cancel
-</button>
-<button type="submit" form="rescheduleForm" class="btn btn--warning">
-    📅 Reschedule
-</button>';
-
-// History Modal Content
-$historyContent = '<div id="historyContent" style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: #64748b;">📋 Loading history...</div>';
-
-// Render Modals
 renderModal('cancelModal', 'Cancel Follow-up', $cancelContent, $cancelFooter, ['icon' => '❌']);
 renderModal('rescheduleModal', 'Reschedule Follow-up', $rescheduleContent, $rescheduleFooter, ['icon' => '📅']);
-renderModal('historyModal', 'Follow-up History', $historyContent, '', ['icon' => '📋', 'size' => 'large']);
+renderModal('editModal', 'Edit Follow-up', $editContent, $editFooter, ['icon' => '✏️']);
 ?>
+
+<style>
+.followups-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.followups-list .followup-card { max-width: 100% !important; }
+.followups-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1rem; }
+.followups-grid .followup-card { max-width: 100% !important; }
+.followups-card { display: flex; flex-direction: column; gap: 0.75rem; }
+.followups-card .followup-card { max-width: 500px; }
+</style>

@@ -338,16 +338,20 @@ $router->get('/daily-planner/{date}', 'UnifiedWorkflowController', 'dailyPlanner
 
 // Contact-Centric Follow-up Routes (New Module)
 $router->get('/contacts/followups', 'ContactFollowupController', 'index');
-$router->get('/contacts/followups/view/{contact_id}', 'ContactFollowupController', 'viewContactFollowups');
+$router->get('/contacts/followups/view/{id}', 'ContactFollowupController', 'viewFollowupHistory');
 $router->get('/contacts/followups/view', 'ContactFollowupController', 'viewGeneric');
 $router->get('/contacts/followups/create', 'ContactFollowupController', 'createStandaloneFollowup');
 $router->post('/contacts/followups/create', 'ContactFollowupController', 'createStandaloneFollowup');
+$router->post('/contacts/followups/store', 'ContactFollowupController', 'storeStandaloneFollowup');
 $router->post('/contacts/followups/create-task', 'ContactFollowupController', 'createTaskFollowup');
 $router->post('/contacts/followups/complete/{id}', 'ContactFollowupController', 'completeFollowup');
 $router->post('/contacts/followups/reschedule/{id}', 'ContactFollowupController', 'rescheduleFollowup');
 $router->post('/contacts/followups/cancel/{id}', 'ContactFollowupController', 'cancelFollowup');
 $router->get('/contacts/followups/history/{id}', 'ContactFollowupController', 'getFollowupHistory');
 $router->get('/api/reminders/check', 'ContactFollowupController', 'checkReminders');
+$router->get('/contacts/followups/get/{id}', 'ContactFollowupController', 'getFollowup');
+$router->post('/contacts/followups/edit/{id}', 'ContactFollowupController', 'editFollowup');
+$router->post('/contacts/followups/delete/{id}', 'ContactFollowupController', 'deleteFollowup');
 
 // Followup Routes
 $router->get('/followups', 'FollowupController', 'index');
