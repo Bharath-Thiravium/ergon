@@ -17,14 +17,16 @@ class Database {
     public function __construct() {
         try {
             if (Environment::isDevelopment()) {
+                // LOCAL DEVELOPMENT DATABASE
                 $this->host = 'localhost';
-                $this->db_name = 'ergon-site_db';
+                $this->db_name = 'ergon_db';
                 $this->username = 'root';
                 $this->password = '';
             } else {
+                // PRODUCTION DATABASE (Hostinger)
                 $this->host = 'localhost';
-                $this->db_name = 'u494785662_ergon_site';
-                $this->username = 'u494785662_ergon_site';
+                $this->db_name = 'u494785662_ergon';
+                $this->username = 'u494785662_ergon';
                 $this->password = '@Admin@2025@';
             }
         } catch (Exception $e) {
