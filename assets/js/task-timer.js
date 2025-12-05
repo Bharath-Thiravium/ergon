@@ -3,16 +3,17 @@ class TaskTimer {
     constructor() {
         this.timers = new Map();
         this.pauseTimers = new Map();
+        this.sessionStartTimes = new Map();
     }
 
     start(taskId, slaDuration, actualStartTime) {
         this.stop(taskId);
         
-        const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-        const serverStartTime = parseInt(taskCard?.dataset.startTime) || actualStartTime;
+        const now = Math.floor(Date.now() / 1000);
+        this.sessionStartTimes.set(taskId, now);
         
         const timer = setInterval(() => {
-            this.updateRemainingTime(taskId, slaDuration, serverStartTime);
+            this.updateRemainingTime(taskId, slaDuration);
         }, 1000);
         
         this.timers.set(taskId, timer);
@@ -22,13 +23,10 @@ class TaskTimer {
         this.stop(taskId);
         this.stopPause(taskId);
         
-        const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-        const serverPauseStartTime = parseInt(taskCard?.dataset.pauseStartTime) ? 
-            Math.floor(new Date(taskCard.dataset.pauseStartTime).getTime() / 1000) : 
-            actualPauseStartTime;
+        const now = Math.floor(Date.now() / 1000);
         
         const timer = setInterval(() => {
-            this.updatePauseTime(taskId, serverPauseStartTime);
+            this.updatePauseTime(taskId, now);
         }, 1000);
         
         this.pauseTimers.set(taskId, timer);
@@ -48,16 +46,16 @@ class TaskTimer {
         }
     }
 
-    updateRemainingTime(taskId, slaDuration, startTime) {
+    updateRemainingTime(taskId, slaDuration) {
         const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
         if (!taskCard) return;
         
         if (taskCard.dataset.status !== 'in_progress') return;
         
         const now = Math.floor(Date.now() / 1000);
-        const pausedSeconds = parseInt(taskCard.dataset.pausedSeconds) || 0;
-        const elapsedSeconds = now - startTime;
-        const totalUsed = Math.max(0, elapsedSeconds - pausedSeconds);
+        const sessionStart = this.sessionStartTimes.get(taskId) || now;
+        const elapsedInSession = now - sessionStart;
+        const totalUsed = elapsedInSession;
         const remaining = Math.max(0, slaDuration - totalUsed);
         const overdue = Math.max(0, totalUsed - slaDuration);
         
@@ -85,13 +83,11 @@ class TaskTimer {
         if (taskCard.dataset.status !== 'on_break') return;
         
         const now = Math.floor(Date.now() / 1000);
-        const pauseDuration = parseInt(taskCard.dataset.pauseDuration) || 0;
-        const currentPauseTime = pauseStartTime > 0 ? now - pauseStartTime : 0;
-        const totalPauseTime = pauseDuration + currentPauseTime;
+        const pauseElapsed = now - pauseStartTime;
         
         const display = document.querySelector(`#pause-timer-${taskId}`);
         if (display) {
-            display.textContent = this.formatTime(Math.max(0, totalPauseTime));
+            display.textContent = this.formatTime(Math.max(0, pauseElapsed));
         }
     }
 
