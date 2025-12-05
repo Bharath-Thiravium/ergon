@@ -9,6 +9,11 @@ class AttendanceController extends Controller {
         
         $role = $_SESSION['role'] ?? 'user';
         
+        if (empty($role) || !in_array($role, ['user', 'admin', 'owner'])) {
+            $role = 'user';
+            $_SESSION['role'] = $role;
+        }
+        
         if ($role === 'user') {
             $this->handleUserView();
         } else {
@@ -112,6 +117,7 @@ class AttendanceController extends Controller {
         }
         
         $viewName = ($_SESSION['role'] === 'owner') ? 'attendance/owner_index' : 'attendance/admin_index';
+        error_log('Loading attendance view: ' . $viewName . ' for role: ' . $_SESSION['role']);
         $this->view($viewName, [
             'employees' => $employeeAttendance, 
             'admin_attendance' => $adminAttendance,
@@ -212,9 +218,10 @@ class AttendanceController extends Controller {
     public function manual() {
         $this->requireAuth();
         
-        if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
+        $userRole = $_SESSION['role'] ?? 'user';
+        if (!in_array($userRole, ['admin', 'owner'])) {
             header('HTTP/1.1 403 Forbidden');
-            exit('Access denied');
+            exit('Access denied. Required role: admin or owner. Your role: ' . $userRole);
         }
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {

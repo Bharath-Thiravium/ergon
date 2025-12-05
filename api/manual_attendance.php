@@ -5,9 +5,16 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../app/config/database.php';
 
 // Check if user is owner or admin
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized. Please login.']);
+    exit;
+}
+
+$userRole = $_SESSION['role'] ?? 'user';
+if (!in_array($userRole, ['owner', 'admin'])) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Access denied. Owner/Admin role required.']);
+    echo json_encode(['success' => false, 'message' => 'Access denied. Owner/Admin role required. Your role: ' . $userRole]);
     exit;
 }
 

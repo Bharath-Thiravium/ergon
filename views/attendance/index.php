@@ -5,6 +5,19 @@ require_once __DIR__ . '/../../app/helpers/TimeHelper.php';
 require_once __DIR__ . '/../../app/helpers/TimezoneHelper.php';
 $selectedDateForDisplay = isset($_GET['date']) ? (new DateTime($_GET['date']))->format('M d, Y') : (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('M d, Y');
 $currentDateIST = $selectedDateForDisplay;
+
+// Helper function to safely format time
+function safeFormatTime($datetime) {
+    if (!$datetime || $datetime === '0000-00-00 00:00:00') {
+        return 'Not set';
+    }
+    try {
+        return TimeHelper::formatToIST($datetime);
+    } catch (Exception $e) {
+        return date('h:i:s A', strtotime($datetime));
+    }
+}
+
 ob_start();
 ?>
 
@@ -159,8 +172,8 @@ ob_start();
                             </td>
                             <td>
                                 <div class="cell-meta">
-                                    <div class="cell-primary">In: <?= ($record['check_in'] && $record['check_in'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_in']) : 'Not clocked in' ?></div>
-                                    <div class="cell-secondary">Out: <?= ($record['check_out'] && $record['check_out'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_out']) : 'Not clocked out' ?></div>
+                                    <div class="cell-primary">In: <?= safeFormatTime($record['check_in'] ?? null) ?></div>
+                                    <div class="cell-secondary">Out: <?= safeFormatTime($record['check_out'] ?? null) ?></div>
                                 </div>
                             </td>
                             <td>
@@ -239,8 +252,8 @@ ob_start();
                             </td>
                             <td>
                                 <div class="cell-meta">
-                                    <div class="cell-primary">In: <?= ($record['check_in'] && $record['check_in'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_in']) : 'Not clocked in' ?></div>
-                                    <div class="cell-secondary">Out: <?= ($record['check_out'] && $record['check_out'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_out']) : 'Not clocked out' ?></div>
+                                    <div class="cell-primary">In: <?= safeFormatTime($record['check_in'] ?? null) ?></div>
+                                    <div class="cell-secondary">Out: <?= safeFormatTime($record['check_out'] ?? null) ?></div>
                                 </div>
                             </td>
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
@@ -290,8 +303,8 @@ ob_start();
                             </td>
                             <td>
                                 <div class="cell-meta">
-                                    <div class="cell-primary">In: <?= ($record['check_in'] && $record['check_in'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_in']) : 'Not clocked in' ?></div>
-                                    <div class="cell-secondary">Out: <?= ($record['check_out'] && $record['check_out'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_out']) : 'Not clocked out' ?></div>
+                                    <div class="cell-primary">In: <?= safeFormatTime($record['check_in'] ?? null) ?></div>
+                                    <div class="cell-secondary">Out: <?= safeFormatTime($record['check_out'] ?? null) ?></div>
                                 </div>
                             </td>
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
@@ -333,8 +346,8 @@ ob_start();
                             </td>
                             <td>
                                 <div class="cell-meta">
-                                    <div class="cell-primary">In: <?= ($record['check_in'] && $record['check_in'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_in']) : 'Not clocked in' ?></div>
-                                    <div class="cell-secondary">Out: <?= ($record['check_out'] && $record['check_out'] !== '0000-00-00 00:00:00') ? TimeHelper::formatToIST($record['check_out']) : 'Not clocked out' ?></div>
+                                    <div class="cell-primary">In: <?= safeFormatTime($record['check_in'] ?? null) ?></div>
+                                    <div class="cell-secondary">Out: <?= safeFormatTime($record['check_out'] ?? null) ?></div>
                                 </div>
                             </td>
                             <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>

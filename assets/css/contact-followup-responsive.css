@@ -1,0 +1,111 @@
+/* Contact Followup Form Responsive Fixes */
+
+/* Ensure modal content fits viewport */
+#createModal .modal-content,
+#createModal .dialog-content {
+    width: 90vw !important;
+    max-width: 500px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+}
+
+#createModal .modal-body,
+#createModal .dialog-body {
+    padding: 1rem !important;
+    overflow-y: auto !important;
+    max-height: calc(90vh - 140px) !important;
+}
+
+/* Form group spacing */
+#createModal .form-group {
+    margin-bottom: 1rem !important;
+    width: 100% !important;
+}
+
+#createModal .form-label {
+    display: block !important;
+    margin-bottom: 0.5rem !important;
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+}
+
+#createModal .form-control,
+#createModal input,
+#createModal textarea,
+#createModal select {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0.75rem !important;
+    font-size: 0.875rem !important;
+    min-height: 40px !important;
+}
+
+#createModal .form-help {
+    display: block !important;
+    margin-top: 0.25rem !important;
+    font-size: 0.75rem !important;
+    color: #6b7280 !important;
+}
+
+/* Modal header and footer */
+#createModal .modal-header {
+    padding: 1rem !important;
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+#createModal .modal-footer {
+    padding: 1rem !important;
+    border-top: 1px solid #e5e7eb !important;
+    display: flex !important;
+    gap: 0.5rem !important;
+    justify-content: flex-end !important;
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+    #createModal .modal-content,
+    #createModal .dialog-content {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        margin: 2.5vh auto !important;
+    }
+
+    #createModal .modal-body,
+    #createModal .dialog-body {
+        max-height: calc(95vh - 140px) !important;
+        padding: 0.75rem !important;
+    }
+
+    #createModal .form-control,
+    #createModal input,
+    #createModal textarea,
+    #createModal select {
+        font-size: 16px !important; /* Prevents iOS zoom */
+        min-height: 48px !important;
+    }
+
+    #createModal .modal-footer {
+        flex-direction: column !important;
+    }
+
+    #createModal .modal-footer .btn {
+        width: 100% !important;
+        min-height: 48px !important;
+    }
+}
+
+/* Textarea specific */
+#createModal textarea {
+    resize: vertical !important;
+    min-height: 100px !important;
+}
+
+/* Select dropdown */
+#createModal select {
+    appearance: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    padding-right: 2rem !important;
+}

@@ -19,7 +19,7 @@ class TaskTimer {
     }
 
     startPause(taskId, actualPauseStartTime) {
-        this.stop(taskId); // Stop the main timer when pausing
+        this.stop(taskId);
         this.stopPause(taskId);
         
         const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
@@ -52,24 +52,18 @@ class TaskTimer {
         const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
         if (!taskCard) return;
         
-        // Only update if task is in_progress (not on break)
         if (taskCard.dataset.status !== 'in_progress') return;
         
         const now = Math.floor(Date.now() / 1000);
-        const activeSeconds = parseInt(taskCard.dataset.activeSeconds) || 0;
-        const currentSessionTime = now - startTime;
-        const totalUsed = activeSeconds + currentSessionTime;
-        
-        // Apply formula: Overdue = Duration Exceeding the SLA Time
+        const pausedSeconds = parseInt(taskCard.dataset.pausedSeconds) || 0;
+        const elapsedSeconds = now - startTime;
+        const totalUsed = Math.max(0, elapsedSeconds - pausedSeconds);
+        const remaining = Math.max(0, slaDuration - totalUsed);
         const overdue = Math.max(0, totalUsed - slaDuration);
-        // Apply formula: Time Used = Overdue + SLA Time
-        const timeUsed = overdue > 0 ? overdue + slaDuration : totalUsed;
-        const remaining = slaDuration - totalUsed;
         
-        // Update Time Used display
         const timeUsedDisplay = document.querySelector(`#time-used-${taskId}`);
         if (timeUsedDisplay) {
-            timeUsedDisplay.textContent = this.formatTime(timeUsed);
+            timeUsedDisplay.textContent = this.formatTime(totalUsed);
         }
         
         const display = document.querySelector(`#countdown-${taskId} .countdown-display`);
@@ -88,7 +82,6 @@ class TaskTimer {
         const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
         if (!taskCard) return;
         
-        // Only update if task is on_break
         if (taskCard.dataset.status !== 'on_break') return;
         
         const now = Math.floor(Date.now() / 1000);
@@ -110,5 +103,4 @@ class TaskTimer {
     }
 }
 
-// Global timer instance
 window.taskTimer = new TaskTimer();

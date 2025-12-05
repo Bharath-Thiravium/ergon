@@ -1418,6 +1418,7 @@ ob_end_clean();
         }
     });
     </script>
+    <script src="/ergon/assets/js/decode-buttons.js?v=<?= time() ?>"></script>
 
 </body>
 </html>

@@ -210,12 +210,10 @@ class EnhancedAttendanceController extends Controller {
     public function report() {
         $this->requireAuth();
         
-        // Debug logging
-        error_log('Report method called. GET params: ' . print_r($_GET, true));
-        error_log('Session role: ' . ($_SESSION['role'] ?? 'none'));
+        $userRole = $_SESSION['role'] ?? 'user';
         
-        if (!in_array($_SESSION['role'], ['owner', 'admin'])) {
-            error_log('Access denied for role: ' . ($_SESSION['role'] ?? 'none'));
+        if (!in_array($userRole, ['owner', 'admin'])) {
+            error_log('Access denied for role: ' . $userRole);
             header('Location: /ergon/attendance?error=access_denied');
             exit;
         }

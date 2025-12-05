@@ -20,6 +20,11 @@ class SimpleAttendanceController extends Controller {
         $selectedDate = $_GET['date'] ?? TimezoneHelper::getCurrentDate();
         $filter = $_GET['filter'] ?? 'today';
         
+        // Validate and sanitize date parameter
+        if (empty($selectedDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate)) {
+            $selectedDate = TimezoneHelper::getCurrentDate();
+        }
+        
         // Query to get all users with their attendance data for the selected date
         $roleFilter = '';
         if ($role === 'user') {
@@ -32,7 +37,7 @@ class SimpleAttendanceController extends Controller {
         }
         
         // Use date filter if provided, otherwise use time-based filter
-        if (isset($_GET['date']) && $_GET['date'] !== TimezoneHelper::getCurrentDate()) {
+        if (isset($_GET['date']) && !empty($_GET['date']) && $_GET['date'] !== TimezoneHelper::getCurrentDate()) {
             $dateCondition = "DATE(a.check_in) = '{$selectedDate}'";
         } else {
             $dateCondition = $this->getDateCondition($filter);
