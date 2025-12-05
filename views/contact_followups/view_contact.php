@@ -26,7 +26,7 @@ ob_start();
             <div class="contact-title-row">
                 <h2 class="contact-title">👤 <?= htmlspecialchars($contact['name']) ?></h2>
                 <div class="contact-badges">
-                    <button class="btn btn--info" onclick="editContact('C_<?= $contact['id'] ?>')">
+                    <button class="btn btn--info" onclick="editContact(<?= $contact['id'] ?>)">
                         ✏️ Edit Contact
                     </button>
                     <?php if ($contact['phone']): ?>
@@ -185,8 +185,6 @@ ob_start();
     </div>
 </div>
 
-
-
 <?php renderModalCSS(); ?>
 
 <style>
@@ -304,7 +302,6 @@ ob_start();
 
 <script>
 function completeFollowup(id) {
-    // Strip F_ prefix if present
     id = id.replace('F_', '');
     if (confirm('Mark this follow-up as completed?')) {
         fetch(`/ergon/contacts/followups/complete/${id}`, {
@@ -330,13 +327,11 @@ function completeFollowup(id) {
 }
 
 function rescheduleFollowup(id) {
-    // Strip F_ prefix if present
     id = id.replace('F_', '');
     showModal('rescheduleModal');
     document.getElementById('rescheduleFollowupId').value = id;
     document.getElementById('rescheduleForm').action = `/ergon/contacts/followups/reschedule/${id}`;
     
-    // Add form submit handler
     const form = document.getElementById('rescheduleForm');
     form.onsubmit = function(e) {
         e.preventDefault();
@@ -365,13 +360,11 @@ function rescheduleFollowup(id) {
 }
 
 function cancelFollowup(id) {
-    // Strip F_ prefix if present
     id = id.replace('F_', '');
     showModal('cancelModal');
     document.getElementById('cancelFollowupId').value = id;
     document.getElementById('cancelForm').action = `/ergon/contacts/followups/cancel/${id}`;
     
-    // Add form submit handler
     const form = document.getElementById('cancelForm');
     form.onsubmit = function(e) {
         e.preventDefault();
@@ -400,11 +393,7 @@ function cancelFollowup(id) {
     };
 }
 
-
 function editContact(contactId) {
-    // Strip C_ prefix if present
-    contactId = contactId.replace('C_', '');
-    // Load contact data
     fetch(`/ergon/api/contacts/${contactId}`)
         .then(response => response.json())
         .then(data => {
@@ -417,12 +406,12 @@ function editContact(contactId) {
                 document.getElementById('editContactCompany').value = contact.company || '';
                 showModal('editContactModal');
             } else {
-                alert('Error loading contact details');
+                alert('Error: ' + (data.error || 'Failed to load contact'));
             }
         })
         .catch(error => {
-            console.error('Error loading contact:', error);
-            alert('Error loading contact details');
+            console.error('Error:', error);
+            alert('Network error loading contact');
         });
 }
 
@@ -452,12 +441,6 @@ function saveContactChanges() {
 </script>
 
 <?php
-$content = ob_get_clean();
-include __DIR__ . '/../layouts/dashboard.php';
-?>
-
-<?php
-// Cancel Modal Content
 $cancelContent = '
 <form method="POST" id="cancelForm" action="">
     <input type="hidden" name="followup_id" id="cancelFollowupId">
@@ -469,7 +452,6 @@ $cancelContent = '
 
 $cancelFooter = createFormModalFooter('Cancel', '❌ Cancel Follow-up', 'cancelModal', 'danger');
 
-// Reschedule Modal Content
 $rescheduleContent = '
 <form method="POST" id="rescheduleForm" action="">
     <input type="hidden" name="followup_id" id="rescheduleFollowupId">
@@ -485,10 +467,6 @@ $rescheduleContent = '
 
 $rescheduleFooter = createFormModalFooter('Cancel', '📅 Reschedule', 'rescheduleModal', 'warning');
 
-// History Modal Content
-$historyContent = '<div id="historyContent">Loading...</div>';
-
-// Edit Contact Modal Content
 $editContactContent = '
 <form id="editContactForm">
     <input type="hidden" id="editContactId" name="contact_id">
@@ -514,12 +492,14 @@ $editContactFooter = '
 <button type="button" class="btn btn--secondary" onclick="closeModal(\'editContactModal\')">Cancel</button>
 <button type="button" class="btn btn--primary" onclick="saveContactChanges()">💾 Save Changes</button>';
 
-// Render Modals
 renderModal('cancelModal', 'Cancel Follow-up', $cancelContent, $cancelFooter, ['icon' => '❌']);
 renderModal('rescheduleModal', 'Reschedule Follow-up', $rescheduleContent, $rescheduleFooter, ['icon' => '📅']);
-renderModal('historyModal', 'Follow-up History', $historyContent, '', ['icon' => '📋']);
 renderModal('editContactModal', 'Edit Contact Details', $editContactContent, $editContactFooter, ['icon' => '✏️']);
 ?>
 
-<?php include __DIR__ . '/followup_details_modal.php'; ?>
 <?php renderModalJS(); ?>
+
+<?php
+$content = ob_get_clean();
+include __DIR__ . '/../layouts/dashboard.php';
+?>
