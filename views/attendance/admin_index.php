@@ -89,7 +89,7 @@ ob_start();
                             <td><?php if ($employee['check_out']): ?><span style="color: #dc2626; font-weight: 500;"><?= TimezoneHelper::displayTime($employee['check_out']) ?></span><?php elseif ($employee['check_in']): ?><span style="color: #f59e0b; font-weight: 500;">Working...</span><?php else: ?><span style="color: #6b7280;">-</span><?php endif; ?></td>
                             <td><?php if ($employee['total_hours'] > 0): ?><span style="color: #1f2937; font-weight: 500;"><?= number_format($employee['total_hours'], 2) ?>h</span><?php else: ?><span style="color: #6b7280;">0h</span><?php endif; ?></td>
                             <td style="min-width: 100px;">
-                                <div class="ab-container" data-actions="<?= htmlspecialchars(json_encode(['view' => $employee['id'], 'manual' => ($employee['status'] === 'Absent') ? $employee['id'] : null]), ENT_QUOTES, 'UTF-8') ?>"></div>
+                                <div class="ab-container" data-actions="<?= htmlspecialchars(json_encode(['view' => $employee['id'], 'manual' => ($employee['status'] === 'Absent' && $_SESSION['role'] === 'owner') ? $employee['id'] : null]), ENT_QUOTES, 'UTF-8') ?>"></div>
                             </td>
                         </tr>
                         <?php endforeach; ?>

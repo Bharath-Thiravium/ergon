@@ -4,7 +4,6 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../app/config/database.php';
 
-// Check if user is owner or admin
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Access denied']);
@@ -21,10 +20,8 @@ try {
         $entryTime = $_POST['entry_time'] ?? null;
         $clockInTime = $_POST['clock_in_time'] ?? null;
         $clockOutTime = $_POST['clock_out_time'] ?? null;
-        $reason = $_POST['reason'] ?? null;
-        $notes = $_POST['notes'] ?? '';
         
-        if (!$userId || !$entryDate || !$entryType || !$reason) {
+        if (!$userId || !$entryDate || !$entryType) {
             throw new Exception('Required fields missing');
         }
         
@@ -38,46 +35,42 @@ try {
             $clockInDateTime = $entryDate . ' ' . $clockInTime . ':00';
             $clockOutDateTime = $entryDate . ' ' . $clockOutTime . ':00';
             
-            $stmt = $db->prepare("
-                INSERT INTO attendance (user_id, clock_in, clock_out, date, status)
-                VALUES (?, ?, ?, ?, 'present')
-                ON DUPLICATE KEY UPDATE 
-                clock_in = VALUES(clock_in), 
-                clock_out = VALUES(clock_out)
-            ");
-            $stmt->execute([$userId, $clockInDateTime, $clockOutDateTime, $entryDate]);
+            $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+            $stmt->execute([$userId, $entryDate]);
+            $existing = $stmt->fetch();
+            
+            if ($existing) {
+                $stmt = $db->prepare("UPDATE attendance SET check_in = ?, check_out = ?, status = 'present' WHERE user_id = ? AND DATE(check_in) = ?");
+                $stmt->execute([$clockInDateTime, $clockOutDateTime, $userId, $entryDate]);
+            } else {
+                $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, check_out, status) VALUES (?, ?, ?, 'present')");
+                $stmt->execute([$userId, $clockInDateTime, $clockOutDateTime]);
+            }
             
         } else {
             $entryDateTime = $entryDate . ' ' . $entryTime . ':00';
             
             if ($entryType === 'clock_in') {
-                $stmt = $db->prepare("
-                    INSERT INTO attendance (user_id, clock_in, date, status)
-                    VALUES (?, ?, ?, 'present')
-                    ON DUPLICATE KEY UPDATE clock_in = VALUES(clock_in)
-                ");
-                $stmt->execute([$userId, $entryDateTime, $entryDate]);
+                $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
+                $stmt->execute([$userId, $entryDate]);
+                $existing = $stmt->fetch();
+                
+                if ($existing) {
+                    $stmt = $db->prepare("UPDATE attendance SET check_in = ?, status = 'present' WHERE user_id = ? AND DATE(check_in) = ?");
+                    $stmt->execute([$entryDateTime, $userId, $entryDate]);
+                } else {
+                    $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, status) VALUES (?, ?, 'present')");
+                    $stmt->execute([$userId, $entryDateTime]);
+                }
             } else {
-                $stmt = $db->prepare("
-                    UPDATE attendance 
-                    SET clock_out = ? 
-                    WHERE user_id = ? AND date = ?
-                ");
-                $result = $stmt->execute([$entryDateTime, $userId, $entryDate]);
+                $stmt = $db->prepare("UPDATE attendance SET check_out = ? WHERE user_id = ? AND DATE(check_in) = ?");
+                $stmt->execute([$entryDateTime, $userId, $entryDate]);
                 
                 if ($stmt->rowCount() === 0) {
-                    throw new Exception('No clock-in record found');
+                    throw new Exception('No clock-in record found for this date');
                 }
             }
         }
-        
-        // Log the manual entry
-        $stmt = $db->prepare("
-            INSERT INTO attendance_logs (user_id, action, details, created_by, created_at)
-            VALUES (?, 'manual_entry', ?, ?, NOW())
-        ");
-        $logDetails = "Manual {$entryType} for {$entryDate}. Reason: {$reason}. Notes: {$notes}";
-        $stmt->execute([$userId, $logDetails, $_SESSION['user_id']]);
         
         $db->commit();
         
@@ -87,34 +80,9 @@ try {
         ]);
         
     } else {
-        // Get recent entries
-        $stmt = $db->prepare("
-            SELECT 
-                l.*,
-                u.name as user_name,
-                c.name as created_by_name
-            FROM attendance_logs l
-            JOIN users u ON l.user_id = u.id
-            LEFT JOIN users c ON l.created_by = c.id
-            WHERE l.action = 'manual_entry'
-            ORDER BY l.created_at DESC
-            LIMIT 10
-        ");
-        $stmt->execute();
-        $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
         echo json_encode([
             'success' => true,
-            'entries' => array_map(function($entry) {
-                return [
-                    'user_name' => $entry['user_name'],
-                    'details' => $entry['details'],
-                    'created_by_name' => $entry['created_by_name'],
-                    'created_at' => date('M d, Y H:i', strtotime($entry['created_at'])),
-                    'entry_type' => 'manual',
-                    'entry_type_display' => 'Manual Entry'
-                ];
-            }, $entries)
+            'entries' => []
         ]);
     }
     
