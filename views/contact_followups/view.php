@@ -21,7 +21,7 @@ ob_start();
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>
         </button>
         <a href="/ergon/contacts/followups" class="btn btn--secondary" style="padding:0.5rem 0.75rem" title="Back">←</a>
-        <a href="/ergon/contacts/followups/create?contact_id=C_<?= $contact['id'] ?>" class="btn btn--primary" style="padding:0.5rem 0.75rem" title="New Follow-up">➕</a>
+        <button onclick="openFollowupModal(<?= $contact['id'] ?>)" class="btn btn--primary" style="padding:0.5rem 0.75rem" title="New Follow-up">➕</button>
     </div>
 </div>
 
@@ -132,9 +132,9 @@ ob_start();
                 <div class="empty-icon">📞</div>
                 <h3>No Follow-ups Yet</h3>
                 <p>Create the first follow-up for <?= htmlspecialchars($contact['name']) ?></p>
-                <a href="/ergon/contacts/followups/create?contact_id=C_<?= $contact['id'] ?>" class="btn btn--primary">
+                <button onclick="openFollowupModal(<?= $contact['id'] ?>)" class="btn btn--primary">
                     Create Follow-up
-                </a>
+                </button>
             </div>
         <?php endif; ?>
     </div>
@@ -145,6 +145,23 @@ ob_start();
 <?php renderModalJS(); ?>
 
 <script>
+function openFollowupModal(contactId) {
+    fetch(`/ergon/contacts/followups/create?contact_id=C_${contactId}&ajax=1`)
+    .then(response => response.text())
+    .then(html => {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        document.body.appendChild(wrapper);
+        const scripts = wrapper.querySelectorAll('script');
+        scripts.forEach(function(oldScript) {
+            const newScript = document.createElement('script');
+            newScript.textContent = oldScript.textContent;
+            wrapper.appendChild(newScript);
+        });
+    })
+    .catch(error => console.error('Error loading modal:', error));
+}
+
 function completeFollowup(id) {
     id = id.replace('F_', '');
     if (confirm('Mark this follow-up as completed?')) {

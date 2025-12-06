@@ -12,9 +12,12 @@ ob_start();
         <button class="btn btn--secondary" onclick="showAddContactModal()">
             <span>👤</span> Add Contact
         </button>
-        <a href="/ergon/contacts/followups/create" class="btn btn--primary">
-            <span>➕</span> New Follow-up
+        <a href="/ergon/contacts/followups/view" class="btn btn--secondary">
+            <span>👁️</span> View Follow-ups
         </a>
+        <button onclick="openFollowupModal(0)" class="btn btn--primary">
+            <span>➕</span> New Follow-up
+        </button>
     </div>
 </div>
 
@@ -248,7 +251,7 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
                 <div class="empty-icon">👥</div>
                 <h3>No Contacts with Follow-ups</h3>
                 <p>Create follow-ups for your contacts to see them here</p>
-                <a href="/ergon/contacts/followups/create" class="btn btn--primary">Create Follow-up</a>
+                <button onclick="openFollowupModal(0)" class="btn btn--primary">Create Follow-up</button>
             </div>
         <?php endif; ?>
     </div>
@@ -717,6 +720,24 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
 </style>
 
 <script>
+function closeFollowupModal() {
+    const modal = document.getElementById('followupModal');
+    if (modal && modal.parentElement) {
+        modal.parentElement.remove();
+    }
+}
+
+function openFollowupModal(contactId) {
+    fetch(`/ergon/contacts/followups/create?contact_id=C_${contactId}&ajax=1`)
+    .then(response => response.text())
+    .then(html => {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        document.body.appendChild(wrapper);
+    })
+    .catch(error => console.error('Error loading modal:', error));
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const viewButtons = document.querySelectorAll('.view-btn');
     const gridView = document.getElementById('gridView');
