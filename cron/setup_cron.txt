@@ -1,0 +1,11 @@
+# Add this line to crontab for automatic sync every 30 minutes
+# Run: crontab -e
+# Add this line:
+
+*/30 * * * * /usr/bin/php /path/to/ergon/cron/auto_sync.php >> /var/log/finance_sync.log 2>&1
+
+# For Windows Task Scheduler:
+# Program: php.exe
+# Arguments: C:\laragon\www\ergon\cron\auto_sync.php
+# Start in: C:\laragon\www\ergon\cron\
+# Trigger: Every 30 minutes

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Worker Timer Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .flow-diagram { display: flex; justify-content: space-between; margin: 20px 0; padding: 20px; background: white; border-radius: 8px; }
+        .flow-box { padding: 15px; border: 2px solid #ddd; border-radius: 8px; text-align: center; min-width: 150px; }
+        .main-thread { background: #e3f2fd; border-color: #2196f3; }
+        .worker-thread { background: #f3e5f5; border-color: #9c27b0; }
+        .arrow { font-size: 24px; color: #666; align-self: center; }
+        .task-card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
+        .timer-display { font-size: 24px; font-weight: bold; margin: 10px 0; }
+        .status { padding: 5px 10px; border-radius: 4px; color: white; display: inline-block; margin: 5px 0; }
+        .in_progress { background: #4caf50; }
+        .on_break { background: #ff9800; }
+        .not_started { background: #757575; }
+        .controls button { margin: 5px; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .start { background: #4caf50; color: white; }
+        .pause { background: #ff9800; color: white; }
+        .resume { background: #2196f3; color: white; }
+        .log { background: #f9f9f9; padding: 10px; margin: 10px 0; border-radius: 4px; max-height: 200px; overflow-y: auto; }
+        .log-entry { margin: 2px 0; font-size: 12px; }
+        .main-log { color: #2196f3; }
+        .worker-log { color: #9c27b0; }
+        .message-log { color: #f44336; font-weight: bold; }
+        .worker-status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .worker-active { background: #c8e6c9; color: #2e7d32; }
+        .worker-inactive { background: #ffcdd2; color: #c62828; }
+        .performance { background: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Web Worker Timer Test</h1>
+        
+        <!-- Flow Diagram -->
+        <div class="flow-diagram">
+            <div class="flow-box main-thread">
+                <h3>Main Thread</h3>
+                <div>UI Updates</div>
+                <div id="main-status">Ready</div>
+            </div>
+            <div class="arrow">↔</div>
+            <div class="flow-box worker-thread">
+                <h3>Web Worker</h3>
+                <div>Timer Logic</div>
+                <div id="worker-status">Calculating...</div>
+            </div>
+        </div>
+
+        <!-- Worker Status -->
+        <div id="worker-connection" class="worker-status worker-inactive">
+            🔄 Initializing Web Worker...
+        </div>
+        
+        <!-- Performance Info -->
+        <div class="performance">
+            ⚡ <strong>Performance:</strong> Main thread free for UI - Worker handles all timer calculations
+        </div>
+
+        <!-- Task Card -->
+        <div class="task-card" data-task-id="123">
+            <h3>Task #123: Web Worker SLA Task</h3>
+            <div class="status not_started" id="status-display">NOT STARTED</div>
+            
+            <div class="timer-display">
+                SLA Countdown: <span id="countdown-display">00:15:00</span>
+            </div>
+            
+            <div>Time Used: <span id="time-used">00:00:00</span></div>
+            <div>Pause Time: <span id="pause-time">00:00:00</span></div>
+            <div>Worker Updates: <span id="update-count">0</span></div>
+            
+            <div class="controls">
+                <button class="start" onclick="sendToWorker('start')">Start Task</button>
+                <button class="pause" onclick="sendToWorker('pause')">Pause Task</button>
+                <button class="resume" onclick="sendToWorker('resume')">Resume Task</button>
+            </div>
+        </div>
+
+        <!-- Data Flow Log -->
+        <div class="log">
+            <h4>Web Worker Communication Log:</h4>
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Web Worker Timer System
+        let timerWorker = null;
+        let updateCount = 0;
+
+        // Initialize Web Worker
+        function initWebWorker() {
+            log('🔧 MAIN: Creating Web Worker...', 'main-log');
+            
+            // Create worker from inline script
+            const workerScript = `
+                // Web Worker Timer Logic
+                let taskData = {
+                    taskId: 123,
+                    status: 'not_started',
+                    activeSeconds: 0,
+                    pauseSeconds: 0,
+                    slaSeconds: 900,
+                    startTime: null,
+                    pauseStartTime: null
+                };
+                
+                let timerInterval = null;
+                
+                // Start worker timer
+                function startWorkerTimer() {
+                    if (timerInterval) clearInterval(timerInterval);
+                    
+                    timerInterval = setInterval(() => {
+                        calculateAndSend();
+                    }, 1000);
+                    
+                    calculateAndSend(); // Immediate calculation
+                }
+                
+                // Calculate times in worker thread
+                function calculateAndSend() {
+                    const now = Date.now();
+                    
+                    let currentActiveTime = taskData.activeSeconds;
+                    let currentPauseTime = taskData.pauseSeconds;
+                    
+                    // Calculate active time
+                    if (taskData.status === 'in_progress' && taskData.startTime) {
+                        const sessionTime = Math.floor((now - taskData.startTime) / 1000);
+                        currentActiveTime = taskData.activeSeconds + sessionTime;
+                    }
+                    
+                    // Calculate pause time
+                    if (taskData.status === 'on_break' && taskData.pauseStartTime) {
+                        const sessionPause = Math.floor((now - taskData.pauseStartTime) / 1000);
+                        currentPauseTime = taskData.pauseSeconds + sessionPause;
+                    }
+                    
+                    // Calculate countdown
+                    let countdown, isOverdue;
+                    if (currentActiveTime >= taskData.slaSeconds) {
+                        countdown = currentActiveTime - taskData.slaSeconds;
+                        isOverdue = true;
+                    } else {
+                        countdown = taskData.slaSeconds - currentActiveTime;
+                        isOverdue = false;
+                    }
+                    
+                    // Send calculated data to main thread
+                    self.postMessage({
+                        type: 'timer_update',
+                        data: {
+                            taskId: taskData.taskId,
+                            status: taskData.status,
+                            activeTime: currentActiveTime,
+                            pauseTime: currentPauseTime,
+                            countdown: countdown,
+                            isOverdue: isOverdue,
+                            timestamp: now
+                        }
+                    });
+                }
+                
+                // Handle messages from main thread
+                self.onmessage = function(e) {
+                    const { type, data } = e.data;
+                    
+                    switch(type) {
+                        case 'init':
+                            self.postMessage({ type: 'worker_ready' });
+                            startWorkerTimer();
+                            break;
+                            
+                        case 'action':
+                            handleAction(data.action);
+                            break;
+                    }
+                };
+                
+                // Handle user actions in worker
+                function handleAction(action) {
+                    const now = Date.now();
+                    
+                    switch(action) {
+                        case 'start':
+                            if (taskData.status === 'in_progress') {
+                                taskData.activeSeconds = taskData.activeSeconds + Math.floor((now - taskData.startTime) / 1000);
+                            }
+                            taskData.status = 'in_progress';
+                            taskData.startTime = now;
+                            taskData.pauseStartTime = null;
+                            break;
+                            
+                        case 'pause':
+                            if (taskData.status === 'in_progress' && taskData.startTime) {
+                                taskData.activeSeconds = taskData.activeSeconds + Math.floor((now - taskData.startTime) / 1000);
+                            }
+                            taskData.status = 'on_break';
+                            taskData.pauseStartTime = now;
+                            taskData.startTime = null;
+                            break;
+                            
+                        case 'resume':
+                            if (taskData.status === 'on_break' && taskData.pauseStartTime) {
+                                taskData.pauseSeconds = taskData.pauseSeconds + Math.floor((now - taskData.pauseStartTime) / 1000);
+                            }
+                            taskData.status = 'in_progress';
+                            taskData.startTime = now;
+                            taskData.pauseStartTime = null;
+                            break;
+                    }
+                    
+                    calculateAndSend(); // Immediate update after action
+                }
+            `;
+            
+            const blob = new Blob([workerScript], { type: 'application/javascript' });
+            timerWorker = new Worker(URL.createObjectURL(blob));
+            
+            // Handle worker messages
+            timerWorker.onmessage = function(e) {
+                const { type, data } = e.data;
+                
+                switch(type) {
+                    case 'worker_ready':
+                        log('✅ WORKER: Web Worker initialized and ready', 'worker-log');
+                        document.getElementById('worker-connection').className = 'worker-status worker-active';
+                        document.getElementById('worker-connection').textContent = '✅ Web Worker Active - Running in background';
+                        break;
+                        
+                    case 'timer_update':
+                        receiveWorkerUpdate(data);
+                        break;
+                }
+            };
+            
+            // Initialize worker
+            timerWorker.postMessage({ type: 'init' });
+        }
+
+        // Send action to worker
+        function sendToWorker(action) {
+            log('📤 MAIN: Sending ' + action + ' action to worker', 'message-log');
+            
+            // Update flow diagram
+            document.getElementById('main-status').textContent = 'Sending...';
+            document.getElementById('worker-status').textContent = 'Processing...';
+            
+            timerWorker.postMessage({
+                type: 'action',
+                data: { action: action }
+            });
+            
+            setTimeout(() => {
+                document.getElementById('main-status').textContent = 'Ready';
+                document.getElementById('worker-status').textContent = 'Calculating...';
+            }, 200);
+        }
+
+        // Receive updates from worker
+        function receiveWorkerUpdate(data) {
+            updateCount++;
+            log('📥 MAIN: Received timer update from worker', 'message-log');
+            
+            // Update UI with worker-calculated data
+            updateUI(data);
+            
+            // Update counter
+            document.getElementById('update-count').textContent = updateCount;
+        }
+
+        // Update UI (main thread only handles display)
+        function updateUI(data) {
+            log('🎨 MAIN: Updating UI with worker data', 'main-log');
+            
+            // Status
+            const statusEl = document.getElementById('status-display');
+            statusEl.textContent = data.status.toUpperCase().replace('_', ' ');
+            statusEl.className = 'status ' + data.status;
+            
+            // Countdown
+            const countdownEl = document.getElementById('countdown-display');
+            if (data.isOverdue) {
+                countdownEl.textContent = 'OVERDUE: ' + formatTime(data.countdown);
+                countdownEl.style.color = '#f44336';
+            } else {
+                countdownEl.textContent = formatTime(data.countdown);
+                countdownEl.style.color = data.status === 'in_progress' ? '#4caf50' : '#757575';
+            }
+            
+            // Time used
+            document.getElementById('time-used').textContent = formatTime(data.activeTime);
+            
+            // Pause time
+            document.getElementById('pause-time').textContent = formatTime(data.pauseTime);
+        }
+
+        // Utility functions
+        function formatTime(seconds) {
+            const s = Math.max(0, Math.floor(seconds));
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = s % 60;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        function log(message, className = '') {
+            const logContent = document.getElementById('log-content');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + className;
+            entry.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            logContent.appendChild(entry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 MAIN: Page loaded, initializing Web Worker system...', 'main-log');
+            initWebWorker();
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (timerWorker) {
+                timerWorker.terminate();
+                log('🛑 MAIN: Web Worker terminated', 'main-log');
+            }
+        });
+    </script>
+</body>
+</html>

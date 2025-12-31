@@ -22,7 +22,7 @@
 [data-tooltip]:hover::after {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: calc(100% + 18px);
+  bottom: calc(100% - 78px);
   left: 50%;
   transform: translateX(-50%);
   background: #dbeafe;

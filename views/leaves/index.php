@@ -10,9 +10,9 @@ ob_start();
         <p>Manage employee leave requests and approvals</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon/leaves/create" class="btn btn--primary">
+        <button onclick="showLeaveModal()" class="btn btn--primary">
             <span>➕</span> Request Leave
-        </a>
+        </button>
     </div>
 </div>
 
@@ -229,15 +229,11 @@ ob_start();
                                 <?php 
                                 $sessionRole = $_SESSION['role'] ?? 'user';
                                 $canDelete = false;
-                                $isOwner = ($sessionRole === 'owner');
-                                $isAdmin = ($sessionRole === 'admin');
                                 $isOwnLeave = ($leave['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0);
                                 $isPending = strtolower($leave['status'] ?? 'pending') === 'pending';
                                 
-                                // Owners and admins can delete any leave, users can delete their own pending leaves
-                                if ($isOwner || $isAdmin) {
-                                    $canDelete = true;
-                                } elseif ($isOwnLeave && $isPending) {
+                                // Only requestor can delete their own pending leaves
+                                if ($isOwnLeave && $isPending) {
                                     $canDelete = true;
                                 }
                                 ?>
@@ -263,8 +259,8 @@ ob_start();
 </div>
 
 <!-- Rejection Modal -->
-<div id="rejectModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 99999; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+<div id="rejectModal" class="modal-overlay" data-visible="false">
+    <div class="modal-content">
         <div class="modal-header">
             <h3>Reject Leave Request</h3>
             <span class="close" onclick="closeRejectModal()">&times;</span>
@@ -294,20 +290,13 @@ function toggleLeaveFilters() {
 
 function showRejectModal(leaveId) {
     document.getElementById('rejectForm').action = '/ergon/leaves/reject/' + leaveId;
-    document.getElementById('rejectModal').style.display = 'flex';
+    const reasonField = document.getElementById('rejection_reason');
+    if (reasonField) reasonField.value = '';
+    showModal('rejectModal');
 }
 
 function closeRejectModal() {
-    document.getElementById('rejectModal').style.display = 'none';
-    document.getElementById('rejection_reason').value = '';
-}
-
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const modal = document.getElementById('rejectModal');
-    if (event.target === modal) {
-        closeRejectModal();
-    }
+    hideModal('rejectModal');
 }
 </script>
 
@@ -352,6 +341,132 @@ document.addEventListener('click', function(e) {
         window.location.href = `/ergon/${module}/approve/${id}`;
     }
 });
+</script>
+
+<!-- Leave Request Modal -->
+<div id="leaveModal" class="modal-overlay" data-visible="false">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🏖️ Request Leave</h3>
+            <button class="modal-close" onclick="hideModal('leaveModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="leaveForm">
+                <label>Leave Type *</label>
+                <select class="form-input" id="type" name="type" required style="margin-bottom: 12px;">
+                    <option value="">Select Leave Type</option>
+                    <option value="casual">Casual Leave</option>
+                    <option value="sick">Sick Leave</option>
+                    <option value="annual">Annual Leave</option>
+                    <option value="emergency">Emergency Leave</option>
+                    <option value="maternity">Maternity Leave</option>
+                    <option value="paternity">Paternity Leave</option>
+                </select>
+                
+                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                    <div style="flex: 1;">
+                        <label>Start Date *</label>
+                        <input type="date" class="form-input" id="start_date" name="start_date" required>
+                    </div>
+                    <div style="flex: 1;">
+                        <label>End Date *</label>
+                        <input type="date" class="form-input" id="end_date" name="end_date" required>
+                    </div>
+                </div>
+                
+                <div id="leaveDaysDisplay" style="display: none; margin-bottom: 12px; padding: 8px; background: #e3f2fd; border-radius: 4px; color: #1565c0;">
+                    <strong>Total Leave Days: <span id="totalDays">0</span></strong>
+                </div>
+                
+                <label>Reason for Leave *</label>
+                <textarea class="form-input" id="reason" name="reason" rows="4" placeholder="Please provide a detailed reason..." required style="margin-bottom: 12px;"></textarea>
+                
+                <label>Emergency Contact (Optional)</label>
+                <input type="tel" class="form-input" id="contact_during_leave" name="contact_during_leave" placeholder="Phone number">
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn--secondary" onclick="hideModal('leaveModal')">Cancel</button>
+            <button class="btn btn--primary" onclick="submitLeaveForm()" id="leaveSubmitBtn">📤 Submit Request</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showLeaveModal() {
+    document.getElementById('leaveForm').reset();
+    document.getElementById('leaveDaysDisplay').style.display = 'none';
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('start_date').min = today;
+    document.getElementById('end_date').min = today;
+    showModal('leaveModal');
+}
+
+function calculateLeaveDays() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    
+    if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        if (end < start) {
+            document.getElementById('leaveDaysDisplay').style.display = 'none';
+            return;
+        }
+        
+        const daysDiff = Math.ceil((end - start) / (1000 * 3600 * 24)) + 1;
+        document.getElementById('totalDays').textContent = daysDiff;
+        document.getElementById('leaveDaysDisplay').style.display = 'block';
+    }
+}
+
+document.getElementById('start_date').addEventListener('change', function() {
+    document.getElementById('end_date').min = this.value;
+    calculateLeaveDays();
+});
+
+document.getElementById('end_date').addEventListener('change', calculateLeaveDays);
+
+function submitLeaveForm() {
+    const form = document.getElementById('leaveForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    const reason = document.getElementById('reason').value.trim();
+    if (reason.length < 10) {
+        alert('Please provide a detailed reason (minimum 10 characters)');
+        return;
+    }
+    
+    const btn = document.getElementById('leaveSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Submitting...';
+    
+    const formData = new FormData(form);
+    
+    fetch('/ergon/leaves/create', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to submit'));
+            btn.disabled = false;
+            btn.textContent = '📤 Submit Request';
+        }
+    })
+    .catch(err => {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = '📤 Submit Request';
+    });
+}
 </script>
 
 <?php

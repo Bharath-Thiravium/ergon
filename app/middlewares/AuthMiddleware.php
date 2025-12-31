@@ -49,7 +49,14 @@ class AuthMiddleware {
     public static function requireRole($requiredRole) {
         self::requireAuth();
         
-        if ($_SESSION['role'] !== $requiredRole) {
+        $userRole = $_SESSION['role'];
+        
+        // Allow company_owner to access owner resources
+        if ($requiredRole === 'owner' && $userRole === 'company_owner') {
+            return;
+        }
+        
+        if ($userRole !== $requiredRole) {
             if (!headers_sent()) {
                 header('Location: /ergon/dashboard');
             }

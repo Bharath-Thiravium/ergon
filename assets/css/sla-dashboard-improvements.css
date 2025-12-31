@@ -220,7 +220,68 @@
     }
 }
 
-/* Dark mode support (if needed) */
+/* Dark mode support - Override hardcoded colors with stronger selectors */
+[data-theme='dark'] .stats-grid--2x2 .stat-item,
+.theme-dark .stats-grid--2x2 .stat-item {
+    background: var(--gray-800) !important;
+    border-color: var(--gray-600) !important;
+    color: var(--white) !important;
+}
+
+[data-theme='dark'] .stats-grid--2x2 .stat-item:hover,
+.theme-dark .stats-grid--2x2 .stat-item:hover {
+    background: var(--gray-700) !important;
+    border-color: var(--gray-500) !important;
+}
+
+[data-theme='dark'] .stats-grid--2x2 .stat-value,
+.theme-dark .stats-grid--2x2 .stat-value {
+    color: var(--white) !important;
+}
+
+[data-theme='dark'] .stats-grid--2x2 .stat-label,
+.theme-dark .stats-grid--2x2 .stat-label {
+    color: var(--gray-300) !important;
+}
+
+[data-theme='dark'] .sla-metrics,
+.theme-dark .sla-metrics {
+    background: var(--gray-800) !important;
+    border-color: var(--gray-600) !important;
+}
+
+[data-theme='dark'] .metric-row,
+.theme-dark .metric-row {
+    border-color: var(--gray-600) !important;
+}
+
+[data-theme='dark'] .metric-label,
+.theme-dark .metric-label {
+    color: var(--white) !important;
+}
+
+[data-theme='dark'] .metric-value,
+.theme-dark .metric-value {
+    color: var(--white) !important;
+}
+
+[data-theme='dark'] .progress-item,
+.theme-dark .progress-item {
+    background: var(--gray-800) !important;
+    border-color: var(--gray-600) !important;
+}
+
+[data-theme='dark'] .progress-item label,
+.theme-dark .progress-item label {
+    color: var(--white) !important;
+}
+
+[data-theme='dark'] .progress-bar,
+.theme-dark .progress-bar {
+    background: var(--gray-600) !important;
+}
+
+/* Fallback for browsers that support prefers-color-scheme */
 @media (prefers-color-scheme: dark) {
     .stats-grid--2x2 .stat-item {
         background: #1e293b;

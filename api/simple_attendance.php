@@ -46,10 +46,32 @@ try {
                 throw new Exception('User already has attendance record for today');
             }
             
-            $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, latitude, longitude, status) VALUES (?, ?, ?, ?, 'present')");
-            $stmt->execute([$userId, $datetime, $latitude, $longitude]);
+            // Check for project match based on GPS coordinates
+            $projectId = null;
+            $locationName = 'Office';
             
-            echo json_encode(['success' => true, 'message' => 'User clocked in successfully']);
+            if ($latitude && $longitude) {
+                // Check all active projects for GPS coordinate match
+                $stmt = $db->prepare("SELECT id, name, latitude, longitude, checkin_radius, location_title FROM projects WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND status = 'active'");
+                $stmt->execute();
+                $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($projects as $project) {
+                    $distance = LocationHelper::calculateDistance($latitude, $longitude, $project['latitude'], $project['longitude']);
+                    if ($distance <= $project['checkin_radius']) {
+                        $projectId = $project['id'];
+                        $locationName = $project['location_title'] ?: $project['name'];
+                        break; // Use first matching project
+                    }
+                }
+            }
+            
+            // Insert attendance record - EXPLICITLY set project_id to NULL if no GPS match
+            $finalProjectId = $projectId ?: null;
+            $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, latitude, longitude, location_name, project_id, status) VALUES (?, ?, ?, ?, ?, ?, 'present')");
+            $stmt->execute([$userId, $datetime, $latitude, $longitude, $locationName, $finalProjectId]);
+            
+            echo json_encode(['success' => true, 'message' => 'User clocked in successfully', 'project_id' => $projectId, 'location' => $locationName]);
             break;
             
         case 'clock_out':

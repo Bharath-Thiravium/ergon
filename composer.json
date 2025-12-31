@@ -1,0 +1,17 @@
+{
+    "name": "ergon/employee-management",
+    "description": "Employee Management System",
+    "type": "project",
+    "require": {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "platform-check": false
+    }
+}

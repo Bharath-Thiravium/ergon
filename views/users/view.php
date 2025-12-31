@@ -23,67 +23,30 @@ ob_start();
         $userStatus = $user['status'] ?? 'active';
         $userId = $user['id'];
         $userName = htmlspecialchars($user['name']);
+        $isProtected = ($_SESSION['role'] ?? '') === 'admin' && in_array(($user['role'] ?? 'user'), ['admin', 'owner']);
         ?>
         
-        <?php if (($_SESSION['role'] ?? '') === 'admin' && in_array(($user['role'] ?? 'user'), ['admin', 'owner'])): ?>
-            <!-- Admins cannot manage other admins/owners -->
-            <span class="btn btn--secondary disabled">
-                <span>🔒</span> Protected User
-            </span>
-        <?php else: ?>
-            <?php if ($userStatus === 'terminated'): ?>
-                <!-- Terminated Users: Only show terminated message -->
-                <span class="btn btn--secondary disabled">
-                    <span>❌</span> User Terminated
-                </span>
-            <?php elseif ($userStatus === 'suspended'): ?>
-                <!-- Suspended Users: Activate + Edit + Reset Password + Terminate -->
-                <button class="btn btn--success" data-action="activate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
-                    <span>✅</span> Activate
-                </button>
-                <a href="/ergon/users/edit/<?= $userId ?>" class="btn btn--primary">
-                    <span>✏️</span> Edit
-                </a>
-                <button class="btn btn--warning" data-action="reset" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
-                    <span>🔑</span> Reset Password
-                </button>
-                <button class="btn btn--danger" data-action="terminate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
-                    <span>❌</span> Terminate
-                </button>
-            <?php elseif ($userStatus === 'active'): ?>
-                <!-- Active Users: Edit + Reset Password + Deactivate + Suspend + Terminate -->
-                <a href="/ergon/users/edit/<?= $userId ?>" class="btn btn--primary">
-                    <span>✏️</span> Edit
-                </a>
-                <button class="btn btn--warning" data-action="reset" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
-                    <span>🔑</span> Reset Password
-                </button>
-                <button class="btn btn--secondary" data-action="inactive" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
-                    <span>⏸️</span> Deactivate
-                </button>
-                <button class="btn btn--danger" data-action="suspend" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
-                    <span>👥➖</span> Suspend
-                </button>
-                <button class="btn btn--danger" data-action="terminate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
-                    <span>❌</span> Terminate
-                </button>
-            <?php else: ?>
-                <!-- Inactive Users: Edit + Reset Password + Activate -->
-                <a href="/ergon/users/edit/<?= $userId ?>" class="btn btn--primary">
-                    <span>✏️</span> Edit
-                </a>
-                <button class="btn btn--warning" data-action="reset" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
-                    <span>🔑</span> Reset Password
-                </button>
-                <button class="btn btn--success" data-action="activate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">
-                    <span>✅</span> Activate
-                </button>
-            <?php endif; ?>
+        <a href="/ergon/ledgers/user/<?= $userId ?>" class="btn btn--info">📒 Ledger</a>
+        
+        <?php if (!$isProtected && $userStatus !== 'terminated'): ?>
+            <a href="/ergon/users/edit/<?= $userId ?>" class="btn btn--primary">✏️ Edit</a>
+            
+            <div class="btn-group">
+                <button class="btn btn--secondary dropdown-toggle" onclick="toggleUserActions(event)">⚙️ Actions</button>
+                <div class="dropdown-menu" id="userActionsMenu">
+                    <button class="dropdown-item" data-action="reset" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">🔑 Reset Password</button>
+                    <?php if ($userStatus === 'active'): ?>
+                        <button class="dropdown-item" data-action="inactive" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">⏸️ Deactivate</button>
+                        <button class="dropdown-item" data-action="suspend" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">⚠️ Suspend</button>
+                        <button class="dropdown-item danger" data-action="terminate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">❌ Terminate</button>
+                    <?php else: ?>
+                        <button class="dropdown-item" data-action="activate" data-module="users" data-id="<?= $userId ?>" data-name="<?= $userName ?>">✅ Activate</button>
+                    <?php endif; ?>
+                </div>
+            </div>
         <?php endif; ?>
         
-        <a href="/ergon/users" class="btn btn--secondary">
-            <span>←</span> Back to Users
-        </a>
+        <a href="/ergon/users" class="btn btn--secondary">← Back</a>
     </div>
 </div>
 
@@ -391,6 +354,53 @@ ob_start();
     pointer-events: none;
 }
 
+.btn-group {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    min-width: 180px;
+    z-index: 1000;
+    display: none;
+    margin-top: 4px;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.dropdown-item:hover {
+    background: var(--bg-secondary);
+}
+
+.dropdown-item.danger {
+    color: #dc2626;
+}
+
+.dropdown-item.danger:hover {
+    background: #fee;
+}
+
 @media (max-width: 768px) {
     .user-title-row {
         flex-direction: column;
@@ -427,9 +437,22 @@ ob_start();
 </style>
 
 <script>
+function toggleUserActions(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('userActionsMenu');
+    menu.classList.toggle('show');
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.btn-group')) {
+        const menu = document.getElementById('userActionsMenu');
+        if (menu) menu.classList.remove('show');
+    }
+});
+
 // Global action button handler
 document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.btn[data-action]');
+    const btn = e.target.closest('[data-action]');
     if (!btn) return;
     
     const action = btn.dataset.action;

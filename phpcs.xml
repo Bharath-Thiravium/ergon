@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<ruleset name="Ergon Coding Standards">
+    <description>Coding standards for Ergon task management system</description>
+    
+    <file>app/</file>
+    <file>src/</file>
+    <file>tests/</file>
+    
+    <exclude-pattern>vendor/</exclude-pattern>
+    <exclude-pattern>archive/</exclude-pattern>
+    <exclude-pattern>archived/</exclude-pattern>
+    
+    <rule ref="PSR12"/>
+    
+    <!-- Security rules -->
+    <rule ref="Generic.PHP.ForbiddenFunctions">
+        <properties>
+            <property name="forbiddenFunctions" type="array">
+                <element key="eval" value="null"/>
+                <element key="exec" value="null"/>
+                <element key="system" value="null"/>
+                <element key="shell_exec" value="null"/>
+                <element key="passthru" value="null"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>

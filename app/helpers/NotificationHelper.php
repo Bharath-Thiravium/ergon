@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/Notification.php';
+require_once __DIR__ . '/../config/environment.php';
 
 class NotificationHelper {
     
@@ -29,7 +30,7 @@ class NotificationHelper {
                 'message' => "Leave request from {$leave['user_name']} for {$leave['leave_type']} ({$leave['start_date']} to {$leave['end_date']})",
                 'reference_type' => 'leave',
                 'reference_id' => $leaveId,
-                'action_url' => "/ergon/leaves/view/{$leaveId}"
+                'action_url' => Environment::getBaseUrl() . "/leaves/view/{$leaveId}"
             ]);
         }
         
@@ -64,7 +65,7 @@ class NotificationHelper {
             'message' => $message,
             'reference_type' => 'leave',
             'reference_id' => $leaveId,
-            'action_url' => "/ergon/leaves/view/{$leaveId}"
+            'action_url' => Environment::getBaseUrl() . "/leaves/view/{$leaveId}"
         ]);
         
         return true;
@@ -96,7 +97,7 @@ class NotificationHelper {
                 'message' => "Expense request from {$expense['user_name']} - ₹" . number_format($expense['amount'], 2) . " for {$expense['description']}",
                 'reference_type' => 'expense',
                 'reference_id' => $expenseId,
-                'action_url' => "/ergon/expenses/view/{$expenseId}"
+                'action_url' => Environment::getBaseUrl() . "/expenses/view/{$expenseId}"
             ]);
         }
         
@@ -125,7 +126,7 @@ class NotificationHelper {
                     'message' => "Expense claim from {$userName} - ₹" . number_format($amount, 2),
                     'reference_type' => 'expense',
                     'reference_id' => $expenseId,
-                    'action_url' => $expenseId ? "/ergon/expenses/view/{$expenseId}" : null
+                    'action_url' => $expenseId ? Environment::getBaseUrl() . "/expenses/view/{$expenseId}" : null
                 ]);
             }
             
@@ -160,7 +161,7 @@ class NotificationHelper {
             'message' => $message,
             'reference_type' => 'expense',
             'reference_id' => $expenseId,
-            'action_url' => "/ergon/expenses/view/{$expenseId}"
+            'action_url' => Environment::getBaseUrl() . "/expenses/view/{$expenseId}"
         ]);
         
         return true;
@@ -192,7 +193,7 @@ class NotificationHelper {
                 'message' => "Advance request from {$advance['user_name']} - ₹" . number_format($advance['amount'], 2) . " for {$advance['reason']}",
                 'reference_type' => 'advance',
                 'reference_id' => $advanceId,
-                'action_url' => "/ergon/advances/view/{$advanceId}"
+                'action_url' => Environment::getBaseUrl() . "/advances/view/{$advanceId}"
             ]);
         }
         
@@ -219,7 +220,7 @@ class NotificationHelper {
             'message' => "You have been assigned: {$task['title']}",
             'reference_type' => 'task',
             'reference_id' => $taskId,
-            'action_url' => "/ergon/tasks/view/{$taskId}"
+            'action_url' => Environment::getBaseUrl() . "/tasks/view/{$taskId}"
         ]);
         
         return true;
@@ -245,7 +246,7 @@ class NotificationHelper {
             'message' => "Task '{$task['title']}' is due soon",
             'reference_type' => 'task',
             'reference_id' => $taskId,
-            'action_url' => "/ergon/tasks/view/{$taskId}",
+            'action_url' => Environment::getBaseUrl() . "/tasks/view/{$taskId}",
             'priority' => 2
         ]);
         
@@ -280,7 +281,7 @@ class NotificationHelper {
             'message' => $message,
             'reference_type' => 'advance',
             'reference_id' => $advanceId,
-            'action_url' => "/ergon/advances/view/{$advanceId}"
+            'action_url' => Environment::getBaseUrl() . "/advances/view/{$advanceId}"
         ]);
         
         return true;

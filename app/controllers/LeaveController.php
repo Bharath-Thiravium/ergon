@@ -3,6 +3,7 @@ require_once __DIR__ . '/../models/Leave.php';
 require_once __DIR__ . '/../helpers/Security.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../helpers/DatabaseHelper.php';
 
 class LeaveController extends Controller {
     private $leave;
@@ -530,7 +531,7 @@ class LeaveController extends Controller {
     
     private function ensureLeavesTable($db) {
         try {
-            $db->exec("CREATE TABLE IF NOT EXISTS leaves (
+            DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS leaves (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
                 leave_type VARCHAR(50) NOT NULL,
@@ -547,13 +548,13 @@ class LeaveController extends Controller {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_user_id (user_id),
                 INDEX idx_status (status)
-            )");
+            )", "Create table");
             
             // Add contact_during_leave column if it doesn't exist
             $stmt = $db->prepare("SHOW COLUMNS FROM leaves LIKE 'contact_during_leave'");
             $stmt->execute();
             if ($stmt->rowCount() == 0) {
-                $db->exec("ALTER TABLE leaves ADD COLUMN contact_during_leave VARCHAR(20) NULL AFTER reason");
+                DatabaseHelper::safeExec($db, "ALTER TABLE leaves ADD COLUMN contact_during_leave VARCHAR(20) NULL AFTER reason", "Alter table");
             }
         } catch (Exception $e) {
             error_log('ensureLeavesTable error: ' . $e->getMessage());

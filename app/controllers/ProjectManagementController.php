@@ -2,11 +2,20 @@
 
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/DatabaseHelper.php';
 
 class ProjectManagementController extends Controller {
     
     public function index() {
-        $this->requireAuth();
+        // Check authentication
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
         
         if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
             http_response_code(403);
@@ -21,15 +30,34 @@ class ProjectManagementController extends Controller {
             $db = Database::connect();
             
             // Ensure projects table exists
-            $db->exec("CREATE TABLE IF NOT EXISTS projects (
+            DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS projects (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 description TEXT,
-                department_id INT,
                 status VARCHAR(50) DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            )");
+            )", "Create table");
+            
+            // Add columns if they don't exist
+            try {
+                DatabaseHelper::safeExec($db, "ALTER TABLE projects ADD COLUMN department_id INT NULL", "Alter table");
+            } catch (Exception $e) {}
+            try {
+                DatabaseHelper::safeExec($db, "ALTER TABLE projects ADD COLUMN latitude DECIMAL(10, 8) NULL", "Alter table");
+            } catch (Exception $e) {}
+            try {
+                DatabaseHelper::safeExec($db, "ALTER TABLE projects ADD COLUMN longitude DECIMAL(11, 8) NULL", "Alter table");
+            } catch (Exception $e) {}
+            try {
+                DatabaseHelper::safeExec($db, "ALTER TABLE projects ADD COLUMN checkin_radius INT DEFAULT 100", "Alter table");
+            } catch (Exception $e) {}
+            try {
+                $db->exec("ALTER TABLE projects ADD COLUMN place VARCHAR(255) NULL");
+            } catch (Exception $e) {}
+            try {
+                $db->exec("ALTER TABLE projects ADD COLUMN budget DECIMAL(15,2) NULL");
+            } catch (Exception $e) {}
             
             // Get all projects with department info
             $stmt = $db->prepare("SELECT p.*, d.name as department_name FROM projects p LEFT JOIN departments d ON p.department_id = d.id ORDER BY p.created_at DESC");
@@ -50,13 +78,22 @@ class ProjectManagementController extends Controller {
             
         } catch (Exception $e) {
             error_log('Project management error: ' . $e->getMessage());
+            error_log('Stack trace: ' . $e->getTraceAsString());
             http_response_code(500);
-            echo "Error loading project management";
+            echo "Error loading project management: " . $e->getMessage();
         }
     }
     
     public function create() {
-        $this->requireAuth();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Not authenticated']);
+            return;
+        }
         
         if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
             header('Content-Type: application/json');
@@ -73,21 +110,15 @@ class ProjectManagementController extends Controller {
         try {
             $db = Database::connect();
             
-            // Ensure projects table exists
-            $db->exec("CREATE TABLE IF NOT EXISTS projects (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                description TEXT,
-                department_id INT,
-                status VARCHAR(50) DEFAULT 'active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            )");
-            
-            $stmt = $db->prepare("INSERT INTO projects (name, description, department_id, status) VALUES (?, ?, ?, 'active')");
+            $stmt = $db->prepare("INSERT INTO projects (name, description, place, budget, latitude, longitude, checkin_radius, department_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')");
             $result = $stmt->execute([
                 $_POST['name'],
                 $_POST['description'] ?? '',
+                $_POST['place'] ?? '',
+                !empty($_POST['budget']) ? $_POST['budget'] : null,
+                !empty($_POST['latitude']) ? $_POST['latitude'] : null,
+                !empty($_POST['longitude']) ? $_POST['longitude'] : null,
+                !empty($_POST['checkin_radius']) ? $_POST['checkin_radius'] : 100,
                 !empty($_POST['department_id']) ? $_POST['department_id'] : null
             ]);
             
@@ -102,7 +133,15 @@ class ProjectManagementController extends Controller {
     }
     
     public function update() {
-        $this->requireAuth();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Not authenticated']);
+            return;
+        }
         
         if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
             header('Content-Type: application/json');
@@ -116,15 +155,26 @@ class ProjectManagementController extends Controller {
             return;
         }
         
+        if (empty($_POST['project_id'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Project ID is required']);
+            return;
+        }
+        
         try {
             $db = Database::connect();
             
-            $stmt = $db->prepare("UPDATE projects SET name = ?, description = ?, department_id = ?, status = ? WHERE id = ?");
+            $stmt = $db->prepare("UPDATE projects SET name = ?, description = ?, place = ?, budget = ?, latitude = ?, longitude = ?, checkin_radius = ?, department_id = ?, status = ? WHERE id = ?");
             $result = $stmt->execute([
                 $_POST['name'],
                 $_POST['description'] ?? '',
+                $_POST['place'] ?? '',
+                !empty($_POST['budget']) ? $_POST['budget'] : null,
+                !empty($_POST['latitude']) ? $_POST['latitude'] : null,
+                !empty($_POST['longitude']) ? $_POST['longitude'] : null,
+                !empty($_POST['checkin_radius']) ? $_POST['checkin_radius'] : 100,
                 !empty($_POST['department_id']) ? $_POST['department_id'] : null,
-                $_POST['status'],
+                $_POST['status'] ?? 'active',
                 $_POST['project_id']
             ]);
             
@@ -139,7 +189,15 @@ class ProjectManagementController extends Controller {
     }
     
     public function delete() {
-        $this->requireAuth();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Not authenticated']);
+            return;
+        }
         
         if (!in_array($_SESSION['role'], ['admin', 'owner'])) {
             header('Content-Type: application/json');

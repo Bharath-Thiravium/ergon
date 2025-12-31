@@ -1,167 +1,52 @@
 <?php 
  $title = 'Finance Dashboard';
  $active_page = 'finance';
- ob_start(); 
+ ob_start();
+ error_log('Finance Dashboard: ob_start called'); 
  // Finance-specific styles are merged into `assets/css/ergon-overrides.css`
+
+ // Clear any error/success messages to prevent popup alerts
+ if (isset($_GET['error'])) {
+     unset($_GET['error']);
+ }
+ if (isset($_GET['success'])) {
+     unset($_GET['success']);
+ }
 ?>
 
 <div class="container-fluid">
     <!-- Header Actions -->
-    <div class="dashboard-header">
-        <div class="dashboard-header__title">
-            <h1>Finance Dashboard</h1>
-            <p>Real-time financial insights and analytics</p>
-        </div>
-        <div class="dashboard-header__actions">
-            <div class="action-group">
+    <div class="page-header-modern">
+        <div class="page-header-content">
+            <div class="page-title-section">
+                <h1 class="page-title">Finance Dashboard</h1>
+                <span class="page-subtitle">Real-time financial insights and analytics</span>
+            </div>
+            <div class="page-actions-section">
                 <button id="syncBtn" class="btn btn--primary btn--sm">
                     <span class="btn__icon">🔄</span>
                     <span class="btn__text">Sync Data</span>
                 </button>
-                <button id="exportBtn" class="btn btn--secondary btn--sm">
-                    <span class="btn__icon">📥</span>
-                    <span class="btn__text">Export</span>
-                </button>
-                <button onclick="window.open('/ergon/finance/download-database', '_blank')" class="btn btn--info btn--sm">
-                    <span class="btn__icon">💾</span>
-                    <span class="btn__text">Download DB</span>
-                </button>
-                <button onclick="window.open('/ergon/finance/download-pg-tables', '_blank')" class="btn btn--warning btn--sm">
-                    <span class="btn__icon">📥</span>
-                    <span class="btn__text">Download PG Tables</span>
-                </button>
-                <button onclick="refreshDashboardStats()" class="btn btn--success btn--sm">
-                    <span class="btn__icon">🔄</span>
-                    <span class="btn__text">Refresh Stats</span>
-                </button>
-                <a href="/ergon/finance/import" class="btn btn--success btn--sm">
-                    <span class="btn__icon">📥</span>
-                    <span class="btn__text">Import Data</span>
-                </a>
-            </div>
-            <div class="filter-group">
-                <div class="input-group">
-                    <input type="text" id="companyPrefix" class="form-control form-control--sm" placeholder="Company Prefix (e.g. BKC)" maxlength="10">
-                    <button id="updatePrefixBtn" class="btn btn--secondary btn--sm">
-                        <span class="btn__icon">🏢</span>
-                    </button>
+                <div class="filter-controls">
+                    <div class="form-group">
+                        <input type="text" id="companyPrefix" class="form-control" placeholder="Prefix (SE, BK)" list="prefixSuggestions" maxlength="10">
+                        <datalist id="prefixSuggestions"></datalist>
+                        <div id="letterSelectors" class="letter-selectors"></div>
+                    </div>
+                    <select id="dateFilter" class="form-control">
+                        <option value="all">All Time</option>
+                        <option value="30">30 Days</option>
+                        <option value="90">90 Days</option>
+                        <option value="365">1 Year</option>
+                    </select>
                 </div>
-                <select id="dateFilter" class="form-control form-control--sm">
-                    <option value="all">All Time</option>
-                    <option value="30">Last 30 Days</option>
-                    <option value="90">Last 90 Days</option>
-                    <option value="365">Last Year</option>
-                </select>
             </div>
         </div>
     </div>
 
     <!-- Top-Level KPI Cards -->
-    <div class="dashboard-grid">
-        <div class="kpi-card kpi-card--success">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">💰</div>
-                <div class="kpi-card__trend" id="invoiceTrend">↗ +0%</div>
-            </div>
-            <div class="kpi-card__value" id="totalInvoiceAmount">₹0</div>
-            <div class="kpi-card__label">Total Invoice Amount</div>
-            <div class="kpi-card__description">Total Revenue Generated</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">Count: <span id="totalInvoiceCount">0</span></div>
-                <div class="detail-item">Avg: <span id="avgInvoiceAmount">₹0</span></div>
-            </div>
-        </div>
-        
-        <div class="kpi-card kpi-card--success">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">✅</div>
-                <div class="kpi-card__trend" id="receivedTrend">↗ +0%</div>
-            </div>
-            <div class="kpi-card__value" id="invoiceReceived">₹0</div>
-            <div class="kpi-card__label">Amount Received</div>
-            <div class="kpi-card__description">Successfully Collected Revenue</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">Collection Rate: <span id="collectionRateKPI">0%</span></div>
-                <div class="detail-item">Paid Invoices: <span id="paidInvoiceCount">0</span></div>
-            </div>
-        </div>
-        
-        <div class="kpi-card kpi-card--warning">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">⏳</div>
-                <div class="kpi-card__trend" id="pendingTrend">— 0%</div>
-            </div>
-            <div class="kpi-card__value" id="pendingInvoiceAmount">₹0</div>
-            <div class="kpi-card__label">Outstanding Amount</div>
-            <div class="kpi-card__description">Taxable Amount Pending (No GST)</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">Pending Invoices: <span id="pendingInvoicesCount">0</span></div>
-                <div class="detail-item">Customers: <span id="customersPendingCount">0</span></div>
-                <div class="detail-item">Overdue Amount: <span id="overdueAmount">₹0</span></div>
-            </div>
-            <!-- Stat Card 3 Implementation:
-                 - Outstanding Amount = sum(taxable_amount - amount_paid) where pending > 0
-                 - Pending Invoices = count of invoices with pending_amount > 0
-                 - Customers = count of unique customer_gstin with pending_amount > 0
-                 - Overdue Amount = sum(pending_amount) where due_date < today
-                 - All calculations done in backend, frontend reads from dashboard_stats only
-            -->
-        </div>
-        
-        <div class="kpi-card kpi-card--info">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">🏛️</div>
-                <div class="kpi-card__trend" id="gstTrend">— 0%</div>
-            </div>
-            <div class="kpi-card__value" id="pendingGSTAmount">₹0</div>
-            <div class="kpi-card__label">GST Liability</div>
-            <div class="kpi-card__description">Tax Liability on Outstanding Invoices Only</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">IGST: <span id="igstLiability">₹0</span></div>
-                <div class="detail-item">CGST+SGST: <span id="cgstSgstTotal">₹0</span></div>
-            </div>
-            <!-- Stat Card 4 Implementation:
-                 - GST Liability calculated only on outstanding invoices
-                 - IGST = sum(igst) where pending_base > 0
-                 - CGST+SGST = sum(cgst + sgst) where pending_base > 0
-                 - Total GST Liability = IGST + CGST+SGST
-                 - All calculations done in backend, frontend reads from dashboard_stats only
-            -->
-        </div>
-        
-        <div class="kpi-card kpi-card--primary">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">🛒</div>
-                <div class="kpi-card__trend" id="poTrend">↗ +0%</div>
-            </div>
-            <div class="kpi-card__value" id="pendingPOValue">₹0</div>
-            <div class="kpi-card__label">PO Commitments</div>
-            <div class="kpi-card__description">Total Value of All Purchase Orders</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">Open POs: <span id="openPOCount">0</span></div>
-                <div class="detail-item">Closed POs: <span id="closedPOCount">0</span></div>
-            </div>
-            <!-- Stat Card 5 Implementation:
-                 - PO Commitments = sum(total_amount) for all POs
-                 - Open POs = count where (amount_paid < total_amount) OR received_date IS NULL
-                 - Closed POs = count where (amount_paid >= total_amount) AND received_date IS NOT NULL
-                 - All calculations done in backend, frontend reads from dashboard_stats only
-            -->
-        </div>
-        
-        <div class="kpi-card kpi-card--secondary">
-            <div class="kpi-card__header">
-                <div class="kpi-card__icon">💸</div>
-                <div class="kpi-card__trend" id="claimableTrend">— 0%</div>
-            </div>
-            <div class="kpi-card__value" id="claimableAmount">₹0</div>
-            <div class="kpi-card__label">Claimable Amount</div>
-            <div class="kpi-card__description">Total Invoice Amount - Payments Received</div>
-            <div class="kpi-card__details">
-                <div class="detail-item">Claimable POs: <span id="claimablePOCount">0</span></div>
-                <div class="detail-item">Claim Rate: <span id="claimRate">0%</span></div>
-            </div>
-        </div>
+    <div class="dashboard-grid" id="kpiCardsContainer">
+        <!-- KPI cards will be dynamically generated -->
     </div>
 
     <!-- Conversion Funnel -->
@@ -207,145 +92,6 @@
         </div>
     </div>
 
-    <!-- Charts Section -->
-    <div class="dashboard-grid dashboard-grid--2-col">
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">📝</div>
-                    <div class="chart-card__title">Quotations Overview</div>
-                    <div class="chart-card__value" id="quotationsTotal">0</div>
-                    <div class="chart-card__subtitle">Quotation Status Count Distribution</div>
-                </div>
-                <div class="chart-card__trend" id="quotationsTrend">+0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="quotationsChart"></canvas>
-                <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color" style="background:#3b82f6"></span>Pending (Draft/Revised)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Placed (Approved)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Rejected</div>
-                </div>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>Placed Quotations:</span><strong id="placedQuotations">0</strong></div>
-                <div class="meta-item"><span>Rejected Quotations:</span><strong id="rejectedQuotations">0</strong></div>
-                <div class="meta-item"><span>Pending Quotations:</span><strong id="pendingQuotations">0</strong></div>
-            </div>
-        </div>
-        
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">🛒</div>
-                    <div class="chart-card__title">Purchase Orders</div>
-                    <div class="chart-card__value" id="poTotal">0</div>
-                    <div class="chart-card__subtitle">Procurement Commitment Timeline</div>
-                </div>
-                <div class="chart-card__trend" id="poTrendChart">+0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="purchaseOrdersChart"></canvas>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>Fulfillment Rate:</span><strong id="poFulfillmentRate">0%</strong></div>
-                <div class="meta-item"><span>Avg Lead Time:</span><strong id="avgLeadTime">0 days</strong></div>
-                <div class="meta-item"><span>Open Commitments:</span><strong id="openCommitments">₹0</strong></div>
-            </div>
-        </div>
-        
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">💰</div>
-                    <div class="chart-card__title">Invoice Status</div>
-                    <div class="chart-card__value" id="invoicesTotal">0</div>
-                    <div class="chart-card__subtitle">Revenue Collection Health</div>
-                </div>
-                <div class="chart-card__trend" id="invoicesTrendChart">0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="invoicesChart"></canvas>
-                <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Paid (Collected)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Unpaid (Due)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Overdue (Risk)</div>
-                </div>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>DSO:</span><strong id="dsoMetric">0 days</strong></div>
-                <div class="meta-item"><span>Bad Debt Risk:</span><strong id="badDebtRisk">₹0</strong></div>
-                <div class="meta-item"><span>Collection Efficiency:</span><strong id="collectionEfficiency">0%</strong></div>
-            </div>
-        </div>
-        
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">📊</div>
-                    <div class="chart-card__title">Outstanding Distribution</div>
-                    <div class="chart-card__value" id="outstandingTotal">₹0</div>
-                    <div class="chart-card__subtitle">Top Customer Outstanding Amounts</div>
-                </div>
-                <div class="chart-card__trend" id="outstandingTrend">0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="outstandingByCustomerChart"></canvas>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>Concentration Risk:</span><strong id="concentrationRisk">0%</strong></div>
-                <div class="meta-item"><span>Top 3 Exposure:</span><strong id="top3Exposure">₹0</strong></div>
-                <div class="meta-item"><span>Customer Diversity:</span><strong id="customerDiversity">0</strong></div>
-            </div>
-        </div>
-        
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">⏳</div>
-                    <div class="chart-card__title">Aging Buckets</div>
-                    <div class="chart-card__value" id="agingTotal">₹0</div>
-                    <div class="chart-card__subtitle">Credit Risk Assessment Matrix</div>
-                </div>
-                <div class="chart-card__trend" id="agingTrend">0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="agingBucketsChart"></canvas>
-                <div class="chart-legend">
-                    <div class="legend-item"><span class="legend-color" style="background:#10b981"></span>Current (0-30)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#f59e0b"></span>Watch (31-60)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#fb923c"></span>Concern (61-90)</div>
-                    <div class="legend-item"><span class="legend-color" style="background:#ef4444"></span>Critical (90+)</div>
-                </div>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>Provision Req:</span><strong id="provisionRequired">₹0</strong></div>
-                <div class="meta-item"><span>Recovery Rate:</span><strong id="recoveryRate">0%</strong></div>
-                <div class="meta-item"><span>Credit Quality:</span><strong id="creditQuality">Good</strong></div>
-            </div>
-        </div>
-        
-        <div class="chart-card">
-            <div class="chart-card__header">
-                <div class="chart-card__info">
-                    <div class="chart-card__icon">💳</div>
-                    <div class="chart-card__title">Payments</div>
-                    <div class="chart-card__value" id="paymentsTotal">₹0</div>
-                    <div class="chart-card__subtitle">Cash Flow Realization Pattern</div>
-                </div>
-                <div class="chart-card__trend" id="paymentsTrend">+0%</div>
-            </div>
-            <div class="chart-card__chart">
-                <canvas id="paymentsChart"></canvas>
-            </div>
-            <div class="chart-card__meta">
-                <div class="meta-item"><span>Velocity:</span><strong id="paymentVelocity">₹0/day</strong></div>
-                <div class="meta-item"><span>Forecast Accuracy:</span><strong id="forecastAccuracy">0%</strong></div>
-                <div class="meta-item"><span>Cash Conversion:</span><strong id="cashConversion">0 days</strong></div>
-            </div>
-        </div>
-    </div>
-
     <!-- Outstanding Invoices Table -->
     <div class="dashboard-grid">
         <div class="card card--full-width">
@@ -360,7 +106,9 @@
                             <tr>
                                 <th>Invoice #</th>
                                 <th>Customer</th>
-                                <th>Due Date</th>
+                                <th>Shipping Address</th>
+                                <th>Invoice Date</th>
+                                <th>Total Amount</th>
                                 <th>Outstanding Amount</th>
                                 <th>Days Overdue</th>
                                 <th>Status</th>
@@ -368,7 +116,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="6" class="text-center">Loading outstanding invoices...</td>
+                                <td colspan="8" class="text-center">Loading outstanding invoices...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -378,19 +126,19 @@
     </div>
     
     <!-- Recent Activities -->
-    <div class="dashboard-grid">
-        <div class="card">
+    <div class="dashboard-grid" style="grid-auto-rows: auto;">
+        <div class="card" style="display: flex; flex-direction: column; height: 400px;">
             <div class="card__header">
                 <h2 class="card__title">📈 Recent Activities</h2>
                 <div class="activity-filters">
-                    <button class="filter-btn active" data-type="all" onclick="loadRecentActivities('all')">All</button>
-                    <button class="filter-btn" data-type="quotation" onclick="loadRecentActivities('quotation')">📝</button>
-                    <button class="filter-btn" data-type="purchase_order" onclick="loadRecentActivities('purchase_order')">🛒</button>
-                    <button class="filter-btn" data-type="invoice" onclick="loadRecentActivities('invoice')">💰</button>
-                    <button class="filter-btn" data-type="payment" onclick="loadRecentActivities('payment')">💳</button>
+                    <button class="filter-btn active" data-type="all" onclick="loadRecentActivities('all')" title="All Activities">All</button>
+                    <button class="filter-btn" data-type="quotation" onclick="loadRecentActivities('quotation')" title="Quotations">📝</button>
+                    <button class="filter-btn" data-type="purchase_order" onclick="loadRecentActivities('purchase_order')" title="Purchase Orders">🛒</button>
+                    <button class="filter-btn" data-type="invoice" onclick="loadRecentActivities('invoice')" title="Invoices">💰</button>
+                    <button class="filter-btn" data-type="payment" onclick="loadRecentActivities('payment')" title="Payments">💳</button>
                 </div>
             </div>
-            <div class="card__body">
+            <div class="card__body" style="flex: 1; overflow-y: scroll; min-height: 0;">
                 <div id="recentActivities">
                     <div class="activity-item">
                         <div class="activity-loading">Loading recent activities...</div>
@@ -421,17 +169,154 @@
             </div>
         </div>
     </div>
+
+    <!-- Charts Section (Moved to Bottom) -->
+    <div class="dashboard-grid dashboard-grid--2-col">
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">📝</div>
+                    <div class="chart-card__title">Quotations Status</div>
+                    <div class="chart-card__value" id="quotationsTotal">₹0</div>
+                    <div class="chart-card__subtitle">Status Distribution</div>
+                </div>
+                <div class="chart-card__trend" id="quotationsTrend">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="quotationsChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>Pending:</span><strong id="quotationsPending">0</strong></div>
+                <div class="meta-item"><span>Placed:</span><strong id="quotationsPlaced">0</strong></div>
+                <div class="meta-item"><span>Rejected:</span><strong id="quotationsRejected">0</strong></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">🛒</div>
+                    <div class="chart-card__title">Purchase Orders</div>
+                    <div class="chart-card__value" id="poTotal">₹0</div>
+                    <div class="chart-card__subtitle">Fulfillment Rate</div>
+                </div>
+                <div class="chart-card__trend" id="poTrend">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="purchaseOrdersChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>Open:</span><strong id="poOpen">0</strong></div>
+                <div class="meta-item"><span>Fulfilled:</span><strong id="poFulfilled">0</strong></div>
+                <div class="meta-item"><span>Rate:</span><strong id="poFulfillmentRate">0%</strong></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">📈</div>
+                    <div class="chart-card__title">Invoice Trend</div>
+                    <div class="chart-card__value" id="invoiceTrendTotal">₹0</div>
+                    <div class="chart-card__subtitle">Amount Over Time</div>
+                </div>
+                <div class="chart-card__trend" id="invoiceTrendPercent">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="invoiceTrendChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>Days:</span><strong id="invoiceTrendDays">0</strong></div>
+                <div class="meta-item"><span>Avg:</span><strong id="invoiceTrendAvg">₹0</strong></div>
+                <div class="meta-item"><span>Peak:</span><strong id="invoiceTrendPeak">₹0</strong></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">📊</div>
+                    <div class="chart-card__title">Outstanding by Customer</div>
+                    <div class="chart-card__value" id="outstandingTotal">₹0</div>
+                    <div class="chart-card__subtitle">Top Customers</div>
+                </div>
+                <div class="chart-card__trend" id="outstandingTrend">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="outstandingByCustomerChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>Customers:</span><strong id="outstandingCustomers">0</strong></div>
+                <div class="meta-item"><span>Concentration:</span><strong id="concentrationRisk">0%</strong></div>
+                <div class="meta-item"><span>Top 3:</span><strong id="top3Exposure">0%</strong></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">⏳</div>
+                    <div class="chart-card__title">Aging Buckets</div>
+                    <div class="chart-card__value" id="agingTotal">₹0</div>
+                    <div class="chart-card__subtitle">Credit Risk</div>
+                </div>
+                <div class="chart-card__trend" id="agingTrend">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="agingBucketsChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>0-30d:</span><strong id="aging0to30">0</strong></div>
+                <div class="meta-item"><span>31-60d:</span><strong id="aging31to60">0</strong></div>
+                <div class="meta-item"><span>90+d:</span><strong id="aging90plus">0</strong></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-card__header">
+                <div class="chart-card__info">
+                    <div class="chart-card__icon">💳</div>
+                    <div class="chart-card__title">Payments Trend</div>
+                    <div class="chart-card__value" id="paymentsTotal">₹0</div>
+                    <div class="chart-card__subtitle">Cash Flow Pattern</div>
+                </div>
+                <div class="chart-card__trend" id="paymentsTrend">+0%</div>
+            </div>
+            <div class="chart-container">
+                <svg class="chart-svg" viewBox="0 0 200 120" id="paymentsChart" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="chart-card__meta">
+                <div class="meta-item"><span>Velocity:</span><strong id="paymentVelocity">0</strong></div>
+                <div class="meta-item"><span>Avg:</span><strong id="paymentAvg">₹0</strong></div>
+                <div class="meta-item"><span>Count:</span><strong id="paymentCount">0</strong></div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="/ergon/views/finance/funnel-styles.css">
+<script src="/ergon/views/finance/dashboard-svg-charts.js"></script>
+<script src="/ergon/views/finance/dashboard-loader.js"></script>
+<script src="/ergon/views/finance/cashflow-listener.js"></script>
+<script>
+setTimeout(() => {
+    const prefix = document.getElementById('companyPrefix')?.value;
+    if (prefix) {
+        console.log('Auto-loading charts for prefix:', prefix);
+        loadAllCharts();
+    }
+}, 2000);
+</script>
 <script>
 
-
-let quotationsChart, purchaseOrdersChart, invoicesChart, paymentsChart;
-let outstandingByCustomerChart;
-let agingBucketsChart;
-
 // Notification function
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification notification--${type}`;
@@ -476,15 +361,47 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    initCharts();
+window.addEventListener('load', function() {
+    initKPICards();
     
-    document.getElementById('syncBtn').addEventListener('click', syncFinanceData);
-    document.getElementById('exportBtn').addEventListener('click', exportDashboard);
-    document.getElementById('updatePrefixBtn').addEventListener('click', updateCompanyPrefix);
+    const syncBtn = document.getElementById('syncBtn');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', syncFinanceData);
+    }
+    
+
+    
+    const prefixInput = document.getElementById('companyPrefix');
+    if (prefixInput) {
+        prefixInput.addEventListener('input', function() {
+            const value = this.value.trim().toUpperCase();
+            localStorage.setItem('financePrefix', value);
+            if (value.length >= 2) {
+                updateLetterSelectors(value);
+                loadAllStatCardsData();
+                loadCustomersForFunnel();
+                updateConversionFunnel();
+                loadAllCharts();
+            }
+            debounce(updateCompanyPrefix, 500)();
+        });
+        prefixInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                localStorage.setItem('financePrefix', this.value.trim().toUpperCase());
+                updateCompanyPrefix();
+                loadAllStatCardsData();
+                loadCustomersForFunnel();
+                updateConversionFunnel();
+                loadAllCharts();
+            }
+        });
+    }
 
     document.getElementById('dateFilter').addEventListener('change', filterByDate);
-    document.getElementById('customerFilter').addEventListener('change', filterByCustomer);
+    const customerFilter = document.getElementById('customerFilter');
+    if (customerFilter) {
+        customerFilter.addEventListener('change', updateConversionFunnel);
+    }
     // Outstanding top-N control
     const topN = document.getElementById('outstandingTopN');
     if (topN) topN.addEventListener('change', () => loadOutstandingByCustomer(parseInt(topN.value, 10)));
@@ -497,122 +414,121 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load current prefix, then dashboard data
     loadCompanyPrefix().then(() => {
-        loadCustomers();
-        loadDashboardData();
-        // Debug purchase orders
-        debugPurchaseOrders();
+        loadAllStatCardsData();
+        loadCustomersForFunnel();
+        loadCashFlow();
+        loadAllCharts();
     });
 });
 
-function initCharts() {
-    const chartDefaults = {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 250 },
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        const v = context.raw || 0;
-                        if (typeof v === 'number') return '₹' + Number(v).toLocaleString();
-                        return String(v);
-                    }
-                }
-            }
-        },
-        scales: {
-            x: { display: false },
-            y: { display: false }
-        }
-    };
-
-    // Quotations Pie Chart
-    const quotationsCtx = document.getElementById('quotationsChart');
-    if (quotationsCtx) {
-        quotationsChart = new Chart(quotationsCtx.getContext('2d'), {
-            type: 'pie',
-            data: { labels: ['Pending','Placed','Rejected'], datasets: [{ data: [0,0,0], backgroundColor: ['#3b82f6','#10b981','#ef4444'] }] },
-            options: chartDefaults
-        });
+// KPI Card Configuration
+const KPI_CARDS_CONFIG = [
+    {
+        id: 'totalInvoiceAmount',
+        icon: '💰',
+        label: 'Total Invoice Amount',
+        description: 'Total Revenue Generated',
+        variant: 'success',
+        trendId: 'invoiceTrend',
+        details: [
+            { label: 'Count', valueId: 'totalInvoiceCount' },
+            { label: 'Avg', valueId: 'avgInvoiceAmount' }
+        ]
+    },
+    {
+        id: 'invoiceReceived',
+        icon: '✅',
+        label: 'Amount Received',
+        description: 'Successfully Collected Revenue',
+        variant: 'success',
+        trendId: 'receivedTrend',
+        details: [
+            { label: 'Collection Rate', valueId: 'collectionRateKPI' },
+            { label: 'Paid Invoices', valueId: 'paidInvoiceCount' }
+        ]
+    },
+    {
+        id: 'pendingInvoiceAmount',
+        icon: '⏳',
+        label: 'Outstanding Amount',
+        description: 'Taxable Amount Pending (No GST)',
+        variant: 'warning',
+        trendId: 'pendingTrend',
+        details: [
+            { label: 'Pending Invoices', valueId: 'pendingInvoicesCount' },
+            { label: 'Customers', valueId: 'customersPendingCount' },
+            { label: 'Overdue Amount', valueId: 'overdueAmount' }
+        ]
+    },
+    {
+        id: 'pendingGSTAmount',
+        icon: '🏛️',
+        label: 'GST Liability',
+        description: 'Tax Liability on Outstanding Invoices Only',
+        variant: 'info',
+        trendId: 'gstTrend',
+        details: [
+            { label: 'IGST', valueId: 'igstLiability' },
+            { label: 'CGST+SGST', valueId: 'cgstSgstTotal' }
+        ]
+    },
+    {
+        id: 'pendingPOValue',
+        icon: '🛒',
+        label: 'PO Commitments',
+        description: 'Total Value of All Purchase Orders',
+        variant: 'primary',
+        trendId: 'poTrend',
+        details: [
+            { label: 'Open POs', valueId: 'openPOCount' },
+            { label: 'Closed POs', valueId: 'closedPOCount' }
+        ]
+    },
+    {
+        id: 'claimableAmount',
+        icon: '💸',
+        label: 'Claimable Amount',
+        description: 'Total Invoice Amount - Payments Received',
+        variant: 'secondary',
+        trendId: 'claimableTrend',
+        details: [
+            { label: 'Claimable POs', valueId: 'claimablePOCount' },
+            { label: 'Claim Rate', valueId: 'claimRate' }
+        ]
     }
+];
 
-    // Purchase Orders Area Chart
-    const poCtx = document.getElementById('purchaseOrdersChart');
-    if (poCtx) {
-        purchaseOrdersChart = new Chart(poCtx.getContext('2d'), {
-            type: 'line',
-            data: { labels: [], datasets: [{ label: 'PO Amount', data: [], borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.1)', fill: true, tension: 0.3 }] },
-            options: chartDefaults
-        });
-    }
-
-    // Invoices Donut Chart
-    const invoicesCtx = document.getElementById('invoicesChart');
-    if (invoicesCtx) {
-        invoicesChart = new Chart(invoicesCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: { labels: ['Paid','Unpaid','Overdue'], datasets: [{ data: [0,0,0], backgroundColor: ['#10b981','#f59e0b','#ef4444'] }] },
-            options: { ...chartDefaults, cutout: '70%' }
-        });
-    }
-
-    // Outstanding by Customer Donut Chart
-    const outstandingCtx = document.getElementById('outstandingByCustomerChart');
-    if (outstandingCtx) {
-        outstandingByCustomerChart = new Chart(outstandingCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: { 
-                labels: [], 
-                datasets: [{ 
-                    data: [], 
-                    backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e']
-                }] 
-            },
-            options: { ...chartDefaults, cutout: '60%' }
-        });
-    }
-
-    // Aging Buckets Donut Chart
-    const agingCtx = document.getElementById('agingBucketsChart');
-    if (agingCtx) {
-        agingBucketsChart = new Chart(agingCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: { labels: ['0-30 Days','31-60 Days','61-90 Days','90+ Days'], datasets: [{ data: [0,0,0,0], backgroundColor: ['#10b981','#f59e0b','#fb923c','#ef4444'] }] },
-            options: { ...chartDefaults, cutout: '70%' }
-        });
-    }
-
-    // Payments Chart
-    const paymentsCtx = document.getElementById('paymentsChart');
-    if (paymentsCtx) {
-        paymentsChart = new Chart(paymentsCtx.getContext('2d'), {
-            type: 'bar',
-            data: { labels: [], datasets: [{ label: 'Payments', data: [], backgroundColor: '#3b82f6' }] },
-            options: chartDefaults
-        });
-    }
+function initKPICards() {
+    const container = document.getElementById('kpiCardsContainer');
+    if (!container) return;
+    
+    container.innerHTML = KPI_CARDS_CONFIG.map(card => createKPICardHTML(card)).join('');
 }
 
-async function debugPurchaseOrders() {
-    try {
-        const response = await fetch('/ergon/finance/debug-po');
-        const data = await response.json();
-        console.log('Purchase Orders Debug:', data);
-        
-        if (data.total_records === 0) {
-            console.warn('No purchase order records found in database');
-            showNotification('No purchase order data found. Please sync data first.', 'warning');
-        } else {
-            console.log(`Found ${data.total_records} purchase order records`);
-            if (data.sample_data && data.sample_data.length > 0) {
-                console.log('Sample PO data structure:', data.sample_data[0]);
-            }
-        }
-    } catch (error) {
-        console.error('Debug PO error:', error);
-    }
+function createKPICardHTML(config) {
+    const detailsHTML = config.details.map(detail => 
+        `<div class="detail-item">${detail.label}: <span id="${detail.valueId}">${detail.label.includes('Rate') || detail.label.includes('%') ? '0%' : (detail.label.includes('Amount') ? '₹0' : '0')}</span></div>`
+    ).join('');
+    
+    return `
+        <div class="kpi-card kpi-card--${config.variant}">
+            <div class="kpi-card__header">
+                <div class="kpi-card__icon">${config.icon}</div>
+                <div class="kpi-card__trend" id="${config.trendId}">↗ +0%</div>
+            </div>
+            <div class="kpi-card__value" id="${config.id}">₹0</div>
+            <div class="kpi-card__label">${config.label}</div>
+            <div class="kpi-card__description">${config.description}</div>
+            <div class="kpi-card__details">
+                ${detailsHTML}
+            </div>
+        </div>
+    `;
 }
+
+
+
+
 
 async function showTableStructure() {
     const btn = document.getElementById('structureBtn');
@@ -652,7 +568,7 @@ async function showTableStructure() {
         modal.style.maxHeight = '80%';
         modal.style.overflow = 'auto';
         modal.style.zIndex = '10000';
-        modal.innerHTML = structureHtml + '<button onclick="this.parentNode.remove()" style="margin-top: 15px; padding: 8px 16px;">Close</button>';
+        modal.innerHTML = structureHtml + '<button onclick="hideClosestModal(this)" style="margin-top: 15px; padding: 8px 16px;">Close</button>';
         document.body.appendChild(modal);
         
         btn.disabled = false;
@@ -668,7 +584,7 @@ async function showTableStructure() {
 
 async function loadDashboardData() {
     try {
-        const response = await fetch('/ergon/finance/dashboard-stats');
+        const response = await fetch('../src/api/simple_api.php?action=dashboard&prefix=BKGE');
         const data = await response.json();
         
         console.log('Dashboard Stats:', data);
@@ -683,23 +599,9 @@ async function loadDashboardData() {
         }
         
         // Update KPI cards
-        updateKPICard('totalInvoiceAmount', data.totalInvoiceAmount || 0);
-        updateKPICard('invoiceReceived', data.invoiceReceived || 0);
-        updateKPICard('pendingInvoiceAmount', data.pendingInvoiceAmount || 0);
-        updateKPICard('pendingGSTAmount', data.pendingGSTAmount || 0);
-        updateKPICard('pendingPOValue', data.pendingPOValue || 0);
-        updateKPICard('claimableAmount', data.claimableAmount || 0);
+        updateKPICards(data);
         
-        // Update PO specific metrics
-        const openPOElement = document.getElementById('openPOCount');
-        if (openPOElement) {
-            openPOElement.textContent = data.openPOCount || 0;
-        }
-        
-        const totalPOElement = document.getElementById('totalPOCount');
-        if (totalPOElement) {
-            totalPOElement.textContent = data.totalPOCount || 0;
-        }
+
         
         // Update conversion funnel
         if (data.conversionFunnel) {
@@ -720,15 +622,13 @@ async function loadDashboardData() {
             console.log('✅ Using ETL-optimized analytics from consolidated SQL table');
             console.log('📊 Data source: finance_consolidated → dashboard_stats');
         } else if (data.source === 'empty') {
-            showNotification('💡 ETL Tip: Click "Sync Data" to run the ETL process and populate analytics', 'info');
+            // showNotification('💡 ETL Tip: Click "Sync Data" to run the ETL process and populate analytics', 'info');
         }
         
-        // Load other data
+        // Load other data (placeholder functions)
         loadOutstandingInvoices();
-        loadOutstandingByCustomer();
-        loadAgingBuckets();
         loadRecentActivities();
-        loadCharts();
+        // Note: Other chart functions disabled until APIs are implemented
         
     } catch (error) {
         console.error('Dashboard data error:', error);
@@ -736,16 +636,7 @@ async function loadDashboardData() {
     }
 }
 
-function updateKPICard(elementId, value) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        if (typeof value === 'number') {
-            element.textContent = '₹' + value.toLocaleString();
-        } else {
-            element.textContent = value;
-        }
-    }
-}
+
 
 function updateConversionFunnel(funnel) {
     // Update quotations
@@ -911,470 +802,249 @@ function analyzeAllTables() {
     }, 1000);
 }
 
-async function syncFinanceData() {
+function syncFinanceData() {
     const btn = document.getElementById('syncBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="btn__icon">⚡</span><span class="btn__text">Running ETL...</span>';
+    if (!btn) return;
     
-    try {
-        const response = await fetch('/ergon/finance/sync', {method: 'POST'});
-        const result = await response.json();
-        
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn__icon">⏳</span><span class="btn__text">Syncing...</span>';
+    
+    fetch('/ergon/src/api/sync.php', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(result => {
         if (result.success) {
-            showNotification(`✅ ETL completed: ${result.records_processed} records processed for ${result.prefix || 'all companies'}`, 'success');
-            loadDashboardData();
+            showNotification('✅ ' + result.message, 'success');
+            setTimeout(() => loadAllStatCardsData(), 500);
         } else {
-            showNotification('❌ ETL failed: ' + result.error, 'error');
+            showNotification('❌ Sync failed: ' + result.message, 'error');
         }
-    } catch (error) {
-        showNotification('❌ ETL failed: ' + error.message, 'error');
-    } finally {
+    })
+    .catch(error => {
+        showNotification('❌ Sync failed: ' + error.message, 'error');
+    })
+    .finally(() => {
         btn.disabled = false;
-        btn.innerHTML = '<span class="btn__icon">🔄</span><span class="btn__text">Sync Data</span>';
-    }
+        btn.innerHTML = originalText;
+    });
 }
 
 async function loadDashboardData() {
-    try {
-        const customerFilter = document.getElementById('customerFilter').value;
-        const url = customerFilter ? `/ergon/finance/dashboard-stats?customer=${encodeURIComponent(customerFilter)}` : '/ergon/finance/dashboard-stats';
-        
-        console.log('Loading dashboard data from:', url);
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const text = await response.text();
-        console.log('Raw response:', text.substring(0, 200));
-        
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch (e) {
-            throw new Error('Invalid JSON response: ' + text.substring(0, 100));
-        }
-        
-        if (data.error) {
-            console.warn('API returned error:', data.error);
-            if (data.details) console.warn('Error details:', data.details);
-        }
-        
-        updateKPICards(data);
-        await updateConversionFunnel(data);
-        updateCharts(data);
-        loadOutstandingInvoices();
-        loadRecentActivities();
-        updateCashFlow(data);
-        
-        if (data.message) {
-            showNotification(data.message, 'info');
-        }
-        
-        // Show source information for Stat Card 3
-        if (data.source === 'dashboard_stats') {
-            console.log('Stat Card 3: Using backend-calculated metrics from dashboard_stats table');
-            console.log('Outstanding Amount calculation: taxable_amount - amount_paid (no GST)');
-        } else if (data.source === 'empty') {
-            showNotification('Stat Card 3 requires backend calculation. Click "Refresh Stats" to calculate metrics.', 'warning');
-        }
-        
-    } catch (error) {
-        console.error('Failed to load dashboard data:', error);
-        showNotification('Failed to load dashboard data: ' + error.message, 'error');
-        // Load with empty data to prevent UI breaking
-        updateKPICards({});
-        updateConversionFunnel({});
-        updateCashFlow({});
-    }
+    // Placeholder function - APIs not implemented yet
+    console.log('Dashboard data loading disabled - APIs not implemented');
+    
+    // Update with empty data to prevent UI breaking
+    updateKPICards({});
+    updateConversionFunnel({});
+    updateCashFlow({});
+    
+    // Load placeholder data
+    loadOutstandingInvoices();
+    loadRecentActivities();
+    
+    showNotification('Dashboard APIs not implemented yet. Only sync functionality is available.', 'info');
 }
 
 function updateKPICards(data) {
     const funnel = data.conversionFunnel || {};
     
-    // Total Invoice Amount
-    document.getElementById('totalInvoiceAmount').textContent = `₹${(data.totalInvoiceAmount || 0).toLocaleString()}`;
+    // Update main KPI values using the configuration
+    const kpiUpdates = {
+        totalInvoiceAmount: data.totalInvoiceAmount || 0,
+        invoiceReceived: data.invoiceReceived || 0,
+        pendingInvoiceAmount: data.outstanding_amount || data.outstandingAmount || data.pendingInvoiceAmount || 0,
+        pendingGSTAmount: data.gstLiability || data.pendingGSTAmount || 0,
+        pendingPOValue: data.pendingPOValue || funnel.poValue || 0,
+        claimableAmount: data.claimable_amount || data.claimableAmount || 0
+    };
     
-    // Update invoice details
-    const totalInvoiceCount = document.getElementById('totalInvoiceCount');
-    const avgInvoiceAmount = document.getElementById('avgInvoiceAmount');
-    if (totalInvoiceCount) totalInvoiceCount.textContent = funnel.invoices || 0;
-    if (avgInvoiceAmount && funnel.invoices > 0) {
-        avgInvoiceAmount.textContent = `₹${Math.round((data.totalInvoiceAmount || 0) / funnel.invoices).toLocaleString()}`;
-    } else if (avgInvoiceAmount) {
-        avgInvoiceAmount.textContent = '₹0';
+    // Update main values
+    Object.entries(kpiUpdates).forEach(([id, value]) => {
+        updateKPIValue(id, value);
+    });
+    
+    // Update detail values
+    updateKPIDetail('totalInvoiceCount', funnel.invoices || 0);
+    updateKPIDetail('avgInvoiceAmount', funnel.invoices > 0 ? Math.round((data.totalInvoiceAmount || 0) / funnel.invoices) : 0, true);
+    
+    updateKPIDetail('collectionRateKPI', data.totalInvoiceAmount > 0 ? Math.round((data.invoiceReceived / data.totalInvoiceAmount) * 100) : 0, false, '%');
+    updateKPIDetail('paidInvoiceCount', funnel.payments || 0);
+    
+    updateKPIDetail('pendingInvoicesCount', data.pending_invoices || data.pendingInvoices || 0);
+    updateKPIDetail('customersPendingCount', data.customers_pending || data.customersPending || 0);
+    updateKPIDetail('overdueAmount', data.overdue_amount || data.overdueAmount || 0, true);
+    
+    updateKPIDetail('igstLiability', data.igstLiability || 0, true);
+    updateKPIDetail('cgstSgstTotal', data.cgstSgstTotal || 0, true);
+    
+    updateKPIDetail('openPOCount', data.openPOCount || 0);
+    updateKPIDetail('closedPOCount', data.closedPOCount || 0);
+    
+    updateKPIDetail('claimablePOCount', data.claimable_pos || data.claimablePOCount || data.claimablePos || 0);
+    updateKPIDetail('claimRate', Math.round(data.claim_rate || data.claimRate || 0), false, '%');
+    
+    // Update trends
+    updateKPITrend('pendingTrend', data.outstanding_percentage || data.outstandingPercentage || 0, '%');
+    updateKPITrend('claimableTrend', data.claim_rate || data.claimRate || 0, '%');
+}
+
+function updateKPIValue(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = `₹${Number(value).toLocaleString()}`;
     }
-    
-    // Invoice Amount Received
-    document.getElementById('invoiceReceived').textContent = `₹${(data.invoiceReceived || 0).toLocaleString()}`;
-    
-    // Update received details
-    const collectionRateKPI = document.getElementById('collectionRateKPI');
-    const paidInvoiceCount = document.getElementById('paidInvoiceCount');
-    if (collectionRateKPI && data.totalInvoiceAmount > 0) {
-        collectionRateKPI.textContent = `${Math.round((data.invoiceReceived / data.totalInvoiceAmount) * 100)}%`;
-    } else if (collectionRateKPI) {
-        collectionRateKPI.textContent = '0%';
+}
+
+function updateKPIDetail(elementId, value, isCurrency = false, suffix = '') {
+    const element = document.getElementById(elementId);
+    if (element) {
+        let displayValue = value;
+        if (isCurrency) {
+            displayValue = `₹${Number(value).toLocaleString()}`;
+        } else if (suffix) {
+            displayValue = `${value}${suffix}`;
+        }
+        element.textContent = displayValue;
     }
-    if (paidInvoiceCount) paidInvoiceCount.textContent = funnel.payments || 0;
-    
-    // Stat Card 3: Outstanding Amount (Backend calculated)
-    document.getElementById('pendingInvoiceAmount').textContent = `₹${(data.outstandingAmount || data.pendingInvoiceAmount || 0).toLocaleString()}`;
-    
-    // Update Stat Card 3 details with backend calculations
-    const pendingInvoicesCount = document.getElementById('pendingInvoicesCount');
-    const customersPendingCount = document.getElementById('customersPendingCount');
-    const overdueAmount = document.getElementById('overdueAmount');
-    
-    if (pendingInvoicesCount) pendingInvoicesCount.textContent = data.pendingInvoices || 0;
-    if (customersPendingCount) customersPendingCount.textContent = data.customersPending || 0;
-    if (overdueAmount) overdueAmount.textContent = `₹${(data.overdueAmount || 0).toLocaleString()}`;
-    
-    // Update trend for outstanding percentage
-    const pendingTrend = document.getElementById('pendingTrend');
-    if (pendingTrend && data.outstandingPercentage !== undefined) {
-        pendingTrend.textContent = `${Math.round(data.outstandingPercentage)}%`;
-    }
-    
-    // Stat Card 4: GST Liability (Backend calculated)
-    document.getElementById('pendingGSTAmount').textContent = `₹${(data.gstLiability || data.pendingGSTAmount || 0).toLocaleString()}`;
-    
-    // Update GST details from backend calculations
-    const igstLiability = document.getElementById('igstLiability');
-    const cgstSgstTotal = document.getElementById('cgstSgstTotal');
-    if (igstLiability) igstLiability.textContent = `₹${(data.igstLiability || 0).toLocaleString()}`;
-    if (cgstSgstTotal) cgstSgstTotal.textContent = `₹${(data.cgstSgstTotal || 0).toLocaleString()}`;
-    
-    // PO Commitments - Use both dashboard data and funnel data
-    const poValue = data.pendingPOValue || funnel.poValue || 0;
-    document.getElementById('pendingPOValue').textContent = `₹${poValue.toLocaleString()}`;
-    
-    // Update PO details from backend calculations
-    const openPOCount = document.getElementById('openPOCount');
-    const closedPOCount = document.getElementById('closedPOCount');
-    
-    if (openPOCount) openPOCount.textContent = data.openPOCount || 0;
-    if (closedPOCount) closedPOCount.textContent = data.closedPOCount || 0;
-    
-    // Stat Card 6: Claimable Amount (Backend calculated from invoices)
-    document.getElementById('claimableAmount').textContent = `₹${(data.claimableAmount || 0).toLocaleString()}`;
-    
-    // Update claimable details with backend calculations
-    const claimablePOCount = document.getElementById('claimablePOCount');
-    const claimRate = document.getElementById('claimRate');
-    if (claimablePOCount) claimablePOCount.textContent = data.claimablePOCount || data.claimablePos || 0;
-    if (claimRate) claimRate.textContent = `${Math.round(data.claimRate || 0)}%`;
-    
-    // Update trend for claim rate
-    const claimableTrend = document.getElementById('claimableTrend');
-    if (claimableTrend && data.claimRate !== undefined) {
-        claimableTrend.textContent = `${Math.round(data.claimRate)}%`;
+}
+
+function updateKPITrend(elementId, value, suffix = '') {
+    const element = document.getElementById(elementId);
+    if (element) {
+        const displayValue = `${Math.round(value)}${suffix}`;
+        element.textContent = displayValue;
+        
+        // Update trend direction
+        if (value > 0) {
+            element.textContent = `↗ +${displayValue}`;
+        } else if (value < 0) {
+            element.textContent = `↘ ${displayValue}`;
+        } else {
+            element.textContent = `— ${displayValue}`;
+        }
     }
 }
 
 async function updateConversionFunnel(data) {
     try {
-        const response = await fetch('/ergon/finance/funnel-containers');
+        const response = await fetch('../src/api/simple_api.php?action=funnel-containers&prefix=BKGE');
         const funnelData = await response.json();
         
         if (funnelData.success && funnelData.containers) {
             const containers = funnelData.containers;
             
             // Container 1 - Quotations
-            document.getElementById('funnelQuotations').textContent = containers.container1.quotations_count || 0;
-            document.getElementById('funnelQuotationValue').textContent = `₹${(containers.container1.quotations_total_value || 0).toLocaleString()}`;
+            const container1 = containers.container1 || {};
+            const quotationsEl = document.getElementById('funnelQuotations');
+            const quotationValueEl = document.getElementById('funnelQuotationValue');
+            if (quotationsEl) quotationsEl.textContent = container1.quotations_count || 0;
+            if (quotationValueEl) quotationValueEl.textContent = `₹${(container1.quotations_total_value || 0).toLocaleString()}`;
             
             // Container 2 - Purchase Orders
-            document.getElementById('funnelPOs').textContent = containers.container2.po_count || 0;
-            document.getElementById('funnelPOValue').textContent = `₹${(containers.container2.po_total_value || 0).toLocaleString()}`;
-            document.getElementById('quotationToPO').textContent = `${containers.container2.po_conversion_rate || 0}%`;
+            const container2 = containers.container2 || {};
+            const posEl = document.getElementById('funnelPOs');
+            const poValueEl = document.getElementById('funnelPOValue');
+            const quotationToPOEl = document.getElementById('quotationToPO');
+            if (posEl) posEl.textContent = container2.po_count || 0;
+            if (poValueEl) poValueEl.textContent = `₹${(container2.po_total_value || 0).toLocaleString()}`;
+            if (quotationToPOEl) quotationToPOEl.textContent = `${container2.po_conversion_rate || 0}%`;
             
             // Container 3 - Invoices
-            document.getElementById('funnelInvoices').textContent = containers.container3.invoice_count || 0;
-            document.getElementById('funnelInvoiceValue').textContent = `₹${(containers.container3.invoice_total_value || 0).toLocaleString()}`;
-            document.getElementById('poToInvoice').textContent = `${containers.container3.invoice_conversion_rate || 0}%`;
+            const container3 = containers.container3 || {};
+            const invoicesEl = document.getElementById('funnelInvoices');
+            const invoiceValueEl = document.getElementById('funnelInvoiceValue');
+            const poToInvoiceEl = document.getElementById('poToInvoice');
+            if (invoicesEl) invoicesEl.textContent = container3.invoice_count || 0;
+            if (invoiceValueEl) invoiceValueEl.textContent = `₹${(container3.invoice_total_value || 0).toLocaleString()}`;
+            if (poToInvoiceEl) poToInvoiceEl.textContent = `${container3.invoice_conversion_rate || 0}%`;
             
             // Container 4 - Payments
-            document.getElementById('funnelPayments').textContent = containers.container4.payment_count || 0;
-            document.getElementById('funnelPaymentValue').textContent = `₹${(containers.container4.total_payment_received || 0).toLocaleString()}`;
-            document.getElementById('invoiceToPayment').textContent = `${containers.container4.payment_conversion_rate || 0}%`;
+            const container4 = containers.container4 || {};
+            const paymentsEl = document.getElementById('funnelPayments');
+            const paymentValueEl = document.getElementById('funnelPaymentValue');
+            const invoiceToPaymentEl = document.getElementById('invoiceToPayment');
+            if (paymentsEl) paymentsEl.textContent = container4.payment_count || 0;
+            if (paymentValueEl) paymentValueEl.textContent = `₹${(container4.total_payment_received || 0).toLocaleString()}`;
+            if (invoiceToPaymentEl) invoiceToPaymentEl.textContent = `${container4.payment_conversion_rate || 0}%`;
         }
     } catch (error) {
         console.warn('Funnel data not available:', error.message);
-        // Fallback to legacy data if available
+        // Use safe fallback data
         const funnel = data.conversionFunnel || {};
-        document.getElementById('funnelQuotations').textContent = funnel.quotations || 0;
-        document.getElementById('funnelQuotationValue').textContent = `₹${(funnel.quotationValue || 0).toLocaleString()}`;
-        document.getElementById('funnelPOs').textContent = funnel.purchaseOrders || 0;
-        document.getElementById('funnelPOValue').textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
-        document.getElementById('quotationToPO').textContent = `${funnel.quotationToPO || 0}%`;
-        document.getElementById('funnelInvoices').textContent = funnel.invoices || 0;
-        document.getElementById('funnelInvoiceValue').textContent = `₹${(funnel.invoiceValue || 0).toLocaleString()}`;
-        document.getElementById('poToInvoice').textContent = `${funnel.poToInvoice || 0}%`;
-        document.getElementById('funnelPayments').textContent = funnel.payments || 0;
-        document.getElementById('funnelPaymentValue').textContent = `₹${(funnel.paymentValue || 0).toLocaleString()}`;
-        document.getElementById('invoiceToPayment').textContent = `${funnel.invoiceToPayment || 0}%`;
+        const quotationsEl = document.getElementById('funnelQuotations');
+        const quotationValueEl = document.getElementById('funnelQuotationValue');
+        const posEl = document.getElementById('funnelPOs');
+        const poValueEl = document.getElementById('funnelPOValue');
+        const quotationToPOEl = document.getElementById('quotationToPO');
+        const invoicesEl = document.getElementById('funnelInvoices');
+        const invoiceValueEl = document.getElementById('funnelInvoiceValue');
+        const poToInvoiceEl = document.getElementById('poToInvoice');
+        const paymentsEl = document.getElementById('funnelPayments');
+        const paymentValueEl = document.getElementById('funnelPaymentValue');
+        const invoiceToPaymentEl = document.getElementById('invoiceToPayment');
+        
+        if (quotationsEl) quotationsEl.textContent = funnel.quotations || 0;
+        if (quotationValueEl) quotationValueEl.textContent = `₹${(funnel.quotationValue || 0).toLocaleString()}`;
+        if (posEl) posEl.textContent = funnel.purchaseOrders || 0;
+        if (poValueEl) poValueEl.textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
+        if (quotationToPOEl) quotationToPOEl.textContent = `${funnel.quotationToPO || 0}%`;
+        if (invoicesEl) invoicesEl.textContent = funnel.invoices || 0;
+        if (invoiceValueEl) invoiceValueEl.textContent = `₹${(funnel.invoiceValue || 0).toLocaleString()}`;
+        if (poToInvoiceEl) poToInvoiceEl.textContent = `${funnel.poToInvoice || 0}%`;
+        if (paymentsEl) paymentsEl.textContent = funnel.payments || 0;
+        if (paymentValueEl) paymentValueEl.textContent = `₹${(funnel.paymentValue || 0).toLocaleString()}`;
+        if (invoiceToPaymentEl) invoiceToPaymentEl.textContent = `${funnel.invoiceToPayment || 0}%`;
     }
 }
 
-async function updateCharts(data) {
-    const funnel = data.conversionFunnel || {};
-    try {
-        // Update Quotations Chart
-        const quotationsResponse = await fetch('/ergon/finance/visualization?type=quotations');
-        if (!quotationsResponse.ok) throw new Error('Quotations API not available');
-        const quotationsText = await quotationsResponse.text();
-        const quotationsData = quotationsText ? JSON.parse(quotationsText) : {};
-        
-        if (quotationsChart && quotationsData.data) {
-            quotationsChart.data.datasets[0].data = quotationsData.data;
-            quotationsChart.update();
-        }
-        
-        // Update Chart Card 1: Quotations Overview (NEW - backend calculated counts)
-        const placedEl = document.getElementById('placedQuotations');
-        const rejectedEl = document.getElementById('rejectedQuotations');
-        const pendingEl = document.getElementById('pendingQuotations');
-        const totalEl = document.getElementById('quotationsTotal');
-        
-        if (placedEl) placedEl.textContent = data.placedQuotations || 0;
-        if (rejectedEl) rejectedEl.textContent = data.rejectedQuotations || 0;
-        if (pendingEl) pendingEl.textContent = data.pendingQuotations || 0;
-        if (totalEl) totalEl.textContent = data.totalQuotations || 0;
-        
-        // Update quotations chart with count data
-        if (quotationsChart) {
-            quotationsChart.data.datasets[0].data = [
-                data.pendingQuotations || 0,
-                data.placedQuotations || 0, 
-                data.rejectedQuotations || 0
-            ];
-            quotationsChart.update();
-        }
-        
-        // Update Purchase Orders Chart
-        const poResponse = await fetch('/ergon/finance/visualization?type=purchase_orders');
-        if (!poResponse.ok) throw new Error('PO API not available');
-        const poText = await poResponse.text();
-        const poData = poText ? JSON.parse(poText) : {};
-        
-        if (purchaseOrdersChart) {
-            if (poData.labels && poData.data) {
-                purchaseOrdersChart.data.labels = poData.labels;
-                purchaseOrdersChart.data.datasets[0].data = poData.data;
-                purchaseOrdersChart.update();
-            } else {
-                purchaseOrdersChart.data.labels = ['No Data'];
-                purchaseOrdersChart.data.datasets[0].data = [0];
-                purchaseOrdersChart.update();
-            }
-        }
-        
-        // Update PO metrics from funnel data
-        const fulfillmentEl = document.getElementById('poFulfillmentRate');
-        const leadTimeEl = document.getElementById('avgLeadTime');
-        const commitmentsEl = document.getElementById('openCommitments');
-        const poTotalEl = document.getElementById('poTotal');
-        
-        if (fulfillmentEl) fulfillmentEl.textContent = `${funnel.poToInvoice || 0}%`;
-        if (leadTimeEl) leadTimeEl.textContent = '15 days'; // Default estimate
-        if (commitmentsEl) commitmentsEl.textContent = `₹${(funnel.poValue || 0).toLocaleString()}`;
-        if (poTotalEl) poTotalEl.textContent = funnel.purchaseOrders || 0;
-        
-        // Update Invoices Chart
-        const invoicesResponse = await fetch('/ergon/finance/visualization?type=invoices');
-        if (!invoicesResponse.ok) throw new Error('Invoices API not available');
-        const invoicesText = await invoicesResponse.text();
-        const invoicesData = invoicesText ? JSON.parse(invoicesText) : {};
-        
-        if (invoicesChart && invoicesData.data) {
-            invoicesChart.data.datasets[0].data = invoicesData.data;
-            invoicesChart.update();
-        }
-        
-        // Update invoice metrics from dashboard data
-        const dsoEl = document.getElementById('dsoMetric');
-        const badDebtEl = document.getElementById('badDebtRisk');
-        const efficiencyEl = document.getElementById('collectionEfficiency');
-        const invoicesTotalEl = document.getElementById('invoicesTotal');
-        
-        if (dsoEl) {
-            const dso = data.totalInvoiceAmount > 0 ? Math.round((data.pendingInvoiceAmount / data.totalInvoiceAmount) * 365) : 0;
-            dsoEl.textContent = `${dso} days`;
-        }
-        if (badDebtEl) badDebtEl.textContent = `₹${Math.round((data.pendingInvoiceAmount || 0) * 0.05).toLocaleString()}`; // 5% estimate
-        if (efficiencyEl && data.totalInvoiceAmount > 0) {
-            efficiencyEl.textContent = `${Math.round((data.invoiceReceived / data.totalInvoiceAmount) * 100)}%`;
-        } else if (efficiencyEl) {
-            efficiencyEl.textContent = '0%';
-        }
-        if (invoicesTotalEl) invoicesTotalEl.textContent = funnel.invoices || 0;
-        
-        // Update Outstanding by Customer Chart
-        const outstandingResp = await fetch('/ergon/finance/outstanding-by-customer?limit=10');
-        if (!outstandingResp.ok) throw new Error('Outstanding API not available');
-        const outstandingText = await outstandingResp.text();
-        const outstandingData = outstandingText ? JSON.parse(outstandingText) : {};
-        if (outstandingByCustomerChart && outstandingData.labels) {
-            outstandingByCustomerChart.data.labels = outstandingData.labels;
-            outstandingByCustomerChart.data.datasets[0].data = outstandingData.data;
-            outstandingByCustomerChart.update();
-        }
-        
-        // Update outstanding metrics
-        const concentrationEl = document.getElementById('concentrationRisk');
-        const exposureEl = document.getElementById('top3Exposure');
-        const diversityEl = document.getElementById('customerDiversity');
-        const outTotalEl = document.getElementById('outstandingTotal');
-        
-        if (concentrationEl && outstandingData.total > 0) {
-            const topCustomer = Math.max(...(outstandingData.data || [0]));
-            concentrationEl.textContent = `${Math.round((topCustomer / outstandingData.total) * 100)}%`;
-        } else if (concentrationEl) {
-            concentrationEl.textContent = '0%';
-        }
-        if (exposureEl && outstandingData.data) {
-            const top3 = outstandingData.data.slice(0, 3).reduce((sum, val) => sum + val, 0);
-            exposureEl.textContent = `₹${top3.toLocaleString()}`;
-        } else if (exposureEl) {
-            exposureEl.textContent = '₹0';
-        }
-        if (diversityEl) diversityEl.textContent = outstandingData.customerCount || 0;
-        if (outTotalEl) outTotalEl.textContent = `₹${(outstandingData.total || 0).toLocaleString()}`;
 
-        // Update Aging Buckets Chart
-        const agingResp = await fetch('/ergon/finance/aging-buckets');
-        if (!agingResp.ok) throw new Error('Aging API not available');
-        const agingText = await agingResp.text();
-        const agingData = agingText ? JSON.parse(agingText) : {};
-        if (agingBucketsChart && agingData.labels) {
-            agingBucketsChart.data.labels = agingData.labels;
-            agingBucketsChart.data.datasets[0].data = agingData.data;
-            agingBucketsChart.update();
-        }
-        
-        // Update aging metrics
-        const provisionEl = document.getElementById('provisionRequired');
-        const recoveryEl = document.getElementById('recoveryRate');
-        const qualityEl = document.getElementById('creditQuality');
-        const agingTotalEl = document.getElementById('agingTotal');
-        
-        const agingTotal = agingData.data ? agingData.data.reduce((sum, val) => sum + val, 0) : 0;
-        const criticalAmount = agingData.data ? agingData.data[3] || 0 : 0; // 90+ days
-        
-        if (provisionEl) provisionEl.textContent = `₹${Math.round(criticalAmount * 0.1).toLocaleString()}`; // 10% provision
-        if (recoveryEl && agingTotal > 0) {
-            const goodDebt = (agingData.data ? agingData.data[0] + agingData.data[1] : 0) || 0;
-            recoveryEl.textContent = `${Math.round((goodDebt / agingTotal) * 100)}%`;
-        } else if (recoveryEl) {
-            recoveryEl.textContent = '100%';
-        }
-        if (qualityEl) {
-            const riskRatio = agingTotal > 0 ? criticalAmount / agingTotal : 0;
-            qualityEl.textContent = riskRatio > 0.2 ? 'Poor' : (riskRatio > 0.1 ? 'Fair' : 'Good');
-        }
-        if (agingTotalEl) agingTotalEl.textContent = `₹${agingTotal.toLocaleString()}`;
-        
-        // Update Payments Chart
-        const paymentsResp = await fetch('/ergon/finance/visualization?type=payments');
-        if (!paymentsResp.ok) throw new Error('Payments API not available');
-        const paymentsText = await paymentsResp.text();
-        const paymentsData = paymentsText ? JSON.parse(paymentsText) : {};
-        if (paymentsChart) {
-            if (paymentsData.labels && paymentsData.data) {
-                paymentsChart.data.labels = paymentsData.labels;
-                paymentsChart.data.datasets[0].data = paymentsData.data;
-                paymentsChart.update();
-            } else {
-                paymentsChart.data.labels = ['No Data'];
-                paymentsChart.data.datasets[0].data = [0];
-                paymentsChart.update();
-            }
-        }
-        
-        // Update payment metrics from funnel data
-        const velocityEl = document.getElementById('paymentVelocity');
-        const accuracyEl = document.getElementById('forecastAccuracy');
-        const conversionEl = document.getElementById('cashConversion');
-        const paymentsTotalEl = document.getElementById('paymentsTotal');
-        
-        if (velocityEl) {
-            const dailyVelocity = (funnel.paymentValue || 0) / 30; // Monthly average
-            velocityEl.textContent = `₹${Math.round(dailyVelocity).toLocaleString()}/day`;
-        }
-        if (accuracyEl) accuracyEl.textContent = `${funnel.invoiceToPayment || 0}%`;
-        if (conversionEl) {
-            const conversionDays = data.totalInvoiceAmount > 0 ? Math.round((data.pendingInvoiceAmount / data.totalInvoiceAmount) * 30) : 0;
-            conversionEl.textContent = `${conversionDays} days`;
-        }
-        if (paymentsTotalEl) paymentsTotalEl.textContent = `₹${(funnel.paymentValue || 0).toLocaleString()}`;
-        
-    } catch (error) {
-        console.warn('Charts not available:', error.message);
-        // Initialize charts with empty data
-        if (quotationsChart) {
-            quotationsChart.data.datasets[0].data = [0,0,0];
-            quotationsChart.update();
-        }
-        if (purchaseOrdersChart) {
-            purchaseOrdersChart.data.labels = ['No Data'];
-            purchaseOrdersChart.data.datasets[0].data = [0];
-            purchaseOrdersChart.update();
-        }
-    }
-}
 
 async function loadOutstandingInvoices() {
     try {
-        const response = await fetch('/ergon/finance/outstanding-invoices');
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: Outstanding invoices API not available`);
-        }
+        const prefix = document.getElementById('companyPrefix').value;
+        if (!prefix) return;
         
-        const text = await response.text();
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch (e) {
-            throw new Error('Invalid JSON response from outstanding invoices API');
-        }
+        const response = await fetch(`/ergon/src/api/outstanding.php?prefix=${encodeURIComponent(prefix)}&limit=20`, {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Outstanding API unavailable');
+        const result = await response.json();
         
         const tbody = document.querySelector('#outstandingTable tbody');
-        if (data.invoices && data.invoices.length > 0) {
-            tbody.innerHTML = data.invoices.map(invoice => `
-                <tr class="${invoice.daysOverdue > 0 ? 'table-row--danger' : ''}">
+        
+        if (result.success && result.data.length > 0) {
+            tbody.innerHTML = result.data.map(invoice => `
+                <tr class="${invoice.status === 'Overdue' ? 'table-row--danger' : ''}">
                     <td>${invoice.invoice_number}</td>
                     <td>${invoice.customer_name}</td>
-                    <td>${invoice.due_date}</td>
-                    <td>₹${invoice.outstanding_amount.toLocaleString()}</td>
-                    <td>${invoice.daysOverdue > 0 ? invoice.daysOverdue : '-'}</td>
-                    <td><span class="badge ${invoice.daysOverdue > 0 ? 'badge--danger' : 'badge--warning'}">${invoice.status}</span></td>
+                    <td><small>📍 ${invoice.shipping_address || 'N/A'}</small></td>
+                    <td>${invoice.invoice_date}</td>
+                    <td>₹${parseFloat(invoice.total_amount).toLocaleString()}</td>
+                    <td>₹${parseFloat(invoice.outstanding_amount).toLocaleString()}</td>
+                    <td>${invoice.days_overdue > 0 ? invoice.days_overdue + ' days' : '-'}</td>
+                    <td><span class="list-status">${invoice.status}</span></td>
                 </tr>
             `).join('');
         } else {
-            const message = data.message || 'No outstanding invoices';
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center">${message}</td></tr>`;
-        }
-        
-        if (data.error) {
-            console.warn('Outstanding invoices API error:', data.error);
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">No outstanding invoices found</td></tr>';
         }
     } catch (error) {
-        console.error('Failed to load outstanding invoices:', error);
+        console.warn('Outstanding invoices load failed:', error.message);
         const tbody = document.querySelector('#outstandingTable tbody');
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error loading data: ${error.message}</td></tr>`;
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center">Unable to load data</td></tr>';
     }
 }
 
 // Load outstanding-by-customer and update chart
 async function loadOutstandingByCustomer(limit = 10) {
     try {
-        const resp = await fetch(`/ergon/finance/outstanding-by-customer?limit=${limit}`);
+        const resp = await fetch(`../src/api/simple_api.php?action=outstanding-by-customer&limit=${limit}&prefix=BKGE`);
         const data = await resp.json();
-        if (outstandingByCustomerChart && data.labels) {
-            outstandingByCustomerChart.data.labels = data.labels;
-            outstandingByCustomerChart.data.datasets[0].data = data.data;
+        if (outstandingByCustomerChart && data.data && data.data.labels) {
+            outstandingByCustomerChart.data.labels = data.data.labels;
+            outstandingByCustomerChart.data.datasets[0].data = data.data.data;
             outstandingByCustomerChart.update();
         }
     } catch (err) {
@@ -1384,40 +1054,48 @@ async function loadOutstandingByCustomer(limit = 10) {
 
 // (Server-side export used via /ergon/finance/export-outstanding)
 
+
 async function loadRecentActivities(type = 'all') {
     try {
-        const response = await fetch('/ergon/finance/recent-activities');
-        if (!response.ok) {
-            throw new Error('Recent activities API not available');
-        }
-        const data = await response.json();
-        
+        const prefix = document.getElementById('companyPrefix').value;
         const container = document.getElementById('recentActivities');
-        if (data.activities && data.activities.length > 0) {
-            let filteredActivities = data.activities;
-            if (type !== 'all') {
-                filteredActivities = data.activities.filter(activity => activity.type === type);
-            }
-            
-            container.innerHTML = filteredActivities.map(activity => {
-                const statusClass = getActivityStatusClass(activity.status);
-                const timeAgo = getTimeAgo(activity.date);
-                
-                return `
-                    <div class="activity-item activity-item--${activity.type}">
-                        <div class="activity-icon">${activity.icon}</div>
-                        <div class="activity-content">
-                            <div class="activity-title">${activity.title}</div>
-                            <div class="activity-details">${activity.description}</div>
-                            <div class="activity-meta">
-                                <span class="activity-type">${getActivityTypeLabel(activity.type)}</span>
-                                <span class="activity-date">${timeAgo}</span>
-                            </div>
+        
+        if (!prefix) {
+            if (container) container.innerHTML = '<div class="activity-item"><div class="activity-loading">Select a company prefix to view activities</div></div>';
+            return;
+        }
+        
+        let url = `/ergon/src/api/activities.php?prefix=${encodeURIComponent(prefix)}&limit=20`;
+        if (type !== 'all') {
+            url += `&record_type=${encodeURIComponent(type)}`;
+        }
+        
+        const response = await fetch(url, {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Activities API unavailable');
+        const result = await response.json();
+        
+        if (!result.success) throw new Error(result.error || 'API returned error');
+        
+        if (result.data && result.data.length > 0) {
+            container.innerHTML = result.data.map(activity => `
+                <div class="activity-item">
+                    <div class="activity-icon">${activity.icon}</div>
+                    <div class="activity-content">
+                        <div class="activity-title">${activity.document_number}</div>
+                        <div class="activity-details">${activity.customer_name || 'N/A'} • ₹${activity.formatted_amount}</div>
+                        ${activity.shipping_address ? `<div class="activity-address">📍 ${activity.shipping_address}</div>` : ''}
+                        <div class="activity-meta">
+                            <span class="activity-type">${getActivityTypeLabel(activity.record_type)}</span>
+                            <span>${getTimeAgo(activity.created_at)}</span>
                         </div>
-                        <div class="activity-status ${statusClass}">${getStatusLabel(activity.status)}</div>
                     </div>
-                `;
-            }).join('');
+                    <div class="activity-status activity-status--${getActivityStatusClass(activity.status)}">
+                        ${getStatusLabel(activity.status)}
+                    </div>
+                </div>
+            `).join('');
         } else {
             container.innerHTML = '<div class="activity-item"><div class="activity-loading">No recent activities found</div></div>';
         }
@@ -1428,8 +1106,9 @@ async function loadRecentActivities(type = 'all') {
         });
         
     } catch (error) {
-        console.error('Failed to load recent activities:', error);
-        document.getElementById('recentActivities').innerHTML = '<div class="activity-item"><div class="activity-loading">Error loading activities</div></div>';
+        console.warn('Activities load failed:', error.message);
+        const container = document.getElementById('recentActivities');
+        if (container) container.innerHTML = '<div class="activity-item"><div class="activity-loading">Unable to load activities</div></div>';
     }
 }
 
@@ -1715,17 +1394,86 @@ function exportDashboard() {
 
 
 
+let prefixTree = {};
+
 async function loadCompanyPrefix() {
     try {
-        const response = await fetch('/ergon/finance/company-prefix');
+        const response = await fetch('/ergon/src/api/prefixes.php', {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Prefixes API unavailable');
         const data = await response.json();
-        const currentPrefix = data.prefix || '';
+        const datalist = document.getElementById('prefixSuggestions');
+        const input = document.getElementById('companyPrefix');
         
-        document.getElementById('companyPrefix').value = currentPrefix;
-        return currentPrefix;
+        if (data.success && data.prefixes.length > 0) {
+            datalist.innerHTML = '';
+            data.prefixes.forEach(prefix => {
+                datalist.innerHTML += `<option value="${prefix}">`;
+            });
+            
+            // Store prefix tree
+            prefixTree = data.prefix_tree || {};
+            
+            // Check for saved prefix in localStorage
+            const savedPrefix = localStorage.getItem('financePrefix');
+            const prefixToUse = savedPrefix || data.prefixes[0];
+            
+            // Save the prefix if it wasn't already saved
+            if (!savedPrefix) {
+                localStorage.setItem('financePrefix', prefixToUse);
+            }
+            
+            input.value = prefixToUse;
+            updateLetterSelectors(prefixToUse);
+            setTimeout(() => {
+                loadAllStatCardsData();
+                loadCustomersForFunnel();
+                updateConversionFunnel();
+                loadRecentActivities();
+            }, 100);
+            return prefixToUse;
+        } else {
+            input.placeholder = 'No prefixes found';
+            return '';
+        }
     } catch (error) {
-        console.error('Failed to load company prefix:', error);
+        console.warn('Prefixes load failed:', error.message);
+        const input = document.getElementById('companyPrefix');
+        if (input) input.placeholder = 'Enter prefix manually';
+        const container = document.getElementById('recentActivities');
+        if (container) container.innerHTML = '<div class="activity-item"><div class="activity-loading">Enter a company prefix to load activities</div></div>';
         return '';
+    }
+}
+
+function updateLetterSelectors(currentPrefix) {
+    const container = document.getElementById('letterSelectors');
+    container.innerHTML = '';
+    
+    if (prefixTree[currentPrefix] && Array.isArray(prefixTree[currentPrefix])) {
+        const select = document.createElement('select');
+        select.className = 'form-control form-control--sm';
+        select.style.maxWidth = '60px';
+        select.innerHTML = '<option value="">+</option>';
+        
+        prefixTree[currentPrefix].forEach(letter => {
+            select.innerHTML += `<option value="${letter}">${letter}</option>`;
+        });
+        
+        select.addEventListener('change', function() {
+            if (this.value) {
+                const input = document.getElementById('companyPrefix');
+                const newPrefix = currentPrefix + this.value;
+                input.value = newPrefix;
+                localStorage.setItem('financePrefix', newPrefix);
+                updateLetterSelectors(newPrefix);
+                updateCompanyPrefix();
+                loadAllStatCardsData();
+            }
+        });
+        
+        container.appendChild(select);
     }
 }
 
@@ -1737,43 +1485,33 @@ async function updateCompanyPrefix() {
     const input = document.getElementById('companyPrefix');
     const prefix = input.value.trim().toUpperCase();
     
-    const btn = document.getElementById('updatePrefixBtn');
-    btn.disabled = true;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<span class="btn__icon">⏳</span>';
-    
     try {
         const formData = new FormData();
         formData.append('company_prefix', prefix);
         
-        const response = await fetch('/ergon/finance/company-prefix', {
+        const response = await fetch('/ergon/finance/?action=company-prefix', {
             method: 'POST',
             body: formData
         });
         const result = await response.json();
         
         if (result.success) {
+            // Save prefix to localStorage
             if (prefix) {
-                showNotification(`Filtering by company: ${result.prefix}`, 'success');
+                localStorage.setItem('financePrefix', prefix);
+                showNotification(`Filtering by: ${prefix}`, 'success');
             } else {
+                localStorage.removeItem('financePrefix');
                 showNotification('Showing all companies', 'success');
             }
             
-            await loadCustomers();
-            
-            // Reset customer filter
-            const customerSelect = document.getElementById('customerFilter');
-            if (customerSelect) customerSelect.value = '';
-            
-            loadDashboardData();
+            loadAllStatCardsData();
+            loadCustomersForFunnel();
         } else {
             showNotification('Failed to update prefix: ' + (result.error || 'Unknown error'), 'error');
         }
     } catch (error) {
         showNotification('Failed to update prefix: ' + error.message, 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
     }
 }
 
@@ -1788,46 +1526,206 @@ function filterByCustomer() {
     loadDashboardData();
 }
 
-async function loadCustomers() {
-    const select = document.getElementById('customerFilter');
-    const loader = document.getElementById('customerLoader');
-    try {
-        if (loader) { loader.style.display = 'inline-block'; loader.innerHTML = '<span class="mini-spinner" aria-hidden="true"></span>'; }
-        if (select) { select.disabled = true; select.innerHTML = '<option value="">Loading customers...</option>'; }
 
-        const response = await fetch('/ergon/finance/customers');
-        const data = await response.json();
-
-        if (select) select.innerHTML = '<option value="">All Customers</option>';
-        if (data.customers) {
-            data.customers.forEach(customer => {
-                select.innerHTML += `<option value="${customer.display_name}">${customer.display}</option>`;
-            });
-        }
-    } catch (error) {
-        console.error('Failed to load customers:', error);
-        if (select) select.innerHTML = '<option value="">Failed to load</option>';
-    } finally {
-        if (loader) loader.style.display = 'none';
-        if (select) select.disabled = false;
-    }
-}
 
 async function refreshDashboardStats() {
     try {
-        showNotification('🔄 Running ETL process to refresh analytics...', 'info');
+        showNotification('🔄 Refreshing stat cards...', 'info');
+        await loadAllStatCardsData();
+        showNotification('✅ Stat cards refreshed', 'success');
+    } catch (error) {
+        showNotification('❌ Refresh failed: ' + error.message, 'error');
+    }
+}
+
+function forceUpdateStats() {
+    const prefix = document.getElementById('companyPrefix').value.trim();
+    if (!prefix) {
+        showNotification('Please enter a prefix first', 'warning');
+        return;
+    }
+    console.log('Force updating with prefix:', prefix);
+    loadAllStatCardsData();
+    loadCustomersForFunnel();
+    updateConversionFunnel();
+}
+
+async function loadCustomersForFunnel() {
+    try {
+        const prefix = document.getElementById('companyPrefix').value;
+        if (!prefix) return;
         
-        const response = await fetch('/ergon/finance/refresh-stats');
+        const customerSelect = document.getElementById('customerFilter');
+        if (!customerSelect) return;
+        
+        const response = await fetch(`/ergon/src/api/customers.php?prefix=${encodeURIComponent(prefix)}`, {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Customers API unavailable');
         const result = await response.json();
         
         if (result.success) {
-            showNotification(`✅ ETL refresh completed: ${result.records_processed} records processed`, 'success');
-            loadDashboardData();
-        } else {
-            showNotification('❌ ETL refresh failed: ' + (result.error || 'Unknown error'), 'error');
+            customerSelect.innerHTML = '<option value="">All Customers</option>';
+            result.customers.forEach(customer => {
+                customerSelect.innerHTML += `<option value="${customer.id}">${customer.display_name}</option>`;
+            });
         }
     } catch (error) {
-        showNotification('❌ ETL refresh failed: ' + error.message, 'error');
+        console.warn('Customers load failed:', error.message);
+    }
+}
+
+async function updateConversionFunnel() {
+    try {
+        const prefix = document.getElementById('companyPrefix').value;
+        if (!prefix) return;
+        
+        const customerSelect = document.getElementById('customerFilter');
+        const customerId = customerSelect ? customerSelect.value : '';
+        
+        let url = `/ergon/src/api/funnel.php?prefix=${encodeURIComponent(prefix)}`;
+        if (customerId) {
+            url += `&customer_id=${encodeURIComponent(customerId)}`;
+        }
+        
+        const response = await fetch(url, {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Funnel API unavailable');
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const data = result.data;
+            
+            // Container 1 - Quotations
+            const quotationsEl = document.getElementById('funnelQuotations');
+            const quotationValueEl = document.getElementById('funnelQuotationValue');
+            if (quotationsEl) quotationsEl.textContent = data.container1.quotation_count;
+            if (quotationValueEl) quotationValueEl.textContent = `₹${data.container1.quotation_value.toLocaleString()}`;
+            
+            // Container 2 - Purchase Orders
+            const posEl = document.getElementById('funnelPOs');
+            const poValueEl = document.getElementById('funnelPOValue');
+            const quotationToPOEl = document.getElementById('quotationToPO');
+            if (posEl) posEl.textContent = data.container2.po_count;
+            if (poValueEl) poValueEl.textContent = `₹${data.container2.po_value.toLocaleString()}`;
+            if (quotationToPOEl) quotationToPOEl.textContent = `${data.container2.conversion_rate}%`;
+            
+            // Container 3 - Invoices
+            const invoicesEl = document.getElementById('funnelInvoices');
+            const invoiceValueEl = document.getElementById('funnelInvoiceValue');
+            const poToInvoiceEl = document.getElementById('poToInvoice');
+            if (invoicesEl) invoicesEl.textContent = data.container3.invoice_count;
+            if (invoiceValueEl) invoiceValueEl.textContent = `₹${data.container3.invoice_value.toLocaleString()}`;
+            if (poToInvoiceEl) poToInvoiceEl.textContent = `${data.container3.conversion_rate}%`;
+            
+            // Container 4 - Payments
+            const paymentsEl = document.getElementById('funnelPayments');
+            const paymentValueEl = document.getElementById('funnelPaymentValue');
+            const invoiceToPaymentEl = document.getElementById('invoiceToPayment');
+            if (paymentsEl) paymentsEl.textContent = data.container4.payment_count;
+            if (paymentValueEl) paymentValueEl.textContent = `₹${data.container4.received_amount.toLocaleString()}`;
+            if (invoiceToPaymentEl) invoiceToPaymentEl.textContent = `${data.container4.conversion_rate}%`;
+        }
+        
+        // Update all analytics widgets and activities
+        updateAnalyticsWidgets().catch(e => console.warn('Analytics update failed:', e));
+        loadRecentActivities().catch(e => console.warn('Activities load failed:', e));
+    } catch (error) {
+        console.warn('Funnel update failed:', error.message);
+    }
+}
+
+async function updateAnalyticsWidgets() {
+    try {
+        const prefix = document.getElementById('companyPrefix').value;
+        const customerSelect = document.getElementById('customerFilter');
+        const customerId = customerSelect ? customerSelect.value : '';
+        
+        if (!prefix) {
+            console.log('No prefix for analytics widgets');
+            return;
+        }
+        
+        console.log('Updating analytics widgets for prefix:', prefix);
+        
+        const analyticsData = {
+            quotations: {},
+            invoices: {},
+            outstanding: {},
+            aging: {}
+        };
+        
+        // Charts are auto-rendered by dashboard-charts.js
+        
+
+        
+    } catch (error) {
+        console.error('Analytics widgets update failed:', error);
+    }
+}
+
+async function loadAllStatCardsData() {
+    try {
+        const prefix = document.getElementById('companyPrefix').value.trim() || '';
+        if (!prefix) {
+            console.log('No prefix selected, skipping stat cards update');
+            return;
+        }
+        const response = await fetch(`/ergon/src/api/dashboard/stats.php?prefix=${encodeURIComponent(prefix)}`, {
+            signal: AbortSignal.timeout(5000)
+        }).catch(e => null);
+        if (!response || !response.ok) throw new Error('Stats API unavailable');
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const data = result.data;
+            
+            // STAT CARD 1 — Total Invoice Amount
+            const card1 = data.stat_card_1 || {};
+            updateKPIValue('totalInvoiceAmount', parseFloat(card1.total_invoice_amount) || 0);
+            updateKPIDetail('totalInvoiceCount', parseInt(card1.invoice_count) || 0);
+            updateKPIDetail('avgInvoiceAmount', card1.invoice_count > 0 ? (parseFloat(card1.total_invoice_amount) / parseInt(card1.invoice_count)) : 0, true);
+            
+            // STAT CARD 2 — Amount Received
+            const card2 = data.stat_card_2 || {};
+            updateKPIValue('invoiceReceived', parseFloat(card2.amount_received) || 0);
+            updateKPIDetail('collectionRateKPI', parseFloat(card1.total_invoice_amount) > 0 ? Math.round((parseFloat(card2.amount_received) / parseFloat(card1.total_invoice_amount)) * 100) : 0, false, '%');
+            updateKPIDetail('paidInvoiceCount', parseInt(card2.paid_invoices) || 0);
+            
+            // STAT CARD 3 — Outstanding Amount
+            const card3 = data.stat_card_3 || {};
+            updateKPIValue('pendingInvoiceAmount', parseFloat(card3.total_outstanding) || 0);
+            updateKPIDetail('pendingInvoicesCount', parseInt(card3.pending_invoices) || 0);
+            updateKPIDetail('customersPendingCount', parseInt(card3.customers_involved) || 0);
+            updateKPIDetail('overdueAmount', parseFloat(card3.total_outstanding) || 0, true);
+            
+            // STAT CARD 4 — GST Liability
+            const card4 = data.stat_card_4 || {};
+            updateKPIValue('pendingGSTAmount', parseFloat(card4.total_gst) || 0);
+            updateKPIDetail('igstLiability', parseFloat(card4.igst) || 0, true);
+            updateKPIDetail('cgstSgstTotal', parseFloat(card4.cgst_sgst) || 0, true);
+            
+            // STAT CARD 5 — PO Commitments
+            const card5 = data.stat_card_5 || {};
+            updateKPIValue('pendingPOValue', parseFloat(card5.total_po_commitments) || 0);
+            updateKPIDetail('openPOCount', parseInt(card5.open_pos) || 0);
+            updateKPIDetail('closedPOCount', parseInt(card5.closed_pos) || 0);
+            
+            // STAT CARD 6 — Claimable Amount
+            const card6 = data.stat_card_6 || {};
+            updateKPIValue('claimableAmount', parseFloat(card6.claimable_amount) || 0);
+            updateKPIDetail('claimablePOCount', parseInt(card6.claimable_invoices) || 0);
+            updateKPIDetail('claimRate', parseFloat(card6.claim_rate) || 0, false, '%');
+        }
+        
+        // Update analytics widgets after stat cards
+        setTimeout(() => {
+            updateAnalyticsWidgets().catch(e => console.warn('Analytics update failed:', e));
+            loadOutstandingInvoices().catch(e => console.warn('Outstanding invoices failed:', e));
+        }, 100);
+    } catch (error) {
+        console.error('Failed to load all stat cards data:', error);
     }
 }
 </script>
@@ -1948,56 +1846,88 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 0;
+    gap: 0.75rem;
+    padding: 1.5rem 0;
 }
 
 .funnel-stage {
     text-align: center;
     flex: 1;
-    padding: 1rem;
-    background: var(--bg-secondary);
-    border-radius: 8px;
+    padding: 1.25rem 0.75rem;
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(255,255,255,0.5) 100%);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
     transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.funnel-stage::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .funnel-stage:hover {
-    background: var(--primary-light);
-    transform: translateY(-2px);
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-3px);
+}
+
+.funnel-stage:hover::before {
+    /*opacity: 1;*/
 }
 
 .funnel-number {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary);
-    margin-bottom: 0.25rem;
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary), var(--success));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
 }
 
 .funnel-label {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    font-weight: 600;
 }
 
 .funnel-value {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 1rem;
+    font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+    font-family: 'Courier New', monospace;
 }
 
 .funnel-conversion {
-    font-size: 0.75rem;
-    color: var(--success);
-    font-weight: 600;
+    display: inline-block;
+    font-size: 0.8rem;
+    color: white;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--success), #059669);
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    margin-top: 0.25rem;
 }
 
 .funnel-arrow {
-    font-size: 1.5rem;
-    color: var(--text-muted);
-    margin: 0 0.5rem;
+    font-size: 1.75rem;
+    color: var(--primary);
+    margin: 0 -0.25rem;
+    font-weight: 300;
+    opacity: 0.6;
 }
 
 /* Chart Summary */
@@ -2127,7 +2057,6 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 0.75rem;
-    height: 220px;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -2257,7 +2186,10 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 
 .kpi-card__details {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
     margin-top: 0.5rem;
     padding-top: 0.5rem;
     border-top: 1px solid var(--border-color);
@@ -2273,95 +2205,94 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     color: var(--text-primary);
 }
 
-/* Dashboard Header */
-.dashboard-header {
+.page-header-modern {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.75rem 1.5rem;
+    height: 60px;
+}
+
+.page-header-content {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    align-items: center;
+    height: 100%;
+    gap: 2rem;
 }
 
-.dashboard-header__title h1 {
-    margin: 0 0 0.25rem 0;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.dashboard-header__title p {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-}
-
-.dashboard-header__actions {
+.page-title-section {
     display: flex;
+    align-items: center;
     gap: 1rem;
-    align-items: flex-start;
 }
 
-.action-group {
+.page-title-section .page-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.page-title-section .page-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0;
+    white-space: nowrap;
+}
+
+.page-actions-section {
     display: flex;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
 }
 
-.filter-group {
+.filter-controls {
     display: flex;
     gap: 0.5rem;
     align-items: center;
 }
 
-.input-group {
-    display: blockruby;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.input-group .form-control {
-    border: none;
-    border-radius: 0;
+.filter-controls .form-group {
     margin: 0;
+    position: relative;
 }
 
-.input-group .btn {
-    border-radius: 0;
-    border-left: 1px solid var(--border-color);
-}
-
-.btn--sm {
-    padding: 0.5rem 0.75rem;
+.filter-controls .form-control {
+    width: 150px;
     font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+    height: 32px;
 }
 
-.btn__icon {
-    margin-right: 0.25rem;
+.filter-controls #companyPrefix {
+    width: 180px;
 }
 
-.form-control--sm {
-    padding: 0.5rem;
-    font-size: 0.8rem;
-    min-width: 120px;
+.letter-selectors {
+    display: flex;
+    gap: 2px;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 10;
+}
+
+.letter-selectors select {
+    width: 40px;
+    font-size: 0.7rem;
+    padding: 0.2rem;
+    height: 24px;
 }
 
 @media (max-width: 768px) {
-    .dashboard-header {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .dashboard-header__actions {
-        flex-direction: column;
-        width: 100%;
-    }
-    
-    .action-group,
-    .filter-group {
-        flex-wrap: wrap;
+    .page-header-content {
+        overflow-x: auto;
+        flex-wrap: nowrap;
     }
 }
 
@@ -2455,12 +2386,37 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.2s ease;
+    position: relative;
 }
 
 .filter-btn.active {
     background: var(--primary);
     color: white;
     border-color: var(--primary);
+}
+
+.filter-btn::after {
+    content: attr(title);
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease;
+    z-index: 1000;
+    margin-top: 0.25rem;
+}
+
+.filter-btn:hover::after {
+    opacity: 1;
+    visibility: visible;
 }
 
 /* Activity Items */
@@ -2543,6 +2499,12 @@ require_once __DIR__ . '/../layouts/dashboard.php';
     text-align: center;
     color: var(--text-muted);
     font-style: italic;
+}
+
+.activity-address {
+    margin-top: 0.25rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
 }
 
 @media (max-width: 768px) {

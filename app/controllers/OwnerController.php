@@ -24,60 +24,20 @@ class OwnerController extends Controller {
         try {
             $db = Database::connect();
             
-            // Get comprehensive statistics
+            // Get basic statistics only
             $stats = [
                 'total_users' => $this->getTotalUsers($db),
-                'total_admins' => $this->getTotalAdmins($db),
-                'total_departments' => $this->getTotalDepartments($db),
-                'pending_final_approvals' => $this->getPendingFinalApprovals($db),
-                'active_tasks' => $this->getActiveTasks($db),
-                'today_attendance' => $this->getTodayAttendance($db),
-                'monthly_productivity' => $this->getMonthlyProductivity($db),
                 'pending_leaves' => $this->getPendingLeavesCount($db),
                 'pending_expenses' => $this->getPendingExpensesCount($db),
-                // Project stats for dashboard cards
-                'active_projects' => $this->getActiveProjectsCount($db),
-                'completed_tasks' => $this->getCompletedTasksCount($db),
-                'avg_progress' => $this->getAverageProgress($db),
-                'in_progress' => $this->getInProgressTasksCount($db),
-                'pending' => $this->getPendingTasksCount($db),
-                'completion_rate' => $this->getCompletionRate($db),
-                // Delayed tasks stats
-                'overdue_tasks' => $this->getOverdueTasksCount($db),
-                'due_this_week' => $this->getDueThisWeekCount($db),
-                'due_tomorrow' => $this->getDueTomorrowCount($db),
-                'rescheduled' => $this->getRescheduledTasksCount($db),
-                'critical' => $this->getCriticalTasksCount($db),
-                'ontime_rate' => $this->getOntimeRate($db),
-                // Approval stats
-                'leave_requests' => $this->getPendingLeavesCount($db),
-                'expense_claims' => $this->getPendingExpensesCount($db),
-                'advance_requests' => $this->getPendingAdvancesCount($db)
+                'active_tasks' => $this->getActiveTasks($db)
             ];
-            
-            // Get items requiring owner's final approval
-            $finalApprovals = [
-                'leaves' => $this->getPendingLeaves($db, 'final'),
-                'expenses' => $this->getPendingExpenses($db, 'final'),
-                'advances' => $this->getPendingAdvances($db, 'final')
-            ];
-            
-            // Get system alerts
-            $alerts = $this->getSystemAlerts($db);
-            
-
-            
-            // Force clear any cached data
-            if (function_exists('opcache_reset')) {
-                opcache_reset();
-            }
             
             $this->view('owner/dashboard', [
                 'data' => [
                     'stats' => $stats,
-                    'final_approvals' => $finalApprovals,
-                    'alerts' => $alerts,
-                    'recent_activities' => [] // Add empty activities for now
+                    'final_approvals' => [],
+                    'alerts' => [],
+                    'recent_activities' => []
                 ],
                 'active_page' => 'dashboard'
             ]);
@@ -655,15 +615,15 @@ class OwnerController extends Controller {
             $tables = ['leaves', 'expenses', 'advances'];
             
             foreach ($tables as $table) {
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approval ENUM('pending', 'approved', 'rejected') DEFAULT 'pending'");
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approved_by INT DEFAULT NULL");
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approved_at DATETIME DEFAULT NULL");
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_comments TEXT DEFAULT NULL");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approval ENUM('pending', 'approved', 'rejected') DEFAULT 'pending'", "Alter table");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approved_by INT DEFAULT NULL", "Alter table");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approved_at DATETIME DEFAULT NULL", "Alter table");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_comments TEXT DEFAULT NULL", "Alter table");
                 
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS owner_approval ENUM('pending', 'approved', 'rejected') DEFAULT 'pending'");
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS owner_approved_by INT DEFAULT NULL");
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS owner_approved_at DATETIME DEFAULT NULL");
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS owner_comments TEXT DEFAULT NULL");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS owner_approval ENUM('pending', 'approved', 'rejected') DEFAULT 'pending'", "Alter table");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS owner_approved_by INT DEFAULT NULL", "Alter table");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS owner_approved_at DATETIME DEFAULT NULL", "Alter table");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS owner_comments TEXT DEFAULT NULL", "Alter table");
             }
         } catch (Exception $e) {
             error_log('Column creation error: ' . $e->getMessage());

@@ -67,15 +67,15 @@ class AttendanceCron {
             foreach ($users as $user) {
                 $checkStmt = $this->db->prepare("
                     SELECT id FROM attendance 
-                    WHERE user_id = ? AND DATE(check_in) = CURDATE()
+                    WHERE user_id = ? AND (DATE(check_in) = CURDATE() OR date = CURDATE())
                 ");
                 $checkStmt->execute([$user['id']]);
                 
                 if (!$checkStmt->fetch()) {
                     $insertStmt = $this->db->prepare("
                         INSERT INTO attendance 
-                        (user_id, check_in, status, remarks, created_at) 
-                        VALUES (?, NULL, 'absent', 'Marked absent by system', NOW())
+                        (user_id, date, status, created_at) 
+                        VALUES (?, CURDATE(), 'absent', NOW())
                     ");
                     $insertStmt->execute([$user['id']]);
                     echo "Marked absent: User ID {$user['id']}\n";

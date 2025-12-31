@@ -652,7 +652,7 @@ async function showTableStructure() {
         modal.style.maxHeight = '80%';
         modal.style.overflow = 'auto';
         modal.style.zIndex = '10000';
-        modal.innerHTML = structureHtml + '<button onclick="this.parentNode.remove()" style="margin-top: 15px; padding: 8px 16px;">Close</button>';
+        modal.innerHTML = structureHtml + '<button onclick="hideClosestModal(this)" style="margin-top: 15px; padding: 8px 16px;">Close</button>';
         document.body.appendChild(modal);
         
         btn.disabled = false;

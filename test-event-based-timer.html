@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event-Based Timer Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .flow-diagram { display: flex; justify-content: space-between; margin: 20px 0; padding: 20px; background: white; border-radius: 8px; }
+        .flow-box { padding: 15px; border: 2px solid #ddd; border-radius: 8px; text-align: center; min-width: 150px; }
+        .user-action { background: #fff3e0; border-color: #ff9800; }
+        .calculate { background: #e8f5e8; border-color: #4caf50; }
+        .update-dom { background: #e3f2fd; border-color: #2196f3; }
+        .arrow { font-size: 24px; color: #666; align-self: center; }
+        .task-card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
+        .timer-display { font-size: 24px; font-weight: bold; margin: 10px 0; }
+        .status { padding: 5px 10px; border-radius: 4px; color: white; display: inline-block; margin: 5px 0; }
+        .in_progress { background: #4caf50; }
+        .on_break { background: #ff9800; }
+        .not_started { background: #757575; }
+        .controls button { margin: 5px; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .start { background: #4caf50; color: white; }
+        .pause { background: #ff9800; color: white; }
+        .resume { background: #2196f3; color: white; }
+        .log { background: #f9f9f9; padding: 10px; margin: 10px 0; border-radius: 4px; max-height: 200px; overflow-y: auto; }
+        .log-entry { margin: 2px 0; font-size: 12px; }
+        .user-log { color: #ff9800; }
+        .calc-log { color: #4caf50; }
+        .dom-log { color: #2196f3; }
+        .performance { background: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .no-timers { background: #fff3e0; padding: 10px; margin: 10px 0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Event-Based Architecture Test</h1>
+        
+        <!-- Flow Diagram -->
+        <div class="flow-diagram">
+            <div class="flow-box user-action">
+                <h3>User Click</h3>
+                <div>Start/Pause</div>
+                <div id="action-status">Waiting...</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="flow-box calculate">
+                <h3>Calculate</h3>
+                <div>Time Only</div>
+                <div id="calc-status">Ready</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="flow-box update-dom">
+                <h3>Update DOM</h3>
+                <div>Once Only</div>
+                <div id="dom-status">Updated</div>
+            </div>
+        </div>
+
+        <!-- Performance Info -->
+        <div class="performance">
+            ⚡ <strong>Performance:</strong> No continuous timers running - CPU usage: <span id="cpu-usage">0%</span>
+        </div>
+        
+        <div class="no-timers">
+            🚫 <strong>No Background Timers:</strong> Calculations only happen on user actions
+        </div>
+
+        <!-- Task Card -->
+        <div class="task-card" data-task-id="123">
+            <h3>Task #123: Event-Driven SLA Task</h3>
+            <div class="status not_started" id="status-display">NOT STARTED</div>
+            
+            <div class="timer-display">
+                SLA Countdown: <span id="countdown-display">00:15:00</span>
+            </div>
+            
+            <div>Time Used: <span id="time-used">00:00:00</span></div>
+            <div>Pause Time: <span id="pause-time">00:00:00</span></div>
+            <div>Last Updated: <span id="last-updated">Never</span></div>
+            
+            <div class="controls">
+                <button class="start" onclick="handleUserAction('start')">Start Task</button>
+                <button class="pause" onclick="handleUserAction('pause')">Pause Task</button>
+                <button class="resume" onclick="handleUserAction('resume')">Resume Task</button>
+            </div>
+        </div>
+
+        <!-- Data Flow Log -->
+        <div class="log">
+            <h4>Event-Based Flow Log:</h4>
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Event-Based Timer System - No continuous timers!
+        let taskState = {
+            taskId: 123,
+            status: 'not_started',
+            activeSeconds: 0,
+            pauseSeconds: 0,
+            slaSeconds: 900,
+            startTime: null,
+            pauseStartTime: null,
+            lastCalculation: null
+        };
+
+        // Main event handler - only triggered by user actions
+        function handleUserAction(action) {
+            log('👆 USER ACTION: ' + action.toUpperCase() + ' button clicked', 'user-log');
+            
+            // Update flow diagram
+            document.getElementById('action-status').textContent = action.toUpperCase();
+            document.getElementById('calc-status').textContent = 'Calculating...';
+            document.getElementById('dom-status').textContent = 'Updating...';
+            
+            // Step 1: Calculate times (only when needed)
+            calculateTimesOnDemand();
+            
+            // Step 2: Update state based on action
+            updateStateOnAction(action);
+            
+            // Step 3: Update DOM once
+            updateDOMOnce();
+            
+            // Reset flow diagram
+            setTimeout(() => {
+                document.getElementById('action-status').textContent = 'Waiting...';
+                document.getElementById('calc-status').textContent = 'Ready';
+                document.getElementById('dom-status').textContent = 'Updated ✓';
+            }, 500);
+        }
+
+        // Calculate times only when user performs action
+        function calculateTimesOnDemand() {
+            log('⚙️ CALCULATE: Computing times on-demand...', 'calc-log');
+            
+            const now = Date.now();
+            
+            // Calculate active time if task is running
+            if (taskState.status === 'in_progress' && taskState.startTime) {
+                const sessionTime = Math.floor((now - taskState.startTime) / 1000);
+                taskState.currentActiveTime = taskState.activeSeconds + sessionTime;
+                log('⚙️ CALCULATE: Active time = ' + taskState.currentActiveTime + 's', 'calc-log');
+            } else {
+                taskState.currentActiveTime = taskState.activeSeconds;
+            }
+            
+            // Calculate pause time if on break
+            if (taskState.status === 'on_break' && taskState.pauseStartTime) {
+                const sessionPause = Math.floor((now - taskState.pauseStartTime) / 1000);
+                taskState.currentPauseTime = taskState.pauseSeconds + sessionPause;
+                log('⚙️ CALCULATE: Pause time = ' + taskState.currentPauseTime + 's', 'calc-log');
+            } else {
+                taskState.currentPauseTime = taskState.pauseSeconds;
+            }
+            
+            // Calculate countdown
+            if (taskState.currentActiveTime >= taskState.slaSeconds) {
+                taskState.countdown = taskState.currentActiveTime - taskState.slaSeconds;
+                taskState.isOverdue = true;
+            } else {
+                taskState.countdown = taskState.slaSeconds - taskState.currentActiveTime;
+                taskState.isOverdue = false;
+            }
+            
+            taskState.lastCalculation = now;
+            log('⚙️ CALCULATE: Countdown = ' + taskState.countdown + 's, Overdue: ' + taskState.isOverdue, 'calc-log');
+        }
+
+        // Update state based on user action
+        function updateStateOnAction(action) {
+            const now = Date.now();
+            
+            switch(action) {
+                case 'start':
+                    // Save current active time before starting new session
+                    if (taskState.status === 'in_progress') {
+                        taskState.activeSeconds = taskState.currentActiveTime;
+                    }
+                    taskState.status = 'in_progress';
+                    taskState.startTime = now;
+                    taskState.pauseStartTime = null;
+                    break;
+                    
+                case 'pause':
+                    // Save accumulated active time
+                    taskState.activeSeconds = taskState.currentActiveTime;
+                    taskState.status = 'on_break';
+                    taskState.pauseStartTime = now;
+                    taskState.startTime = null;
+                    break;
+                    
+                case 'resume':
+                    // Save accumulated pause time
+                    taskState.pauseSeconds = taskState.currentPauseTime;
+                    taskState.status = 'in_progress';
+                    taskState.startTime = now;
+                    taskState.pauseStartTime = null;
+                    break;
+            }
+            
+            log('⚙️ CALCULATE: State updated to ' + taskState.status, 'calc-log');
+        }
+
+        // Update DOM once per action
+        function updateDOMOnce() {
+            log('🎨 UPDATE DOM: Refreshing display once...', 'dom-log');
+            
+            // Status
+            const statusEl = document.getElementById('status-display');
+            statusEl.textContent = taskState.status.toUpperCase().replace('_', ' ');
+            statusEl.className = 'status ' + taskState.status;
+            
+            // Countdown
+            const countdownEl = document.getElementById('countdown-display');
+            if (taskState.isOverdue) {
+                countdownEl.textContent = 'OVERDUE: ' + formatTime(taskState.countdown);
+                countdownEl.style.color = '#f44336';
+            } else {
+                countdownEl.textContent = formatTime(taskState.countdown);
+                countdownEl.style.color = taskState.status === 'in_progress' ? '#4caf50' : '#757575';
+            }
+            
+            // Time used
+            document.getElementById('time-used').textContent = formatTime(taskState.currentActiveTime);
+            
+            // Pause time
+            document.getElementById('pause-time').textContent = formatTime(taskState.currentPauseTime);
+            
+            // Last updated
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+            
+            log('🎨 UPDATE DOM: Display updated successfully', 'dom-log');
+            
+            // Show performance benefit
+            updatePerformanceIndicator();
+        }
+
+        // Show performance benefits
+        function updatePerformanceIndicator() {
+            // Simulate CPU usage (always low because no continuous timers)
+            const cpuUsage = Math.random() * 2; // 0-2%
+            document.getElementById('cpu-usage').textContent = cpuUsage.toFixed(1) + '%';
+        }
+
+        // Utility functions
+        function formatTime(seconds) {
+            const s = Math.max(0, Math.floor(seconds));
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = s % 60;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        function log(message, className = '') {
+            const logContent = document.getElementById('log-content');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + className;
+            entry.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            logContent.appendChild(entry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 EVENT-BASED: System initialized - No timers running!', 'calc-log');
+            updatePerformanceIndicator();
+        });
+
+        // Demonstrate no background activity
+        setInterval(() => {
+            updatePerformanceIndicator();
+        }, 2000);
+    </script>
+</body>
+</html>

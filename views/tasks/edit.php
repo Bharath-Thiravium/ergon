@@ -9,7 +9,7 @@ $content = ob_start();
         <button type="button" class="btn-help" onclick="toggleHelpPanel()" title="Show Help">
             ❓ Help
         </button>
-        <a href="/ergon/tasks" class="btn-back">← Back</a>
+        <a href="javascript:history.back()" class="btn-back">← Back</a>
     </div>
 </div>
 
@@ -153,13 +153,6 @@ $content = ob_start();
                     <label for="assigned_to">🎯 Assign To *</label>
                     <select id="assigned_to" name="assigned_to" required>
                         <option value="<?= $_SESSION['user_id'] ?>" <?= ($task['assigned_to'] ?? '') == $_SESSION['user_id'] ? 'selected' : '' ?>><?= htmlspecialchars($_SESSION['user_name'] ?? 'You') ?></option>
-                        <?php if (!empty($users)): ?>
-                            <?php foreach ($users as $user): ?>
-                                <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                    <option value="<?= $user['id'] ?>" <?= ($task['assigned_to'] ?? '') == $user['id'] ? 'selected' : '' ?> style="<?= ($task['assigned_to'] ?? '') == $_SESSION['user_id'] ? 'display: none;' : '' ?>"><?= htmlspecialchars($user['name']) ?></option>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
                     </select>
                 </div>
                 <div class="form-group">
@@ -438,7 +431,7 @@ $content = ob_start();
             <button type="submit" class="btn-primary">
                 ✨ Update Task
             </button>
-            <a href="/ergon/tasks" class="btn-secondary">
+            <a href="javascript:history.back()" class="btn-secondary">
                 ❌ Cancel
             </a>
         </div>
@@ -464,22 +457,24 @@ function updateProgressValue(value) {
 function loadTaskCategories() {
     const deptSelect = document.getElementById('department_id');
     const categorySelect = document.getElementById('task_category');
+    const projectSelect = document.getElementById('project_id');
     const deptId = deptSelect.value;
     const currentCategory = '<?= htmlspecialchars($task['task_category'] ?? '') ?>';
 
     // Clear existing options
     categorySelect.innerHTML = '<option value="">Select Category</option>';
+    projectSelect.innerHTML = '<option value="">Select Project</option>';
 
     if (!deptId) return;
 
     // Fetch categories for selected department via API
-    fetch(`/ergon/api/task-categories?department_id=${deptId}`)
-        .then(response => response.json())
+    fetch(`/ergon/api/task-categories.php?department_id=${deptId}`)
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
         .then(data => {
-            console.log('Categories data:', data);
-            if (data.categories) {
-                console.log('Found categories:', data.categories.length);
-                // Populate category dropdown with fetched data
+            if (data.success && data.categories && data.categories.length > 0) {
                 data.categories.forEach(category => {
                     const option = document.createElement('option');
                     option.value = category.category_name;
@@ -499,10 +494,42 @@ function loadTaskCategories() {
                     categorySelect.appendChild(option);
                 }
             } else {
-                console.log('No categories found in response');
+                categorySelect.innerHTML += '<option value="" disabled>No categories found</option>';
             }
         })
-        .catch(error => console.error('Error loading categories:', error));
+        .catch(error => {
+            console.error('Error loading categories:', error);
+            categorySelect.innerHTML += '<option value="" disabled>Error loading categories</option>';
+        });
+    
+    // Load projects filtered by department
+    loadProjectsByDepartment(deptId);
+}
+
+// Load projects filtered by department
+function loadProjectsByDepartment(deptId) {
+    const projectSelect = document.getElementById('project_id');
+    const currentProject = '<?= $task['project_id'] ?? '' ?>';
+    
+    fetch(`/ergon/api/projects.php?department_id=${deptId}`)
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.projects && data.projects.length > 0) {
+                data.projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.id;
+                    option.textContent = project.name;
+                    if (project.id == currentProject) {
+                        option.selected = true;
+                    }
+                    projectSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('Error loading projects:', error));
 }
 
 // Toggle follow-up fields
@@ -590,26 +617,59 @@ function handleCategoryChange() {
 function handleAssignmentTypeChange() {
     const assignmentType = document.getElementById('assigned_for').value;
     const assignedToSelect = document.getElementById('assigned_to');
-    const options = assignedToSelect.querySelectorAll('option');
     
     if (assignmentType === 'self') {
         // Show only current user
-        options.forEach(option => {
-            if (option.value === '<?= $_SESSION['user_id'] ?>') {
-                option.style.display = 'block';
-                option.selected = true;
-            } else {
-                option.style.display = 'none';
-                option.selected = false;
-            }
-        });
+        assignedToSelect.innerHTML = '<option value="<?= $_SESSION['user_id'] ?>" selected><?= htmlspecialchars($_SESSION['user_name'] ?? 'You') ?></option>';
     } else {
-        // Show all users
-        options.forEach(option => {
-            option.style.display = 'block';
-        });
-        assignedToSelect.value = '';
+        // Load all filtered users
+        loadAllUsers();
     }
+}
+
+// Load all users for assignment
+function loadAllUsers() {
+    const assignedToSelect = document.getElementById('assigned_to');
+    const currentAssignedTo = '<?= $task['assigned_to'] ?? '' ?>';
+    assignedToSelect.innerHTML = '<option value="">Loading users...</option>';
+    
+    fetch('/ergon/api/users?v=' + Date.now())
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.users && data.users.length > 0) {
+                assignedToSelect.innerHTML = '<option value="">Select User</option>';
+                data.users.forEach(user => {
+                    // Skip specific owner IDs (production: 59, 1)
+                    if (user.id == 59 || user.id == 1) {
+                        return;
+                    }
+                    
+                    // Skip owner/company_owner roles or users with owner-like names
+                    if ((user.role && (user.role === 'owner' || user.role === 'company_owner')) ||
+                        (user.name && (user.name.toLowerCase().includes('owner') || 
+                                      user.name.toLowerCase().includes('admin') && user.email && user.email.includes('ergon'))) ||
+                        (user.email && (user.email.includes('owner') || user.email.includes('admin@ergon')))) {
+                        return;
+                    }
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = user.name + (user.email ? ' (' + user.email + ')' : '');
+                    if (user.id == currentAssignedTo) {
+                        option.selected = true;
+                    }
+                    assignedToSelect.appendChild(option);
+                });
+            } else {
+                assignedToSelect.innerHTML = '<option value="">No users found</option>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading users:', error);
+            assignedToSelect.innerHTML = '<option value="">Error loading users</option>';
+        });
 }
 
 // Global variables
@@ -963,6 +1023,16 @@ document.addEventListener('DOMContentLoaded', function() {
         followupRequiredFields.forEach(field => {
             if (field) field.setAttribute('required', 'required');
         });
+    }
+    
+    // Initialize assignment dropdown based on current assignment
+    const currentAssignedTo = '<?= $task['assigned_to'] ?? '' ?>';
+    const currentUserId = '<?= $_SESSION['user_id'] ?>';
+    const assignmentTypeSelect = document.getElementById('assigned_for');
+    
+    if (currentAssignedTo && currentAssignedTo != currentUserId) {
+        assignmentTypeSelect.value = 'other';
+        loadAllUsers();
     }
     
     document.getElementById('editTaskForm').addEventListener('submit', function(e) {

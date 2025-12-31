@@ -19,6 +19,7 @@ $content = ob_start();
 <link rel="stylesheet" href="/ergon/assets/css/unified-daily-planner.css">
 <link rel="stylesheet" href="/ergon/assets/css/task-timing.css">
 <link rel="stylesheet" href="/ergon/assets/css/sla-dashboard-improvements.css">
+<link rel="stylesheet" href="/ergon/assets/css/task-progress-enhanced.css">
 
 <?php renderModalCSS(); ?>
 
@@ -139,10 +140,11 @@ data-user-id="<?= htmlspecialchars($_SESSION['user_id'] ?? '1', ENT_QUOTES, 'UTF
                             $remainingTime = max(0, $slaDuration - $elapsed);
                         }
                         
+                        // Solution 2: Fix PHP Initial Display
                         $timeDisplay = sprintf('%02d:%02d:%02d', 
-                            (int)floor($remainingTime / 3600), 
-                            (int)floor(($remainingTime % 3600) / 60), 
-                            (int)floor($remainingTime % 60)
+                            floor($slaDuration / 3600), 
+                            floor(($slaDuration % 3600) / 60), 
+                            $slaDuration % 60
                         );
                         
                         $cssClass = '';
@@ -174,15 +176,21 @@ data-user-id="<?= htmlspecialchars($_SESSION['user_id'] ?? '1', ENT_QUOTES, 'UTF
                         elseif ($isFutureDate) $modeClass = 'planning-mode';
                         else $modeClass = 'execution-mode';
                         ?>
+                        <?php
+                        // Fix timestamp initialization with ISO format
+                        $currentStartTime = $task['start_time'] ? date('c', strtotime($task['start_time'])) : '';
+                        $currentResumeTime = $task['resume_time'] ? date('c', strtotime($task['resume_time'])) : '';
+                        $currentPauseTime = $task['pause_start_time'] ? date('c', strtotime($task['pause_start_time'])) : '';
+                        ?>
                         <div class="task-card <?= $cssClass ?> <?= $historicalClass ?> <?= $modeClass ?>" 
                              data-task-id="<?= $taskId ?>" 
                              data-original-task-id="<?= $task['task_id'] ?? '' ?>" 
                              data-sla-duration="<?= $slaDuration ?>" 
-                             data-start-time="<?= $startTimestamp ?>" 
-                             data-status="<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>"
-                             data-task-source="<?= htmlspecialchars($taskSource, ENT_QUOTES, 'UTF-8') ?>"
-                             data-pause-time="<?= htmlspecialchars($task['pause_time'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-                             data-pause-start-time="<?= htmlspecialchars($task['pause_start_time'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                             data-start-time="<?= $currentStartTime ?>" 
+                             data-resume-time="<?= $currentResumeTime ?>"
+                             data-status="<?= $status ?>"
+                             data-task-source="<?= $taskSource ?>"
+                             data-pause-start-time="<?= $currentPauseTime ?>"
                              data-active-seconds="<?= (int)($task['active_seconds'] ?? 0) ?>"
                              data-pause-duration="<?= (int)($task['pause_duration'] ?? 0) ?>"
                              data-is-past="<?= $isPastDate ? 'true' : 'false' ?>">
@@ -213,7 +221,7 @@ data-user-id="<?= htmlspecialchars($_SESSION['user_id'] ?? '1', ENT_QUOTES, 'UTF
                                 <p class="task-card__description"><?= htmlspecialchars($task['description'] ?? 'No description') ?></p>
                                 
                                 <?php 
-                                $completedPercentage = $task['completed_percentage'] ?? 0;
+                                $completedPercentage = (int)($task['completed_percentage'] ?? 0);
                                 if ($completedPercentage > 0 || $status === 'in_progress'): 
                                 ?>
                                     <div class="task-card__progress">
@@ -231,19 +239,15 @@ data-user-id="<?= htmlspecialchars($_SESSION['user_id'] ?? '1', ENT_QUOTES, 'UTF
                                 $activeSeconds = $task['active_seconds'] ?? 0;
                                 $pauseSeconds = $task['pause_duration'] ?? 0;
                                 
-                                // Calculate current pause time if on break
-                                $currentPauseTime = 0;
-                                if ($status === 'on_break' && !empty($task['pause_start_time'])) {
-                                    $pauseStartTimestamp = strtotime($task['pause_start_time']);
-                                    $currentPauseTime = time() - $pauseStartTimestamp;
-                                }
-                                $totalPauseTime = $pauseSeconds + $currentPauseTime;
+                                // Static pause time only - no live calculation
+                                $totalPauseTime = (int)($task['pause_duration'] ?? 0);
                                 
                                 // Apply formula: Overdue = Duration Exceeding the SLA Time
                                 $isOverdue = $activeSeconds > $slaDuration;
                                 $overdueSeconds = $isOverdue ? $activeSeconds - $slaDuration : 0;
                                 // Apply formula: Time Used = Overdue + SLA Time (when overdue)
-                                $timeUsedSeconds = $isOverdue ? $overdueSeconds + $slaDuration : $activeSeconds;
+                                // Solution 2: Fix PHP Time Used Formula - Time Used = Active Time + Break Time
+                                $timeUsedSeconds = $activeSeconds + $totalPauseTime;
                                 $remainingSeconds = max(0, $slaDuration - $activeSeconds);
                                 
                                 $slaTimeDisplay = sprintf('%02d:%02d:%02d', 
@@ -309,7 +313,7 @@ data-user-id="<?= htmlspecialchars($_SESSION['user_id'] ?? '1', ENT_QUOTES, 'UTF
                                         </button>
                                         <?php if ($status === 'completed'): ?>
                                             <span class="badge badge--success"><i class="bi bi-check-circle"></i> Completed</span>
-                                            <button class="btn btn--sm btn--info" onclick="showReadOnlyProgress(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 100 ?>)" title="View completion details (read-only)">
+                                            <button class="btn btn--sm btn--info" onclick="showReadOnlyProgress(<?= $taskId ?>, <?= (int)($task['completed_percentage'] ?? 100) ?>)" title="View completion details (read-only)">
                                                 <i class="bi bi-percent"></i> Progress
                                             </button>
                                         <?php else: ?>
@@ -323,22 +327,22 @@ data-user-id="<?= htmlspecialchars($_SESSION['user_id'] ?? '1', ENT_QUOTES, 'UTF
                                             $canStart = $isCurrentDate && $isPostponedToToday;
                                         ?>
                                             <?php if ($canStart): ?>
-                                                <button class="btn btn--sm btn--success" onclick="activatePostponedTask(<?= $taskId ?>)" title="Start this postponed task">
+                                                <button type="button" class="btn btn--sm btn--success" onclick="activatePostponedTask(<?= $taskId ?>, event)" title="Start this postponed task">
                                                     <i class="bi bi-play"></i> Start
                                                 </button>
                                             <?php else: ?>
                                                 <span class="badge badge--warning"><i class="bi bi-calendar-plus"></i> Postponed</span>
                                             <?php endif; ?>
                                             
-                                            <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)" title="Re-postpone to another date">
+                                            <button type="button" class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>, event)" title="Re-postpone to another date">
                                                 <i class="bi bi-calendar-plus"></i> Re-postpone
                                             </button>
                                         <?php elseif ($status === 'not_started' || $status === 'assigned'): ?>
                                             <?php if ($isCurrentDate): ?>
-                                                <button class="btn btn--sm btn--success" onclick="startTask(<?= $taskId ?>)" title="Start working on this task">
+                                                <button type="button" class="btn btn--sm btn--success" onclick="startTask(<?= $taskId ?>, event)" title="Start working on this task">
                                                     <i class="bi bi-play"></i> Start
                                                 </button>
-                                                <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)" title="Postpone task to another date">
+                                                <button type="button" class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>, event)" title="Postpone task to another date">
                                                     <i class="bi bi-calendar-plus"></i> Postpone
                                                 </button>
                                             <?php else: ?>
@@ -351,13 +355,13 @@ data-user-id="<?= htmlspecialchars($_SESSION['user_id'] ?? '1', ENT_QUOTES, 'UTF
                                             <?php endif; ?>
                                         <?php elseif ($status === 'in_progress'): ?>
                                             <?php if ($isCurrentDate): ?>
-                                                <button class="btn btn--sm btn--warning" onclick="pauseTask(<?= $taskId ?>)" title="Take a break from this task">
+                                                <button type="button" class="btn btn--sm btn--warning" onclick="pauseTask(<?= $taskId ?>, event)" title="Take a break from this task">
                                                     <i class="bi bi-pause"></i> Break
                                                 </button>
-                                                <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')" title="Update task completion progress">
+                                                <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= (int)($task['completed_percentage'] ?? 0) ?>, '<?= $status ?>')" title="Update task completion progress">
                                                     <i class="bi bi-percent"></i> Update Progress
                                                 </button>
-                                                <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)" title="Postpone task to another date">
+                                                <button type="button" class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>, event)" title="Postpone task to another date">
                                                     <i class="bi bi-calendar-plus"></i> Postpone
                                                 </button>
                                             <?php else: ?>
@@ -373,13 +377,13 @@ data-user-id="<?= htmlspecialchars($_SESSION['user_id'] ?? '1', ENT_QUOTES, 'UTF
                                             <?php endif; ?>
                                         <?php elseif ($status === 'on_break'): ?>
                                             <?php if ($isCurrentDate): ?>
-                                                <button class="btn btn--sm btn--success" onclick="resumeTask(<?= $taskId ?>)" title="Resume working on this task">
+                                                <button type="button" class="btn btn--sm btn--success" onclick="resumeTask(<?= $taskId ?>, event)" title="Resume working on this task">
                                                     <i class="bi bi-play"></i> Resume
                                                 </button>
-                                                <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= $task['completed_percentage'] ?? 0 ?>, '<?= $status ?>')" title="Update task completion progress">
+                                                <button class="btn btn--sm btn--primary" onclick="openProgressModal(<?= $taskId ?>, <?= (int)($task['completed_percentage'] ?? 0) ?>, '<?= $status ?>')" title="Update task completion progress">
                                                     <i class="bi bi-percent"></i> Update Progress
                                                 </button>
-                                                <button class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>)" title="Postpone task to another date">
+                                                <button type="button" class="btn btn--sm btn--secondary" onclick="postponeTask(<?= $taskId ?>, event)" title="Postpone task to another date">
                                                     <i class="bi bi-calendar-plus"></i> Postpone
                                                 </button>
                                             <?php else: ?>
@@ -536,31 +540,32 @@ $quickTaskFooter = createFormModalFooter('Cancel', 'Add Task', 'quickTaskModal')
 renderModal('quickTaskModal', 'Quick Add Task', $quickTaskContent, $quickTaskFooter, ['icon' => '➕']);
 ?>
 
-<?php
-// Update Progress Modal Content
-$updateProgressContent = '
-<div id="postponeHistory" class="postpone-history" style="display: none;">
-    <h4>Postpone History</h4>
-    <div id="historyList" class="history-list"></div>
-    <hr>
-</div>
-<form id="updateProgressForm">
-    <input type="hidden" id="updateTaskId" name="task_id">
-    <div class="form-group">
-        <label>Completion Percentage</label>
-        <div class="percentage-options" style="display: flex; gap: 0.5rem; margin: 0.5rem 0;">
-            <button type="button" class="percentage-btn btn btn--secondary" data-percentage="25">25%</button>
-            <button type="button" class="percentage-btn btn btn--secondary" data-percentage="50">50%</button>
-            <button type="button" class="percentage-btn btn btn--secondary" data-percentage="75">75%</button>
-            <button type="button" class="percentage-btn btn btn--primary active" data-percentage="100">100%</button>
+    <!-- Enhanced Progress Update Modal -->
+    <div id="progressDialog" class="progress-dialog" style="display: none;">
+        <div class="progress-modal">
+            <h3>📊 Update Task Progress</h3>
+            
+            <div class="progress-form-group">
+                <label for="progressSlider">Progress Level</label>
+                <div class="progress-slider-container">
+                    <input type="range" id="progressSlider" class="progress-slider" min="0" max="100" value="0">
+                    <span id="progressValue" class="progress-value">0%</span>
+                </div>
+            </div>
+            
+            <div class="progress-form-group">
+                <label for="progressDescription">Progress Description *</label>
+                <textarea id="progressDescription" class="progress-description" 
+                          placeholder="Describe what you've accomplished, current status, or next steps..." 
+                          required></textarea>
+            </div>
+            
+            <div class="progress-actions">
+                <button type="button" class="progress-btn progress-btn-secondary" onclick="closeDialog()">Cancel</button>
+                <button type="button" class="progress-btn progress-btn-primary" onclick="saveProgress()">Update Progress</button>
+            </div>
         </div>
-        <input type="hidden" id="selectedProgressPercentage" name="percentage" value="100">
     </div>
-</form>';
-
-$updateProgressFooter = createFormModalFooter('Cancel', 'Update Progress', 'updateProgressModal');
-
-renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $updateProgressFooter, ['icon' => '📊', 'zIndex' => 999]);
 ?>
 
 <!-- Inline Postpone Form -->
@@ -582,24 +587,173 @@ renderModal('updateProgressModal', 'Update Progress', $updateProgressContent, $u
 </div>
 <div id="postponeOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9998;" onclick="cancelPostpone()"></div>
 
-<div id="progressDialog" class="dialog" style="display: none;">
-    <div class="dialog-content">
-        <h4>Update Progress</h4>
-        <p>Progress: <span id="progressValue">0</span>%</p>
-        <input type="range" id="progressSlider" min="0" max="100" value="0">
-        <div class="dialog-buttons">
-            <button onclick="closeDialog()">Cancel</button>
-            <button onclick="saveProgress()">Save</button>
-        </div>
-    </div>
-</div>
-
 <?php renderModalJS(); ?>
-<script src="/ergon/assets/js/task-timer.js"></script>
-<script src="/ergon/assets/js/unified-daily-planner.js"></script>
-<script src="/ergon/assets/js/timer-init.js"></script>
+<script>
+// Global function for modal closing - must be defined before other scripts
+function hideClosestModal(element) {
+    const modal = element.closest('.modal-overlay') || element.closest('.notification');
+    if (modal && modal.parentElement) {
+        modal.remove();
+    }
+}
+
+// Enhanced progress functionality for daily planner
+var currentTaskId;
+
+function openProgressModal(taskId, progress, status) {
+    currentTaskId = taskId;
+    
+    var slider = document.getElementById('progressSlider');
+    var valueDisplay = document.getElementById('progressValue');
+    var description = document.getElementById('progressDescription');
+    var dialog = document.getElementById('progressDialog');
+    
+    if (slider) slider.value = progress || 0;
+    if (valueDisplay) valueDisplay.textContent = (progress || 0) + '%';
+    if (description) description.value = '';
+    if (dialog) dialog.style.display = 'flex';
+    
+    // Focus on description field
+    setTimeout(() => {
+        if (description) description.focus();
+    }, 100);
+}
+
+function closeDialog() {
+    var dialog = document.getElementById('progressDialog');
+    if (dialog) dialog.style.display = 'none';
+}
+
+function saveProgress() {
+    var progressSlider = document.getElementById('progressSlider');
+    var descriptionEl = document.getElementById('progressDescription');
+    
+    if (!progressSlider || !currentTaskId) {
+        alert('Error: Missing required elements');
+        return;
+    }
+    
+    var progress = progressSlider.value;
+    var description = descriptionEl ? descriptionEl.value.trim() : '';
+    
+    if (!description) {
+        alert('Please provide a description for this progress update.');
+        if (descriptionEl) descriptionEl.focus();
+        return;
+    }
+    
+    // Determine status based on progress
+    var status = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'not_started';
+    
+    var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    
+    // Get original task ID from daily task
+    var taskCard = document.querySelector(`[data-task-id="${currentTaskId}"]`);
+    var originalTaskId = taskCard?.dataset.originalTaskId || currentTaskId;
+    
+    fetch('/ergon/tasks/update-status', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ 
+            task_id: parseInt(originalTaskId), 
+            progress: parseInt(progress),
+            description: description
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update daily_tasks table to sync with main task
+            fetch('/ergon/api/daily_planner_workflow.php?action=update-progress', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ 
+                    task_id: parseInt(currentTaskId), 
+                    progress: parseInt(progress),
+                    status: status
+                })
+            })
+            .then(() => {
+                // Update UI
+                var taskCard = document.querySelector(`[data-task-id="${currentTaskId}"]`);
+                if (taskCard) {
+                    taskCard.dataset.status = status;
+                    
+                    // Update progress bar
+                    var progressBar = taskCard.querySelector('.progress-fill');
+                    if (progressBar) {
+                        progressBar.style.width = progress + '%';
+                    }
+                    
+                    // Update progress value display
+                    var progressValue = taskCard.querySelector('.progress-value');
+                    if (progressValue) {
+                        progressValue.textContent = progress + '%';
+                    }
+                    
+                    // Update status badge
+                    var statusBadge = taskCard.querySelector(`#status-${currentTaskId}`);
+                    if (statusBadge) {
+                        statusBadge.textContent = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        statusBadge.className = `badge badge--${status}`;
+                    }
+                    
+                    // Update actions based on new status
+                    updateTaskUI(currentTaskId, status);
+                    
+                    if (status === 'completed' && window.taskTimer) {
+                        window.taskTimer.stop(currentTaskId);
+                        window.taskTimer.stopPause(currentTaskId);
+                    }
+                }
+                
+                closeDialog();
+                showNotification(`Task updated: ${progress}% - ${status.replace('_', ' ')}`, 'success');
+            });
+        } else {
+            alert('Error: ' + (data.error || data.message || 'Failed to update progress'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating task progress');
+    });
+}
+
+// Update progress slider display
+document.addEventListener('DOMContentLoaded', function() {
+    var progressSlider = document.getElementById('progressSlider');
+    if (progressSlider) {
+        progressSlider.oninput = function() {
+            var valueDisplay = document.getElementById('progressValue');
+            if (valueDisplay) valueDisplay.textContent = this.value + '%';
+        };
+    }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeDialog();
+    }
+    
+    // Ctrl+Enter to save progress
+    if (e.ctrlKey && e.key === 'Enter') {
+        var progressDialog = document.getElementById('progressDialog');
+        if (progressDialog && progressDialog.style.display === 'flex') {
+            saveProgress();
+        }
+    }
+});
+</script>
+<script src="/ergon/assets/js/working-timer.js"></script>
 <script src="/ergon/assets/js/sla-dashboard-fix.js"></script>
-<script src="/ergon/assets/js/planner-access-control.js"></script>
 
 <?php
 $content = ob_get_clean();
@@ -614,3 +768,12 @@ include __DIR__ . '/../layouts/dashboard.php';
     to { transform: rotate(360deg); }
 }
 .spinner { animation: spin 1s linear infinite; }
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.notification {
+    animation: slideIn 0.3s ease;
+}

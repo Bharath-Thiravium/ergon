@@ -38,13 +38,33 @@ class Attendance {
                 }
             }
             
+            // Check for project match based on GPS coordinates
+            $projectId = null;
+            
+            if ($latitude && $longitude) {
+                // Check all active projects for GPS coordinate match
+                $stmt = $this->conn->prepare("SELECT id, name, latitude, longitude, checkin_radius, location_title FROM projects WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND status = 'active'");
+                $stmt->execute();
+                $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($projects as $project) {
+                    $projectDistance = $this->calculateDistance($latitude, $longitude, $project['latitude'], $project['longitude']);
+                    if ($projectDistance <= $project['checkin_radius']) {
+                        $projectId = $project['id'];
+                        $locationName = $project['location_title'] ?: $project['name'];
+                        break; // Use first matching project
+                    }
+                }
+            }
+            
             $currentTime = TimezoneHelper::nowUtc();
             $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
             
-            $query = "INSERT INTO attendance (user_id, check_in, latitude, longitude, location_name, status, client_uuid, distance_meters, is_valid, ip_address) 
-                      VALUES (?, ?, ?, ?, ?, 'present', ?, ?, ?, ?)";
+            // Only assign project_id if GPS coordinates match a project
+            $query = "INSERT INTO attendance (user_id, check_in, latitude, longitude, location_name, project_id, status, client_uuid, distance_meters, is_valid, ip_address) 
+                      VALUES (?, ?, ?, ?, ?, ?, 'present', ?, ?, ?, ?)";
             $stmt = $this->conn->prepare($query);
-            $result = $stmt->execute([$userId, $currentTime, $latitude, $longitude, $locationName, $clientUuid, $distance, $isValid ? 1 : 0, $ipAddress]);
+            $result = $stmt->execute([$userId, $currentTime, $latitude, $longitude, $locationName, $projectId, $clientUuid, $distance, $isValid ? 1 : 0, $ipAddress]);
             
             if (!$isValid && $result) {
                 $this->createConflict($userId, $this->conn->lastInsertId(), 'location_mismatch', "Distance: {$distance}m");
@@ -55,6 +75,18 @@ class Attendance {
             error_log('CheckIn error: ' . $e->getMessage());
             return false;
         }
+    }
+    
+    private function calculateDistance($lat1, $lng1, $lat2, $lng2) {
+        $earthRadius = 6371000; // Earth radius in meters
+        
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        
+        $a = sin($dLat/2) * sin($dLat/2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng/2) * sin($dLng/2);
+        $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+        
+        return $earthRadius * $c;
     }
     
     public function checkOut($userId, $clientUuid = null) {

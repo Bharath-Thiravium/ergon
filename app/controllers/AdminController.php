@@ -442,10 +442,10 @@ class AdminController extends Controller {
             $tables = ['leaves', 'expenses', 'advances'];
             
             foreach ($tables as $table) {
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approval ENUM('pending', 'approved', 'rejected') DEFAULT 'pending'");
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approved_by INT DEFAULT NULL");
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approved_at DATETIME DEFAULT NULL");
-                $db->exec("ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_comments TEXT DEFAULT NULL");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approval ENUM('pending', 'approved', 'rejected') DEFAULT 'pending'", "Alter table");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approved_by INT DEFAULT NULL", "Alter table");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_approved_at DATETIME DEFAULT NULL", "Alter table");
+                DatabaseHelper::safeExec($db, "ALTER TABLE {$table} ADD COLUMN IF NOT EXISTS admin_comments TEXT DEFAULT NULL", "Alter table");
             }
         } catch (Exception $e) {
             error_log('Column creation error: ' . $e->getMessage());

@@ -21,7 +21,7 @@ class DailyPlanner {
     
     private function ensureDailyTasksTable() {
         try {
-            $this->db->exec("
+            DatabaseHelper::safeExec($this->db, "
                 CREATE TABLE IF NOT EXISTS daily_tasks (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     user_id INT NOT NULL,
@@ -57,7 +57,7 @@ class DailyPlanner {
                     INDEX idx_rollover_source (rollover_source_date),
                     INDEX idx_user_task_date (user_id, original_task_id, scheduled_date)
                 )
-            ");
+            ", "Model operation");
             
             $this->addMissingColumns();
         } catch (Exception $e) {
@@ -87,15 +87,15 @@ class DailyPlanner {
             foreach ($columns as $column => $sql) {
                 $result = $this->db->query("SHOW COLUMNS FROM daily_tasks LIKE '{$column}'");
                 if (!$result->fetch()) {
-                    $this->db->exec($sql);
+                    DatabaseHelper::safeExec($this->db, $sql, "Model operation");
                 }
             }
             
             // Add indexes for timer queries
             try {
-                $this->db->exec("ALTER TABLE daily_tasks ADD INDEX idx_status_timer (status, start_time)");
-                $this->db->exec("ALTER TABLE daily_tasks ADD INDEX idx_sla_end_time (sla_end_time)");
-                $this->db->exec("ALTER TABLE daily_tasks ADD INDEX idx_pause_start_time (pause_start_time)");
+                DatabaseHelper::safeExec($this->db, "ALTER TABLE daily_tasks ADD INDEX idx_status_timer (status, start_time)", "Model operation");
+                DatabaseHelper::safeExec($this->db, "ALTER TABLE daily_tasks ADD INDEX idx_sla_end_time (sla_end_time)", "Model operation");
+                DatabaseHelper::safeExec($this->db, "ALTER TABLE daily_tasks ADD INDEX idx_pause_start_time (pause_start_time)", "Model operation");
             } catch (Exception $e) {
                 // Indexes may already exist, ignore errors
             }
@@ -225,9 +225,14 @@ class DailyPlanner {
                     $insertStmt = $this->db->prepare("
                         INSERT INTO daily_tasks 
                         (user_id, task_id, original_task_id, title, description, scheduled_date, 
-                         priority, status, planned_duration, source_field, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                         priority, status, planned_duration, completed_percentage, source_field, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                     ");
+                    
+                    // Get progress from original task
+                    $progressStmt = $this->db->prepare("SELECT progress FROM tasks WHERE id = ?");
+                    $progressStmt->execute([$task['id']]);
+                    $originalProgress = (int)($progressStmt->fetchColumn() ?: 0);
                     
                     $result = $insertStmt->execute([
                         $userId,
@@ -239,6 +244,7 @@ class DailyPlanner {
                         $task['priority'],
                         $initialStatus,
                         $task['estimated_duration'] ?: 60,
+                        $originalProgress,
                         $task['source_field']
                     ]);
                     
@@ -471,10 +477,10 @@ class DailyPlanner {
                 $this->logTimeAction($taskId, $userId, 'complete', $now, $activeTime);
             }
 
-            // Also update the main task if it exists
+            // Update linked task in tasks table
             if ($originalTaskId) {
-                $updateTaskStmt = $this->db->prepare("UPDATE tasks SET status = 'completed', progress = 100 WHERE id = ?");
-                $updateTaskStmt->execute([$originalTaskId]);
+                $updateTaskStmt = $this->db->prepare("UPDATE tasks SET status = 'completed', progress = ? WHERE id = ?");
+                $updateTaskStmt->execute([$percentage, $originalTaskId]);
             }
 
             $this->logTaskHistory($taskId, $userId, 'completed', '', $percentage . '%', 'Task completed with ' . $percentage . '% progress');
@@ -594,6 +600,14 @@ class DailyPlanner {
             if (!$currentTask) {
                 throw new Exception('Task not found');
             }
+            
+            // Remove any existing postponed entries for this task on other dates
+            $stmt = $this->db->prepare("
+                DELETE FROM daily_tasks 
+                WHERE original_task_id = ? AND user_id = ? AND status = 'not_started' 
+                AND postponed_from_date IS NOT NULL AND scheduled_date != ?
+            ");
+            $stmt->execute([$currentTask['original_task_id'] ?: $currentTask['task_id'], $userId, $currentTask['scheduled_date']]);
             
             // Check if task already exists on target date (excluding postponed tasks)
             $stmt = $this->db->prepare("
@@ -1109,7 +1123,7 @@ class DailyPlanner {
     
     private function ensureAuditTable() {
         try {
-            $this->db->exec("
+            DatabaseHelper::safeExec($this->db, "
                 CREATE TABLE IF NOT EXISTS daily_planner_audit (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     user_id INT NOT NULL,
@@ -1121,7 +1135,7 @@ class DailyPlanner {
                     INDEX idx_user_action (user_id, action),
                     INDEX idx_date (target_date)
                 )
-            ");
+            ", "Model operation");
         } catch (Exception $e) {
             error_log('ensureAuditTable error: ' . $e->getMessage());
         }

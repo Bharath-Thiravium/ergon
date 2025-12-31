@@ -133,8 +133,18 @@ class User {
                 return false;
             }
             
+            // Ensure role column supports all roles including company_owner
+            $this->ensureRoleColumn();
+            
+            // Validate role
+            $allowedRoles = ['user', 'admin', 'owner', 'company_owner', 'system_admin'];
+            $role = $data['role'] ?? 'user';
+            if (!in_array($role, $allowedRoles)) {
+                $role = 'user';
+            }
+            
             $stmt = $this->conn->prepare("
-                INSERT INTO {$this->table} (name, email, password, role, phone, department, status) 
+                INSERT INTO {$this->table} (name, email, password, role, phone, department_id, status) 
                 VALUES (?, ?, ?, ?, ?, ?, 'active')
             ");
             
@@ -144,9 +154,9 @@ class User {
                 $data['name'],
                 $data['email'],
                 $hashedPassword,
-                $data['role'] ?? 'user',
+                $role,
                 $data['phone'] ?? null,
-                $data['department'] ?? null
+                $data['department_id'] ?? null
             ]);
         } catch (Exception $e) {
             error_log("User creation error: " . $e->getMessage());
@@ -171,12 +181,22 @@ class User {
                 throw new Exception('Email already exists');
             }
             
+            // Ensure all required columns exist
+            $this->ensureUserColumns();
+            
+            // Validate role
+            $allowedRoles = ['user', 'admin', 'owner', 'company_owner', 'system_admin'];
+            $role = $data['role'] ?? 'user';
+            if (!in_array($role, $allowedRoles)) {
+                $role = 'user';
+            }
+            
             $employeeId = $this->generateEmployeeId();
             $tempPassword = $this->generateTempPassword();
             $hashedPassword = password_hash($tempPassword, PASSWORD_BCRYPT);
             
             $stmt = $this->conn->prepare("
-                INSERT INTO {$this->table} (employee_id, name, email, password, role, phone, department, temp_password, is_first_login, password_reset_required, status) 
+                INSERT INTO {$this->table} (employee_id, name, email, password, role, phone, department_id, temp_password, is_first_login, password_reset_required, status) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, TRUE, 'active')
             ");
             
@@ -185,9 +205,9 @@ class User {
                 $data['name'],
                 $email,
                 $hashedPassword,
-                $data['role'] ?? 'user',
+                $role,
                 $phone,
-                $data['department'] ?? null,
+                $data['department_id'] ?? null,
                 $tempPassword
             ]);
             
@@ -405,6 +425,48 @@ class User {
             return 'EMP' . $nextNum;
         } catch (Exception $e) {
             return 'EMP' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+        }
+    }
+    
+    private function ensureRoleColumn() {
+        try {
+            DatabaseHelper::safeExec($this->conn, "ALTER TABLE {$this->table} MODIFY COLUMN role ENUM('user', 'admin', 'owner', 'company_owner', 'system_admin') DEFAULT 'user'", "Model operation");
+        } catch (Exception $e) {
+            error_log('Role column update error: ' . $e->getMessage());
+        }
+    }
+    
+    private function ensureUserColumns() {
+        try {
+            // Ensure role column supports all roles
+            $this->ensureRoleColumn();
+            
+            // Get existing columns
+            $stmt = $this->conn->query("DESCRIBE {$this->table}");
+            $existingColumns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            // Define required columns
+            $requiredColumns = [
+                'employee_id' => 'VARCHAR(20) UNIQUE',
+                'phone' => 'VARCHAR(20)',
+                'department_id' => 'INT DEFAULT NULL',
+                'temp_password' => 'VARCHAR(255)',
+                'is_first_login' => 'BOOLEAN DEFAULT FALSE',
+                'password_reset_required' => 'BOOLEAN DEFAULT FALSE'
+            ];
+            
+            // Add missing columns
+            foreach ($requiredColumns as $column => $definition) {
+                if (!in_array($column, $existingColumns)) {
+                    try {
+                        DatabaseHelper::safeExec($this->conn, "ALTER TABLE {$this->table} ADD COLUMN $column $definition", "Model operation");
+                    } catch (Exception $e) {
+                        error_log('Column creation error for ' . $column . ': ' . $e->getMessage());
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            error_log('ensureUserColumns error: ' . $e->getMessage());
         }
     }
 }

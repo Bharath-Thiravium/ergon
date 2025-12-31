@@ -4,9 +4,15 @@
  * Main Application Entry Point
  */
 
-// Error reporting for development
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Error reporting - production safe
+if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !== false) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+} else {
+    error_reporting(0);
+    ini_set('display_errors', 0);
+    ini_set('log_errors', 1);
+}
 
 // Session configuration
 require_once __DIR__ . '/app/config/session.php';
@@ -31,6 +37,16 @@ $router = new Router();
 // Load routes
 require_once __DIR__ . '/app/config/routes.php';
 
-// Handle the request
-$router->handleRequest();
+// Handle the request with error handling
+try {
+    $router->handleRequest();
+} catch (Exception $e) {
+    if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !== false) {
+        echo 'Error: ' . $e->getMessage();
+    } else {
+        error_log('Application error: ' . $e->getMessage());
+        header('Location: /ergon/login');
+        exit;
+    }
+}
 ?>

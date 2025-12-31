@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../middlewares/ModuleMiddleware.php';
+require_once __DIR__ . '/../helpers/DatabaseHelper.php';
 
 class UsersController extends Controller {
     
@@ -11,13 +13,15 @@ class UsersController extends Controller {
             exit;
         }
         
+        ModuleMiddleware::requireModule('users');
+        
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
             // Get users with DISTINCT to prevent duplicates
-            $stmt = $db->prepare("SELECT DISTINCT u.*, d.name as department_name FROM users u LEFT JOIN departments d ON u.department_id = d.id WHERE u.status != 'deleted' ORDER BY u.created_at DESC");
-            $stmt->execute();
+            $stmt = $db->prepare("SELECT DISTINCT u.*, d.name as department_name FROM users u LEFT JOIN departments d ON u.department_id = d.id WHERE u.status != ? ORDER BY u.created_at DESC");
+            $stmt->execute(['deleted']);
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Remove any potential duplicates by ID
@@ -90,7 +94,11 @@ class UsersController extends Controller {
         }
     }
     
-    public function edit($id) {
+    public function edit($id = null) {
+        // Get ID from route parameter if not passed directly
+        if (!$id && isset($_POST['user_id'])) {
+            $id = $_POST['user_id'];
+        }
         $this->ensureDepartmentsTable();
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
@@ -160,14 +168,38 @@ class UsersController extends Controller {
                 ]);
                 
                 if ($result) {
+                    // Handle project assignments
+                    if (isset($_POST['projects'])) {
+                        $this->updateUserProjects($id, $_POST['projects'] ?? [], $db);
+                    }
+                    
                     $this->handleDocumentUploads($id);
+                    
+                    if (isset($_POST['ajax'])) {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => true, 'message' => 'User updated successfully']);
+                        exit;
+                    }
+                    
                     header('Location: /ergon/users?success=User updated successfully');
                 } else {
+                    if (isset($_POST['ajax'])) {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => false, 'error' => 'Failed to update user']);
+                        exit;
+                    }
                     header('Location: /ergon/users?error=Failed to update user');
                 }
                 exit;
             } catch (Exception $e) {
                 error_log('User edit error: ' . $e->getMessage());
+                
+                if (isset($_POST['ajax'])) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => 'Update failed']);
+                    exit;
+                }
+                
                 header('Location: /ergon/users/view/' . $id . '?error=Update failed');
                 exit;
             }
@@ -194,6 +226,12 @@ class UsersController extends Controller {
     }
     
     public function create() {
+        // Check authentication first
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin', 'company_owner'])) {
+            header('Location: /ergon/login');
+            exit;
+        }
+        
         $this->ensureDepartmentsTable();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -204,7 +242,8 @@ class UsersController extends Controller {
                 // Auto-generate employee ID if not provided
                 $employeeId = $_POST['employee_id'] ?? '';
                 if (empty($employeeId)) {
-                    $stmt = $db->prepare("SELECT employee_id FROM users WHERE employee_id LIKE 'EMP%' ORDER BY employee_id DESC LIMIT 1");
+                    $stmt = $db->prepare("SELECT employee_id FROM users WHERE employee_id LIKE ? ORDER BY employee_id DESC LIMIT 1");
+                    $stmt->execute(['EMP%']);
                     $stmt->execute();
                     $result = $stmt->fetch(PDO::FETCH_ASSOC);
                     
@@ -231,15 +270,22 @@ class UsersController extends Controller {
                     }
                 }
                 
-                // Generate temporary password
-                $tempPassword = 'PWD' . rand(1000, 9999);
+                // Generate secure temporary access code
+                $tempPassword = 'PWD' . bin2hex(random_bytes(4));
                 $hashedPassword = password_hash($tempPassword, PASSWORD_BCRYPT);
                 
                 // Handle department - get department ID from form
                 $departmentId = !empty($_POST['department_id']) ? intval($_POST['department_id']) : null;
                 
-                // Ensure users table has department_id column
+                // Ensure users table has all required columns
                 $this->ensureUserColumns($db);
+                
+                // Validate role
+                $allowedRoles = ['user', 'admin', 'owner', 'company_owner', 'system_admin'];
+                $role = $_POST['role'] ?? 'user';
+                if (!in_array($role, $allowedRoles)) {
+                    $role = 'user';
+                }
                 
                 $stmt = $db->prepare("INSERT INTO users (employee_id, name, email, password, phone, role, status, department_id, designation, joining_date, salary, date_of_birth, gender, address, emergency_contact, created_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
                 $result = $stmt->execute([
@@ -248,7 +294,7 @@ class UsersController extends Controller {
                     trim($_POST['email'] ?? ''),
                     $hashedPassword,
                     trim($_POST['phone'] ?? ''),
-                    $_POST['role'] ?? 'user',
+                    $role,
                     $departmentId,
                     trim($_POST['designation'] ?? ''),
                     !empty($_POST['joining_date']) ? $_POST['joining_date'] : null,
@@ -260,27 +306,64 @@ class UsersController extends Controller {
                 ]);
                 
                 error_log('User creation data: ' . json_encode($_POST));
+                error_log('SQL Parameters: ' . json_encode([
+                    $employeeId, trim($_POST['name'] ?? ''), trim($_POST['email'] ?? ''),
+                    'password_hash', trim($_POST['phone'] ?? ''), $role, $departmentId,
+                    trim($_POST['designation'] ?? ''), $_POST['joining_date'] ?? null,
+                    $_POST['salary'] ?? null, $_POST['date_of_birth'] ?? null,
+                    $_POST['gender'] ?? null, trim($_POST['address'] ?? ''),
+                    trim($_POST['emergency_contact'] ?? '')
+                ]));
                 
                 if ($result) {
                     $userId = $db->lastInsertId();
+                    error_log('User created successfully with ID: ' . $userId);
+                    
+                    // Handle project assignments
+                    if (!empty($_POST['projects']) && is_array($_POST['projects'])) {
+                        $this->assignUserProjects($userId, $_POST['projects'], $db);
+                    }
                     
                     // Handle document uploads
                     $this->handleDocumentUploads($userId);
+                    
+                    if (isset($_POST['ajax'])) {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => true, 'message' => 'User created successfully']);
+                        exit;
+                    }
                     
                     $_SESSION['new_credentials'] = [
                         'email' => $_POST['email'],
                         'password' => $tempPassword,
                         'employee_id' => $employeeId
                     ];
-                    header('Location: /ergon/users?success=User created successfully');
+                    header('Location: /ergon/users?success=User created successfully&t=' . time());
                     exit;
                 } else {
+                    $errorInfo = $stmt->errorInfo();
+                    error_log('User creation failed. Error info: ' . json_encode($errorInfo));
+                    error_log('PDO Error: ' . print_r($stmt->errorInfo(), true));
+                    
+                    if (isset($_POST['ajax'])) {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => false, 'error' => 'Failed to create user: ' . ($errorInfo[2] ?? 'Unknown error')]);
+                        exit;
+                    }
+                    
                     $_SESSION['old_data'] = $_POST;
-                    header('Location: /ergon/users/create?error=Failed to create user');
+                    header('Location: /ergon/users/create?error=Failed to create user: ' . ($errorInfo[2] ?? 'Unknown error'));
                     exit;
                 }
             } catch (Exception $e) {
                 error_log('User creation error: ' . $e->getMessage());
+                
+                if (isset($_POST['ajax'])) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => 'Failed to create user']);
+                    exit;
+                }
+                
                 $_SESSION['old_data'] = $_POST;
                 header('Location: /ergon/users/create?error=Failed to create user');
                 exit;
@@ -335,7 +418,7 @@ class UsersController extends Controller {
                     exit;
                 }
                 
-                $tempPassword = 'RST' . rand(1000, 9999);
+                $tempPassword = 'RST' . bin2hex(random_bytes(4));
                 
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
@@ -597,8 +680,8 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("SELECT name, email, phone, designation, department_id, role, status, created_at FROM users WHERE status != 'deleted' ORDER BY created_at DESC");
-            $stmt->execute();
+            $stmt = $db->prepare("SELECT name, email, phone, designation, department_id, role, status, created_at FROM users WHERE status != ? ORDER BY created_at DESC");
+            $stmt->execute(['deleted']);
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             header('Content-Type: text/csv');
@@ -740,17 +823,26 @@ class UsersController extends Controller {
             
             foreach ($requiredColumns as $column => $type) {
                 if (!in_array($column, $columns)) {
-                    $db->exec("ALTER TABLE users ADD COLUMN $column $type");
+                    DatabaseHelper::addColumnIfNotExists($db, 'users', $column, $type);
                     error_log("Added column $column to users table");
                 }
             }
             
             // Update status column to support new values
             try {
-                $db->exec("ALTER TABLE users MODIFY COLUMN status ENUM('active', 'inactive', 'suspended', 'terminated') DEFAULT 'active'");
+                $statusSql = "ALTER TABLE users MODIFY COLUMN status ENUM('active', 'inactive', 'suspended', 'terminated') DEFAULT 'active'";
+                DatabaseHelper::safeExec($db, $statusSql, 'Update status column');
                 error_log("Updated status column to support new values");
             } catch (Exception $e) {
                 error_log('Status column update error: ' . $e->getMessage());
+            }
+            
+            // Update role column to support all roles including company_owner
+            try {
+                DatabaseHelper::safeExec($db, "ALTER TABLE users MODIFY COLUMN role ENUM('user', 'admin', 'owner', 'company_owner', 'system_admin') DEFAULT 'user'", 'Update role column');
+                error_log("Updated role column to support company_owner");
+            } catch (Exception $e) {
+                error_log('Role column update error: ' . $e->getMessage());
             }
             
             // Generate employee IDs for existing users without them
@@ -769,7 +861,8 @@ class UsersController extends Controller {
             if (empty($usersWithoutIds)) return;
             
             // Get the highest existing employee ID number
-            $stmt = $db->query("SELECT employee_id FROM users WHERE employee_id LIKE 'EMP%' ORDER BY employee_id DESC LIMIT 1");
+            $stmt = $db->prepare("SELECT employee_id FROM users WHERE employee_id LIKE ? ORDER BY employee_id DESC LIMIT 1");
+            $stmt->execute(['EMP%']);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             
             $nextNum = 1;
@@ -849,7 +942,7 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $db->exec("CREATE TABLE IF NOT EXISTS user_sessions (
+            DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS user_sessions (
                 id VARCHAR(128) PRIMARY KEY,
                 user_id INT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -882,7 +975,7 @@ class UsersController extends Controller {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 )";
-                $db->exec($sql);
+                DatabaseHelper::safeExec($db, $sql, 'Create departments table');
                 
                 // Insert default departments
                 $defaultDepts = [
@@ -903,6 +996,32 @@ class UsersController extends Controller {
             }
         } catch (Exception $e) {
             error_log('ensureDepartmentsTable error: ' . $e->getMessage());
+        }
+    }
+    
+    private function assignUserProjects($userId, $projectIds, $db) {
+        try {
+            foreach ($projectIds as $projectId) {
+                $stmt = $db->prepare("INSERT IGNORE INTO user_projects (user_id, project_id, status) VALUES (?, ?, 'active')");
+                $stmt->execute([$userId, $projectId]);
+            }
+        } catch (Exception $e) {
+            error_log('Project assignment error: ' . $e->getMessage());
+        }
+    }
+    
+    private function updateUserProjects($userId, $projectIds, $db) {
+        try {
+            // Remove existing assignments
+            $stmt = $db->prepare("DELETE FROM user_projects WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            
+            // Add new assignments
+            if (!empty($projectIds)) {
+                $this->assignUserProjects($userId, $projectIds, $db);
+            }
+        } catch (Exception $e) {
+            error_log('Project update error: ' . $e->getMessage());
         }
     }
 }

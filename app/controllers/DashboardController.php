@@ -21,6 +21,7 @@ class DashboardController extends Controller {
         
         switch ($role) {
             case 'owner':
+            case 'company_owner':
                 $this->redirect('/owner/dashboard');
                 break;
             case 'admin':

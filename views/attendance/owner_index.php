@@ -89,6 +89,8 @@ ob_start();
                             <th>Role</th>
                             <th>Department</th>
                             <th>Status</th>
+                            <th>Location</th>
+                            <th>Project</th>
                             <th>Check In</th>
                             <th>Check Out</th>
                             <th>Total Hours</th>
@@ -105,7 +107,7 @@ ob_start();
                                     </div>
                                     <div>
                                         <div style="font-weight: 500;"><?= htmlspecialchars($employee['name']) ?></div>
-                                        <div style="font-size: 0.75rem; color: #6b7280;"><?= htmlspecialchars($employee['email']) ?></div>
+                                        <div style="font-size: 0.75rem; color: #6b7280;"><?= htmlspecialchars($employee['department'] ?? 'General') ?></div>
                                     </div>
                                 </div>
                             </td>
@@ -126,33 +128,35 @@ ob_start();
                                     </span>
                                 <?php endif; ?>
                             </td>
+                            <td><?= htmlspecialchars($employee['location_display'] ?? '---') ?></td>
+                            <td><?= htmlspecialchars($employee['project_name'] ?? '----') ?></td>
                             <td>
                                 <?php if ($employee['check_in']): ?>
                                     <span style="color: #059669; font-weight: 500;">
-                                        <?= TimeHelper::formatToIST($employee['check_in']) ?>
+                                        In: <?= TimeHelper::formatToIST($employee['check_in']) ?>
                                     </span>
                                 <?php else: ?>
-                                    <span style="color: #6b7280;">-</span>
+                                    <span style="color: #6b7280;">In: Not set</span>
                                 <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($employee['check_out']): ?>
                                     <span style="color: #dc2626; font-weight: 500;">
-                                        <?= TimeHelper::formatToIST($employee['check_out']) ?>
+                                        Out: <?= TimeHelper::formatToIST($employee['check_out']) ?>
                                     </span>
                                 <?php elseif ($employee['check_in']): ?>
-                                    <span style="color: #f59e0b; font-weight: 500;">Working...</span>
+                                    <span style="color: #f59e0b; font-weight: 500;">Out: Working...</span>
                                 <?php else: ?>
-                                    <span style="color: #6b7280;">-</span>
+                                    <span style="color: #6b7280;">Out: Not set</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($employee['total_hours'] > 0): ?>
+                                <?php if (isset($employee['working_hours']) && $employee['working_hours'] !== '0h 0m'): ?>
                                     <span style="color: #1f2937; font-weight: 500;">
-                                        <?= number_format($employee['total_hours'], 2) ?>h
+                                        <?= htmlspecialchars($employee['working_hours']) ?>
                                     </span>
                                 <?php else: ?>
-                                    <span style="color: #6b7280;">0h</span>
+                                    <span style="color: #6b7280;">0h 0m</span>
                                 <?php endif; ?>
                             </td>
                             <td>

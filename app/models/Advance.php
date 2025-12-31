@@ -92,11 +92,11 @@ class Advance {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 )";
-                $this->db->exec($sql);
+                DatabaseHelper::safeExec($this->db, $sql, "Model operation");
                 
             // Add repayment_date column if it doesn't exist in existing table
             try {
-                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN repayment_date DATE NULL");
+                DatabaseHelper::safeExec($this->db, "ALTER TABLE {$this->table} ADD COLUMN repayment_date DATE NULL", "Model operation");
             } catch (Exception $e) {
                 // Column already exists, ignore error
             }

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-1.0">
+    <title>Hybrid Timer Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .flow-diagram { display: flex; justify-content: space-between; margin: 20px 0; padding: 20px; background: white; border-radius: 8px; }
+        .flow-box { padding: 15px; border: 2px solid #ddd; border-radius: 8px; text-align: center; min-width: 150px; position: relative; }
+        .client { background: #e3f2fd; border-color: #2196f3; }
+        .server { background: #f3e5f5; border-color: #9c27b0; }
+        .arrow { font-size: 24px; color: #666; align-self: center; }
+        .sync-arrow { position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%); color: #ff9800; font-size: 16px; }
+        .task-card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
+        .timer-display { font-size: 24px; font-weight: bold; margin: 10px 0; }
+        .status { padding: 5px 10px; border-radius: 4px; color: white; display: inline-block; margin: 5px 0; }
+        .in_progress { background: #4caf50; }
+        .on_break { background: #ff9800; }
+        .not_started { background: #757575; }
+        .controls button { margin: 5px; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .start { background: #4caf50; color: white; }
+        .pause { background: #ff9800; color: white; }
+        .resume { background: #2196f3; color: white; }
+        .log { background: #f9f9f9; padding: 10px; margin: 10px 0; border-radius: 4px; max-height: 200px; overflow-y: auto; }
+        .log-entry { margin: 2px 0; font-size: 12px; }
+        .client-log { color: #2196f3; }
+        .server-log { color: #9c27b0; }
+        .sync-log { color: #ff9800; font-weight: bold; }
+        .immediate-log { color: #4caf50; font-weight: bold; }
+        .sync-status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .sync-good { background: #c8e6c9; color: #2e7d32; }
+        .sync-drift { background: #fff3e0; color: #f57c00; }
+        .drift-indicator { display: flex; justify-content: space-between; margin: 10px 0; }
+        .time-source { padding: 8px; border-radius: 4px; text-align: center; }
+        .client-time { background: #e3f2fd; }
+        .server-time { background: #f3e5f5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hybrid Approach Timer Test</h1>
+        
+        <!-- Flow Diagram -->
+        <div class="flow-diagram">
+            <div class="flow-box client">
+                <h3>Client</h3>
+                <div>Immediate Feedback</div>
+                <div id="client-status">Ready</div>
+                <div class="sync-arrow">↓ Sync Every 30s</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="flow-box server">
+                <h3>Server</h3>
+                <div>Authority Source</div>
+                <div id="server-status">Ready</div>
+            </div>
+        </div>
+
+        <!-- Sync Status -->
+        <div id="sync-status" class="sync-status sync-good">
+            ✅ Client-Server Sync: Perfect (0s drift)
+        </div>
+        
+        <!-- Time Comparison -->
+        <div class="drift-indicator">
+            <div class="time-source client-time">
+                <strong>Client Time:</strong><br>
+                <span id="client-countdown">00:15:00</span>
+            </div>
+            <div class="time-source server-time">
+                <strong>Server Time:</strong><br>
+                <span id="server-countdown">00:15:00</span>
+            </div>
+        </div>
+
+        <!-- Task Card -->
+        <div class="task-card" data-task-id="123">
+            <h3>Task #123: Hybrid SLA Task</h3>
+            <div class="status not_started" id="status-display">NOT STARTED</div>
+            
+            <div class="timer-display">
+                SLA Countdown: <span id="countdown-display">00:15:00</span>
+            </div>
+            
+            <div>Time Used: <span id="time-used">00:00:00</span></div>
+            <div>Pause Time: <span id="pause-time">00:00:00</span></div>
+            <div>Last Sync: <span id="last-sync">Never</span></div>
+            <div>Next Sync: <span id="next-sync">30s</span></div>
+            
+            <div class="controls">
+                <button class="start" onclick="handleAction('start')">Start Task</button>
+                <button class="pause" onclick="handleAction('pause')">Pause Task</button>
+                <button class="resume" onclick="handleAction('resume')">Resume Task</button>
+                <button onclick="forceSyncNow()" style="background: #ff9800; color: white;">Force Sync Now</button>
+            </div>
+        </div>
+
+        <!-- Data Flow Log -->
+        <div class="log">
+            <h4>Hybrid System Log:</h4>
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Hybrid Timer System - Client + Server
+        let clientState = {
+            taskId: 123,
+            status: 'not_started',
+            activeSeconds: 0,
+            pauseSeconds: 0,
+            slaSeconds: 900,
+            startTime: null,
+            pauseStartTime: null,
+            lastSync: null
+        };
+
+        let serverState = {
+            taskId: 123,
+            status: 'not_started',
+            activeSeconds: 0,
+            pauseSeconds: 0,
+            slaSeconds: 900,
+            startTime: null,
+            pauseStartTime: null
+        };
+
+        let clientTimer = null;
+        let syncTimer = null;
+        let syncCountdown = 30;
+
+        // Initialize hybrid system
+        function initHybridSystem() {
+            log('🚀 HYBRID: Initializing client-server hybrid system...', 'client-log');
+            
+            // Start client timer for immediate feedback
+            startClientTimer();
+            
+            // Start periodic sync with server
+            startSyncTimer();
+            
+            // Start sync countdown
+            startSyncCountdown();
+        }
+
+        // Client-side timer for immediate feedback
+        function startClientTimer() {
+            if (clientTimer) clearInterval(clientTimer);
+            
+            clientTimer = setInterval(() => {
+                updateClientDisplay();
+            }, 1000);
+            
+            log('⚡ CLIENT: Local timer started for immediate feedback', 'client-log');
+        }
+
+        // Handle user actions with immediate feedback
+        function handleAction(action) {
+            log('👆 HYBRID: User action - ' + action.toUpperCase(), 'immediate-log');
+            
+            // IMMEDIATE client-side update
+            updateClientState(action);
+            updateClientDisplay();
+            log('⚡ CLIENT: Immediate feedback provided', 'immediate-log');
+            
+            // Send to server (with simulated delay)
+            sendToServer(action);
+        }
+
+        // Update client state immediately
+        function updateClientState(action) {
+            const now = Date.now();
+            
+            switch(action) {
+                case 'start':
+                    if (clientState.status === 'in_progress' && clientState.startTime) {
+                        clientState.activeSeconds += Math.floor((now - clientState.startTime) / 1000);
+                    }
+                    clientState.status = 'in_progress';
+                    clientState.startTime = now;
+                    clientState.pauseStartTime = null;
+                    break;
+                    
+                case 'pause':
+                    if (clientState.status === 'in_progress' && clientState.startTime) {
+                        clientState.activeSeconds += Math.floor((now - clientState.startTime) / 1000);
+                    }
+                    clientState.status = 'on_break';
+                    clientState.pauseStartTime = now;
+                    clientState.startTime = null;
+                    break;
+                    
+                case 'resume':
+                    if (clientState.status === 'on_break' && clientState.pauseStartTime) {
+                        clientState.pauseSeconds += Math.floor((now - clientState.pauseStartTime) / 1000);
+                    }
+                    clientState.status = 'in_progress';
+                    clientState.startTime = now;
+                    clientState.pauseStartTime = null;
+                    break;
+            }
+        }
+
+        // Send action to server
+        function sendToServer(action) {
+            log('📤 CLIENT: Sending ' + action + ' to server...', 'server-log');
+            
+            // Simulate server processing delay
+            setTimeout(() => {
+                processServerAction(action);
+                log('✅ SERVER: Action processed and stored', 'server-log');
+            }, 200 + Math.random() * 300); // 200-500ms delay
+        }
+
+        // Server processes action (simulated)
+        function processServerAction(action) {
+            const now = Date.now();
+            
+            // Server updates its state (authoritative)
+            switch(action) {
+                case 'start':
+                    if (serverState.status === 'in_progress' && serverState.startTime) {
+                        serverState.activeSeconds += Math.floor((now - serverState.startTime) / 1000);
+                    }
+                    serverState.status = 'in_progress';
+                    serverState.startTime = now;
+                    serverState.pauseStartTime = null;
+                    break;
+                    
+                case 'pause':
+                    if (serverState.status === 'in_progress' && serverState.startTime) {
+                        serverState.activeSeconds += Math.floor((now - serverState.startTime) / 1000);
+                    }
+                    serverState.status = 'on_break';
+                    serverState.pauseStartTime = now;
+                    serverState.startTime = null;
+                    break;
+                    
+                case 'resume':
+                    if (serverState.status === 'on_break' && serverState.pauseStartTime) {
+                        serverState.pauseSeconds += Math.floor((now - serverState.pauseStartTime) / 1000);
+                    }
+                    serverState.status = 'in_progress';
+                    serverState.startTime = now;
+                    serverState.pauseStartTime = null;
+                    break;
+            }
+        }
+
+        // Periodic sync with server
+        function startSyncTimer() {
+            syncTimer = setInterval(() => {
+                performSync();
+            }, 30000); // Sync every 30 seconds
+        }
+
+        // Perform sync between client and server
+        function performSync() {
+            log('🔄 SYNC: Performing client-server synchronization...', 'sync-log');
+            
+            // Calculate drift between client and server
+            const clientTime = calculateClientTime();
+            const serverTime = calculateServerTime();
+            const drift = Math.abs(clientTime.activeTime - serverTime.activeTime);
+            
+            log('🔄 SYNC: Drift detected: ' + drift + ' seconds', 'sync-log');
+            
+            // Update client with server data (server is authority)
+            clientState.activeSeconds = serverTime.activeTime;
+            clientState.pauseSeconds = serverTime.pauseTime;
+            clientState.status = serverState.status;
+            clientState.startTime = serverState.startTime;
+            clientState.pauseStartTime = serverState.pauseStartTime;
+            clientState.lastSync = Date.now();
+            
+            // Update sync status
+            updateSyncStatus(drift);
+            
+            // Update displays
+            updateClientDisplay();
+            updateServerDisplay();
+            
+            document.getElementById('last-sync').textContent = new Date().toLocaleTimeString();
+            
+            log('✅ SYNC: Client synchronized with server authority', 'sync-log');
+        }
+
+        // Force immediate sync
+        function forceSyncNow() {
+            log('🔄 SYNC: Force sync requested by user', 'sync-log');
+            performSync();
+            syncCountdown = 30; // Reset countdown
+        }
+
+        // Calculate current client time
+        function calculateClientTime() {
+            const now = Date.now();
+            let activeTime = clientState.activeSeconds;
+            let pauseTime = clientState.pauseSeconds;
+            
+            if (clientState.status === 'in_progress' && clientState.startTime) {
+                activeTime += Math.floor((now - clientState.startTime) / 1000);
+            }
+            
+            if (clientState.status === 'on_break' && clientState.pauseStartTime) {
+                pauseTime += Math.floor((now - clientState.pauseStartTime) / 1000);
+            }
+            
+            return { activeTime, pauseTime };
+        }
+
+        // Calculate current server time
+        function calculateServerTime() {
+            const now = Date.now();
+            let activeTime = serverState.activeSeconds;
+            let pauseTime = serverState.pauseSeconds;
+            
+            if (serverState.status === 'in_progress' && serverState.startTime) {
+                activeTime += Math.floor((now - serverState.startTime) / 1000);
+            }
+            
+            if (serverState.status === 'on_break' && serverState.pauseStartTime) {
+                pauseTime += Math.floor((now - serverState.pauseStartTime) / 1000);
+            }
+            
+            return { activeTime, pauseTime };
+        }
+
+        // Update client display
+        function updateClientDisplay() {
+            const clientTime = calculateClientTime();
+            const countdown = clientTime.activeTime >= clientState.slaSeconds ? 
+                clientTime.activeTime - clientState.slaSeconds : 
+                clientState.slaSeconds - clientTime.activeTime;
+            
+            // Main display (uses client data for responsiveness)
+            const statusEl = document.getElementById('status-display');
+            statusEl.textContent = clientState.status.toUpperCase().replace('_', ' ');
+            statusEl.className = 'status ' + clientState.status;
+            
+            const countdownEl = document.getElementById('countdown-display');
+            if (clientTime.activeTime >= clientState.slaSeconds) {
+                countdownEl.textContent = 'OVERDUE: ' + formatTime(countdown);
+                countdownEl.style.color = '#f44336';
+            } else {
+                countdownEl.textContent = formatTime(countdown);
+                countdownEl.style.color = clientState.status === 'in_progress' ? '#4caf50' : '#757575';
+            }
+            
+            document.getElementById('time-used').textContent = formatTime(clientTime.activeTime);
+            document.getElementById('pause-time').textContent = formatTime(clientTime.pauseTime);
+            
+            // Client time display
+            document.getElementById('client-countdown').textContent = formatTime(countdown);
+        }
+
+        // Update server display
+        function updateServerDisplay() {
+            const serverTime = calculateServerTime();
+            const countdown = serverTime.activeTime >= serverState.slaSeconds ? 
+                serverTime.activeTime - serverState.slaSeconds : 
+                serverState.slaSeconds - serverTime.activeTime;
+            
+            document.getElementById('server-countdown').textContent = formatTime(countdown);
+        }
+
+        // Update sync status
+        function updateSyncStatus(drift) {
+            const syncEl = document.getElementById('sync-status');
+            
+            if (drift <= 2) {
+                syncEl.className = 'sync-status sync-good';
+                syncEl.textContent = '✅ Client-Server Sync: Perfect (' + drift + 's drift)';
+            } else {
+                syncEl.className = 'sync-status sync-drift';
+                syncEl.textContent = '⚠️ Client-Server Sync: ' + drift + 's drift detected';
+            }
+        }
+
+        // Sync countdown
+        function startSyncCountdown() {
+            setInterval(() => {
+                syncCountdown--;
+                if (syncCountdown <= 0) {
+                    syncCountdown = 30;
+                }
+                document.getElementById('next-sync').textContent = syncCountdown + 's';
+            }, 1000);
+        }
+
+        // Utility functions
+        function formatTime(seconds) {
+            const s = Math.max(0, Math.floor(seconds));
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = s % 60;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        function log(message, className = '') {
+            const logContent = document.getElementById('log-content');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + className;
+            entry.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            logContent.appendChild(entry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 HYBRID: Page loaded, starting hybrid system...', 'client-log');
+            initHybridSystem();
+        });
+    </script>
+</body>
+</html>

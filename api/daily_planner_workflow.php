@@ -1,4 +1,4 @@
-<?php // ✅ REBUILT: Standardized API structure with improved error handling and data validation.
+<?php
 header('Content-Type: application/json; charset=utf-8');
 session_start();
 
@@ -9,14 +9,13 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 require_once __DIR__ . '/../app/config/database.php';
-require_once __DIR__ . '/../app/models/DailyPlanner.php';
+require_once __DIR__ . '/../app/helpers/DatabaseHelper.php';
 
-// Parse input: JSON or form data
+// Parse input
 $raw = file_get_contents('php://input');
 $input = json_decode($raw, true);
 if (!is_array($input)) $input = $_POST;
 
-// Get action and task_id
 $action = $_GET['action'] ?? $input['action'] ?? null;
 $task_id = $input['task_id'] ?? null;
 
@@ -26,8 +25,7 @@ if (empty($action)) {
     exit;
 }
 
-// ✅ REBUILT: Validate task_id for all actions that require it.
-if (in_array($action, ['start', 'pause', 'resume', 'update-progress', 'postpone', 'activate-postponed']) && !$task_id) {
+if (in_array($action, ['start', 'pause', 'resume', 'update-progress', 'postpone']) && !$task_id) {
     http_response_code(400);
     echo json_encode(['error' => 'missing task_id']);
     exit;
@@ -37,214 +35,341 @@ $userId = (int)$_SESSION['user_id'];
 
 try {
     $db = Database::connect();
-    $planner = new DailyPlanner();
     
     switch ($action) {
         case 'start':
-            if ($planner->startTask($task_id, $userId)) {
-                echo json_encode([
-                    'success' => true, // ✅ REBUILT: Consistent API response format.
-                    'status' => 'running',
-                    'label' => 'Break'
-                ]);
-            } else {
-                http_response_code(400);
-                echo json_encode(['error' => 'start failed']);
+            try {
+                // Get task with current progress and SLA info
+                $stmt = $db->prepare("
+                    SELECT dt.id, dt.status, dt.completed_percentage, dt.active_seconds, dt.pause_duration,
+                           COALESCE(t.sla_hours, 0.25) as sla_hours
+                    FROM daily_tasks dt
+                    LEFT JOIN tasks t ON dt.original_task_id = t.id
+                    WHERE dt.id = ? AND dt.user_id = ?
+                ");
+                $stmt->execute([$task_id, $userId]);
+                $task = $stmt->fetch();
+                
+                if (!$task) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Task not found']);
+                    exit;
+                }
+                
+                if (!in_array($task['status'], ['not_started', 'assigned'])) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Task cannot be started from current status: ' . $task['status']]);
+                    exit;
+                }
+                
+                $now = date('Y-m-d H:i:s');
+                $nowISO = date('c');
+                $slaHours = (float)$task['sla_hours'];
+                $slaEndTime = date('Y-m-d H:i:s', strtotime($now . ' +' . $slaHours . ' hours'));
+                
+                // Start task with proper SLA tracking - reset active_seconds for fresh start
+                $stmt = $db->prepare("
+                    UPDATE daily_tasks 
+                    SET status = 'in_progress', 
+                        start_time = ?, 
+                        sla_end_time = ?,
+                        resume_time = ?,
+                        pause_start_time = NULL,
+                        active_seconds = 0,
+                        updated_at = NOW()
+                    WHERE id = ? AND user_id = ?
+                ");
+                
+                $result = $stmt->execute([$now, $slaEndTime, $now, $task_id, $userId]);
+                
+
+                
+                if ($result && $stmt->rowCount() > 0) {
+                    echo json_encode([
+                        'success' => true,
+                        'status' => 'in_progress',
+                        'label' => 'Break',
+                        'message' => 'Task started successfully',
+                        'progress' => (int)($task['completed_percentage'] ?? 0),
+                        'start_time' => date('c', strtotime($now)),
+                        'resume_time' => date('c', strtotime($now)),
+                        'active_seconds' => (int)($task['active_seconds'] ?? 0),
+                        'total_pause_duration' => (int)($task['pause_duration'] ?? 0),
+                        'current_timestamp' => time(),
+                        'server_time' => $nowISO
+                    ]);
+                } else {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Failed to start task']);
+                }
+                
+            } catch (Exception $e) {
+                error_log('Start task error: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Start task error: ' . $e->getMessage()]);
             }
             break;
             
         case 'pause':
-            if ($planner->pauseTask($task_id, $userId)) {
-                echo json_encode([
-                    'success' => true,
-                    'status' => 'on_break',
-                    'label' => 'Resume'
-                ]);
-            } else {
-                http_response_code(400);
-                echo json_encode(['error' => 'pause failed']);
+            try {
+                $stmt = $db->prepare("
+                    SELECT id, status, start_time, resume_time, active_seconds, pause_duration FROM daily_tasks 
+                    WHERE id = ? AND user_id = ?
+                ");
+                $stmt->execute([$task_id, $userId]);
+                $task = $stmt->fetch();
+                
+                if (!$task) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Task not found']);
+                    exit;
+                }
+                
+                if ($task['status'] !== 'in_progress') {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Task is not in progress. Current status: ' . $task['status']]);
+                    exit;
+                }
+                
+
+                
+                $now = date('Y-m-d H:i:s');
+                
+                // Calculate and store session time when pausing
+                $sessionTime = 0;
+                $referenceTime = $task['resume_time'] ?: $task['start_time'];
+                if ($referenceTime) {
+                    $sessionTime = max(0, time() - strtotime($referenceTime));
+                }
+                
+                $newActiveSeconds = (int)$task['active_seconds'] + $sessionTime;
+                
+                $stmt = $db->prepare("
+                    UPDATE daily_tasks 
+                    SET status = 'on_break', 
+                        pause_start_time = ?,
+                        active_seconds = ?,
+                        resume_time = NULL,
+                        updated_at = NOW()
+                    WHERE id = ? AND user_id = ?
+                ");
+                
+                $result = $stmt->execute([$now, $newActiveSeconds, $task_id, $userId]);
+                
+                if ($result && $stmt->rowCount() > 0) {
+                    echo json_encode([
+                        'success' => true,
+                        'status' => 'on_break',
+                        'label' => 'Resume',
+                        'pause_start_time' => date('c', strtotime($now)),
+                        'resume_time' => null,
+                        'active_seconds' => $newActiveSeconds,
+                        'pause_duration' => (int)$task['pause_duration'],
+                        'current_timestamp' => time()
+                    ]);
+                } else {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Failed to pause task']);
+                }
+                
+            } catch (Exception $e) {
+                error_log('Pause task error: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Pause task error: ' . $e->getMessage()]);
             }
             break;
             
         case 'resume':
-            if ($planner->resumeTask($task_id, $userId)) {
-                echo json_encode([
-                    'success' => true,
-                    'status' => 'running',
-                    'label' => 'Break'
-                ]);
-            } else {
-                http_response_code(400);
-                echo json_encode(['error' => 'resume failed']);
-            }
-            break;
-            
-        case 'sla-dashboard':
-            $date = $_GET['date'] ?? date('Y-m-d');
-            $requestedUserId = $_GET['user_id'] ?? $userId;
-            $stats = $planner->getDailyStats($requestedUserId, $date);
-            echo json_encode([
-                'success' => true,
-                'sla_total_seconds' => (int) ($stats['total_sla_seconds'] ?? 0), // ✅ REBUILT: Provides real data.
-                'active_seconds' => (int) ($stats['total_active_seconds'] ?? 0),
-                'pause_seconds' => (int) ($stats['total_pause_seconds'] ?? 0),
-                'total_tasks' => (int) ($stats['total_tasks'] ?? 0),
-                'completed_tasks' => (int) ($stats['completed_tasks'] ?? 0),
-                'in_progress_tasks' => (int) ($stats['in_progress_tasks'] ?? 0),
-                'postponed_tasks' => (int) ($stats['postponed_tasks'] ?? 0)
-            ]);
-            break;
-            
-        case 'timer':
-            $taskId = $_GET['task_id'] ?? null;
-            if (!$taskId) {
-                http_response_code(400);
-                echo json_encode(['error' => 'missing task_id for timer']);
-                exit;
-            }
-            
-            // Ensure planner instance is available
-            if (!isset($planner)) {
-                $planner = new DailyPlanner();
-            }
-
-            // Simple query with error handling
-            $stmt = $db->prepare("
-                SELECT 
-                    dt.status, dt.start_time, dt.sla_end_time, 
-                    COALESCE(dt.active_seconds, 0) as active_seconds, 
-                    COALESCE(dt.pause_duration, 0) as pause_duration, 
-                    dt.pause_start_time,
-                    COALESCE(t.sla_hours, 0.25) as sla_hours
-                FROM daily_tasks dt
-                LEFT JOIN tasks t ON dt.original_task_id = t.id
-                WHERE dt.id = ? AND dt.user_id = ?
-            ");
-            $stmt->execute([$taskId, $userId]);
-            $task = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$task) {
-                http_response_code(404);
-                echo json_encode(['error' => 'task not found']);
-                exit;
-            }
-
-            $now = time();
-            $remaining_seconds = 0;
-            $current_pause_duration = 0;
-            $is_overdue = false;
-
-            if ($task['status'] === 'in_progress') {
-                if ($task['sla_end_time']) {
-                    $sla_end_timestamp = strtotime($task['sla_end_time']);
-                    $remaining_seconds = $sla_end_timestamp - $now;
-                    
-                    if ($remaining_seconds <= 0) {
-                        $is_overdue = true;
-                        $remaining_seconds = 0;
-                        
-                        // Start overdue timer if not already started
-                        if (!$task['overdue_start_time']) {
-                            $planner->startOverdueTimer($taskId);
-                        }
-                    }
-                } else {
-                    $remaining_seconds = ($task['sla_hours'] * 3600);
+            try {
+                $stmt = $db->prepare("
+                    SELECT id, status, pause_start_time, pause_duration, active_seconds FROM daily_tasks 
+                    WHERE id = ? AND user_id = ?
+                ");
+                $stmt->execute([$task_id, $userId]);
+                $task = $stmt->fetch();
+                
+                if (!$task) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Task not found']);
+                    exit;
                 }
-            } elseif ($task['status'] === 'on_break') {
+                
+                if ($task['status'] !== 'on_break') {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Task is not on break. Current status: ' . $task['status']]);
+                    exit;
+                }
+                
+
+                
+                $now = date('Y-m-d H:i:s');
+                
+                // Calculate and store pause session time when resuming
+                $pauseSessionTime = 0;
                 if ($task['pause_start_time']) {
-                    $pause_start_timestamp = strtotime($task['pause_start_time']);
-                    if ($pause_start_timestamp > 0) {
-                        $current_pause_duration = $now - $pause_start_timestamp;
-                    }
+                    $pauseSessionTime = max(0, time() - strtotime($task['pause_start_time']));
                 }
-                // Calculate remaining from SLA end time
-                $remaining_seconds = ($task['sla_end_time']) 
-                    ? max(0, strtotime($task['sla_end_time']) - $now) 
-                    : ($task['sla_hours'] * 3600);
-            } elseif ($task['status'] === 'not_started') {
-                $remaining_seconds = ($task['sla_hours'] * 3600);
+                
+                $newPauseDuration = (int)$task['pause_duration'] + $pauseSessionTime;
+                
+                $stmt = $db->prepare("
+                    UPDATE daily_tasks 
+                    SET status = 'in_progress', 
+                        resume_time = ?,
+                        pause_start_time = NULL,
+                        pause_duration = ?,
+                        updated_at = NOW()
+                    WHERE id = ? AND user_id = ?
+                ");
+                
+                $result = $stmt->execute([$now, $newPauseDuration, $task_id, $userId]);
+                
+                if ($result && $stmt->rowCount() > 0) {
+                    echo json_encode([
+                        'success' => true,
+                        'status' => 'in_progress',
+                        'label' => 'Break',
+                        'resume_time' => date('c', strtotime($now)),
+                        'pause_start_time' => null,
+                        'active_seconds' => (int)$task['active_seconds'],
+                        'pause_duration' => $newPauseDuration,
+                        'current_timestamp' => time()
+                    ]);
+                } else {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Failed to resume task']);
+                }
+                
+            } catch (Exception $e) {
+                error_log('Resume task error: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Resume task error: ' . $e->getMessage()]);
             }
-
-            $response = [
-                'success' => true,
-                'active_seconds' => max(0, (int) $task['active_seconds']),
-                'remaining_seconds' => max(0, (int) $remaining_seconds),
-                'status' => $task['status'],
-                'sla_end_time' => $task['sla_end_time'],
-                'pause_duration' => max(0, (int) $task['pause_duration']),
-                'pause_start_time' => $task['pause_start_time'],
-                'current_pause_duration' => max(0, (int) $current_pause_duration),
-                'is_overdue' => $is_overdue
-            ];
-
-            // ✅ REBUILT: Sanitizes all string outputs to prevent XSS.
-            array_walk_recursive($response, function (&$value) {
-                if (is_string($value)) $value = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
-            });
-
-            echo json_encode($response);
             break;
             
         case 'update-progress':
-            $progress = $input['progress'] ?? null;
-            $status = $input['status'] ?? null;
-            $reason = $input['reason'] ?? '';
-
-            if ($progress === null || $status === null) {
-                http_response_code(400);
-                echo json_encode(['error' => 'missing progress or status']);
-                exit;
-            }
-
-            if ($planner->updateTaskProgress($task_id, $userId, (int)$progress, $status, $reason)) {
-                echo json_encode(['success' => true, 'message' => 'Progress updated', 'progress' => (int)$progress, 'status' => $status]);
-            } else {
-                http_response_code(400);
-                echo json_encode(['error' => 'update-progress failed']);
-            }
-            break;
-
-        case 'postpone':
-            $new_date = $input['new_date'] ?? null;
-            if (!$new_date) {
-                http_response_code(400);
-                echo json_encode(['error' => 'missing new_date']);
-                exit;
-            }
             try {
-                if ($planner->postponeTask($task_id, $userId, $new_date)) {
-                    echo json_encode(['success' => true, 'message' => 'Task postponed successfully']);
+                $progress = $input['progress'] ?? null;
+                $status = $input['status'] ?? null;
+                
+                if ($progress === null || $status === null) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'missing progress or status']);
+                    exit;
                 }
+                
+                $progress = (int)$progress;
+                
+                // Get the original task ID for syncing
+                $stmt = $db->prepare("SELECT original_task_id, task_id FROM daily_tasks WHERE id = ? AND user_id = ?");
+                $stmt->execute([$task_id, $userId]);
+                $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$dailyTask) {
+                    http_response_code(404);
+                    echo json_encode(['error' => 'Daily task not found']);
+                    exit;
+                }
+                
+                $db->beginTransaction();
+                
+                // Update daily_tasks table
+                if ($progress >= 100 || $status === 'completed') {
+                    $status = 'completed';
+                    $progress = 100;
+                    $completionTime = date('Y-m-d H:i:s');
+                    
+                    $stmt = $db->prepare("
+                        UPDATE daily_tasks 
+                        SET status = 'completed', 
+                            completed_percentage = 100,
+                            completion_time = ?,
+                            updated_at = NOW()
+                        WHERE id = ? AND user_id = ?
+                    ");
+                    $result = $stmt->execute([$completionTime, $task_id, $userId]);
+                } else {
+                    $stmt = $db->prepare("
+                        UPDATE daily_tasks 
+                        SET status = ?, 
+                            completed_percentage = ?,
+                            updated_at = NOW()
+                        WHERE id = ? AND user_id = ?
+                    ");
+                    $result = $stmt->execute([$status, $progress, $task_id, $userId]);
+                }
+                
+                if ($result) {
+                    // Sync with main tasks table if linked
+                    $originalTaskId = $dailyTask['original_task_id'] ?: $dailyTask['task_id'];
+                    if ($originalTaskId) {
+                        $stmt = $db->prepare("UPDATE tasks SET status = ?, progress = ?, updated_at = NOW() WHERE id = ?");
+                        $stmt->execute([$status, $progress, $originalTaskId]);
+                    }
+                    
+                    $db->commit();
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Task synced with planner',
+                        'progress' => $progress,
+                        'status' => $status
+                    ]);
+                } else {
+                    $db->rollback();
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Failed to sync daily task']);
+                }
+                
             } catch (Exception $e) {
-                http_response_code(400);
-                echo json_encode(['error' => $e->getMessage()]);
+                if ($db && $db->inTransaction()) {
+                    $db->rollback();
+                }
+                error_log('Update progress error: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Update progress error: ' . $e->getMessage()]);
             }
             break;
-
-        case 'activate-postponed':
-            // ✅ REBUILT: Activates a postponed task by changing its status.
-            if ($planner->updateTaskProgress($task_id, $userId, 0, 'not_started', 'Activated from postponed state')) {
-                 echo json_encode(['success' => true, 'message' => 'Task activated']);
-            } else {
-                http_response_code(400);
-                echo json_encode(['error' => 'activate-postponed failed']);
+            
+        case 'postpone':
+            try {
+                $new_date = $input['new_date'] ?? null;
+                $reason = $input['reason'] ?? 'Postponed via daily planner';
+                
+                if (!$new_date) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'missing new_date']);
+                    exit;
+                }
+                
+                require_once __DIR__ . '/../app/models/DailyPlanner.php';
+                $planner = new DailyPlanner();
+                
+                if ($planner->postponeTask($task_id, $userId, $new_date)) {
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Task postponed to ' . $new_date
+                    ]);
+                } else {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Failed to postpone task']);
+                }
+                
+            } catch (Exception $e) {
+                error_log('Postpone task error: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['error' => 'Postpone task error: ' . $e->getMessage()]);
             }
             break;
-
-        case 'task-history':
-            $task_id = $_GET['task_id'] ?? $task_id; // Allow GET for history
-            $history = $planner->getTaskHistory($task_id, $userId);
-            echo json_encode(['success' => true, 'history' => $history]);
-            break;
-
+            
         default:
             http_response_code(400);
-            echo json_encode(['error' => 'unknown action']);
+            echo json_encode(['error' => 'Unknown action: ' . $action]);
             break;
     }
     
 } catch (Exception $e) {
-    http_response_code(400);
-    echo json_encode(['error' => $e->getMessage()]);
+    error_log('Daily planner workflow error: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['error' => 'Internal server error: ' . $e->getMessage()]);
 }
+?>

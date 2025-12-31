@@ -1,0 +1,6 @@
+Add this line to dashboard.php after the dashboard-charts.js script tag:
+
+<script src="/ergon/views/finance/dashboard-charts-init.js"></script>
+
+This should be placed around line 1 after:
+<script src="/ergon/views/finance/dashboard-charts.js"></script>

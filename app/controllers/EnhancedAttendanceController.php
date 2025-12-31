@@ -343,19 +343,42 @@ class EnhancedAttendanceController extends Controller {
         $shift = $this->getUserShift($userId);
         $status = $this->determineStatus($shift);
         
-        // Insert attendance record
+        // Check for project match based on GPS coordinates
+        $projectId = null;
+        $locationName = 'Office';
+        
+        if ($latitude && $longitude) {
+            // Check all active projects for GPS coordinate match
+            $stmt = $this->db->prepare("SELECT id, name, latitude, longitude, checkin_radius, location_title FROM projects WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND status = 'active'");
+            $stmt->execute();
+            $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($projects as $project) {
+                $distance = $this->calculateDistance($latitude, $longitude, $project['latitude'], $project['longitude']);
+                if ($distance <= $project['checkin_radius']) {
+                    $projectId = $project['id'];
+                    $locationName = $project['location_title'] ?: $project['name'];
+                    break; // Use first matching project
+                }
+            }
+        }
+        
+        // Insert attendance record - EXPLICITLY set project_id to NULL if no GPS match
         $stmt = $this->db->prepare("
             INSERT INTO attendance (user_id, shift_id, check_in, latitude, longitude, 
-                                  location_name, ip_address, device_info, status, created_at) 
-            VALUES (?, ?, NOW(), ?, ?, 'Office', ?, ?, ?, NOW())
+                                  location_name, project_id, ip_address, device_info, status, created_at) 
+            VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         
         $deviceInfo = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
         $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
         
+        // Ensure project_id is explicitly NULL if no match found
+        $finalProjectId = $projectId ?: null;
+        
         $result = $stmt->execute([
             $userId, $shift['id'] ?? null, $latitude, $longitude, 
-            $ipAddress, $deviceInfo, $status
+            $locationName, $finalProjectId, $ipAddress, $deviceInfo, $status
         ]);
         
         if ($result) {
@@ -363,7 +386,9 @@ class EnhancedAttendanceController extends Controller {
                 'success' => true, 
                 'message' => 'Clocked in successfully',
                 'status' => $status,
-                'time' => date('H:i:s')
+                'time' => date('H:i:s'),
+                'project_id' => $projectId,
+                'location' => $locationName
             ];
         }
         

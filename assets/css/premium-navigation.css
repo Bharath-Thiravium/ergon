@@ -1,0 +1,268 @@
+/* Premium Navigation Styles */
+
+/* Premium icon styling */
+.premium-icon {
+    font-size: 0.75rem;
+    color: #f59e0b;
+    margin-left: 0.5rem;
+    opacity: 0.8;
+}
+
+/* Disabled navigation items */
+.nav-dropdown-item--disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    position: relative;
+    overflow: visible;
+}
+
+.nav-dropdown-item--disabled:hover {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    color: #ef4444 !important;
+    overflow: visible;
+}
+
+.nav-dropdown-item--disabled:hover .premium-icon {
+    color: #ef4444;
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Sidebar disabled items */
+.sidebar__link--disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    position: relative;
+    overflow: visible;
+}
+
+.sidebar__link--disabled:hover {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    color: #ef4444 !important;
+    overflow: visible;
+}
+
+.sidebar__link--disabled:hover .premium-icon {
+    color: #ef4444;
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Shake animation for premium icons */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+}
+
+/* Premium tooltip */
+.premium-tooltip {
+    position: fixed;
+    background: whitesmoke;
+    color: #080808;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    z-index: 10000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    /*border: 2px solid #ef4444;*/
+    font-weight: 600;
+    display: none;
+}
+
+/* Dark theme support */
+[data-theme="dark"] .premium-tooltip {
+    background: #ffffff;
+    color: #1f2937;
+    border-color: #ef4444;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .premium-tooltip {
+        font-size: 0.8rem;
+        padding: 0.6rem 0.8rem;
+        max-width: 90vw;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.4;
+        right: 10px;
+        top: 120px;
+    }
+    
+    .premium-icon {
+        font-size: 0.7rem;
+    }
+}
+
+/* Premium badge for navigation sections */
+.nav-section-premium {
+    position: relative;
+}
+
+.nav-section-premium::after {
+    content: "PREMIUM";
+    position: absolute;
+    top: -0.25rem;
+    right: -0.25rem;
+    background: linear-gradient(45deg, #f59e0b, #d97706);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Premium Modal Styles */
+.premium-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.premium-modal-overlay.show {
+    opacity: 1;
+}
+
+.premium-modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.premium-modal-overlay.show .premium-modal {
+    transform: scale(1);
+}
+
+.premium-modal-header {
+    margin-bottom: 1.5rem;
+}
+
+.premium-icon-large {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.premium-modal h2 {
+    color: #1f2937;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.premium-modal-body {
+    color: #6b7280;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.premium-modal-body p {
+    margin-bottom: 0.75rem;
+}
+
+.premium-modal-body strong {
+    color: #374151;
+    font-weight: 600;
+}
+
+.premium-modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.premium-modal-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.premium-modal-actions .btn-primary {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.premium-modal-actions .btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.premium-modal-actions .btn-secondary {
+    background: #6b7280;
+    color: #fff;
+}
+
+.premium-modal-actions .btn-secondary:hover {
+    background: #4b5563;
+    transform: translateY(-1px);
+}
+
+/* Dark theme support for modal */
+[data-theme="dark"] .premium-modal {
+    background: #1f2937;
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .premium-modal h2 {
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .premium-modal-body {
+    color: #d1d5db;
+}
+
+[data-theme="dark"] .premium-modal-body strong {
+    color: #f3f4f6;
+}
+
+/* Mobile responsive for modal */
+@media (max-width: 768px) {
+    .premium-modal {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+    
+    .premium-icon-large {
+        font-size: 2.5rem;
+    }
+    
+    .premium-modal h2 {
+        font-size: 1.25rem;
+    }
+    
+    .premium-modal-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .premium-modal-actions .btn {
+        width: 100%;
+        max-width: 200px;
+        justify-content: center;
+    }
+}

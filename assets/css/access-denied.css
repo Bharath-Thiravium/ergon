@@ -1,0 +1,140 @@
+/* Access Denied Page Styles */
+.access-denied-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    padding: 2rem;
+}
+
+.access-denied-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 100%;
+    border: 1px solid #e2e8f0;
+}
+
+.access-denied-icon {
+    font-size: 4rem;
+    color: #ef4444;
+    margin-bottom: 1.5rem;
+}
+
+.access-denied-title {
+    color: #1f2937;
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    line-height: 1.2;
+}
+
+.access-denied-message {
+    color: #6b7280;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.access-denied-message p {
+    margin-bottom: 0.75rem;
+}
+
+.access-denied-message strong {
+    color: #374151;
+    font-weight: 600;
+}
+
+.access-denied-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.access-denied-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.access-denied-actions .btn-primary {
+    background: #3b82f6;
+    color: #fff;
+    border: 1px solid #3b82f6;
+}
+
+.access-denied-actions .btn-primary:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+    transform: translateY(-1px);
+}
+
+.access-denied-actions .btn-outline-primary {
+    background: transparent;
+    color: #3b82f6;
+    border: 1px solid #3b82f6;
+}
+
+.access-denied-actions .btn-outline-primary:hover {
+    background: #3b82f6;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* Dark theme support */
+[data-theme="dark"] .access-denied-card {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .access-denied-title {
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .access-denied-message {
+    color: #d1d5db;
+}
+
+[data-theme="dark"] .access-denied-message strong {
+    color: #f3f4f6;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .access-denied-container {
+        padding: 1rem;
+        min-height: 50vh;
+    }
+    
+    .access-denied-card {
+        padding: 2rem 1.5rem;
+    }
+    
+    .access-denied-icon {
+        font-size: 3rem;
+    }
+    
+    .access-denied-title {
+        font-size: 1.5rem;
+    }
+    
+    .access-denied-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .access-denied-actions .btn {
+        width: 100%;
+        max-width: 200px;
+        justify-content: center;
+    }
+}

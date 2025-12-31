@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/DatabaseHelper.php';
 
 class Notification {
     private $db;
@@ -36,18 +37,41 @@ class Notification {
             INDEX idx_reference (reference_type, reference_id),
             INDEX idx_expires (expires_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-        $this->db->exec($sql);
+        DatabaseHelper::safeExec($this->db, $sql, "Model operation");
     }
     
     public function create($data) {
-        $stmt = $this->db->prepare("INSERT INTO notifications (sender_id, receiver_id, type, category, title, message, action_url, reference_type, reference_id, priority) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        // Check for duplicate notifications to prevent duplicates
+        $checkStmt = $this->db->prepare("
+            SELECT id FROM notifications 
+            WHERE sender_id = ? AND receiver_id = ? AND title = ? AND message = ? 
+            AND reference_type = ? AND reference_id = ? 
+            AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+        ");
+        $checkStmt->execute([
+            $data['sender_id'],
+            $data['receiver_id'],
+            $data['title'] ?? '',
+            $data['message'] ?? '',
+            $data['reference_type'] ?? null,
+            $data['reference_id'] ?? null
+        ]);
+        
+        if ($checkStmt->fetch()) {
+            return true; // Duplicate found, skip creation
+        }
+        
+        $stmt = $this->db->prepare("
+            INSERT INTO notifications (sender_id, receiver_id, type, category, title, message, action_url, reference_type, reference_id, priority, is_read) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        ");
         return $stmt->execute([
             $data['sender_id'],
             $data['receiver_id'],
             $data['type'] ?? 'info',
             $data['category'] ?? 'system',
-            $data['title'],
-            $data['message'],
+            $data['title'] ?? '',
+            $data['message'] ?? '',
             $data['action_url'] ?? null,
             $data['reference_type'] ?? null,
             $data['reference_id'] ?? null,
@@ -57,37 +81,37 @@ class Notification {
     
     public function getForUser($userId, $limit = 50) {
         $stmt = $this->db->prepare("
-            SELECT n.*, COALESCE(u.name, 'System') as sender_name,
-                   n.reference_type as module_name,
-                   n.category as action_type
+            SELECT DISTINCT n.*, COALESCE(u.name, 'System') as sender_name
             FROM notifications n 
             LEFT JOIN users u ON n.sender_id = u.id 
-            WHERE n.receiver_id = ? 
+            WHERE n.receiver_id = ? AND n.sender_id != ?
+            AND (n.message LIKE '%₹%' OR n.reference_type NOT IN ('advance', 'expense'))
+            GROUP BY n.id
             ORDER BY n.is_read ASC, n.created_at DESC 
             LIMIT ?
         ");
-        $stmt->execute([$userId, $limit]);
+        $stmt->execute([$userId, $userId, $limit]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     public function getForDropdown($userId, $limit = 10) {
         $stmt = $this->db->prepare("
-            SELECT n.*, COALESCE(u.name, 'System') as sender_name,
-                   n.reference_type as module_name,
-                   n.category as action_type
+            SELECT DISTINCT n.*, COALESCE(u.name, 'System') as sender_name
             FROM notifications n 
             LEFT JOIN users u ON n.sender_id = u.id 
-            WHERE n.receiver_id = ? 
+            WHERE n.receiver_id = ? AND n.sender_id != ?
+            AND (n.message LIKE '%₹%' OR n.reference_type NOT IN ('advance', 'expense'))
+            GROUP BY n.id
             ORDER BY n.is_read ASC, n.created_at DESC 
             LIMIT ?
         ");
-        $stmt->execute([$userId, $limit]);
+        $stmt->execute([$userId, $userId, $limit]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     public function getUnreadCount($userId) {
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM notifications WHERE receiver_id = ? AND is_read = 0");
-        $stmt->execute([$userId]);
+        $stmt = $this->db->prepare("SELECT COUNT(DISTINCT id) FROM notifications WHERE receiver_id = ? AND is_read = 0 AND sender_id != ?");
+        $stmt->execute([$userId, $userId]);
         return $stmt->fetchColumn();
     }
     

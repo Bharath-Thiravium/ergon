@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/DatabaseHelper.php';
 
 class PerformanceOptimizer {
     
@@ -28,7 +29,7 @@ class PerformanceOptimizer {
     public static function optimizeDatabase() {
         try {
             $db = Database::connect();
-            $db->exec("OPTIMIZE TABLE users, tasks, attendance, notifications");
+            DatabaseHelper::safeExec($db, "OPTIMIZE TABLE users, tasks, attendance, notifications", "Database optimization");
         } catch (Exception $e) {
             error_log('Database optimization failed: ' . $e->getMessage());
         }

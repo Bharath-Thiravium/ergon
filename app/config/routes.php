@@ -45,6 +45,7 @@ $router->post('/users/create', 'UsersController', 'create');
 $router->get('/users/view/{id}', 'UsersController', 'viewUser');
 $router->get('/users/edit/{id}', 'UsersController', 'edit');
 $router->post('/users/edit/{id}', 'UsersController', 'edit');
+$router->post('/users/edit', 'UsersController', 'edit');
 $router->post('/users/inactive/{id}', 'UsersController', 'inactive');
 $router->post('/users/activate/{id}', 'UsersController', 'activate');
 $router->post('/users/suspend/{id}', 'UsersController', 'suspend');
@@ -92,6 +93,7 @@ $router->get('/tasks/edit/{id}', 'TasksController', 'edit');
 $router->post('/tasks/edit/{id}', 'TasksController', 'edit');
 $router->get('/tasks/view/{id}', 'TasksController', 'viewDetails');
 $router->get('/tasks/history/{id}', 'TasksController', 'getTaskHistory');
+$router->get('/tasks/progress-history/{id}', 'TasksController', 'getProgressHistory');
 $router->post('/tasks/delete/{id}', 'TasksController', 'delete');
 $router->post('/tasks/update-status', 'TasksController', 'updateStatus');
 $router->get('/tasks/kanban', 'TasksController', 'kanban');
@@ -159,6 +161,15 @@ $router->get('/advances/approve/{id}', 'AdvanceController', 'approve');
 $router->post('/advances/approve/{id}', 'AdvanceController', 'approve');
 $router->get('/advances/reject/{id}', 'AdvanceController', 'reject');
 $router->post('/advances/reject/{id}', 'AdvanceController', 'reject');
+// Paid actions (upload proof and record payment) for advances and expenses
+$router->post('/advances/paid/{id}', 'AdvanceController', 'markPaid');
+$router->post('/expenses/paid/{id}', 'ExpenseController', 'markPaid');
+
+// Ledger viewing
+$router->get('/ledgers/user/{id}', 'LedgerController', 'userLedger');
+$router->get('/ledgers/project', 'LedgerController', 'projectLedger');
+// Approved expenses admin listing
+$router->get('/approved-expenses', 'ApprovedExpensesController', 'index');
 
 // Reports
 $router->get('/reports', 'ReportsController', 'index');
@@ -246,6 +257,7 @@ $router->get('/api/tasks', 'ApiController', 'tasks');
 $router->post('/api/tasks/update', 'ApiController', 'updateTask');
 $router->get('/api/task-categories', 'ApiController', 'taskCategories');
 $router->get('/api/task-categories.php', 'ApiController', 'taskCategories');
+$router->get('/api/task-categories-by-department', 'ApiController', 'taskCategories');
 $router->get('/api/followup-details', 'ApiController', 'followupDetails');
 $router->get('/direct_followup_test.php', 'ApiController', 'followupDetails');
 $router->get('/check_reminders.php', 'FollowupController', 'checkReminders');
@@ -260,6 +272,18 @@ $router->post('/api/contacts/{id}/update', 'ContactFollowupController', 'updateC
 $router->get('/api/contact-persons', 'ApiController', 'contactPersons');
 $router->get('/api/companies', 'ApiController', 'companies');
 $router->get('/api/users', 'ApiController', 'users');
+
+// Project-based Attendance API Routes
+$router->get('/api/user-projects', 'ApiController', 'userProjects');
+$router->get('/api/service-history', 'ApiController', 'serviceHistory');
+$router->get('/attendance/service-history', 'AttendanceController', 'serviceHistory');
+
+// User Management API Routes
+$router->get('/api/departments', 'ApiController', 'departments');
+$router->get('/api/projects', 'ApiController', 'projects');
+$router->get('/api/expense', 'ApiController', 'getExpense');
+$router->get('/api/advance', 'ApiController', 'getAdvance');
+$router->get('/api/users/{id}', 'ApiController', 'getUser');
 
 // Unified Workflow API Routes
 $router->post('/api/update-task-status', 'UnifiedWorkflowController', 'updateTaskStatus');
@@ -308,6 +332,10 @@ $router->post('/admin/assign', 'AdminManagementController', 'assignAdmin');
 $router->post('/admin/remove', 'AdminManagementController', 'removeAdmin');
 $router->post('/admin/change-password', 'AdminManagementController', 'changePassword');
 
+// Module Management Routes (Owner only)
+$router->get('/modules', 'ModuleController', 'index');
+$router->post('/modules/toggle', 'ModuleController', 'toggle');
+
 // System Admin Management Routes (Owner only)
 $router->get('/system-admin', 'SystemAdminController', 'index');
 $router->post('/system-admin/create', 'SystemAdminController', 'create');
@@ -353,7 +381,10 @@ $router->get('/api/reminders/check', 'ContactFollowupController', 'checkReminder
 $router->get('/followups', 'FollowupController', 'index');
 $router->get('/followups/create', 'FollowupController', 'create');
 $router->post('/followups/create', 'FollowupController', 'create');
-$router->get('/followups/view/{id}', 'FollowupController', 'viewFollowup');
+$router->get('/followups/view/{id}', 'FollowupController', 'view');
+$router->get('/followups/edit/{id}', 'FollowupController', 'edit');
+$router->post('/followups/edit/{id}', 'FollowupController', 'edit');
+$router->post('/followups/complete/{id}', 'FollowupController', 'complete');
 $router->post('/followups/delete/{id}', 'FollowupController', 'delete');
 
 // Legacy followup routes removed - use /contacts/followups instead

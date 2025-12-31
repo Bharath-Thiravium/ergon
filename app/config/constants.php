@@ -8,8 +8,15 @@
 define('APP_NAME', 'ergon');
 define('APP_VERSION', '1.0.0');
 // Environment-aware APP_URL
-$isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
-define('APP_URL', $isProduction ? 'https://athenas.co.in/ergon' : 'http://localhost/ergon');
+$host = $_SERVER['HTTP_HOST'] ?? '';
+$isProduction = strpos($host, 'bkgreenenergy.com') !== false || strpos($host, 'athenas.co.in') !== false;
+if (strpos($host, 'bkgreenenergy.com') !== false) {
+    define('APP_URL', 'https://bkgreenenergy.com/ergon');
+} elseif (strpos($host, 'athenas.co.in') !== false) {
+    define('APP_URL', 'https://athenas.co.in/ergon');
+} else {
+    define('APP_URL', 'http://localhost/ergon');
+}
 
 // Security Settings
 define('JWT_SECRET', 'your-secret-key-change-in-production');
@@ -27,8 +34,8 @@ define('DEFAULT_ATTENDANCE_RADIUS', 5); // meters
 define('GPS_ACCURACY_THRESHOLD', 50); // meters
 
 // Google Maps API Settings
-define('GOOGLE_MAPS_API_KEY', 'AIzaSyBs_eUlf47Hry0q_hemamm4nge4lxx6iBc'); // Replace with your actual Google Maps API key
-define('USE_GOOGLE_MAPS', true); // Set to true to use Google Maps instead of OpenStreetMap
+define('GOOGLE_MAPS_API_KEY', ''); // Replace with your actual Google Maps API key
+define('USE_GOOGLE_MAPS', false); // Set to true to use Google Maps instead of OpenStreetMap
 
 // Pagination
 define('RECORDS_PER_PAGE', 20);

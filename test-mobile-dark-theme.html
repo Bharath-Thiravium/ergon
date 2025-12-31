@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Dark Theme Test - Ergon</title>
+    <title>Mobile Dark Theme Test - Ergon Site</title>
     <link href="/ergon/assets/css/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/ergon/assets/css/ergon.css" rel="stylesheet">
     <link href="/ergon/assets/css/theme-enhanced.css" rel="stylesheet">
@@ -26,6 +26,34 @@
             top: 1rem;
             right: 1rem;
             z-index: 1000;
+        }
+        .stats-grid--2x2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .stat-item {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        @media (max-width: 768px) {
+            .stats-grid--2x2 {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -56,6 +84,29 @@
             <button class="btn btn--warning">
                 <span>⚠️</span> Warning
             </button>
+        </div>
+    </div>
+
+    <!-- Test Stats Grid (Daily Planner SLA Dashboard) -->
+    <div class="test-section">
+        <h2>Stats Grid Test (Daily Planner SLA)</h2>
+        <div class="stats-grid stats-grid--2x2">
+            <div class="stat-item">
+                <div class="stat-value">24</div>
+                <div class="stat-label">Total Tasks</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">18</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">4</div>
+                <div class="stat-label">In Progress</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">2</div>
+                <div class="stat-label">Overdue</div>
+            </div>
         </div>
     </div>
 

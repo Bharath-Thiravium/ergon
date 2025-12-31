@@ -16,19 +16,16 @@ class Database {
     
     public function __construct() {
         try {
-            // Auto-detect environment and set database credentials
             if (Environment::isDevelopment()) {
-                // Local development settings
-                $this->host = 'localhost';
-                $this->db_name = 'ergon_db';
-                $this->username = 'root';
-                $this->password = '';
+                $this->host = $_ENV['DB_HOST'] ?? 'localhost';
+                $this->db_name = $_ENV['DB_NAME'] ?? 'ergon_db';
+                $this->username = $_ENV['DB_USER'] ?? 'root';
+                $this->password = $_ENV['DB_PASS'] ?? '';
             } else {
-                // Production settings
-                $this->host = 'localhost';
-                $this->db_name = 'u494785662_ergon';
-                $this->username = 'u494785662_ergon';
-                $this->password = '@Admin@2025@';
+                $this->host = $_ENV['DB_HOST'] ?? 'localhost';
+                $this->db_name = $_ENV['DB_NAME'] ?? 'u494785662_ergon_site';
+                $this->username = $_ENV['DB_USER'] ?? 'u494785662_ergon_site';
+                $this->password = $_ENV['DB_PASS'] ?? '@Admin@2025@';
             }
         } catch (Exception $e) {
             error_log('Database configuration error: ' . $e->getMessage());
@@ -43,33 +40,23 @@ class Database {
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4",
+                PDO::ATTR_PERSISTENT => true,
+                PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true
             ];
             
-            // Add MySQL-specific options only if available
-            if (defined('PDO::MYSQL_ATTR_INIT_COMMAND')) {
-                $options[PDO::MYSQL_ATTR_INIT_COMMAND] = "SET NAMES utf8mb4";
-            }
-            
             if (!Environment::isDevelopment()) {
-                if (defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')) {
-                    $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
-                }
+                $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
                 $options[PDO::ATTR_TIMEOUT] = 30;
             }
             
             $this->conn = new PDO(
                 "mysql:host=" . $this->host . ";dbname=" . $this->db_name . ";charset=utf8mb4",
                 $this->username,
-                $this->password ?? '',
+                $this->password,
                 $options
             );
-            
-            // Set timezone to IST for consistent storage
-            $this->conn->exec("SET time_zone = '+05:30'");
-            
-            // Set PHP timezone to IST as well
-            date_default_timezone_set('Asia/Kolkata');
         } catch(PDOException $e) {
             error_log("Connection error: " . $e->getMessage());
             throw new Exception("Database connection failed: " . $e->getMessage());
@@ -86,7 +73,7 @@ class Database {
     }
     
     public function getEnvironment() {
-        return $_ENV['APP_ENV'] ?? 'development';
+        return Environment::isDevelopment() ? 'development' : 'production';
     }
 }
 ?>

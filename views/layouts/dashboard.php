@@ -3,10 +3,41 @@ ob_start();
 header('Content-Type: text/html; charset=UTF-8');
 require_once __DIR__ . '/../../app/helpers/Security.php';
 require_once __DIR__ . '/../../app/helpers/SecurityHeaders.php';
+require_once __DIR__ . '/../../app/helpers/ModuleManager.php';
+
+// Check module status once at the top
+$tasksDisabled = false;
+$dailyPlannerDisabled = false;
+$followupsDisabled = false;
+$systemAdminDisabled = false;
+$usersDisabled = false;
+$departmentsDisabled = false;
+$projectsDisabled = false;
+$financeDisabled = false;
+$reportsDisabled = false;
+$analyticsDisabled = false;
+
+try {
+    $tasksDisabled = ModuleManager::isModuleDisabled('tasks');
+    $dailyPlannerDisabled = ModuleManager::isModuleDisabled('daily_planner');
+    $followupsDisabled = ModuleManager::isModuleDisabled('followups');
+    $systemAdminDisabled = ModuleManager::isModuleDisabled('system_admin');
+    $usersDisabled = ModuleManager::isModuleDisabled('users');
+    $departmentsDisabled = ModuleManager::isModuleDisabled('departments');
+    $projectsDisabled = ModuleManager::isModuleDisabled('projects');
+    $financeDisabled = ModuleManager::isModuleDisabled('finance');
+    $reportsDisabled = ModuleManager::isModuleDisabled('reports');
+    $analyticsDisabled = ModuleManager::isModuleDisabled('analytics');
+} catch (Exception $e) {
+    // Silently fail - all modules will appear enabled
+}
+
 SecurityHeaders::apply();
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) { header('Location: /ergon/login'); exit; }
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) { session_unset(); session_destroy(); header('Location: /ergon/login?timeout=1'); exit; }
+
+// Note: Success/error messages are now handled by individual pages
 
 // Check if user is still active and role hasn't changed
 try {
@@ -68,12 +99,12 @@ ob_end_clean();
     /* Critical inline CSS to prevent FOUC and layout forcing */
     html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}
     body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;background:#f8fafc;overflow-x:hidden}
-    .main-header{background:#000080;position:fixed;top:0;left:0;right:0;z-index:9999;width:100%;height:110px}
+    .main-header{background:#000080;position:fixed;top:0;left:0;right:0;z-index:1000;width:100%;height:110px}
     .header__top{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;height:60px}
     .header__nav-container{height:50px;/*border-top:1px solid rgba(255,255,255,0.1)*/}
     .main-content{margin:110px 0 0 0;padding:24px 24px 24px 0;background:#f8fafc;min-height:calc(100vh - 110px);width:100%;max-width:100vw;overflow-x:hidden;position:relative}
-    .sidebar{position:fixed;left:-280px;top:0;width:280px;height:100vh;background:#fff;z-index:9998;transition:left 0.3s ease}
-    .mobile-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9997;display:none}
+    .sidebar{position:fixed;left:-280px;top:0;width:280px;height:100vh;background:#fff;z-index:998;transition:left 0.3s ease}
+    .mobile-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:997;display:none}
     
     /* Smart Attendance Button States - Enhanced Visibility */
     .btn--attendance-toggle{background:#10b981 !important;border:3px solid #059669 !important;color:#ffffff !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important;box-shadow:0 4px 12px rgba(16,185,129,0.4) !important;transition:all 0.3s ease;min-height:44px !important;padding:8px 16px !important;border-radius:8px !important}
@@ -83,17 +114,25 @@ ob_end_clean();
     .btn--attendance-toggle.state-leave{background:#f59e0b !important;border:3px solid #d97706 !important;color:#ffffff !important;opacity:1 !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important}
     @keyframes pulse-red{0%,100%{box-shadow:0 4px 16px rgba(220,38,38,0.6)}50%{box-shadow:0 6px 20px rgba(220,38,38,0.8)}}
     
-    /* Simple Message Modal */
-    .message-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99999;display:none;align-items:center;justify-content:center}
-    .message-modal.show{display:flex}
-    .message-content{background:#fff;border-radius:12px;padding:24px;max-width:400px;width:90%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.3)}
-    .message-icon{font-size:48px;margin-bottom:16px}
-    .message-text{font-size:16px;margin-bottom:20px;color:#333;line-height:1.5}
-    .message-close{background:#007bff;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600}
-    .message-close:hover{background:#0056b3}
-    .message-modal.success .message-icon{color:#28a745}
-    .message-modal.error .message-icon{color:#dc3545}
-    .message-modal.warning .message-icon{color:#ffc107}
+    /* Universal Message Modal */
+    .universal-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000000;display:none;align-items:center;justify-content:center}
+    .universal-modal.show{display:flex}
+    .universal-modal-content{background:#fff;border-radius:16px;padding:32px;max-width:420px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);transform:scale(0.9);transition:transform 0.2s ease}
+    .universal-modal.show .universal-modal-content{transform:scale(1)}
+    .universal-modal-icon{font-size:64px;margin-bottom:16px;line-height:1}
+    .universal-modal-title{font-size:20px;font-weight:700;margin-bottom:12px;color:#1f2937}
+    .universal-modal-message{font-size:16px;margin-bottom:24px;color:#4b5563;line-height:1.5}
+    .universal-modal-close{background:#3b82f6;color:#fff;border:none;padding:12px 32px;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;transition:background 0.2s ease}
+    .universal-modal-close:hover{background:#2563eb}
+    .universal-modal.success .universal-modal-icon{color:#10b981}
+    .universal-modal.success .universal-modal-close{background:#10b981}
+    .universal-modal.success .universal-modal-close:hover{background:#059669}
+    .universal-modal.error .universal-modal-icon{color:#ef4444}
+    .universal-modal.error .universal-modal-close{background:#ef4444}
+    .universal-modal.error .universal-modal-close:hover{background:#dc2626}
+    .universal-modal.warning .universal-modal-icon{color:#f59e0b}
+    .universal-modal.warning .universal-modal-close{background:#f59e0b}
+    .universal-modal.warning .universal-modal-close:hover{background:#d97706}
     
     /* Global Navigation Buttons - Desktop Only */
     .global-back-btn{position:fixed !important;top:400px !important;left:20px !important;right:auto !important;z-index:1000;background:rgba(255,255,255,0.95);color:#374151;border:1px solid rgba(0,0,0,0.1);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);backdrop-filter:blur(10px);transition:all 0.2s ease}
@@ -115,8 +154,17 @@ ob_end_clean();
     @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
     .control-btn{position:relative}
     
+    /* Alert visibility - Allow alerts to be shown when needed */
+    .alert.d-none, .alert--error.d-none, .alert--success.d-none, .alert--warning.d-none, .alert--info.d-none {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+    }
+    
+    .control-btn{position:relative}
+    
     /* Attendance Notification Styles */
-    .attendance-notification{position:fixed;top:20px;right:20px;background:#fff;border-radius:8px;padding:16px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15);z-index:99999;transform:translateX(100%);transition:transform 0.3s ease;max-width:350px;border-left:4px solid #10b981}
+    .attendance-notification{position:fixed;top:20px;right:20px;background:#fff;border-radius:8px;padding:16px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15);z-index:50000;transform:translateX(100%);transition:transform 0.3s ease;max-width:350px;border-left:4px solid #10b981}
     .attendance-notification.show{transform:translateX(0)}
     .attendance-notification.success{border-left-color:#10b981}
     .attendance-notification.error{border-left-color:#ef4444}
@@ -128,7 +176,7 @@ ob_end_clean();
     .attendance-notification.warning .notification-content i{color:#f59e0b}
     
     /* Mobile Dialog Styles */
-    .attendance-dialog-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.3s ease}
+    .attendance-dialog-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000000;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.3s ease}
     .attendance-dialog-overlay.show{opacity:1}
     .attendance-dialog{background:#fff;border-radius:12px;padding:24px;max-width:320px;width:90%;text-align:center;transform:scale(0.9);transition:transform 0.3s ease}
     .attendance-dialog-overlay.show .attendance-dialog{transform:scale(1)}
@@ -159,22 +207,33 @@ ob_end_clean();
     <link href="/ergon/assets/_archive_legacy/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
     <!-- Mobile Dark Theme Fixes - Critical for visibility -->
     <link href="/ergon/assets/css/mobile-dark-theme-fixes.css?v=<?= time() ?>" rel="stylesheet">
-    <!-- Modal Dialog Fixes - Ensures dialog visibility -->
-    <link href="/ergon/assets/css/modal-dialog-fixes.css?v=<?= time() ?>" rel="stylesheet">
+    <!-- Dark Mode Alert & Notification Fixes - Critical for visibility -->
+    <link href="/ergon/assets/css/dark-mode-alerts-fix.css?v=<?= time() ?>" rel="stylesheet">
+    <!-- New Simplified Modal CSS -->
+    <link href="/ergon/assets/css/modal.css?v=<?= time() ?>" rel="stylesheet">
     <!-- Dashboard overrides loaded last to ensure overrides on compiled CSS in deployments -->
     <link href="/ergon/assets/css/ergon-overrides.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="/ergon/assets/css/access-denied.css?v=1.0" rel="stylesheet">
+    <link href="/ergon/assets/css/premium-navigation.css?v=1.0" rel="stylesheet">
     <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
     <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
+    <?php endif; ?>
+    <?php if (isset($additional_css)): ?>
+    <?= $additional_css ?>
     <?php endif; ?>
 
     <script src="/ergon/assets/js/theme-switcher.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/ergon-core.min.js?v=1.0" defer></script>
+    <!-- New Simplified Modal JS -->
+    <script src="/ergon/assets/js/modal.js?v=1.0" defer></script>
     <script src="/ergon/assets/_archive_legacy/js/action-button-clean.js?v=1.0" defer></script>
     <script src="/ergon/assets/_archive_legacy/js/mobile-enhanced.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/mobile-table-cards.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/table-utils.js?v=1.0" defer></script>
     <script src="/ergon/assets/js/user-status-check.js?v=1.0" defer></script>
-
+    <script src="/ergon/assets/js/premium-navigation.js?v=1.0" defer></script>
+    <!-- Dark Mode Alert Enhancements -->
+    <script src="/ergon/assets/js/dark-mode-alerts.js?v=<?= time() ?>" defer></script>
 
     <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
     <script src="/ergon/assets/js/mobile-validation.js?v=<?= time() ?>" defer></script>
@@ -205,10 +264,24 @@ ob_end_clean();
                 <button class="control-btn" id="theme-toggle" title="Toggle Theme">
                     <i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i>
                 </button>
+                <?php 
+                $notificationsDisabled = false;
+                try {
+                    $notificationsDisabled = ModuleManager::isModuleDisabled('notifications');
+                } catch (Exception $e) {
+                    // Silently fail - notifications will appear enabled
+                }
+                ?>
+                <?php if (!$notificationsDisabled): ?>
                 <button class="control-btn notification-btn" id="notificationBtn" onclick="toggleNotifications(event)" title="Notifications">
                     <i class="bi bi-bell-fill"></i>
                     <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
                 </button>
+                <?php else: ?>
+                <button class="control-btn" style="opacity: 0.5; cursor: not-allowed;" title="Notifications (Disabled)" onclick="return false;">
+                    <i class="bi bi-bell-slash"></i>
+                </button>
+                <?php endif; ?>
                 <button class="profile-btn" id="profileButton" type="button">
                     <span class="profile-avatar"><?= htmlspecialchars(strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="profile-name"><?= htmlspecialchars($_SESSION['user_name'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></span>
@@ -225,11 +298,7 @@ ob_end_clean();
                         Change Password
                     </a>
                     <div class="profile-menu-divider"></div>
-                    <a href="/ergon/profile/preferences" class="profile-menu-item">
-                        <span class="menu-icon"><i class="bi bi-palette-fill"></i></span>
-                        Appearance
-                    </a>
-                    <?php if (isset($_SESSION['role']) && in_array($_SESSION['role'], ['owner', 'admin'])): ?>
+                    <?php if (isset($_SESSION['role']) && in_array($_SESSION['role'], ['owner', 'admin']) && !$systemAdminDisabled): ?>
                     <a href="/ergon/settings" class="profile-menu-item">
                         <span class="menu-icon"><i class="bi bi-gear-fill"></i></span>
                         System Settings
@@ -242,12 +311,13 @@ ob_end_clean();
                     </a>
                 </div>
                 
-                <!-- Simple Message Modal -->
-                <div id="messageModal" class="message-modal">
-                    <div class="message-content">
-                        <div class="message-icon" id="messageIcon"></div>
-                        <div class="message-text" id="messageText"></div>
-                        <button class="message-close" onclick="closeMessageModal()">OK</button>
+                <!-- Universal Message Modal -->
+                <div id="universalModal" class="universal-modal">
+                    <div class="universal-modal-content">
+                        <div class="universal-modal-icon" id="universalIcon"></div>
+                        <div class="universal-modal-title" id="universalTitle"></div>
+                        <div class="universal-modal-message" id="universalMessage"></div>
+                        <button class="universal-modal-close" onclick="closeUniversalModal()">OK</button>
                     </div>
                 </div>
             </div>
@@ -255,7 +325,8 @@ ob_end_clean();
         
         <div class="header__nav-container">
             <nav class="header__nav">
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
+                <?php if (isset($_SESSION['role']) && in_array($_SESSION['role'], ['owner', 'company_owner'])): ?>
+                    <?php if ($_SESSION['role'] === 'owner'): ?>
                     <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
                             <span class="nav-icon"><i class="bi bi-graph-up"></i></span>
@@ -280,21 +351,29 @@ ob_end_clean();
                             <span class="dropdown-arrow">▼</span>
                         </button>
                         <div class="nav-dropdown-menu" id="management">
-                            <a href="/ergon/system-admin" class="nav-dropdown-item <?= ($active_page ?? '') === 'system-admin' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/system-admin" class="nav-dropdown-item <?= ($active_page ?? '') === 'system-admin' ? 'nav-dropdown-item--active' : '' ?> <?= $systemAdminDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">🔧</span>
                                 System
+                                <?php if ($systemAdminDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
-                            <a href="/ergon/admin/management" class="nav-dropdown-item <?= ($active_page ?? '') === 'admin' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/admin/management" class="nav-dropdown-item <?= ($active_page ?? '') === 'admin' ? 'nav-dropdown-item--active' : '' ?> <?= $usersDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">👥</span>
                                 Users
+                                <?php if ($usersDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
-                            <a href="/ergon/departments" class="nav-dropdown-item <?= ($active_page ?? '') === 'departments' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/departments" class="nav-dropdown-item <?= ($active_page ?? '') === 'departments' ? 'nav-dropdown-item--active' : '' ?> <?= $departmentsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">🏢</span>
                                 Departments
+                                <?php if ($departmentsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
-                            <a href="/ergon/project-management" class="nav-dropdown-item <?= ($active_page ?? '') === 'project-management' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/project-management" class="nav-dropdown-item <?= ($active_page ?? '') === 'project-management' ? 'nav-dropdown-item--active' : '' ?> <?= $projectsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">📁</span>
                                 Projects
+                                <?php if ($projectsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                            </a>
+                            <a href="/ergon/modules" class="nav-dropdown-item <?= ($active_page ?? '') === 'modules' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🔧</span>
+                                Modules
                             </a>
                         </div>
                     </div>
@@ -305,13 +384,93 @@ ob_end_clean();
                             <span class="dropdown-arrow">▼</span>
                         </button>
                         <div class="nav-dropdown-menu" id="operations">
-                            <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?> <?= $tasksDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">✅</span>
                                 Tasks
+                                <?php if ($tasksDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
-                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?> <?= $followupsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
+                                <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('hrfinance')">
+                            <span class="nav-icon">💰</span>
+                            HR & Finance
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="hrfinance">
+                            <a href="/ergon/leaves" class="nav-dropdown-item <?= ($active_page ?? '') === 'leaves' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📅</span>
+                                Leaves
+                            </a>
+                            <a href="/ergon/expenses" class="nav-dropdown-item <?= ($active_page ?? '') === 'expenses' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">💰</span>
+                                Expenses
+                            </a>
+                            <a href="/ergon/advances" class="nav-dropdown-item <?= ($active_page ?? '') === 'advances' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">💳</span>
+                                Advances
+                            </a>
+                            <a href="/ergon/ledgers/project" class="nav-dropdown-item <?= ($active_page ?? '') === 'ledgers' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📒</span>
+                                Ledgers
+                            </a>
+                            <a href="/ergon/attendance" class="nav-dropdown-item <?= ($active_page ?? '') === 'attendance' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📍</span>
+                                Attendance
+                            </a>
+                        </div>
+                    </div>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('analytics')">
+                            <span class="nav-icon">📈</span>
+                            Analytics
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="analytics">
+                            <a href="/ergon/finance" class="nav-dropdown-item <?= ($active_page ?? '') === 'finance' ? 'nav-dropdown-item--active' : '' ?> <?= $financeDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
+                                <span class="nav-icon">💰</span>
+                                Finance
+                                <?php if ($financeDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                            </a>
+                            <a href="/ergon/reports" class="nav-dropdown-item <?= ($active_page ?? '') === 'reports' ? 'nav-dropdown-item--active' : '' ?> <?= $reportsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
+                                <span class="nav-icon">📈</span>
+                                Reports
+                                <?php if ($reportsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                            </a>
+                            <?php if (!$systemAdminDisabled): ?>
+                            <a href="/ergon/settings" class="nav-dropdown-item <?= ($active_page ?? '') === 'settings' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">⚙️</span>
+                                Settings
+                            </a>
+                            <?php else: ?>
+                            <span class="nav-dropdown-item nav-dropdown-item--disabled" style="opacity: 0.5; cursor: not-allowed;">
+                                <span class="nav-icon">⚙️</span>
+                                Settings
+                                <span class="premium-icon">🔒</span>
+                            </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php else: // company_owner ?>
+                    <div class="nav-dropdown">
+                        <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
+                            <span class="nav-icon"><i class="bi bi-graph-up"></i></span>
+                            Overview
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="nav-dropdown-menu" id="overview">
+                            <a href="/ergon/dashboard" class="nav-dropdown-item <?= ($active_page ?? '') === 'dashboard' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon"><i class="bi bi-speedometer2"></i></span>
+                                Dashboard
+                            </a>
+                            <a href="/ergon/finance" class="nav-dropdown-item <?= ($active_page ?? '') === 'finance' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">💰</span>
+                                Finance
                             </a>
                         </div>
                     </div>
@@ -340,27 +499,7 @@ ob_end_clean();
                             </a>
                         </div>
                     </div>
-                    <div class="nav-dropdown">
-                        <button class="nav-dropdown-btn" onclick="toggleDropdown('analytics')">
-                            <span class="nav-icon">📈</span>
-                            Analytics
-                            <span class="dropdown-arrow">▼</span>
-                        </button>
-                        <div class="nav-dropdown-menu" id="analytics">
-                            <a href="/ergon/finance" class="nav-dropdown-item <?= ($active_page ?? '') === 'finance' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">💰</span>
-                                Finance
-                            </a>
-                            <a href="/ergon/reports" class="nav-dropdown-item <?= ($active_page ?? '') === 'reports' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">📈</span>
-                                Reports
-                            </a>
-                            <a href="/ergon/settings" class="nav-dropdown-item <?= ($active_page ?? '') === 'settings' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">⚙️</span>
-                                Settings
-                            </a>
-                        </div>
-                    </div>
+                    <?php endif; ?>
                 <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
                     <div class="nav-dropdown">
                         <button class="nav-dropdown-btn" onclick="toggleDropdown('overview')">
@@ -386,13 +525,15 @@ ob_end_clean();
                             <span class="dropdown-arrow">▼</span>
                         </button>
                         <div class="nav-dropdown-menu" id="team">
-                            <a href="/ergon/users" class="nav-dropdown-item <?= ($active_page ?? '') === 'users' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/users" class="nav-dropdown-item <?= ($active_page ?? '') === 'users' ? 'nav-dropdown-item--active' : '' ?> <?= $usersDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">👥</span>
                                 Members
+                                <?php if ($usersDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
-                            <a href="/ergon/departments" class="nav-dropdown-item <?= ($active_page ?? '') === 'departments' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/departments" class="nav-dropdown-item <?= ($active_page ?? '') === 'departments' ? 'nav-dropdown-item--active' : '' ?> <?= $departmentsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">🏢</span>
                                 Departments
+                                <?php if ($departmentsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
                         </div>
                     </div>
@@ -403,17 +544,20 @@ ob_end_clean();
                             <span class="dropdown-arrow">▼</span>
                         </button>
                         <div class="nav-dropdown-menu" id="tasks">
-                            <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?> <?= $tasksDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">✅</span>
                                 Overall Tasks
+                                <?php if ($tasksDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
-                            <a href="/ergon/workflow/daily-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/daily-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?> <?= $dailyPlannerDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">🌅</span>
                                 Daily Planner
+                                <?php if ($dailyPlannerDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
-                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?> <?= $followupsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
+                                <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
                         </div>
                     </div>
@@ -440,9 +584,10 @@ ob_end_clean();
                                 <span class="nav-icon">📍</span>
                                 Attendance
                             </a>
-                            <a href="/ergon/reports/activity" class="nav-dropdown-item <?= ($active_page ?? '') === 'activity' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/reports/activity" class="nav-dropdown-item <?= ($active_page ?? '') === 'activity' ? 'nav-dropdown-item--active' : '' ?> <?= $reportsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">⏱️</span>
                                 Reports
+                                <?php if ($reportsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
                         </div>
                     </div>
@@ -475,17 +620,20 @@ ob_end_clean();
                             <span class="dropdown-arrow">▼</span>
                         </button>
                         <div class="nav-dropdown-menu" id="work">
-                            <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/tasks" class="nav-dropdown-item <?= ($active_page ?? '') === 'tasks' ? 'nav-dropdown-item--active' : '' ?> <?= $tasksDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">✅</span>
                                 Tasks
+                                <?php if ($tasksDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
-                            <a href="/ergon/workflow/daily-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/workflow/daily-planner" class="nav-dropdown-item <?= ($active_page ?? '') === 'daily-planner' ? 'nav-dropdown-item--active' : '' ?> <?= $dailyPlannerDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">📅</span>
                                 Daily Planner
+                                <?php if ($dailyPlannerDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
-                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?>">
+                            <a href="/ergon/contacts/followups" class="nav-dropdown-item <?= ($active_page ?? '') === 'contact_followups' ? 'nav-dropdown-item--active' : '' ?> <?= $followupsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
+                                <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
                         </div>
                     </div>
@@ -533,7 +681,8 @@ ob_end_clean();
             </div>
         </div>
         <nav class="sidebar__menu">
-            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
+            <?php if (isset($_SESSION['role']) && in_array($_SESSION['role'], ['owner', 'company_owner'])): ?>
+                <?php if ($_SESSION['role'] === 'owner'): ?>
                 <div class="sidebar__divider">Overview</div>
                 <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
                     <span class="sidebar__icon"><i class="bi bi-speedometer2"></i></span>
@@ -545,31 +694,80 @@ ob_end_clean();
                 </a>
                 
                 <div class="sidebar__divider">Management</div>
-                <a href="/ergon/system-admin" class="sidebar__link <?= ($active_page ?? '') === 'system-admin' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/system-admin" class="sidebar__link <?= ($active_page ?? '') === 'system-admin' ? 'sidebar__link--active' : '' ?> <?= $systemAdminDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">🔧</span>
                     System
+                    <?php if ($systemAdminDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
-                <a href="/ergon/admin/management" class="sidebar__link <?= ($active_page ?? '') === 'admin' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/admin/management" class="sidebar__link <?= ($active_page ?? '') === 'admin' ? 'sidebar__link--active' : '' ?> <?= $usersDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">👥</span>
                     Users
+                    <?php if ($usersDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
-                <a href="/ergon/departments" class="sidebar__link <?= ($active_page ?? '') === 'departments' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/departments" class="sidebar__link <?= ($active_page ?? '') === 'departments' ? 'sidebar__link--active' : '' ?> <?= $departmentsDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">🏢</span>
                     Departments
+                    <?php if ($departmentsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
-                <a href="/ergon/project-management" class="sidebar__link <?= ($active_page ?? '') === 'project-management' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/project-management" class="sidebar__link <?= ($active_page ?? '') === 'project-management' ? 'sidebar__link--active' : '' ?> <?= $projectsDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">📁</span>
                     Projects
+                    <?php if ($projectsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                </a>
+                <a href="/ergon/modules" class="sidebar__link <?= ($active_page ?? '') === 'modules' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🔧</span>
+                    Modules
                 </a>
                 
                 <div class="sidebar__divider">Operations</div>
-                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?> <?= $tasksDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">✅</span>
                     Tasks
+                    <?php if ($tasksDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
-                <a href="/ergon/contacts/followups" class="sidebar__link <?= ($active_page ?? '') === 'contact_followups' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/contacts/followups" class="sidebar__link <?= ($active_page ?? '') === 'contact_followups' ? 'sidebar__link--active' : '' ?> <?= $followupsDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">📞</span>
                     Follow-ups
+                    <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                </a>
+                
+                <div class="sidebar__divider">HR & Finance</div>
+                <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📅</span>
+                    Leaves
+                </a>
+                <a href="/ergon/expenses" class="sidebar__link <?= ($active_page ?? '') === 'expenses' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💰</span>
+                    Expenses
+                </a>
+                <a href="/ergon/advances" class="sidebar__link <?= ($active_page ?? '') === 'advances' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💳</span>
+                    Advances
+                </a>
+                <a href="/ergon/ledgers/project" class="sidebar__link <?= ($active_page ?? '') === 'ledgers' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📒</span>
+                    Ledgers
+                </a>
+                <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📍</span>
+                    Attendance
+                </a>
+                
+                <div class="sidebar__divider">Analytics</div>
+                <a href="/ergon/finance" class="sidebar__link <?= ($active_page ?? '') === 'finance' ? 'sidebar__link--active' : '' ?> <?= $financeDisabled ? 'sidebar__link--disabled' : '' ?>">
+                    <span class="sidebar__icon">💰</span>
+                    Finance
+                    <?php if ($financeDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                </a>
+                <?php else: // company_owner ?>
+                <div class="sidebar__divider">Overview</div>
+                <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon"><i class="bi bi-speedometer2"></i></span>
+                    Dashboard
+                </a>
+                <a href="/ergon/finance" class="sidebar__link <?= ($active_page ?? '') === 'finance' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">💰</span>
+                    Finance
                 </a>
                 
                 <div class="sidebar__divider">HR & Finance</div>
@@ -589,12 +787,7 @@ ob_end_clean();
                     <span class="sidebar__icon">📍</span>
                     Attendance
                 </a>
-                
-                <div class="sidebar__divider">Analytics</div>
-                <a href="/ergon/finance" class="sidebar__link <?= ($active_page ?? '') === 'finance' ? 'sidebar__link--active' : '' ?>">
-                    <span class="sidebar__icon">💰</span>
-                    Finance
-                </a>
+                <?php endif; ?>
             <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
                 <div class="sidebar__divider">Overview</div>
                 <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
@@ -607,27 +800,32 @@ ob_end_clean();
                 </a>
                 
                 <div class="sidebar__divider">Team</div>
-                <a href="/ergon/users" class="sidebar__link <?= ($active_page ?? '') === 'users' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/users" class="sidebar__link <?= ($active_page ?? '') === 'users' ? 'sidebar__link--active' : '' ?> <?= $usersDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">👥</span>
                     Members
+                    <?php if ($usersDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
-                <a href="/ergon/departments" class="sidebar__link <?= ($active_page ?? '') === 'departments' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/departments" class="sidebar__link <?= ($active_page ?? '') === 'departments' ? 'sidebar__link--active' : '' ?> <?= $departmentsDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">🏢</span>
                     Departments
+                    <?php if ($departmentsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
                 
                 <div class="sidebar__divider">Tasks</div>
-                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?> <?= $tasksDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">✅</span>
                     Overall Tasks
+                    <?php if ($tasksDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
-                <a href="/ergon/workflow/daily-planner" class="sidebar__link <?= ($active_page ?? '') === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/workflow/daily-planner" class="sidebar__link <?= ($active_page ?? '') === 'daily-planner' ? 'sidebar__link--active' : '' ?> <?= $dailyPlannerDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">🌅</span>
                     Daily Planner
+                    <?php if ($dailyPlannerDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
-                <a href="/ergon/contacts/followups" class="sidebar__link <?= ($active_page ?? '') === 'contact_followups' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/contacts/followups" class="sidebar__link <?= ($active_page ?? '') === 'contact_followups' ? 'sidebar__link--active' : '' ?> <?= $followupsDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">📞</span>
                     Follow-ups
+                    <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
                 
                 <div class="sidebar__divider">Approvals</div>
@@ -647,9 +845,10 @@ ob_end_clean();
                     <span class="sidebar__icon">📍</span>
                     Attendance
                 </a>
-                <a href="/ergon/reports/activity" class="sidebar__link <?= ($active_page ?? '') === 'activity' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/reports/activity" class="sidebar__link <?= ($active_page ?? '') === 'activity' ? 'sidebar__link--active' : '' ?> <?= $reportsDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">⏱️</span>
                     Reports
+                    <?php if ($reportsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
             <?php else: ?>
                 <div class="sidebar__divider">Overview</div>
@@ -667,17 +866,20 @@ ob_end_clean();
                 </a>
                 
                 <div class="sidebar__divider">Work</div>
-                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?> <?= $tasksDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">✅</span>
                     Tasks
+                    <?php if ($tasksDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
-                <a href="/ergon/workflow/daily-planner" class="sidebar__link <?= ($active_page ?? '') === 'daily-planner' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/workflow/daily-planner" class="sidebar__link <?= ($active_page ?? '') === 'daily-planner' ? 'sidebar__link--active' : '' ?> <?= $dailyPlannerDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">📅</span>
                     Daily Planner
+                    <?php if ($dailyPlannerDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
-                <a href="/ergon/contacts/followups" class="sidebar__link <?= ($active_page ?? '') === 'contact_followups' ? 'sidebar__link--active' : '' ?>">
+                <a href="/ergon/contacts/followups" class="sidebar__link <?= ($active_page ?? '') === 'contact_followups' ? 'sidebar__link--active' : '' ?> <?= $followupsDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">📞</span>
                     Follow-ups
+                    <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
                 
                 <div class="sidebar__divider">Personal</div>
@@ -704,7 +906,9 @@ ob_end_clean();
     <div class="notification-dropdown" id="notificationDropdown">
         <div class="notification-header">
             <h3>Notifications</h3>
+            <?php if (!$notificationsDisabled): ?>
             <button type="button" class="view-all-link" id="viewAllNotificationsBtn" onclick="window.location.href='/ergon/notifications'">View All</button>
+            <?php endif; ?>
         </div>
         <div class="notification-list" id="notificationList">
             <div class="notification-loading">Loading notifications...</div>
@@ -789,8 +993,39 @@ ob_end_clean();
                         const title = escapeHtml(notif.title || 'Notification');
                         const message = escapeHtml(notif.message || '');
                         
+                        // Generate specific URL based on reference type and ID
+                        let viewUrl = '/ergon/notifications'; // Default fallback
+                        const referenceType = notif.module_name || notif.reference_type || '';
+                        const referenceId = notif.reference_id;
+                        
+                        if (notif.action_url) {
+                            viewUrl = notif.action_url;
+                        } else if (referenceType && referenceId && referenceId > 0) {
+                            switch (referenceType) {
+                                case 'task':
+                                case 'tasks':
+                                    viewUrl = `/ergon/tasks/view/${referenceId}`;
+                                    break;
+                                case 'leave':
+                                case 'leaves':
+                                    viewUrl = `/ergon/leaves/view/${referenceId}`;
+                                    break;
+                                case 'expense':
+                                case 'expenses':
+                                    viewUrl = `/ergon/expenses/view/${referenceId}`;
+                                    break;
+                                case 'advance':
+                                case 'advances':
+                                    viewUrl = `/ergon/advances/view/${referenceId}`;
+                                    break;
+                                default:
+                                    const pluralType = referenceType.endsWith('s') ? referenceType : referenceType + 's';
+                                    viewUrl = `/ergon/${pluralType}/view/${referenceId}`;
+                            }
+                        }
+                        
                         return `
-                            <a href="/ergon/notifications" class="notification-item">
+                            <a href="${viewUrl}" class="notification-item">
                                 <div class="notification-title">${title}</div>
                                 <div class="notification-message">${message}</div>
                                 <div class="notification-time">${time}</div>
@@ -837,8 +1072,37 @@ ob_end_clean();
         return div.innerHTML;
     }
     
+    // Load notification count only (for badge update)
+    function loadNotificationCount() {
+        fetch('/ergon/api/notifications.php', {
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const badge = document.getElementById('notificationBadge');
+                if (badge && data.unread_count !== undefined) {
+                    badge.textContent = data.unread_count;
+                    badge.style.display = data.unread_count > 0 ? 'inline-block' : 'none';
+                    if (data.unread_count > 0) {
+                        badge.classList.add('has-notifications');
+                    } else {
+                        badge.classList.remove('has-notifications');
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.warn('Failed to load notification count:', error);
+        });
+    }
+    
     // Make globally available
     window.toggleNotifications = toggleNotifications;
+    window.loadNotificationCount = loadNotificationCount;
     
     // Global back button function
     function goBack() {
@@ -856,6 +1120,7 @@ ob_end_clean();
     
     document.addEventListener('DOMContentLoaded', function() {
         checkAttendanceStatus();
+        loadNotificationCount();
 
         // Ensure profile button is clickable
         var profileBtn = document.getElementById('profileButton');
@@ -866,6 +1131,9 @@ ob_end_clean();
                 toggleProfile();
             });
         }
+        
+        // Refresh notifications every 30 seconds
+        setInterval(loadNotificationCount, 30000);
     });
 
     function toggleProfile() {
@@ -1104,13 +1372,32 @@ ob_end_clean();
                     const latitude = position.coords.latitude;
                     const longitude = position.coords.longitude;
                     
-                    text.textContent = action === 'in' ? 'Clocking In...' : 'Clocking Out...';
+                    text.textContent = 'Validating Location...';
                     
-                    fetch('/ergon/attendance/clock', {
+                    // First validate location against project
+                    fetch('/ergon/src/api/location-attendance.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `type=${action}&latitude=${latitude}&longitude=${longitude}`
+                        body: `latitude=${latitude}&longitude=${longitude}`
                     })
+                    .then(response => response.json())
+                    .then(locationData => {
+                        if (!locationData.success || !locationData.within_range) {
+                            showAttendanceNotification(locationData.error || 'Location validation failed', 'error');
+                            text.textContent = originalText;
+                            button.disabled = false;
+                            button.classList.remove('loading');
+                            return;
+                        }
+                        
+                        text.textContent = action === 'in' ? 'Clocking In...' : 'Clocking Out...';
+                        
+                        // Proceed with attendance if location is valid
+                        fetch('/ergon/attendance/clock', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: `type=${action}&latitude=${latitude}&longitude=${longitude}`
+                        })
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -1137,7 +1424,14 @@ ob_end_clean();
                         showAttendanceNotification('Network error occurred', 'error');
                         text.textContent = originalText;
                     })
-                    .finally(() => {
+                        .finally(() => {
+                            button.disabled = false;
+                            button.classList.remove('loading');
+                        });
+                    })
+                    .catch(error => {
+                        showAttendanceNotification('Location validation failed', 'error');
+                        text.textContent = originalText;
                         button.disabled = false;
                         button.classList.remove('loading');
                     });
@@ -1227,7 +1521,7 @@ ob_end_clean();
                     <i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill'}"></i>
                 </div>
                 <div class="dialog-message">${message}</div>
-                <button class="dialog-close" onclick="this.parentElement.parentElement.remove()">OK</button>
+                <button class="dialog-close" onclick="hideClosestModal(this)">OK</button>
             </div>
         `;
         
@@ -1261,36 +1555,79 @@ ob_end_clean();
         }, 3000);
     }
     
-    // Simple Message Modal Functions
-    function showMessage(message, type = 'success') {
-        const modal = document.getElementById('messageModal');
-        const icon = document.getElementById('messageIcon');
-        const text = document.getElementById('messageText');
+    // Universal Message Modal Functions
+    function showUniversalModal(message, type = 'success', title = null) {
+        const modal = document.getElementById('universalModal');
+        const icon = document.getElementById('universalIcon');
+        const titleEl = document.getElementById('universalTitle');
+        const messageEl = document.getElementById('universalMessage');
         
-        if (!modal || !icon || !text) return;
+        if (!modal || !icon || !titleEl || !messageEl) return;
         
-        // Set icon based on type
-        const icons = {
-            success: '✅',
-            error: '❌',
-            warning: '⚠️',
-            info: 'ℹ️'
+        const config = {
+            success: { icon: '✅', title: title || 'Success!' },
+            error: { icon: '❌', title: title || 'Error!' },
+            warning: { icon: '⚠️', title: title || 'Warning!' },
+            info: { icon: 'ℹ️', title: title || 'Information' }
         };
         
-        icon.textContent = icons[type] || icons.success;
-        text.textContent = message;
-        modal.className = `message-modal ${type}`;
-        modal.style.display = 'flex';
+        const typeConfig = config[type] || config.success;
+        icon.textContent = typeConfig.icon;
+        titleEl.textContent = typeConfig.title;
+        messageEl.textContent = message;
+        modal.className = `universal-modal ${type} show`;
+        
+        // Auto close after 4 seconds for success, 6 seconds for others
+        const autoCloseTime = type === 'success' ? 4000 : 6000;
+        setTimeout(() => {
+            if (modal.classList.contains('show')) {
+                closeUniversalModal();
+            }
+        }, autoCloseTime);
+    }
+    
+    function closeUniversalModal() {
+        const modal = document.getElementById('universalModal');
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 200);
+        }
+    }
+    
+    // Legacy function for backward compatibility
+    function showMessage(message, type = 'success', title = null) {
+        showUniversalModal(message, type, title);
     }
     
     function closeMessageModal() {
-        const modal = document.getElementById('messageModal');
-        if (modal) modal.style.display = 'none';
+        closeUniversalModal();
     }
     
     // Make functions globally available
     window.showMessage = showMessage;
+    window.showUniversalModal = showUniversalModal;
     window.closeMessageModal = closeMessageModal;
+    window.closeUniversalModal = closeUniversalModal;
+    
+    // Global success/error/warning functions
+    window.showSuccess = (message, title) => showUniversalModal(message, 'success', title);
+    window.showError = (message, title) => showUniversalModal(message, 'error', title);
+    window.showWarning = (message, title) => showUniversalModal(message, 'warning', title);
+    window.showInfo = (message, title) => showUniversalModal(message, 'info', title);
+    
+    // Close modal on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeUniversalModal();
+        }
+    });
+    
+    // Close modal when clicking backdrop
+    document.addEventListener('click', function(e) {
+        if (e.target.id === 'universalModal') {
+            closeUniversalModal();
+        }
+    });
     
     // Check attendance status on page load - updated for smart button
     function checkAttendanceStatus() {

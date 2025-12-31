@@ -94,35 +94,65 @@ ob_start();
                             if ($actionUrl) {
                                 $viewUrl = $actionUrl;
                             } elseif ($referenceType && !empty($referenceId) && is_numeric($referenceId) && $referenceId > 0) {
-                                switch ($referenceType) {
-                                    case 'task':
-                                    case 'tasks':
-                                        $viewUrl = "/ergon/tasks/view/{$referenceId}";
-                                        break;
-                                    case 'leave':
-                                    case 'leaves':
-                                        $viewUrl = "/ergon/leaves/view/{$referenceId}";
-                                        break;
-                                    case 'expense':
-                                    case 'expenses':
-                                        $viewUrl = "/ergon/expenses/view/{$referenceId}";
-                                        break;
-                                    case 'advance':
-                                    case 'advances':
-                                        $viewUrl = "/ergon/advances/view/{$referenceId}";
-                                        break;
-                                    default:
-                                        $pluralType = $referenceType . 's';
-                                        $viewUrl = "/ergon/{$pluralType}/view/{$referenceId}";
+                                // Validate that the referenced record exists before creating URL
+                                $recordExists = false;
+                                try {
+                                    $checkDb = Database::connect();
+                                    switch ($referenceType) {
+                                        case 'task':
+                                        case 'tasks':
+                                            $checkStmt = $checkDb->prepare("SELECT id FROM tasks WHERE id = ?");
+                                            $checkStmt->execute([$referenceId]);
+                                            $recordExists = $checkStmt->fetch() !== false;
+                                            $viewUrl = $recordExists ? "/ergon/tasks/view/{$referenceId}" : "/ergon/tasks";
+                                            break;
+                                        case 'leave':
+                                        case 'leaves':
+                                            $checkStmt = $checkDb->prepare("SELECT id FROM leaves WHERE id = ?");
+                                            $checkStmt->execute([$referenceId]);
+                                            $recordExists = $checkStmt->fetch() !== false;
+                                            $viewUrl = $recordExists ? "/ergon/leaves/view/{$referenceId}" : "/ergon/leaves";
+                                            break;
+                                        case 'expense':
+                                        case 'expenses':
+                                            $checkStmt = $checkDb->prepare("SELECT id FROM expenses WHERE id = ?");
+                                            $checkStmt->execute([$referenceId]);
+                                            $recordExists = $checkStmt->fetch() !== false;
+                                            $viewUrl = $recordExists ? "/ergon/expenses/view/{$referenceId}" : "/ergon/expenses";
+                                            break;
+                                        case 'advance':
+                                        case 'advances':
+                                            $checkStmt = $checkDb->prepare("SELECT id FROM advances WHERE id = ?");
+                                            $checkStmt->execute([$referenceId]);
+                                            $recordExists = $checkStmt->fetch() !== false;
+                                            $viewUrl = $recordExists ? "/ergon/advances/view/{$referenceId}" : "/ergon/advances";
+                                            break;
+                                        case 'system':
+                                            $viewUrl = "/ergon/dashboard";
+                                            break;
+                                        default:
+                                            $viewUrl = "/ergon/dashboard";
+                                    }
+                                } catch (Exception $e) {
+                                    // If validation fails, redirect to module index
+                                    $moduleUrls = [
+                                        'leave' => '/ergon/leaves',
+                                        'expense' => '/ergon/expenses', 
+                                        'advance' => '/ergon/advances',
+                                        'task' => '/ergon/tasks',
+                                        'system' => '/ergon/dashboard'
+                                    ];
+                                    $viewUrl = $moduleUrls[$referenceType] ?? "/ergon/dashboard";
                                 }
                             } elseif ($referenceType) {
                                 $moduleUrls = [
                                     'leave' => '/ergon/leaves',
                                     'expense' => '/ergon/expenses', 
                                     'advance' => '/ergon/advances',
-                                    'task' => '/ergon/tasks'
+                                    'task' => '/ergon/tasks',
+                                    'system' => '/ergon/dashboard'
                                 ];
-                                $viewUrl = $moduleUrls[$referenceType] ?? "/ergon/{$referenceType}";
+                                $viewUrl = $moduleUrls[$referenceType] ?? "/ergon/dashboard";
                             }
                         ?>
                         <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= (int)$notification['id'] ?>">

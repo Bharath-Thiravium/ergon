@@ -161,6 +161,7 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                         </td>
                         <td>
                             <div class="ab-container">
+                                <!-- View Details - Always available -->
                                 <a class="ab-btn ab-btn--view" data-action="view" data-module="tasks" data-id="<?= $task['id'] ?>" title="View Details">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -169,36 +170,66 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                                         <line x1="16" y1="17" x2="8" y2="17"/>
                                     </svg>
                                 </a>
+                                
                                 <?php 
-                                // Show full actions only for tasks assigned to or created by current user
-                                $canEdit = (($_SESSION['role'] ?? 'user') !== 'user') || 
-                                          (($task['assigned_to'] ?? 0) == ($_SESSION['user_id'] ?? 0)) || 
-                                          (($task['assigned_by'] ?? 0) == ($_SESSION['user_id'] ?? 0));
-                                if ($canEdit): 
+                                // Enhanced permission logic for different actions
+                                $currentUserId = $_SESSION['user_id'] ?? 0;
+                                $currentUserRole = $_SESSION['role'] ?? 'user';
+                                $isAssignedUser = ($task['assigned_to'] ?? 0) == $currentUserId;
+                                $isTaskCreator = ($task['assigned_by'] ?? 0) == $currentUserId;
+                                $isAdmin = in_array($currentUserRole, ['admin', 'owner', 'system_admin']);
+                                
+                                // Update Progress - Available for assigned users and admins
+                                $canUpdateProgress = $isAssignedUser || $isAdmin;
+                                // View History - Available for assigned users, creators, and admins
+                                $canViewHistory = $isAssignedUser || $isTaskCreator || $isAdmin;
+                                // Edit Task - Available for assigned users, creators, and admins
+                                $canEdit = $isAssignedUser || $isTaskCreator || $isAdmin;
+                                // Delete Task - Available for creators and admins only
+                                $canDelete = $isTaskCreator || $isAdmin;
                                 ?>
-                                    <?php if ($task['status'] !== 'completed'): ?>
-                                    <button class="ab-btn ab-btn--progress" onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>, 'assigned')" title="Update Progress">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/>
-                                            <polyline points="16,7 22,7 22,13"/>
-                                        </svg>
-                                    </button>
-                                    <?php endif; ?>
-                                    <a class="ab-btn ab-btn--edit" data-action="edit" data-module="tasks" data-id="<?= $task['id'] ?>" title="Edit Task">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                            <path d="M15 5l4 4"/>
-                                        </svg>
-                                    </a>
-                                    <button class="ab-btn ab-btn--delete" data-action="delete" data-module="tasks" data-id="<?= $task['id'] ?>" data-name="<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>" title="Delete Task">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M3 6h18"/>
-                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
-                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                                            <line x1="10" y1="11" x2="10" y2="17"/>
-                                            <line x1="14" y1="11" x2="14" y2="17"/>
-                                        </svg>
-                                    </button>
+                                
+                                <!-- Update Progress Button -->
+                                <?php if ($canUpdateProgress && $task['status'] !== 'completed'): ?>
+                                <button class="ab-btn ab-btn--progress" onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>, 'assigned')" title="Update Progress">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/>
+                                        <polyline points="16,7 22,7 22,13"/>
+                                    </svg>
+                                </button>
+                                <?php endif; ?>
+                                
+                                <!-- View Progress History Button -->
+                                <?php if ($canViewHistory): ?>
+                                <button class="ab-btn history-btn" onclick="showProgressHistory(<?= $task['id'] ?>)" title="View Progress History">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12,6 12,12 16,14"/>
+                                    </svg>
+                                </button>
+                                <?php endif; ?>
+                                
+                                <!-- Edit Task Button -->
+                                <?php if ($canEdit): ?>
+                                <a class="ab-btn ab-btn--edit" data-action="edit" data-module="tasks" data-id="<?= $task['id'] ?>" title="Edit Task">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                        <path d="M15 5l4 4"/>
+                                    </svg>
+                                </a>
+                                <?php endif; ?>
+                                
+                                <!-- Delete Task Button -->
+                                <?php if ($canDelete): ?>
+                                <button class="ab-btn ab-btn--delete" data-action="delete" data-module="tasks" data-id="<?= $task['id'] ?>" data-name="<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>" title="Delete Task">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M3 6h18"/>
+                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                        <line x1="10" y1="11" x2="10" y2="17"/>
+                                        <line x1="14" y1="11" x2="14" y2="17"/>
+                                    </svg>
+                                </button>
                                 <?php endif; ?>
                             </div>
                         </td>
@@ -211,88 +242,47 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
     </div>
 </div>
 
-<div id="progressDialog" class="dialog" style="display: none;">
-    <div class="dialog-content">
-        <h4>Update Progress</h4>
-        <p>Progress: <span id="progressValue">0</span>%</p>
-        <input type="range" id="progressSlider" min="0" max="100" value="0">
-        <div class="dialog-buttons">
-            <button onclick="closeDialog()">Cancel</button>
-            <button onclick="saveProgress()">Save</button>
+<!-- Enhanced Progress Update Modal -->
+<div id="progressDialog" class="progress-dialog" style="display: none;">
+    <div class="progress-modal">
+        <h3>📊 Update Task Progress</h3>
+        
+        <div class="progress-form-group">
+            <label for="progressSlider">Progress Level</label>
+            <div class="progress-slider-container">
+                <input type="range" id="progressSlider" class="progress-slider" min="0" max="100" value="0">
+                <span id="progressValue" class="progress-value">0%</span>
+            </div>
+        </div>
+        
+        <div class="progress-form-group">
+            <label for="progressDescription">Progress Description *</label>
+            <textarea id="progressDescription" class="progress-description" 
+                      placeholder="Describe what you've accomplished, current status, or next steps..." 
+                      required></textarea>
+        </div>
+        
+        <div class="progress-actions">
+            <button type="button" class="progress-btn progress-btn-secondary" onclick="closeDialog()">Cancel</button>
+            <button type="button" class="progress-btn progress-btn-primary" onclick="saveProgress()">Update Progress</button>
         </div>
     </div>
 </div>
 
-<style>
-.dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
-    align-items: center;
-    justify-content: center;
-}
+<!-- Progress History Modal -->
+<div id="progressHistoryDialog" class="progress-dialog" style="display: none;">
+    <div class="progress-modal">
+        <h3>📈 Progress History</h3>
+        <div id="progressHistoryContent">
+            <!-- History content will be loaded here -->
+        </div>
+        <div class="progress-actions">
+            <button type="button" class="progress-btn progress-btn-secondary" onclick="closeDialog()">Close</button>
+        </div>
+    </div>
+</div>
 
-.dialog-content {
-    background: var(--bg-primary);
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    min-width: 300px;
-    max-width: 400px;
-    border: 1px solid var(--border-color);
-}
-
-.dialog-content h4 {
-    margin: 0 0 1rem 0;
-    color: var(--text-primary);
-}
-
-.dialog-content p {
-    margin: 0 0 1rem 0;
-    font-weight: 500;
-    color: var(--text-primary);
-}
-
-#progressSlider {
-    width: 100%;
-    margin: 1rem 0;
-}
-
-.dialog-buttons {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-    margin-top: 1.5rem;
-}
-
-.dialog-buttons button {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.875rem;
-}
-
-.dialog-buttons button:first-child {
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-}
-
-.dialog-buttons button:last-child {
-    background: var(--primary);
-    color: white;
-    border: 1px solid var(--primary);
-}
-
-.dialog-buttons button:hover {
-    opacity: 0.9;
-}
-</style>
+<link rel="stylesheet" href="/ergon/assets/css/task-progress-enhanced.css">
 
 <script>
 document.addEventListener('click', function(e) {
@@ -322,47 +312,7 @@ document.addEventListener('click', function(e) {
         }
     }
 });
-var currentTaskId;
-function openProgressModal(taskId, progress, status) {
-    currentTaskId = taskId;
-    var container = document.querySelector('[data-task-id="' + taskId + '"]');
-    var currentProgress = container ? container.querySelector('.progress-percentage').textContent.replace('%', '') : progress;
-    document.getElementById('progressSlider').value = currentProgress;
-    document.getElementById('progressValue').textContent = currentProgress;
-    document.getElementById('progressDialog').style.display = 'flex';
-}
-function closeDialog() {
-    document.getElementById('progressDialog').style.display = 'none';
-}
-function saveProgress() {
-    var progress = document.getElementById('progressSlider').value;
-    var status = progress >= 100 ? 'completed' : progress > 0 ? 'in_progress' : 'assigned';
-    fetch('/ergon/tasks/update-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task_id: currentTaskId, progress: progress, status: status })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            var container = document.querySelector('[data-task-id="' + currentTaskId + '"]');
-            if (container) {
-                var fill = container.querySelector('.progress-fill');
-                var percentage = container.querySelector('.progress-percentage');
-                var statusEl = container.querySelector('.progress-status');
-                fill.style.width = progress + '%';
-                fill.style.background = progress >= 100 ? '#10b981' : (progress >= 75 ? '#8b5cf6' : (progress >= 50 ? '#3b82f6' : (progress >= 25 ? '#f59e0b' : '#e2e8f0')));
-                percentage.textContent = progress + '%';
-                var icon = status === 'completed' ? '✅' : status === 'in_progress' ? '⚡' : '📋';
-                statusEl.textContent = icon + ' ' + status.replace('_', ' ');
-            }
-            closeDialog();
-        } else {
-            alert('Error updating task');
-        }
-    })
-    .catch(() => alert('Error updating task'));
-}
+
 // Check for URL parameters and show messages
 function checkUrlMessages() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -380,14 +330,12 @@ function checkUrlMessages() {
 
 document.addEventListener('DOMContentLoaded', function() {
     checkUrlMessages();
-    
-    var slider = document.getElementById('progressSlider');
-    if (slider) {
-        slider.oninput = function() {
-            document.getElementById('progressValue').textContent = this.value;
-        }
-    }
 });
+
+// Load enhanced progress functionality
+const script = document.createElement('script');
+script.src = '/ergon/assets/js/task-progress-enhanced.js';
+document.head.appendChild(script);
 </script>
 
 

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
+require_once __DIR__ . '/../helpers/DatabaseHelper.php';
 
 class UnifiedWorkflowController extends Controller {
     
@@ -8,6 +9,10 @@ class UnifiedWorkflowController extends Controller {
     
     public function dailyPlanner($date = null) {
         AuthMiddleware::requireAuth();
+        
+        // Check if daily_planner module is enabled
+        require_once __DIR__ . '/../middlewares/ModuleMiddleware.php';
+        ModuleMiddleware::requireModule('daily_planner');
         
         $date = $date ?? date('Y-m-d');
         
@@ -103,6 +108,10 @@ class UnifiedWorkflowController extends Controller {
     
     public function followups() {
         AuthMiddleware::requireAuth();
+        
+        // Check if followups module is enabled
+        require_once __DIR__ . '/../middlewares/ModuleMiddleware.php';
+        ModuleMiddleware::requireModule('followups');
         
         try {
             require_once __DIR__ . '/../config/database.php';
@@ -294,11 +303,11 @@ class UnifiedWorkflowController extends Controller {
             
             $db->beginTransaction();
             
-            // Calculate SLA end time
+            // Calculate SLA end time based on actual SLA hours (not affected by page refresh)
             $slaEndTime = date('Y-m-d H:i:s', strtotime($now . ' +' . $task['sla_hours'] . ' hours'));
             
-            // Start the task with full SLA support
-            $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', start_time = ?, sla_end_time = ?, resume_time = NULL, pause_start_time = NULL WHERE id = ?");
+            // Start the task with fixed SLA support
+            $stmt = $db->prepare("UPDATE daily_tasks SET status = 'in_progress', start_time = ?, sla_end_time = ?, resume_time = NULL, pause_start_time = NULL, active_seconds = 0, pause_duration = 0 WHERE id = ?");
             $result = $stmt->execute([$now, $slaEndTime, $taskId]);
             
             if ($result && $stmt->rowCount() > 0) {
@@ -372,8 +381,8 @@ class UnifiedWorkflowController extends Controller {
             $now = date('Y-m-d H:i:s');
             $status = $this->validateStatus('on_break');
             
-            // Update with pause start time and accumulated active seconds
-            $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, pause_start_time = ?, active_seconds = active_seconds + ? WHERE id = ?");
+            // Update with pause start time and accumulated active seconds (fixed calculation)
+            $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, pause_start_time = ?, active_seconds = active_seconds + ?, total_pause_duration = COALESCE(total_pause_duration, 0) WHERE id = ?");
             $result = $stmt->execute([$status, $now, max(0, $activeTime), $taskId]);
             
             if ($result && $stmt->rowCount() > 0) {
@@ -436,9 +445,9 @@ class UnifiedWorkflowController extends Controller {
             $now = date('Y-m-d H:i:s');
             $status = $this->validateStatus('in_progress');
             
-            // Update task status, add pause duration, set resume time
-            $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, resume_time = ?, pause_duration = pause_duration + ?, pause_start_time = NULL WHERE id = ?");
-            $result = $stmt->execute([$status, $now, $additionalPauseDuration, $taskId]);
+            // Update task status, add pause duration, set resume time (fixed break time tracking)
+            $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, resume_time = ?, total_pause_duration = COALESCE(total_pause_duration, 0) + ?, pause_start_time = NULL WHERE id = ?");
+            $result = $stmt->execute([$status, $now, max(0, $additionalPauseDuration), $taskId]);
             
             if ($result && $stmt->rowCount() > 0) {
                 $db->commit();
@@ -481,15 +490,40 @@ class UnifiedWorkflowController extends Controller {
             $this->ensureDailyTasksTable($db);
             $status = $this->validateStatus('completed');
             
+            // Get the original task ID for syncing
+            $stmt = $db->prepare("SELECT original_task_id, task_id FROM daily_tasks WHERE id = ? AND user_id = ?");
+            $stmt->execute([$taskId, $_SESSION['user_id']]);
+            $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$dailyTask) {
+                echo json_encode(['success' => false, 'message' => 'Task not found']);
+                return;
+            }
+            
+            $db->beginTransaction();
+            
+            // Update daily task
             $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, completed_percentage = ?, completion_time = NOW() WHERE id = ? AND user_id = ?");
             $result = $stmt->execute([$status, $percentage, $taskId, $_SESSION['user_id']]);
             
             if ($result) {
+                // Sync with main tasks table if linked
+                $originalTaskId = $dailyTask['original_task_id'] ?: $dailyTask['task_id'];
+                if ($originalTaskId) {
+                    $stmt = $db->prepare("UPDATE tasks SET status = ?, progress = ?, updated_at = NOW() WHERE id = ?");
+                    $stmt->execute([$status, $percentage, $originalTaskId]);
+                }
+                
+                $db->commit();
                 echo json_encode(['success' => true, 'message' => 'Task completed successfully']);
             } else {
+                $db->rollback();
                 echo json_encode(['success' => false, 'message' => 'Failed to complete task']);
             }
         } catch (Exception $e) {
+            if ($db && $db->inTransaction()) {
+                $db->rollback();
+            }
             error_log('Complete task error: ' . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         }
@@ -601,6 +635,18 @@ class UnifiedWorkflowController extends Controller {
                     
                     $this->ensureDailyTasksTable($db);
                     
+                    // Get the original task ID for syncing
+                    $stmt = $db->prepare("SELECT original_task_id, task_id FROM daily_tasks WHERE id = ? AND user_id = ?");
+                    $stmt->execute([$taskId, $_SESSION['user_id']]);
+                    $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$dailyTask) {
+                        echo json_encode(['success' => false, 'message' => 'Task not found']);
+                        return;
+                    }
+                    
+                    $db->beginTransaction();
+                    
                     if ($percentage < 100) {
                         // Partial completion - defer to next working day
                         $nextWorkingDay = $this->getNextWorkingDay();
@@ -608,6 +654,13 @@ class UnifiedWorkflowController extends Controller {
                         
                         $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, completed_percentage = ?, scheduled_date = ?, postponed_from_date = scheduled_date WHERE id = ? AND user_id = ?");
                         $result = $stmt->execute([$status, $percentage, $nextWorkingDay, $taskId, $_SESSION['user_id']]);
+                        
+                        // Sync with main tasks table
+                        $originalTaskId = $dailyTask['original_task_id'] ?: $dailyTask['task_id'];
+                        if ($originalTaskId) {
+                            $stmt = $db->prepare("UPDATE tasks SET status = ?, progress = ?, updated_at = NOW() WHERE id = ?");
+                            $stmt->execute([$status, $percentage, $originalTaskId]);
+                        }
                         
                         $message = "Task {$percentage}% complete - deferred to {$nextWorkingDay}";
                     } else {
@@ -617,15 +670,27 @@ class UnifiedWorkflowController extends Controller {
                         $stmt = $db->prepare("UPDATE daily_tasks SET status = ?, completed_percentage = ?, completion_time = NOW() WHERE id = ? AND user_id = ?");
                         $result = $stmt->execute([$status, $percentage, $taskId, $_SESSION['user_id']]);
                         
+                        // Sync with main tasks table
+                        $originalTaskId = $dailyTask['original_task_id'] ?: $dailyTask['task_id'];
+                        if ($originalTaskId) {
+                            $stmt = $db->prepare("UPDATE tasks SET status = ?, progress = ?, updated_at = NOW() WHERE id = ?");
+                            $stmt->execute([$status, $percentage, $originalTaskId]);
+                        }
+                        
                         $message = 'Task completed successfully';
                     }
                     
                     if ($result && $stmt->rowCount() > 0) {
+                        $db->commit();
                         echo json_encode(['success' => true, 'message' => $message, 'percentage' => $percentage]);
                     } else {
+                        $db->rollback();
                         echo json_encode(['success' => false, 'message' => 'Task not found']);
                     }
                 } catch (Exception $e) {
+                    if ($db && $db->inTransaction()) {
+                        $db->rollback();
+                    }
                     error_log('Complete task error: ' . $e->getMessage());
                     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
                 }
@@ -753,7 +818,7 @@ class UnifiedWorkflowController extends Controller {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )";
             
-            $db->exec($createSQL);
+            DatabaseHelper::safeExec($db, $createSQL, "Execute SQL");
             
             // Add missing columns if table already exists
             $this->addMissingColumns($db);
@@ -765,7 +830,7 @@ class UnifiedWorkflowController extends Controller {
                 $column = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($column && (strpos($column['Type'], 'enum') !== false || strpos($column['Type'], 'varchar(20)') !== false)) {
-                    $db->exec("ALTER TABLE daily_tasks MODIFY COLUMN status VARCHAR(50) DEFAULT 'not_started'");
+                    DatabaseHelper::safeExec($db, "ALTER TABLE daily_tasks MODIFY COLUMN status VARCHAR(50) DEFAULT 'not_started'", "Alter table");
                     error_log('Modified status column to VARCHAR(50)');
                 }
             } catch (Exception $e) {
@@ -780,8 +845,8 @@ class UnifiedWorkflowController extends Controller {
             
             // Add indexes separately
             try {
-                $db->exec("CREATE INDEX IF NOT EXISTS idx_user_date ON daily_tasks (user_id, scheduled_date)");
-                $db->exec("CREATE INDEX IF NOT EXISTS idx_status ON daily_tasks (status)");
+                DatabaseHelper::safeExec($db, "CREATE INDEX IF NOT EXISTS idx_user_date ON daily_tasks (user_id, scheduled_date)", "Create index");
+                DatabaseHelper::safeExec($db, "CREATE INDEX IF NOT EXISTS idx_status ON daily_tasks (status)", "Create index");
             } catch (Exception $e) {
                 error_log('Index creation error (non-critical): ' . $e->getMessage());
             }
@@ -802,7 +867,7 @@ class UnifiedWorkflowController extends Controller {
                     status VARCHAR(50) DEFAULT 'not_started',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )";
-                $db->exec($fallbackSQL);
+                DatabaseHelper::safeExec($db, $fallbackSQL, "Execute SQL");
                 error_log('Created daily_tasks table with fallback structure');
             } catch (Exception $e2) {
                 error_log('Fallback table creation also failed: ' . $e2->getMessage());
@@ -878,7 +943,7 @@ class UnifiedWorkflowController extends Controller {
     private function createDailyTasksFromRegular($db, $userId, $date, $existingStatuses = []) {
         try {
             // Ensure tasks have SLA hours
-            $db->exec("UPDATE tasks SET sla_hours = 1.0 WHERE sla_hours IS NULL OR sla_hours = 0");
+            DatabaseHelper::safeExec($db, "UPDATE tasks SET sla_hours = 1.0 WHERE sla_hours IS NULL OR sla_hours = 0", "Update data");
             
             // Get tasks for this user that are planned for the specific date
             // Carry forward is now handled separately before this method is called
@@ -989,7 +1054,7 @@ class UnifiedWorkflowController extends Controller {
     private function createDailyTasksFromRegularWithoutCarryForward($db, $userId, $date, $existingStatuses = []) {
         try {
             // Ensure tasks have SLA hours
-            $db->exec("UPDATE tasks SET sla_hours = 1.0 WHERE sla_hours IS NULL OR sla_hours = 0");
+            DatabaseHelper::safeExec($db, "UPDATE tasks SET sla_hours = 1.0 WHERE sla_hours IS NULL OR sla_hours = 0", "Update data");
             
             // Get tasks for this user that are planned for the specific date (no carry forward)
             $stmt = $db->prepare("
@@ -1105,7 +1170,7 @@ class UnifiedWorkflowController extends Controller {
                     $stmt = $db->prepare("SHOW COLUMNS FROM daily_tasks LIKE ?");
                     $stmt->execute([$column]);
                     if (!$stmt->fetch()) {
-                        $db->exec("ALTER TABLE daily_tasks ADD COLUMN {$column} {$definition}");
+                        DatabaseHelper::safeExec($db, "ALTER TABLE daily_tasks ADD COLUMN {$column} {$definition}", "Alter table");
                         error_log("Added missing column: {$column}");
                     }
                 } catch (Exception $e) {
@@ -1119,7 +1184,7 @@ class UnifiedWorkflowController extends Controller {
     
     private function ensureSLAHistoryTable($db) {
         try {
-            $db->exec("
+            DatabaseHelper::safeExec($db, "
                 CREATE TABLE IF NOT EXISTS sla_history (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     daily_task_id INT NOT NULL,
@@ -1129,8 +1194,7 @@ class UnifiedWorkflowController extends Controller {
                     notes TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_daily_task_id (daily_task_id)
-                )
-            ");
+                )", "Create SLA history table");
         } catch (Exception $e) {
             error_log('SLA history table creation error: ' . $e->getMessage());
         }

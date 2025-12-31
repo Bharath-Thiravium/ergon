@@ -1,0 +1,14 @@
+/* Recent Activities - Double Height & Scrollable */
+
+/* Target the specific grid section containing Recent Activities and Cash Flow */
+.dashboard-grid:nth-of-type(3) > .card:nth-child(1) {
+    grid-row: span 2;
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-grid:nth-of-type(3) > .card:nth-child(1) .card__body {
+    flex: 1;
+    overflow-y: scroll;
+    min-height: 0;
+}

@@ -64,11 +64,10 @@ function renderModalCSS() {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
+    z-index: 10001;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding-top: 100px;
 }
 
 .dialog-content {
@@ -300,11 +299,12 @@ function renderModalJS() {
 <script>
 // Fast Dialog JavaScript - No Animations
 function showModal(modalId) {
+    if (typeof showModalById === 'function') { showModalById(modalId); return; }
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-        
+        document.body.classList.add('modal-open');
         // Focus first input
         const firstInput = modal.querySelector('input, select, textarea');
         if (firstInput) {
@@ -314,10 +314,12 @@ function showModal(modalId) {
 }
 
 function closeModal(modalId) {
+    if (typeof hideModalById === 'function') { hideModalById(modalId); return; }
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.style.display = 'none';
         document.body.style.overflow = '';
+        document.body.classList.remove('modal-open');
     }
 }
 

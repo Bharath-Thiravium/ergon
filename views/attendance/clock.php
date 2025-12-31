@@ -57,7 +57,6 @@ let currentPosition = null;
 
 function updateTime() {
     const now = new Date();
-    // Convert to IST and format with AM/PM
     const istTime = now.toLocaleTimeString('en-IN', {
         timeZone: 'Asia/Kolkata',
         hour12: true,
@@ -99,10 +98,8 @@ function getLocation() {
     }
 }
 
-// Smart button state management - shared with header
 let attendanceStatus = <?= json_encode($attendance_status ?? []) ?>;
 
-// Sync with header button status if available
 if (typeof headerAttendanceStatus !== 'undefined') {
     headerAttendanceStatus = attendanceStatus;
 }
@@ -118,32 +115,27 @@ function updateClockButton(status) {
     btn.onclick = null;
     
     if (status.on_leave) {
-        // On Leave state
         text.textContent = 'On Leave';
         icon.textContent = '🏖️';
         btn.className = 'btn btn--secondary';
         btn.disabled = true;
     } else if (status.is_completed || (status.has_clocked_in && status.has_clocked_out)) {
-        // Completed state
         text.textContent = 'Completed';
         icon.textContent = '✅';
         btn.className = 'btn btn--secondary';
         btn.disabled = true;
     } else if (!status.has_clocked_in) {
-        // Clock In state
         text.textContent = 'Clock In';
         icon.textContent = '▶️';
         btn.className = 'btn btn--success';
         btn.onclick = () => clockAction('in');
     } else if (status.has_clocked_in && !status.has_clocked_out) {
-        // Clock Out state
         text.textContent = 'Clock Out';
         icon.textContent = '⏹️';
         btn.className = 'btn btn--danger';
         btn.onclick = () => clockAction('out');
     }
     
-    // Sync header button if available
     if (typeof updateHeaderAttendanceButton === 'function') {
         if (typeof headerAttendanceStatus !== 'undefined') {
             headerAttendanceStatus = status;
@@ -156,7 +148,6 @@ function clockAction(type) {
     const btn = document.getElementById('clockBtn');
     const text = document.getElementById('clockBtnText');
     
-    // Check if location is available
     if (!currentPosition) {
         if (typeof showMessage === 'function') {
             showMessage('Location required for attendance. Please enable location access.', 'error');
@@ -166,7 +157,6 @@ function clockAction(type) {
         return;
     }
     
-    // Disable button and show loading
     btn.disabled = true;
     const originalText = text.textContent;
     text.textContent = type === 'in' ? 'Clocking In...' : 'Clocking Out...';
@@ -188,7 +178,6 @@ function clockAction(type) {
     })
     .then(data => {
         if (data.success) {
-            // Update attendance status
             if (type === 'in') {
                 attendanceStatus.has_clocked_in = true;
                 attendanceStatus.clock_in_time = new Date().toISOString();
@@ -197,10 +186,8 @@ function clockAction(type) {
                 attendanceStatus.clock_out_time = new Date().toISOString();
             }
             
-            // Update both buttons
             updateClockButton(attendanceStatus);
             
-            // Sync header button status
             if (typeof headerAttendanceStatus !== 'undefined') {
                 headerAttendanceStatus = attendanceStatus;
                 if (typeof updateHeaderAttendanceButton === 'function') {
@@ -218,14 +205,12 @@ function clockAction(type) {
             if (typeof showMessage === 'function') {
                 showMessage(data.error || 'An error occurred', 'error');
             } else {
-                // Check if it's a location restriction error
                 if (data.error && data.error.includes('Please move within the allowed area')) {
                     showLocationAlert(data.error);
                 } else {
                     showErrorAlert(data.error || 'An error occurred');
                 }
             }
-            // Restore button state
             text.textContent = originalText;
             btn.disabled = false;
         }
@@ -237,18 +222,15 @@ function clockAction(type) {
         } else {
             showErrorAlert('Server error occurred. Please try again.');
         }
-        // Restore button state
         text.textContent = originalText;
         btn.disabled = false;
     });
 }
 
 <?php if (!$on_leave): ?>
-// Initialize smart button
 updateClockButton(attendanceStatus);
 <?php endif; ?>
 
-// Alert functions
 function showLocationAlert(message) {
     showModal(message, 'warning', '⚠️');
 }
@@ -262,10 +244,9 @@ function showErrorAlert(message) {
 }
 
 function showModal(message, type, icon) {
-    // Remove existing modal if any
     const existingModal = document.querySelector('.message-modal');
     if (existingModal) {
-        existingModal.remove();
+        if (typeof hideClosestModal === 'function') hideClosestModal(existingModal); else if (existingModal.parentNode) existingModal.parentNode.removeChild(existingModal);
     }
     
     const modal = document.createElement('div');
@@ -274,23 +255,21 @@ function showModal(message, type, icon) {
         <div class="message-content">
             <div class="message-icon">${icon}</div>
             <div class="message-text">${message}</div>
-            <button class="message-close" onclick="this.closest('.message-modal').remove()">OK</button>
+            <button class="message-close" onclick="hideClosestModal(this)">OK</button>
         </div>
     `;
     
     document.body.appendChild(modal);
     
-    // Auto-close after 5 seconds for success messages
     if (type === 'success') {
         setTimeout(() => {
             if (modal.parentNode) {
-                modal.remove();
+                if (typeof hideClosestModal === 'function') hideClosestModal(modal); else modal.parentNode.removeChild(modal);
             }
         }, 5000);
     }
 }
 
-// Initialize
 updateTime();
 setInterval(updateTime, 1000);
 getLocation();

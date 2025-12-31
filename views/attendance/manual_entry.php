@@ -103,6 +103,9 @@ $content = ob_start();
                 <button type="reset" class="btn btn--secondary">
                     <i class="bi bi-arrow-clockwise"></i> Reset Form
                 </button>
+                <button type="button" class="btn btn--secondary" onclick="window.history.back()">
+                    <i class="bi bi-x-circle"></i> Close
+                </button>
             </div>
         </form>
     </div>

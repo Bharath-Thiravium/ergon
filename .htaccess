@@ -17,10 +17,6 @@ RewriteRule ^(.*)$ index.php [QSA,L]
     ExpiresByType image/jpg "access plus 1 year"
 </IfModule>
 
-# PHP optimizations
-php_value memory_limit 512M
-php_value max_execution_time 60
-
 # Font file handling
 AddType font/woff2 .woff2
 AddType font/woff .woff
@@ -33,3 +29,14 @@ AddType application/font-woff2 .woff2
     Header set Access-Control-Allow-Methods "GET"
     Header set Access-Control-Allow-Headers "Content-Type"
 </FilesMatch>
+
+# Disable Composer autoload for production
+<Files "composer.json">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "composer.lock">
+    Order allow,deny
+    Deny from all
+</Files>

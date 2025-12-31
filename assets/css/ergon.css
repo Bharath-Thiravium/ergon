@@ -363,7 +363,7 @@ code {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 10000;
+  z-index: 999;
   width: 100%;
   transition: var(--transition);
   pointer-events: auto;
@@ -1599,6 +1599,9 @@ canvas { width: 100% !important; height: auto !important; }
   margin-bottom: var(--space-4);
   border: 1px solid transparent;
   font-size: var(--font-size-base);
+  display: block;
+  visibility: visible;
+  opacity: 1;
 }
 
 .alert--success {
@@ -1623,6 +1626,15 @@ canvas { width: 100% !important; height: auto !important; }
   background: rgba(2, 132, 199, 0.1);
   color: var(--info);
   border-color: rgba(2, 132, 199, 0.2);
+}
+
+/* Alert icons visibility */
+.alert i,
+.alert .bi,
+.alert svg {
+  color: inherit;
+  opacity: 1;
+  visibility: visible;
 }
 
 /* Layout Components */

@@ -98,6 +98,12 @@ ob_start();
                         <?php endif; ?>
                         
                         <div class="followup-actions">
+                            <a href="/ergon/followups/view/<?= $followup['id'] ?>" class="btn btn--info btn--small">
+                                👁️ View
+                            </a>
+                            <a href="/ergon/followups/edit/<?= $followup['id'] ?>" class="btn btn--secondary btn--small">
+                                ✏️ Edit
+                            </a>
                             <?php if ($followup['status'] !== 'completed' && $followup['status'] !== 'cancelled'): ?>
                                 <button class="btn btn--success btn--small" onclick="completeFollowup(<?= $followup['id'] ?>)">
                                     ✅ Complete
@@ -332,8 +338,8 @@ ob_start();
 
 <script>
 function completeFollowup(id) {
-    if (confirm('Mark this follow-up as completed?')) {
-        fetch(`/ergon/contacts/followups/complete/${id}`, {
+    if (confirm('Mark this follow-up as completed? This will also update the linked task status in the Planner if applicable.')) {
+        fetch(`/ergon/followups/complete/${id}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -343,6 +349,7 @@ function completeFollowup(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                alert(data.message || 'Follow-up completed successfully!');
                 location.reload();
             } else {
                 alert('Error: ' + (data.error || 'Failed to complete follow-up'));

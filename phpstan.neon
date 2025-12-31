@@ -1,0 +1,14 @@
+parameters:
+    level: 5
+    paths:
+        - app/
+        - src/
+    excludePaths:
+        - vendor/
+        - archive/
+        - archived/
+    ignoreErrors:
+        - '#Call to an undefined method PDO::#'
+        - '#Variable \$_SESSION might not be defined#'
+    checkMissingIterableValueType: false
+    checkGenericClassInNonGenericObjectType: false

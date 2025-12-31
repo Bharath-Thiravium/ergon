@@ -363,16 +363,22 @@
                 </div>
                 <?php unset($_SESSION['logout_message']); endif; ?>
                 
-                <form id="loginForm">
+                <?php if (isset($_SESSION['login_error'])): ?>
+                <div class="alert alert-error">
+                    ⚠ <?= htmlspecialchars($_SESSION['login_error']) ?>
+                </div>
+                <?php unset($_SESSION['login_error']); endif; ?>
+                
+                <form id="loginForm" action="/ergon/login" method="POST">
                     <div class="form-group">
                         <label for="email" class="form-label">Email Address</label>
-                        <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" required>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" autocomplete="username" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="password" class="form-label">Password</label>
                         <div style="position: relative;">
-                            <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
                             <button type="button" id="togglePassword" class="password-toggle">
                                 👁️
                             </button>
@@ -541,41 +547,12 @@
             }
         });
         
-        // Login form submission
+        // Simple form submission - no AJAX
         document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
             const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
-            
             submitBtn.textContent = 'Signing In...';
             submitBtn.disabled = true;
-            
-            const formData = new FormData(this);
-            const messageDiv = document.getElementById('message');
-            
-            fetch('/ergon/login', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    messageDiv.innerHTML = '<div class="alert alert-success">✓ Login successful! Redirecting...</div>';
-                    setTimeout(() => {
-                        window.location.href = data.redirect;
-                    }, 1000);
-                } else {
-                    messageDiv.innerHTML = '<div class="alert alert-error">⚠ ' + data.error + '</div>';
-                    submitBtn.textContent = originalText;
-                    submitBtn.disabled = false;
-                }
-            })
-            .catch(error => {
-                messageDiv.innerHTML = '<div class="alert alert-error">⚠ Login failed. Please try again.</div>';
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-            });
+            // Let the form submit normally
         });
     </script>
 </body>

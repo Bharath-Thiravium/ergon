@@ -279,14 +279,14 @@ class RolloverTaskManager {
                 $stmt = $this->db->prepare("SHOW COLUMNS FROM tasks LIKE '{$column}'");
                 $stmt->execute();
                 if (!$stmt->fetch()) {
-                    $this->db->exec($sql);
+                    DatabaseHelper::safeExec($this->db, $sql, "Model operation");
                 }
             }
             
             // Add indexes
             try {
-                $this->db->exec("ALTER TABLE tasks ADD INDEX idx_rolled_from_date (rolled_from_date)");
-                $this->db->exec("ALTER TABLE tasks ADD INDEX idx_source_task_id (source_task_id)");
+                DatabaseHelper::safeExec($this->db, "ALTER TABLE tasks ADD INDEX idx_rolled_from_date (rolled_from_date)", "Model operation");
+                DatabaseHelper::safeExec($this->db, "ALTER TABLE tasks ADD INDEX idx_source_task_id (source_task_id)", "Model operation");
             } catch (Exception $e) {
                 // Indexes may already exist
             }

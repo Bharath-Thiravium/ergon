@@ -492,7 +492,16 @@
 .dialog-content svg,
 .modal-content i,
 .modal-content .bi,
-.modal-content svg {
+.modal-content svg,
+.alert i,
+.alert .bi,
+.alert svg,
+.notification i,
+.notification .bi,
+.notification svg,
+.toast i,
+.toast .bi,
+.toast svg {
   color: inherit !important;
   opacity: 1 !important;
   visibility: visible !important;
@@ -504,8 +513,105 @@
 .dialog-content span,
 .dialog-content .text,
 .modal-content span,
-.modal-content .text {
+.modal-content .text,
+.alert span,
+.alert .text,
+.notification span,
+.notification .text,
+.toast span,
+.toast .text {
   color: inherit !important;
   opacity: 1 !important;
   visibility: visible !important;
+}
+
+/* ===== ALERT VISIBILITY FIXES ===== */
+
+/* Ensure alerts are always visible when not explicitly hidden */
+.alert:not(.d-none):not([style*="display: none"]),
+.notification:not(.d-none):not([style*="display: none"]),
+.toast:not(.d-none):not([style*="display: none"]),
+.message:not(.d-none):not([style*="display: none"]) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Dark Mode alert enhancements */
+[data-theme='dark'] .alert,
+[data-theme='dark'] .notification,
+[data-theme='dark'] .toast,
+[data-theme='dark'] .message,
+.theme-dark .alert,
+.theme-dark .notification,
+.theme-dark .toast,
+.theme-dark .message {
+  background: var(--gray-800) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-600) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Success variants */
+[data-theme='dark'] .alert--success,
+[data-theme='dark'] .alert-success,
+[data-theme='dark'] .notification--success,
+[data-theme='dark'] .toast--success,
+.theme-dark .alert--success,
+.theme-dark .alert-success,
+.theme-dark .notification--success,
+.theme-dark .toast--success {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  border-left: 4px solid #10b981 !important;
+}
+
+/* Error variants */
+[data-theme='dark'] .alert--error,
+[data-theme='dark'] .alert-error,
+[data-theme='dark'] .alert--danger,
+[data-theme='dark'] .alert-danger,
+[data-theme='dark'] .notification--error,
+[data-theme='dark'] .toast--error,
+.theme-dark .alert--error,
+.theme-dark .alert-error,
+.theme-dark .alert--danger,
+.theme-dark .alert-danger,
+.theme-dark .notification--error,
+.theme-dark .toast--error {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  border-left: 4px solid #ef4444 !important;
+}
+
+/* Warning variants */
+[data-theme='dark'] .alert--warning,
+[data-theme='dark'] .alert-warning,
+[data-theme='dark'] .notification--warning,
+[data-theme='dark'] .toast--warning,
+.theme-dark .alert--warning,
+.theme-dark .alert-warning,
+.theme-dark .notification--warning,
+.theme-dark .toast--warning {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fcd34d !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  border-left: 4px solid #f59e0b !important;
+}
+
+/* Info variants */
+[data-theme='dark'] .alert--info,
+[data-theme='dark'] .alert-info,
+[data-theme='dark'] .notification--info,
+[data-theme='dark'] .toast--info,
+.theme-dark .alert--info,
+.theme-dark .alert-info,
+.theme-dark .notification--info,
+.theme-dark .toast--info {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #93c5fd !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  border-left: 4px solid #3b82f6 !important;
 }

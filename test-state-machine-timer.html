@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>State Machine Timer Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .state-diagram { display: flex; justify-content: center; align-items: center; margin: 20px 0; padding: 20px; background: white; border-radius: 8px; flex-wrap: wrap; }
+        .state-box { padding: 15px; border: 3px solid #ddd; border-radius: 8px; text-align: center; min-width: 120px; margin: 10px; position: relative; }
+        .state-not-started { background: #f5f5f5; border-color: #757575; }
+        .state-in-progress { background: #e8f5e8; border-color: #4caf50; }
+        .state-on-break { background: #fff3e0; border-color: #ff9800; }
+        .state-completed { background: #e3f2fd; border-color: #2196f3; }
+        .state-active { border-width: 4px; box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+        .transition { display: flex; align-items: center; margin: 5px; }
+        .transition-arrow { font-size: 20px; margin: 0 10px; color: #666; }
+        .transition-label { font-size: 12px; color: #666; background: white; padding: 2px 6px; border-radius: 4px; }
+        .task-card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
+        .timer-display { font-size: 24px; font-weight: bold; margin: 10px 0; }
+        .status { padding: 5px 10px; border-radius: 4px; color: white; display: inline-block; margin: 5px 0; }
+        .in_progress { background: #4caf50; }
+        .on_break { background: #ff9800; }
+        .not_started { background: #757575; }
+        .completed { background: #2196f3; }
+        .controls button { margin: 5px; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .start { background: #4caf50; color: white; }
+        .pause { background: #ff9800; color: white; }
+        .resume { background: #2196f3; color: white; }
+        .complete { background: #9c27b0; color: white; }
+        .reset { background: #757575; color: white; }
+        .log { background: #f9f9f9; padding: 10px; margin: 10px 0; border-radius: 4px; max-height: 200px; overflow-y: auto; }
+        .log-entry { margin: 2px 0; font-size: 12px; }
+        .state-log { color: #4caf50; font-weight: bold; }
+        .transition-log { color: #ff9800; }
+        .error-log { color: #f44336; font-weight: bold; }
+        .validation { background: #fff3e0; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .state-info { background: #e3f2fd; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .disabled { opacity: 0.5; cursor: not-allowed !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>State Machine Timer Test</h1>
+        
+        <!-- State Diagram -->
+        <div class="state-diagram">
+            <div class="state-box state-not-started" id="state-not-started">
+                <h4>NOT_STARTED</h4>
+                <div>Initial State</div>
+            </div>
+            
+            <div class="transition">
+                <span class="transition-arrow">→</span>
+                <div class="transition-label">START()</div>
+            </div>
+            
+            <div class="state-box state-in-progress" id="state-in-progress">
+                <h4>IN_PROGRESS</h4>
+                <div>Timer Running</div>
+            </div>
+            
+            <div class="transition">
+                <span class="transition-arrow">↓</span>
+                <div class="transition-label">PAUSE()</div>
+            </div>
+            
+            <div class="state-box state-on-break" id="state-on-break">
+                <h4>ON_BREAK</h4>
+                <div>Timer Paused</div>
+            </div>
+            
+            <div class="transition">
+                <span class="transition-arrow">↑</span>
+                <div class="transition-label">RESUME()</div>
+            </div>
+            
+            <div class="state-box state-completed" id="state-completed">
+                <h4>COMPLETED</h4>
+                <div>Final State</div>
+            </div>
+        </div>
+
+        <!-- Current State Info -->
+        <div class="state-info">
+            <strong>Current State:</strong> <span id="current-state">NOT_STARTED</span><br>
+            <strong>Valid Transitions:</strong> <span id="valid-transitions">START</span><br>
+            <strong>State Duration:</strong> <span id="state-duration">0s</span>
+        </div>
+
+        <!-- Validation Info -->
+        <div class="validation">
+            🛡️ <strong>State Machine Protection:</strong> Only valid state transitions are allowed
+        </div>
+
+        <!-- Task Card -->
+        <div class="task-card" data-task-id="123">
+            <h3>Task #123: State Machine SLA Task</h3>
+            <div class="status not_started" id="status-display">NOT STARTED</div>
+            
+            <div class="timer-display">
+                SLA Countdown: <span id="countdown-display">00:15:00</span>
+            </div>
+            
+            <div>Time Used: <span id="time-used">00:00:00</span></div>
+            <div>Pause Time: <span id="pause-time">00:00:00</span></div>
+            <div>State Changes: <span id="state-changes">0</span></div>
+            
+            <div class="controls">
+                <button class="start" id="btn-start" onclick="attemptTransition('START')">Start Task</button>
+                <button class="pause disabled" id="btn-pause" onclick="attemptTransition('PAUSE')">Pause Task</button>
+                <button class="resume disabled" id="btn-resume" onclick="attemptTransition('RESUME')">Resume Task</button>
+                <button class="complete disabled" id="btn-complete" onclick="attemptTransition('COMPLETE')">Complete Task</button>
+                <button class="reset" id="btn-reset" onclick="attemptTransition('RESET')">Reset Task</button>
+            </div>
+        </div>
+
+        <!-- Data Flow Log -->
+        <div class="log">
+            <h4>State Machine Log:</h4>
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // State Machine Timer System
+        const STATES = {
+            NOT_STARTED: 'not_started',
+            IN_PROGRESS: 'in_progress',
+            ON_BREAK: 'on_break',
+            COMPLETED: 'completed'
+        };
+
+        const TRANSITIONS = {
+            START: 'START',
+            PAUSE: 'PAUSE',
+            RESUME: 'RESUME',
+            COMPLETE: 'COMPLETE',
+            RESET: 'RESET'
+        };
+
+        // State machine definition
+        const STATE_MACHINE = {
+            [STATES.NOT_STARTED]: {
+                validTransitions: [TRANSITIONS.START],
+                onEnter: () => log('🔵 STATE: Entered NOT_STARTED state', 'state-log'),
+                onExit: () => log('🔵 STATE: Exiting NOT_STARTED state', 'state-log')
+            },
+            [STATES.IN_PROGRESS]: {
+                validTransitions: [TRANSITIONS.PAUSE, TRANSITIONS.COMPLETE],
+                onEnter: () => {
+                    log('🟢 STATE: Entered IN_PROGRESS state - Timer started', 'state-log');
+                    startTimer();
+                },
+                onExit: () => {
+                    log('🟢 STATE: Exiting IN_PROGRESS state - Timer stopped', 'state-log');
+                    stopTimer();
+                }
+            },
+            [STATES.ON_BREAK]: {
+                validTransitions: [TRANSITIONS.RESUME, TRANSITIONS.COMPLETE],
+                onEnter: () => {
+                    log('🟡 STATE: Entered ON_BREAK state - Timer paused', 'state-log');
+                    startPauseTimer();
+                },
+                onExit: () => {
+                    log('🟡 STATE: Exiting ON_BREAK state - Pause ended', 'state-log');
+                    stopPauseTimer();
+                }
+            },
+            [STATES.COMPLETED]: {
+                validTransitions: [TRANSITIONS.RESET],
+                onEnter: () => {
+                    log('🔵 STATE: Entered COMPLETED state - Task finished', 'state-log');
+                    stopAllTimers();
+                },
+                onExit: () => log('🔵 STATE: Exiting COMPLETED state', 'state-log')
+            }
+        };
+
+        // Current state
+        let currentState = STATES.NOT_STARTED;
+        let stateEnterTime = Date.now();
+        let stateChangeCount = 0;
+        let timer = null;
+        let pauseTimer = null;
+
+        // Task data
+        let taskData = {
+            activeSeconds: 0,
+            pauseSeconds: 0,
+            slaSeconds: 900,
+            startTime: null,
+            pauseStartTime: null
+        };
+
+        // Attempt state transition
+        function attemptTransition(transitionName) {
+            log('🔄 TRANSITION: Attempting ' + transitionName + ' from ' + currentState, 'transition-log');
+            
+            const currentStateConfig = STATE_MACHINE[currentState];
+            
+            // Validate transition
+            if (!currentStateConfig.validTransitions.includes(transitionName)) {
+                log('❌ ERROR: Invalid transition ' + transitionName + ' from ' + currentState, 'error-log');
+                showInvalidTransitionFeedback();
+                return false;
+            }
+            
+            // Execute transition
+            executeTransition(transitionName);
+            return true;
+        }
+
+        // Execute valid transition
+        function executeTransition(transitionName) {
+            const oldState = currentState;
+            
+            // Exit current state
+            STATE_MACHINE[currentState].onExit();
+            
+            // Determine new state
+            let newState;
+            switch(transitionName) {
+                case TRANSITIONS.START:
+                    newState = STATES.IN_PROGRESS;
+                    taskData.startTime = Date.now();
+                    break;
+                case TRANSITIONS.PAUSE:
+                    newState = STATES.ON_BREAK;
+                    if (taskData.startTime) {
+                        taskData.activeSeconds += Math.floor((Date.now() - taskData.startTime) / 1000);
+                    }
+                    taskData.pauseStartTime = Date.now();
+                    taskData.startTime = null;
+                    break;
+                case TRANSITIONS.RESUME:
+                    newState = STATES.IN_PROGRESS;
+                    if (taskData.pauseStartTime) {
+                        taskData.pauseSeconds += Math.floor((Date.now() - taskData.pauseStartTime) / 1000);
+                    }
+                    taskData.startTime = Date.now();
+                    taskData.pauseStartTime = null;
+                    break;
+                case TRANSITIONS.COMPLETE:
+                    newState = STATES.COMPLETED;
+                    if (taskData.startTime) {
+                        taskData.activeSeconds += Math.floor((Date.now() - taskData.startTime) / 1000);
+                    }
+                    if (taskData.pauseStartTime) {
+                        taskData.pauseSeconds += Math.floor((Date.now() - taskData.pauseStartTime) / 1000);
+                    }
+                    break;
+                case TRANSITIONS.RESET:
+                    newState = STATES.NOT_STARTED;
+                    taskData = {
+                        activeSeconds: 0,
+                        pauseSeconds: 0,
+                        slaSeconds: 900,
+                        startTime: null,
+                        pauseStartTime: null
+                    };
+                    break;
+            }
+            
+            // Change state
+            currentState = newState;
+            stateEnterTime = Date.now();
+            stateChangeCount++;
+            
+            log('✅ TRANSITION: ' + oldState + ' → ' + newState + ' (' + transitionName + ')', 'transition-log');
+            
+            // Enter new state
+            STATE_MACHINE[currentState].onEnter();
+            
+            // Update UI
+            updateStateDisplay();
+            updateTimerDisplay();
+            updateControls();
+        }
+
+        // Start active timer
+        function startTimer() {
+            if (timer) clearInterval(timer);
+            timer = setInterval(() => {
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        // Stop active timer
+        function stopTimer() {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+        }
+
+        // Start pause timer
+        function startPauseTimer() {
+            if (pauseTimer) clearInterval(pauseTimer);
+            pauseTimer = setInterval(() => {
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        // Stop pause timer
+        function stopPauseTimer() {
+            if (pauseTimer) {
+                clearInterval(pauseTimer);
+                pauseTimer = null;
+            }
+        }
+
+        // Stop all timers
+        function stopAllTimers() {
+            stopTimer();
+            stopPauseTimer();
+        }
+
+        // Update state display
+        function updateStateDisplay() {
+            // Update state diagram
+            document.querySelectorAll('.state-box').forEach(box => {
+                box.classList.remove('state-active');
+            });
+            document.getElementById('state-' + currentState.replace('_', '-')).classList.add('state-active');
+            
+            // Update current state info
+            document.getElementById('current-state').textContent = currentState.toUpperCase();
+            
+            const validTransitions = STATE_MACHINE[currentState].validTransitions.join(', ');
+            document.getElementById('valid-transitions').textContent = validTransitions;
+            
+            const stateDuration = Math.floor((Date.now() - stateEnterTime) / 1000);
+            document.getElementById('state-duration').textContent = stateDuration + 's';
+            
+            document.getElementById('state-changes').textContent = stateChangeCount;
+        }
+
+        // Update timer display
+        function updateTimerDisplay() {
+            const now = Date.now();
+            let currentActiveTime = taskData.activeSeconds;
+            let currentPauseTime = taskData.pauseSeconds;
+            
+            // Calculate current session times
+            if (currentState === STATES.IN_PROGRESS && taskData.startTime) {
+                currentActiveTime += Math.floor((now - taskData.startTime) / 1000);
+            }
+            
+            if (currentState === STATES.ON_BREAK && taskData.pauseStartTime) {
+                currentPauseTime += Math.floor((now - taskData.pauseStartTime) / 1000);
+            }
+            
+            // Update status
+            const statusEl = document.getElementById('status-display');
+            statusEl.textContent = currentState.toUpperCase().replace('_', ' ');
+            statusEl.className = 'status ' + currentState;
+            
+            // Update countdown
+            const countdownEl = document.getElementById('countdown-display');
+            if (currentActiveTime >= taskData.slaSeconds) {
+                const overdue = currentActiveTime - taskData.slaSeconds;
+                countdownEl.textContent = 'OVERDUE: ' + formatTime(overdue);
+                countdownEl.style.color = '#f44336';
+            } else {
+                const remaining = taskData.slaSeconds - currentActiveTime;
+                countdownEl.textContent = formatTime(remaining);
+                countdownEl.style.color = currentState === STATES.IN_PROGRESS ? '#4caf50' : '#757575';
+            }
+            
+            // Update other displays
+            document.getElementById('time-used').textContent = formatTime(currentActiveTime);
+            document.getElementById('pause-time').textContent = formatTime(currentPauseTime);
+            
+            // Update state duration
+            const stateDuration = Math.floor((now - stateEnterTime) / 1000);
+            document.getElementById('state-duration').textContent = stateDuration + 's';
+        }
+
+        // Update control buttons based on valid transitions
+        function updateControls() {
+            const validTransitions = STATE_MACHINE[currentState].validTransitions;
+            
+            // Reset all buttons
+            document.querySelectorAll('.controls button').forEach(btn => {
+                btn.classList.add('disabled');
+                btn.disabled = true;
+            });
+            
+            // Enable valid transitions
+            validTransitions.forEach(transition => {
+                let buttonId;
+                switch(transition) {
+                    case TRANSITIONS.START:
+                        buttonId = 'btn-start';
+                        break;
+                    case TRANSITIONS.PAUSE:
+                        buttonId = 'btn-pause';
+                        break;
+                    case TRANSITIONS.RESUME:
+                        buttonId = 'btn-resume';
+                        break;
+                    case TRANSITIONS.COMPLETE:
+                        buttonId = 'btn-complete';
+                        break;
+                    case TRANSITIONS.RESET:
+                        buttonId = 'btn-reset';
+                        break;
+                }
+                
+                if (buttonId) {
+                    const btn = document.getElementById(buttonId);
+                    btn.classList.remove('disabled');
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        // Show invalid transition feedback
+        function showInvalidTransitionFeedback() {
+            // Flash the current state
+            const currentStateEl = document.getElementById('state-' + currentState.replace('_', '-'));
+            currentStateEl.style.backgroundColor = '#ffcdd2';
+            setTimeout(() => {
+                currentStateEl.style.backgroundColor = '';
+            }, 500);
+        }
+
+        // Utility functions
+        function formatTime(seconds) {
+            const s = Math.max(0, Math.floor(seconds));
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = s % 60;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        function log(message, className = '') {
+            const logContent = document.getElementById('log-content');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + className;
+            entry.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            logContent.appendChild(entry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 STATE MACHINE: System initialized in NOT_STARTED state', 'state-log');
+            updateStateDisplay();
+            updateTimerDisplay();
+            updateControls();
+            
+            // Update state duration every second
+            setInterval(() => {
+                if (currentState !== STATES.COMPLETED) {
+                    const stateDuration = Math.floor((Date.now() - stateEnterTime) / 1000);
+                    document.getElementById('state-duration').textContent = stateDuration + 's';
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

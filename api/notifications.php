@@ -2,9 +2,15 @@
 header('Content-Type: application/json');
 header('Cache-Control: no-cache, must-revalidate');
 
+// Enable error logging
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/../storage/notification_errors.log');
+
 try {
-    require_once __DIR__ . '/../app/core/Session.php';
-    Session::init();
+    // Use same session handling as main app
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     
     if (!isset($_SESSION['user_id'])) {
         echo json_encode(['success' => true, 'notifications' => [], 'unread_count' => 0]);
@@ -64,6 +70,8 @@ try {
         ]);
     }
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    error_log('Notification API Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    error_log('Stack trace: ' . $e->getTraceAsString());
+    echo json_encode(['success' => false, 'error' => $e->getMessage(), 'debug' => $e->getTraceAsString()]);
 }
 ?>

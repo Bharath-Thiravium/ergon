@@ -381,7 +381,7 @@ class ProfileController extends Controller {
                 updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
             
-            $this->db->exec($sql);
+            DatabaseHelper::safeExec($this->db, $sql, "Execute SQL");
             
             // Verify table exists with Hostinger-compatible query
             $checkSql = "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'user_preferences'";

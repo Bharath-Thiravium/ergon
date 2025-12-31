@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server-Driven Timer Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .flow-diagram { display: flex; justify-content: space-between; margin: 20px 0; padding: 20px; background: white; border-radius: 8px; }
+        .flow-box { padding: 15px; border: 2px solid #ddd; border-radius: 8px; text-align: center; min-width: 150px; }
+        .client { background: #e3f2fd; border-color: #2196f3; }
+        .server { background: #f3e5f5; border-color: #9c27b0; }
+        .arrow { font-size: 24px; color: #666; align-self: center; }
+        .task-card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
+        .timer-display { font-size: 24px; font-weight: bold; margin: 10px 0; }
+        .status { padding: 5px 10px; border-radius: 4px; color: white; display: inline-block; margin: 5px 0; }
+        .in_progress { background: #4caf50; }
+        .on_break { background: #ff9800; }
+        .not_started { background: #757575; }
+        .controls button { margin: 5px; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .start { background: #4caf50; color: white; }
+        .pause { background: #ff9800; color: white; }
+        .resume { background: #2196f3; color: white; }
+        .log { background: #f9f9f9; padding: 10px; margin: 10px 0; border-radius: 4px; max-height: 200px; overflow-y: auto; }
+        .log-entry { margin: 2px 0; font-size: 12px; }
+        .client-log { color: #2196f3; }
+        .server-log { color: #9c27b0; }
+        .data-flow { color: #f44336; font-weight: bold; }
+        .connection-status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .connected { background: #c8e6c9; color: #2e7d32; }
+        .disconnected { background: #ffcdd2; color: #c62828; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Server-Driven Timer System Test</h1>
+        
+        <!-- Flow Diagram -->
+        <div class="flow-diagram">
+            <div class="flow-box client">
+                <h3>Browser (Client)</h3>
+                <div>Display Only</div>
+                <div id="client-status">Waiting...</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="flow-box server">
+                <h3>Server</h3>
+                <div>Calculate Times</div>
+                <div id="server-status">Ready</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="flow-box client">
+                <h3>Browser (Client)</h3>
+                <div>Update UI</div>
+                <div id="ui-status">Updated</div>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div id="connection-status" class="connection-status connected">
+            ✅ Connected to Server Timer Service
+        </div>
+
+        <!-- Task Card -->
+        <div class="task-card" data-task-id="123">
+            <h3>Task #123: Sample SLA Task</h3>
+            <div class="status not_started" id="status-display">NOT STARTED</div>
+            
+            <div class="timer-display">
+                SLA Countdown: <span id="countdown-display">00:15:00</span>
+            </div>
+            
+            <div>Time Used: <span id="time-used">00:00:00</span></div>
+            <div>Pause Time: <span id="pause-time">00:00:00</span></div>
+            
+            <div class="controls">
+                <button class="start" onclick="startTask()">Start Task</button>
+                <button class="pause" onclick="pauseTask()">Pause Task</button>
+                <button class="resume" onclick="resumeTask()">Resume Task</button>
+            </div>
+        </div>
+
+        <!-- Data Flow Log -->
+        <div class="log">
+            <h4>Real-time Data Flow Log:</h4>
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Mock Server-Driven Timer System
+        let serverConnection = null;
+        let taskData = {
+            taskId: 123,
+            status: 'not_started',
+            activeSeconds: 0,
+            pauseSeconds: 0,
+            slaSeconds: 900,
+            startTime: null,
+            pauseStartTime: null
+        };
+
+        // Simulate WebSocket connection to server
+        function connectToServer() {
+            log('🔌 CLIENT: Connecting to server timer service...', 'client-log');
+            
+            // Simulate server connection
+            setTimeout(() => {
+                log('✅ SERVER: Connection established', 'server-log');
+                log('📡 SERVER: Starting timer calculation service', 'server-log');
+                startServerTimer();
+            }, 1000);
+        }
+
+        // Server-side timer calculation (simulated)
+        function startServerTimer() {
+            serverConnection = setInterval(() => {
+                // Server calculates all timer values
+                calculateServerTimes();
+                
+                // Server sends calculated data to client
+                sendTimerUpdate();
+            }, 1000);
+        }
+
+        // Server calculates times (this runs on server)
+        function calculateServerTimes() {
+            const now = Date.now();
+            
+            if (taskData.status === 'in_progress' && taskData.startTime) {
+                const sessionTime = Math.floor((now - taskData.startTime) / 1000);
+                taskData.currentActiveTime = taskData.activeSeconds + sessionTime;
+            } else {
+                taskData.currentActiveTime = taskData.activeSeconds;
+            }
+            
+            if (taskData.status === 'on_break' && taskData.pauseStartTime) {
+                const sessionPause = Math.floor((now - taskData.pauseStartTime) / 1000);
+                taskData.currentPauseTime = taskData.pauseSeconds + sessionPause;
+            } else {
+                taskData.currentPauseTime = taskData.pauseSeconds;
+            }
+            
+            // Calculate countdown
+            if (taskData.currentActiveTime >= taskData.slaSeconds) {
+                taskData.countdown = taskData.currentActiveTime - taskData.slaSeconds; // Overdue
+                taskData.isOverdue = true;
+            } else {
+                taskData.countdown = taskData.slaSeconds - taskData.currentActiveTime; // Remaining
+                taskData.isOverdue = false;
+            }
+            
+            log('⚙️ SERVER: Calculated times - Active: ' + taskData.currentActiveTime + 's, Countdown: ' + taskData.countdown + 's', 'server-log');
+        }
+
+        // Server sends update to client (simulated)
+        function sendTimerUpdate() {
+            log('📤 SERVER: Sending timer data to client...', 'data-flow');
+            
+            // Simulate network delay
+            setTimeout(() => {
+                receiveTimerUpdate({
+                    taskId: taskData.taskId,
+                    status: taskData.status,
+                    activeTime: taskData.currentActiveTime,
+                    pauseTime: taskData.currentPauseTime,
+                    countdown: taskData.countdown,
+                    isOverdue: taskData.isOverdue
+                });
+            }, 50);
+        }
+
+        // Client receives server data
+        function receiveTimerUpdate(serverData) {
+            log('📥 CLIENT: Received server data', 'client-log');
+            
+            // Update UI with server-calculated values
+            updateUI(serverData);
+            
+            // Update flow diagram
+            document.getElementById('client-status').textContent = 'Received Data';
+            document.getElementById('server-status').textContent = 'Calculating...';
+            document.getElementById('ui-status').textContent = 'Updating...';
+            
+            setTimeout(() => {
+                document.getElementById('client-status').textContent = 'Displaying';
+                document.getElementById('server-status').textContent = 'Ready';
+                document.getElementById('ui-status').textContent = 'Updated ✓';
+            }, 100);
+        }
+
+        // Client updates UI (no calculations here)
+        function updateUI(data) {
+            // Status
+            const statusEl = document.getElementById('status-display');
+            statusEl.textContent = data.status.toUpperCase().replace('_', ' ');
+            statusEl.className = 'status ' + data.status;
+            
+            // Countdown
+            const countdownEl = document.getElementById('countdown-display');
+            if (data.isOverdue) {
+                countdownEl.textContent = 'OVERDUE: ' + formatTime(data.countdown);
+                countdownEl.style.color = '#f44336';
+            } else {
+                countdownEl.textContent = formatTime(data.countdown);
+                countdownEl.style.color = data.status === 'in_progress' ? '#4caf50' : '#757575';
+            }
+            
+            // Time used
+            document.getElementById('time-used').textContent = formatTime(data.activeTime);
+            
+            // Pause time
+            document.getElementById('pause-time').textContent = formatTime(data.pauseTime);
+            
+            log('🎨 CLIENT: UI updated with server data', 'client-log');
+        }
+
+        // Task control functions
+        function startTask() {
+            log('👆 CLIENT: User clicked START button', 'client-log');
+            taskData.status = 'in_progress';
+            taskData.startTime = Date.now();
+            log('📤 CLIENT: Sending start command to server...', 'data-flow');
+        }
+
+        function pauseTask() {
+            log('👆 CLIENT: User clicked PAUSE button', 'client-log');
+            taskData.activeSeconds = taskData.currentActiveTime;
+            taskData.status = 'on_break';
+            taskData.pauseStartTime = Date.now();
+            taskData.startTime = null;
+            log('📤 CLIENT: Sending pause command to server...', 'data-flow');
+        }
+
+        function resumeTask() {
+            log('👆 CLIENT: User clicked RESUME button', 'client-log');
+            taskData.pauseSeconds = taskData.currentPauseTime;
+            taskData.status = 'in_progress';
+            taskData.startTime = Date.now();
+            taskData.pauseStartTime = null;
+            log('📤 CLIENT: Sending resume command to server...', 'data-flow');
+        }
+
+        // Utility functions
+        function formatTime(seconds) {
+            const s = Math.max(0, Math.floor(seconds));
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = s % 60;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        function log(message, className = '') {
+            const logContent = document.getElementById('log-content');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + className;
+            entry.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            logContent.appendChild(entry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 CLIENT: Page loaded, initializing...', 'client-log');
+            connectToServer();
+        });
+    </script>
+</body>
+</html>

@@ -143,8 +143,8 @@ $content = ob_start();
                 <h3>👥 Assignment & Schedule</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="assigned_for">👤 Assignment Type <span class="field-help" title="Who will be responsible for this task?">ℹ️</span></label>
-                        <select id="assigned_for" name="assigned_for" onchange="handleAssignmentTypeChange()" required>
+                        <label for="assignment_type">👤 Assignment Type <span class="field-help" title="Who will be responsible for this task?">ℹ️</span></label>
+                        <select id="assignment_type" name="assigned_for" onchange="handleAssignmentTypeChange()" required>
                             <option value="self">For Myself (I will do this)</option>
                             <option value="other">For Others (Delegate to team member)</option>
                         </select>
@@ -169,32 +169,30 @@ $content = ob_start();
                 <h3>⚙️ Task Configuration</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="department_id">🏢 Department</label>
-                        <select id="department_id" name="department_id" onchange="loadTaskCategories()">
-                            <option value="">Select Department</option>
-                            <?php if (!empty($departments)): ?>
-                                <?php foreach ($departments as $dept): ?>
-                                    <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                        <label for="project_id">📁 Project *</label>
+                        <select id="project_id" name="project_id" onchange="loadDepartmentsByProject()" required>
+                            <option value="">Select Project First</option>
+                            <?php if (!empty($projects)): ?>
+                                <?php foreach ($projects as $project): ?>
+                                    <option value="<?= $project['id'] ?>" data-department="<?= $project['department_id'] ?? '' ?>"><?= htmlspecialchars($project['name']) ?></option>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </select>
+                        <small class="field-hint">Select project first to filter departments and categories</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="department_id">🏢 Department</label>
+                        <select id="department_id" name="department_id" onchange="loadTaskCategories()" disabled>
+                            <option value="">Select Project First</option>
+                        </select>
+                        <small class="field-hint">Department will be filtered based on selected project</small>
                     </div>
                     <div class="form-group">
                         <label for="task_category">🏷️ Category</label>
-                        <select id="task_category" name="task_category" onchange="handleCategoryChange()">
-                            <option value="">Select Category</option>
+                        <select id="task_category" name="task_category" onchange="handleCategoryChange()" disabled>
+                            <option value="">Select Department First</option>
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="project_id">📁 Project</label>
-                        <select id="project_id" name="project_id">
-                            <option value="">Select Project</option>
-                            <?php if (!empty($projects)): ?>
-                                <?php foreach ($projects as $project): ?>
-                                    <option value="<?= $project['id'] ?>"><?= htmlspecialchars($project['name']) ?></option>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </select>
+                        <small class="field-hint">Category will be filtered based on selected department</small>
                     </div>
                 </div>
                 <div class="form-grid">
@@ -363,7 +361,17 @@ $content = ob_start();
                     <div class="form-group">
                         <label class="form-label" for="contact_id">Contact</label>
                         <select name="contact_id" id="contact_id" class="form-control">
-                        <option value="">-- Select or type to search --</option>
+                            <option value="">-- Select or type to search --</option>
+                            <?php if (!empty($contacts)): ?>
+                                <?php foreach ($contacts as $contact): ?>
+                                    <option value="<?= $contact['id'] ?>">
+                                        <?= htmlspecialchars($contact['name']) ?>
+                                        <?php if ($contact['company']): ?>
+                                            - <?= htmlspecialchars($contact['company']) ?>
+                                        <?php endif; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                         <small class="form-help">Select existing contact or leave empty for manual entry</small>
                     </div>
@@ -437,6 +445,96 @@ function updateProgressValue(value) {
     }
 }
 
+// Load departments based on selected project
+function loadDepartmentsByProject() {
+    const projectSelect = document.getElementById('project_id');
+    const deptSelect = document.getElementById('department_id');
+    const categorySelect = document.getElementById('task_category');
+    const projectId = projectSelect.value;
+    
+    // Reset dependent dropdowns
+    deptSelect.innerHTML = '<option value="">Loading...</option>';
+    categorySelect.innerHTML = '<option value="">Select Department First</option>';
+    categorySelect.disabled = true;
+    
+    if (!projectId) {
+        deptSelect.innerHTML = '<option value="">Select Project First</option>';
+        deptSelect.disabled = true;
+        return;
+    }
+    
+    // Get department from selected project
+    const selectedOption = projectSelect.options[projectSelect.selectedIndex];
+    const departmentId = selectedOption.getAttribute('data-department');
+    
+    if (departmentId) {
+        // Load specific department for this project
+        fetch(`/ergon/api/departments`)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.text();
+            })
+            .then(text => {
+                try {
+                    const data = JSON.parse(text);
+                    if (data.success && data.departments) {
+                        deptSelect.innerHTML = '<option value="">Select Department</option>';
+                        const dept = data.departments.find(d => d.id == departmentId);
+                        if (dept) {
+                            const option = document.createElement('option');
+                            option.value = dept.id;
+                            option.textContent = dept.name;
+                            option.selected = true;
+                            deptSelect.appendChild(option);
+                            deptSelect.disabled = false;
+                            loadTaskCategories();
+                        }
+                    } else {
+                        throw new Error(data.error || 'No departments found');
+                    }
+                } catch (e) {
+                    console.error('JSON parse error:', e, 'Response:', text);
+                    throw new Error('Invalid response format');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading departments:', error);
+                deptSelect.innerHTML = '<option value="">Error loading departments</option>';
+            });
+    } else {
+        // Load all departments if project doesn't have specific department
+        fetch(`/ergon/api/departments`)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.text();
+            })
+            .then(text => {
+                try {
+                    const data = JSON.parse(text);
+                    if (data.success && data.departments) {
+                        deptSelect.innerHTML = '<option value="">Select Department</option>';
+                        data.departments.forEach(dept => {
+                            const option = document.createElement('option');
+                            option.value = dept.id;
+                            option.textContent = dept.name;
+                            deptSelect.appendChild(option);
+                        });
+                        deptSelect.disabled = false;
+                    } else {
+                        throw new Error(data.error || 'No departments found');
+                    }
+                } catch (e) {
+                    console.error('JSON parse error:', e, 'Response:', text);
+                    throw new Error('Invalid response format');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading departments:', error);
+                deptSelect.innerHTML = '<option value="">Error loading departments</option>';
+            });
+    }
+}
+
 // Load task categories based on selected department
 function loadTaskCategories() {
     const deptSelect = document.getElementById('department_id');
@@ -444,34 +542,51 @@ function loadTaskCategories() {
     const deptId = deptSelect.value;
 
     // Clear existing options
-    categorySelect.innerHTML = '<option value="">Select Category</option>';
+    categorySelect.innerHTML = '<option value="">Loading...</option>';
 
-    if (!deptId) return;
+    if (!deptId) {
+        categorySelect.innerHTML = '<option value="">Select Department First</option>';
+        categorySelect.disabled = true;
+        return;
+    }
 
     // Fetch categories for selected department via API
     fetch(`/ergon/api/task-categories?department_id=${deptId}`)
-        .then(response => response.json())
-        .then(data => {
-            console.log('Categories data:', data);
-            if (data.categories) {
-                console.log('Found categories:', data.categories.length);
-                // Populate category dropdown with fetched data
-                data.categories.forEach(category => {
-                    const option = document.createElement('option');
-                    option.value = category.category_name;
-                    option.textContent = category.category_name;
-                    categorySelect.appendChild(option);
-                });
-            } else {
-                console.log('No categories found in response');
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.text();
+        })
+        .then(text => {
+            try {
+                const data = JSON.parse(text);
+                categorySelect.innerHTML = '<option value="">Select Category</option>';
+                if (data.success && data.categories && data.categories.length > 0) {
+                    data.categories.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.category_name;
+                        option.textContent = category.category_name;
+                        categorySelect.appendChild(option);
+                    });
+                    categorySelect.disabled = false;
+                } else {
+                    categorySelect.innerHTML += '<option value="" disabled>No categories found</option>';
+                    categorySelect.disabled = true;
+                }
+            } catch (e) {
+                console.error('JSON parse error:', e, 'Response:', text);
+                throw new Error('Invalid response format');
             }
         })
-        .catch(error => console.error('Error loading categories:', error));
+        .catch(error => {
+            console.error('Error loading categories:', error);
+            categorySelect.innerHTML = '<option value="" disabled>Error loading categories</option>';
+            categorySelect.disabled = true;
+        });
 }
 
 // Handle assignment type change
 function handleAssignmentTypeChange() {
-    const assignmentType = document.getElementById('assigned_for').value;
+    const assignmentType = document.getElementById('assignment_type').value;
     const assignedToSelect = document.getElementById('assigned_to');
     
     if (assignmentType === 'self') {
@@ -486,23 +601,47 @@ function handleAssignmentTypeChange() {
 // Load all users for assignment
 function loadAllUsers() {
     const assignedToSelect = document.getElementById('assigned_to');
+    assignedToSelect.innerHTML = '<option value="">Loading users...</option>';
     
-    fetch('/ergon/api/users')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.users) {
-                assignedToSelect.innerHTML = '<option value="">Select User</option>';
-                data.users.forEach(user => {
-                    const option = document.createElement('option');
-                    option.value = user.id;
-                    option.textContent = user.name + (user.email ? ' (' + user.email + ')' : '');
-                    assignedToSelect.appendChild(option);
-                });
+    fetch('/ergon/api/users?v=' + Date.now())
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.text();
+        })
+        .then(text => {
+            try {
+                const data = JSON.parse(text);
+                if (data.success && data.users && data.users.length > 0) {
+                    assignedToSelect.innerHTML = '<option value="">Select User</option>';
+                    data.users.forEach(user => {
+                        // Skip specific owner IDs (production: 59, 1)
+                        if (user.id == 59 || user.id == 1) {
+                            return;
+                        }
+                        
+                        // Skip owner/company_owner roles or users with owner-like names
+                        if ((user.role && (user.role === 'owner' || user.role === 'company_owner')) ||
+                            (user.name && (user.name.toLowerCase().includes('owner') || 
+                                          user.name.toLowerCase().includes('admin') && user.email && user.email.includes('ergon'))) ||
+                            (user.email && (user.email.includes('owner') || user.email.includes('admin@ergon')))) {
+                            return;
+                        }
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.name + (user.email ? ' (' + user.email + ')' : '');
+                        assignedToSelect.appendChild(option);
+                    });
+                } else {
+                    assignedToSelect.innerHTML = '<option value="">No users found</option>';
+                }
+            } catch (e) {
+                console.error('JSON parse error:', e, 'Response:', text);
+                assignedToSelect.innerHTML = '<option value="">Error loading users</option>';
             }
         })
         .catch(error => {
             console.error('Error loading users:', error);
-            assignedToSelect.innerHTML = '<option value="">Error loading users</option>';
+            assignedToSelect.innerHTML = '<option value="">Error: ' + error.message + '</option>';
         });
 }
 
@@ -599,9 +738,6 @@ function toggleFollowupFields(isInitial = false) {
         if (taskTitle && !document.getElementById('followup_title').value) {
             document.getElementById('followup_title').value = 'Follow-up: ' + taskTitle;
         }
-        
-        // Load contacts for dropdown
-        loadContacts();
     } else {
         followupFields.style.display = 'none';
         
@@ -647,48 +783,40 @@ function handleCategoryChange() {
 // Load follow-up details for auto-population
 let followupData = [];
 
-// Load contacts for the dropdown
-function loadContacts() {
-    const contactSelect = document.getElementById('contact_id');
-    if (contactSelect.length > 1) return; // Already loaded
-
-    fetch('/ergon/api/contact-persons')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.contacts) {
-                data.contacts.forEach(contact => { // ✅ REBUILT: Prevents duplicate options
-                    const option = document.createElement('option');
-                    option.value = contact.id || '';
-                    option.textContent = contact.name + (contact.company ? ' - ' + contact.company : '');
-                    contactSelect.appendChild(option);
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Failed to load contacts:', error);
-        });
-}
+// Store contacts data for auto-fill
+let contactsData = [];
 
 // Handle contact selection to auto-fill fields
 document.addEventListener('DOMContentLoaded', function() {
+    // Store contacts data from PHP
+    <?php if (!empty($contacts)): ?>
+    contactsData = <?= json_encode($contacts) ?>;
+    <?php endif; ?>
+    
     const contactSelect = document.getElementById('contact_id');
     if (contactSelect) {
         contactSelect.addEventListener('change', function() {
             if (this.value) {
-                // Find selected contact and auto-fill fields
-                fetch('/ergon/api/contact-persons')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.contacts) {
-                            const selectedContact = data.contacts.find(c => c.id == this.value);
-                            if (selectedContact) {
-                                document.getElementById('contact_company').value = selectedContact.company || '';
-                                document.getElementById('contact_name').value = selectedContact.name || '';
-                                document.getElementById('contact_phone').value = selectedContact.phone || '';
-                            }
-                        }
-                    })
-                    .catch(error => console.error('Error loading contact details:', error));
+                // Find selected contact from stored data
+                const selectedContact = contactsData.find(c => c.id == this.value);
+                if (selectedContact) {
+                    const companyField = document.getElementById('contact_company');
+                    const nameField = document.getElementById('contact_name');
+                    const phoneField = document.getElementById('contact_phone');
+                    
+                    if (companyField) companyField.value = selectedContact.company || '';
+                    if (nameField) nameField.value = selectedContact.name || '';
+                    if (phoneField) phoneField.value = selectedContact.phone || '';
+                }
+            } else {
+                // Clear fields when no contact is selected
+                const companyField = document.getElementById('contact_company');
+                const nameField = document.getElementById('contact_name');
+                const phoneField = document.getElementById('contact_phone');
+                
+                if (companyField) companyField.value = '';
+                if (nameField) nameField.value = '';
+                if (phoneField) phoneField.value = '';
             }
         });
     }
@@ -799,11 +927,19 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('createTaskForm').addEventListener('submit', function(e) {
         const title = document.getElementById('title').value.trim();
         const assignedTo = document.getElementById('assigned_to').value;
+        const projectId = document.getElementById('project_id').value;
         const followupRequired = document.getElementById('followup_required').checked;
         
         if (!title) {
             e.preventDefault();
             alert('Please enter a task title');
+            return;
+        }
+        
+        if (!projectId) {
+            e.preventDefault();
+            alert('Please select a project');
+            document.getElementById('project_id').focus();
             return;
         }
         

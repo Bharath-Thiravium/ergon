@@ -26,18 +26,25 @@ ob_start();
             </div>
             
             <div class="form-group">
-                <label class="form-label">Amount (₹)</label>
+                <label class="form-label">Project *</label>
+                <select name="project_id" id="project_id" class="form-control" required>
+                    <option value="">Select Project</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Amount (₹) *</label>
                 <input type="number" name="amount" class="form-control" step="0.01" min="1" placeholder="Enter amount" required>
             </div>
             
             <div class="form-group">
-                <label class="form-label">Reason</label>
+                <label class="form-label">Reason *</label>
                 <textarea name="reason" class="form-control" rows="4" placeholder="Please provide reason for advance..." required></textarea>
             </div>
             
             <div class="form-group">
-                <label class="form-label">Expected Repayment Date</label>
-                <input type="date" name="repayment_date" class="form-control" required>
+                <label class="form-label">Expected Repayment Date (Optional)</label>
+                <input type="date" name="repayment_date" class="form-control">
             </div>
             
             <div class="form-actions">
@@ -47,6 +54,39 @@ ob_start();
         </form>
     </div>
 </div>
+
+<script>
+fetch('/ergon/api/projects.php')
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.text();
+    })
+    .then(text => {
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Invalid JSON response:', text);
+            throw new Error('Invalid JSON response');
+        }
+    })
+    .then(data => {
+        const projectSelect = document.getElementById('project_id');
+        if (data.success && data.projects) {
+            data.projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                let text = project.name;
+                if (project.department_name) text += ' - ' + project.department_name;
+                if (project.description) text += ' (' + project.description + ')';
+                option.textContent = text;
+                projectSelect.appendChild(option);
+            });
+        }
+    })
+    .catch(error => console.error('Error loading projects:', error));
+</script>
 
 <?php
 $content = ob_get_clean();

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLA Timer Test</title>
+</head>
+<body>
+    <h1>SLA Timer Test</h1>
+    
+    <!-- Test task card -->
+    <div class="task-card" 
+         data-task-id="123" 
+         data-sla-duration="900" 
+         data-start-time="2024-01-15 10:00:00" 
+         data-resume-time="2024-01-15 10:00:00"
+         data-status="in_progress"
+         data-pause-start-time=""
+         data-active-seconds="300"
+         data-pause-duration="60">
+        
+        <div id="countdown-123">
+            <div class="countdown-display">00:10:00</div>
+        </div>
+        
+        <div id="time-used-123">00:05:00</div>
+        <div id="pause-timer-123">00:01:00</div>
+        
+        <button onclick="window.SLATimer.startTask(123)">Start</button>
+        <button onclick="window.SLATimer.pauseTask(123)">Pause</button>
+        <button onclick="window.SLATimer.resumeTask(123)">Resume</button>
+    </div>
+    
+    <script src="/ergon/assets/js/live-sla-timer.js"></script>
+    
+    <script>
+        // Test initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, testing timer...');
+            
+            setTimeout(() => {
+                if (window.SLATimer) {
+                    console.log('SLATimer found:', window.SLATimer);
+                    window.SLATimer.init();
+                    
+                    // Test update display
+                    setTimeout(() => {
+                        console.log('Testing updateDisplay...');
+                        window.SLATimer.updateDisplay(123);
+                    }, 1000);
+                } else {
+                    console.error('SLATimer not found!');
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

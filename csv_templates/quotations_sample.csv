@@ -1,0 +1,4 @@
+quotation_number,amount,customer_id,customer_name,customer_gstin,status
+QUO001,50000.00,CUST001,ABC Corporation,29ABCDE1234F1Z5,pending
+QUO002,75000.00,CUST002,XYZ Industries,27XYZAB5678G2H6,approved
+QUO003,30000.00,CUST004,DEF Enterprises,33DEFGH3456K4L8,rejected

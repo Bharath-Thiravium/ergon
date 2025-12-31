@@ -73,9 +73,43 @@
 
 [data-theme='dark'] .alert,
 .theme-dark .alert {
-  background: #374151 !important;
-  color: #e2e8f0 !important;
-  border-color: #4b5563 !important;
+  background: var(--gray-800) !important;
+  color: var(--white) !important;
+  border-color: var(--gray-600) !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Specific alert types for Dark Mode */
+[data-theme='dark'] .alert--success,
+.theme-dark .alert--success {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+[data-theme='dark'] .alert--error,
+[data-theme='dark'] .alert--danger,
+.theme-dark .alert--error,
+.theme-dark .alert--danger {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+[data-theme='dark'] .alert--warning,
+.theme-dark .alert--warning {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fcd34d !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+[data-theme='dark'] .alert--info,
+.theme-dark .alert--info {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #93c5fd !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
 }
 
 /* Ensure all text is visible in dark mode */

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/DatabaseHelper.php';
 
 class FinanceETLService {
     
@@ -8,6 +9,10 @@ class FinanceETLService {
     private $pgConn;
     
     public function __construct() {
+        // Suppress all errors and output
+        ini_set('display_errors', 0);
+        error_reporting(0);
+        
         $this->db = Database::connect();
         $this->createConsolidatedTable();
     }
@@ -193,7 +198,7 @@ class FinanceETLService {
             $stmt = $this->db->prepare("DELETE FROM finance_consolidated WHERE company_prefix = ?");
             $stmt->execute([$prefix]);
         } else {
-            $this->db->exec("TRUNCATE TABLE finance_consolidated");
+            DatabaseHelper::safeExec($this->db, "TRUNCATE TABLE finance_consolidated", "Clear consolidated data");
         }
         
         // Insert new data
@@ -232,14 +237,18 @@ class FinanceETLService {
      * Calculate analytics metrics from consolidated data
      */
     private function calculateAnalytics($prefix) {
-        // Revenue Analytics
+        // Calculate Stat Card 3 using backend-only processing
+        $statCard3 = $this->calculateStatCard3($prefix);
+        
+        // Calculate Stat Card 6 using backend-only processing
+        $statCard6 = $this->calculateStatCard6($prefix);
+        
+        // Revenue Analytics (other stats)
         $stmt = $this->db->prepare("
             SELECT 
                 COUNT(*) as invoice_count,
                 SUM(amount) as total_revenue,
                 SUM(amount_paid) as amount_received,
-                SUM(outstanding_amount) as outstanding_amount,
-                SUM(CASE WHEN outstanding_amount > 0 THEN 1 ELSE 0 END) as pending_invoices,
                 COUNT(DISTINCT customer_id) as customer_count,
                 SUM(igst) as igst_liability,
                 SUM(cgst + sgst) as cgst_sgst_total
@@ -248,6 +257,9 @@ class FinanceETLService {
         ");
         $stmt->execute([$prefix]);
         $invoiceStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Merge Stat Card 3 and 6 results
+        $invoiceStats = array_merge($invoiceStats, $statCard3, $statCard6);
         
         // PO Analytics
         $stmt = $this->db->prepare("
@@ -281,29 +293,171 @@ class FinanceETLService {
     }
     
     /**
+     * Calculate Stat Card 3 using backend-only processing (no SQL aggregation)
+     */
+    private function calculateStatCard3($prefix) {
+        $this->connectToSAP();
+        
+        // Step 1: Fetch raw invoice rows without SQL aggregation
+        $query = "SELECT id, invoice_number, taxable_amount, amount_paid, cgst, sgst, total_amount, due_date, customer_gstin FROM finance_invoices WHERE invoice_number LIKE '$prefix%'";
+        $result = @pg_query($this->pgConn, $query);
+        
+        if (!$result) {
+            @pg_close($this->pgConn);
+            return [
+                'outstanding_amount' => 0,
+                'pending_invoices' => 0,
+                'customers_pending' => 0,
+                'overdue_amount' => 0,
+                'outstanding_percentage' => 0
+            ];
+        }
+        
+        $invoices = pg_fetch_all($result);
+        @pg_close($this->pgConn);
+        
+        if (!$invoices) {
+            return [
+                'outstanding_amount' => 0,
+                'pending_invoices' => 0,
+                'customers_pending' => 0,
+                'overdue_amount' => 0,
+                'outstanding_percentage' => 0
+            ];
+        }
+        
+        // Step 2: Backend calculations only
+        $totalTaxableAmount = 0;
+        $outstandingAmount = 0;
+        $pendingInvoices = 0;
+        $overdueAmount = 0;
+        $customersWithPending = [];
+        $today = date('Y-m-d');
+        
+        foreach ($invoices as $invoice) {
+            $taxableAmount = floatval($invoice['taxable_amount'] ?? 0);
+            $amountPaid = floatval($invoice['amount_paid'] ?? 0);
+            $dueDate = $invoice['due_date'] ?? null;
+            $customerGstin = $invoice['customer_gstin'] ?? '';
+            
+            // Step 3: Calculate pending amount (taxable only, no GST)
+            $pendingAmount = $taxableAmount - $amountPaid;
+            $totalTaxableAmount += $taxableAmount;
+            
+            if ($pendingAmount > 0) {
+                // Step 4: Calculate metrics
+                $outstandingAmount += $pendingAmount;
+                $pendingInvoices++;
+                
+                // Track unique customers with pending amounts
+                if ($customerGstin && !in_array($customerGstin, $customersWithPending)) {
+                    $customersWithPending[] = $customerGstin;
+                }
+                
+                // Calculate overdue amount
+                if ($dueDate && $dueDate < $today) {
+                    $overdueAmount += $pendingAmount;
+                }
+            }
+        }
+        
+        // Step 5: Return computed results
+        return [
+            'outstanding_amount' => $outstandingAmount,
+            'pending_invoices' => $pendingInvoices,
+            'customers_pending' => count($customersWithPending),
+            'overdue_amount' => $overdueAmount,
+            'outstanding_percentage' => $totalTaxableAmount > 0 ? ($outstandingAmount / $totalTaxableAmount) * 100 : 0
+        ];
+    }
+    
+    /**
+     * Calculate Stat Card 6 using backend-only processing (no SQL aggregation)
+     */
+    private function calculateStatCard6($prefix) {
+        $this->connectToSAP();
+        
+        // Step 1: Fetch raw invoice rows without SQL aggregation
+        $query = "SELECT id, invoice_number, taxable_amount, total_amount, amount_paid, customer_gstin, invoice_date FROM finance_invoices WHERE invoice_number LIKE '$prefix%'";
+        $result = @pg_query($this->pgConn, $query);
+        
+        if (!$result) {
+            @pg_close($this->pgConn);
+            return [
+                'claimable_amount' => 0,
+                'claimable_pos' => 0,
+                'claim_rate' => 0
+            ];
+        }
+        
+        $invoices = pg_fetch_all($result);
+        @pg_close($this->pgConn);
+        
+        if (!$invoices) {
+            return [
+                'claimable_amount' => 0,
+                'claimable_pos' => 0,
+                'claim_rate' => 0
+            ];
+        }
+        
+        // Step 2: Backend calculations only
+        $totalInvoiceAmount = 0;
+        $claimableAmount = 0;
+        $claimablePos = 0;
+        
+        foreach ($invoices as $invoice) {
+            $totalAmount = floatval($invoice['total_amount'] ?? 0);
+            $amountPaid = floatval($invoice['amount_paid'] ?? 0);
+            
+            // Step 3: Calculate claimable amount (total_amount - amount_paid, GST included)
+            $claimable = $totalAmount - $amountPaid;
+            $totalInvoiceAmount += $totalAmount;
+            
+            if ($claimable > 0) {
+                // Step 4: Calculate metrics
+                $claimableAmount += $claimable;
+                $claimablePos++;
+            }
+        }
+        
+        // Step 5: Return computed results
+        return [
+            'claimable_amount' => $claimableAmount,
+            'claimable_pos' => $claimablePos,
+            'claim_rate' => $totalInvoiceAmount > 0 ? ($claimableAmount / $totalInvoiceAmount) * 100 : 0
+        ];
+    }
+    
+    /**
      * Save calculated analytics to dashboard_stats table
      */
     private function saveDashboardStats($prefix, $invoiceStats, $poStats, $quotationStats) {
         $stmt = $this->db->prepare("
             INSERT INTO dashboard_stats (
                 company_prefix, total_revenue, invoice_count, amount_received,
-                outstanding_amount, pending_invoices, customer_count,
-                po_commitments, open_pos, closed_pos, claimable_amount,
+                outstanding_amount, pending_invoices, customers_pending, overdue_amount, outstanding_percentage,
+                customer_count, po_commitments, open_pos, closed_pos, claimable_amount, claimable_pos, claim_rate,
                 igst_liability, cgst_sgst_total, gst_liability,
                 placed_quotations, rejected_quotations, pending_quotations, total_quotations,
                 generated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
                 total_revenue = VALUES(total_revenue),
                 invoice_count = VALUES(invoice_count),
                 amount_received = VALUES(amount_received),
                 outstanding_amount = VALUES(outstanding_amount),
                 pending_invoices = VALUES(pending_invoices),
+                customers_pending = VALUES(customers_pending),
+                overdue_amount = VALUES(overdue_amount),
+                outstanding_percentage = VALUES(outstanding_percentage),
                 customer_count = VALUES(customer_count),
                 po_commitments = VALUES(po_commitments),
                 open_pos = VALUES(open_pos),
                 closed_pos = VALUES(closed_pos),
                 claimable_amount = VALUES(claimable_amount),
+                claimable_pos = VALUES(claimable_pos),
+                claim_rate = VALUES(claim_rate),
                 igst_liability = VALUES(igst_liability),
                 cgst_sgst_total = VALUES(cgst_sgst_total),
                 gst_liability = VALUES(gst_liability),
@@ -323,11 +477,16 @@ class FinanceETLService {
             $invoiceStats['amount_received'] ?? 0,
             $invoiceStats['outstanding_amount'] ?? 0,
             $invoiceStats['pending_invoices'] ?? 0,
+            $invoiceStats['customers_pending'] ?? 0,
+            $invoiceStats['overdue_amount'] ?? 0,
+            $invoiceStats['outstanding_percentage'] ?? 0,
             $invoiceStats['customer_count'] ?? 0,
             $poStats['po_commitments'] ?? 0,
             $poStats['open_pos'] ?? 0,
             $poStats['closed_pos'] ?? 0,
-            $poStats['claimable_amount'] ?? 0,
+            $invoiceStats['claimable_amount'] ?? 0,
+            $invoiceStats['claimable_pos'] ?? 0,
+            $invoiceStats['claim_rate'] ?? 0,
             $invoiceStats['igst_liability'] ?? 0,
             $invoiceStats['cgst_sgst_total'] ?? 0,
             $gstLiability,
@@ -389,7 +548,7 @@ class FinanceETLService {
      * Create consolidated table for analytics
      */
     private function createConsolidatedTable() {
-        $this->db->exec("
+        DatabaseHelper::safeExec($this->db, "
             CREATE TABLE IF NOT EXISTS finance_consolidated (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 record_type ENUM('invoice', 'quotation', 'purchase_order', 'payment') NOT NULL,
@@ -416,11 +575,10 @@ class FinanceETLService {
                 INDEX idx_status (status),
                 INDEX idx_outstanding (outstanding_amount),
                 INDEX idx_composite (company_prefix, record_type, status)
-            )
-        ");
+            )", "Create consolidated table");
         
         // Ensure dashboard_stats table exists
-        $this->db->exec("
+        DatabaseHelper::safeExec($this->db, "
             CREATE TABLE IF NOT EXISTS dashboard_stats (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 company_prefix VARCHAR(10),
@@ -429,11 +587,16 @@ class FinanceETLService {
                 amount_received DECIMAL(15,2) DEFAULT 0,
                 outstanding_amount DECIMAL(15,2) DEFAULT 0,
                 pending_invoices INT DEFAULT 0,
+                customers_pending INT DEFAULT 0,
+                overdue_amount DECIMAL(15,2) DEFAULT 0,
+                outstanding_percentage DECIMAL(5,2) DEFAULT 0,
                 customer_count INT DEFAULT 0,
                 po_commitments DECIMAL(15,2) DEFAULT 0,
                 open_pos INT DEFAULT 0,
                 closed_pos INT DEFAULT 0,
                 claimable_amount DECIMAL(15,2) DEFAULT 0,
+                claimable_pos INT DEFAULT 0,
+                claim_rate DECIMAL(5,2) DEFAULT 0,
                 igst_liability DECIMAL(15,2) DEFAULT 0,
                 cgst_sgst_total DECIMAL(15,2) DEFAULT 0,
                 gst_liability DECIMAL(15,2) DEFAULT 0,
@@ -443,19 +606,18 @@ class FinanceETLService {
                 total_quotations INT DEFAULT 0,
                 generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_prefix (company_prefix)
-            )
-        ");
+            )", "Create dashboard stats table");
     }
     
     /**
      * Connect to SAP PostgreSQL
      */
     private function connectToSAP() {
-        $pgHost = '72.60.218.167';
-        $pgPort = '5432';
-        $pgDb = 'modernsap';
-        $pgUser = 'postgres';
-        $pgPass = 'mango';
+        $pgHost = $_ENV['SAP_PG_HOST'] ?? '72.60.218.167';
+        $pgPort = $_ENV['SAP_PG_PORT'] ?? '5432';
+        $pgDb = $_ENV['SAP_PG_DB'] ?? 'modernsap';
+        $pgUser = $_ENV['SAP_PG_USER'] ?? 'postgres';
+        $pgPass = $_ENV['SAP_PG_PASS'] ?? '';
         
         $this->pgConn = @pg_connect("host=$pgHost port=$pgPort dbname=$pgDb user=$pgUser password=$pgPass");
         
@@ -473,5 +635,12 @@ class FinanceETLService {
         }
         
         return stripos($documentNumber, $prefix) === 0;
+    }
+    
+    /**
+     * Get MySQL connection for controller integration
+     */
+    public function getMysqlConnection() {
+        return $this->db;
     }
 }

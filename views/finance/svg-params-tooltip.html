@@ -1,0 +1,67 @@
+<!-- SVG Parameters Reference Tooltips -->
+<div id="svgParamsTooltip" style="display:none;position:fixed;background:rgba(0,0,0,0.95);color:white;padding:12px;border-radius:4px;font-size:11px;max-width:300px;z-index:10001;line-height:1.4;">
+    <div style="margin-bottom:8px;font-weight:bold;border-bottom:1px solid #444;padding-bottom:6px;" id="paramTitle">SVG Parameter</div>
+    <div id="paramDesc"></div>
+    <div style="margin-top:8px;font-size:10px;color:#aaa;">Hover over chart elements to see tooltips</div>
+</div>
+
+<script>
+const svgParamDescriptions = {
+    'd': 'Path definition - coordinates for drawing the shape (arc, line, etc)',
+    'stroke': 'Color of the line/border (#F59E0B=orange, #10B981=green, #EF4444=red)',
+    'stroke-width': 'Thickness of the line (8=thick, 7=medium, 2.5=thin)',
+    'fill': 'Interior fill color (none=transparent, color=solid)',
+    'stroke-linecap': 'Line ending style (round=smooth, butt=sharp)',
+    'cx': 'Center X coordinate (100=middle of 200-unit width)',
+    'cy': 'Center Y coordinate (60=middle of 120-unit height)',
+    'r': 'Radius - size of circle or arc (35=large, 18=medium, 4=small)',
+    'x': 'X position (horizontal)',
+    'y': 'Y position (vertical)',
+    'width': 'Width of rectangle/bar (15=narrow)',
+    'height': 'Height of rectangle/bar (calculated from data)',
+    'opacity': 'Transparency level (0.9=90% visible, 1=fully visible)',
+    'font-size': 'Text size in pixels (12=small, 14=medium)',
+    'font-weight': 'Text boldness (bold=700, normal=400)',
+    'text-anchor': 'Text alignment (middle=centered, start=left, end=right)',
+    'points': 'Comma-separated x,y coordinates for polyline',
+    'data-idx': 'Index for tooltip mapping (0,1,2... maps to tooltip array)',
+    'data-opacity': 'Default opacity value before hover',
+    'rx': 'Corner radius for rounded rectangles (1=slightly rounded)',
+    'viewBox': 'SVG coordinate system (0 0 200 120 = 200 wide, 120 tall)',
+    'M': 'Move command - start drawing at coordinates',
+    'A': 'Arc command - draw curved line (used in doughnut charts)',
+    'L': 'Line command - draw straight line',
+    'Z': 'Close path - connect end to start'
+};
+
+function showSvgParamTooltip(event, paramName) {
+    const tooltip = document.getElementById('svgParamsTooltip');
+    const title = document.getElementById('paramTitle');
+    const desc = document.getElementById('paramDesc');
+    
+    title.textContent = paramName;
+    desc.textContent = svgParamDescriptions[paramName] || 'Parameter description not available';
+    
+    tooltip.style.display = 'block';
+    tooltip.style.left = (event.pageX + 10) + 'px';
+    tooltip.style.top = (event.pageY - 30) + 'px';
+}
+
+function hideSvgParamTooltip() {
+    document.getElementById('svgParamsTooltip').style.display = 'none';
+}
+
+// Add hover listeners to SVG elements for parameter tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const svgElements = document.querySelectorAll('svg [stroke], svg [fill], svg [d], svg [r], svg [cx], svg [cy]');
+    svgElements.forEach(el => {
+        el.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            const attrs = Array.from(this.attributes).map(a => a.name);
+            if (attrs.length > 0) {
+                showSvgParamTooltip(e, attrs[0]);
+            }
+        });
+    });
+});
+</script>

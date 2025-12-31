@@ -52,26 +52,54 @@ class Task {
         return $stmt->fetchAll();
     }
     
-    public function updateProgress($taskId, $userId, $progress, $comment = null, $attachment = null) {
-        $this->conn->beginTransaction();
-        
+    public function updateProgress($taskId, $userId, $progress, $description = null) {
         try {
-            $query = "UPDATE tasks SET progress = ?, status = ?, updated_at = NOW() WHERE id = ?";
-            $status = $progress >= 100 ? 'completed' : ($progress > 0 ? 'in_progress' : 'assigned');
+            // Get current progress and status for history
+            $query = "SELECT progress, status FROM tasks WHERE id = ?";
             $stmt = $this->conn->prepare($query);
-            $stmt->execute([$progress, $status, $taskId]);
+            $stmt->execute([$taskId]);
+            $current = $stmt->fetch();
             
-            $query = "INSERT INTO task_updates (task_id, user_id, progress, comment, attachments) 
-                      VALUES (?, ?, ?, ?, ?)";
+            if (!$current) {
+                throw new Exception('Task not found');
+            }
+            
+            $oldProgress = $current['progress'];
+            $oldStatus = $current['status'];
+            $newStatus = $progress >= 100 ? 'completed' : ($progress > 0 ? 'in_progress' : 'assigned');
+            
+            // Update task progress and description
+            $query = "UPDATE tasks SET progress = ?, status = ?, progress_description = ?, updated_at = NOW() WHERE id = ?";
             $stmt = $this->conn->prepare($query);
-            $stmt->execute([$taskId, $userId, $progress, $comment, $attachment]);
+            $stmt->execute([$progress, $newStatus, $description, $taskId]);
             
-            $this->conn->commit();
+            // Insert progress history record
+            $query = "INSERT INTO task_progress_history (task_id, user_id, progress_from, progress_to, description, status_from, status_to, created_at) 
+                      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$taskId, $userId, $oldProgress, $progress, $description, $oldStatus, $newStatus]);
+            
+            // Sync with Daily Planner
+            $this->syncWithDailyPlanner($taskId, $newStatus, $progress);
+            
             return true;
         } catch (Exception $e) {
-            $this->conn->rollback();
+            error_log('Progress update error: ' . $e->getMessage());
             return false;
         }
+    }
+    
+
+    
+    public function getProgressHistory($taskId) {
+        $query = "SELECT h.*, u.name as user_name 
+                  FROM task_progress_history h 
+                  LEFT JOIN users u ON h.user_id = u.id 
+                  WHERE h.task_id = ? 
+                  ORDER BY h.created_at DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$taskId]);
+        return $stmt->fetchAll();
     }
     
     public function getTaskById($taskId) {
@@ -111,7 +139,7 @@ class Task {
             SET title = ?, description = ?, status = ?, priority = ?, progress = ? 
             WHERE id = ?
         ");
-        return $stmt->execute([
+        $result = $stmt->execute([
             $data['title'],
             $data['description'],
             $data['status'],
@@ -119,18 +147,54 @@ class Task {
             $data['progress'] ?? 0,
             $id
         ]);
+        
+        if ($result) {
+            // Sync with Daily Planner
+            $this->syncWithDailyPlanner($id, $data['status'], $data['progress'] ?? 0);
+        }
+        
+        return $result;
     }
     
     public function updateStatus($id, $status) {
         $stmt = $this->conn->prepare("UPDATE tasks SET status = ? WHERE id = ?");
-        return $stmt->execute([$status, $id]);
+        $result = $stmt->execute([$status, $id]);
+        
+        if ($result) {
+            // Get current progress for sync
+            $progressStmt = $this->conn->prepare("SELECT progress FROM tasks WHERE id = ?");
+            $progressStmt->execute([$id]);
+            $progress = $progressStmt->fetchColumn() ?: 0;
+            
+            // Sync with Daily Planner
+            $this->syncWithDailyPlanner($id, $status, $progress);
+        }
+        
+        return $result;
     }
     
     public function delete($id) {
         try {
+            $this->conn->beginTransaction();
+            
+            // Delete from followups table first (cascade delete for linked followups)
+            $stmt = $this->conn->prepare("DELETE FROM followups WHERE task_id = ?");
+            $stmt->execute([$id]);
+            
+            // Delete from daily_tasks (cascade delete for planner entries)
+            $stmt = $this->conn->prepare("DELETE FROM daily_tasks WHERE task_id = ? OR original_task_id = ?");
+            $stmt->execute([$id, $id]);
+            
+            // Delete from tasks table (main task record)
             $stmt = $this->conn->prepare("DELETE FROM tasks WHERE id = ?");
-            return $stmt->execute([$id]);
+            $result = $stmt->execute([$id]);
+            
+            $this->conn->commit();
+            return $result;
         } catch (Exception $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollback();
+            }
             error_log('Task delete error: ' . $e->getMessage());
             return false;
         }
@@ -148,6 +212,68 @@ class Task {
         $stmt = $this->conn->prepare($query);
         $stmt->execute([$departmentId, $departmentId]);
         return $stmt->fetchAll();
+    }
+    
+    /**
+     * Sync task status and progress changes with Daily Planner
+     * Enhanced to support follow-up completion scenarios
+     */
+    private function syncWithDailyPlanner($taskId, $status, $progress) {
+        try {
+            // Check if there are any daily_tasks entries for this task
+            $checkQuery = "
+                SELECT COUNT(*) as count, 
+                       GROUP_CONCAT(DISTINCT scheduled_date) as dates,
+                       GROUP_CONCAT(DISTINCT id) as daily_task_ids
+                FROM daily_tasks 
+                WHERE original_task_id = ? OR task_id = ?
+            ";
+            $checkStmt = $this->conn->prepare($checkQuery);
+            $checkStmt->execute([$taskId, $taskId]);
+            $plannerInfo = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($plannerInfo['count'] > 0) {
+                // Update all daily_tasks entries that reference this task
+                $query = "
+                    UPDATE daily_tasks 
+                    SET status = ?, completed_percentage = ?, 
+                        completion_time = CASE WHEN ? = 'completed' THEN NOW() ELSE completion_time END,
+                        updated_at = NOW()
+                    WHERE original_task_id = ? OR task_id = ?
+                ";
+                $stmt = $this->conn->prepare($query);
+                $result = $stmt->execute([$status, $progress, $status, $taskId, $taskId]);
+                
+                if ($result && $stmt->rowCount() > 0) {
+                    error_log("Task sync: Successfully updated {$stmt->rowCount()} Daily Planner entries for task {$taskId} on dates: {$plannerInfo['dates']}");
+                    
+                    // If task is completed, also sync with follow-ups
+                    if ($status === 'completed') {
+                        $this->syncWithFollowups($taskId, $status);
+                    }
+                } else {
+                    error_log("Task sync: No Daily Planner entries were updated for task {$taskId}");
+                }
+            } else {
+                error_log("Task sync: No Daily Planner entries found for task {$taskId} - task may not be scheduled in planner");
+            }
+        } catch (Exception $e) {
+            error_log('Sync with Daily Planner error: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Sync task completion with linked follow-ups
+     */
+    private function syncWithFollowups($taskId, $status) {
+        try {
+            // Check if ContactFollowupController class exists and call its static method
+            if (class_exists('ContactFollowupController')) {
+                ContactFollowupController::updateLinkedFollowupStatus($taskId, $status);
+            }
+        } catch (Exception $e) {
+            error_log('Sync with follow-ups error: ' . $e->getMessage());
+        }
     }
 }
 ?>

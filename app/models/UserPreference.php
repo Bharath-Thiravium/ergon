@@ -11,7 +11,7 @@ class UserPreference {
     
     private function ensureTable() {
         try {
-            $this->db->exec("CREATE TABLE IF NOT EXISTS user_preferences (
+            DatabaseHelper::safeExec($this->db, "CREATE TABLE IF NOT EXISTS user_preferences (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
                 preference_key VARCHAR(100) NOT NULL,
@@ -19,7 +19,7 @@ class UserPreference {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_user_key (user_id, preference_key)
-            )");
+            )", "Model operation");
         } catch (Exception $e) {
             error_log('UserPreference table creation error: ' . $e->getMessage());
         }

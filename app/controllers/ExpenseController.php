@@ -3,6 +3,8 @@ require_once __DIR__ . '/../models/Expense.php';
 require_once __DIR__ . '/../helpers/Security.php';
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../helpers/DatabaseHelper.php';
+require_once __DIR__ . '/../config/environment.php';
 
 class ExpenseController extends Controller {
     private $expense;
@@ -25,6 +27,9 @@ class ExpenseController extends Controller {
                 description TEXT,
                 expense_date DATE NOT NULL DEFAULT (CURDATE()),
                 attachment VARCHAR(255) NULL,
+                payment_proof VARCHAR(255) NULL,
+                paid_by INT NULL,
+                paid_at DATETIME NULL,
                 status VARCHAR(20) NOT NULL DEFAULT 'pending',
                 approved_by INT NULL,
                 approved_at TIMESTAMP NULL,
@@ -33,14 +38,40 @@ class ExpenseController extends Controller {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )";
             
-            $db->exec($sql);
+            DatabaseHelper::safeExec($db, $sql, "Execute SQL");
             
             // Check if attachment column exists in existing table
             $stmt = $db->query("SHOW COLUMNS FROM expenses LIKE 'attachment'");
             if ($stmt->rowCount() == 0) {
-                $db->exec("ALTER TABLE expenses ADD COLUMN attachment VARCHAR(255) NULL");
+                DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN attachment VARCHAR(255) NULL", "Alter table");
                 error_log('Added attachment column to existing expenses table');
             }
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN payment_proof VARCHAR(255) NULL", "Alter table"); } catch (Exception $e) {}
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_by INT NULL", "Alter table"); } catch (Exception $e) {}
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_at DATETIME NULL", "Alter table"); } catch (Exception $e) {}
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN approved_amount DECIMAL(10,2) NULL", "Alter table"); } catch (Exception $e) {}
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN approval_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN payment_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses MODIFY COLUMN status ENUM('pending','approved','rejected','paid') DEFAULT 'pending'", "Alter table"); } catch (Exception $e) {}
+
+            // Create approved_expenses table to store approved/processed expense records separately
+            DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS approved_expenses (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                expense_id INT NOT NULL,
+                user_id INT NOT NULL,
+                category VARCHAR(100) NOT NULL,
+                claimed_amount DECIMAL(10,2) NOT NULL,
+                approved_amount DECIMAL(10,2) NULL,
+                description TEXT,
+                approved_by INT NULL,
+                approved_at DATETIME NULL,
+                payment_proof VARCHAR(255) NULL,
+                paid_at DATETIME NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )", "Create table");
+            // Ensure columns exist for backward compatibility
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE approved_expenses ADD COLUMN claimed_amount DECIMAL(10,2) NULL", "Alter table"); } catch (Exception $e) {}
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE approved_expenses ADD COLUMN approved_amount DECIMAL(10,2) NULL", "Alter table"); } catch (Exception $e) {}
             
         } catch (Exception $e) {
             error_log('Error ensuring expense tables: ' . $e->getMessage());
@@ -54,11 +85,8 @@ class ExpenseController extends Controller {
             $user_id = $_SESSION['user_id'];
             $role = $_SESSION['role'];
             
-            // Create test data if no expenses exist
-            $this->createTestExpenseIfNeeded();
-            
             if ($role === 'user') {
-                $expenses = $this->expense->getByUserId($user_id);
+                $expenses = $this->getExpensesForUser($user_id);
             } elseif ($role === 'admin') {
                 // Admin sees only user expenses and their own expenses
                 $expenses = $this->getExpensesForAdmin($user_id);
@@ -117,6 +145,20 @@ class ExpenseController extends Controller {
         }
     }
     
+    private function getExpensesForUser($userId) {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("SELECT e.*, u.name as user_name FROM expenses e JOIN users u ON e.user_id = u.id WHERE e.user_id = ? ORDER BY e.created_at DESC");
+            $stmt->execute([$userId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Error getting expenses for user: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
     private function getExpensesForAdmin($adminUserId) {
         try {
             require_once __DIR__ . '/../config/database.php';
@@ -164,6 +206,7 @@ class ExpenseController extends Controller {
             
             $data = [
                 'user_id' => $userId,
+                'project_id' => $_POST['project_id'] ?: null,
                 'category' => Security::sanitizeString($_POST['category']),
                 'amount' => $amount,
                 'description' => Security::sanitizeString($_POST['description'], 500),
@@ -189,16 +232,17 @@ class ExpenseController extends Controller {
                     error_log('Notification error (non-critical): ' . $notifError->getMessage());
                 }
                 
-                echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => '/ergon/expenses']);
+                echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => Environment::getBaseUrl() . '/expenses']);
             } else {
                 // Fallback: try direct database insertion
                 try {
                     require_once __DIR__ . '/../config/database.php';
                     $db = Database::connect();
                     
-                    $stmt = $db->prepare("INSERT INTO expenses (user_id, category, amount, description, expense_date, attachment, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())");
+                    $stmt = $db->prepare("INSERT INTO expenses (user_id, project_id, category, amount, description, expense_date, attachment, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
                     $result = $stmt->execute([
                         $data['user_id'],
+                        $data['project_id'],
                         $data['category'],
                         $data['amount'],
                         $data['description'],
@@ -207,7 +251,7 @@ class ExpenseController extends Controller {
                     ]);
                     
                     if ($result) {
-                        echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => '/ergon/expenses']);
+                        echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => Environment::getBaseUrl() . '/expenses']);
                     } else {
                         error_log('Direct expense insert failed: ' . implode(' - ', $stmt->errorInfo()));
                         echo json_encode(['success' => false, 'error' => 'Database error: Unable to save expense']);
@@ -229,7 +273,7 @@ class ExpenseController extends Controller {
         
         $id = Security::validateInt($id);
         if (!$id) {
-            header('Location: /ergon/expenses?error=invalid_id');
+            header('Location: ' . Environment::getBaseUrl() . '/expenses?error=invalid_id');
             exit;
         }
         
@@ -249,7 +293,7 @@ class ExpenseController extends Controller {
             $expense = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$expense) {
-                header('Location: /ergon/expenses?error=not_found');
+                header('Location: ' . Environment::getBaseUrl() . '/expenses?error=not_found');
                 exit;
             }
             
@@ -272,8 +316,10 @@ class ExpenseController extends Controller {
                     }
                 }
                 
-                $stmt = $db->prepare("UPDATE expenses SET category = ?, amount = ?, description = ?, expense_date = ?, attachment = ? WHERE id = ?");
+                header('Content-Type: application/json');
+                $stmt = $db->prepare("UPDATE expenses SET project_id = ?, category = ?, amount = ?, description = ?, expense_date = ?, attachment = ? WHERE id = ?");
                 $result = $stmt->execute([
+                    $_POST['project_id'] ?: null,
                     $_POST['category'] ?? $expense['category'],
                     floatval($_POST['amount'] ?? $expense['amount']),
                     $_POST['description'] ?? $expense['description'],
@@ -282,10 +328,13 @@ class ExpenseController extends Controller {
                     $id
                 ]);
                 
+                echo json_encode(['success' => $result]);
+                exit;
+                
                 if ($result) {
-                    header('Location: /ergon/expenses?success=updated');
+                    header('Location: ' . Environment::getBaseUrl() . '/expenses?success=updated');
                 } else {
-                    header('Location: /ergon/expenses/edit/' . $id . '?error=1');
+                    header('Location: ' . Environment::getBaseUrl() . '/expenses/edit/' . $id . '?error=1');
                 }
                 exit;
             }
@@ -293,7 +342,7 @@ class ExpenseController extends Controller {
             $this->view('expenses/edit', ['expense' => $expense, 'active_page' => 'expenses']);
         } catch (Exception $e) {
             error_log('Expense edit error: ' . $e->getMessage());
-            header('Location: /ergon/expenses?error=1');
+            header('Location: ' . Environment::getBaseUrl() . '/expenses?error=1');
             exit;
         }
     }
@@ -303,26 +352,37 @@ class ExpenseController extends Controller {
         
         $id = Security::validateInt($id);
         if (!$id) {
-            header('Location: /ergon/expenses?error=invalid_id');
+            header('Location: ' . Environment::getBaseUrl() . '/expenses?error=invalid_id');
             exit;
         }
         
         try {
-            $expense = $this->expense->getById($id);
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $stmt = $db->prepare("SELECT e.*, u.name as user_name, p.name as project_name FROM expenses e LEFT JOIN users u ON e.user_id = u.id LEFT JOIN projects p ON e.project_id = p.id WHERE e.id = ?");
+            $stmt->execute([$id]);
+            $expense = $stmt->fetch(PDO::FETCH_ASSOC);
+            
             if (!$expense) {
-                header('Location: /ergon/expenses?error=not_found');
+                header('Location: ' . Environment::getBaseUrl() . '/expenses?error=not_found');
                 exit;
             }
             
+            $stmt = $db->prepare("SELECT * FROM approved_expenses WHERE expense_id = ? ORDER BY id DESC LIMIT 1");
+            $stmt->execute([$id]);
+            $approved = $stmt->fetch(PDO::FETCH_ASSOC);
+
             $data = [
                 'expense' => $expense,
+                'approved' => $approved,
                 'active_page' => 'expenses'
             ];
             
             $this->view('expenses/view', $data);
         } catch (Exception $e) {
             error_log('Expense view error: ' . $e->getMessage());
-            header('Location: /ergon/expenses?error=view_failed');
+            header('Location: ' . Environment::getBaseUrl() . '/expenses?error=view_failed');
             exit;
         }
     }
@@ -392,7 +452,11 @@ class ExpenseController extends Controller {
         }
         
         if (!$id) {
-            header('Location: /ergon/expenses?error=Invalid expense ID');
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                echo json_encode(['success' => false, 'error' => 'Invalid expense ID']);
+            } else {
+                header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Invalid expense ID');
+            }
             exit;
         }
         
@@ -406,47 +470,60 @@ class ExpenseController extends Controller {
             $expense = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$expense) {
-                header('Location: /ergon/expenses?error=Expense not found or already processed');
+                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                    echo json_encode(['success' => false, 'error' => 'Expense not found or already processed']);
+                } else {
+                    header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Expense not found or already processed');
+                }
                 exit;
             }
             
-            // Simple approval without accounting integration
-            $stmt = $db->prepare("UPDATE expenses SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?");
-            $result = $stmt->execute([$_SESSION['user_id'], $id]);
-            
-            if ($result && $stmt->rowCount() > 0) {
-                // Create notification for user
-                try {
-                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
-                    NotificationHelper::notifyExpenseStatusChange($id, 'approved', $_SESSION['user_id']);
-                } catch (Exception $notifError) {
-                    error_log('Expense approval notification error: ' . $notifError->getMessage());
-                }
+            // Handle POST request for approval
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                header('Content-Type: application/json');
                 
-                // Try accounting integration but don't fail if it doesn't work
-                try {
-                    require_once __DIR__ . '/../helpers/AccountingHelper.php';
-                    AccountingHelper::recordExpenseApproval(
-                        $id,
-                        $expense['amount'],
-                        $expense['category'],
-                        $expense['description'],
-                        $_SESSION['user_id']
-                    );
-                } catch (Exception $accountingError) {
-                    error_log('Accounting integration failed (non-critical): ' . $accountingError->getMessage());
-                }
+                $approvedAmount = isset($_POST['approved_amount']) && $_POST['approved_amount'] > 0 ? floatval($_POST['approved_amount']) : floatval($expense['amount']);
+                $approvalRemarks = trim($_POST['approval_remarks'] ?? '');
                 
-                header('Location: /ergon/expenses?success=Expense approved successfully');
-            } else {
-                header('Location: /ergon/expenses?error=Failed to approve expense');
+                // Update expense with approval details
+                $stmt = $db->prepare("UPDATE expenses SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, approval_remarks = ? WHERE id = ?");
+                $result = $stmt->execute([$_SESSION['user_id'], $approvedAmount, $approvalRemarks, $id]);
+                
+                if ($result && $stmt->rowCount() > 0) {
+                    // Create notification for user
+                    try {
+                        require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                        NotificationHelper::notifyExpenseStatusChange($id, 'approved', $_SESSION['user_id']);
+                    } catch (Exception $notifError) {
+                        error_log('Expense approval notification error: ' . $notifError->getMessage());
+                    }
+                    
+                    echo json_encode(['success' => true, 'message' => 'Expense approved successfully']);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Failed to approve expense']);
+                }
+                exit;
             }
+            
+            // GET request - return expense data for modal
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'expense' => $expense
+            ]);
+            exit;
+            
         } catch (Exception $e) {
             error_log('Expense approval error: ' . $e->getMessage());
-            header('Location: /ergon/expenses?error=Approval failed');
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                echo json_encode(['success' => false, 'error' => 'Approval failed']);
+            } else {
+                header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Approval failed');
+            }
         }
         exit;
     }
+
     
     public function reject($id = null) {
         if (session_status() === PHP_SESSION_NONE) {
@@ -465,7 +542,7 @@ class ExpenseController extends Controller {
             $reason = $_POST['rejection_reason'];
             
             if (!$id) {
-                header('Location: /ergon/expenses?error=Invalid expense ID');
+                header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Invalid expense ID');
                 exit;
             }
             
@@ -499,20 +576,126 @@ class ExpenseController extends Controller {
                     }
                     
                     $db->commit();
-                    header('Location: /ergon/expenses?success=Expense rejected successfully');
+                    header('Location: ' . Environment::getBaseUrl() . '/expenses?success=Expense rejected successfully');
                 } else {
                     $db->rollback();
-                    header('Location: /ergon/expenses?error=Expense not found');
+                    header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Expense not found');
                 }
             } catch (Exception $e) {
                 if ($db->inTransaction()) {
                     $db->rollback();
                 }
                 error_log('Expense rejection error: ' . $e->getMessage());
-                header('Location: /ergon/expenses?error=Rejection failed: ' . $e->getMessage());
+                header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Rejection failed: ' . $e->getMessage());
             }
         } else {
-            header('Location: /ergon/expenses?error=Rejection reason is required');
+            header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Rejection reason is required');
+        }
+        exit;
+    }
+
+    public function markPaid($id = null) {
+        AuthMiddleware::requireAuth();
+        if (!$id) {
+            header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Invalid expense ID');
+            exit;
+        }
+
+        // Only admin/owner can mark paid
+        if (!in_array($_SESSION['role'] ?? 'user', ['admin','owner'])) {
+            header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Unauthorized');
+            exit;
+        }
+
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            require_once __DIR__ . '/../helpers/LedgerHelper.php';
+            $db = Database::connect();
+
+            $stmt = $db->prepare("SELECT * FROM expenses WHERE id = ? AND status = 'approved'");
+            $stmt->execute([$id]);
+            $expense = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$expense) {
+                header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Expense not found or not approved');
+                exit;
+            }
+
+            $proof = null;
+            $paymentRemarks = trim($_POST['payment_remarks'] ?? '');
+            
+            // Validate that either proof or remarks is provided
+            $hasFile = isset($_FILES['proof']) && $_FILES['proof']['error'] === 0;
+            if (!$hasFile && empty($paymentRemarks)) {
+                header('Location: ' . Environment::getBaseUrl() . '/expenses/view/' . $id . '?error=Either payment proof or payment details must be provided');
+                exit;
+            }
+
+            // Handle file upload if provided
+            if ($hasFile) {
+                $file = $_FILES['proof'];
+                $allowedMime = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+                $maxSize = 5 * 1024 * 1024;
+                
+                if ($file['size'] > $maxSize) {
+                    error_log("markPaid expense $id: File too large (" . $file['size'] . " bytes)");
+                    header('Location: ' . Environment::getBaseUrl() . '/expenses/view/' . $id . '?error=File exceeds 5MB');
+                    exit;
+                }
+
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                
+                if (!in_array($mime, $allowedMime)) {
+                    error_log("markPaid expense $id: Invalid mime type: $mime");
+                    header('Location: ' . Environment::getBaseUrl() . '/expenses/view/' . $id . '?error=Invalid file type');
+                    exit;
+                }
+
+                $uploadDir = __DIR__ . '/../../storage/proofs/';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $filename = time() . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
+                $uploadPath = $uploadDir . $filename;
+                
+                if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+                    $proof = $filename;
+                } else {
+                    header('Location: ' . Environment::getBaseUrl() . '/expenses/view/' . $id . '?error=Failed to save proof file');
+                    exit;
+                }
+            }
+
+            // Update expense with payment details
+            $stmt = $db->prepare("UPDATE expenses SET status = 'paid', payment_proof = ?, payment_remarks = ?, paid_by = ?, paid_at = NOW() WHERE id = ?");
+            $result = $stmt->execute([$proof, $paymentRemarks, $_SESSION['user_id'], $id]);
+
+            if ($result) {
+                // Update approved_expenses record with proof and paid_at if exists
+                try {
+                    $upd = $db->prepare("UPDATE approved_expenses SET payment_proof = ?, paid_at = NOW() WHERE expense_id = ?");
+                    $updResult = $upd->execute([$proof, $id]);
+                    error_log("markPaid: approved_expenses update result: " . ($updResult ? 'success' : 'failed'));
+                } catch (Exception $ue) {
+                    error_log('Failed to update approved_expenses with proof: ' . $ue->getMessage());
+                }
+                // Determine approved amount (from approved_expenses) and record ledger debit
+                try {
+                    $stmt2 = $db->prepare("SELECT approved_amount FROM approved_expenses WHERE expense_id = ? ORDER BY id DESC LIMIT 1");
+                    $stmt2->execute([$id]);
+                    $approvedRow = $stmt2->fetch(PDO::FETCH_ASSOC);
+                    $ledgerAmount = $approvedRow && $approvedRow['approved_amount'] ? floatval($approvedRow['approved_amount']) : floatval($expense['amount']);
+                } catch (Exception $le) {
+                    $ledgerAmount = floatval($expense['amount']);
+                }
+                LedgerHelper::recordEntry($expense['user_id'], 'expense', 'expense', $id, $ledgerAmount, 'debit');
+                header('Location: ' . Environment::getBaseUrl() . '/expenses?success=Expense marked as paid');
+            } else {
+                header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Failed to mark paid');
+            }
+        } catch (Exception $e) {
+            error_log('Expense markPaid error: ' . $e->getMessage());
+            header('Location: ' . Environment::getBaseUrl() . '/expenses/view/' . $id . '?error=' . urlencode($e->getMessage()));
         }
         exit;
     }

@@ -144,13 +144,13 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
                         </div>
                         <div class="contact-card__actions">
                             <div class="ab-container">
-                                <button class="ab-btn ab-btn--view" onclick="viewContact(<?= $contact['id'] ?>)" title="View Contact Details">
+                                <button type="button" class="ab-btn ab-btn--view" onclick="event.preventDefault(); event.stopPropagation(); viewContact(<?= $contact['id'] ?>); return false;" title="View Contact Details">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 616 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
                                 </button>
-                                <button class="ab-btn ab-btn--edit" onclick="editContact(<?= $contact['id'] ?>)" title="Edit Contact">
+                                <button type="button" class="ab-btn ab-btn--edit" onclick="event.preventDefault(); event.stopPropagation(); editContact(<?= $contact['id'] ?>); return false;" title="Edit Contact">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
@@ -219,13 +219,13 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
                         </div>
                         <div class="contact-actions">
                             <div class="ab-container">
-                                <button class="ab-btn ab-btn--view" onclick="viewContact(<?= $contact['id'] ?>)" title="View Contact Details">
+                                <button type="button" class="ab-btn ab-btn--view" onclick="event.preventDefault(); event.stopPropagation(); viewContact(<?= $contact['id'] ?>); return false;" title="View Contact Details">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 616 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
                                 </button>
-                                <button class="ab-btn ab-btn--edit" onclick="editContact(<?= $contact['id'] ?>)" title="Edit Contact">
+                                <button type="button" class="ab-btn ab-btn--edit" onclick="event.preventDefault(); event.stopPropagation(); editContact(<?= $contact['id'] ?>); return false;" title="Edit Contact">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
@@ -507,6 +507,8 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
     display: flex;
     gap: var(--space-2);
     flex-shrink: 0;
+    position: relative;
+    z-index: 5;
 }
 
 .contact-card {
@@ -644,6 +646,8 @@ $todayCount = array_sum(array_column($contacts, 'today_count'));
     flex-wrap: wrap;
     padding-top: var(--space-2);
     border-top: 1px solid var(--border-color);
+    position: relative;
+    z-index: 5;
 }
 
 .contact-card__actions .btn {
@@ -839,6 +843,11 @@ function showHistory(id) {
 }
 
 function viewContact(contactId) {
+    if (!contactId) {
+        alert('Invalid contact ID');
+        return;
+    }
+    
     fetch(`/ergon/api/contacts/${contactId}`)
         .then(response => response.json())
         .then(data => {
@@ -855,18 +864,25 @@ function viewContact(contactId) {
                     closeModal('viewContactModal');
                     editContact(contactId);
                 };
-                showModal('viewContactModal');
+                const modal = document.getElementById('viewContactModal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                }
             } else {
-                alert('Error loading contact details');
+                alert('Error: ' + (data.error || 'Contact not found'));
             }
         })
         .catch(error => {
-            console.error('Error loading contact:', error);
             alert('Error loading contact details');
         });
 }
 
 function editContact(contactId) {
+    if (!contactId) {
+        alert('Invalid contact ID');
+        return;
+    }
+    
     fetch(`/ergon/api/contacts/${contactId}`)
         .then(response => response.json())
         .then(data => {
@@ -877,13 +893,15 @@ function editContact(contactId) {
                 document.getElementById('editContactPhone').value = contact.phone || '';
                 document.getElementById('editContactEmail').value = contact.email || '';
                 document.getElementById('editContactCompany').value = contact.company || '';
-                showModal('editContactModal');
+                const modal = document.getElementById('editContactModal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                }
             } else {
-                alert('Error loading contact details');
+                alert('Error: ' + (data.error || 'Contact not found'));
             }
         })
         .catch(error => {
-            console.error('Error loading contact:', error);
             alert('Error loading contact details');
         });
 }
@@ -919,12 +937,22 @@ function saveContactChanges() {
 }
 
 function showModal(modalId) {
-    document.getElementById(modalId).style.display = 'block';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'flex';
+    }
 }
 
 function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
 }
+
+// Ensure functions are globally accessible
+window.viewContact = viewContact;
+window.editContact = editContact;
+window.showModal = showModal;
+window.closeModal = closeModal;
+window.saveContactChanges = saveContactChanges;
 
 
 
@@ -1140,6 +1168,8 @@ function saveNewContact() {
 
 .ab-btn {
     position: relative;
+    cursor: pointer;
+    pointer-events: auto;
 }
 
 .ab-btn::after {

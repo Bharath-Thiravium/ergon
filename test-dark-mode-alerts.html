@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Mode Alert Test - Ergon</title>
+    <link href="/ergon/assets/css/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/ergon/assets/css/ergon.css" rel="stylesheet">
+    <link href="/ergon/assets/css/theme-enhanced.css" rel="stylesheet">
+    <link href="/ergon/assets/css/mobile-dark-theme-fixes.css" rel="stylesheet">
+    <link href="/ergon/assets/css/dark-mode-alerts-fix.css" rel="stylesheet">
+    <link href="/ergon/assets/css/notifications.css" rel="stylesheet">
+    <link href="/ergon/assets/css/modal.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 2rem;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+        }
+        .test-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .btn--primary { background: #3b82f6; color: white; }
+        .btn--success { background: #10b981; color: white; }
+        .btn--warning { background: #f59e0b; color: white; }
+        .btn--danger { background: #ef4444; color: white; }
+        .btn--secondary { background: #6b7280; color: white; }
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        h1, h2, h3 {
+            color: var(--text-primary);
+        }
+        p {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <button class="btn btn--secondary theme-toggle" onclick="toggleTheme()">
+        🌙 Toggle Dark Mode
+    </button>
+
+    <h1>🌙 Dark Mode Alert & Notification Test</h1>
+    <p>This page tests all alert types, success messages, and popup notifications in both Light and Dark modes.</p>
+
+    <!-- Universal Modal -->
+    <div id="universalModal" class="universal-modal">
+        <div class="universal-modal-content">
+            <div class="universal-modal-icon" id="universalIcon"></div>
+            <div class="universal-modal-title" id="universalTitle"></div>
+            <div class="universal-modal-message" id="universalMessage"></div>
+            <button class="universal-modal-close" onclick="closeUniversalModal()">OK</button>
+        </div>
+    </div>
+
+    <!-- Alert Tests -->
+    <div class="test-section">
+        <h2>📢 Static Alert Messages</h2>
+        <div class="alert alert--success">
+            <i class="bi bi-check-circle-fill"></i>
+            <strong>Success!</strong> This is a success alert message.
+        </div>
+        <div class="alert alert--error">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Error!</strong> This is an error alert message.
+        </div>
+        <div class="alert alert--warning">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Warning!</strong> This is a warning alert message.
+        </div>
+        <div class="alert alert--info">
+            <i class="bi bi-info-circle-fill"></i>
+            <strong>Info!</strong> This is an info alert message.
+        </div>
+    </div>
+
+    <!-- Dynamic Alert Tests -->
+    <div class="test-section">
+        <h2>⚡ Dynamic Alert Messages</h2>
+        <div class="test-buttons">
+            <button class="btn btn--success" onclick="createAlert('Operation completed successfully!', 'success')">
+                Show Success Alert
+            </button>
+            <button class="btn btn--danger" onclick="createAlert('An error occurred while processing your request.', 'error')">
+                Show Error Alert
+            </button>
+            <button class="btn btn--warning" onclick="createAlert('Please review your input before continuing.', 'warning')">
+                Show Warning Alert
+            </button>
+            <button class="btn btn--primary" onclick="createAlert('Here is some important information.', 'info')">
+                Show Info Alert
+            </button>
+        </div>
+        <div id="dynamic-alerts-container"></div>
+    </div>
+
+    <!-- Toast Notification Tests -->
+    <div class="test-section">
+        <h2>🍞 Toast Notifications</h2>
+        <div class="test-buttons">
+            <button class="btn btn--success" onclick="showToast('Success toast notification!', 'success')">
+                Show Success Toast
+            </button>
+            <button class="btn btn--danger" onclick="showToast('Error toast notification!', 'error')">
+                Show Error Toast
+            </button>
+            <button class="btn btn--warning" onclick="showToast('Warning toast notification!', 'warning')">
+                Show Warning Toast
+            </button>
+            <button class="btn btn--primary" onclick="showToast('Info toast notification!', 'info')">
+                Show Info Toast
+            </button>
+        </div>
+    </div>
+
+    <!-- Universal Modal Tests -->
+    <div class="test-section">
+        <h2>🪟 Universal Modal Messages</h2>
+        <div class="test-buttons">
+            <button class="btn btn--success" onclick="showSuccess('Task completed successfully!')">
+                Show Success Modal
+            </button>
+            <button class="btn btn--danger" onclick="showError('Failed to save changes!')">
+                Show Error Modal
+            </button>
+            <button class="btn btn--warning" onclick="showWarning('Please confirm your action!')">
+                Show Warning Modal
+            </button>
+            <button class="btn btn--primary" onclick="showInfo('Here is some useful information!')">
+                Show Info Modal
+            </button>
+        </div>
+    </div>
+
+    <!-- Browser Alert Tests -->
+    <div class="test-section">
+        <h2>🚨 Enhanced Browser Alerts</h2>
+        <div class="test-buttons">
+            <button class="btn btn--success" onclick="alert('✅ Success message via alert!')">
+                Success Alert
+            </button>
+            <button class="btn btn--danger" onclick="alert('❌ Error message via alert!')">
+                Error Alert
+            </button>
+            <button class="btn btn--warning" onclick="alert('⚠️ Warning message via alert!')">
+                Warning Alert
+            </button>
+            <button class="btn btn--primary" onclick="alert('ℹ️ Info message via alert!')">
+                Info Alert
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Dropdown Test -->
+    <div class="test-section">
+        <h2>🔔 Notification Dropdown</h2>
+        <button class="btn btn--primary" onclick="showNotificationDropdown()">
+            Show Notification Dropdown
+        </button>
+        
+        <div class="notification-dropdown" id="testNotificationDropdown" style="display: none; position: relative; margin-top: 1rem;">
+            <div class="notification-header">
+                <h3>Notifications</h3>
+                <button type="button" class="view-all-link">View All</button>
+            </div>
+            <div class="notification-list">
+                <div class="notification-item">
+                    <div class="notification-title">Task Assignment</div>
+                    <div class="notification-message">You have been assigned a new task: Update project documentation</div>
+                    <div class="notification-time">2 minutes ago</div>
+                </div>
+                <div class="notification-item">
+                    <div class="notification-title">Leave Approved</div>
+                    <div class="notification-message">Your leave request for tomorrow has been approved</div>
+                    <div class="notification-time">1 hour ago</div>
+                </div>
+                <div class="notification-item">
+                    <div class="notification-title">System Update</div>
+                    <div class="notification-message">System maintenance scheduled for this weekend</div>
+                    <div class="notification-time">3 hours ago</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/ergon/assets/js/theme-switcher.js"></script>
+    <script src="/ergon/assets/js/dark-mode-alerts.js"></script>
+    <script>
+        // Theme toggle function
+        function toggleTheme() {
+            const currentTheme = document.body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', newTheme);
+            document.documentElement.setAttribute('data-theme', newTheme);
+            
+            const button = document.querySelector('.theme-toggle');
+            button.textContent = newTheme === 'dark' ? '☀️ Toggle Light Mode' : '🌙 Toggle Dark Mode';
+        }
+
+        // Show notification dropdown
+        function showNotificationDropdown() {
+            const dropdown = document.getElementById('testNotificationDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Universal modal functions
+        function showUniversalModal(message, type = 'success', title = null) {
+            const modal = document.getElementById('universalModal');
+            const icon = document.getElementById('universalIcon');
+            const titleEl = document.getElementById('universalTitle');
+            const messageEl = document.getElementById('universalMessage');
+            
+            const config = {
+                success: { icon: '✅', title: title || 'Success!' },
+                error: { icon: '❌', title: title || 'Error!' },
+                warning: { icon: '⚠️', title: title || 'Warning!' },
+                info: { icon: 'ℹ️', title: title || 'Information' }
+            };
+            
+            const typeConfig = config[type] || config.success;
+            icon.textContent = typeConfig.icon;
+            titleEl.textContent = typeConfig.title;
+            messageEl.textContent = message;
+            modal.className = `universal-modal ${type} show`;
+            modal.style.display = 'flex';
+        }
+
+        function closeUniversalModal() {
+            const modal = document.getElementById('universalModal');
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 200);
+        }
+
+        // Utility functions
+        window.showSuccess = (message, title) => showUniversalModal(message, 'success', title);
+        window.showError = (message, title) => showUniversalModal(message, 'error', title);
+        window.showWarning = (message, title) => showUniversalModal(message, 'warning', title);
+        window.showInfo = (message, title) => showUniversalModal(message, 'info', title);
+
+        // Toast function
+        function showToast(message, type = 'success', duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast--${type}`;
+            
+            const icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+            
+            toast.innerHTML = `
+                <span style="margin-right: 8px;">${icons[type] || icons.success}</span>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 100);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (document.body.contains(toast)) {
+                        document.body.removeChild(toast);
+                    }
+                }, 300);
+            }, duration);
+        }
+
+        // Create alert function
+        function createAlert(message, type = 'info') {
+            const container = document.getElementById('dynamic-alerts-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert--${type}`;
+            
+            const icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+            
+            alert.innerHTML = `
+                <i class="bi bi-${type === 'success' ? 'check-circle-fill' : type === 'error' ? 'exclamation-triangle-fill' : type === 'warning' ? 'exclamation-triangle-fill' : 'info-circle-fill'}"></i>
+                <span style="margin-left: 8px;">${message}</span>
+                <button type="button" onclick="this.parentElement.remove()" style="float: right; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: inherit; opacity: 0.7;">×</button>
+            `;
+            
+            container.appendChild(alert);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (document.body.contains(alert)) {
+                    alert.style.opacity = '0';
+                    alert.style.transform = 'translateY(-10px)';
+                    setTimeout(() => alert.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dark Mode Alert Test Page Loaded');
+        });
+    </script>
+</body>
+</html>

@@ -368,7 +368,7 @@ class ReportsController extends Controller {
                     status VARCHAR(20) DEFAULT 'present',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )";
-                $db->exec($sql);
+                DatabaseHelper::safeExec($db, $sql, "Execute SQL");
             }
             
             // Ensure tasks table exists
@@ -387,7 +387,7 @@ class ReportsController extends Controller {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 )";
-                $db->exec($sql);
+                DatabaseHelper::safeExec($db, $sql, "Execute SQL");
             }
             
             // Ensure leaves table exists
@@ -404,7 +404,7 @@ class ReportsController extends Controller {
                     status VARCHAR(20) DEFAULT 'pending',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )";
-                $db->exec($sql);
+                DatabaseHelper::safeExec($db, $sql, "Execute SQL");
             }
             
             // Ensure expenses table exists
@@ -419,7 +419,7 @@ class ReportsController extends Controller {
                     status VARCHAR(20) DEFAULT 'pending',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )";
-                $db->exec($sql);
+                DatabaseHelper::safeExec($db, $sql, "Execute SQL");
             }
         } catch (Exception $e) {
             error_log('ensureTablesExist error: ' . $e->getMessage());

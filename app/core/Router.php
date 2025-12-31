@@ -14,20 +14,11 @@ class Router {
         $method = $_SERVER['REQUEST_METHOD'];
         $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         
-        // Log for debugging
-        error_log("Router Debug - Original URI: " . $_SERVER['REQUEST_URI']);
-        error_log("Router Debug - Method: " . $method);
-        error_log("Router Debug - Parsed Path: " . $path);
+        // Debug logging disabled for production
         
-        // Determine base path based on environment
-        $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
+        // Remove /ergon prefix for both development and production
         $basePath = '/ergon';
-        $publicBasePath = $basePath . '/public';
-        
-        // Handle both base and public URLs
-        if (strpos($path, $publicBasePath) === 0) {
-            $path = substr($path, strlen($publicBasePath));
-        } elseif (strpos($path, $basePath) === 0) {
+        if (strpos($path, $basePath) === 0) {
             $path = substr($path, strlen($basePath));
         }
         
@@ -42,11 +33,10 @@ class Router {
             $path = rtrim($path, '/');
         }
         
-        error_log("Router Debug - Final Path: " . $path);
+        // Final path: " . $path
         
         // Check for exact match first
         if (isset($this->routes[$method][$path])) {
-            error_log("Router Debug - Exact match found for: " . $path);
             $this->executeRoute($this->routes[$method][$path]);
             return;
         }
@@ -54,13 +44,12 @@ class Router {
         // Check for pattern matches
         foreach ($this->routes[$method] ?? [] as $route => $handler) {
             if ($this->matchRoute($route, $path)) {
-                error_log("Router Debug - Pattern match found: " . $route . " for path: " . $path);
                 $this->executeRoute($handler, $this->extractParams($route, $path));
                 return;
             }
         }
         
-        error_log("Router Debug - No route found for: " . $path);
+        // No route found
         $this->notFound();
     }
     
@@ -78,6 +67,8 @@ class Router {
     private function executeRoute($route, $params = []) {
         $controllerName = $route['controller'];
         $method = $route['method'];
+        
+        // Executing route
         
         $controllerFile = __DIR__ . "/../controllers/{$controllerName}.php";
         
@@ -125,9 +116,11 @@ class Router {
             echo "<!DOCTYPE html><html><head><title>404 - Page Not Found</title></head>";
             echo "<body><h1>404 - Page Not Found</h1>";
             echo "<p>The requested page could not be found.</p>";
-            $isProduction = strpos($_SERVER['HTTP_HOST'] ?? '', 'athenas.co.in') !== false;
-            $basePath = '/ergon';
-            echo "<a href='{$basePath}/login'>Return to Login</a></body></html>";
+            
+            // Use Environment class to get correct base URL
+            require_once __DIR__ . '/../config/environment.php';
+            $baseUrl = Environment::getBaseUrl();
+            echo "<a href='{$baseUrl}/login'>Return to Login</a></body></html>";
         }
     }
     

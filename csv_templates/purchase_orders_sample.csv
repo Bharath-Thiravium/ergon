@@ -1,0 +1,4 @@
+po_number,po_total_value,customer_id,customer_name,customer_gstin,status
+PO001,45000.00,SUPP001,Supplier ABC,29SUPPAB1234F1Z5,Active
+PO002,32000.00,SUPP002,Supplier XYZ,27SUPPXY5678G2H6,Released
+PO003,18000.00,SUPP003,Supplier PQR,19SUPPQR9012I3J7,Completed

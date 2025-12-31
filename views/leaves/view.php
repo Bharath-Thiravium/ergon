@@ -123,11 +123,12 @@ ob_start();
 <script>
 function showRejectModal(leaveId) {
     document.getElementById('rejectForm').action = '/ergon/leaves/reject/' + leaveId;
-    document.getElementById('rejectModal').style.display = 'flex';
+    if (typeof showModalById === 'function') showModalById('rejectModal'); else document.getElementById('rejectModal').style.display = 'flex';
 }
 
 function closeRejectModal() {
-    document.getElementById('rejectModal').style.display = 'none';
+    if (typeof hideModalById === 'function') hideModalById('rejectModal'); else document.getElementById('rejectModal').style.display = 'none';
+    var rr = document.getElementById('rejection_reason'); if (rr) rr.value = '';
 }
 </script>
 

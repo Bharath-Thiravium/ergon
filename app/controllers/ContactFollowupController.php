@@ -17,6 +17,10 @@ class ContactFollowupController extends Controller {
             exit;
         }
         
+        // Check if followups module is enabled
+        require_once __DIR__ . '/../middlewares/ModuleMiddleware.php';
+        ModuleMiddleware::requireModule('followups');
+        
         try {
             $db = Database::connect();
             $contacts = $this->getContactsWithFollowups($db);
@@ -660,7 +664,7 @@ class ContactFollowupController extends Controller {
     private function ensureTablesExist($db) {
         try {
             // Create contacts table
-            $db->exec("CREATE TABLE IF NOT EXISTS contacts (
+            DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS contacts (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 phone VARCHAR(50),
@@ -668,10 +672,10 @@ class ContactFollowupController extends Controller {
                 company VARCHAR(255),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            )");
+            )", "Create table");
             
             // Create followups table
-            $db->exec("CREATE TABLE IF NOT EXISTS followups (
+            DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS followups (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
                 contact_id INT,
@@ -689,10 +693,10 @@ class ContactFollowupController extends Controller {
                 INDEX idx_task_id (task_id),
                 INDEX idx_follow_up_date (follow_up_date),
                 INDEX idx_status (status)
-            )");
+            )", "Create table");
             
             // Create followup_history table
-            $db->exec("CREATE TABLE IF NOT EXISTS followup_history (
+            DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS followup_history (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 followup_id INT NOT NULL,
                 action VARCHAR(50) NOT NULL,
@@ -701,7 +705,7 @@ class ContactFollowupController extends Controller {
                 created_by INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_followup_id (followup_id)
-            )");
+            )", "Create table");
         } catch (Exception $e) {
             error_log('ensureTablesExist error: ' . $e->getMessage());
         }
@@ -722,6 +726,12 @@ class ContactFollowupController extends Controller {
                 
                 if ($result) {
                     error_log("Successfully updated linked task {$taskId} status from {$oldStatus} to {$status}");
+                    
+                    // Sync with Daily Planner - Enhanced for follow-up completion
+                    $this->syncWithDailyPlanner($db, $taskId, $status, $newProgress);
+                    
+                    // Log the sync action for audit trail
+                    error_log("Follow-up completion: Synced task {$taskId} with Daily Planner - Status: {$status}, Progress: {$newProgress}%");
                 }
             }
         } catch (Exception $e) {
@@ -738,6 +748,90 @@ class ContactFollowupController extends Controller {
             'cancelled' => 'danger',
             default => 'secondary'
         };
+    }
+    
+    /**
+     * Sync task status changes with Daily Planner
+     * Enhanced to handle follow-up completion scenarios
+     */
+    private function syncWithDailyPlanner($db, $taskId, $status, $progress) {
+        try {
+            // First, check if there are any daily_tasks entries for this task
+            $checkStmt = $db->prepare("
+                SELECT COUNT(*) as count, 
+                       GROUP_CONCAT(DISTINCT scheduled_date) as dates,
+                       GROUP_CONCAT(DISTINCT id) as daily_task_ids
+                FROM daily_tasks 
+                WHERE original_task_id = ? OR task_id = ?
+            ");
+            $checkStmt->execute([$taskId, $taskId]);
+            $plannerInfo = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($plannerInfo['count'] > 0) {
+                // Update all daily_tasks entries that reference this task
+                $stmt = $db->prepare("
+                    UPDATE daily_tasks 
+                    SET status = ?, completed_percentage = ?, 
+                        completion_time = CASE WHEN ? = 'completed' THEN NOW() ELSE completion_time END,
+                        updated_at = NOW()
+                    WHERE original_task_id = ? OR task_id = ?
+                ");
+                $result = $stmt->execute([$status, $progress, $status, $taskId, $taskId]);
+                
+                if ($result && $stmt->rowCount() > 0) {
+                    error_log("Follow-up sync: Successfully updated {$stmt->rowCount()} Daily Planner entries for task {$taskId} on dates: {$plannerInfo['dates']}");
+                    
+                    // If task is completed, log completion in daily task history
+                    if ($status === 'completed') {
+                        $dailyTaskIds = explode(',', $plannerInfo['daily_task_ids']);
+                        foreach ($dailyTaskIds as $dailyTaskId) {
+                            $this->logDailyTaskHistory($db, trim($dailyTaskId), 'completed_via_followup', $status, $progress, 'Task completed via follow-up module');
+                        }
+                    }
+                } else {
+                    error_log("Follow-up sync: No Daily Planner entries were updated for task {$taskId}");
+                }
+            } else {
+                error_log("Follow-up sync: No Daily Planner entries found for task {$taskId} - task may not be scheduled in planner");
+            }
+        } catch (Exception $e) {
+            error_log('Sync with Daily Planner error: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Log daily task history for audit trail
+     */
+    private function logDailyTaskHistory($db, $dailyTaskId, $action, $oldValue = null, $newValue = null, $notes = null) {
+        try {
+            // Check if daily_task_history table exists, create if not
+            $stmt = $db->prepare("SHOW TABLES LIKE 'daily_task_history'");
+            $stmt->execute();
+            if (!$stmt->fetch()) {
+                $db->exec("
+                    CREATE TABLE daily_task_history (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        daily_task_id INT NOT NULL,
+                        action VARCHAR(50) NOT NULL,
+                        old_value TEXT,
+                        new_value TEXT,
+                        notes TEXT,
+                        created_by INT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_daily_task_id (daily_task_id)
+                    )
+                ");
+            }
+            
+            $stmt = $db->prepare("
+                INSERT INTO daily_task_history (daily_task_id, action, old_value, new_value, notes, created_by) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            return $stmt->execute([$dailyTaskId, $action, $oldValue, $newValue, $notes, $_SESSION['user_id'] ?? null]);
+        } catch (Exception $e) {
+            error_log('Daily task history log error: ' . $e->getMessage());
+            return false;
+        }
     }
     
     /**

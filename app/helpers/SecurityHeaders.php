@@ -1,8 +1,8 @@
 <?php
 class SecurityHeaders {
     public static function apply() {
-        // CSP - Strict policy for XSS protection
-        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';");
+        // CSP - Strict policy for XSS protection with map support
+        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: *.openstreetmap.org *.tile.openstreetmap.org; font-src 'self'; connect-src 'self' *.openstreetmap.org nominatim.openstreetmap.org; frame-ancestors 'none';");
         
         // Additional security headers
         header("X-Content-Type-Options: nosniff");

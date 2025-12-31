@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../helpers/DatabaseHelper.php';
 
 class UnifiedAttendanceController extends Controller {
     private $db;
@@ -142,19 +143,44 @@ class UnifiedAttendanceController extends Controller {
                 return ['success' => false, 'error' => 'You are on approved leave today'];
             }
             
-            // Insert attendance record
+            // Check for project match based on GPS coordinates
+            $projectId = null;
+            $locationName = 'Office';
+            
+            if ($latitude && $longitude) {
+                // Check all active projects for GPS coordinate match
+                $stmt = $this->db->prepare("SELECT id, name, latitude, longitude, checkin_radius, location_title FROM projects WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND status = 'active'");
+                $stmt->execute();
+                $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($projects as $project) {
+                    $distance = $this->calculateDistance($latitude, $longitude, $project['latitude'], $project['longitude']);
+                    if ($distance <= $project['checkin_radius']) {
+                        $projectId = $project['id'];
+                        $locationName = $project['location_title'] ?: $project['name'];
+                        break; // Use first matching project
+                    }
+                }
+            }
+            
+            // Insert attendance record - EXPLICITLY set project_id to NULL if no GPS match
             $stmt = $this->db->prepare("
-                INSERT INTO attendance (user_id, check_in, created_at) 
-                VALUES (?, NOW(), NOW())
+                INSERT INTO attendance (user_id, check_in, latitude, longitude, location_name, project_id, created_at) 
+                VALUES (?, NOW(), ?, ?, ?, ?, NOW())
             ");
             
-            $result = $stmt->execute([$userId]);
+            // Ensure project_id is explicitly NULL if no match found
+            $finalProjectId = $projectId ?: null;
+            
+            $result = $stmt->execute([$userId, $latitude, $longitude, $locationName, $finalProjectId]);
             
             if ($result) {
                 return [
                     'success' => true,
                     'message' => 'Clocked in successfully',
-                    'time' => date('H:i:s')
+                    'time' => date('H:i:s'),
+                    'project_id' => $projectId,
+                    'location' => $locationName
                 ];
             }
             
@@ -669,7 +695,7 @@ class UnifiedAttendanceController extends Controller {
             $stmt = $this->db->query("SHOW TABLES LIKE 'attendance'");
             if (!$stmt->fetch()) {
                 // Table doesn't exist, create it
-                $this->db->exec("
+                DatabaseHelper::safeExec($this->db, "
                     CREATE TABLE attendance (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         user_id INT NOT NULL,
@@ -683,8 +709,7 @@ class UnifiedAttendanceController extends Controller {
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                         INDEX idx_user_id (user_id),
                         INDEX idx_check_in_date (check_in)
-                    )
-                ");
+                    )", "Create attendance table");
             }
         } catch (Exception $e) {
             error_log('ensureAttendanceTable error: ' . $e->getMessage());

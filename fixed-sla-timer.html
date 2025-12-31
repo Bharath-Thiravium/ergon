@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixed SLA Timer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .task-card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
+        .timer-display { font-size: 24px; font-weight: bold; margin: 10px 0; }
+        .status { padding: 5px 10px; border-radius: 4px; color: white; display: inline-block; margin: 5px 0; }
+        .in_progress { background: #4caf50; }
+        .on_break { background: #ff9800; }
+        .not_started { background: #757575; }
+        .completed { background: #2196f3; }
+        .controls button { margin: 5px; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .start { background: #4caf50; color: white; }
+        .pause { background: #ff9800; color: white; }
+        .resume { background: #2196f3; color: white; }
+        .complete { background: #9c27b0; color: white; }
+        .reset { background: #757575; color: white; }
+        .disabled { opacity: 0.5; cursor: not-allowed !important; }
+        .overdue { color: #f44336 !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Fixed SLA Timer System</h1>
+        
+        <div class="task-card" data-task-id="123">
+            <h3>Task #123: SLA Task</h3>
+            <div class="status not_started" id="status">NOT STARTED</div>
+            
+            <div class="timer-display">
+                SLA Countdown: <span id="countdown">00:15:00</span>
+            </div>
+            
+            <div>Time Used: <span id="used">00:00:00</span></div>
+            <div>Pause Time: <span id="paused">00:00:00</span></div>
+            
+            <div class="controls">
+                <button class="start" id="start" onclick="timer.start()">Start</button>
+                <button class="pause disabled" id="pause" onclick="timer.pause()">Pause</button>
+                <button class="resume disabled" id="resume" onclick="timer.resume()">Resume</button>
+                <button class="complete disabled" id="complete" onclick="timer.complete()">Complete</button>
+                <button class="reset" id="reset" onclick="timer.reset()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SLATimer {
+            constructor() {
+                this.state = 'not_started';
+                this.slaMs = 15 * 60 * 1000; // 15 minutes in milliseconds
+                this.usedMs = 0;
+                this.pausedMs = 0;
+                this.startTime = null;
+                this.pauseStart = null;
+                this.animationId = null;
+                this.elements = this.cacheElements();
+                this.updateDisplay();
+                this.updateControls();
+                this.handleVisibilityChange();
+            }
+
+            cacheElements() {
+                return {
+                    status: document.getElementById('status'),
+                    countdown: document.getElementById('countdown'),
+                    used: document.getElementById('used'),
+                    paused: document.getElementById('paused'),
+                    start: document.getElementById('start'),
+                    pause: document.getElementById('pause'),
+                    resume: document.getElementById('resume'),
+                    complete: document.getElementById('complete'),
+                    reset: document.getElementById('reset')
+                };
+            }
+
+            handleVisibilityChange() {
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden && this.state === 'in_progress') {
+                        this.startAnimation();
+                    }
+                });
+            }
+
+            start() {
+                if (this.state !== 'not_started') return;
+                this.state = 'in_progress';
+                this.startTime = performance.now();
+                this.startAnimation();
+                this.updateDisplay();
+                this.updateControls();
+            }
+
+            pause() {
+                if (this.state !== 'in_progress') return;
+                this.state = 'on_break';
+                this.usedMs += performance.now() - this.startTime;
+                this.pauseStart = performance.now();
+                this.stopAnimation();
+                this.startAnimation();
+                this.updateDisplay();
+                this.updateControls();
+            }
+
+            resume() {
+                if (this.state !== 'on_break') return;
+                this.state = 'in_progress';
+                this.pausedMs += performance.now() - this.pauseStart;
+                this.startTime = performance.now();
+                this.stopAnimation();
+                this.startAnimation();
+                this.updateDisplay();
+                this.updateControls();
+            }
+
+            complete() {
+                if (this.state !== 'in_progress' && this.state !== 'on_break') return;
+                if (this.state === 'in_progress') {
+                    this.usedMs += performance.now() - this.startTime;
+                } else if (this.state === 'on_break') {
+                    this.pausedMs += performance.now() - this.pauseStart;
+                }
+                this.state = 'completed';
+                this.stopAnimation();
+                this.updateDisplay();
+                this.updateControls();
+            }
+
+            reset() {
+                this.state = 'not_started';
+                this.usedMs = 0;
+                this.pausedMs = 0;
+                this.startTime = null;
+                this.pauseStart = null;
+                this.stopAnimation();
+                this.updateDisplay();
+                this.updateControls();
+            }
+
+            getCurrentTimes() {
+                const now = performance.now();
+                let currentUsed = this.usedMs;
+                let currentPaused = this.pausedMs;
+
+                if (this.state === 'in_progress' && this.startTime) {
+                    currentUsed += now - this.startTime;
+                } else if (this.state === 'on_break' && this.pauseStart) {
+                    currentPaused += now - this.pauseStart;
+                }
+
+                return { used: currentUsed, paused: currentPaused };
+            }
+
+            formatTime(ms) {
+                const totalSeconds = Math.floor(Math.abs(ms) / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            updateDisplay() {
+                const times = this.getCurrentTimes();
+                const remaining = this.slaMs - times.used;
+
+                // Update status
+                this.elements.status.textContent = this.state.toUpperCase().replace('_', ' ');
+                this.elements.status.className = `status ${this.state}`;
+
+                // Update countdown
+                if (remaining < 0) {
+                    this.elements.countdown.textContent = `OVERDUE: ${this.formatTime(-remaining)}`;
+                    this.elements.countdown.className = 'overdue';
+                } else {
+                    this.elements.countdown.textContent = this.formatTime(remaining);
+                    this.elements.countdown.className = '';
+                }
+
+                // Update time displays
+                this.elements.used.textContent = this.formatTime(times.used);
+                this.elements.paused.textContent = this.formatTime(times.paused);
+            }
+
+            updateControls() {
+                const buttons = [this.elements.start, this.elements.pause, this.elements.resume, this.elements.complete];
+                buttons.forEach(btn => {
+                    btn.classList.add('disabled');
+                    btn.disabled = true;
+                });
+
+                switch (this.state) {
+                    case 'not_started':
+                        this.enableButton(this.elements.start);
+                        break;
+                    case 'in_progress':
+                        this.enableButton(this.elements.pause);
+                        this.enableButton(this.elements.complete);
+                        break;
+                    case 'on_break':
+                        this.enableButton(this.elements.resume);
+                        this.enableButton(this.elements.complete);
+                        break;
+                }
+
+                this.enableButton(this.elements.reset);
+            }
+
+            enableButton(button) {
+                button.classList.remove('disabled');
+                button.disabled = false;
+            }
+
+            startAnimation() {
+                this.stopAnimation();
+                const animate = () => {
+                    this.updateDisplay();
+                    this.animationId = requestAnimationFrame(animate);
+                };
+                this.animationId = requestAnimationFrame(animate);
+            }
+
+            stopAnimation() {
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+            }
+        }
+
+        // Initialize timer
+        const timer = new SLATimer();
+    </script>
+</body>
+</html>

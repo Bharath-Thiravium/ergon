@@ -1,8 +1,30 @@
 <?php
 $title = 'User Management';
 $active_page = 'users';
+
+// Prevent caching of users list
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 ob_start();
 ?>
+
+<?php
+// Display success/error messages
+if (isset($_GET['success'])): ?>
+<div class="alert alert--success">
+    <i class="bi bi-check-circle-fill"></i>
+    <?= htmlspecialchars($_GET['success']) ?>
+</div>
+<?php endif; ?>
+
+<?php if (isset($_GET['error'])): ?>
+<div class="alert alert--error">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <?= htmlspecialchars($_GET['error']) ?>
+</div>
+<?php endif; ?>
 
 <div class="page-header">
     <div class="page-title">
@@ -10,9 +32,9 @@ ob_start();
         <p>Manage user roles and administrative permissions</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon/users/create" class="btn btn--primary">
+        <button class="btn btn--primary" onclick="showAddUserModal()">
             <span>➕</span> Add User
-        </a>
+        </button>
         <button class="btn btn--accent" onclick="exportUserList()">
             <span>📊</span> Export
         </button>
@@ -77,6 +99,7 @@ ob_start();
                     <?php if ($_SESSION['role'] === 'owner'): ?>
                         <?php 
                         $owners = array_filter($users, fn($u) => $u['role'] === 'owner');
+                        $companyOwners = array_filter($users, fn($u) => $u['role'] === 'company_owner');
                         $admins = array_filter($users, fn($u) => $u['role'] === 'admin');
                         $regularUsers = array_filter($users, fn($u) => $u['role'] === 'user');
                         ?>
@@ -95,6 +118,26 @@ ob_start();
                             </thead>
                             <tbody>
                                 <?php foreach ($owners as $user): ?>
+                                    <?php include 'user_row.php'; ?>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($companyOwners)): ?>
+                        <h3 class="section-title">🏢 Company Owners</h3>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($companyOwners as $user): ?>
                                     <?php include 'user_row.php'; ?>
                                 <?php endforeach; ?>
                             </tbody>
@@ -416,8 +459,8 @@ function viewUser(userId) {
     window.location.href = '/ergon/users/view/' + userId;
 }
 
-function editUser(userId) {
-    window.location.href = '/ergon/users/edit/' + userId;
+window.editUser = function(userId) {
+    showEditUserModal(userId);
 }
 
 function resetPassword(userId, userName) {
@@ -540,6 +583,351 @@ function suspendUser(userId, userName) {
         });
     }
 }
+
+function showAddUserModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content" style="width: 600px;">
+                <div class="modal-header">
+                <h3>👤 Add New User</h3>
+                <button class="modal-close" onclick="hideClosestModal(this)">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label>Full Name *</label>
+                            <input type="text" name="name" class="form-input" required>
+                        </div>
+                        <div>
+                            <label>Email *</label>
+                            <input type="email" name="email" class="form-input" required>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label>Phone</label>
+                            <input type="tel" name="phone" class="form-input">
+                        </div>
+                        <div>
+                            <label>Date of Birth</label>
+                            <input type="date" name="date_of_birth" class="form-input">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label>Gender</label>
+                            <select name="gender" class="form-input">
+                                <option value="">Select Gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Role</label>
+                            <select name="role" class="form-input">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label>Department</label>
+                            <select name="department_id" class="form-input">
+                                <option value="">Select Department</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Designation</label>
+                            <input type="text" name="designation" class="form-input">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label>Joining Date</label>
+                            <input type="date" name="joining_date" class="form-input">
+                        </div>
+                        <div>
+                            <label>Salary</label>
+                            <input type="number" name="salary" class="form-input" step="0.01">
+                        </div>
+                    </div>
+                    <div>
+                        <label>Address</label>
+                        <textarea name="address" class="form-input" rows="2"></textarea>
+                    </div>
+                    <div>
+                        <label>Emergency Contact</label>
+                        <input type="text" name="emergency_contact" class="form-input">
+                    </div>
+                    <div>
+                        <label>Status</label>
+                        <select name="status" class="form-input">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="suspended">Suspended</option>
+                            <option value="terminated">Terminated</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Documents</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div>
+                                <label style="font-size: 0.9em; color: #666;">Passport Photo</label>
+                                <input type="file" name="passport_photo" class="form-input" accept=".jpg,.jpeg,.png,.pdf">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.9em; color: #666;">Aadhar Card</label>
+                                <input type="file" name="aadhar" class="form-input" accept=".jpg,.jpeg,.png,.pdf">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.9em; color: #666;">PAN Card</label>
+                                <input type="file" name="pan" class="form-input" accept=".jpg,.jpeg,.png,.pdf">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.9em; color: #666;">Resume</label>
+                                <input type="file" name="resume" class="form-input" accept=".pdf,.doc,.docx">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.9em; color: #666;">Education Docs</label>
+                                <input type="file" name="education_docs[]" class="form-input" multiple accept=".pdf,.jpg,.jpeg,.png">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.9em; color: #666;">Experience Certs</label>
+                                <input type="file" name="experience_certs[]" class="form-input" multiple accept=".pdf,.jpg,.jpeg,.png">
+                            </div>
+                        </div>
+                        <small style="color: #666; font-size: 0.8em;">Max 5MB per file. JPG/PNG for photos, PDF/DOC for documents.</small>
+                    </div>
+
+                </form>
+            </div>
+                <div class="modal-footer">
+                <button class="btn btn--secondary" onclick="hideClosestModal(this)">Cancel</button>
+                <button class="btn btn--primary" onclick="submitUserForm()">Add User</button>
+            </div>
+        </div>
+    `;
+    
+    if (!document.getElementById('modal-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'modal-styles';
+        styles.textContent = `
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10001;
+            }
+            .modal-content {
+                background: white;
+                border-radius: 8px;
+                width: 700px;
+                max-width: 95vw;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            .modal-header {
+                padding: 16px;
+                border-bottom: 1px solid #e5e7eb;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .modal-body {
+                padding: 16px;
+            }
+            .modal-body label {
+                display: block;
+                margin-bottom: 4px;
+                font-weight: 500;
+            }
+            .modal-body .form-input {
+                width: 100%;
+                margin-bottom: 12px;
+                padding: 8px;
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                box-sizing: border-box;
+            }
+            .modal-body textarea.form-input {
+                resize: vertical;
+                min-height: 60px;
+            }
+            .modal-body input[type="file"] {
+                padding: 4px;
+                font-size: 0.9em;
+            }
+            .modal-footer {
+                padding: 16px;
+                border-top: 1px solid #e5e7eb;
+                display: flex;
+                gap: 8px;
+                justify-content: flex-end;
+            }
+            .modal-close {
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #6b7280;
+            }
+            .project-checkbox {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 4px 0;
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    document.body.appendChild(modal);
+    loadDepartments();
+}
+
+window.showEditUserModal = function(userId) {
+    // Show modal immediately
+    if (!document.getElementById('modal-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'modal-styles';
+        styles.textContent = `.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10001}.modal-content{background:white;border-radius:8px;width:700px;max-width:95vw;max-height:90vh;overflow-y:auto}.modal-header{padding:16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center}.modal-body{padding:16px}.modal-body label{display:block;margin-bottom:4px;font-weight:500}.modal-body .form-input{width:100%;margin-bottom:12px;padding:8px;border:1px solid #d1d5db;border-radius:4px;box-sizing:border-box}.modal-footer{padding:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end}.modal-close{background:none;border:none;font-size:24px;cursor:pointer}`;
+        document.head.appendChild(styles);
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `<div class="modal-content" style="width:600px"><div class="modal-header"><h3>✏️ Edit User</h3><button class="modal-close" onclick="hideClosestModal(this)">&times;</button></div><div class="modal-body"><div style="text-align:center;padding:20px">Loading...</div></div><div class="modal-footer"><button class="btn btn--secondary" onclick="hideClosestModal(this)">Cancel</button></div></div>`;
+    document.body.appendChild(modal);
+    
+    // Load data after modal is shown
+    fetch(`/ergon/api/users/${userId}`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.text();
+    })
+    .then(text => {
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('JSON parse error:', e, 'Response:', text);
+            throw new Error('Invalid JSON response');
+        }
+    })
+        .then(data => {
+        if (!data.success) {
+            if (typeof hideClosestModal === 'function') hideClosestModal(modal); else if (modal && modal.parentNode) modal.parentNode.removeChild(modal);
+            alert('Failed to load user data');
+            return;
+        }
+        
+        const user = data.user;
+        modal.querySelector('.modal-body').innerHTML = `<form id="userForm"><input type="hidden" name="user_id" value="${user.id}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Full Name *</label><input type="text" name="name" class="form-input" value="${user.name||''}" required></div><div><label>Email *</label><input type="email" name="email" class="form-input" value="${user.email||''}" required></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Phone</label><input type="tel" name="phone" class="form-input" value="${user.phone||''}"></div><div><label>Date of Birth</label><input type="date" name="date_of_birth" class="form-input" value="${user.date_of_birth||''}"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Gender</label><select name="gender" class="form-input"><option value="">Select Gender</option><option value="male" ${user.gender==='male'?'selected':''}>Male</option><option value="female" ${user.gender==='female'?'selected':''}>Female</option><option value="other" ${user.gender==='other'?'selected':''}>Other</option></select></div><div><label>Role</label><select name="role" class="form-input"><option value="user" ${user.role==='user'?'selected':''}>User</option><option value="admin" ${user.role==='admin'?'selected':''}>Admin</option></select></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Department</label><select name="department_id" class="form-input"><option value="">Loading...</option></select></div><div><label>Designation</label><input type="text" name="designation" class="form-input" value="${user.designation||''}"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Joining Date</label><input type="date" name="joining_date" class="form-input" value="${user.joining_date||''}"></div><div><label>Salary</label><input type="number" name="salary" class="form-input" step="0.01" value="${user.salary||''}"></div></div><div><label>Address</label><textarea name="address" class="form-input" rows="2">${user.address||''}</textarea></div><div><label>Emergency Contact</label><input type="text" name="emergency_contact" class="form-input" value="${user.emergency_contact||''}"></div><div><label>Status</label><select name="status" class="form-input"><option value="active" ${user.status==='active'?'selected':''}>Active</option><option value="inactive" ${user.status==='inactive'?'selected':''}>Inactive</option><option value="suspended" ${user.status==='suspended'?'selected':''}>Suspended</option><option value="terminated" ${user.status==='terminated'?'selected':''}>Terminated</option></select></div><div><label>Documents</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label style="font-size:0.9em;color:#666">Passport Photo</label><input type="file" name="passport_photo" class="form-input" accept=".jpg,.jpeg,.png,.pdf"></div><div><label style="font-size:0.9em;color:#666">Aadhar Card</label><input type="file" name="aadhar" class="form-input" accept=".jpg,.jpeg,.png,.pdf"></div><div><label style="font-size:0.9em;color:#666">PAN Card</label><input type="file" name="pan" class="form-input" accept=".jpg,.jpeg,.png,.pdf"></div><div><label style="font-size:0.9em;color:#666">Resume</label><input type="file" name="resume" class="form-input" accept=".pdf,.doc,.docx"></div><div><label style="font-size:0.9em;color:#666">Education Docs</label><input type="file" name="education_docs[]" class="form-input" multiple accept=".pdf,.jpg,.jpeg,.png"></div><div><label style="font-size:0.9em;color:#666">Experience Certs</label><input type="file" name="experience_certs[]" class="form-input" multiple accept=".pdf,.jpg,.jpeg,.png"></div></div><small style="color:#666;font-size:0.8em">Max 5MB per file. JPG/PNG for photos, PDF/DOC for documents.</small></div></form>`;
+        modal.querySelector('.modal-footer').innerHTML = `<button class="btn btn--secondary" onclick="hideClosestModal(this)">Cancel</button><button class="btn btn--primary" onclick="submitUserForm(true)">Update User</button>`;
+        loadDepartments(user.department_id);
+    })
+    .catch(error => {
+        if (typeof hideClosestModal === 'function') hideClosestModal(modal); else if (modal && modal.parentNode) modal.parentNode.removeChild(modal);
+        alert('Failed to load user data');
+    });
+};
+
+function loadDepartments(selectedDept = null) {
+    fetch('/ergon/api/departments')
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.text();
+    })
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            const deptSelect = document.querySelector('select[name="department_id"]');
+            if (data.success && data.departments) {
+                deptSelect.innerHTML = '<option value="">Select Department</option>';
+                data.departments.forEach(dept => {
+                    const option = document.createElement('option');
+                    option.value = dept.id;
+                    option.textContent = dept.name;
+                    if (selectedDept == dept.id) option.selected = true;
+                    deptSelect.appendChild(option);
+                });
+            } else {
+                deptSelect.innerHTML = '<option value="">Error loading departments</option>';
+            }
+        } catch (e) {
+            console.error('JSON parse error:', e, 'Response:', text);
+            const deptSelect = document.querySelector('select[name="department_id"]');
+            if (deptSelect) {
+                deptSelect.innerHTML = '<option value="">Error loading departments</option>';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error loading departments:', error);
+        const deptSelect = document.querySelector('select[name="department_id"]');
+        if (deptSelect) {
+            deptSelect.innerHTML = '<option value="">Error: ' + error.message + '</option>';
+        }
+    });
+}
+
+
+
+// Modal utility function
+function hideClosestModal(element) {
+    const modal = element.closest('.modal-overlay');
+    if (modal && modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+    }
+}
+
+function submitUserForm(isEdit = false) {
+    const form = document.getElementById('userForm');
+    const formData = new FormData(form);
+    
+    // Add selected projects
+    const selectedProjects = Array.from(document.querySelectorAll('input[name="projects[]"]:checked')).map(cb => cb.value);
+    formData.delete('projects[]');
+    selectedProjects.forEach(projectId => formData.append('projects[]', projectId));
+    
+    // Add ajax flag for proper response handling
+    formData.append('ajax', '1');
+    
+    const url = isEdit ? '/ergon/users/edit' : '/ergon/users/create';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const __existingModal = document.querySelector('.modal-overlay');
+            if(__existingModal && typeof hideClosestModal === 'function') hideClosestModal(__existingModal);
+            alert(isEdit ? 'User updated successfully!' : 'User created successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to save user'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to save user');
+    });
+}
 </script>
 
 <style>
@@ -579,6 +967,33 @@ function suspendUser(userId, userName) {
 .badge--primary {
     background-color: #007bff;
     color: white;
+}
+
+/* Alert Messages */
+.alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.alert--success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert--error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.alert i {
+    font-size: 16px;
 }
 </style>
 

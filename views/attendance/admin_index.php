@@ -112,69 +112,31 @@ ob_start();
                         <th class="table-header__cell">
                 <div class="table-header__content">
                     <span class="table-header__text">Admin Name</span>
-                    <div class="table-header__controls">
-                        <span class="table-header__sort" data-column="admin_name_0" data-direction="none">⇅</span>
-                        <span class="table-header__filter" data-column="admin_name_0">🔍</span>
-                    </div>
-                </div>
-                <div class="table-filter-dropdown" data-column="admin_name_0">
-                    <input type="text" class="filter-input" placeholder="Search Admin Name...">
-                    <div class="filter-options"></div>
-                    <div class="filter-actions">
-                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
-                        <button class="filter-btn" data-action="clear">Clear</button>
-                    </div>
                 </div>
             </th>
                         <th class="table-header__cell">
                 <div class="table-header__content">
                     <span class="table-header__text">Date &amp; Status</span>
-                    <div class="table-header__controls">
-                        <span class="table-header__sort" data-column="date___status_1" data-direction="none">⇅</span>
-                        <span class="table-header__filter" data-column="date___status_1">🔍</span>
-                    </div>
                 </div>
-                <div class="table-filter-dropdown" data-column="date___status_1">
-                    <input type="text" class="filter-input" placeholder="Search Date &amp; Status...">
-                    <div class="filter-options"></div>
-                    <div class="filter-actions">
-                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
-                        <button class="filter-btn" data-action="clear">Clear</button>
-                    </div>
+            </th>
+                        <th class="table-header__cell">
+                <div class="table-header__content">
+                    <span class="table-header__text">Location</span>
+                </div>
+            </th>
+                        <th class="table-header__cell">
+                <div class="table-header__content">
+                    <span class="table-header__text">Project</span>
                 </div>
             </th>
                         <th class="table-header__cell">
                 <div class="table-header__content">
                     <span class="table-header__text">Working Hours</span>
-                    <div class="table-header__controls">
-                        <span class="table-header__sort" data-column="working_hours_2" data-direction="none">⇅</span>
-                        <span class="table-header__filter" data-column="working_hours_2">🔍</span>
-                    </div>
-                </div>
-                <div class="table-filter-dropdown" data-column="working_hours_2">
-                    <input type="text" class="filter-input" placeholder="Search Working Hours...">
-                    <div class="filter-options"></div>
-                    <div class="filter-actions">
-                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
-                        <button class="filter-btn" data-action="clear">Clear</button>
-                    </div>
                 </div>
             </th>
                         <th class="table-header__cell">
                 <div class="table-header__content">
                     <span class="table-header__text">Check Times</span>
-                    <div class="table-header__controls">
-                        <span class="table-header__sort" data-column="check_times_3" data-direction="none">⇅</span>
-                        <span class="table-header__filter" data-column="check_times_3">🔍</span>
-                    </div>
-                </div>
-                <div class="table-filter-dropdown" data-column="check_times_3">
-                    <input type="text" class="filter-input" placeholder="Search Check Times...">
-                    <div class="filter-options"></div>
-                    <div class="filter-actions">
-                        <button class="filter-btn filter-btn--primary" data-action="apply">Apply</button>
-                        <button class="filter-btn" data-action="clear">Clear</button>
-                    </div>
                 </div>
             </th>
                     </tr>
@@ -194,6 +156,16 @@ ob_start();
                                         <?= $admin_attendance['check_in'] ? '✅ Present' : '❌ Absent' ?>
                                     </span>
                                 </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="cell-meta">
+                                <div class="cell-primary"><?= htmlspecialchars($admin_attendance['location_display'] ?? '---') ?></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="cell-meta">
+                                <div class="cell-primary"><?= htmlspecialchars($admin_attendance['project_name'] ?? '----') ?></div>
                             </div>
                         </td>
                         <td>
@@ -225,7 +197,7 @@ ob_start();
                     </tr>
                     <?php else: ?>
                     <tr>
-                        <td colspan="4" class="text-center">
+                        <td colspan="6" class="text-center">
                             <div class="empty-state">
                                 <div class="empty-icon">📍</div>
                                 <h3>No Personal Records</h3>
@@ -264,6 +236,8 @@ ob_start();
                             <th>Employee Name</th>
                             <th>Department</th>
                             <th>Status</th>
+                            <th>Location</th>
+                            <th>Project</th>
                             <th>Check In</th>
                             <th>Check Out</th>
                             <th>Total Hours</th>
@@ -280,7 +254,7 @@ ob_start();
                                     </div>
                                     <div>
                                         <div style="font-weight: 500;"><?= htmlspecialchars($employee['name']) ?></div>
-                                        <div style="font-size: 0.75rem; color: #6b7280;"><?= htmlspecialchars($employee['email']) ?></div>
+                                        <div style="font-size: 0.75rem; color: #6b7280;">Role: <?= ucfirst($employee['role'] ?? 'Employee') ?></div>
                                     </div>
                                 </div>
                             </td>
@@ -294,13 +268,15 @@ ob_start();
                                     </span>
                                 <?php endif; ?>
                             </td>
+                            <td><?= htmlspecialchars($employee['location_display'] ?? '---') ?></td>
+                            <td><?= htmlspecialchars($employee['project_name'] ?? '----') ?></td>
                             <td>
                                 <?php if ($employee['check_in']): ?>
                                     <span style="color: #059669; font-weight: 500;">
                                         <?= TimezoneHelper::displayTime($employee['check_in']) ?>
                                     </span>
                                 <?php else: ?>
-                                    <span style="color: #6b7280;">-</span>
+                                    <span style="color: #6b7280;">Not set</span>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -311,16 +287,16 @@ ob_start();
                                 <?php elseif ($employee['check_in']): ?>
                                     <span style="color: #f59e0b; font-weight: 500;">Working...</span>
                                 <?php else: ?>
-                                    <span style="color: #6b7280;">-</span>
+                                    <span style="color: #6b7280;">Not set</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($employee['total_hours'] > 0): ?>
+                                <?php if (isset($employee['working_hours']) && $employee['working_hours'] !== '0h 0m'): ?>
                                     <span style="color: #1f2937; font-weight: 500;">
-                                        <?= number_format($employee['total_hours'], 2) ?>h
+                                        <?= htmlspecialchars($employee['working_hours']) ?>
                                     </span>
                                 <?php else: ?>
-                                    <span style="color: #6b7280;">0h</span>
+                                    <span style="color: #6b7280;">0h 0m</span>
                                 <?php endif; ?>
                             </td>
                             <td>

@@ -28,7 +28,7 @@ class AdminManagementController extends Controller {
             $column = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($column && strpos($column['Type'], 'terminated') === false) {
-                $db->exec("ALTER TABLE users MODIFY COLUMN status ENUM('active', 'inactive', 'suspended', 'terminated') DEFAULT 'active'");
+                DatabaseHelper::safeExec($db, "ALTER TABLE users MODIFY COLUMN status ENUM('active', 'inactive', 'suspended', 'terminated') DEFAULT 'active'", "Alter table");
                 error_log('Updated users status column to support terminated');
             }
         } catch (Exception $e) {

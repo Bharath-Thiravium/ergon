@@ -28,15 +28,20 @@ function runFinanceETL() {
                 echo "ETL failed: {$result['error']}\n";
             }
         } else {
-            // Run ETL for each company prefix
+            // Run ETL for each company prefix with error isolation
             foreach ($prefixes as $prefix) {
-                echo "Running ETL for company prefix: $prefix\n";
-                $result = $etlService->runETL($prefix);
-                
-                if ($result['success']) {
-                    echo "ETL completed for $prefix: {$result['records_processed']} records processed\n";
-                } else {
-                    echo "ETL failed for $prefix: {$result['error']}\n";
+                try {
+                    echo "Running ETL for company prefix: $prefix\n";
+                    $result = $etlService->runETL($prefix);
+                    
+                    if ($result['success']) {
+                        echo "ETL completed for $prefix: {$result['records_processed']} records processed\n";
+                    } else {
+                        echo "ETL failed for $prefix: {$result['error']}\n";
+                    }
+                } catch (Exception $e) {
+                    echo "ETL error for $prefix: " . $e->getMessage() . "\n";
+                    continue; // Continue with next prefix
                 }
             }
         }
