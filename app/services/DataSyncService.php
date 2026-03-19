@@ -10,7 +10,7 @@ class DataSyncService {
     }
     
     private function getPostgreSQLConnection() {
-        $config = require_once __DIR__ . '/../config/database.php';
+        $config = Database::getPostgreSQLConfig();
         $pg = $config['postgresql'];
         
         try {
@@ -20,7 +20,8 @@ class DataSyncService {
                 $pg['password'],
                 [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_TIMEOUT => 30
                 ]
             );
             return $pdo;
@@ -30,7 +31,7 @@ class DataSyncService {
     }
     
     private function getMySQLConnection() {
-        $config = require_once __DIR__ . '/../config/database.php';
+        $config = Database::getPostgreSQLConfig();
         $mysql = $config['mysql'];
         
         try {
@@ -40,7 +41,8 @@ class DataSyncService {
                 $mysql['password'],
                 [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_TIMEOUT => 30
                 ]
             );
             return $pdo;

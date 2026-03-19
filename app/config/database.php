@@ -75,5 +75,25 @@ class Database {
     public function getEnvironment() {
         return Environment::isDevelopment() ? 'development' : 'production';
     }
+    
+    // PostgreSQL configuration for sync services
+    public static function getPostgreSQLConfig() {
+        return [
+            'postgresql' => [
+                'host' => $_ENV['SAP_PG_HOST'] ?? $_ENV['PG_HOST'] ?? '72.60.218.167',
+                'port' => $_ENV['SAP_PG_PORT'] ?? $_ENV['PG_PORT'] ?? 5432,
+                'database' => $_ENV['SAP_PG_DB'] ?? $_ENV['PG_DATABASE'] ?? 'modernsap',
+                'username' => $_ENV['SAP_PG_USER'] ?? $_ENV['PG_USER'] ?? 'postgres',
+                'password' => $_ENV['SAP_PG_PASS'] ?? $_ENV['PG_PASS'] ?? 'mango'
+            ],
+            'mysql' => [
+                'host' => $_ENV['DB_HOST'] ?? (Environment::isDevelopment() ? 'localhost' : 'localhost'),
+                'port' => $_ENV['DB_PORT'] ?? 3306,
+                'database' => $_ENV['DB_NAME'] ?? (Environment::isDevelopment() ? 'ergon_db' : 'u494785662_ergon'),
+                'username' => $_ENV['DB_USER'] ?? (Environment::isDevelopment() ? 'root' : 'u494785662_ergon'),
+                'password' => $_ENV['DB_PASS'] ?? (Environment::isDevelopment() ? '' : '@Admin@2025@')
+            ]
+        ];
+    }
 }
 ?>
