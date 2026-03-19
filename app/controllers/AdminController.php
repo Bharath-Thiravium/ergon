@@ -284,6 +284,18 @@ class AdminController extends Controller {
         }
     }
     
+    /** Convert DD-MM-YYYY to YYYY-MM-DD for DB storage. Returns today if blank/invalid. */
+    private function toDbDate(string $raw, string $fallback = ''): ?string {
+        $raw = trim($raw);
+        if ($raw === '') return $fallback !== '' ? $fallback : null;
+        if (preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', $raw, $m)) {
+            return "{$m[3]}-{$m[2]}-{$m[1]}";
+        }
+        // Already YYYY-MM-DD (fallback tolerance)
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) return $raw;
+        return $fallback !== '' ? $fallback : null;
+    }
+
     public function adminEntry() {
         AuthMiddleware::requireRole('admin');
 
@@ -316,8 +328,8 @@ class AdminController extends Controller {
                     $advType = trim($_POST['advance_type'] ?? 'General Advance');
                     $reason  = trim($_POST['reason'] ?? '');
                     $projectId = intval($_POST['project_id'] ?? 0) ?: null;
-                    $advanceDate   = !empty($_POST['advance_date']) ? $_POST['advance_date'] : date('Y-m-d');
-                    $repaymentDate = !empty($_POST['repayment_date']) ? $_POST['repayment_date'] : null;
+                    $advanceDate   = $this->toDbDate($_POST['advance_date'] ?? '', date('Y-m-d'));
+                    $repaymentDate = $this->toDbDate($_POST['repayment_date'] ?? '');
 
                     $stmt = $db->prepare("INSERT INTO advances (user_id, project_id, type, amount, reason, requested_date, repayment_date, status, approved_by, approved_at, approved_amount, paid_by, paid_at, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, 'paid', ?, NOW(), ?, ?, NOW(), NOW())");
@@ -328,7 +340,7 @@ class AdminController extends Controller {
                 } else {
                     $category    = trim($_POST['category'] ?? 'other');
                     $description = trim($_POST['description'] ?? '');
-                    $expenseDate = !empty($_POST['expense_date']) ? $_POST['expense_date'] : date('Y-m-d');
+                    $expenseDate = $this->toDbDate($_POST['expense_date'] ?? '', date('Y-m-d'));
                     $projectId   = intval($_POST['project_id'] ?? 0) ?: null;
 
                     $stmt = $db->prepare("INSERT INTO expenses (user_id, project_id, category, amount, description, expense_date, status, approved_by, approved_at, approved_amount, paid_by, paid_at, created_at)
@@ -367,7 +379,8 @@ class AdminController extends Controller {
 
         $advanceTypes = ['Salary Advance', 'Travel Advance', 'Emergency Advance', 'Project Advance', 'General Advance'];
         $expenseCategories = ['travel', 'food', 'accommodation', 'office_supplies', 'communication', 'training', 'medical', 'other'];
-        $today = date('Y-m-d');
+        $today = date('d-m-Y');
+        $future = date('d-m-Y', strtotime('+60 days'));
         $proj1 = $projects[0] ?? '';
 
         header('Content-Type: text/csv; charset=utf-8');
@@ -386,7 +399,7 @@ class AdminController extends Controller {
                     (($i + 1) * 2000),
                     'Sample reason for advance',
                     $today,
-                    date('Y-m-d', strtotime('+60 days')),
+                    $future,
                     $i === 1 ? $proj1 : ''
                 ]);
             }
@@ -506,7 +519,7 @@ class AdminController extends Controller {
 
             while (($row = fgetcsv($handle)) !== false) {
                 $rowNum++;
-                if (isset($raw[0]) && str_starts_with(trim($raw[0] ?? ''), '#')) continue;
+                if (isset($row[0]) && str_starts_with(trim($row[0]), '#')) continue;
                 if (count(array_filter(array_map('trim', $row))) === 0) continue;
 
                 $data = array_combine($headers, array_pad($row, count($headers), ''));
@@ -533,8 +546,8 @@ class AdminController extends Controller {
                     if ($type === 'advance') {
                         $advType = trim($data['advance_type'] ?? 'General Advance') ?: 'General Advance';
                         $reason  = trim($data['reason'] ?? '') ?: 'Bulk entry by admin';
-                        $advDate = !empty($data['advance_date']) ? $data['advance_date'] : date('Y-m-d');
-                        $repDate = !empty($data['repayment_date']) ? $data['repayment_date'] : null;
+                        $advDate = $this->toDbDate($data['advance_date'] ?? '', date('Y-m-d'));
+                        $repDate = $this->toDbDate($data['repayment_date'] ?? '');
                         $stmt = $db->prepare("INSERT INTO advances (user_id,project_id,type,amount,reason,requested_date,repayment_date,status,approved_by,approved_at,approved_amount,paid_by,paid_at,created_at) VALUES (?,?,?,?,?,?,?,'paid',?,NOW(),?,?,NOW(),NOW())");
                         $stmt->execute([$userId,$projectId,$advType,$amount,$reason,$advDate,$repDate,$_SESSION['user_id'],$amount,$_SESSION['user_id']]);
                         $id = $db->lastInsertId();
@@ -542,7 +555,7 @@ class AdminController extends Controller {
                     } else {
                         $category = trim($data['category'] ?? 'other') ?: 'other';
                         $desc     = trim($data['description'] ?? '') ?: 'Bulk entry by admin';
-                        $expDate  = !empty($data['expense_date']) ? $data['expense_date'] : date('Y-m-d');
+                        $expDate = $this->toDbDate($data['expense_date'] ?? '', date('Y-m-d'));
                         $stmt = $db->prepare("INSERT INTO expenses (user_id,project_id,category,amount,description,expense_date,status,approved_by,approved_at,approved_amount,paid_by,paid_at,created_at) VALUES (?,?,?,?,?,?,'paid',?,NOW(),?,?,NOW(),NOW())");
                         $stmt->execute([$userId,$projectId,$category,$amount,$desc,$expDate,$_SESSION['user_id'],$amount,$_SESSION['user_id']]);
                         $id = $db->lastInsertId();

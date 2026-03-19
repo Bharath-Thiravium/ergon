@@ -901,13 +901,13 @@ ob_start();
             <div id="colRef-advance" class="column-ref">
                 <div class="column-ref-title">Required columns for Advances:</div>
                 <div class="column-code">
-                    employee_name &nbsp;|&nbsp; advance_type &nbsp;|&nbsp; amount &nbsp;|&nbsp; reason &nbsp;|&nbsp; advance_date &nbsp;|&nbsp; repayment_date <em>(optional)</em> &nbsp;|&nbsp; project_name <em>(optional)</em>
+                    employee_name &nbsp;|&nbsp; advance_type &nbsp;|&nbsp; amount &nbsp;|&nbsp; reason &nbsp;|&nbsp; advance_date <em>(DD-MM-YYYY)</em> &nbsp;|&nbsp; repayment_date <em>(DD-MM-YYYY, optional)</em> &nbsp;|&nbsp; project_name <em>(optional)</em>
                 </div>
             </div>
             <div id="colRef-expense" class="column-ref" style="display:none;">
                 <div class="column-ref-title">Required columns for Expenses:</div>
                 <div class="column-code">
-                    employee_name &nbsp;|&nbsp; category &nbsp;|&nbsp; amount &nbsp;|&nbsp; description &nbsp;|&nbsp; expense_date &nbsp;|&nbsp; project_name <em>(optional)</em>
+                    employee_name &nbsp;|&nbsp; category &nbsp;|&nbsp; amount &nbsp;|&nbsp; description &nbsp;|&nbsp; expense_date <em>(DD-MM-YYYY)</em> &nbsp;|&nbsp; project_name <em>(optional)</em>
                 </div>
             </div>
 

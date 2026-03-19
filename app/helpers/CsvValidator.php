@@ -170,10 +170,10 @@ class CsvValidator {
             $this->validateDate($repDate, 'repayment_date', false, $errors, $warnings);
             // repayment must be after advance_date
             $advDate = trim($data['advance_date'] ?? '');
-            if ($advDate !== '' && $repDate !== '' && strtotime($repDate) !== false && strtotime($advDate) !== false) {
-                if (strtotime($repDate) <= strtotime($advDate)) {
-                    $warnings[] = 'repayment_date should be after advance_date';
-                }
+            $tsRep = $this->parseDMY($repDate);
+            $tsAdv = $this->parseDMY($advDate);
+            if ($tsRep !== false && $tsAdv !== false && $tsRep <= $tsAdv) {
+                $warnings[] = 'repayment_date should be after advance_date';
             }
         }
 
@@ -236,25 +236,29 @@ class CsvValidator {
         }
     }
 
+    /**
+     * Parse a DD-MM-YYYY string to a Unix timestamp, or return false.
+     */
+    private function parseDMY(string $raw): int|false {
+        if (!preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', $raw, $m)) return false;
+        [$_, $d, $mo, $y] = $m;
+        if (!checkdate((int)$mo, (int)$d, (int)$y)) return false;
+        return mktime(0, 0, 0, (int)$mo, (int)$d, (int)$y);
+    }
+
     private function validateDate(string $raw, string $field, bool $required, array &$errors, array &$warnings): void {
         $raw = trim($raw);
         if ($raw === '') {
             if ($required) $errors[] = "{$field} is required";
             return;
         }
-        // Accept YYYY-MM-DD only
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
-            $errors[] = "{$field} \"{$raw}\" must be in YYYY-MM-DD format";
-            return;
-        }
-        $ts = strtotime($raw);
-        if ($ts === false || date('Y-m-d', $ts) !== $raw) {
-            $errors[] = "{$field} \"{$raw}\" is not a valid calendar date";
+        $ts = $this->parseDMY($raw);
+        if ($ts === false) {
+            $errors[] = "{$field} \"{$raw}\" must be a valid date in DD-MM-YYYY format";
             return;
         }
         // Warn if date is more than 2 years in the past or future
-        $diff = abs(time() - $ts);
-        if ($diff > 2 * 365 * 86400) {
+        if (abs(time() - $ts) > 2 * 365 * 86400) {
             $warnings[] = "{$field} \"{$raw}\" is more than 2 years from today — please verify";
         }
     }
