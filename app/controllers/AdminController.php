@@ -1,7 +1,7 @@
 <?php
 /**
  * Admin Controller - Department Admin vs System Admin
- * Ergon - Employee Tracker & Task Manager
+ * Ergon-Site - Employee Tracker & Task Manager
  */
 
 require_once __DIR__ . '/../core/Controller.php';
@@ -379,7 +379,7 @@ class AdminController extends Controller {
 
         $advanceTypes = ['Salary Advance', 'Travel Advance', 'Emergency Advance', 'Project Advance', 'General Advance'];
         $expenseCategories = [
-            'travel', 'food', 'accommodation', 'office_supplies', 'utilities', 'training_development', 'medical_expenses', 'material_costs', 'equipment_machinery', 'contractor_subcontractor', 'transportation_logistics', 'work_advance', 'maintenance_repairs', 'insurance', 'legal_professional', 'marketing_advertising', 'others',
+            'travel', 'food', 'accommodation', 'office_supplies', 'utilities', 'training_development', 'medical_expenses', 'material_costs', 'equipment_machinery', 'contractor_subcontractor', 'transportation_logistics', 'work_advance', 'maintenance_repairs', 'insurance', 'legal_professional', 'marketing_advertising', 'others', 'salary',
             // Enhanced categories
             'software_licenses', 'fuel_vehicle', 'communication', 'entertainment_client', 'books_publications', 'conference_events', 'parking_tolls', 'subscriptions_memberships', 'bank_charges', 'postage_shipping', 'security_services', 'cleaning_janitorial', 'rent_lease', 'taxes_fees', 'research_development', 'gifts_awards', 'charitable_donations', 'website_domain', 'photography_videography', 'translation_services', 'recruitment_hiring', 'quality_assurance', 'waste_disposal'
         ];
