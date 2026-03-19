@@ -688,7 +688,7 @@ class ExpenseController extends Controller {
                 } catch (Exception $le) {
                     $ledgerAmount = floatval($expense['amount']);
                 }
-                LedgerHelper::recordEntry($expense['user_id'], 'expense', 'expense', $id, $ledgerAmount, 'debit');
+                LedgerHelper::recordEntry($expense['user_id'], 'expense', 'expense', $id, $ledgerAmount, 'debit', $expense['expense_date']);
                 header('Location: ' . Environment::getBaseUrl() . '/expenses?success=Expense marked as paid');
             } else {
                 header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Failed to mark paid');

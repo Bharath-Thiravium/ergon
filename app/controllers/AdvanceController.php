@@ -414,7 +414,7 @@ class AdvanceController extends Controller {
                     $row2 = $stmt2->fetch(PDO::FETCH_ASSOC);
                     if ($row2 && $row2['approved_amount']) $ledgerAmount = floatval($row2['approved_amount']);
                 } catch (Exception $e) {}
-                LedgerHelper::recordEntry($advance['user_id'], 'advance', 'advance', $id, $ledgerAmount, 'credit');
+                LedgerHelper::recordEntry($advance['user_id'], 'advance', 'advance', $id, $ledgerAmount, 'credit', $advance['requested_date']);
                 header('Location: ' . Environment::getBaseUrl() . '/advances?success=Advance marked as paid');
             } else {
                 header('Location: ' . Environment::getBaseUrl() . '/advances?error=Failed to mark paid');

@@ -335,7 +335,7 @@ class AdminController extends Controller {
                         VALUES (?, ?, ?, ?, ?, ?, ?, 'paid', ?, NOW(), ?, ?, NOW(), NOW())");
                     $stmt->execute([$userId, $projectId, $advType, $amount, $reason, $advanceDate, $repaymentDate, $_SESSION['user_id'], $amount, $_SESSION['user_id']]);
                     $id = $db->lastInsertId();
-                    LedgerHelper::recordEntry($userId, 'advance', 'advance', $id, $amount, 'credit');
+                    LedgerHelper::recordEntry($userId, 'advance', 'advance', $id, $amount, 'credit', $advanceDate);
                     echo json_encode(['success' => true, 'message' => 'Advance entry saved successfully']);
                 } else {
                     $category    = trim($_POST['category'] ?? 'other');
@@ -347,7 +347,7 @@ class AdminController extends Controller {
                         VALUES (?, ?, ?, ?, ?, ?, 'paid', ?, NOW(), ?, ?, NOW(), NOW())");
                     $stmt->execute([$userId, $projectId, $category, $amount, $description, $expenseDate, $_SESSION['user_id'], $amount, $_SESSION['user_id']]);
                     $id = $db->lastInsertId();
-                    LedgerHelper::recordEntry($userId, 'expense', 'expense', $id, $amount, 'debit');
+                    LedgerHelper::recordEntry($userId, 'expense', 'expense', $id, $amount, 'debit', $expenseDate);
                     echo json_encode(['success' => true, 'message' => 'Expense entry saved successfully']);
                 }
             } catch (Exception $e) {
@@ -555,7 +555,7 @@ class AdminController extends Controller {
                         $stmt = $db->prepare("INSERT INTO advances (user_id,project_id,type,amount,reason,requested_date,repayment_date,status,approved_by,approved_at,approved_amount,paid_by,paid_at,created_at) VALUES (?,?,?,?,?,?,?,'paid',?,NOW(),?,?,NOW(),NOW())");
                         $stmt->execute([$userId,$projectId,$advType,$amount,$reason,$advDate,$repDate,$_SESSION['user_id'],$amount,$_SESSION['user_id']]);
                         $id = $db->lastInsertId();
-                        LedgerHelper::recordEntry($userId,'advance','advance',$id,$amount,'credit');
+                        LedgerHelper::recordEntry($userId,'advance','advance',$id,$amount,'credit',$advDate);
                     } else {
                         $category = trim($data['category'] ?? 'other') ?: 'other';
                         $desc     = trim($data['description'] ?? '') ?: 'Bulk entry by admin';
@@ -563,7 +563,7 @@ class AdminController extends Controller {
                         $stmt = $db->prepare("INSERT INTO expenses (user_id,project_id,category,amount,description,expense_date,status,approved_by,approved_at,approved_amount,paid_by,paid_at,created_at) VALUES (?,?,?,?,?,?,'paid',?,NOW(),?,?,NOW(),NOW())");
                         $stmt->execute([$userId,$projectId,$category,$amount,$desc,$expDate,$_SESSION['user_id'],$amount,$_SESSION['user_id']]);
                         $id = $db->lastInsertId();
-                        LedgerHelper::recordEntry($userId,'expense','expense',$id,$amount,'debit');
+                        LedgerHelper::recordEntry($userId,'expense','expense',$id,$amount,'debit',$expDate);
                     }
                     $results['inserted']++;
                     $results['rows'][] = [

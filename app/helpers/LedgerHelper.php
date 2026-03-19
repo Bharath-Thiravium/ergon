@@ -18,11 +18,14 @@ class LedgerHelper {
         )");
     }
 
-    public static function recordEntry($userId, $entryType, $referenceType, $referenceId, $amount, $direction = 'credit') {
+    public static function recordEntry($userId, $entryType, $referenceType, $referenceId, $amount, $direction = 'credit', $entryDate = null) {
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             self::ensureTable();
+
+            // Use provided date or current timestamp
+            $dateToUse = $entryDate ? $entryDate : date('Y-m-d H:i:s');
 
             // compute previous balance
             $stmt = $db->prepare("SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END) - SUM(CASE WHEN direction='debit' THEN amount ELSE 0 END),0) as bal FROM user_ledgers WHERE user_id = ?");
@@ -32,8 +35,8 @@ class LedgerHelper {
 
             $balanceAfter = $prev + ($direction === 'credit' ? $amount : -$amount);
 
-            $stmt = $db->prepare("INSERT INTO user_ledgers (user_id, reference_type, reference_id, entry_type, direction, amount, balance_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
-            return $stmt->execute([$userId, $referenceType, $referenceId, $entryType, $direction, $amount, $balanceAfter]);
+            $stmt = $db->prepare("INSERT INTO user_ledgers (user_id, reference_type, reference_id, entry_type, direction, amount, balance_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            return $stmt->execute([$userId, $referenceType, $referenceId, $entryType, $direction, $amount, $balanceAfter, $dateToUse]);
         } catch (Exception $e) {
             error_log('Ledger record error: ' . $e->getMessage());
             return false;
