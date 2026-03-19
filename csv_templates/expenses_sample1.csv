@@ -1,0 +1,18 @@
+employee_name,category,amount,description,expense_date,project_name
+John Smith,travel,1200,Cab fare for client meeting at Bandra office,2025-01-15,
+Jane Doe,food,850,Team lunch during project review meeting,2025-01-16,Market Research Project
+Ravi Kumar,accommodation,4500,Hotel stay for 2 nights during outstation visit,2025-01-17,
+Priya Nair,office_supplies,650,Stationery and printing for project documentation,2025-01-18,Website Redesign
+Amit Shah,utilities,300,Internet and phone bills for office,2025-01-19,
+Sunita Rao,training_development,3500,Online course subscription for skill development,2025-01-20,
+Deepak Verma,medical_expenses,1800,Medical reimbursement as per company policy,2025-01-21,
+Meera Patel,material_costs,2500,Raw materials for project development,2025-01-22,Construction Project
+Rahul Singh,equipment_machinery,15000,New laptop for development work,2025-01-23,
+Kavita Sharma,contractor_subcontractor,8500,Payment to freelance designer,2025-01-24,Website Redesign
+Vijay Kumar,transportation_logistics,1200,Courier charges for document delivery,2025-01-25,
+Anita Gupta,work_advance,5000,Advance for upcoming business trip,2025-01-26,
+Sanjay Mehta,maintenance_repairs,3200,Office equipment repair and maintenance,2025-01-27,
+Pooja Jain,insurance,2800,Professional liability insurance premium,2025-01-28,
+Arun Reddy,legal_professional,12000,Legal consultation fees for contract review,2025-01-29,
+Nisha Agarwal,marketing_advertising,4500,Social media advertising campaign,2025-01-30,Marketing Campaign
+Rohit Joshi,others,800,Miscellaneous office expenses,2025-01-31,

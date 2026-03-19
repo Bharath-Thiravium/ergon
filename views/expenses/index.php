@@ -601,14 +601,23 @@ document.getElementById('markPaidForm').addEventListener('submit', function(e) {
                         <label>Category *</label>
                         <select id="category" name="category" class="form-input" required>
                             <option value="">Select Category</option>
-                            <option value="travel">🚗 Travel & Transportation</option>
-                            <option value="food">🍽️ Food & Meals</option>
-                            <option value="accommodation">🏨 Accommodation</option>
+                            <option value="material_costs">🧱 Material Costs</option>
+                            <option value="salary">💰 Salary</option>
+                            <option value="equipment_machinery">⚙️ Equipment & Machinery Costs</option>
                             <option value="office_supplies">📋 Office Supplies</option>
-                            <option value="communication">📱 Communication</option>
-                            <option value="training">📚 Training & Development</option>
-                            <option value="medical">🏥 Medical Expenses</option>
-                            <option value="other">📦 Other</option>
+                            <option value="contractor_subcontractor">👷 Contractor & Subcontractor Costs</option>
+                            <option value="transportation_logistics">🚛 Transportation & Logistics</option>
+                            <option value="medical_expenses">🏥 Medical Expenses</option>
+                            <option value="food">🍽️ Food</option>
+                            <option value="travel">✈️ Travel</option>
+                            <option value="work_advance">💳 Work Advance</option>
+                            <option value="utilities">⚡ Utilities</option>
+                            <option value="maintenance_repairs">🔧 Maintenance & Repairs</option>
+                            <option value="insurance">🛡️ Insurance</option>
+                            <option value="legal_professional">⚖️ Legal & Professional Services</option>
+                            <option value="marketing_advertising">📢 Marketing & Advertising</option>
+                            <option value="training_development">📚 Training & Development</option>
+                            <option value="others">📦 Others</option>
                         </select>
                     </div>
                     <div style="flex: 1;">

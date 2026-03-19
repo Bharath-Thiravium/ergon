@@ -3,6 +3,62 @@ John Smith,travel,1200,Cab fare for client meeting at Bandra office,2025-01-15,
 Jane Doe,food,850,Team lunch during project review meeting,2025-01-16,Market Research Project
 Ravi Kumar,accommodation,4500,Hotel stay for 2 nights during outstation visit,2025-01-17,
 Priya Nair,office_supplies,650,Stationery and printing for project documentation,2025-01-18,Website Redesign
-Amit Shah,communication,300,Mobile recharge for official use,2025-01-19,
-Sunita Rao,training,3500,Online course subscription for skill development,2025-01-20,
-Deepak Verma,medical,1800,Medical reimbursement as per company policy,2025-01-21,
+Amit Shah,utilities,300,Internet and phone bills for office,2025-01-19,
+Sunita Rao,training_development,3500,Online course subscription for skill development,2025-01-20,
+Deepak Verma,medical_expenses,1800,Medical reimbursement as per company policy,2025-01-21,
+Meera Patel,material_costs,2500,Raw materials for project development,2025-01-22,Construction Project
+Rahul Singh,equipment_machinery,15000,New laptop for development work,2025-01-23,
+Kavita Sharma,contractor_subcontractor,8500,Payment to freelance designer,2025-01-24,Website Redesign
+Vijay Kumar,transportation_logistics,1200,Courier charges for document delivery,2025-01-25,
+Anita Gupta,work_advance,5000,Advance for upcoming business trip,2025-01-26,
+Sanjay Mehta,maintenance_repairs,3200,Office equipment repair and maintenance,2025-01-27,
+Pooja Jain,insurance,2800,Professional liability insurance premium,2025-01-28,
+Arun Reddy,legal_professional,12000,Legal consultation fees for contract review,2025-01-29,
+Nisha Agarwal,marketing_advertising,4500,Social media advertising campaign,2025-01-30,Marketing Campaign
+Rohit Joshi,others,800,Miscellaneous office expenses,2025-01-31,
+Arjun Patel,software_licenses,2400,Annual subscription for design software,2025-02-01,Creative Team
+Sneha Kapoor,fuel_vehicle,1800,Petrol expenses for company vehicle,2025-02-02,
+Manoj Gupta,communication,450,Mobile phone reimbursement,2025-02-03,
+Rekha Sharma,entertainment_client,3200,Client dinner and entertainment,2025-02-04,Sales Project
+Vikram Singh,books_publications,890,Technical books and industry magazines,2025-02-05,
+Divya Nair,conference_events,8500,Registration fee for tech conference,2025-02-06,
+Kiran Kumar,parking_tolls,320,Parking fees and toll charges,2025-02-07,
+Neha Joshi,subscriptions_memberships,1200,Professional association membership,2025-02-08,
+Rajesh Agarwal,bank_charges,150,Transaction fees and bank charges,2025-02-09,
+Priyanka Mehta,postage_shipping,280,Postal services and document shipping,2025-02-10,
+Suresh Reddy,security_services,4500,Office security system maintenance,2025-02-11,
+Madhuri Patel,cleaning_janitorial,1800,Office cleaning and janitorial services,2025-02-12,
+Ashok Kumar,rent_lease,25000,Monthly office rent payment,2025-02-13,
+Geeta Sharma,taxes_fees,3500,Government fees and regulatory taxes,2025-02-14,
+Ramesh Singh,research_development,5200,R&D materials and testing equipment,2025-02-15,Innovation Lab
+Kavya Nair,gifts_awards,1500,Employee recognition gifts,2025-02-16,
+Sunil Gupta,charitable_donations,2000,Corporate social responsibility donation,2025-02-17,
+Anjali Reddy,website_domain,800,Domain renewal and web hosting,2025-02-18,
+Prakash Jain,photography_videography,3500,Product photography for marketing,2025-02-19,Product Launch
+Shweta Kumar,translation_services,1200,Document translation services,2025-02-20,
+Harish Patel,recruitment_hiring,4500,Job portal subscription and recruitment,2025-02-21,HR Department
+Ritu Sharma,quality_assurance,2800,Quality testing and certification,2025-02-22,
+Naveen Singh,waste_disposal,600,Waste management and disposal services,2025-02-23,
+Arjun Patel,software_licenses,2400,Annual subscription for design software,2025-02-01,Creative Team
+Sneha Kapoor,fuel_vehicle,1800,Petrol expenses for company vehicle,2025-02-02,
+Manoj Gupta,communication,450,Mobile phone reimbursement,2025-02-03,
+Rekha Sharma,entertainment_client,3200,Client dinner and entertainment,2025-02-04,Sales Project
+Vikram Singh,books_publications,890,Technical books and industry magazines,2025-02-05,
+Divya Nair,conference_events,8500,Registration fee for tech conference,2025-02-06,
+Kiran Kumar,parking_tolls,320,Parking fees and toll charges,2025-02-07,
+Neha Joshi,subscriptions_memberships,1200,Professional association membership,2025-02-08,
+Rajesh Agarwal,bank_charges,150,Transaction fees and bank charges,2025-02-09,
+Priyanka Mehta,postage_shipping,280,Postal services and document shipping,2025-02-10,
+Suresh Reddy,security_services,4500,Office security system maintenance,2025-02-11,
+Madhuri Patel,cleaning_janitorial,1800,Office cleaning and janitorial services,2025-02-12,
+Ashok Kumar,rent_lease,25000,Monthly office rent payment,2025-02-13,
+Geeta Sharma,taxes_fees,3500,Government fees and regulatory taxes,2025-02-14,
+Ramesh Singh,research_development,5200,R&D materials and testing equipment,2025-02-15,Innovation Lab
+Kavya Nair,gifts_awards,1500,Employee recognition gifts,2025-02-16,
+Sunil Gupta,charitable_donations,2000,Corporate social responsibility donation,2025-02-17,
+Anjali Reddy,website_domain,800,Domain renewal and web hosting,2025-02-18,
+Prakash Jain,photography_videography,3500,Product photography for marketing,2025-02-19,Product Launch
+Shweta Kumar,translation_services,1200,Document translation services,2025-02-20,
+Harish Patel,recruitment_hiring,4500,Job portal subscription and recruitment,2025-02-21,HR Department
+Ritu Sharma,quality_assurance,2800,Quality testing and certification,2025-02-22,
+Naveen Singh,waste_disposal,600,Waste management and disposal services,2025-02-23,
