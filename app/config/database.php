@@ -23,8 +23,8 @@ class Database {
                 $this->password = $_ENV['DB_PASS'] ?? '';
             } else {
                 $this->host = $_ENV['DB_HOST'] ?? 'localhost';
-                $this->db_name = $_ENV['DB_NAME'] ?? 'u494785662_ergon_site';
-                $this->username = $_ENV['DB_USER'] ?? 'u494785662_ergon_site';
+                $this->db_name = $_ENV['DB_NAME'] ?? 'u494785662_ergon';
+                $this->username = $_ENV['DB_USER'] ?? 'u494785662_ergon';
                 $this->password = $_ENV['DB_PASS'] ?? '@Admin@2025@';
             }
         } catch (Exception $e) {
