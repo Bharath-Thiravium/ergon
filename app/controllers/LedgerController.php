@@ -15,22 +15,92 @@ class LedgerController extends Controller {
             $db = Database::connect();
             LedgerHelper::ensureTable();
 
+            // Get user details
+            $stmt = $db->prepare("SELECT id, name, email, role FROM users WHERE id = ?");
+            $stmt->execute([$id]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                header('Location: /ergon/users?error=user_not_found');
+                exit;
+            }
+
+            // Get ledger entries with enhanced details - ordered chronologically for balance calculation
             $stmt = $db->prepare("
                 SELECT 
                     ul.*,
-                    COALESCE(e.description, a.reason, 'N/A') as description
+                    COALESCE(e.description, a.reason, 'N/A') as description,
+                    CASE 
+                        WHEN ul.reference_type = 'expense' THEN e.category
+                        WHEN ul.reference_type = 'advance' THEN a.type
+                        ELSE 'N/A'
+                    END as category,
+                    CASE 
+                        WHEN ul.reference_type = 'expense' THEN e.status
+                        WHEN ul.reference_type = 'advance' THEN a.status
+                        ELSE 'N/A'
+                    END as status
                 FROM user_ledgers ul
                 LEFT JOIN expenses e ON ul.reference_type = 'expense' AND ul.reference_id = e.id
                 LEFT JOIN advances a ON ul.reference_type = 'advance' AND ul.reference_id = a.id
                 WHERE ul.user_id = ? 
-                ORDER BY ul.created_at DESC
+                ORDER BY ul.created_at ASC, ul.id ASC
             ");
             $stmt->execute([$id]);
-            $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $rawEntries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $balance = LedgerHelper::getUserBalance($id);
+            // Recalculate running balance in chronological order
+            $runningBalance = 0;
+            $entries = [];
+            
+            foreach ($rawEntries as $entry) {
+                if ($entry['direction'] === 'credit') {
+                    $runningBalance += $entry['amount'];
+                } else {
+                    $runningBalance -= $entry['amount'];
+                }
+                
+                // Update the balance_after to the correct running balance
+                $entry['balance_after'] = $runningBalance;
+                $entries[] = $entry;
+            }
+            
+            // Reverse the array to show most recent first for display
+            $entries = array_reverse($entries);
 
-            $this->view('ledgers/user', ['entries' => $entries, 'balance' => $balance, 'user_id' => $id, 'active_page' => 'ledgers']);
+            // Calculate summary statistics
+            $totalCredits = 0;
+            $totalDebits = 0;
+            $expenseCount = 0;
+            $advanceCount = 0;
+            
+            foreach ($entries as $entry) {
+                if ($entry['direction'] === 'credit') {
+                    $totalCredits += $entry['amount'];
+                    if ($entry['reference_type'] === 'advance') $advanceCount++;
+                } else {
+                    $totalDebits += $entry['amount'];
+                    if ($entry['reference_type'] === 'expense') $expenseCount++;
+                }
+            }
+
+            $balance = $runningBalance; // Use the calculated running balance
+            $netActivity = $totalCredits - $totalDebits;
+
+            $data = [
+                'user' => $user,
+                'entries' => $entries,
+                'balance' => $balance,
+                'totalCredits' => $totalCredits,
+                'totalDebits' => $totalDebits,
+                'netActivity' => $netActivity,
+                'expenseCount' => $expenseCount,
+                'advanceCount' => $advanceCount,
+                'user_id' => $id,
+                'active_page' => 'ledgers'
+            ];
+
+            $this->view('ledgers/user', $data);
         } catch (Exception $e) {
             error_log('Ledger view error: ' . $e->getMessage());
             header('Location: /ergon/users?error=ledger_failed');
