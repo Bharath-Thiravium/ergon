@@ -584,6 +584,10 @@ ob_end_clean();
                                 <span class="nav-icon">📍</span>
                                 Attendance
                             </a>
+                            <a href="/ergon/admin/entry" class="nav-dropdown-item <?= ($active_page ?? '') === 'admin-entry' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📝</span>
+                                Direct Entry
+                            </a>
                             <a href="/ergon/reports/activity" class="nav-dropdown-item <?= ($active_page ?? '') === 'activity' ? 'nav-dropdown-item--active' : '' ?> <?= $reportsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">⏱️</span>
                                 Reports
@@ -844,6 +848,10 @@ ob_end_clean();
                 <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
                     <span class="sidebar__icon">📍</span>
                     Attendance
+                </a>
+                <a href="/ergon/admin/entry" class="sidebar__link <?= ($active_page ?? '') === 'admin-entry' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📝</span>
+                    Direct Entry
                 </a>
                 <a href="/ergon/reports/activity" class="sidebar__link <?= ($active_page ?? '') === 'activity' ? 'sidebar__link--active' : '' ?> <?= $reportsDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">⏱️</span>

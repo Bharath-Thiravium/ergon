@@ -284,6 +284,298 @@ class AdminController extends Controller {
         }
     }
     
+    public function adminEntry() {
+        AuthMiddleware::requireRole('admin');
+
+        try {
+            $db = Database::connect();
+            $stmt = $db->query("SELECT id, name, role FROM users WHERE status = 'active' ORDER BY name ASC");
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt2 = $db->query("SELECT id, name FROM projects WHERE status = 'active' ORDER BY name ASC");
+            $projects = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $users = [];
+            $projects = [];
+        }
+
+        if ($this->isPost()) {
+            header('Content-Type: application/json');
+            try {
+                $type = $_POST['entry_type'] ?? '';
+                $userId = intval($_POST['user_id'] ?? 0);
+                $amount = floatval($_POST['amount'] ?? 0);
+
+                if (!$userId || $amount <= 0 || !in_array($type, ['advance', 'expense'])) {
+                    echo json_encode(['success' => false, 'error' => 'Invalid input']);
+                    exit;
+                }
+
+                require_once __DIR__ . '/../helpers/LedgerHelper.php';
+
+                if ($type === 'advance') {
+                    $advType = trim($_POST['advance_type'] ?? 'General Advance');
+                    $reason  = trim($_POST['reason'] ?? '');
+                    $projectId = intval($_POST['project_id'] ?? 0) ?: null;
+                    $advanceDate   = !empty($_POST['advance_date']) ? $_POST['advance_date'] : date('Y-m-d');
+                    $repaymentDate = !empty($_POST['repayment_date']) ? $_POST['repayment_date'] : null;
+
+                    $stmt = $db->prepare("INSERT INTO advances (user_id, project_id, type, amount, reason, requested_date, repayment_date, status, approved_by, approved_at, approved_amount, paid_by, paid_at, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'paid', ?, NOW(), ?, ?, NOW(), NOW())");
+                    $stmt->execute([$userId, $projectId, $advType, $amount, $reason, $advanceDate, $repaymentDate, $_SESSION['user_id'], $amount, $_SESSION['user_id']]);
+                    $id = $db->lastInsertId();
+                    LedgerHelper::recordEntry($userId, 'advance', 'advance', $id, $amount, 'credit');
+                    echo json_encode(['success' => true, 'message' => 'Advance entry saved successfully']);
+                } else {
+                    $category    = trim($_POST['category'] ?? 'other');
+                    $description = trim($_POST['description'] ?? '');
+                    $expenseDate = !empty($_POST['expense_date']) ? $_POST['expense_date'] : date('Y-m-d');
+                    $projectId   = intval($_POST['project_id'] ?? 0) ?: null;
+
+                    $stmt = $db->prepare("INSERT INTO expenses (user_id, project_id, category, amount, description, expense_date, status, approved_by, approved_at, approved_amount, paid_by, paid_at, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, 'paid', ?, NOW(), ?, ?, NOW(), NOW())");
+                    $stmt->execute([$userId, $projectId, $category, $amount, $description, $expenseDate, $_SESSION['user_id'], $amount, $_SESSION['user_id']]);
+                    $id = $db->lastInsertId();
+                    LedgerHelper::recordEntry($userId, 'expense', 'expense', $id, $amount, 'debit');
+                    echo json_encode(['success' => true, 'message' => 'Expense entry saved successfully']);
+                }
+            } catch (Exception $e) {
+                error_log('Admin entry error: ' . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'Failed to save entry']);
+            }
+            exit;
+        }
+
+        $this->view('admin/entry', [
+            'users'       => $users,
+            'projects'    => $projects,
+            'active_page' => 'admin-entry'
+        ]);
+    }
+
+    public function sampleCsv($type = 'advances') {
+        AuthMiddleware::requireRole('admin');
+        if (!in_array($type, ['advances', 'expenses'])) $type = 'advances';
+
+        try {
+            $db = Database::connect();
+            $users    = $db->query("SELECT name FROM users WHERE status='active' ORDER BY name ASC")->fetchAll(PDO::FETCH_COLUMN);
+            $projects = $db->query("SELECT name FROM projects WHERE status='active' ORDER BY name ASC")->fetchAll(PDO::FETCH_COLUMN);
+        } catch (Exception $e) {
+            $users = ['John Smith', 'Jane Doe'];
+            $projects = ['Project Alpha'];
+        }
+
+        $advanceTypes = ['Salary Advance', 'Travel Advance', 'Emergency Advance', 'Project Advance', 'General Advance'];
+        $expenseCategories = ['travel', 'food', 'accommodation', 'office_supplies', 'communication', 'training', 'medical', 'other'];
+        $today = date('Y-m-d');
+        $proj1 = $projects[0] ?? '';
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $type . '_sample.csv"');
+        header('Cache-Control: no-cache');
+
+        $out = fopen('php://output', 'w');
+
+        if ($type === 'advances') {
+            fputcsv($out, ['employee_name', 'advance_type', 'amount', 'reason', 'advance_date', 'repayment_date', 'project_name']);
+            // Sample data rows using real employees
+            foreach (array_slice($users, 0, 5) as $i => $name) {
+                fputcsv($out, [
+                    $name,
+                    $advanceTypes[$i % count($advanceTypes)],
+                    (($i + 1) * 2000),
+                    'Sample reason for advance',
+                    $today,
+                    date('Y-m-d', strtotime('+60 days')),
+                    $i === 1 ? $proj1 : ''
+                ]);
+            }
+            // Reference block
+            fputcsv($out, []);
+            fputcsv($out, ['# --- REFERENCE ---']);
+            fputcsv($out, ['# advance_type options:', implode(' | ', $advanceTypes)]);
+            fputcsv($out, ['# project_name options (leave blank if none):', implode(' | ', $projects)]);
+            fputcsv($out, ['# employee_name options:', implode(' | ', $users)]);
+        } else {
+            fputcsv($out, ['employee_name', 'category', 'amount', 'description', 'expense_date', 'project_name']);
+            foreach (array_slice($users, 0, 5) as $i => $name) {
+                fputcsv($out, [
+                    $name,
+                    $expenseCategories[$i % count($expenseCategories)],
+                    (($i + 1) * 500),
+                    'Sample expense description',
+                    $today,
+                    $i === 1 ? $proj1 : ''
+                ]);
+            }
+            fputcsv($out, []);
+            fputcsv($out, ['# --- REFERENCE ---']);
+            fputcsv($out, ['# category options:', implode(' | ', $expenseCategories)]);
+            fputcsv($out, ['# project_name options (leave blank if none):', implode(' | ', $projects)]);
+            fputcsv($out, ['# employee_name options:', implode(' | ', $users)]);
+        }
+
+        fclose($out);
+        exit;
+    }
+
+    public function validateCsv() {
+        AuthMiddleware::requireRole('admin');
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']); exit;
+        }
+
+        $type = $_POST['bulk_type'] ?? '';
+        if (!in_array($type, ['advance', 'expense'])) {
+            echo json_encode(['success' => false, 'error' => 'Invalid type']); exit;
+        }
+
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'No file uploaded or upload error']); exit;
+        }
+
+        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['csv', 'txt'])) {
+            echo json_encode(['success' => false, 'error' => 'Only CSV files are accepted']); exit;
+        }
+
+        try {
+            require_once __DIR__ . '/../helpers/CsvValidator.php';
+            $db = Database::connect();
+            $validator = new CsvValidator($db);
+            $result = $validator->validate($_FILES['csv_file']['tmp_name'], $type);
+            $result['success'] = true;
+            echo json_encode($result);
+        } catch (Exception $e) {
+            error_log('CSV validation error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Validation error: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
+    public function adminBulkUpload() {
+        AuthMiddleware::requireRole('admin');
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']); exit;
+        }
+
+        $type = $_POST['bulk_type'] ?? '';
+        if (!in_array($type, ['advance', 'expense'])) {
+            echo json_encode(['success' => false, 'error' => 'Invalid type']); exit;
+        }
+
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'No file uploaded or upload error']); exit;
+        }
+
+        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['csv', 'txt'])) {
+            echo json_encode(['success' => false, 'error' => 'Only CSV files are accepted']); exit;
+        }
+
+        try {
+            require_once __DIR__ . '/../helpers/CsvValidator.php';
+            require_once __DIR__ . '/../helpers/LedgerHelper.php';
+            $db = Database::connect();
+
+            // Run validation first — reject if any hard errors exist
+            $validator  = new CsvValidator($db);
+            $validation = $validator->validate($_FILES['csv_file']['tmp_name'], $type);
+
+            if (isset($validation['fatal'])) {
+                echo json_encode(['success' => false, 'error' => $validation['fatal']]); exit;
+            }
+
+            $results = ['inserted' => 0, 'failed' => 0, 'rows' => []];
+
+            // Re-parse file for insertion (validator already confirmed structure is valid)
+            $handle  = fopen($_FILES['csv_file']['tmp_name'], 'r');
+            $rawHdr  = fgetcsv($handle);
+            $headers = array_map(fn($h) => strtolower(trim(ltrim($h, "\xEF\xBB\xBF"))), $rawHdr);
+            $rowNum  = 1;
+
+            // Index validation results by row number for quick lookup
+            $validationByRow = [];
+            foreach ($validation['rows'] as $vr) {
+                $validationByRow[$vr['row']] = $vr;
+            }
+
+            while (($row = fgetcsv($handle)) !== false) {
+                $rowNum++;
+                if (isset($raw[0]) && str_starts_with(trim($raw[0] ?? ''), '#')) continue;
+                if (count(array_filter(array_map('trim', $row))) === 0) continue;
+
+                $data = array_combine($headers, array_pad($row, count($headers), ''));
+
+                // Skip rows that had hard errors during validation
+                $vRow = $validationByRow[$rowNum] ?? null;
+                if ($vRow && $vRow['status'] === 'error') {
+                    $results['failed']++;
+                    $results['rows'][] = [
+                        'row'      => $rowNum,
+                        'status'   => 'failed',
+                        'employee' => $data['employee_name'] ?? '',
+                        'amount'   => $data['amount'] ?? '',
+                        'reason'   => implode('; ', $vRow['errors']),
+                    ];
+                    continue;
+                }
+
+                $userId    = $validator->getUserId($data['employee_name'] ?? '');
+                $projectId = $validator->getProjectId($data['project_name'] ?? '');
+                $amount    = floatval($data['amount'] ?? 0);
+
+                try {
+                    if ($type === 'advance') {
+                        $advType = trim($data['advance_type'] ?? 'General Advance') ?: 'General Advance';
+                        $reason  = trim($data['reason'] ?? '') ?: 'Bulk entry by admin';
+                        $advDate = !empty($data['advance_date']) ? $data['advance_date'] : date('Y-m-d');
+                        $repDate = !empty($data['repayment_date']) ? $data['repayment_date'] : null;
+                        $stmt = $db->prepare("INSERT INTO advances (user_id,project_id,type,amount,reason,requested_date,repayment_date,status,approved_by,approved_at,approved_amount,paid_by,paid_at,created_at) VALUES (?,?,?,?,?,?,?,'paid',?,NOW(),?,?,NOW(),NOW())");
+                        $stmt->execute([$userId,$projectId,$advType,$amount,$reason,$advDate,$repDate,$_SESSION['user_id'],$amount,$_SESSION['user_id']]);
+                        $id = $db->lastInsertId();
+                        LedgerHelper::recordEntry($userId,'advance','advance',$id,$amount,'credit');
+                    } else {
+                        $category = trim($data['category'] ?? 'other') ?: 'other';
+                        $desc     = trim($data['description'] ?? '') ?: 'Bulk entry by admin';
+                        $expDate  = !empty($data['expense_date']) ? $data['expense_date'] : date('Y-m-d');
+                        $stmt = $db->prepare("INSERT INTO expenses (user_id,project_id,category,amount,description,expense_date,status,approved_by,approved_at,approved_amount,paid_by,paid_at,created_at) VALUES (?,?,?,?,?,?,'paid',?,NOW(),?,?,NOW(),NOW())");
+                        $stmt->execute([$userId,$projectId,$category,$amount,$desc,$expDate,$_SESSION['user_id'],$amount,$_SESSION['user_id']]);
+                        $id = $db->lastInsertId();
+                        LedgerHelper::recordEntry($userId,'expense','expense',$id,$amount,'debit');
+                    }
+                    $results['inserted']++;
+                    $results['rows'][] = [
+                        'row'      => $rowNum,
+                        'status'   => 'success',
+                        'employee' => $data['employee_name'] ?? '',
+                        'amount'   => $amount,
+                    ];
+                } catch (Exception $re) {
+                    $results['failed']++;
+                    $results['rows'][] = [
+                        'row'      => $rowNum,
+                        'status'   => 'failed',
+                        'employee' => $data['employee_name'] ?? '',
+                        'amount'   => $data['amount'] ?? '',
+                        'reason'   => $re->getMessage(),
+                    ];
+                }
+            }
+            fclose($handle);
+            $results['success'] = true;
+            echo json_encode($results);
+        } catch (Exception $e) {
+            error_log('Bulk upload error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
     public function manageDepartments() {
         AuthMiddleware::requireRole('system_admin');
         

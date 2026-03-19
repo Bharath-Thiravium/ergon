@@ -1,0 +1,6 @@
+employee_name,advance_type,amount,reason,advance_date,repayment_date,project_name
+John Smith,Salary Advance,5000,Monthly salary advance for personal needs,2025-01-15,2025-03-31,
+Jane Doe,Travel Advance,2500,Travel expenses for client visit to Mumbai,2025-01-16,,Market Research Project
+Ravi Kumar,Emergency Advance,8000,Medical emergency for family member,2025-01-17,2025-04-30,
+Priya Nair,Project Advance,12000,Project materials procurement,2025-01-18,,Website Redesign
+Amit Shah,General Advance,3000,General personal advance,2025-01-19,2025-05-31,
