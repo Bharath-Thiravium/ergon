@@ -10,8 +10,63 @@ ob_start();
         <p>Financial transaction history for <strong><?= htmlspecialchars($user['name'] ?? 'Unknown User') ?></strong> (<?= htmlspecialchars($user['role'] ?? 'N/A') ?>)</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon/users" class="btn btn--secondary">← Back to Users</a>
+        <a href="/ergon-site/users" class="btn btn--secondary">← Back to Users</a>
         <button onclick="window.print()" class="btn btn--outline">🖨️ Print</button>
+        <button onclick="downloadLedger()" class="btn btn--primary">📥 Download CSV</button>
+    </div>
+</div>
+
+<!-- Date Filter Section -->
+<div class="filter-section">
+    <div class="card">
+        <div class="card__header">
+            <h3 class="card__title">📅 Filter Transactions</h3>
+        </div>
+        <div class="card__body">
+            <form id="dateFilterForm" class="filter-form">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="dateRange">Quick Filter:</label>
+                        <select id="dateRange" onchange="applyQuickFilter()">
+                            <option value="all">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
+                            <option value="this_week">This Week</option>
+                            <option value="last_week">Last Week</option>
+                            <option value="this_month">This Month</option>
+                            <option value="last_month">Last Month</option>
+                            <option value="this_quarter">This Quarter</option>
+                            <option value="this_year">This Year</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="fromDate">From Date:</label>
+                        <input type="date" id="fromDate" name="from_date" value="<?= $fromDate ?? '' ?>">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="toDate">To Date:</label>
+                        <input type="date" id="toDate" name="to_date" value="<?= $toDate ?? '' ?>">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="transactionType">Type:</label>
+                        <select id="transactionType" name="transaction_type">
+                            <option value="all">All Types</option>
+                            <option value="advance" <?= ($transactionType ?? '') === 'advance' ? 'selected' : '' ?>>Advances Only</option>
+                            <option value="expense" <?= ($transactionType ?? '') === 'expense' ? 'selected' : '' ?>>Expenses Only</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button type="button" onclick="applyFilter()" class="btn btn--primary">🔍 Filter</button>
+                        <button type="button" onclick="clearFilter()" class="btn btn--secondary">🗑️ Clear</button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -59,11 +114,14 @@ ob_start();
     <div class="card__header">
         <h2 class="card__title">📋 Transaction History</h2>
         <div class="card__actions">
-            <span class="badge badge--info"><?= count($entries) ?> Total Entries</span>
+            <span class="badge badge--info"><?= count($filteredEntries ?? $entries) ?> Entries</span>
+            <?php if (isset($fromDate) || isset($toDate) || isset($transactionType)): ?>
+                <span class="badge badge--warning">Filtered</span>
+            <?php endif; ?>
         </div>
     </div>
     <div class="card__body">
-        <?php if (empty($entries)): ?>
+        <?php if (empty($filteredEntries ?? $entries)): ?>
             <div class="empty-state">
                 <div class="empty-state__icon">📝</div>
                 <h3>No Transactions Found</h3>
@@ -85,7 +143,7 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($entries as $entry): ?>
+                        <?php foreach (($filteredEntries ?? $entries) as $entry): ?>
                         <tr class="ledger-entry ledger-entry--<?= $entry['direction'] ?>">
                             <td class="ledger-date">
                                 <strong><?= date('M d, Y', strtotime($entry['created_at'])) ?></strong>
@@ -148,6 +206,59 @@ ob_start();
 
 <style>
 /* Ledger-specific styles */
+.filter-section {
+    margin-bottom: 2rem;
+}
+
+.filter-form {
+    margin: 0;
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 150px;
+}
+
+.filter-group label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #495057;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: end;
+}
+
+.filter-actions .btn {
+    white-space: nowrap;
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -301,8 +412,28 @@ ob_start();
     color: #495057;
 }
 
+@media (max-width: 768px) {
+    .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-group {
+        min-width: auto;
+    }
+    
+    .filter-actions {
+        justify-content: center;
+        margin-top: 1rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media print {
-    .page-actions, .card__actions {
+    .page-actions, .card__actions, .filter-section {
         display: none !important;
     }
     
@@ -315,6 +446,134 @@ ob_start();
     }
 }
 </style>
+
+<script>
+// Date filter functionality
+function applyQuickFilter() {
+    const range = document.getElementById('dateRange').value;
+    const fromDate = document.getElementById('fromDate');
+    const toDate = document.getElementById('toDate');
+    
+    const today = new Date();
+    let from, to;
+    
+    switch(range) {
+        case 'today':
+            from = to = today.toISOString().split('T')[0];
+            break;
+        case 'yesterday':
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            from = to = yesterday.toISOString().split('T')[0];
+            break;
+        case 'this_week':
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay());
+            from = startOfWeek.toISOString().split('T')[0];
+            to = today.toISOString().split('T')[0];
+            break;
+        case 'last_week':
+            const lastWeekEnd = new Date(today);
+            lastWeekEnd.setDate(today.getDate() - today.getDay() - 1);
+            const lastWeekStart = new Date(lastWeekEnd);
+            lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
+            from = lastWeekStart.toISOString().split('T')[0];
+            to = lastWeekEnd.toISOString().split('T')[0];
+            break;
+        case 'this_month':
+            from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+            to = today.toISOString().split('T')[0];
+            break;
+        case 'last_month':
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+            from = lastMonth.toISOString().split('T')[0];
+            to = lastMonthEnd.toISOString().split('T')[0];
+            break;
+        case 'this_quarter':
+            const quarter = Math.floor(today.getMonth() / 3);
+            from = new Date(today.getFullYear(), quarter * 3, 1).toISOString().split('T')[0];
+            to = today.toISOString().split('T')[0];
+            break;
+        case 'this_year':
+            from = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
+            to = today.toISOString().split('T')[0];
+            break;
+        case 'all':
+            from = to = '';
+            break;
+        case 'custom':
+            return; // Don't auto-fill for custom
+    }
+    
+    fromDate.value = from;
+    toDate.value = to;
+    
+    if (range !== 'custom' && range !== 'all') {
+        applyFilter();
+    } else if (range === 'all') {
+        clearFilter();
+    }
+}
+
+function applyFilter() {
+    const fromDate = document.getElementById('fromDate').value;
+    const toDate = document.getElementById('toDate').value;
+    const transactionType = document.getElementById('transactionType').value;
+    
+    const params = new URLSearchParams(window.location.search);
+    
+    if (fromDate) params.set('from_date', fromDate);
+    else params.delete('from_date');
+    
+    if (toDate) params.set('to_date', toDate);
+    else params.delete('to_date');
+    
+    if (transactionType && transactionType !== 'all') params.set('transaction_type', transactionType);
+    else params.delete('transaction_type');
+    
+    window.location.search = params.toString();
+}
+
+function clearFilter() {
+    const params = new URLSearchParams(window.location.search);
+    params.delete('from_date');
+    params.delete('to_date');
+    params.delete('transaction_type');
+    
+    document.getElementById('dateRange').value = 'all';
+    document.getElementById('fromDate').value = '';
+    document.getElementById('toDate').value = '';
+    document.getElementById('transactionType').value = 'all';
+    
+    window.location.search = params.toString();
+}
+
+function downloadLedger() {
+    const params = new URLSearchParams(window.location.search);
+    params.set('download', 'csv');
+    
+    const downloadUrl = window.location.pathname + '?' + params.toString();
+    window.open(downloadUrl, '_blank');
+}
+
+// Initialize date range selector based on current URL params
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    const fromDate = params.get('from_date');
+    const toDate = params.get('to_date');
+    const transactionType = params.get('transaction_type');
+    
+    if (fromDate) document.getElementById('fromDate').value = fromDate;
+    if (toDate) document.getElementById('toDate').value = toDate;
+    if (transactionType) document.getElementById('transactionType').value = transactionType;
+    
+    // Set quick filter if it matches a predefined range
+    if (fromDate || toDate) {
+        document.getElementById('dateRange').value = 'custom';
+    }
+});
+</script>
 
 <?php
 $content = ob_get_clean();
