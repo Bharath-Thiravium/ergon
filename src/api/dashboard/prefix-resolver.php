@@ -1,31 +1,18 @@
 <?php
-// /ergon/src/api/dashboard/prefix-resolver.php
+// Returns company_id (int) for a given prefix string, or null if not found.
+// Falls back to LIKE match if exact match fails.
+function resolveCompanyId(string $rawPrefix, PDO $db): ?int {
+    $prefix = strtoupper(trim(preg_replace('/[^A-Za-z0-9]/', '', $rawPrefix)));
+    if (!$prefix) return null;
 
-/**
- * Resolve a user-supplied raw prefix into a canonical company prefix from the list.
- * Start with first 2 letters and expand until unique match found.
- *
- * @param string $rawPrefix
- * @param array $companyPrefixes
- * @return string resolved prefix
- */
-function resolveCompanyPrefix(string $rawPrefix, array $companyPrefixes): string
-{
-    $letters = preg_replace('/[^A-Za-z]/', '', strtoupper($rawPrefix));
-    $len = strlen($letters);
-    if ($len < 2) {
-        return $letters ?: '';
-    }
+    $stmt = $db->prepare('SELECT company_id FROM finance_companies WHERE UPPER(company_prefix) = ? LIMIT 1');
+    $stmt->execute([$prefix]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) return (int)$row['company_id'];
 
-    for ($i = 2; $i <= $len; $i++) {
-        $try = substr($letters, 0, $i);
-        $matches = array_filter($companyPrefixes, function ($p) use ($try) {
-            return stripos($p, $try) === 0;
-        });
-        if (count($matches) === 1) {
-            return array_values($matches)[0];
-        }
-    }
-
-    return substr($letters, 0, 2);
+    // Partial match — find first company whose prefix starts with input
+    $stmt = $db->prepare('SELECT company_id FROM finance_companies WHERE UPPER(company_prefix) LIKE ? ORDER BY LENGTH(company_prefix) ASC LIMIT 1');
+    $stmt->execute([$prefix . '%']);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ? (int)$row['company_id'] : null;
 }

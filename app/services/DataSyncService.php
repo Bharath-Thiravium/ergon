@@ -18,7 +18,6 @@ class DataSyncService {
     private function getPostgreSQLConnection() {
         $config = Database::getPostgreSQLConfig();
         $pg = $config['postgresql'];
-        
         try {
             $pdo = new PDO(
                 "pgsql:host={$pg['host']};port={$pg['port']};dbname={$pg['database']}",
@@ -36,111 +35,121 @@ class DataSyncService {
             return null;
         }
     }
-    
-    
+
     public function syncAllTables() {
         if (!$this->isPostgreSQLAvailable()) {
             return array_fill_keys(
-                ['customers', 'quotations', 'purchase_orders', 'invoices', 'payments'],
+                ['companies', 'customers', 'quotations', 'purchase_orders', 'invoices', 'payments'],
                 ['records' => 0, 'status' => 'unavailable', 'error' => 'pdo_pgsql driver not available on this server']
             );
         }
 
         $results = [];
-        $results['customers'] = $this->syncCustomers();
-        $results['quotations'] = $this->syncQuotations();
+        $results['companies']       = $this->syncCompanies();
+        $results['customers']       = $this->syncCustomers();
+        $results['quotations']      = $this->syncQuotations();
         $results['purchase_orders'] = $this->syncPurchaseOrders();
-        $results['invoices'] = $this->syncInvoices();
-        $results['payments'] = $this->syncPayments();
-        
+        $results['invoices']        = $this->syncInvoices();
+        $results['payments']        = $this->syncPayments();
         return $results;
     }
-    
+
+    public function syncCompanies() {
+        return $this->syncTable(
+            'authentication_company',
+            "SELECT id, company_prefix, name FROM authentication_company WHERE approval_status = 'approved'",
+            'INSERT INTO finance_companies (company_id, company_prefix, company_name) VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE company_prefix = VALUES(company_prefix), company_name = VALUES(company_name)',
+            ['id', 'company_prefix', 'name']
+        );
+    }
+
     public function syncCustomers() {
         return $this->syncTable(
             'finance_customer',
-            'SELECT id, customer_code, name, display_name, email, phone, gstin, is_active FROM finance_customer WHERE is_active = true',
-            'INSERT INTO finance_customers (customer_id, customer_name, customer_gstin) VALUES (?, ?, ?) 
+            'SELECT id, name, gstin FROM finance_customer WHERE is_active = true',
+            'INSERT INTO finance_customers (customer_id, customer_name, customer_gstin) VALUES (?, ?, ?)
              ON DUPLICATE KEY UPDATE customer_name = VALUES(customer_name), customer_gstin = VALUES(customer_gstin), updated_at = NOW()',
             ['id', 'name', 'gstin']
         );
     }
-    
+
     public function syncQuotations() {
         return $this->syncTable(
             'finance_quotations',
-            'SELECT quotation_number, customer_id, total_amount, quotation_date, status FROM finance_quotations',
-            'INSERT INTO finance_quotations (quotation_number, customer_id, quotation_amount, quotation_date, status) VALUES (?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), quotation_amount = VALUES(quotation_amount),
-             quotation_date = VALUES(quotation_date), status = VALUES(status), updated_at = NOW()',
-            ['quotation_number', 'customer_id', 'total_amount', 'quotation_date', 'status']
+            'SELECT quotation_number, customer_id, company_id, total_amount, quotation_date, status FROM finance_quotations',
+            'INSERT INTO finance_quotations (quotation_number, customer_id, company_id, quotation_amount, quotation_date, status) VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), company_id = VALUES(company_id),
+             quotation_amount = VALUES(quotation_amount), quotation_date = VALUES(quotation_date),
+             status = VALUES(status), updated_at = NOW()',
+            ['quotation_number', 'customer_id', 'company_id', 'total_amount', 'quotation_date', 'status']
         );
     }
-    
+
     public function syncPurchaseOrders() {
         return $this->syncTable(
             'finance_purchase_orders',
-            'SELECT po_number, customer_id, total_amount, po_date, status FROM finance_purchase_orders',
-            'INSERT INTO finance_purchase_orders (po_number, customer_id, po_total_value, po_date, po_status) VALUES (?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), po_total_value = VALUES(po_total_value),
-             po_date = VALUES(po_date), po_status = VALUES(po_status), updated_at = NOW()',
-            ['po_number', 'customer_id', 'total_amount', 'po_date', 'status']
+            'SELECT po_number, customer_id, company_id, total_amount, po_date, status FROM finance_purchase_orders',
+            'INSERT INTO finance_purchase_orders (po_number, customer_id, company_id, po_total_value, po_date, po_status) VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), company_id = VALUES(company_id),
+             po_total_value = VALUES(po_total_value), po_date = VALUES(po_date),
+             po_status = VALUES(po_status), updated_at = NOW()',
+            ['po_number', 'customer_id', 'company_id', 'total_amount', 'po_date', 'status']
         );
     }
-    
+
     public function syncInvoices() {
         return $this->syncTable(
             'finance_invoices',
-            'SELECT invoice_number, customer_id, total_amount, subtotal, paid_amount,
+            'SELECT invoice_number, customer_id, company_id, total_amount, subtotal, paid_amount,
                     igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, payment_status,
                     outstanding_amount
              FROM finance_invoices',
-            'INSERT INTO finance_invoices (invoice_number, customer_id, total_amount, taxable_amount, amount_paid,
+            'INSERT INTO finance_invoices (invoice_number, customer_id, company_id, total_amount, taxable_amount, amount_paid,
                     igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, status, outstanding_amount)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), total_amount = VALUES(total_amount),
-             taxable_amount = VALUES(taxable_amount), amount_paid = VALUES(amount_paid),
-             igst_amount = VALUES(igst_amount), cgst_amount = VALUES(cgst_amount), sgst_amount = VALUES(sgst_amount),
-             due_date = VALUES(due_date), invoice_date = VALUES(invoice_date), status = VALUES(status),
-             outstanding_amount = VALUES(outstanding_amount), updated_at = NOW()',
-            ['invoice_number', 'customer_id', 'total_amount', 'subtotal', 'paid_amount',
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), company_id = VALUES(company_id),
+             total_amount = VALUES(total_amount), taxable_amount = VALUES(taxable_amount),
+             amount_paid = VALUES(amount_paid), igst_amount = VALUES(igst_amount),
+             cgst_amount = VALUES(cgst_amount), sgst_amount = VALUES(sgst_amount),
+             due_date = VALUES(due_date), invoice_date = VALUES(invoice_date),
+             status = VALUES(status), outstanding_amount = VALUES(outstanding_amount), updated_at = NOW()',
+            ['invoice_number', 'customer_id', 'company_id', 'total_amount', 'subtotal', 'paid_amount',
              'igst_amount', 'cgst_amount', 'sgst_amount', 'due_date', 'invoice_date', 'payment_status',
              'outstanding_amount']
         );
     }
-    
+
     public function syncPayments() {
         return $this->syncTable(
             'finance_payments',
-            'SELECT payment_number, customer_id, amount, payment_date, reference_number, status FROM finance_payments',
-            'INSERT INTO finance_payments (payment_id, customer_id, amount, payment_date, receipt_number, status) VALUES (?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), amount = VALUES(amount),
-             payment_date = VALUES(payment_date), receipt_number = VALUES(receipt_number), status = VALUES(status), updated_at = NOW()',
-            ['payment_number', 'customer_id', 'amount', 'payment_date', 'reference_number', 'status']
+            'SELECT payment_number, customer_id, company_id, amount, payment_date, reference_number, status FROM finance_payments',
+            'INSERT INTO finance_payments (payment_id, customer_id, company_id, amount, payment_date, receipt_number, status) VALUES (?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), company_id = VALUES(company_id),
+             amount = VALUES(amount), payment_date = VALUES(payment_date),
+             receipt_number = VALUES(receipt_number), status = VALUES(status), updated_at = NOW()',
+            ['payment_number', 'customer_id', 'company_id', 'amount', 'payment_date', 'reference_number', 'status']
         );
     }
-    
+
     private function syncTable($tableName, $selectQuery, $insertQuery, $fields) {
         $syncStarted = date('Y-m-d H:i:s');
         $recordsSynced = 0;
         $errorMessage = null;
-        
+
         try {
-            // Fetch data from PostgreSQL
             $stmt = $this->pgConnection->prepare($selectQuery);
             $stmt->execute();
             $rows = $stmt->fetchAll();
-            
+
             if (empty($rows)) {
                 $this->logSync($tableName, 0, 'completed', null, $syncStarted);
                 return ['table' => $tableName, 'records' => 0, 'status' => 'no_data'];
             }
-            
-            // Insert/Update data in MySQL
+
             $insertStmt = $this->mysqlConnection->prepare($insertQuery);
-            
             $this->mysqlConnection->beginTransaction();
-            
+
             foreach ($rows as $row) {
                 $values = [];
                 foreach ($fields as $field) {
@@ -149,34 +158,22 @@ class DataSyncService {
                 $insertStmt->execute($values);
                 $recordsSynced++;
             }
-            
+
             $this->mysqlConnection->commit();
-            
             $this->logSync($tableName, $recordsSynced, 'completed', null, $syncStarted);
-            
-            return [
-                'table' => $tableName,
-                'records' => $recordsSynced,
-                'status' => 'success'
-            ];
-            
+
+            return ['table' => $tableName, 'records' => $recordsSynced, 'status' => 'success'];
+
         } catch (Exception $e) {
             if ($this->mysqlConnection->inTransaction()) {
                 $this->mysqlConnection->rollback();
             }
-            
             $errorMessage = $e->getMessage();
             $this->logSync($tableName, $recordsSynced, 'failed', $errorMessage, $syncStarted);
-            
-            return [
-                'table' => $tableName,
-                'records' => $recordsSynced,
-                'status' => 'error',
-                'error' => $errorMessage
-            ];
+            return ['table' => $tableName, 'records' => $recordsSynced, 'status' => 'error', 'error' => $errorMessage];
         }
     }
-    
+
     private function logSync($tableName, $recordsSynced, $status, $errorMessage, $syncStarted) {
         try {
             $stmt = $this->mysqlConnection->prepare(
@@ -188,7 +185,7 @@ class DataSyncService {
             error_log("Failed to log sync: " . $e->getMessage());
         }
     }
-    
+
     public function getSyncHistory($limit = 10) {
         try {
             $stmt = $this->mysqlConnection->prepare(
