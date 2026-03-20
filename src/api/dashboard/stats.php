@@ -11,7 +11,7 @@ try {
     $db = Database::connect();
     $service = new AllStatCardsService($db);
     
-    $prefix = $_GET['prefix'] ?? 'ERGN';
+    $prefix = $_GET['prefix'] ?? '';
     $stats = $service->getAllStats($prefix);
     
     echo json_encode([
