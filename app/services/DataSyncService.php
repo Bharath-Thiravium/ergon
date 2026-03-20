@@ -55,21 +55,13 @@ class DataSyncService {
             'payments'        => ['SELECT id, payment_number, customer_id, company_id, amount, payment_date, COALESCE(reference_number, payment_number) as reference_number, status FROM finance_payments', ['id','payment_number','customer_id','company_id','amount','payment_date','reference_number','status']],
         ];
         try {
-            $config = Database::getPostgreSQLConfig();
-            $pg = $config['postgresql'];
-            // options=-c%20statement_timeout%3D25000 sets 25s query timeout at session level via DSN
-            $dsn = "pgsql:host={$pg['host']};port={$pg['port']};dbname={$pg['database']};connect_timeout=15;options='-c statement_timeout=25000'";
-            $pgConn = new PDO($dsn, $pg['username'], $pg['password'], [
-                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_TIMEOUT            => 25,
-            ]);
             foreach ($queries as $key => [$sql, $fields]) {
-                $stmt = $pgConn->query($sql);
+                echo "  PG fetch: $key...\n"; flush();
+                $stmt = $this->pgConnection->query($sql);
                 $allData[$key] = ['rows' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'fields' => $fields];
                 $stmt->closeCursor();
+                echo "  PG fetch: $key done (" . count($allData[$key]['rows']) . " rows)\n"; flush();
             }
-            $pgConn = null;
         } catch (Exception $e) {
             return array_fill_keys(
                 array_keys($queries),
