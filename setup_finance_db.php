@@ -173,8 +173,9 @@ if (!$sync->isPostgreSQLAvailable()) {
     echo "PostgreSQL connected\n"; flush();
     foreach (['companies','customers','quotations','purchase_orders','invoices','payments'] as $t) {
         echo "Syncing $t... "; flush();
-        $method = 'sync' . str_replace('_', '', ucwords($t, '_'));
+        $method = 'sync' . str_replace(' ', '', ucwords(str_replace('_', ' ', $t)));
         try {
+            set_time_limit(60);
             $r = $sync->$method();
             $err = !empty($r['error']) ? " — {$r['error']}" : '';
             echo "{$r['status']} ({$r['records']} records)$err\n"; flush();

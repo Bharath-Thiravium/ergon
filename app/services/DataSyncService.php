@@ -149,7 +149,8 @@ class DataSyncService {
 
             $insertStmt = $this->mysqlConnection->prepare($insertQuery);
             $this->mysqlConnection->beginTransaction();
-
+            $batchSize = 10;
+            $batch = 0;
             foreach ($rows as $row) {
                 $values = [];
                 foreach ($fields as $field) {
@@ -157,6 +158,10 @@ class DataSyncService {
                 }
                 $insertStmt->execute($values);
                 $recordsSynced++;
+                if (++$batch % $batchSize === 0) {
+                    $this->mysqlConnection->commit();
+                    $this->mysqlConnection->beginTransaction();
+                }
             }
 
             $this->mysqlConnection->commit();
