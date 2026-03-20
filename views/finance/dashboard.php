@@ -417,7 +417,6 @@ window.addEventListener('load', function() {
         loadAllStatCardsData();
         loadCustomersForFunnel();
         loadCashFlow();
-        loadAllCharts();
     });
 });
 
@@ -1431,6 +1430,7 @@ async function loadCompanyPrefix() {
                 loadCustomersForFunnel();
                 updateConversionFunnel();
                 loadRecentActivities();
+                loadAllCharts(prefixToUse);
             }, 100);
             return prefixToUse;
         } else {

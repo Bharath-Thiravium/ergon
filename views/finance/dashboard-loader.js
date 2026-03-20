@@ -1,15 +1,8 @@
-function loadAllCharts() {
-    const prefix = document.getElementById('companyPrefix')?.value;
-    console.log('loadAllCharts called with prefix:', prefix);
-    if (!prefix) {
-        console.warn('No prefix selected for charts');
-        return;
-    }
+function loadAllCharts(prefixOverride) {
+    const prefix = prefixOverride || document.getElementById('companyPrefix')?.value;
+    if (!prefix) return;
     if (window._dashboardCharts && window._dashboardCharts.renderAllCharts) {
-        console.log('Calling renderAllCharts with prefix:', prefix);
         window._dashboardCharts.renderAllCharts(prefix);
-    } else {
-        console.error('_dashboardCharts not available');
     }
 }
 
@@ -28,13 +21,4 @@ function loadCashFlow() {
         .catch(e => console.warn('Cash flow load failed:', e));
 }
 
-// Auto-trigger on prefix input change
-document.addEventListener('DOMContentLoaded', () => {
-    const prefixInput = document.getElementById('companyPrefix');
-    if (prefixInput) {
-        prefixInput.addEventListener('change', loadAllCharts);
-        prefixInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') loadAllCharts();
-        });
-    }
-});
+// Charts are triggered by dashboard.php input/keypress handlers and loadCompanyPrefix()
