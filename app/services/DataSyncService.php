@@ -5,7 +5,7 @@ class DataSyncService {
     private $mysqlConnection;
     
     public function __construct() {
-        $this->mysqlConnection = $this->getMySQLConnection();
+        $this->mysqlConnection = Database::connect();
         if (extension_loaded('pdo_pgsql')) {
             $this->pgConnection = $this->getPostgreSQLConnection();
         }
@@ -37,26 +37,6 @@ class DataSyncService {
         }
     }
     
-    private function getMySQLConnection() {
-        $config = Database::getPostgreSQLConfig();
-        $mysql = $config['mysql'];
-        
-        try {
-            $pdo = new PDO(
-                "mysql:host={$mysql['host']};port={$mysql['port']};dbname={$mysql['database']};charset=utf8mb4",
-                $mysql['username'],
-                $mysql['password'],
-                [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_TIMEOUT => 30
-                ]
-            );
-            return $pdo;
-        } catch (PDOException $e) {
-            throw new Exception("MySQL connection failed: " . $e->getMessage());
-        }
-    }
     
     public function syncAllTables() {
         if (!$this->isPostgreSQLAvailable()) {
