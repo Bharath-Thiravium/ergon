@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__ . '/../../../app/config/database.php';
-require_once __DIR__ . '/../../services/AllStatCardsService.php';
+
+$svcFile = __DIR__ . '/../../services/AllStatCardsService.php';
+if (function_exists('opcache_invalidate')) opcache_invalidate($svcFile, true);
+require_once $svcFile;
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
