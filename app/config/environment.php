@@ -63,14 +63,7 @@ class Environment {
         $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         
-        // Handle specific production domains
-        if (strpos($host, 'bkgreenenergy.com') !== false) {
-            return 'https://bkgreenenergy.com/ergon';
-        } elseif (strpos($host, 'athenas.co.in') !== false) {
-            return 'https://athenas.co.in/ergon';
-        } else {
-            return $protocol . '://' . $host . '/ergon';
-        }
+        return $protocol . '://' . $host . '/ergon';
     }
     
     public static function isHostinger() {
