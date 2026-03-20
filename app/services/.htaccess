@@ -1,0 +1,7 @@
+<IfModule LiteSpeed>
+    CacheDisable public /
+</IfModule>
+<IfModule mod_lsapi.c>
+    php_value opcache.revalidate_freq 0
+    php_value opcache.validate_timestamps 1
+</IfModule>
