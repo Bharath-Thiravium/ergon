@@ -44,14 +44,60 @@ class DataSyncService {
             );
         }
 
+        // Phase 1: fetch everything from PG in one session
+        $allData = [];
+        $queries = [
+            'companies'       => ["SELECT id, company_prefix, name FROM authentication_company WHERE approval_status = 'approved'", ['id','company_prefix','name']],
+            'customers'       => ['SELECT id, name, gstin FROM finance_customer WHERE is_active = true', ['id','name','gstin']],
+            'quotations'      => ['SELECT id, quotation_number, customer_id, company_id, total_amount, quotation_date, status FROM finance_quotations', ['id','quotation_number','customer_id','company_id','total_amount','quotation_date','status']],
+            'purchase_orders' => ['SELECT id, po_number, customer_id, company_id, total_amount, po_date, status FROM finance_purchase_orders', ['id','po_number','customer_id','company_id','total_amount','po_date','status']],
+            'invoices'        => ['SELECT id, invoice_number, customer_id, company_id, total_amount, subtotal, paid_amount, igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, payment_status, outstanding_amount FROM finance_invoices', ['id','invoice_number','customer_id','company_id','total_amount','subtotal','paid_amount','igst_amount','cgst_amount','sgst_amount','due_date','invoice_date','payment_status','outstanding_amount']],
+            'payments'        => ['SELECT id, payment_number, customer_id, company_id, amount, payment_date, COALESCE(reference_number, payment_number) as reference_number, status FROM finance_payments', ['id','payment_number','customer_id','company_id','amount','payment_date','reference_number','status']],
+        ];
+        foreach ($queries as $key => [$sql, $fields]) {
+            $stmt = $this->pgConnection->prepare($sql);
+            $stmt->execute();
+            $allData[$key] = ['rows' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'fields' => $fields];
+            $stmt->closeCursor();
+        }
+        // Close PG connection before MySQL work
+        $this->pgConnection = null;
+
+        // Phase 2: insert into MySQL
         $results = [];
-        $results['companies']       = $this->syncCompanies();
-        $results['customers']       = $this->syncCustomers();
-        $results['quotations']      = $this->syncQuotations();
-        $results['purchase_orders'] = $this->syncPurchaseOrders();
-        $results['invoices']        = $this->syncInvoices();
-        $results['payments']        = $this->syncPayments();
+        $results['companies']       = $this->insertRows($allData['companies']['rows'], $allData['companies']['fields'],
+            'INSERT INTO finance_companies (company_id, company_prefix, company_name) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE company_prefix=VALUES(company_prefix), company_name=VALUES(company_name)');
+        $results['customers']       = $this->insertRows($allData['customers']['rows'], $allData['customers']['fields'],
+            'INSERT INTO finance_customers (customer_id, customer_name, customer_gstin) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE customer_name=VALUES(customer_name), customer_gstin=VALUES(customer_gstin), updated_at=NOW()');
+        $results['quotations']      = $this->insertRows($allData['quotations']['rows'], $allData['quotations']['fields'],
+            'INSERT INTO finance_quotations (id, quotation_number, customer_id, company_id, quotation_amount, quotation_date, status) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE quotation_number=VALUES(quotation_number), customer_id=VALUES(customer_id), company_id=VALUES(company_id), quotation_amount=VALUES(quotation_amount), quotation_date=VALUES(quotation_date), status=VALUES(status)');
+        $results['purchase_orders'] = $this->insertRows($allData['purchase_orders']['rows'], $allData['purchase_orders']['fields'],
+            'INSERT INTO finance_purchase_orders (id, po_number, customer_id, company_id, po_total_value, po_date, po_status) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE po_number=VALUES(po_number), customer_id=VALUES(customer_id), company_id=VALUES(company_id), po_total_value=VALUES(po_total_value), po_date=VALUES(po_date), po_status=VALUES(po_status)');
+        $results['invoices']        = $this->insertRows($allData['invoices']['rows'], $allData['invoices']['fields'],
+            'INSERT INTO finance_invoices (id, invoice_number, customer_id, company_id, total_amount, taxable_amount, amount_paid, igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, status, outstanding_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE invoice_number=VALUES(invoice_number), customer_id=VALUES(customer_id), company_id=VALUES(company_id), total_amount=VALUES(total_amount), taxable_amount=VALUES(taxable_amount), amount_paid=VALUES(amount_paid), igst_amount=VALUES(igst_amount), cgst_amount=VALUES(cgst_amount), sgst_amount=VALUES(sgst_amount), due_date=VALUES(due_date), invoice_date=VALUES(invoice_date), status=VALUES(status), outstanding_amount=VALUES(outstanding_amount)');
+        $results['payments']        = $this->insertRows($allData['payments']['rows'], $allData['payments']['fields'],
+            'INSERT INTO finance_payments (id, payment_number, customer_id, company_id, amount, payment_date, receipt_number, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE payment_number=VALUES(payment_number), customer_id=VALUES(customer_id), company_id=VALUES(company_id), amount=VALUES(amount), payment_date=VALUES(payment_date), receipt_number=VALUES(receipt_number), status=VALUES(status)');
         return $results;
+    }
+
+    private function insertRows($rows, $fields, $insertQuery) {
+        $syncStarted = date('Y-m-d H:i:s');
+        $recordsSynced = 0;
+        try {
+            if (empty($rows)) {
+                $this->logSync('', 0, 'completed', null, $syncStarted);
+                return ['records' => 0, 'status' => 'no_data'];
+            }
+            $stmt = $this->mysqlConnection->prepare($insertQuery);
+            foreach ($rows as $row) {
+                $values = array_map(fn($f) => $row[$f] ?? null, $fields);
+                $stmt->execute($values);
+                $recordsSynced++;
+            }
+            return ['records' => $recordsSynced, 'status' => 'success'];
+        } catch (Exception $e) {
+            return ['records' => $recordsSynced, 'status' => 'error', 'error' => $e->getMessage()];
+        }
     }
 
     public function syncCompanies() {
@@ -138,15 +184,11 @@ class DataSyncService {
         $errorMessage = null;
 
         try {
-            // Fresh PG connection per table to avoid idle timeout
-            $pg = $this->getPostgreSQLConnection();
-            if (!$pg) throw new Exception('PostgreSQL reconnect failed');
-
-            $stmt = $pg->prepare($selectQuery);
+            $stmt = $this->pgConnection->prepare($selectQuery);
             $stmt->execute();
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $stmt->closeCursor();
-            unset($stmt, $pg);
+            unset($stmt);
 
             if (empty($rows)) {
                 $this->logSync($tableName, 0, 'completed', null, $syncStarted);
