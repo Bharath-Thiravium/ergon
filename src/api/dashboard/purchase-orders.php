@@ -13,7 +13,7 @@ try {
     $resolvedPrefix = resolveCompanyPrefix($rawPrefix, $companyPrefixes);
     $db = Database::connect();
 
-    $sql = "SELECT COALESCE(SUM(total_amount), 0) AS total_value, COALESCE(SUM(CASE WHEN UPPER(status) IN ('CLOSED','COMPLETED','FULFILLED') THEN 1 ELSE 0 END), 0) AS fulfilled, COALESCE(SUM(CASE WHEN UPPER(status) NOT IN ('CLOSED','COMPLETED','FULFILLED') THEN 1 ELSE 0 END), 0) AS open_count FROM finance_purchase_orders WHERE LEFT(internal_po_number, ?) = ?";
+    $sql = "SELECT COALESCE(SUM(po_total_value), 0) AS total_value, COALESCE(SUM(CASE WHEN UPPER(po_status) IN ('CLOSED','COMPLETED','FULFILLED') THEN 1 ELSE 0 END), 0) AS fulfilled, COALESCE(SUM(CASE WHEN UPPER(po_status) NOT IN ('CLOSED','COMPLETED','FULFILLED') THEN 1 ELSE 0 END), 0) AS open_count FROM finance_purchase_orders WHERE LEFT(po_number, ?) = ?";
 
     $len = strlen($resolvedPrefix);
     $stmt = $db->prepare($sql);

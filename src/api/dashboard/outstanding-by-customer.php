@@ -13,7 +13,7 @@ try {
     $resolvedPrefix = resolveCompanyPrefix($rawPrefix, $companyPrefixes);
     $db = Database::connect();
 
-    $sql = "SELECT COALESCE(SUM(outstanding_amount), 0) AS outstanding FROM finance_invoices WHERE LEFT(invoice_number, ?) = ? GROUP BY customer_id HAVING outstanding > 0 ORDER BY outstanding DESC LIMIT 50";
+    $sql = "SELECT i.customer_id, COALESCE(c.customer_name, i.customer_id) AS customer_name, COALESCE(SUM(i.total_amount - i.amount_paid), 0) AS outstanding FROM finance_invoices i LEFT JOIN finance_customers c ON c.customer_id = i.customer_id WHERE LEFT(i.invoice_number, ?) = ? AND UPPER(i.status) != 'PAID' GROUP BY i.customer_id, c.customer_name HAVING outstanding > 0 ORDER BY outstanding DESC LIMIT 50";
 
     $len = strlen($resolvedPrefix);
     $stmt = $db->prepare($sql);

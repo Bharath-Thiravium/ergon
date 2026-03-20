@@ -13,7 +13,7 @@ try {
     $resolvedPrefix = resolveCompanyPrefix($rawPrefix, $companyPrefixes);
     $db = Database::connect();
 
-    $sql = "SELECT COALESCE(SUM(total_amount), 0) AS total_value, COALESCE(SUM(CASE WHEN UPPER(payment_status) = 'PAID' THEN 1 ELSE 0 END), 0) AS paid, COALESCE(SUM(CASE WHEN UPPER(payment_status) = 'UNPAID' THEN 1 ELSE 0 END), 0) AS unpaid, COALESCE(SUM(CASE WHEN due_date < CURDATE() AND UPPER(payment_status) = 'UNPAID' THEN 1 ELSE 0 END), 0) AS overdue FROM finance_invoices WHERE LEFT(invoice_number, ?) = ?";
+    $sql = "SELECT COALESCE(SUM(total_amount), 0) AS total_value, COALESCE(SUM(CASE WHEN UPPER(status) = 'PAID' THEN 1 ELSE 0 END), 0) AS paid, COALESCE(SUM(CASE WHEN UPPER(status) != 'PAID' THEN 1 ELSE 0 END), 0) AS unpaid, COALESCE(SUM(CASE WHEN due_date < CURDATE() AND UPPER(status) != 'PAID' THEN 1 ELSE 0 END), 0) AS overdue FROM finance_invoices WHERE LEFT(invoice_number, ?) = ?";
 
     $len = strlen($resolvedPrefix);
     $stmt = $db->prepare($sql);
