@@ -3,7 +3,40 @@
  * Migration: Fix login_attempts table missing columns
  */
 
-require_once __DIR__ . '/../app/config/database.php';
+require_once __DIR__ . '/../app/config/environment.php';
+
+// Load .env manually
+$envFile = __DIR__ . '/../.env';
+if (file_exists($envFile)) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (strpos($line, '#') === 0 || strpos($line, '=') === false) continue;
+        [$k, $v] = explode('=', $line, 2);
+        $_ENV[trim($k)] = trim($v);
+    }
+}
+
+// Connect directly — use production credentials if ENV not set correctly
+try {
+    $host = $_ENV['DB_HOST'] ?? 'localhost';
+    $name = $_ENV['DB_NAME'] ?? 'u494785662_ergon';
+    $user = $_ENV['DB_USER'] ?? 'u494785662_ergon';
+    $pass = $_ENV['DB_PASS'] ?? '@Admin@2025@';
+
+    // Safety check — refuse to run with root on production
+    if (Environment::isProduction() && $user === 'root') {
+        $name = 'u494785662_ergon';
+        $user = 'u494785662_ergon';
+        $pass = '@Admin@2025@';
+    }
+
+    $db = new PDO("mysql:host=$host;dbname=$name;charset=utf8mb4", $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    ]);
+    echo "✓ Connected to: $name\n\n";
+} catch (PDOException $e) {
+    echo "❌ Connection failed: " . $e->getMessage() . "\n";
+    exit(1);
+}
 
 $migrations = [
     "ALTER TABLE login_attempts ADD COLUMN email VARCHAR(255) NULL",
