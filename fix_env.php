@@ -8,8 +8,9 @@ echo "BEFORE:\n$current\n\n";
 
 $updated = preg_replace('/^DB_NAME=.*$/m', 'DB_NAME=u494785662_ergon', $current);
 $updated = preg_replace('/^DB_USER=.*$/m', 'DB_USER=u494785662_ergon', $updated);
-$updated = preg_replace('/^DB_PASS=.*$/m', 'DB_PASS=<mysql_password>', $updated);
-$updated = preg_replace('/^SAP_PG_HOST=.*$/m', 'SAP_PG_HOST=<vps_ip>', $updated);
+$updated = preg_replace('/^DB_PASS=.*$/m', 'DB_PASS=@Admin@2025@', $updated);
+$updated = preg_replace('/^SAP_PG_HOST=.*$/m', 'SAP_PG_HOST=72.60.218.167', $updated);
+$updated = preg_replace('/^SAP_PG_PASS=.*$/m', 'SAP_PG_PASS=mango', $updated);
 
 if (file_put_contents($envPath, $updated)) {
     echo "AFTER:\n$updated\n\n";
