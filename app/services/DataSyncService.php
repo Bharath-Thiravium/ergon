@@ -56,11 +56,9 @@ class DataSyncService {
         ];
         try {
             foreach ($queries as $key => [$sql, $fields]) {
-                echo "  PG fetch: $key...\n"; flush();
                 $stmt = $this->pgConnection->query($sql);
                 $allData[$key] = ['rows' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'fields' => $fields];
                 $stmt->closeCursor();
-                echo "  PG fetch: $key done (" . count($allData[$key]['rows']) . " rows)\n"; flush();
             }
         } catch (Exception $e) {
             return array_fill_keys(
