@@ -1,7 +1,12 @@
 <?php
+ini_set('max_execution_time', 300);
+ini_set('memory_limit', '256M');
 require_once __DIR__ . '/app/config/database.php';
 require_once __DIR__ . '/app/services/DataSyncService.php';
 header('Content-Type: text/plain');
+header('X-Accel-Buffering: no');
+if (ob_get_level()) ob_end_flush();
+ob_implicit_flush(true);
 
 $db = Database::connect();
 $ok = 0; $skip = 0;
