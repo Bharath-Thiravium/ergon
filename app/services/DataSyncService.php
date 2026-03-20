@@ -20,7 +20,7 @@ class DataSyncService {
         $pg = $config['postgresql'];
         try {
             $pdo = new PDO(
-                "pgsql:host={$pg['host']};port={$pg['port']};dbname={$pg['database']}",
+                "pgsql:host={$pg['host']};port={$pg['port']};dbname={$pg['database']};connect_timeout=10",
                 $pg['username'],
                 $pg['password'],
                 [

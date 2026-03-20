@@ -159,19 +159,23 @@ addIndex($db, 'finance_purchase_orders', 'idx_company_id', 'company_id');
 addIndex($db, 'finance_payments',        'idx_company_id', 'company_id');
 
 echo "\n=== STEP 5: Sync all tables from PostgreSQL ===\n";
+flush();
 try {
-$sync = new DataSyncService();
+    $sync = new DataSyncService();
 } catch (Exception $e) {
     echo "ERR: DataSyncService init failed — " . $e->getMessage() . "\n";
     goto verify;
 }
+echo "DataSyncService created\n"; flush();
 if (!$sync->isPostgreSQLAvailable()) {
-    echo "ERR: PostgreSQL not available\n";
+    echo "ERR: PostgreSQL not available — pdo_pgsql driver missing or connection refused\n";
 } else {
+    echo "PostgreSQL connected\n"; flush();
     $results = $sync->syncAllTables();
     foreach ($results as $table => $r) {
         $err = !empty($r['error']) ? " — {$r['error']}" : '';
         echo "{$r['status']}: $table ({$r['records']} records)$err\n";
+        flush();
     }
 }
 
