@@ -9,3 +9,4 @@ README.md
 storage/logs/
 storage/sessions/
 storage/cache/
+.env
