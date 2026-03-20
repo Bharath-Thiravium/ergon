@@ -77,44 +77,43 @@ class DataSyncService {
     public function syncQuotations() {
         return $this->syncTable(
             'finance_quotations',
-            'SELECT quotation_number, customer_id, company_id, total_amount, quotation_date, status FROM finance_quotations',
-            'INSERT INTO finance_quotations (quotation_number, customer_id, company_id, quotation_amount, quotation_date, status) VALUES (?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), company_id = VALUES(company_id),
-             quotation_amount = VALUES(quotation_amount), quotation_date = VALUES(quotation_date),
-             status = VALUES(status), updated_at = NOW()',
-            ['quotation_number', 'customer_id', 'company_id', 'total_amount', 'quotation_date', 'status']
+            'SELECT id, quotation_number, customer_id, company_id, total_amount, quotation_date, status FROM finance_quotations',
+            'INSERT INTO finance_quotations (id, quotation_number, customer_id, company_id, quotation_amount, quotation_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE quotation_number = VALUES(quotation_number), customer_id = VALUES(customer_id),
+             company_id = VALUES(company_id), quotation_amount = VALUES(quotation_amount),
+             quotation_date = VALUES(quotation_date), status = VALUES(status)',
+            ['id', 'quotation_number', 'customer_id', 'company_id', 'total_amount', 'quotation_date', 'status']
         );
     }
 
     public function syncPurchaseOrders() {
         return $this->syncTable(
             'finance_purchase_orders',
-            'SELECT po_number, customer_id, company_id, total_amount, po_date, status FROM finance_purchase_orders',
-            'INSERT INTO finance_purchase_orders (po_number, customer_id, company_id, po_total_value, po_date, po_status) VALUES (?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), company_id = VALUES(company_id),
-             po_total_value = VALUES(po_total_value), po_date = VALUES(po_date),
-             po_status = VALUES(po_status), updated_at = NOW()',
-            ['po_number', 'customer_id', 'company_id', 'total_amount', 'po_date', 'status']
+            'SELECT id, po_number, customer_id, company_id, total_amount, po_date, status FROM finance_purchase_orders',
+            'INSERT INTO finance_purchase_orders (id, po_number, customer_id, company_id, po_total_value, po_date, po_status) VALUES (?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE po_number = VALUES(po_number), customer_id = VALUES(customer_id),
+             company_id = VALUES(company_id), po_total_value = VALUES(po_total_value),
+             po_date = VALUES(po_date), po_status = VALUES(po_status)',
+            ['id', 'po_number', 'customer_id', 'company_id', 'total_amount', 'po_date', 'status']
         );
     }
 
     public function syncInvoices() {
         return $this->syncTable(
             'finance_invoices',
-            'SELECT invoice_number, customer_id, company_id, total_amount, subtotal, paid_amount,
+            'SELECT id, invoice_number, customer_id, company_id, total_amount, subtotal, paid_amount,
                     igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, payment_status,
-                    outstanding_amount
-             FROM finance_invoices',
-            'INSERT INTO finance_invoices (invoice_number, customer_id, company_id, total_amount, taxable_amount, amount_paid,
-                    igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, status, outstanding_amount)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), company_id = VALUES(company_id),
-             total_amount = VALUES(total_amount), taxable_amount = VALUES(taxable_amount),
-             amount_paid = VALUES(amount_paid), igst_amount = VALUES(igst_amount),
-             cgst_amount = VALUES(cgst_amount), sgst_amount = VALUES(sgst_amount),
+                    outstanding_amount FROM finance_invoices',
+            'INSERT INTO finance_invoices (id, invoice_number, customer_id, company_id, total_amount, taxable_amount,
+                    amount_paid, igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, status, outstanding_amount)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE invoice_number = VALUES(invoice_number), customer_id = VALUES(customer_id),
+             company_id = VALUES(company_id), total_amount = VALUES(total_amount),
+             taxable_amount = VALUES(taxable_amount), amount_paid = VALUES(amount_paid),
+             igst_amount = VALUES(igst_amount), cgst_amount = VALUES(cgst_amount), sgst_amount = VALUES(sgst_amount),
              due_date = VALUES(due_date), invoice_date = VALUES(invoice_date),
-             status = VALUES(status), outstanding_amount = VALUES(outstanding_amount), updated_at = NOW()',
-            ['invoice_number', 'customer_id', 'company_id', 'total_amount', 'subtotal', 'paid_amount',
+             status = VALUES(status), outstanding_amount = VALUES(outstanding_amount)',
+            ['id', 'invoice_number', 'customer_id', 'company_id', 'total_amount', 'subtotal', 'paid_amount',
              'igst_amount', 'cgst_amount', 'sgst_amount', 'due_date', 'invoice_date', 'payment_status',
              'outstanding_amount']
         );
@@ -123,12 +122,13 @@ class DataSyncService {
     public function syncPayments() {
         return $this->syncTable(
             'finance_payments',
-            'SELECT payment_number, customer_id, company_id, amount, payment_date, reference_number, status FROM finance_payments',
-            'INSERT INTO finance_payments (payment_id, customer_id, company_id, amount, payment_date, receipt_number, status) VALUES (?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), company_id = VALUES(company_id),
-             amount = VALUES(amount), payment_date = VALUES(payment_date),
-             receipt_number = VALUES(receipt_number), status = VALUES(status), updated_at = NOW()',
-            ['payment_number', 'customer_id', 'company_id', 'amount', 'payment_date', 'reference_number', 'status']
+            'SELECT id, payment_number, customer_id, company_id, amount, payment_date, reference_number, status FROM finance_payments',
+            'INSERT INTO finance_payments (id, payment_number, customer_id, company_id, amount, payment_date, receipt_number, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE payment_number = VALUES(payment_number), customer_id = VALUES(customer_id),
+             company_id = VALUES(company_id), amount = VALUES(amount),
+             payment_date = VALUES(payment_date), receipt_number = VALUES(receipt_number), status = VALUES(status)',
+            ['id', 'payment_number', 'customer_id', 'company_id', 'amount', 'payment_date', 'reference_number', 'status']
         );
     }
 
