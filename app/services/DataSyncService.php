@@ -5,10 +5,16 @@ class DataSyncService {
     private $mysqlConnection;
     
     public function __construct() {
-        $this->pgConnection = $this->getPostgreSQLConnection();
         $this->mysqlConnection = $this->getMySQLConnection();
+        if (extension_loaded('pdo_pgsql')) {
+            $this->pgConnection = $this->getPostgreSQLConnection();
+        }
     }
     
+    public function isPostgreSQLAvailable(): bool {
+        return $this->pgConnection !== null;
+    }
+
     private function getPostgreSQLConnection() {
         $config = Database::getPostgreSQLConfig();
         $pg = $config['postgresql'];
@@ -26,7 +32,8 @@ class DataSyncService {
             );
             return $pdo;
         } catch (PDOException $e) {
-            throw new Exception("PostgreSQL connection failed: " . $e->getMessage());
+            error_log("PostgreSQL connection failed: " . $e->getMessage());
+            return null;
         }
     }
     
@@ -52,8 +59,14 @@ class DataSyncService {
     }
     
     public function syncAllTables() {
+        if (!$this->isPostgreSQLAvailable()) {
+            return array_fill_keys(
+                ['customers', 'quotations', 'purchase_orders', 'invoices', 'payments'],
+                ['records' => 0, 'status' => 'unavailable', 'error' => 'pdo_pgsql driver not available on this server']
+            );
+        }
+
         $results = [];
-        
         $results['customers'] = $this->syncCustomers();
         $results['quotations'] = $this->syncQuotations();
         $results['purchase_orders'] = $this->syncPurchaseOrders();
