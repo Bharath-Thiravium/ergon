@@ -26,7 +26,13 @@ function run($db, $label, $sql) {
 
 function addCol($db, $table, $column, $definition) {
     global $ok, $skip;
-    $exists = $db->query("SHOW COLUMNS FROM `$table` LIKE '$column'")->fetchAll();
+    try {
+        $rows = $db->query("SHOW COLUMNS FROM `$table` LIKE '$column'")->fetchAll();
+    } catch (Exception $e) {
+        echo "ERR:  $table.$column — table missing: " . $e->getMessage() . "\n";
+        return;
+    }
+    $exists = $rows;
     if ($exists) {
         echo "SKIP: $table.$column (already exists)\n";
         $skip++;
@@ -43,7 +49,13 @@ function addCol($db, $table, $column, $definition) {
 
 function addIndex($db, $table, $index, $column) {
     global $ok, $skip;
-    $exists = $db->query("SHOW INDEX FROM `$table` WHERE Key_name = '$index'")->fetchAll();
+    try {
+        $rows = $db->query("SHOW INDEX FROM `$table` WHERE Key_name = '$index'")->fetchAll();
+    } catch (Exception $e) {
+        echo "ERR:  $table.$index — table missing: " . $e->getMessage() . "\n";
+        return;
+    }
+    $exists = $rows;
     if ($exists) {
         echo "SKIP: $table.$index (already exists)\n";
         $skip++;
@@ -108,7 +120,12 @@ addIndex($db, 'finance_purchase_orders', 'idx_company_id', 'company_id');
 addIndex($db, 'finance_payments',        'idx_company_id', 'company_id');
 
 echo "\n=== STEP 5: Sync all tables from PostgreSQL ===\n";
+try {
 $sync = new DataSyncService();
+} catch (Exception $e) {
+    echo "ERR: DataSyncService init failed — " . $e->getMessage() . "\n";
+    goto verify;
+}
 if (!$sync->isPostgreSQLAvailable()) {
     echo "ERR: PostgreSQL not available\n";
 } else {
@@ -119,6 +136,7 @@ if (!$sync->isPostgreSQLAvailable()) {
     }
 }
 
+verify:
 echo "\n=== STEP 6: Verify counts ===\n";
 foreach (['finance_companies','finance_customers','finance_quotations','finance_purchase_orders','finance_invoices','finance_payments','sync_log'] as $t) {
     $count = $db->query("SELECT COUNT(*) FROM `$t`")->fetchColumn();

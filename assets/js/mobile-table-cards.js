@@ -123,34 +123,15 @@ function getPriorityFromRow(cells) {
   return 'medium';
 }
 
-// Debug function
-function debugTables() {
-  console.log('Screen width:', window.innerWidth);
-  console.log('Tables found:', document.querySelectorAll('.table-responsive').length);
-  console.log('Mobile cards found:', document.querySelectorAll('.mobile-card-container').length);
-}
-
 // Initialize immediately and on events
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    debugTables();
-    convertTablesToCards();
-  });
+  document.addEventListener('DOMContentLoaded', convertTablesToCards);
 } else {
-  debugTables();
   convertTablesToCards();
 }
 
-// Also run after delays to catch dynamically loaded content
-setTimeout(() => {
-  debugTables();
-  convertTablesToCards();
-}, 500);
-
-setTimeout(() => {
-  debugTables();
-  convertTablesToCards();
-}, 1000);
+setTimeout(convertTablesToCards, 500);
+setTimeout(convertTablesToCards, 1000);
 
 window.addEventListener('resize', () => {
   if (window.location.pathname.includes('/admin/management')) {
@@ -193,9 +174,5 @@ function removeElementByXPath(xpath) {
   return false;
 }
 
-// Remove the specific element
-removeElementByXPath('/html/body/main/div[3]/div[2]/div/div/div[1]/div[3]/div');
-
 // Export for manual triggering
 window.convertTablesToCards = convertTablesToCards;
-window.removeElementByXPath = removeElementByXPath;
