@@ -293,15 +293,7 @@
 <script src="/ergon/views/finance/dashboard-svg-charts.js"></script>
 <script src="/ergon/views/finance/dashboard-loader.js"></script>
 <script src="/ergon/views/finance/cashflow-listener.js"></script>
-<script>
-setTimeout(() => {
-    const prefix = document.getElementById('companyPrefix')?.value;
-    if (prefix) {
-        console.log('Auto-loading charts for prefix:', prefix);
-        loadAllCharts();
-    }
-}, 2000);
-</script>
+
 <script>
 
 // Notification function
@@ -1642,12 +1634,7 @@ async function updateAnalyticsWidgets() {
         const customerSelect = document.getElementById('customerFilter');
         const customerId = customerSelect ? customerSelect.value : '';
         
-        if (!prefix) {
-            console.log('No prefix for analytics widgets');
-            return;
-        }
-        
-        console.log('Updating analytics widgets for prefix:', prefix);
+        if (!prefix) return;
         
         const analyticsData = {
             quotations: {},

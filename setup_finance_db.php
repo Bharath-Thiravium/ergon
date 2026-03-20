@@ -70,7 +70,41 @@ function addIndex($db, $table, $index, $column) {
     }
 }
 
-echo "=== STEP 1: Create finance_companies table ===\n";
+echo "=== STEP 0: Create core tables if missing ===\n";
+run($db, 'CREATE finance_customers', "CREATE TABLE IF NOT EXISTS finance_customers (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    customer_id BIGINT DEFAULT NULL,
+    customer_name VARCHAR(255) NOT NULL,
+    customer_gstin VARCHAR(64) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_customer_id (customer_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+run($db, 'CREATE finance_quotations', "CREATE TABLE IF NOT EXISTS finance_quotations (
+    id BIGINT PRIMARY KEY, quotation_number VARCHAR(128), customer_id BIGINT, company_id BIGINT,
+    quotation_amount DECIMAL(18,2) DEFAULT 0.00, quotation_date DATE, status VARCHAR(64),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_company_id (company_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+run($db, 'CREATE finance_purchase_orders', "CREATE TABLE IF NOT EXISTS finance_purchase_orders (
+    id BIGINT PRIMARY KEY, po_number VARCHAR(128), customer_id BIGINT, company_id BIGINT,
+    po_total_value DECIMAL(18,2) DEFAULT 0.00, po_date DATE, po_status VARCHAR(64),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_company_id (company_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+run($db, 'CREATE finance_invoices', "CREATE TABLE IF NOT EXISTS finance_invoices (
+    id BIGINT PRIMARY KEY, invoice_number VARCHAR(128), customer_id BIGINT, company_id BIGINT,
+    total_amount DECIMAL(18,2) DEFAULT 0.00, taxable_amount DECIMAL(18,2) DEFAULT 0.00,
+    amount_paid DECIMAL(18,2) DEFAULT 0.00, outstanding_amount DECIMAL(18,2) DEFAULT 0.00,
+    igst_amount DECIMAL(18,2) DEFAULT 0.00, cgst_amount DECIMAL(18,2) DEFAULT 0.00,
+    sgst_amount DECIMAL(18,2) DEFAULT 0.00, due_date DATE, invoice_date DATE, status VARCHAR(64),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_company_id (company_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+run($db, 'CREATE finance_payments', "CREATE TABLE IF NOT EXISTS finance_payments (
+    id BIGINT PRIMARY KEY, payment_number VARCHAR(128), customer_id BIGINT, company_id BIGINT,
+    amount DECIMAL(18,2) DEFAULT 0.00, payment_date DATE, receipt_number VARCHAR(128), status VARCHAR(64),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_company_id (company_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+echo "\n=== STEP 1: Create finance_companies table ===\n";
 run($db, 'CREATE finance_companies', "CREATE TABLE IF NOT EXISTS finance_companies (
     company_id INT PRIMARY KEY,
     company_prefix VARCHAR(32) NOT NULL,
