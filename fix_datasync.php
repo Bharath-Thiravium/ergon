@@ -181,6 +181,17 @@ if (file_put_contents($target, $content)) {
     $written = file_get_contents($target);
     echo "✓ Written successfully. Size: " . strlen($written) . " bytes\n";
     echo "Starts with: " . substr($written, 0, 50) . "\n";
+    
+    // Flush OPcache
+    if (function_exists('opcache_invalidate')) {
+        opcache_invalidate($target, true);
+        echo "✓ OPcache invalidated\n";
+    }
+    if (function_exists('opcache_reset')) {
+        opcache_reset();
+        echo "✓ OPcache reset\n";
+    }
+    
     echo "\nDELETE this file now.\n";
 } else {
     echo "❌ Failed — check permissions.\n";
