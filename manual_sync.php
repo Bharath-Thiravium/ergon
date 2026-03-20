@@ -8,6 +8,7 @@ require_once __DIR__ . '/app/config/database.php';
 require_once __DIR__ . '/app/services/DataSyncService.php';
 
 echo "=== Manual PostgreSQL Sync ===\n\n";
+echo "pdo_pgsql loaded: " . (extension_loaded('pdo_pgsql') ? 'YES' : 'NO') . "\n\n";
 
 
 try {
