@@ -10,7 +10,8 @@ require_once __DIR__ . '/app/services/DataSyncService.php';
 echo "=== Manual PostgreSQL Sync ===\n\n";
 echo "pdo_pgsql loaded: " . (extension_loaded('pdo_pgsql') ? 'YES' : 'NO') . "\n";
 echo "DB_USER in ENV: " . ($_ENV['DB_USER'] ?? '(not set)') . "\n";
-echo "DB_NAME in ENV: " . ($_ENV['DB_NAME'] ?? '(not set)') . "\n\n";
+echo "DB_NAME in ENV: " . ($_ENV['DB_NAME'] ?? '(not set)') . "\n";
+echo "DataSyncService version: v2 (uses Database::connect)\n\n";
 
 
 try {
