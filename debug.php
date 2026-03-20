@@ -24,7 +24,29 @@ try {
     require_once __DIR__ . '/app/config/environment.php';
     echo "   ✓ " . Environment::detect() . "\n";
 
-    echo "4. Database...\n";
+    echo "3b. Reading .env file...\n";
+    $envPath = __DIR__ . '/.env';
+    if (file_exists($envPath)) {
+        echo "   .env found at: $envPath\n";
+        $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (strpos($line, '#') === 0) continue;
+            if (strpos($line, 'DB_') !== false || strpos($line, 'APP_') !== false) {
+                // Mask password
+                if (strpos($line, 'PASS') !== false) {
+                    $parts = explode('=', $line, 2);
+                    echo "   " . $parts[0] . "=" . str_repeat('*', strlen($parts[1] ?? '')) . "\n";
+                } else {
+                    echo "   $line\n";
+                }
+            }
+        }
+    } else {
+        echo "   ❌ .env NOT FOUND at: $envPath\n";
+    }
+    echo "   DB_USER from ENV: " . ($_ENV['DB_USER'] ?? 'NOT SET') . "\n";
+    echo "   DB_NAME from ENV: " . ($_ENV['DB_NAME'] ?? 'NOT SET') . "\n";
+
     require_once __DIR__ . '/app/config/database.php';
     $db = Database::connect();
     echo "   ✓ connected\n";
