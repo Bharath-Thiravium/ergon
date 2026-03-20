@@ -48,7 +48,6 @@ $migrations = [
 ];
 
 try {
-    $db = Database::connect();
     echo "Starting migration: fix_login_attempts_columns\n\n";
 
     $applied = 0;
