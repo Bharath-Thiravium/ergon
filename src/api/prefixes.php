@@ -6,82 +6,19 @@ header('Access-Control-Allow-Origin: *');
 
 try {
     $db = Database::connect();
-    
-    // Collect all full prefixes from different sources
-    $allPrefixes = [];
-    
-    $tables = [
-        ['table' => 'finance_customer', 'column' => 'customer_code'],
-        ['table' => 'finance_invoices', 'column' => 'invoice_number'],
-        ['table' => 'finance_quotations', 'column' => 'quotation_number'],
-        ['table' => 'finance_purchase_orders', 'column' => 'internal_po_number']
-    ];
-    
-    foreach ($tables as $source) {
-        $stmt = $db->query("SELECT DISTINCT {$source['column']} as full_prefix FROM {$source['table']} WHERE {$source['column']} IS NOT NULL AND LENGTH({$source['column']}) >= 2");
-        while ($row = $stmt->fetch()) {
-            if ($row['full_prefix'] && strlen($row['full_prefix']) >= 2) {
-                $allPrefixes[] = strtoupper($row['full_prefix']);
-            }
-        }
+
+    $rows = $db->query("SELECT company_prefix FROM finance_companies ORDER BY company_prefix")->fetchAll(PDO::FETCH_COLUMN);
+
+    // Build simple prefix tree for the letter-selector UI
+    $tree = [];
+    foreach ($rows as $p) {
+        $key = substr($p, 0, 2);
+        if (!isset($tree[$key])) $tree[$key] = [];
+        if (strlen($p) > 2) $tree[$key][] = substr($p, 2, 1);
     }
-    
-    $allPrefixes = array_unique($allPrefixes);
-    
-    // Build hierarchical prefix tree
-    function buildPrefixTree($prefixes, $currentLength = 2) {
-        $tree = [];
-        $grouped = [];
-        
-        // Group by current length
-        foreach ($prefixes as $prefix) {
-            if (strlen($prefix) >= $currentLength) {
-                $key = substr($prefix, 0, $currentLength);
-                if (!isset($grouped[$key])) {
-                    $grouped[$key] = [];
-                }
-                $grouped[$key][] = $prefix;
-            }
-        }
-        
-        foreach ($grouped as $key => $group) {
-            if (count($group) == 1) {
-                // Unique at this level
-                $tree[$key] = null;
-            } else {
-                // Need to go deeper
-                $nextLetters = [];
-                foreach ($group as $prefix) {
-                    if (strlen($prefix) > $currentLength) {
-                        $nextLetters[] = substr($prefix, $currentLength, 1);
-                    }
-                }
-                if (count(array_unique($nextLetters)) > 1) {
-                    $tree[$key] = array_unique($nextLetters);
-                } else {
-                    $tree[$key] = null;
-                }
-            }
-        }
-        
-        return $tree;
-    }
-    
-    $prefixTree = buildPrefixTree($allPrefixes);
-    $prefixes = array_keys($prefixTree);
-    
-    sort($prefixes);
-    
-    echo json_encode([
-        'success' => true,
-        'prefixes' => array_values($prefixes),
-        'prefix_tree' => $prefixTree
-    ]);
-    
+    foreach ($tree as &$v) $v = array_values(array_unique($v));
+
+    echo json_encode(['success' => true, 'prefixes' => $rows, 'prefix_tree' => $tree]);
 } catch (Exception $e) {
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage()
-    ]);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
-?>
