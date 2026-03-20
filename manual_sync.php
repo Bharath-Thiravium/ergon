@@ -1,26 +1,6 @@
 <?php
-/**
- * Manual PostgreSQL Sync Trigger
- * Use this to manually trigger sync and debug issues
- */
-
-require_once __DIR__ . '/app/config/database.php';
-require_once __DIR__ . '/app/services/DataSyncService.php';
-
-echo "=== Manual PostgreSQL Sync ===\n\n";
-$envFromConfig = realpath(__DIR__ . '/app/config/../../.env');
-$envDirect = realpath(__DIR__ . '/.env');
-echo "ENV via database.php path: $envFromConfig\n";
-echo "ENV direct path: $envDirect\n";
-echo "Same file: " . ($envFromConfig === $envDirect ? 'YES' : 'NO - MISMATCH!') . "\n";
-echo "pdo_pgsql loaded: " . (extension_loaded('pdo_pgsql') ? 'YES' : 'NO') . "\n";
-echo "DB_USER in ENV: " . ($_ENV['DB_USER'] ?? '(not set)') . "\n";
-echo "DB_NAME in ENV: " . ($_ENV['DB_NAME'] ?? '(not set)') . "\n";
-echo "DataSyncService version: v2 (uses Database::connect)\n\n";
-
-// Direct PDO test - bypasses DataSyncService entirely
+// Direct PDO test BEFORE any includes
 echo "=== Direct PDO Test ===\n";
-echo "extension_loaded pdo_pgsql: " . (extension_loaded('pdo_pgsql') ? 'YES' : 'NO') . "\n";
 echo "PDO drivers: " . implode(', ', PDO::getAvailableDrivers()) . "\n";
 try {
     $testPdo = new PDO(
@@ -29,12 +9,19 @@ try {
         'mango',
         [PDO::ATTR_TIMEOUT => 10, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
-    echo "Direct PostgreSQL connection: SUCCESS\n";
+    echo "Direct PostgreSQL: SUCCESS\n";
 } catch (Exception $e) {
-    echo "Direct PostgreSQL connection: FAILED - " . $e->getMessage() . "\n";
+    echo "Direct PostgreSQL: FAILED - " . $e->getMessage() . "\n";
 }
 echo "\n";
 
+require_once __DIR__ . '/app/config/database.php';
+require_once __DIR__ . '/app/services/DataSyncService.php';
+
+echo "=== Manual PostgreSQL Sync ===\n\n";
+echo "pdo_pgsql loaded: " . (extension_loaded('pdo_pgsql') ? 'YES' : 'NO') . "\n";
+echo "DB_USER in ENV: " . ($_ENV['DB_USER'] ?? '(not set)') . "\n";
+echo "DataSyncService has isPostgreSQLAvailable: " . (method_exists('DataSyncService', 'isPostgreSQLAvailable') ? 'YES' : 'NO') . "\n\n";
 
 try {
     echo "Initializing sync service...\n";
@@ -49,7 +36,7 @@ try {
 
     echo "Starting sync process...\n\n";
     $results = $syncService->syncAllTables();
-    
+
     echo "=== Sync Results ===\n";
     foreach ($results as $table => $result) {
         $icon = $result['status'] === 'success' ? '✓' : '⚠️';
@@ -58,7 +45,7 @@ try {
             echo "  Error: " . $result['error'] . "\n";
         }
     }
-    
+
     echo "\n=== Sync History ===\n";
     $history = $syncService->getSyncHistory(5);
     foreach ($history as $log) {
@@ -67,7 +54,7 @@ try {
             echo "  Error: " . $log['error_message'] . "\n";
         }
     }
-    
+
 } catch (Exception $e) {
     echo "❌ Sync failed: " . $e->getMessage() . "\n";
 }
