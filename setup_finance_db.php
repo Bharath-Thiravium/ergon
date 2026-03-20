@@ -171,34 +171,6 @@ if (!$sync->isPostgreSQLAvailable()) {
     echo "ERR: PostgreSQL not available — pdo_pgsql driver missing or connection refused\n";
 } else {
     echo "PostgreSQL connected\n"; flush();
-    // Phase 1: fetch ALL data from PG in one session
-    echo "Fetching all data from PostgreSQL...\n"; flush();
-    $allData = [];
-    $pgQueries = [
-        'companies'       => ["SELECT id, company_prefix, name FROM authentication_company WHERE approval_status = 'approved'", ['id','company_prefix','name']],
-        'customers'       => ['SELECT id, name, gstin FROM finance_customer WHERE is_active = true', ['id','name','gstin']],
-        'quotations'      => ['SELECT id, quotation_number, customer_id, company_id, total_amount, quotation_date, status FROM finance_quotations', ['id','quotation_number','customer_id','company_id','total_amount','quotation_date','status']],
-        'purchase_orders' => ['SELECT id, po_number, customer_id, company_id, total_amount, po_date, status FROM finance_purchase_orders', ['id','po_number','customer_id','company_id','total_amount','po_date','status']],
-        'invoices'        => ['SELECT id, invoice_number, customer_id, company_id, total_amount, subtotal, paid_amount, igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, payment_status, outstanding_amount FROM finance_invoices', ['id','invoice_number','customer_id','company_id','total_amount','subtotal','paid_amount','igst_amount','cgst_amount','sgst_amount','due_date','invoice_date','payment_status','outstanding_amount']],
-        'payments'        => ['SELECT id, payment_number, customer_id, company_id, amount, payment_date, COALESCE(reference_number, payment_number) as reference_number, status FROM finance_payments', ['id','payment_number','customer_id','company_id','amount','payment_date','reference_number','status']],
-    ];
-    // Get raw PG connection via reflection
-    $ref = new ReflectionProperty($sync, 'pgConnection');
-    $ref->setAccessible(true);
-    $pgConn = $ref->getValue($sync);
-    foreach ($pgQueries as $key => [$sql, $fields]) {
-        echo "Fetching $key from PG... "; flush();
-        $stmt = $pgConn->prepare($sql);
-        $stmt->execute();
-        $allData[$key] = ['rows' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'fields' => $fields];
-        $stmt->closeCursor();
-        echo count($allData[$key]['rows']) . " rows\n"; flush();
-    }
-    // Close PG
-    $ref->setValue($sync, null);
-    unset($pgConn);
-    echo "PG connection closed. Inserting into MySQL...\n"; flush();
-    // Phase 2: insert into MySQL
     $results = $sync->syncAllTables();
     foreach ($results as $table => $r) {
         $err = !empty($r['error']) ? " — {$r['error']}" : '';
