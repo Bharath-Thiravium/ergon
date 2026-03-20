@@ -122,7 +122,7 @@ class DataSyncService {
     public function syncPayments() {
         return $this->syncTable(
             'finance_payments',
-            'SELECT id, payment_number, customer_id, company_id, amount, payment_date, reference_number, status FROM finance_payments',
+            'SELECT id, payment_number, customer_id, company_id, amount, payment_date, COALESCE(reference_number, payment_number) as reference_number, status FROM finance_payments',
             'INSERT INTO finance_payments (id, payment_number, customer_id, company_id, amount, payment_date, receipt_number, status)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE payment_number = VALUES(payment_number), customer_id = VALUES(customer_id),
@@ -138,12 +138,15 @@ class DataSyncService {
         $errorMessage = null;
 
         try {
-            // Fetch all rows then immediately close PG cursor before touching MySQL
-            $stmt = $this->pgConnection->prepare($selectQuery);
+            // Fresh PG connection per table to avoid idle timeout
+            $pg = $this->getPostgreSQLConnection();
+            if (!$pg) throw new Exception('PostgreSQL reconnect failed');
+
+            $stmt = $pg->prepare($selectQuery);
             $stmt->execute();
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $stmt->closeCursor();
-            unset($stmt);
+            unset($stmt, $pg);
 
             if (empty($rows)) {
                 $this->logSync($tableName, 0, 'completed', null, $syncStarted);
