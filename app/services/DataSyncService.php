@@ -71,7 +71,7 @@ class DataSyncService {
             'finance_quotations',
             'SELECT quotation_number, customer_id, total_amount, quotation_date, status FROM finance_quotations',
             'INSERT INTO finance_quotations (quotation_number, customer_id, quotation_amount, quotation_date, status) VALUES (?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), quotation_amount = VALUES(quotation_amount), 
+             ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), quotation_amount = VALUES(quotation_amount),
              quotation_date = VALUES(quotation_date), status = VALUES(status), updated_at = NOW()',
             ['quotation_number', 'customer_id', 'total_amount', 'quotation_date', 'status']
         );
@@ -91,18 +91,21 @@ class DataSyncService {
     public function syncInvoices() {
         return $this->syncTable(
             'finance_invoices',
-            'SELECT invoice_number, customer_id, total_amount, subtotal, paid_amount, 
-                    igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, payment_status 
+            'SELECT invoice_number, customer_id, total_amount, subtotal, paid_amount,
+                    igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, payment_status,
+                    outstanding_amount
              FROM finance_invoices',
             'INSERT INTO finance_invoices (invoice_number, customer_id, total_amount, taxable_amount, amount_paid,
-                    igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, status) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, status, outstanding_amount)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id), total_amount = VALUES(total_amount),
              taxable_amount = VALUES(taxable_amount), amount_paid = VALUES(amount_paid),
              igst_amount = VALUES(igst_amount), cgst_amount = VALUES(cgst_amount), sgst_amount = VALUES(sgst_amount),
-             due_date = VALUES(due_date), invoice_date = VALUES(invoice_date), status = VALUES(status), updated_at = NOW()',
-            ['invoice_number', 'customer_id', 'total_amount', 'subtotal', 'paid_amount', 
-             'igst_amount', 'cgst_amount', 'sgst_amount', 'due_date', 'invoice_date', 'payment_status']
+             due_date = VALUES(due_date), invoice_date = VALUES(invoice_date), status = VALUES(status),
+             outstanding_amount = VALUES(outstanding_amount), updated_at = NOW()',
+            ['invoice_number', 'customer_id', 'total_amount', 'subtotal', 'paid_amount',
+             'igst_amount', 'cgst_amount', 'sgst_amount', 'due_date', 'invoice_date', 'payment_status',
+             'outstanding_amount']
         );
     }
     

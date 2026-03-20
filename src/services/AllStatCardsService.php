@@ -72,9 +72,9 @@ class AllStatCardsService {
     private function getStatCard3($prefix) {
         $len = strlen($prefix);
         $sql = "SELECT 
-            COALESCE(SUM(total_amount - amount_paid),0) AS total_outstanding,
-            SUM(CASE WHEN (total_amount - amount_paid) > 0 THEN 1 ELSE 0 END) AS pending_invoices,
-            COUNT(DISTINCT CASE WHEN (total_amount - amount_paid) > 0 THEN customer_id END) AS customers_involved
+            COALESCE(SUM(outstanding_amount),0) AS total_outstanding,
+            SUM(CASE WHEN outstanding_amount > 0 THEN 1 ELSE 0 END) AS pending_invoices,
+            COUNT(DISTINCT CASE WHEN outstanding_amount > 0 THEN customer_id END) AS customers_involved
         FROM finance_invoices
         WHERE LEFT(invoice_number, $len) = ?";
         
@@ -91,7 +91,7 @@ class AllStatCardsService {
             COALESCE(SUM(cgst_amount + sgst_amount),0) AS cgst_sgst,
             COALESCE(SUM(igst_amount + cgst_amount + sgst_amount),0) AS total_gst
         FROM finance_invoices
-        WHERE (total_amount - amount_paid) > 0
+        WHERE outstanding_amount > 0
           AND LEFT(invoice_number, $len) = ?";
         
         $stmt = $this->pdo->prepare($sql);
@@ -103,11 +103,14 @@ class AllStatCardsService {
     private function getStatCard5($prefix) {
         $len = strlen($prefix);
         $sql = "SELECT
-            COALESCE(SUM(po_total_value),0) AS total_po_commitments,
-            SUM(CASE WHEN po_status IN ('active','released','open') THEN 1 ELSE 0 END) AS open_pos,
-            SUM(CASE WHEN po_status IN ('closed','completed','cancelled') THEN 1 ELSE 0 END) AS closed_pos
-        FROM finance_purchase_orders
-        WHERE LEFT(po_number, $len) = ?";
+            COALESCE(SUM(po.po_total_value),0) AS total_po_commitments,
+            SUM(CASE WHEN LOWER(po.po_status) IN ('active','released','open') THEN 1 ELSE 0 END) AS open_pos,
+            SUM(CASE WHEN LOWER(po.po_status) IN ('closed','completed','cancelled') THEN 1 ELSE 0 END) AS closed_pos
+        FROM finance_purchase_orders po
+        WHERE EXISTS (
+            SELECT 1 FROM finance_invoices i
+            WHERE LEFT(i.invoice_number, $len) = ? AND i.customer_id = po.customer_id
+        )";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$prefix]);
@@ -118,13 +121,12 @@ class AllStatCardsService {
     private function getStatCard6($prefix) {
         $len = strlen($prefix);
         $sql = "SELECT
-            COALESCE(SUM(total_amount - amount_paid),0) AS claimable_amount,
-            SUM(CASE WHEN (total_amount - amount_paid) > 0 THEN 1 ELSE 0 END) AS claimable_invoices,
+            COALESCE(SUM(outstanding_amount),0) AS claimable_amount,
+            SUM(CASE WHEN outstanding_amount > 0 THEN 1 ELSE 0 END) AS claimable_invoices,
             CASE WHEN SUM(total_amount) = 0 THEN 0
-                 ELSE (SUM(total_amount - amount_paid) / SUM(total_amount)) * 100 END AS claim_rate
+                 ELSE (SUM(outstanding_amount) / SUM(total_amount)) * 100 END AS claim_rate
         FROM finance_invoices
-        WHERE LEFT(invoice_number, $len) = ?
-          AND (total_amount - amount_paid) > 0";
+        WHERE LEFT(invoice_number, $len) = ?";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$prefix]);

@@ -13,7 +13,7 @@ try {
     $resolvedPrefix = resolveCompanyPrefix($rawPrefix, $companyPrefixes);
     $db = Database::connect();
 
-    $sql = "SELECT COALESCE(SUM(amount), 0) AS total_paid, COALESCE(COUNT(*), 0) AS payment_count, COALESCE(AVG(amount), 0) AS avg_payment FROM finance_payments WHERE LEFT(payment_id, ?) = ?";
+    $sql = "SELECT COALESCE(SUM(p.amount), 0) AS total_paid, COALESCE(COUNT(*), 0) AS payment_count, COALESCE(AVG(p.amount), 0) AS avg_payment FROM finance_payments p WHERE EXISTS (SELECT 1 FROM finance_invoices i WHERE LEFT(i.invoice_number, ?) = ? AND i.customer_id = p.customer_id)";
 
     $len = strlen($resolvedPrefix);
     $stmt = $db->prepare($sql);
