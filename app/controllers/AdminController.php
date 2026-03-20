@@ -1,7 +1,7 @@
 <?php
 /**
  * Admin Controller - Department Admin vs System Admin
- * Ergon-Site - Employee Tracker & Task Manager
+ * Ergon - Employee Tracker & Task Manager
  */
 
 require_once __DIR__ . '/../core/Controller.php';

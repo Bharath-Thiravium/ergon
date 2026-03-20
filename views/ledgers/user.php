@@ -10,7 +10,7 @@ ob_start();
         <p>Financial transaction history for <strong><?= htmlspecialchars($user['name'] ?? 'Unknown User') ?></strong> (<?= htmlspecialchars($user['role'] ?? 'N/A') ?>)</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon-site/users" class="btn btn--secondary">← Back to Users</a>
+        <a href="/ergon/users" class="btn btn--secondary">← Back to Users</a>
         <button onclick="window.print()" class="btn btn--outline">🖨️ Print</button>
         <button onclick="downloadLedger()" class="btn btn--primary">📥 Download CSV</button>
     </div>
