@@ -171,11 +171,16 @@ if (!$sync->isPostgreSQLAvailable()) {
     echo "ERR: PostgreSQL not available — pdo_pgsql driver missing or connection refused\n";
 } else {
     echo "PostgreSQL connected\n"; flush();
-    $results = $sync->syncAllTables();
-    foreach ($results as $table => $r) {
-        $err = !empty($r['error']) ? " — {$r['error']}" : '';
-        echo "{$r['status']}: $table ({$r['records']} records)$err\n";
-        flush();
+    foreach (['companies','customers','quotations','purchase_orders','invoices','payments'] as $t) {
+        echo "Syncing $t... "; flush();
+        $method = 'sync' . str_replace('_', '', ucwords($t, '_'));
+        try {
+            $r = $sync->$method();
+            $err = !empty($r['error']) ? " — {$r['error']}" : '';
+            echo "{$r['status']} ({$r['records']} records)$err\n"; flush();
+        } catch (Exception $e) {
+            echo "ERR — " . $e->getMessage() . "\n"; flush();
+        }
     }
 }
 
