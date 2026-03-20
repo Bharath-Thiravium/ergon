@@ -83,7 +83,7 @@ run($db, 'CREATE finance_customers', "CREATE TABLE IF NOT EXISTS finance_custome
     customer_gstin VARCHAR(64) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_customer_id (customer_id)
+    UNIQUE KEY uniq_customer_id (customer_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 run($db, 'CREATE finance_quotations', "CREATE TABLE IF NOT EXISTS finance_quotations (
     id BIGINT PRIMARY KEY, quotation_number VARCHAR(128), customer_id BIGINT, company_id BIGINT,
@@ -151,6 +151,25 @@ addCol($db, 'finance_payments', 'receipt_number', 'VARCHAR(128) DEFAULT NULL');
 
 // finance_customers
 addCol($db, 'finance_customers', 'customer_id', 'BIGINT DEFAULT NULL');
+// Upgrade idx_customer_id to UNIQUE if not already
+try {
+    $idxRows = $db->query("SHOW INDEX FROM finance_customers WHERE Key_name = 'uniq_customer_id'")->fetchAll();
+    if (!$idxRows) {
+        // Dedupe first: keep only the lowest id per customer_id
+        $db->exec("DELETE fc1 FROM finance_customers fc1 INNER JOIN finance_customers fc2 WHERE fc1.id > fc2.id AND fc1.customer_id = fc2.customer_id AND fc1.customer_id IS NOT NULL");
+        // Drop old non-unique index if present
+        $oldIdx = $db->query("SHOW INDEX FROM finance_customers WHERE Key_name = 'idx_customer_id'")->fetchAll();
+        if ($oldIdx) $db->exec("ALTER TABLE finance_customers DROP INDEX idx_customer_id");
+        $db->exec("ALTER TABLE finance_customers ADD UNIQUE KEY uniq_customer_id (customer_id)");
+        echo "OK:   finance_customers.uniq_customer_id (deduped + unique key added)\n";
+        $ok++;
+    } else {
+        echo "SKIP: finance_customers.uniq_customer_id (already exists)\n";
+        $skip++;
+    }
+} catch (Exception $e) {
+    echo "ERR:  finance_customers unique key — " . $e->getMessage() . "\n";
+}
 
 echo "\n=== STEP 4: Add missing indexes ===\n";
 addIndex($db, 'finance_invoices',        'idx_company_id', 'company_id');
