@@ -54,11 +54,15 @@ class DataSyncService {
             'invoices'        => ['SELECT id, invoice_number, customer_id, company_id, total_amount, subtotal, paid_amount, igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, payment_status, outstanding_amount FROM finance_invoices', ['id','invoice_number','customer_id','company_id','total_amount','subtotal','paid_amount','igst_amount','cgst_amount','sgst_amount','due_date','invoice_date','payment_status','outstanding_amount']],
             'payments'        => ['SELECT id, payment_number, customer_id, company_id, amount, payment_date, COALESCE(reference_number, payment_number) as reference_number, status FROM finance_payments', ['id','payment_number','customer_id','company_id','amount','payment_date','reference_number','status']],
         ];
+        // Set PG statement timeout to 20s to avoid silent hangs
+        $this->pgConnection->exec("SET statement_timeout = 20000");
         foreach ($queries as $key => [$sql, $fields]) {
+            error_log("DataSync Phase1: fetching $key");
             $stmt = $this->pgConnection->prepare($sql);
             $stmt->execute();
             $allData[$key] = ['rows' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'fields' => $fields];
             $stmt->closeCursor();
+            error_log("DataSync Phase1: $key done (" . count($allData[$key]['rows']) . " rows)");
         }
         // Close PG connection before MySQL work
         $this->pgConnection = null;
