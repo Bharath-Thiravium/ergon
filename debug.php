@@ -1,75 +1,81 @@
 <?php
 /**
  * Temporary Error Display - DELETE AFTER DEBUGGING
- * This bypasses production error suppression to show the actual error
  */
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
-echo "<h1>Testing Ergon Bootstrap...</h1>";
-echo "<pre>";
+echo "<!DOCTYPE html><html><head><title>Debug</title></head><body><pre>";
 
 try {
-    echo "1. Loading session config...\n";
+    echo "1. Session config...\n";
     require_once __DIR__ . '/app/config/session.php';
-    echo "   ✓ Session config loaded\n\n";
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    echo "   ✓\n";
 
-    echo "2. Starting session...\n";
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    echo "   ✓ Session started: " . session_id() . "\n\n";
-
-    echo "3. Setting timezone...\n";
+    echo "2. Timezone...\n";
     date_default_timezone_set('Asia/Kolkata');
-    echo "   ✓ Timezone set\n\n";
+    echo "   ✓\n";
 
-    echo "4. Loading environment config...\n";
+    echo "3. Environment...\n";
     require_once __DIR__ . '/app/config/environment.php';
-    echo "   ✓ Environment: " . Environment::detect() . "\n\n";
+    echo "   ✓ " . Environment::detect() . "\n";
 
-    echo "5. Loading database config...\n";
+    echo "4. Database...\n";
     require_once __DIR__ . '/app/config/database.php';
-    echo "   ✓ Database class loaded\n\n";
-
-    echo "6. Testing database connection...\n";
     $db = Database::connect();
-    echo "   ✓ Database connected\n\n";
+    echo "   ✓ connected\n";
 
-    echo "7. Loading Router...\n";
-    require_once __DIR__ . '/app/core/Router.php';
-    echo "   ✓ Router loaded\n\n";
+    echo "5. ENV values read:\n";
+    echo "   DB_NAME=" . ($_ENV['DB_NAME'] ?? 'NOT SET') . "\n";
+    echo "   DB_USER=" . ($_ENV['DB_USER'] ?? 'NOT SET') . "\n";
 
-    echo "8. Loading Controller...\n";
+    echo "6. Core files...\n";
     require_once __DIR__ . '/app/core/Controller.php';
-    echo "   ✓ Controller loaded\n\n";
+    require_once __DIR__ . '/app/core/Session.php';
+    require_once __DIR__ . '/app/core/Router.php';
+    echo "   ✓\n";
 
-    echo "9. Initializing Router...\n";
+    echo "7. Constants...\n";
+    require_once __DIR__ . '/app/config/constants.php';
+    echo "   ✓\n";
+
+    echo "8. DatabaseHelper...\n";
+    require_once __DIR__ . '/app/helpers/DatabaseHelper.php';
+    echo "   ✓\n";
+
+    echo "9. User model...\n";
+    require_once __DIR__ . '/app/models/User.php';
+    $u = new User();
+    echo "   ✓\n";
+
+    echo "10. SecurityService...\n";
+    require_once __DIR__ . '/app/services/SecurityService.php';
+    $s = new SecurityService();
+    echo "   ✓\n";
+
+    echo "11. AuthController...\n";
+    require_once __DIR__ . '/app/controllers/AuthController.php';
+    echo "   ✓\n";
+
+    echo "12. Routes...\n";
     $router = new Router();
-    echo "   ✓ Router initialized\n\n";
-
-    echo "10. Loading routes...\n";
     require_once __DIR__ . '/app/config/routes.php';
-    echo "   ✓ Routes loaded\n\n";
+    echo "   ✓\n";
 
-    echo "11. Handling request...\n";
-    echo "   Request URI: " . ($_SERVER['REQUEST_URI'] ?? 'N/A') . "\n";
-    echo "   Request Method: " . ($_SERVER['REQUEST_METHOD'] ?? 'N/A') . "\n\n";
-
+    echo "\n✅ All bootstrap steps passed. Calling handleRequest()...\n";
+    echo "</pre>";
     $router->handleRequest();
 
-    echo "\n✅ All steps completed successfully!\n";
-
 } catch (Throwable $e) {
-    echo "\n❌ ERROR at step:\n";
-    echo "Message: " . $e->getMessage() . "\n";
-    echo "File: " . $e->getFile() . "\n";
-    echo "Line: " . $e->getLine() . "\n\n";
-    echo "Stack trace:\n";
-    echo $e->getTraceAsString();
+    echo "\n❌ FAILED:\n";
+    echo "Message : " . $e->getMessage() . "\n";
+    echo "File    : " . $e->getFile() . "\n";
+    echo "Line    : " . $e->getLine() . "\n\n";
+    echo "Trace:\n" . $e->getTraceAsString();
+    echo "</pre></body></html>";
 }
-
-echo "</pre>";
 ?>

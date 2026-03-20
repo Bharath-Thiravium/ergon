@@ -2,17 +2,23 @@
 class Session {
     public static function init() {
         if (session_status() === PHP_SESSION_NONE) {
-            // Set session save path to a writable directory
-            $sessionPath = __DIR__ . '/../../storage/sessions';
-            if (!is_dir($sessionPath)) {
-                mkdir($sessionPath, 0755, true);
+            // Only use custom session path in development
+            if (strpos($_SERVER['DOCUMENT_ROOT'] ?? '', 'laragon') !== false) {
+                $sessionPath = __DIR__ . '/../../storage/sessions';
+                if (!is_dir($sessionPath)) {
+                    @mkdir($sessionPath, 0755, true);
+                }
+                if (is_writable($sessionPath)) {
+                    session_save_path($sessionPath);
+                }
             }
-            session_save_path($sessionPath);
             session_start();
         }
-        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-        header("Pragma: no-cache");
-        header("Expires: 0");
+        if (!headers_sent()) {
+            header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+            header("Pragma: no-cache");
+            header("Expires: 0");
+        }
     }
     
     public static function set($key, $value) {
