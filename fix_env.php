@@ -8,7 +8,7 @@ echo "BEFORE:\n$current\n\n";
 
 $updated = preg_replace('/^DB_NAME=.*$/m', 'DB_NAME=u494785662_ergon', $current);
 $updated = preg_replace('/^DB_USER=.*$/m', 'DB_USER=u494785662_ergon', $updated);
-$updated = preg_replace('/^DB_PASS=.*$/m', 'DB_PASS=<your_actual_db_password>', $updated);
+$updated = preg_replace('/^DB_PASS=.*$/m', 'DB_PASS=', $updated); // <-- put real password after DB_PASS=
 
 if (file_put_contents($envPath, $updated)) {
     echo "AFTER:\n$updated\n\n";
