@@ -1,6 +1,7 @@
 # Environment files
 .env
 .env.production
+.env.production.*
 
 # Cache and temporary files
 storage/cache/*
