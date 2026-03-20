@@ -138,9 +138,12 @@ class DataSyncService {
         $errorMessage = null;
 
         try {
+            // Fetch all rows then immediately close PG cursor before touching MySQL
             $stmt = $this->pgConnection->prepare($selectQuery);
             $stmt->execute();
-            $rows = $stmt->fetchAll();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+            unset($stmt);
 
             if (empty($rows)) {
                 $this->logSync($tableName, 0, 'completed', null, $syncStarted);
@@ -148,7 +151,6 @@ class DataSyncService {
             }
 
             $insertStmt = $this->mysqlConnection->prepare($insertQuery);
-
             foreach ($rows as $row) {
                 $values = [];
                 foreach ($fields as $field) {
@@ -159,7 +161,6 @@ class DataSyncService {
             }
 
             $this->logSync($tableName, $recordsSynced, 'completed', null, $syncStarted);
-
             return ['table' => $tableName, 'records' => $recordsSynced, 'status' => 'success'];
 
         } catch (Exception $e) {
