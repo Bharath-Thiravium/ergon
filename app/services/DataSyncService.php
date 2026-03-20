@@ -37,14 +37,14 @@ class DataSyncService {
     }
 
     public function syncAllTables() {
-        if (!$this->isPostgreSQLAvailable()) {
+        if (!extension_loaded('pdo_pgsql')) {
             return array_fill_keys(
                 ['companies', 'customers', 'quotations', 'purchase_orders', 'invoices', 'payments'],
                 ['records' => 0, 'status' => 'unavailable', 'error' => 'pdo_pgsql driver not available on this server']
             );
         }
 
-        // Phase 1: fetch everything from PG in one session
+        // Phase 1: fresh PG connection with aggressive timeouts, fetch all tables, then close
         $allData = [];
         $queries = [
             'companies'       => ["SELECT id, company_prefix, name FROM authentication_company WHERE approval_status = 'approved'", ['id','company_prefix','name']],
@@ -54,17 +54,28 @@ class DataSyncService {
             'invoices'        => ['SELECT id, invoice_number, customer_id, company_id, total_amount, subtotal, paid_amount, igst_amount, cgst_amount, sgst_amount, due_date, invoice_date, payment_status, outstanding_amount FROM finance_invoices', ['id','invoice_number','customer_id','company_id','total_amount','subtotal','paid_amount','igst_amount','cgst_amount','sgst_amount','due_date','invoice_date','payment_status','outstanding_amount']],
             'payments'        => ['SELECT id, payment_number, customer_id, company_id, amount, payment_date, COALESCE(reference_number, payment_number) as reference_number, status FROM finance_payments', ['id','payment_number','customer_id','company_id','amount','payment_date','reference_number','status']],
         ];
-        // Set PG statement timeout to 20s to avoid silent hangs
-        $this->pgConnection->exec("SET statement_timeout = 20000");
-        foreach ($queries as $key => [$sql, $fields]) {
-            error_log("DataSync Phase1: fetching $key");
-            $stmt = $this->pgConnection->prepare($sql);
-            $stmt->execute();
-            $allData[$key] = ['rows' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'fields' => $fields];
-            $stmt->closeCursor();
-            error_log("DataSync Phase1: $key done (" . count($allData[$key]['rows']) . " rows)");
+        try {
+            $config = Database::getPostgreSQLConfig();
+            $pg = $config['postgresql'];
+            // options=-c%20statement_timeout%3D25000 sets 25s query timeout at session level via DSN
+            $dsn = "pgsql:host={$pg['host']};port={$pg['port']};dbname={$pg['database']};connect_timeout=15;options='-c statement_timeout=25000'";
+            $pgConn = new PDO($dsn, $pg['username'], $pg['password'], [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_TIMEOUT            => 25,
+            ]);
+            foreach ($queries as $key => [$sql, $fields]) {
+                $stmt = $pgConn->query($sql);
+                $allData[$key] = ['rows' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'fields' => $fields];
+                $stmt->closeCursor();
+            }
+            $pgConn = null;
+        } catch (Exception $e) {
+            return array_fill_keys(
+                array_keys($queries),
+                ['records' => 0, 'status' => 'error', 'error' => 'PG fetch failed: ' . $e->getMessage()]
+            );
         }
-        // Close PG connection before MySQL work
         $this->pgConnection = null;
 
         // Phase 2: insert into MySQL
