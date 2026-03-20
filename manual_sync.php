@@ -9,12 +9,6 @@ require_once __DIR__ . '/app/services/DataSyncService.php';
 
 echo "=== Manual PostgreSQL Sync ===\n\n";
 
-// Debug: confirm .env is being read
-$envPath = __DIR__ . '/.env';
-echo "ENV path: $envPath\n";
-echo "ENV exists: " . (file_exists($envPath) ? 'yes' : 'NO - FILE MISSING') . "\n";
-echo "DB_USER: " . ($_ENV['DB_USER'] ?? '(not set)') . "\n";
-echo "DB_NAME: " . ($_ENV['DB_NAME'] ?? '(not set)') . "\n\n";
 
 try {
     echo "Initializing sync service...\n";
