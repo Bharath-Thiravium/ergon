@@ -18,6 +18,23 @@ echo "DB_USER in ENV: " . ($_ENV['DB_USER'] ?? '(not set)') . "\n";
 echo "DB_NAME in ENV: " . ($_ENV['DB_NAME'] ?? '(not set)') . "\n";
 echo "DataSyncService version: v2 (uses Database::connect)\n\n";
 
+// Direct PDO test - bypasses DataSyncService entirely
+echo "=== Direct PDO Test ===\n";
+echo "extension_loaded pdo_pgsql: " . (extension_loaded('pdo_pgsql') ? 'YES' : 'NO') . "\n";
+echo "PDO drivers: " . implode(', ', PDO::getAvailableDrivers()) . "\n";
+try {
+    $testPdo = new PDO(
+        "pgsql:host=72.60.218.167;port=5432;dbname=modernsap",
+        'postgres',
+        'mango',
+        [PDO::ATTR_TIMEOUT => 10, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+    echo "Direct PostgreSQL connection: SUCCESS\n";
+} catch (Exception $e) {
+    echo "Direct PostgreSQL connection: FAILED - " . $e->getMessage() . "\n";
+}
+echo "\n";
+
 
 try {
     echo "Initializing sync service...\n";
