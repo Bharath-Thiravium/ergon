@@ -1,5 +1,5 @@
 <?php
-$envFile = __DIR__ . '/.env.production.bkg';
+$envFile = __DIR__ . '/.env.production';
 if (!file_exists($envFile)) die("No .env.production.bkg found\n");
 
 foreach (file($envFile) as $line) {

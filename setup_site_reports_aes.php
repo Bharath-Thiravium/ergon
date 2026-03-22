@@ -1,5 +1,5 @@
 <?php
-$envFile = __DIR__ . '/.env.production.aes';
+$envFile = __DIR__ . '/.env.production';
 if (!file_exists($envFile)) die("No .env.production.aes found\n");
 
 foreach (file($envFile) as $line) {
