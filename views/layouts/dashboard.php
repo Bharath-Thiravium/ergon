@@ -772,11 +772,11 @@ ob_end_clean();
                 <a href="/ergon/finance" class="sidebar__link <?= ($active_page ?? '') === 'finance' ? 'sidebar__link--active' : '' ?>">
                     <span class="sidebar__icon">💰</span>
                     Finance
-                </
-                <a href="/ergon/site-reports class=sidebar__link <?= (\$active_page ?? '') === 'site_reports' ? 'sidebar__link--active' : '' ?>>
- <span class=sidebar__icon>&#128203;</span>
- Site Reports
- </a>a>
+                </a>
+                <a href="/ergon/site-reports" class="sidebar__link <?= ($active_page ?? '') === 'site_reports' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">&#128203;</span>
+                    Site Reports
+                </a>
                 
                 <div class="sidebar__divider">HR & Finance</div>
                 <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
