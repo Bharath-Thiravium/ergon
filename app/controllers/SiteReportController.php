@@ -23,11 +23,14 @@ class SiteReportController extends Controller {
 
         $reports = $this->db->prepare("
             SELECT sr.*, u.name AS submitted_by_name,
-                   p.name AS project_name
+                   p.name AS project_name,
+                   COALESCE(SUM(sre.amount),0) AS total_expenses_requested
             FROM site_reports sr
             LEFT JOIN users u ON u.id = sr.submitted_by
             LEFT JOIN projects p ON p.id = sr.project_id
+            LEFT JOIN site_report_expenses sre ON sre.report_id = sr.id
             $where
+            GROUP BY sr.id
             ORDER BY sr.report_date DESC, sr.created_at DESC
             LIMIT 100
         ");
