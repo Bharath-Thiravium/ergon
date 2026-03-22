@@ -1,4 +1,5 @@
 <?php
+ob_start();
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -20,13 +21,11 @@ try {
     $systemAdminDisabled = ModuleManager::isModuleDisabled('system_admin');
     $reportsDisabled = ModuleManager::isModuleDisabled('reports');
 } catch (Exception $e) {
-    // Silently fail - module will appear enabled
+    // Silently fail
 }
 
 $title = 'Executive Dashboard';
 $active_page = 'dashboard';
-
-ob_start();
 ?>
 
 <div class="header-actions">
@@ -319,6 +318,5 @@ body[data-user-role="company_owner"] .header-actions {
 
 <?php
 $content = ob_get_clean();
-include __DIR__ . '/dashboard_styles.php';
 include __DIR__ . '/../layouts/dashboard.php';
 ?>
