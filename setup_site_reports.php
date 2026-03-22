@@ -1,11 +1,51 @@
 <?php
+// Show ALL errors — remove after use
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 ini_set('max_execution_time', 60);
-require_once __DIR__ . '/app/config/database.php';
-header('Content-Type: text/plain');
+
+header('Content-Type: text/plain; charset=utf-8');
 if (ob_get_level()) ob_end_flush();
 ob_implicit_flush(true);
 
-$db = Database::connect();
+echo "=== Site Report Module Setup ===\n\n";
+
+// ── Step 0: Load DB credentials from .env.production ─────────────────────────
+$envFile = __DIR__ . '/.env.production';
+if (!file_exists($envFile)) {
+    die("ERR: .env.production not found at $envFile\nUpload it to the server root first.\n");
+}
+
+$env = [];
+foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+    if (strpos($line, '#') === 0 || strpos($line, '=') === false) continue;
+    [$k, $v] = explode('=', $line, 2);
+    $env[trim($k)] = trim($v);
+}
+
+$host   = $env['DB_HOST'] ?? 'localhost';
+$dbname = $env['DB_NAME'] ?? '';
+$user   = $env['DB_USER'] ?? '';
+$pass   = $env['DB_PASS'] ?? '';
+
+echo "DB Host: $host\n";
+echo "DB Name: $dbname\n";
+echo "DB User: $user\n\n";
+
+// ── Step 1: Connect ───────────────────────────────────────────────────────────
+try {
+    $db = new PDO(
+        "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
+        $user, $pass,
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+    echo "Connected to MySQL OK\n\n";
+} catch (Exception $e) {
+    die("ERR: DB connection failed — " . $e->getMessage() . "\n");
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 $ok = 0; $skip = 0;
 
 function run($db, $label, $sql) {
@@ -25,28 +65,10 @@ function run($db, $label, $sql) {
     }
 }
 
-function addCol($db, $table, $column, $definition) {
-    global $ok, $skip;
-    $rows = $db->query("SHOW COLUMNS FROM `$table` LIKE '$column'")->fetchAll();
-    if ($rows) {
-        echo "SKIP: $table.$column (already exists)\n"; flush();
-        $skip++;
-    } else {
-        try {
-            $db->exec("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
-            echo "OK:   $table.$column added\n"; flush();
-            $ok++;
-        } catch (Exception $e) {
-            echo "ERR:  $table.$column — " . $e->getMessage() . "\n"; flush();
-        }
-    }
-}
+// ── Create Tables ─────────────────────────────────────────────────────────────
+echo "--- Creating tables ---\n";
 
-echo "=== Site Report Module Setup ===\n\n";
-
-// ── Table 1: site_reports ─────────────────────────────────────────────────────
-echo "--- site_reports ---\n";
-run($db, 'CREATE site_reports', "
+run($db, 'site_reports', "
 CREATE TABLE IF NOT EXISTS site_reports (
     id INT AUTO_INCREMENT PRIMARY KEY,
     company_id INT DEFAULT NULL,
@@ -66,16 +88,11 @@ CREATE TABLE IF NOT EXISTS site_reports (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
 
-// ── Table 2: site_report_manpower ─────────────────────────────────────────────
-echo "\n--- site_report_manpower ---\n";
-run($db, 'CREATE site_report_manpower', "
+run($db, 'site_report_manpower', "
 CREATE TABLE IF NOT EXISTS site_report_manpower (
     id INT AUTO_INCREMENT PRIMARY KEY,
     report_id INT NOT NULL,
-    category ENUM(
-        'engineer','supervisor','ac_dc_team','mms_team',
-        'civil_mason','local_labour','driver_operator','other'
-    ) NOT NULL,
+    category ENUM('engineer','supervisor','ac_dc_team','mms_team','civil_mason','local_labour','driver_operator','other') NOT NULL,
     count INT DEFAULT 0,
     names JSON DEFAULT NULL,
     FOREIGN KEY (report_id) REFERENCES site_reports(id) ON DELETE CASCADE,
@@ -83,9 +100,7 @@ CREATE TABLE IF NOT EXISTS site_report_manpower (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
 
-// ── Table 3: site_report_machinery ────────────────────────────────────────────
-echo "\n--- site_report_machinery ---\n";
-run($db, 'CREATE site_report_machinery', "
+run($db, 'site_report_machinery', "
 CREATE TABLE IF NOT EXISTS site_report_machinery (
     id INT AUTO_INCREMENT PRIMARY KEY,
     report_id INT NOT NULL,
@@ -100,9 +115,7 @@ CREATE TABLE IF NOT EXISTS site_report_machinery (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
 
-// ── Table 4: site_report_tasks ────────────────────────────────────────────────
-echo "\n--- site_report_tasks ---\n";
-run($db, 'CREATE site_report_tasks', "
+run($db, 'site_report_tasks', "
 CREATE TABLE IF NOT EXISTS site_report_tasks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     report_id INT NOT NULL,
@@ -113,9 +126,7 @@ CREATE TABLE IF NOT EXISTS site_report_tasks (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
 
-// ── Table 5: site_report_expenses ─────────────────────────────────────────────
-echo "\n--- site_report_expenses ---\n";
-run($db, 'CREATE site_report_expenses', "
+run($db, 'site_report_expenses', "
 CREATE TABLE IF NOT EXISTS site_report_expenses (
     id INT AUTO_INCREMENT PRIMARY KEY,
     report_id INT NOT NULL,
@@ -131,16 +142,15 @@ CREATE TABLE IF NOT EXISTS site_report_expenses (
 ");
 
 // ── Verify ────────────────────────────────────────────────────────────────────
-echo "\n=== Verify table counts ===\n";
-$tables = ['site_reports','site_report_manpower','site_report_machinery','site_report_tasks','site_report_expenses'];
-foreach ($tables as $t) {
+echo "\n--- Verifying ---\n";
+foreach (['site_reports','site_report_manpower','site_report_machinery','site_report_tasks','site_report_expenses'] as $t) {
     try {
         $count = $db->query("SELECT COUNT(*) FROM `$t`")->fetchColumn();
-        echo "$t: $count rows\n";
+        echo "OK:   $t ($count rows)\n";
     } catch (Exception $e) {
-        echo "MISSING: $t — " . $e->getMessage() . "\n";
+        echo "MISSING: $t\n";
     }
 }
 
 echo "\n=== DONE: $ok created, $skip skipped ===\n";
-echo "Safe to delete this file after running.\n";
+echo "Delete this file from the server now.\n";
