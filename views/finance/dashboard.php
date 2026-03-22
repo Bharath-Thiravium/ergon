@@ -1716,13 +1716,7 @@ async function loadAllStatCardsData() {
     }
 }
 </script>
-
-<?php 
-$content = ob_get_clean();
-require_once __DIR__ . '/../layouts/dashboard.php';
-?>
-
-<style>
+<style>
 .data-list {
     margin-top: 1rem;
     max-height: 300px;
@@ -2531,3 +2525,6 @@ require_once __DIR__ . '/../layouts/dashboard.php';
 }
 </style>
 
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../layouts/dashboard.php';

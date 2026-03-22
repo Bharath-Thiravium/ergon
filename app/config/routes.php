@@ -400,6 +400,14 @@ $router->post('/followups/delete/{id}', 'FollowupController', 'delete');
 $router->get('/gamification/team-competition', 'GamificationController', 'teamCompetition');
 $router->get('/gamification/individual', 'GamificationController', 'individual');
 
+// Site Report Routes
+$router->get('/site-reports', 'SiteReportController', 'index');
+$router->get('/site-reports/create', 'SiteReportController', 'create');
+$router->post('/site-reports/store', 'SiteReportController', 'store');
+$router->get('/site-reports/view/{id}', 'SiteReportController', 'view');
+$router->get('/site-reports/summary', 'SiteReportController', 'summary');
+$router->post('/site-reports/expense/approve', 'SiteReportController', 'approveExpense');
+
 // Finance Module Routes - Main
 $router->get('/finance', 'FinanceController', 'dashboard');
 

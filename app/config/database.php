@@ -6,10 +6,10 @@
 
 require_once __DIR__ . '/environment.php';
 
-// Load environment variables - prefer .env.production if it exists
-$_envFile = file_exists(__DIR__ . '/../../.env.production')
-    ? __DIR__ . '/../../.env.production'
-    : __DIR__ . '/../../.env';
+// Load environment variables - use .env.production only on production servers
+$_envProd = __DIR__ . '/../../.env.production';
+$_envDev  = __DIR__ . '/../../.env';
+$_envFile = (Environment::isProduction() && file_exists($_envProd)) ? $_envProd : $_envDev;
 if (file_exists($_envFile)) {
     $lines = file($_envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {

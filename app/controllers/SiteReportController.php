@@ -1,0 +1,236 @@
+<?php
+
+require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../config/database.php';
+
+class SiteReportController extends Controller {
+
+    private $db;
+
+    public function __construct() {
+        $this->db = Database::connect();
+    }
+
+    // GET /site-reports  — list all reports (admin/owner)
+    // GET /site-reports  — list own reports (supervisor)
+    public function index($request) {
+        $this->requireAuth();
+        $userId = $_SESSION['user_id'];
+        $role   = $_SESSION['role'] ?? 'user';
+
+        $where  = ($role === 'admin' || $role === 'company_owner') ? '' : 'WHERE sr.submitted_by = ?';
+        $params = ($role === 'admin' || $role === 'company_owner') ? [] : [$userId];
+
+        $reports = $this->db->prepare("
+            SELECT sr.*, u.name AS submitted_by_name,
+                   p.name AS project_name
+            FROM site_reports sr
+            LEFT JOIN users u ON u.id = sr.submitted_by
+            LEFT JOIN projects p ON p.id = sr.project_id
+            $where
+            ORDER BY sr.report_date DESC, sr.created_at DESC
+            LIMIT 100
+        ");
+        $reports->execute($params);
+        $reports = $reports->fetchAll(PDO::FETCH_ASSOC);
+
+        $title       = 'Site Daily Reports';
+        $active_page = 'site_reports';
+        ob_start();
+        require_once __DIR__ . '/../../views/site_reports/index.php';
+        $content = ob_get_clean();
+        require_once __DIR__ . '/../../views/layouts/dashboard.php';
+    }
+
+    // GET /site-reports/create
+    public function create($request) {
+        $this->requireAuth();
+        $projects = $this->db->query("SELECT id, name FROM projects ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+
+        $title       = 'Submit Site Report';
+        $active_page = 'site_reports';
+        ob_start();
+        require_once __DIR__ . '/../../views/site_reports/create.php';
+        $content = ob_get_clean();
+        require_once __DIR__ . '/../../views/layouts/dashboard.php';
+    }
+
+    // POST /site-reports/store
+    public function store($request) {
+        $this->requireAuth();
+        if (!$this->isPost()) { $this->redirect('/site-reports/create'); return; }
+
+        $p = $_POST;
+
+        try {
+            $this->db->beginTransaction();
+
+            // 1. Main report row
+            $stmt = $this->db->prepare("
+                INSERT INTO site_reports
+                    (company_id, project_id, site_name, report_date, submitted_by, total_manpower, remarks, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted')
+            ");
+            $stmt->execute([
+                $_SESSION['company_id'] ?? null,
+                $p['project_id'] ?: null,
+                trim($p['site_name']),
+                $p['report_date'],
+                $_SESSION['user_id'],
+                (int)($p['total_manpower'] ?? 0),
+                trim($p['remarks'] ?? ''),
+            ]);
+            $reportId = $this->db->lastInsertId();
+
+            // 2. Manpower rows
+            $categories = [
+                'engineer','supervisor','ac_dc_team','mms_team',
+                'civil_mason','local_labour','driver_operator','other'
+            ];
+            $mpStmt = $this->db->prepare("
+                INSERT INTO site_report_manpower (report_id, category, count, names)
+                VALUES (?, ?, ?, ?)
+            ");
+            foreach ($categories as $cat) {
+                $count = (int)($p['mp'][$cat]['count'] ?? 0);
+                $names = trim($p['mp'][$cat]['names'] ?? '');
+                if ($count > 0 || $names !== '') {
+                    $namesJson = $names ? json_encode(array_filter(array_map('trim', explode("\n", $names)))) : null;
+                    $mpStmt->execute([$reportId, $cat, $count, $namesJson]);
+                }
+            }
+
+            // 3. Machinery rows
+            $machines = ['tractor','jcb','hydra','tata_ace','dg','crane','other'];
+            $mStmt = $this->db->prepare("
+                INSERT INTO site_report_machinery (report_id, machine_type, count, hours_worked, fuel_litres, remarks)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            foreach ($machines as $m) {
+                $count = (int)($p['mach'][$m]['count'] ?? 0);
+                if ($count > 0) {
+                    $mStmt->execute([
+                        $reportId, $m, $count,
+                        $p['mach'][$m]['hours'] ?: null,
+                        $p['mach'][$m]['fuel']  ?: null,
+                        trim($p['mach'][$m]['remarks'] ?? ''),
+                    ]);
+                }
+            }
+
+            // 4. Tasks
+            $tStmt = $this->db->prepare("
+                INSERT INTO site_report_tasks (report_id, task_description, sort_order) VALUES (?, ?, ?)
+            ");
+            foreach (($p['tasks'] ?? []) as $i => $task) {
+                $task = trim($task);
+                if ($task !== '') $tStmt->execute([$reportId, $task, $i]);
+            }
+
+            // 5. Expense requests
+            $eStmt = $this->db->prepare("
+                INSERT INTO site_report_expenses (report_id, description, amount, expense_type)
+                VALUES (?, ?, ?, ?)
+            ");
+            foreach (($p['expenses'] ?? []) as $exp) {
+                $desc   = trim($exp['description'] ?? '');
+                $amount = (float)($exp['amount'] ?? 0);
+                if ($desc !== '' && $amount > 0) {
+                    $eStmt->execute([$reportId, $desc, $amount, $exp['type'] ?? 'other']);
+                }
+            }
+
+            $this->db->commit();
+            $this->redirect('/site-reports/view/' . $reportId);
+
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log('SiteReport store error: ' . $e->getMessage());
+            $this->redirect('/site-reports/create?error=1');
+        }
+    }
+
+    // GET /site-reports/view/{id}
+    public function view($request) {
+        $this->requireAuth();
+        $id = (int)($request['id'] ?? 0);
+
+        $report = $this->db->prepare("
+            SELECT sr.*, u.name AS submitted_by_name, p.name AS project_name
+            FROM site_reports sr
+            LEFT JOIN users u ON u.id = sr.submitted_by
+            LEFT JOIN projects p ON p.id = sr.project_id
+            WHERE sr.id = ?
+        ");
+        $report->execute([$id]);
+        $report = $report->fetch(PDO::FETCH_ASSOC);
+        if (!$report) { http_response_code(404); echo 'Report not found'; return; }
+
+        $manpower  = $this->db->prepare("SELECT * FROM site_report_manpower WHERE report_id = ? ORDER BY id");
+        $manpower->execute([$id]); $manpower = $manpower->fetchAll(PDO::FETCH_ASSOC);
+
+        $machinery = $this->db->prepare("SELECT * FROM site_report_machinery WHERE report_id = ? ORDER BY id");
+        $machinery->execute([$id]); $machinery = $machinery->fetchAll(PDO::FETCH_ASSOC);
+
+        $tasks     = $this->db->prepare("SELECT * FROM site_report_tasks WHERE report_id = ? ORDER BY sort_order");
+        $tasks->execute([$id]); $tasks = $tasks->fetchAll(PDO::FETCH_ASSOC);
+
+        $expenses  = $this->db->prepare("SELECT * FROM site_report_expenses WHERE report_id = ? ORDER BY id");
+        $expenses->execute([$id]); $expenses = $expenses->fetchAll(PDO::FETCH_ASSOC);
+
+        $title       = 'Site Report — ' . $report['report_date'];
+        $active_page = 'site_reports';
+        ob_start();
+        require_once __DIR__ . '/../../views/site_reports/view.php';
+        $content = ob_get_clean();
+        require_once __DIR__ . '/../../views/layouts/dashboard.php';
+    }
+
+    // POST /site-reports/expense/approve  (admin only)
+    public function approveExpense($request) {
+        $this->requireAuth();
+        header('Content-Type: application/json');
+
+        $expenseId = (int)($_POST['expense_id'] ?? 0);
+        $action    = $_POST['action'] ?? ''; // 'approved' or 'rejected'
+
+        if (!in_array($action, ['approved','rejected'])) {
+            echo json_encode(['success' => false, 'message' => 'Invalid action']); return;
+        }
+
+        $this->db->prepare("UPDATE site_report_expenses SET status = ? WHERE id = ?")
+                 ->execute([$action, $expenseId]);
+
+        echo json_encode(['success' => true]);
+    }
+
+    // GET /site-reports/summary  — aggregate view for management
+    public function summary($request) {
+        $this->requireAuth();
+
+        $from = $_GET['from'] ?? date('Y-m-01');
+        $to   = $_GET['to']   ?? date('Y-m-d');
+
+        $rows = $this->db->prepare("
+            SELECT sr.report_date, sr.site_name, sr.total_manpower,
+                   p.name AS project_name,
+                   COALESCE(SUM(sre.amount),0) AS total_expenses_requested,
+                   COUNT(DISTINCT sre.id) AS expense_items
+            FROM site_reports sr
+            LEFT JOIN projects p ON p.id = sr.project_id
+            LEFT JOIN site_report_expenses sre ON sre.report_id = sr.id
+            WHERE sr.report_date BETWEEN ? AND ?
+            GROUP BY sr.id
+            ORDER BY sr.report_date DESC, sr.site_name
+        ");
+        $rows->execute([$from, $to]);
+        $rows = $rows->fetchAll(PDO::FETCH_ASSOC);
+
+        $title       = 'Site Reports Summary';
+        $active_page = 'site_reports';
+        ob_start();
+        require_once __DIR__ . '/../../views/site_reports/summary.php';
+        $content = ob_get_clean();
+        require_once __DIR__ . '/../../views/layouts/dashboard.php';
+    }
+}
