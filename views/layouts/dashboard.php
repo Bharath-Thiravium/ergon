@@ -394,6 +394,10 @@ ob_end_clean();
                                 Follow-ups
                                 <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
+                            <a href="/ergon/site-reports" class="nav-dropdown-item <?= ($active_page ?? '') === 'site_reports' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📋</span>
+                                Site Reports
+                            </a>
                         </div>
                     </div>
                     <div class="nav-dropdown">
@@ -559,6 +563,10 @@ ob_end_clean();
                                 Follow-ups
                                 <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
+                            <a href="/ergon/site-reports" class="nav-dropdown-item <?= ($active_page ?? '') === 'site_reports' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📋</span>
+                                Site Reports
+                            </a>
                         </div>
                     </div>
                     <div class="nav-dropdown">
@@ -638,6 +646,10 @@ ob_end_clean();
                                 <span class="nav-icon">📞</span>
                                 Follow-ups
                                 <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                            </a>
+                            <a href="/ergon/site-reports" class="nav-dropdown-item <?= ($active_page ?? '') === 'site_reports' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📋</span>
+                                Site Reports
                             </a>
                         </div>
                     </div>
@@ -733,6 +745,10 @@ ob_end_clean();
                     <span class="sidebar__icon">📞</span>
                     Follow-ups
                     <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                </a>
+                <a href="/ergon/site-reports" class="sidebar__link <?= ($active_page ?? '') === 'site_reports' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📋</span>
+                    Site Reports
                 </a>
                 
                 <div class="sidebar__divider">HR & Finance</div>
@@ -835,6 +851,10 @@ ob_end_clean();
                     Follow-ups
                     <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
+                <a href="/ergon/site-reports" class="sidebar__link <?= ($active_page ?? '') === 'site_reports' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📋</span>
+                    Site Reports
+                </a>
                 
                 <div class="sidebar__divider">Approvals</div>
                 <a href="/ergon/leaves" class="sidebar__link <?= ($active_page ?? '') === 'leaves' ? 'sidebar__link--active' : '' ?>">
@@ -892,6 +912,10 @@ ob_end_clean();
                     <span class="sidebar__icon">📞</span>
                     Follow-ups
                     <?php if ($followupsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                </a>
+                <a href="/ergon/site-reports" class="sidebar__link <?= ($active_page ?? '') === 'site_reports' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">📋</span>
+                    Site Reports
                 </a>
                 
                 <div class="sidebar__divider">Personal</div>
