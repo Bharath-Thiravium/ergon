@@ -35,14 +35,14 @@ class ProjectManagementController extends Controller {
                 name VARCHAR(255) NOT NULL,
                 description TEXT,
                 status VARCHAR(50) DEFAULT 'active',
+                latitude DECIMAL(10,8) NULL,
+                longitude DECIMAL(11,8) NULL,
+                checkin_radius INT DEFAULT 100,
+                place VARCHAR(255) NULL,
+                budget DECIMAL(15,2) NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )", "Create table");
-            
-            // Add columns if they don't exist
-            foreach (['latitude DECIMAL(10,8) NULL', 'longitude DECIMAL(11,8) NULL', 'checkin_radius INT DEFAULT 100', 'place VARCHAR(255) NULL', 'budget DECIMAL(15,2) NULL'] as $col) {
-                try { $db->exec("ALTER TABLE projects ADD COLUMN $col"); } catch (Exception $e) {}
-            }
 
             // Create pivot table for multiple departments
             $db->exec("CREATE TABLE IF NOT EXISTS project_departments (
@@ -56,11 +56,16 @@ class ProjectManagementController extends Controller {
             $stmt->execute();
             $projects = $stmt->fetchAll();
 
-            // Attach department names to each project
+            // Fetch all project-department mappings in ONE query
+            $allDepts = [];
+            if (!empty($projects)) {
+                $stmt = $db->query("SELECT pd.project_id, d.id, d.name FROM project_departments pd JOIN departments d ON d.id = pd.department_id");
+                foreach ($stmt->fetchAll() as $row) {
+                    $allDepts[$row['project_id']][] = ['id' => $row['id'], 'name' => $row['name']];
+                }
+            }
             foreach ($projects as &$project) {
-                $stmt = $db->prepare("SELECT d.id, d.name FROM departments d JOIN project_departments pd ON d.id = pd.department_id WHERE pd.project_id = ?");
-                $stmt->execute([$project['id']]);
-                $project['departments'] = $stmt->fetchAll();
+                $project['departments'] = $allDepts[$project['id']] ?? [];
             }
             unset($project);
             
@@ -123,13 +128,16 @@ class ProjectManagementController extends Controller {
 
             $projectId = $db->lastInsertId();
 
-            // Save multiple departments
-            $deptIds = isset($_POST['department_ids']) ? (array)$_POST['department_ids'] : [];
+            // Save multiple departments in one query
+            $deptIds = array_filter((array)($_POST['department_ids'] ?? []));
             if (!empty($deptIds)) {
-                $ins = $db->prepare("INSERT IGNORE INTO project_departments (project_id, department_id) VALUES (?, ?)");
+                $placeholders = implode(',', array_fill(0, count($deptIds), '(?,?)'));
+                $values = [];
                 foreach ($deptIds as $deptId) {
-                    if (!empty($deptId)) $ins->execute([$projectId, $deptId]);
+                    $values[] = $projectId;
+                    $values[] = $deptId;
                 }
+                $db->prepare("INSERT IGNORE INTO project_departments (project_id, department_id) VALUES $placeholders")->execute($values);
             }
             
             header('Content-Type: application/json');
@@ -187,14 +195,17 @@ class ProjectManagementController extends Controller {
                 $_POST['project_id']
             ]);
 
-            // Replace departments
+            // Replace departments in one query
             $db->prepare("DELETE FROM project_departments WHERE project_id = ?")->execute([$_POST['project_id']]);
-            $deptIds = isset($_POST['department_ids']) ? (array)$_POST['department_ids'] : [];
+            $deptIds = array_filter((array)($_POST['department_ids'] ?? []));
             if (!empty($deptIds)) {
-                $ins = $db->prepare("INSERT IGNORE INTO project_departments (project_id, department_id) VALUES (?, ?)");
+                $placeholders = implode(',', array_fill(0, count($deptIds), '(?,?)'));
+                $values = [];
                 foreach ($deptIds as $deptId) {
-                    if (!empty($deptId)) $ins->execute([$_POST['project_id'], $deptId]);
+                    $values[] = $_POST['project_id'];
+                    $values[] = $deptId;
                 }
+                $db->prepare("INSERT INTO project_departments (project_id, department_id) VALUES $placeholders")->execute($values);
             }
             
             header('Content-Type: application/json');
