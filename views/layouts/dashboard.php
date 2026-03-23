@@ -1015,7 +1015,7 @@ ob_end_clean();
         
         list.innerHTML = '<div class="notification-loading">Loading...</div>';
         
-        fetch(APP_BASE + '/api/notifications.php', {
+        fetch(APP_BASE + '/api/notifications/unread-count', {
             credentials: 'same-origin',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -1110,7 +1110,7 @@ ob_end_clean();
     
     // Load notification count only (for badge update)
     function loadNotificationCount() {
-        fetch(APP_BASE + '/api/notifications.php', {
+        fetch(APP_BASE + '/api/notifications/unread-count', {
             credentials: 'same-origin',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'

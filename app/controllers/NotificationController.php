@@ -52,14 +52,21 @@ class NotificationController extends Controller {
         try {
             require_once __DIR__ . '/../models/Notification.php';
             $notificationModel = new Notification();
-            $count = $notificationModel->getUnreadCount($_SESSION['user_id']);
+            $userId = $_SESSION['user_id'];
+            $count = $notificationModel->getUnreadCount($userId);
+            $notifications = $notificationModel->getForDropdown($userId, 10);
             
             header('Content-Type: application/json');
-            echo json_encode(['count' => $count]);
+            echo json_encode([
+                'success' => true,
+                'count' => $count,
+                'unread_count' => $count,
+                'notifications' => $notifications
+            ]);
         } catch (Exception $e) {
             error_log('Unread count error: ' . $e->getMessage());
             header('Content-Type: application/json');
-            echo json_encode(['count' => 0]);
+            echo json_encode(['success' => true, 'count' => 0, 'unread_count' => 0, 'notifications' => []]);
         }
         exit;
     }
