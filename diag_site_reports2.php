@@ -2,13 +2,11 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-$_SERVER['HTTP_HOST'] = 'localhost';
-
 require_once __DIR__ . '/app/config/session.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-$_SESSION['user_id']   = 1;
-$_SESSION['role']      = 'admin';
+$_SESSION['user_id']    = 1;
+$_SESSION['role']       = 'admin';
 $_SESSION['company_id'] = 1;
 
 date_default_timezone_set('Asia/Kolkata');
