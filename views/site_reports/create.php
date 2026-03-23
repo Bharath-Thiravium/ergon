@@ -261,21 +261,22 @@ function parseWA(text) {
     const siteMatch = text.match(/site\s*[\/&]\s*project\s*[:\-]?\s*(.+)/i);
     if (siteMatch) result.site = siteMatch[1].replace(/[*_]/g,'').trim();
 
-    // ── Total manpower ──
-    const mpMatch = text.match(/total\s*manpower\s*[:\-\(]?\s*(\d+)/i);
+    // ── Total manpower ── handles: "Total Manpower: 21", "Total Manpower:(21)", "Total Manpower (21)"
+    const mpMatch = text.match(/total\s*manpower\s*[:\-]?\s*[\(]?\s*(\d+)/i);
     if (mpMatch) result.total_manpower = parseInt(mpMatch[1]);
 
-    // Section keyword → category key
+    // Section keyword → category key (order matters: more specific first)
     const sectionMap = [
-        [/engineer/i,                   'engineer'],
-        [/supervisor/i,                 'supervisor'],
+        [/today.?s?\s*task/i,           'tasks'],
+        [/total\s*manpower/i,           'total_manpower'],  // sentinel — stops section absorption
         [/ac\s*[&\+]\s*dc/i,           'ac_dc_team'],
-        [/mms/i,                        'mms_team'],
-        [/civil|mason|weld|housekeep/i, 'civil_mason'],
         [/local\s*labour/i,             'local_labour'],
         [/driver|operator/i,            'driver_operator'],
+        [/engineer/i,                   'engineer'],
+        [/supervisor/i,                 'supervisor'],
+        [/mms/i,                        'mms_team'],
+        [/civil|mason|weld|housekeep/i, 'civil_mason'],
         [/machinery|machine/i,          'machinery'],
-        [/today.?s?\s*task/i,           'tasks'],
     ];
 
     // Detect if a line is a section heading (has a keyword but isn't purely a name/number)
@@ -320,9 +321,16 @@ function parseWA(text) {
         // ── Detect section heading ──
         const sec = detectSection(clean);
         if (sec) {
+            if (sec === 'total_manpower') {
+                // Extract the number and stop — don't treat as a section
+                const tm = clean.match(/[\(:]?\s*(\d+)/);
+                if (tm) result.total_manpower = parseInt(tm[1]);
+                currentSection = null;
+                continue;
+            }
             currentSection = sec;
-            // Extract inline count: "Engineers 4", "AC & DC Team 7", "Engineers (4)", "Engineers: 4"
-            const inlineCount = clean.match(/(?:^|\s)(\d+)\s*$/) || clean.match(/[\(\-:\s](\d+)[\)\s]*$/);
+            // Extract inline count: "Engineers 4", "AC & DC Team (07)", "Engineers: 4"
+            const inlineCount = clean.match(/[\(]\s*(\d+)\s*[\)]/) || clean.match(/[:\-]\s*(\d+)\s*$/) || clean.match(/\s(\d+)\s*$/);
             if (inlineCount && sec !== 'tasks' && sec !== 'machinery') {
                 result.manpower_counts[sec] = parseInt(inlineCount[1]);
             }
