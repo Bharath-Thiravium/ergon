@@ -85,8 +85,8 @@ ob_end_clean();
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
     
     <script src="/ergon/assets/js/theme-preload.js?v=<?= time() ?>"></script>
-    <script>
-    // Convert title attributes to data-tooltip for custom tooltips
+    <script>const APP_BASE = '<?= APP_URL ?>';</script>
+        <script>
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('[title]').forEach(function(el) {
             el.setAttribute('data-tooltip', el.getAttribute('title'));
@@ -977,7 +977,7 @@ ob_end_clean();
         <?= $content ?>
     </main>
 
-    <script>
+        <script>
     // Global variables - Initialize first
     let attendanceState = 'out'; // 'in' or 'out'
     
@@ -1015,7 +1015,7 @@ ob_end_clean();
         
         list.innerHTML = '<div class="notification-loading">Loading...</div>';
         
-        fetch('/ergon/api/notifications.php', {
+        fetch(APP_BASE + '/api/notifications.php', {
             credentials: 'same-origin',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -1110,7 +1110,7 @@ ob_end_clean();
     
     // Load notification count only (for badge update)
     function loadNotificationCount() {
-        fetch('/ergon/api/notifications.php', {
+        fetch(APP_BASE + '/api/notifications.php', {
             credentials: 'same-origin',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -1304,7 +1304,7 @@ ob_end_clean();
                 deleteBtn.style.opacity = '0.5';
             }
             
-            fetch('/ergon/' + module + '/delete/' + id, {
+            fetch(APP_BASE + '/' + module + '/delete/' + id, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1411,7 +1411,7 @@ ob_end_clean();
                     text.textContent = 'Validating Location...';
                     
                     // First validate location against project
-                    fetch('/ergon/src/api/location-attendance.php', {
+                    fetch(APP_BASE + '/src/api/location-attendance.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: `latitude=${latitude}&longitude=${longitude}`
@@ -1429,7 +1429,7 @@ ob_end_clean();
                         text.textContent = action === 'in' ? 'Clocking In...' : 'Clocking Out...';
                         
                         // Proceed with attendance if location is valid
-                        fetch('/ergon/attendance/clock', {
+                        fetch(APP_BASE + '/attendance/clock', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                             body: `type=${action}&latitude=${latitude}&longitude=${longitude}`
@@ -1671,7 +1671,7 @@ ob_end_clean();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
         
-        fetch('/ergon/attendance/status', {
+        fetch(APP_BASE + '/attendance/status', {
             signal: controller.signal,
             headers: {
                 'Cache-Control': 'no-cache',

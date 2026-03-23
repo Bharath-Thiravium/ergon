@@ -135,7 +135,6 @@ ob_start();
 <link rel="stylesheet" href="/ergon/assets/css/project-map.css">
 
 <script>
-const APP_BASE = '<?= APP_URL ?>';
 let isEditing = false;
 let projectMap = null;
 let projectMarker = null;
