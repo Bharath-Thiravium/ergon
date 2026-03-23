@@ -135,6 +135,7 @@ ob_start();
 <link rel="stylesheet" href="/ergon/assets/css/project-map.css">
 
 <script>
+const APP_BASE = '<?= APP_URL ?>';
 let isEditing = false;
 let projectMap = null;
 let projectMarker = null;
@@ -293,7 +294,7 @@ function submitProjectForm() {
     const form = document.getElementById('projectForm');
     const formData = new FormData(form);
     const projectId = document.getElementById('projectId');
-    const base = window.location.pathname.includes('/ergon') ? '/ergon' : '';
+    const base = APP_BASE;
     const url = projectId ? base + '/project-management/update' : base + '/project-management/create';
     
     const btn = document.querySelector('#projectModal .btn--primary');
@@ -346,7 +347,7 @@ function deleteProject(id, name) {
     if (confirm(`Are you sure you want to delete project "${name}"? This action cannot be undone.`)) {
         const formData = new FormData();
         formData.append('project_id', id);
-        const base = window.location.pathname.includes('/ergon') ? '/ergon' : '';
+        const base = APP_BASE;
         
         fetch(base + '/project-management/delete', {
             method: 'POST',
