@@ -154,7 +154,7 @@ class SiteReportController extends Controller {
     }
 
     // GET /site-reports/view/{id}
-    public function view($request) {
+    public function viewReport($request) {
         $this->requireAuth();
         $id = (int)($request['id'] ?? 0);
 

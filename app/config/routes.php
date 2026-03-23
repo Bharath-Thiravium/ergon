@@ -404,7 +404,7 @@ $router->get('/gamification/individual', 'GamificationController', 'individual')
 $router->get('/site-reports', 'SiteReportController', 'index');
 $router->get('/site-reports/create', 'SiteReportController', 'create');
 $router->post('/site-reports/store', 'SiteReportController', 'store');
-$router->get('/site-reports/view/{id}', 'SiteReportController', 'view');
+$router->get('/site-reports/view/{id}', 'SiteReportController', 'viewReport');
 $router->get('/site-reports/summary', 'SiteReportController', 'summary');
 $router->post('/site-reports/expense/approve', 'SiteReportController', 'approveExpense');
 
