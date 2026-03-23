@@ -293,24 +293,38 @@ function submitProjectForm() {
     const form = document.getElementById('projectForm');
     const formData = new FormData(form);
     const projectId = document.getElementById('projectId');
-    const url = projectId ? '/ergon/project-management/update' : '/ergon/project-management/create';
+    const base = window.location.pathname.includes('/ergon') ? '/ergon' : '';
+    const url = projectId ? base + '/project-management/update' : base + '/project-management/create';
     
+    const btn = document.querySelector('#projectModal .btn--primary');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> Saving...';
+
     fetch(url, {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'same-origin'
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw new Error('Server returned ' + response.status);
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             hideProjectModal();
             location.reload();
         } else {
             alert('Failed to save project: ' + (data.error || 'Unknown error'));
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to save project');
+        alert('Failed to save project: ' + error.message);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     });
 }
 
@@ -332,12 +346,17 @@ function deleteProject(id, name) {
     if (confirm(`Are you sure you want to delete project "${name}"? This action cannot be undone.`)) {
         const formData = new FormData();
         formData.append('project_id', id);
+        const base = window.location.pathname.includes('/ergon') ? '/ergon' : '';
         
-        fetch('/ergon/project-management/delete', {
+        fetch(base + '/project-management/delete', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin'
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Server returned ' + response.status);
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 location.reload();
@@ -347,7 +366,7 @@ function deleteProject(id, name) {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to delete project');
+            alert('Failed to delete project: ' + error.message);
         });
     }
 }
