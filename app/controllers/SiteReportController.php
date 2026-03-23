@@ -13,7 +13,7 @@ class SiteReportController extends Controller {
 
     // GET /site-reports  — list all reports (admin/owner)
     // GET /site-reports  — list own reports (supervisor)
-    public function index($request) {
+    public function index($request = []) {
         $this->requireAuth();
         $userId = $_SESSION['user_id'];
         $role   = $_SESSION['role'] ?? 'user';
@@ -46,7 +46,7 @@ class SiteReportController extends Controller {
     }
 
     // GET /site-reports/create
-    public function create($request) {
+    public function create($request = []) {
         $this->requireAuth();
         $projects = $this->db->query("SELECT id, name FROM projects ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -59,7 +59,7 @@ class SiteReportController extends Controller {
     }
 
     // POST /site-reports/store
-    public function store($request) {
+    public function store($request = []) {
         $this->requireAuth();
         if (!$this->isPost()) { $this->redirect('/site-reports/create'); return; }
 
@@ -154,9 +154,9 @@ class SiteReportController extends Controller {
     }
 
     // GET /site-reports/view/{id}
-    public function viewReport($request) {
+    public function viewReport($request = []) {
         $this->requireAuth();
-        $id = (int)($request['id'] ?? 0);
+        $id = is_array($request) ? (int)($request['id'] ?? $request[0] ?? 0) : (int)$request;
 
         $report = $this->db->prepare("
             SELECT sr.*, u.name AS submitted_by_name, p.name AS project_name
@@ -190,7 +190,7 @@ class SiteReportController extends Controller {
     }
 
     // POST /site-reports/expense/approve  (admin only)
-    public function approveExpense($request) {
+    public function approveExpense($request = []) {
         $this->requireAuth();
         header('Content-Type: application/json');
 
@@ -208,7 +208,7 @@ class SiteReportController extends Controller {
     }
 
     // GET /site-reports/summary  — aggregate view for management
-    public function summary($request) {
+    public function summary($request = []) {
         $this->requireAuth();
 
         $from = $_GET['from'] ?? date('Y-m-01');
