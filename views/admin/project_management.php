@@ -103,7 +103,7 @@ ob_start();
                         <td><?= date('M j, Y', strtotime($project['created_at'])) ?></td>
                         <td>
                             <div class="ab-container">
-                                <button class="ab-btn ab-btn--edit" onclick="editProject(<?= $project['id'] ?>, '<?= addslashes($project['name']) ?>', '<?= addslashes($project['description'] ?? '') ?>', '<?= addslashes($project['place'] ?? '') ?>', <?= $project['latitude'] ?? 'null' ?>, <?= $project['longitude'] ?? 'null' ?>, <?= $project['checkin_radius'] ?? 100 ?>, <?= json_encode(array_column($project['departments'], 'id')) ?>, '<?= $project['status'] ?>', <?= $project['budget'] ?? 'null' ?>)" title="Edit Project">
+                                <button class="ab-btn ab-btn--edit" onclick="editProject(<?= $project['id'] ?>, <?= htmlspecialchars(json_encode($project['name']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($project['description'] ?? ''), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($project['place'] ?? ''), ENT_QUOTES) ?>, <?= $project['latitude'] ?? 'null' ?>, <?= $project['longitude'] ?? 'null' ?>, <?= $project['checkin_radius'] ?? 100 ?>, <?= htmlspecialchars(json_encode(array_column($project['departments'], 'id')), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($project['status']), ENT_QUOTES) ?>, <?= $project['budget'] ?? 'null' ?>)" title="Edit Project">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                         <path d="M15 5l4 4"/>
