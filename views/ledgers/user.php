@@ -71,41 +71,45 @@ ob_start();
 </div>
 
 <!-- Summary Cards -->
-<div class="stats-grid">
-    <div class="stat-card stat-card--<?= $balance >= 0 ? 'success' : 'danger' ?>">
-        <div class="stat-card__icon">💳</div>
-        <div class="stat-card__content">
-            <h3>Current Balance</h3>
-            <p class="stat-card__value">₹<?= number_format(abs($balance), 2) ?></p>
-            <span class="stat-card__label"><?= $balance >= 0 ? 'Credit Balance' : 'Debit Balance' ?></span>
+<div class="dashboard-grid" style="margin-bottom: 1.5rem;">
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">💳</div>
         </div>
+        <div class="kpi-card__value <?= $balance >= 0 ? 'text-success' : 'text-danger' ?>">
+            ₹<?= number_format(abs($balance), 2) ?>
+        </div>
+        <div class="kpi-card__label">Current Balance</div>
+        <div class="kpi-card__status"><?= $balance >= 0 ? 'Credit' : 'Debit' ?></div>
     </div>
-    
-    <div class="stat-card stat-card--info">
-        <div class="stat-card__icon">📈</div>
-        <div class="stat-card__content">
-            <h3>Total Credits</h3>
-            <p class="stat-card__value">₹<?= number_format($totalCredits, 2) ?></p>
-            <span class="stat-card__label"><?= $advanceCount ?> Advances Received</span>
+
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">📈</div>
         </div>
+        <div class="kpi-card__value" style="color:#059669;">₹<?= number_format($totalCredits, 2) ?></div>
+        <div class="kpi-card__label">Total Credits</div>
+        <div class="kpi-card__status"><?= $advanceCount ?> Advances</div>
     </div>
-    
-    <div class="stat-card stat-card--warning">
-        <div class="stat-card__icon">📉</div>
-        <div class="stat-card__content">
-            <h3>Total Debits</h3>
-            <p class="stat-card__value">₹<?= number_format($totalDebits, 2) ?></p>
-            <span class="stat-card__label"><?= $expenseCount ?> Expenses Deducted</span>
+
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">📉</div>
         </div>
+        <div class="kpi-card__value" style="color:#dc2626;">₹<?= number_format($totalDebits, 2) ?></div>
+        <div class="kpi-card__label">Total Debits</div>
+        <div class="kpi-card__status"><?= $expenseCount ?> Expenses</div>
     </div>
-    
-    <div class="stat-card stat-card--<?= $netActivity >= 0 ? 'success' : 'danger' ?>">
-        <div class="stat-card__icon">⚖️</div>
-        <div class="stat-card__content">
-            <h3>Net Activity</h3>
-            <p class="stat-card__value">₹<?= number_format(abs($netActivity), 2) ?></p>
-            <span class="stat-card__label"><?= $netActivity >= 0 ? 'Net Credit' : 'Net Debit' ?></span>
+
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">⚖️</div>
         </div>
+        <div class="kpi-card__value <?= $netActivity >= 0 ? 'text-success' : 'text-danger' ?>">
+            ₹<?= number_format(abs($netActivity), 2) ?>
+        </div>
+        <div class="kpi-card__label">Net Activity</div>
+        <div class="kpi-card__status"><?= $netActivity >= 0 ? 'Net Credit' : 'Net Debit' ?></div>
     </div>
 </div>
 
@@ -206,108 +210,15 @@ ob_start();
 
 <style>
 /* Ledger-specific styles */
-.filter-section {
-    margin-bottom: 2rem;
-}
-
-.filter-form {
-    margin: 0;
-}
-
-.filter-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    align-items: end;
-}
-
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    min-width: 150px;
-}
-
-.filter-group label {
-    font-size: 0.9rem;
-    font-weight: 500;
-    margin-bottom: 0.25rem;
-    color: #495057;
-}
-
-.filter-group input,
-.filter-group select {
-    padding: 0.5rem;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    font-size: 0.9rem;
-}
-
-.filter-group input:focus,
-.filter-group select:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-.filter-actions {
-    display: flex;
-    gap: 0.5rem;
-    align-items: end;
-}
-
-.filter-actions .btn {
-    white-space: nowrap;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.stat-card {
-    background: white;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border-left: 4px solid #e0e0e0;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.stat-card--success { border-left-color: #28a745; }
-.stat-card--danger { border-left-color: #dc3545; }
-.stat-card--warning { border-left-color: #ffc107; }
-.stat-card--info { border-left-color: #17a2b8; }
-
-.stat-card__icon {
-    font-size: 2rem;
-    opacity: 0.8;
-}
-
-.stat-card__content h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.9rem;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.stat-card__value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin: 0;
-    color: #333;
-}
-
-.stat-card__label {
-    font-size: 0.8rem;
-    color: #888;
-}
-
-.ledger-entry--credit {
+.filter-section { margin-bottom: 2rem; }
+.filter-form { margin: 0; }
+.filter-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; }
+.filter-group { display: flex; flex-direction: column; min-width: 150px; }
+.filter-group label { font-size: 0.9rem; font-weight: 500; margin-bottom: 0.25rem; color: #495057; }
+.filter-group input, .filter-group select { padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.9rem; }
+.filter-group input:focus, .filter-group select:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.25); }
+.filter-actions { display: flex; gap: 0.5rem; align-items: end; }
+.filter-actions .btn { white-space: nowrap; }
     background-color: rgba(40, 167, 69, 0.05);
 }
 

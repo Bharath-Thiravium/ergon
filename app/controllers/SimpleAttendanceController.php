@@ -124,6 +124,7 @@ class SimpleAttendanceController extends Controller {
     
     public function status() {
         $this->requireAuth();
+        session_write_close(); // Release session lock for concurrent requests
         
         header('Content-Type: application/json');
         

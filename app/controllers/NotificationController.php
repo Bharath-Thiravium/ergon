@@ -48,6 +48,7 @@ class NotificationController extends Controller {
     
     public function getUnreadCount() {
         AuthMiddleware::requireAuth();
+        session_write_close(); // Release session lock for concurrent requests
         
         try {
             require_once __DIR__ . '/../models/Notification.php';
