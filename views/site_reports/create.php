@@ -238,96 +238,149 @@ function parseWA(text) {
         tasks: [], expenses: []
     };
 
-    // ── Date ──
-    const dateMatch = text.match(/date[:\s]*(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/i);
+    // ── Date ── supports "20 Mar 2026", "20/03/2026", "Date: 20-03-26"
+    const dateMatch = text.match(/date[:\s]*([\d]{1,2})\s*([A-Za-z]+|[\/\-\.][\d]{1,2}[\/\-\.])\s*([\d]{2,4})/i)
+        || text.match(/date[:\s]*(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/i);
     if (dateMatch) {
-        let [,d,m,y] = dateMatch;
-        if (y.length === 2) y = '20' + y;
-        result.date = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+        const raw = dateMatch[0].replace(/date[:\s]*/i,'').trim();
+        const parsed = new Date(raw);
+        if (!isNaN(parsed)) {
+            result.date = parsed.toISOString().slice(0,10);
+        } else {
+            // fallback numeric
+            const nm = raw.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+            if (nm) {
+                let [,d,m,y] = nm;
+                if (y.length === 2) y = '20' + y;
+                result.date = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+            }
+        }
     }
 
     // ── Site ──
     const siteMatch = text.match(/site\s*[\/&]\s*project\s*[:\-]?\s*(.+)/i);
     if (siteMatch) result.site = siteMatch[1].replace(/[*_]/g,'').trim();
 
-    // ── Total manpower ── handles: "Total Manpower: 12", "Total Manpower (12)", "Total Manpower- 12"
+    // ── Total manpower ──
     const mpMatch = text.match(/total\s*manpower\s*[:\-\(]?\s*(\d+)/i);
     if (mpMatch) result.total_manpower = parseInt(mpMatch[1]);
 
-    // ── Named sections parser ──
-    // Collect named lists under section headings
-    let currentSection = null;
-    const namePattern = /^\d+[\.\)]\s*(.+)/;
-
     // Section keyword → category key
     const sectionMap = [
-        [/engineer/i,        'engineer'],
-        [/supervisor/i,      'supervisor'],
-        [/ac\s*[&\+]\s*dc/i, 'ac_dc_team'],
-        [/mms/i,             'mms_team'],
+        [/engineer/i,                   'engineer'],
+        [/supervisor/i,                 'supervisor'],
+        [/ac\s*[&\+]\s*dc/i,           'ac_dc_team'],
+        [/mms/i,                        'mms_team'],
         [/civil|mason|weld|housekeep/i, 'civil_mason'],
-        [/local\s*labour/i,  'local_labour'],
-        [/driver|operator/i, 'driver_operator'],
+        [/local\s*labour/i,             'local_labour'],
+        [/driver|operator/i,            'driver_operator'],
+        [/machinery|machine/i,          'machinery'],
+        [/today.?s?\s*task/i,           'tasks'],
     ];
 
-    // Count-only patterns (e.g. "MMS team - 1", "Local Labour: 00")
-    const countPatterns = [
-        [/engineer[s]?\s*[\(\-:]\s*(\d+)/i,        'engineer'],
-        [/supervisor[s]?\s*[\(\-:]\s*(\d+)/i,       'supervisor'],
-        [/ac\s*[&\+]\s*dc\s*team\s*[\(\-:]\s*(\d+)/i,'ac_dc_team'],
-        [/mms\s*team\s*[\(\-:]\s*(\d+)/i,           'mms_team'],
-        [/civil\s*team\s*[\(\-:]\s*(\d+)/i,         'civil_mason'],
-        [/local\s*labour\s*[\(\-:]\s*(\d+)/i,       'local_labour'],
-        [/driver[s]?\s*[\/]?\s*operator[s]?\s*[:\-]?\s*(\d+)/i, 'driver_operator'],
-    ];
+    // Detect if a line is a section heading (has a keyword but isn't purely a name/number)
+    function detectSection(clean) {
+        for (const [rx, key] of sectionMap) {
+            if (rx.test(clean)) return key;
+        }
+        return null;
+    }
+
+    // Extract names from a line — supports: "1. Name", "Name · Name", "Name, Name", bare "Name"
+    function extractNames(clean) {
+        // dot/bullet separated
+        if (/[·•]/.test(clean)) return clean.split(/[·•]/).map(s => s.replace(/[*_\d\.]/g,'').trim()).filter(Boolean);
+        // comma separated (multiple)
+        if ((clean.match(/,/g)||[]).length >= 1) return clean.split(',').map(s => s.trim()).filter(Boolean);
+        // numbered list item
+        const nm = clean.match(/^\d+[\.)\s]+(.+)/);
+        if (nm) return [nm[1].replace(/[*_]/g,'').trim()];
+        return [];
+    }
+
+    const nameOnlySections = ['engineer','supervisor','ac_dc_team','civil_mason','local_labour','driver_operator'];
+    let currentSection = null;
+    let pendingMachCount = null; // for "1\nJCB" style
 
     for (const line of lines) {
-        const clean = line.replace(/[*_📋👷👥👤🚜🧑🔧]/g,'').trim();
+        const clean = line.replace(/[*_📋👷👥👤🚜🧑🔧⚡🔩🧱🚗]/gu,'').trim();
+        if (!clean) continue;
 
-        // Detect section heading
-        let matched = false;
-        for (const [rx, key] of sectionMap) {
-            if (rx.test(clean) && !namePattern.test(clean)) {
-                currentSection = key;
-                // Also try to extract inline count e.g. "Engineers (3):"
-                const inlineCount = clean.match(/[\(\-:]\s*(\d+)/);
-                if (inlineCount) result.manpower_counts[key] = parseInt(inlineCount[1]);
-                matched = true; break;
+        // ── Machinery: standalone count then machine name on next line ──
+        if (pendingMachCount !== null) {
+            const machKey = matchMachineKey(clean);
+            if (machKey) {
+                result.machinery[machKey] = (result.machinery[machKey] || 0) + pendingMachCount;
+                pendingMachCount = null;
+                continue;
             }
+            pendingMachCount = null;
         }
-        if (matched) continue;
 
-        // Named list item under current section
-        const nm = clean.match(namePattern);
-        if (nm && currentSection && ['engineer','supervisor','ac_dc_team','civil_mason'].includes(currentSection)) {
-            const name = nm[1].replace(/[*_]/g,'').trim();
-            if (name && !/^(today|task|machine|total|date|site|company)/i.test(name)) {
-                result.manpower[currentSection].push(name);
+        // ── Detect section heading ──
+        const sec = detectSection(clean);
+        if (sec) {
+            currentSection = sec;
+            // Extract inline count: "Engineers 4", "AC & DC Team 7", "Engineers (4)", "Engineers: 4"
+            const inlineCount = clean.match(/(?:^|\s)(\d+)\s*$/) || clean.match(/[\(\-:\s](\d+)[\)\s]*$/);
+            if (inlineCount && sec !== 'tasks' && sec !== 'machinery') {
+                result.manpower_counts[sec] = parseInt(inlineCount[1]);
             }
             continue;
         }
 
-        // Tasks section
-        if (/today.?s?\s*task/i.test(clean)) { currentSection = 'tasks'; continue; }
+        // ── Tasks ──
         if (currentSection === 'tasks') {
-            const tm = clean.match(/^[\d\(\)]+[\.\)]\s*(.+)/);
+            const tm = clean.match(/^[\d]+[\.)\s]+(.+)/);
             if (tm) result.tasks.push(tm[1].trim());
             continue;
         }
 
-        // Machinery inline: "DG-1 | JCB-0 | Tractor-2"
-        if (/machinery|machine/i.test(clean) || clean.includes('|') || /\b(dg|jcb|tractor|hydra|tata\s*ace|crane)\s*[-:]\s*\d/i.test(clean)) {
-            const machRx = /(tractor|jcb|hydra|tata\s*ace|dg|crane)\s*[-:]\s*(\d+)/gi;
-            let m;
+        // ── Machinery inline: "JCB-1 | DG-2", "JCB: 1", "1 JCB" ──
+        if (currentSection === 'machinery' || /\b(dg|jcb|tractor|hydra|tata\s*ace|crane)\b/i.test(clean)) {
+            // inline key-count pairs
+            const machRx = /(tractor|jcb|hydra|tata\s*ace|dg|crane)\s*[-:\s]\s*(\d+)|(\d+)\s*[-:\s]?\s*(tractor|jcb|hydra|tata\s*ace|dg|crane)/gi;
+            let m; let found = false;
             while ((m = machRx.exec(clean)) !== null) {
-                const key = m[1].toLowerCase().replace(/\s+/,'_').replace('tata_ace','tata_ace');
-                const count = parseInt(m[2]);
-                if (count > 0) result.machinery[key] = (result.machinery[key] || 0) + count;
+                const key = (m[1]||m[4]).toLowerCase().replace(/\s+/g,'_');
+                const count = parseInt(m[2]||m[3]);
+                if (count > 0) { result.machinery[key] = (result.machinery[key]||0) + count; found = true; }
+            }
+            if (found) continue;
+            // standalone machine name (count comes from previous line or next line)
+            const soloMach = matchMachineKey(clean);
+            if (soloMach && currentSection === 'machinery') continue; // just a label line
+        }
+
+        // ── Standalone number — might precede a machine name ──
+        if (/^\d+$/.test(clean) && currentSection === 'machinery') {
+            pendingMachCount = parseInt(clean);
+            continue;
+        }
+
+        // ── Manpower names under a named section ──
+        if (currentSection && nameOnlySections.includes(currentSection)) {
+            const names = extractNames(clean);
+            if (names.length) {
+                // Sanity check: skip lines that look like section headings
+                if (!detectSection(clean)) {
+                    result.manpower[currentSection].push(...names);
+                }
+                continue;
             }
         }
     }
 
-    // Apply count-only patterns across full text
+    // ── Fallback count patterns across full text (for sections with no heading found) ──
+    const countPatterns = [
+        [/engineer[s]?\s*[\(\-:\s]\s*(\d+)/i,              'engineer'],
+        [/supervisor[s]?\s*[\(\-:\s]\s*(\d+)/i,             'supervisor'],
+        [/ac\s*[&\+]\s*dc\s*team\s*[\(\-:\s]\s*(\d+)/i,    'ac_dc_team'],
+        [/mms\s*team\s*[\(\-:\s]\s*(\d+)/i,                'mms_team'],
+        [/civil[\s\/]*(?:mason)?\s*[\(\-:\s]\s*(\d+)/i,    'civil_mason'],
+        [/local\s*labour\s*[\(\-:\s]\s*(\d+)/i,            'local_labour'],
+        [/driver[s]?\s*[\/]?\s*operator[s]?\s*[:\-\s]\s*(\d+)/i, 'driver_operator'],
+    ];
     for (const [rx, key] of countPatterns) {
         if (!result.manpower_counts[key]) {
             const m = text.match(rx);
@@ -335,14 +388,25 @@ function parseWA(text) {
         }
     }
 
-    // Merge named list counts
+    // ── Prefer named list length over parsed count when names are present ──
     for (const key of Object.keys(result.manpower)) {
-        if (result.manpower[key].length > 0 && !result.manpower_counts[key]) {
-            result.manpower_counts[key] = result.manpower[key].length;
+        if (result.manpower[key].length > 0) {
+            // Use the larger of the two (names found vs count stated)
+            result.manpower_counts[key] = Math.max(
+                result.manpower[key].length,
+                result.manpower_counts[key] || 0
+            );
         }
     }
 
     return result;
+}
+
+function matchMachineKey(str) {
+    const map = {tractor:'tractor',jcb:'jcb',hydra:'hydra','tata ace':'tata_ace','tata_ace':'tata_ace',dg:'dg',crane:'crane'};
+    const s = str.toLowerCase();
+    for (const [k,v] of Object.entries(map)) if (s.includes(k)) return v;
+    return null;
 }
 
 // ── Render preview & populate hidden form ─────────────────────
