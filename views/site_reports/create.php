@@ -20,9 +20,31 @@ $expTypes  = ['labour'=>'Labour Payment','machinery'=>'Machinery','transport'=>'
 .btn-add:hover{border-color:#3b82f6;color:#3b82f6}
 .remove-btn{background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0 .25rem}
 .parse-box{width:100%;min-height:180px;font-family:monospace;font-size:.8rem;border:1px solid #e2e8f0;border-radius:8px;padding:.75rem;resize:vertical}
-.preview-badge{display:inline-block;background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:.1rem .4rem;font-size:.75rem;font-weight:600;margin-left:.4rem}
-.preview-ok{color:#10b981;font-weight:600}
-.preview-warn{color:#f59e0b;font-weight:600}
+.pv-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.pv-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:1rem}
+.pv-card--header{grid-column:1/-1}
+.pv-card-title{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin-bottom:.75rem}
+.pv-card-row{display:flex;align-items:flex-start;gap:.6rem}
+.pv-icon{font-size:1.25rem;line-height:1}
+.pv-label{font-size:.75rem;color:#94a3b8;margin-bottom:.1rem}
+.pv-value{font-size:.95rem;font-weight:600;color:#1e293b}
+.pv-ok{color:#059669}
+.pv-warn{color:#d97706}
+.pv-mp-row{display:flex;align-items:baseline;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f1f5f9}
+.pv-mp-row:last-child{border-bottom:none}
+.pv-mp-icon{font-size:.9rem}
+.pv-mp-info{display:flex;align-items:baseline;gap:.4rem;flex:1}
+.pv-mp-label{font-size:.85rem;color:#475569}
+.pv-mp-count{font-size:.95rem;font-weight:700;color:#1e293b;margin-left:auto}
+.pv-names{font-size:.75rem;color:#64748b;margin-top:.15rem;grid-column:1/-1}
+.pv-mach-grid{display:flex;flex-wrap:wrap;gap:.5rem}
+.pv-mach-item{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:.4rem .75rem;text-align:center;min-width:60px}
+.pv-mach-count{font-size:1.1rem;font-weight:700;color:#1e293b}
+.pv-mach-label{font-size:.7rem;color:#64748b}
+.pv-task-list{margin:.25rem 0 0 1.1rem;padding:0;font-size:.875rem;color:#334155}
+.pv-task-list li{margin-bottom:.25rem}
+.pv-warn-box{background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:.6rem .9rem;font-size:.85rem;color:#92400e;margin-top:.75rem}
+@media(max-width:640px){.pv-grid{grid-template-columns:1fr}}
 @media(max-width:640px){.sr-grid{grid-template-columns:1fr}.mp-row{grid-template-columns:1fr 70px}.mp-row .names-col{grid-column:1/-1}.exp-row{grid-template-columns:1fr 100px}.exp-row select,.exp-row .remove-btn{grid-column:1}}
 </style>
 
@@ -228,8 +250,8 @@ function parseWA(text) {
     const siteMatch = text.match(/site\s*[\/&]\s*project\s*[:\-]?\s*(.+)/i);
     if (siteMatch) result.site = siteMatch[1].replace(/[*_]/g,'').trim();
 
-    // ── Total manpower ──
-    const mpMatch = text.match(/total\s*manpower\s*[:\(]?\s*(\d+)/i);
+    // ── Total manpower ── handles: "Total Manpower: 12", "Total Manpower (12)", "Total Manpower- 12"
+    const mpMatch = text.match(/total\s*manpower\s*[:\-\(]?\s*(\d+)/i);
     if (mpMatch) result.total_manpower = parseInt(mpMatch[1]);
 
     // ── Named sections parser ──
@@ -338,46 +360,95 @@ function parseAndPreview() {
 
     status.textContent = '✅ Parsed successfully';
 
-    // Build preview HTML
     const mpLabels = {engineer:'Engineers',supervisor:'Supervisors',ac_dc_team:'AC & DC Team',
-        mms_team:'MMS Team',civil_mason:'Civil/Mason',local_labour:'Local Labour',
-        driver_operator:'Drivers/Operators',other:'Other'};
+        mms_team:'MMS Team',civil_mason:'Civil / Mason',local_labour:'Local Labour',
+        driver_operator:'Drivers / Operators',other:'Other'};
+    const mpIcons  = {engineer:'👷',supervisor:'🦺',ac_dc_team:'⚡',mms_team:'🔩',
+        civil_mason:'🧱',local_labour:'👥',driver_operator:'🚗',other:'👤'};
+    const machLabels = {tractor:'Tractor',jcb:'JCB',hydra:'Hydra',tata_ace:'Tata Ace',dg:'DG',crane:'Crane',other:'Other'};
 
-    let html = `<table style="width:100%;border-collapse:collapse;font-size:.875rem">`;
-    html += row('Date', d.date ? `<span class="preview-ok">${d.date}</span>` : '<span class="preview-warn">Not found</span>');
-    html += row('Site', d.site ? `<span class="preview-ok">${esc(d.site)}</span>` : '<span class="preview-warn">Not found</span>');
-    html += row('Total Manpower', d.total_manpower || '<span class="preview-warn">Not found</span>');
+    // Format date nicely
+    const dateDisplay = d.date
+        ? new Date(d.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})
+        : null;
 
-    // Manpower
-    let mpRows = '';
-    for (const [key, label] of Object.entries(mpLabels)) {
-        const count = d.manpower_counts[key] || 0;
-        const names = d.manpower[key];
-        if (count > 0 || names.length > 0) {
-            mpRows += `<div style="margin:.2rem 0"><strong>${label}:</strong> ${count}
-                ${names.length ? '<span class="preview-badge">' + names.map(esc).join(', ') + '</span>' : ''}</div>`;
+    let html = `<div class="pv-grid">`;
+
+    // ── Header card ──
+    html += `<div class="pv-card pv-card--header">
+        <div class="pv-card-row">
+            <span class="pv-icon">📅</span>
+            <div>
+                <div class="pv-label">Date</div>
+                <div class="pv-value ${d.date?'pv-ok':'pv-warn'}">${dateDisplay || '⚠️ Not found'}</div>
+            </div>
+        </div>
+        <div class="pv-card-row" style="margin-top:.75rem">
+            <span class="pv-icon">📍</span>
+            <div>
+                <div class="pv-label">Site / Project</div>
+                <div class="pv-value ${d.site?'pv-ok':'pv-warn'}">${d.site ? esc(d.site) : '⚠️ Not found'}</div>
+            </div>
+        </div>
+        <div class="pv-card-row" style="margin-top:.75rem">
+            <span class="pv-icon">👥</span>
+            <div>
+                <div class="pv-label">Total Manpower</div>
+                <div class="pv-value ${d.total_manpower?'pv-ok':'pv-warn'}">${d.total_manpower || '⚠️ Not found'}</div>
+            </div>
+        </div>
+    </div>`;
+
+    // ── Manpower card ──
+    const mpEntries = Object.entries(mpLabels).filter(([k]) =>
+        (d.manpower_counts[k] || 0) > 0 || (d.manpower[k]||[]).length > 0);
+
+    if (mpEntries.length) {
+        html += `<div class="pv-card">
+            <div class="pv-card-title">👷 Manpower</div>`;
+        for (const [key, label] of mpEntries) {
+            const count = d.manpower_counts[key] || d.manpower[key].length || 0;
+            const names = d.manpower[key] || [];
+            html += `<div class="pv-mp-row">
+                <span class="pv-mp-icon">${mpIcons[key]}</span>
+                <div class="pv-mp-info">
+                    <span class="pv-mp-label">${label}</span>
+                    <span class="pv-mp-count">${count}</span>
+                </div>
+                ${names.length ? `<div class="pv-names">${names.map(esc).join(' · ')}</div>` : ''}
+            </div>`;
         }
-    }
-    if (mpRows) html += row('👷 Manpower', mpRows);
-
-    // Machinery
-    if (Object.keys(d.machinery).length) {
-        const machLabels = {tractor:'Tractor',jcb:'JCB',hydra:'Hydra',tata_ace:'Tata Ace',dg:'DG',crane:'Crane'};
-        const machStr = Object.entries(d.machinery).map(([k,v]) => `${machLabels[k]||k}: ${v}`).join(' | ');
-        html += row('🚜 Machinery', machStr);
+        html += `</div>`;
     }
 
-    // Tasks
+    // ── Machinery card ──
+    const machEntries = Object.entries(d.machinery).filter(([,v]) => v > 0);
+    if (machEntries.length) {
+        html += `<div class="pv-card">
+            <div class="pv-card-title">🚜 Machinery</div>
+            <div class="pv-mach-grid">`;
+        for (const [key, count] of machEntries) {
+            html += `<div class="pv-mach-item">
+                <div class="pv-mach-count">${count}</div>
+                <div class="pv-mach-label">${machLabels[key]||key}</div>
+            </div>`;
+        }
+        html += `</div></div>`;
+    }
+
+    // ── Tasks card ──
     if (d.tasks.length) {
-        html += row('✅ Tasks', d.tasks.map((t,i) => `${i+1}. ${esc(t)}`).join('<br>'));
+        html += `<div class="pv-card">
+            <div class="pv-card-title">✅ Today's Tasks</div>
+            <ol class="pv-task-list">`;
+        d.tasks.forEach(t => { html += `<li>${esc(t)}</li>`; });
+        html += `</ol></div>`;
     }
 
-    html += '</table>';
+    html += `</div>`; // end pv-grid
 
     if (!d.date || !d.site) {
-        html += `<div style="margin-top:.75rem;padding:.5rem .75rem;background:#fef3c7;border-radius:6px;font-size:.8rem;color:#92400e">
-            ⚠️ Some fields could not be parsed. Please switch to Manual Entry to fill them in.
-        </div>`;
+        html += `<div class="pv-warn-box">⚠️ Some fields could not be parsed. You can still save — or switch to Manual Entry to correct them.</div>`;
     }
 
     document.getElementById('previewContent').innerHTML = html;
@@ -415,10 +486,6 @@ function parseAndPreview() {
     document.getElementById('previewSection').scrollIntoView({behavior:'smooth'});
 }
 
-function row(label, value) {
-    return `<tr><td style="padding:.35rem .5rem;font-weight:600;color:#64748b;white-space:nowrap;vertical-align:top;width:140px">${label}</td>
-                <td style="padding:.35rem .5rem">${value}</td></tr>`;
-}
 function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
