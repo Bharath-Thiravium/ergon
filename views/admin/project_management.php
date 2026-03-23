@@ -103,7 +103,18 @@ ob_start();
                         <td><?= date('M j, Y', strtotime($project['created_at'])) ?></td>
                         <td>
                             <div class="ab-container">
-                                <button class="ab-btn ab-btn--edit" onclick="editProject(<?= $project['id'] ?>, <?= htmlspecialchars(json_encode($project['name']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($project['description'] ?? ''), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($project['place'] ?? ''), ENT_QUOTES) ?>, <?= $project['latitude'] ?? 'null' ?>, <?= $project['longitude'] ?? 'null' ?>, <?= $project['checkin_radius'] ?? 100 ?>, <?= htmlspecialchars(json_encode(array_column($project['departments'], 'id')), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($project['status']), ENT_QUOTES) ?>, <?= $project['budget'] ?? 'null' ?>)" title="Edit Project">
+                                <button class="ab-btn ab-btn--edit"
+                                    data-id="<?= $project['id'] ?>"
+                                    data-name="<?= htmlspecialchars($project['name'], ENT_QUOTES) ?>"
+                                    data-description="<?= htmlspecialchars($project['description'] ?? '', ENT_QUOTES) ?>"
+                                    data-place="<?= htmlspecialchars($project['place'] ?? '', ENT_QUOTES) ?>"
+                                    data-lat="<?= $project['latitude'] ?? '' ?>"
+                                    data-lng="<?= $project['longitude'] ?? '' ?>"
+                                    data-radius="<?= $project['checkin_radius'] ?? 100 ?>"
+                                    data-depts="<?= htmlspecialchars(json_encode(array_column($project['departments'], 'id')), ENT_QUOTES) ?>"
+                                    data-status="<?= htmlspecialchars($project['status'], ENT_QUOTES) ?>"
+                                    data-budget="<?= $project['budget'] ?? '' ?>"
+                                    onclick="editProjectFromBtn(this)" title="Edit Project">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                         <path d="M15 5l4 4"/>
@@ -243,6 +254,17 @@ function showAddProjectModal() {
         initProjectMap();
         setupLocationSearch();
     }, 300);
+}
+
+function editProjectFromBtn(btn) {
+    const d = btn.dataset;
+    editProject(
+        d.id, d.name, d.description, d.place,
+        d.lat || null, d.lng || null,
+        d.radius || 100,
+        JSON.parse(d.depts || '[]'),
+        d.status, d.budget || null
+    );
 }
 
 function editProject(id, name, description, place, latitude, longitude, radius, deptIds, status, budget) {
