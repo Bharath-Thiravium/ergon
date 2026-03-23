@@ -85,7 +85,7 @@ ob_end_clean();
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
     
     <script src="/ergon/assets/js/theme-preload.js?v=<?= time() ?>"></script>
-    <script>const APP_BASE = '<?= APP_URL ?>';</script>
+    <script>const APP_BASE = '<?= rtrim((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/ergon', '/') ?>';</script>
         <script>
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('[title]').forEach(function(el) {
