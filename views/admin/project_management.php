@@ -74,8 +74,10 @@ ob_start();
                     <tr>
                         <td><strong><?= htmlspecialchars($project['name']) ?></strong></td>
                         <td>
-                            <?php if ($project['department_name']): ?>
-                                <span class="badge badge--info"><?= htmlspecialchars($project['department_name']) ?></span>
+                            <?php if (!empty($project['departments'])): ?>
+                                <?php foreach ($project['departments'] as $dept): ?>
+                                    <span class="badge badge--info"><?= htmlspecialchars($dept['name']) ?></span>
+                                <?php endforeach; ?>
                             <?php else: ?>
                                 <span class="badge badge--secondary">General</span>
                             <?php endif; ?>
@@ -101,7 +103,7 @@ ob_start();
                         <td><?= date('M j, Y', strtotime($project['created_at'])) ?></td>
                         <td>
                             <div class="ab-container">
-                                <button class="ab-btn ab-btn--edit" onclick="editProject(<?= $project['id'] ?>, '<?= addslashes($project['name']) ?>', '<?= addslashes($project['description'] ?? '') ?>', '<?= addslashes($project['place'] ?? '') ?>', <?= $project['latitude'] ?? 'null' ?>, <?= $project['longitude'] ?? 'null' ?>, <?= $project['checkin_radius'] ?? 100 ?>, <?= $project['department_id'] ?? 'null' ?>, '<?= $project['status'] ?>', <?= $project['budget'] ?? 'null' ?>)" title="Edit Project">
+                                <button class="ab-btn ab-btn--edit" onclick="editProject(<?= $project['id'] ?>, '<?= addslashes($project['name']) ?>', '<?= addslashes($project['description'] ?? '') ?>', '<?= addslashes($project['place'] ?? '') ?>', <?= $project['latitude'] ?? 'null' ?>, <?= $project['longitude'] ?? 'null' ?>, <?= $project['checkin_radius'] ?? 100 ?>, <?= json_encode(array_column($project['departments'], 'id')) ?>, '<?= $project['status'] ?>', <?= $project['budget'] ?? 'null' ?>)" title="Edit Project">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                         <path d="M15 5l4 4"/>
@@ -157,13 +159,13 @@ function showAddProjectModal() {
                     <label>Project Name *</label>
                     <input type="text" id="projectName" name="name" class="form-control" required placeholder="Enter project name">
                     
-                    <label>Department</label>
-                    <select id="projectDepartment" name="department_id" class="form-control">
-                        <option value="">Select Department</option>
+                    <label>Departments</label>
+                    <select id="projectDepartments" name="department_ids[]" class="form-control" multiple style="height: 120px;">
                         <?php foreach ($data['departments'] as $dept): ?>
                         <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <small style="color:#666;">Hold Ctrl / Cmd to select multiple departments</small>
                     
                     <label>Description</label>
                     <textarea id="projectDescription" name="description" class="form-control" rows="3" placeholder="Project description"></textarea>
@@ -243,7 +245,7 @@ function showAddProjectModal() {
     }, 300);
 }
 
-function editProject(id, name, description, place, latitude, longitude, radius, deptId, status, budget) {
+function editProject(id, name, description, place, latitude, longitude, radius, deptIds, status, budget) {
     isEditing = true;
     showAddProjectModal();
     
@@ -260,10 +262,16 @@ function editProject(id, name, description, place, latitude, longitude, radius, 
         document.getElementById('submitText').textContent = 'Update Project';
         document.getElementById('projectName').value = name;
         document.getElementById('projectDescription').value = description;
-        document.getElementById('projectDepartment').value = deptId || '';
         document.getElementById('projectBudget').value = budget || '';
         document.getElementById('projectStatus').value = status;
         document.getElementById('statusGroup').style.display = 'block';
+
+        // Set multiple departments
+        const select = document.getElementById('projectDepartments');
+        const ids = Array.isArray(deptIds) ? deptIds.map(String) : [];
+        Array.from(select.options).forEach(opt => {
+            opt.selected = ids.includes(opt.value);
+        });
         
         // Set location data
         document.getElementById('projectPlace').value = place || '';

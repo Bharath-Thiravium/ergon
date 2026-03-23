@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS site_report_manpower (
     count INT DEFAULT 0,
     -- Named individuals (JSON array of names, for engineers/supervisors)
     names JSON DEFAULT NULL,
+    -- Matched user IDs from users table (JSON array, parallel to names)
+    linked_user_ids JSON DEFAULT NULL,
     FOREIGN KEY (report_id) REFERENCES site_reports(id) ON DELETE CASCADE,
     INDEX idx_report_id (report_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

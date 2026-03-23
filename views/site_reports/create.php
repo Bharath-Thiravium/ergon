@@ -5,6 +5,13 @@ $expTypes  = ['labour'=>'Labour Payment','machinery'=>'Machinery','transport'=>'
 ?>
 <style>
 .sr-tabs{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:1.25rem}
+.match-badge{display:inline-block;padding:.1rem .45rem;border-radius:10px;font-size:.7rem;font-weight:700;margin-left:.35rem;vertical-align:middle}
+.match-badge.ok{background:#d1fae5;color:#065f46}
+.match-badge.warn{background:#fef3c7;color:#92400e}
+.match-badge.none{background:#fee2e2;color:#991b1b}
+.name-match-row{display:flex;align-items:center;gap:.4rem;padding:.2rem 0;font-size:.82rem;flex-wrap:wrap}
+.name-match-row select{font-size:.78rem;padding:.15rem .3rem;border:1px solid #e2e8f0;border-radius:4px;color:#334155;max-width:160px}
+.pv-project-select{width:100%;margin-top:.4rem;font-size:.85rem;padding:.3rem .5rem;border:1px solid #cbd5e1;border-radius:6px}
 .sr-tab{padding:.6rem 1.25rem;font-size:.875rem;font-weight:500;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;background:none;border-top:none;border-left:none;border-right:none}
 .sr-tab.active{color:#3b82f6;border-bottom-color:#3b82f6;font-weight:600}
 .sr-pane{display:none}.sr-pane.active{display:block}
@@ -219,6 +226,46 @@ $defaultTab = $canPaste ? 'paste' : 'manual';
 </div>
 
 <script>
+// ── Lookup data (projects + users from DB) ────────────────────
+let _lookup = null;
+async function getLookup() {
+    if (_lookup) return _lookup;
+    const r = await fetch('/ergon/api/site_report_lookup.php');
+    _lookup = await r.json();
+    return _lookup;
+}
+
+// ── Fuzzy match: returns best {id, name, score} or null ───────
+function fuzzyMatch(query, items, nameKey) {
+    if (!query) return null;
+    const q = query.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+    let best = null, bestScore = 0;
+    for (const item of items) {
+        const s = (item[nameKey]||'').toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+        const score = similarity(q, s);
+        if (score > bestScore) { bestScore = score; best = item; }
+    }
+    // require at least 40% similarity
+    return bestScore >= 0.4 ? { ...best, score: bestScore } : null;
+}
+
+// Dice coefficient similarity
+function similarity(a, b) {
+    if (a === b) return 1;
+    if (a.length < 2 || b.length < 2) return a === b ? 1 : 0;
+    const aBigrams = new Map();
+    for (let i = 0; i < a.length - 1; i++) {
+        const bg = a.slice(i, i+2);
+        aBigrams.set(bg, (aBigrams.get(bg)||0) + 1);
+    }
+    let intersect = 0;
+    for (let i = 0; i < b.length - 1; i++) {
+        const bg = b.slice(i, i+2);
+        if ((aBigrams.get(bg)||0) > 0) { intersect++; aBigrams.set(bg, aBigrams.get(bg)-1); }
+    }
+    return (2 * intersect) / (a.length + b.length - 2);
+}
+
 // ── Tab switching ──────────────────────────────────────────────
 function switchTab(tab) {
     document.querySelectorAll('.sr-tab').forEach(t => t.classList.remove('active'));

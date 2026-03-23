@@ -40,29 +40,29 @@ class ProjectManagementController extends Controller {
             )", "Create table");
             
             // Add columns if they don't exist
-            try {
-                DatabaseHelper::safeExec($db, "ALTER TABLE projects ADD COLUMN department_id INT NULL", "Alter table");
-            } catch (Exception $e) {}
-            try {
-                DatabaseHelper::safeExec($db, "ALTER TABLE projects ADD COLUMN latitude DECIMAL(10, 8) NULL", "Alter table");
-            } catch (Exception $e) {}
-            try {
-                DatabaseHelper::safeExec($db, "ALTER TABLE projects ADD COLUMN longitude DECIMAL(11, 8) NULL", "Alter table");
-            } catch (Exception $e) {}
-            try {
-                DatabaseHelper::safeExec($db, "ALTER TABLE projects ADD COLUMN checkin_radius INT DEFAULT 100", "Alter table");
-            } catch (Exception $e) {}
-            try {
-                $db->exec("ALTER TABLE projects ADD COLUMN place VARCHAR(255) NULL");
-            } catch (Exception $e) {}
-            try {
-                $db->exec("ALTER TABLE projects ADD COLUMN budget DECIMAL(15,2) NULL");
-            } catch (Exception $e) {}
+            foreach (['latitude DECIMAL(10,8) NULL', 'longitude DECIMAL(11,8) NULL', 'checkin_radius INT DEFAULT 100', 'place VARCHAR(255) NULL', 'budget DECIMAL(15,2) NULL'] as $col) {
+                try { $db->exec("ALTER TABLE projects ADD COLUMN $col"); } catch (Exception $e) {}
+            }
+
+            // Create pivot table for multiple departments
+            $db->exec("CREATE TABLE IF NOT EXISTS project_departments (
+                project_id INT NOT NULL,
+                department_id INT NOT NULL,
+                PRIMARY KEY (project_id, department_id)
+            )");
             
-            // Get all projects with department info
-            $stmt = $db->prepare("SELECT p.*, d.name as department_name FROM projects p LEFT JOIN departments d ON p.department_id = d.id ORDER BY p.created_at DESC");
+            // Get all projects
+            $stmt = $db->prepare("SELECT * FROM projects ORDER BY created_at DESC");
             $stmt->execute();
             $projects = $stmt->fetchAll();
+
+            // Attach department names to each project
+            foreach ($projects as &$project) {
+                $stmt = $db->prepare("SELECT d.id, d.name FROM departments d JOIN project_departments pd ON d.id = pd.department_id WHERE pd.project_id = ?");
+                $stmt->execute([$project['id']]);
+                $project['departments'] = $stmt->fetchAll();
+            }
+            unset($project);
             
             // Get departments
             $stmt = $db->prepare("SELECT * FROM departments ORDER BY name");
@@ -110,7 +110,7 @@ class ProjectManagementController extends Controller {
         try {
             $db = Database::connect();
             
-            $stmt = $db->prepare("INSERT INTO projects (name, description, place, budget, latitude, longitude, checkin_radius, department_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')");
+            $stmt = $db->prepare("INSERT INTO projects (name, description, place, budget, latitude, longitude, checkin_radius, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')");
             $result = $stmt->execute([
                 $_POST['name'],
                 $_POST['description'] ?? '',
@@ -118,9 +118,19 @@ class ProjectManagementController extends Controller {
                 !empty($_POST['budget']) ? $_POST['budget'] : null,
                 !empty($_POST['latitude']) ? $_POST['latitude'] : null,
                 !empty($_POST['longitude']) ? $_POST['longitude'] : null,
-                !empty($_POST['checkin_radius']) ? $_POST['checkin_radius'] : 100,
-                !empty($_POST['department_id']) ? $_POST['department_id'] : null
+                !empty($_POST['checkin_radius']) ? $_POST['checkin_radius'] : 100
             ]);
+
+            $projectId = $db->lastInsertId();
+
+            // Save multiple departments
+            $deptIds = isset($_POST['department_ids']) ? (array)$_POST['department_ids'] : [];
+            if (!empty($deptIds)) {
+                $ins = $db->prepare("INSERT IGNORE INTO project_departments (project_id, department_id) VALUES (?, ?)");
+                foreach ($deptIds as $deptId) {
+                    if (!empty($deptId)) $ins->execute([$projectId, $deptId]);
+                }
+            }
             
             header('Content-Type: application/json');
             echo json_encode(['success' => $result]);
@@ -164,7 +174,7 @@ class ProjectManagementController extends Controller {
         try {
             $db = Database::connect();
             
-            $stmt = $db->prepare("UPDATE projects SET name = ?, description = ?, place = ?, budget = ?, latitude = ?, longitude = ?, checkin_radius = ?, department_id = ?, status = ? WHERE id = ?");
+            $stmt = $db->prepare("UPDATE projects SET name = ?, description = ?, place = ?, budget = ?, latitude = ?, longitude = ?, checkin_radius = ?, status = ? WHERE id = ?");
             $result = $stmt->execute([
                 $_POST['name'],
                 $_POST['description'] ?? '',
@@ -173,10 +183,19 @@ class ProjectManagementController extends Controller {
                 !empty($_POST['latitude']) ? $_POST['latitude'] : null,
                 !empty($_POST['longitude']) ? $_POST['longitude'] : null,
                 !empty($_POST['checkin_radius']) ? $_POST['checkin_radius'] : 100,
-                !empty($_POST['department_id']) ? $_POST['department_id'] : null,
                 $_POST['status'] ?? 'active',
                 $_POST['project_id']
             ]);
+
+            // Replace departments
+            $db->prepare("DELETE FROM project_departments WHERE project_id = ?")->execute([$_POST['project_id']]);
+            $deptIds = isset($_POST['department_ids']) ? (array)$_POST['department_ids'] : [];
+            if (!empty($deptIds)) {
+                $ins = $db->prepare("INSERT IGNORE INTO project_departments (project_id, department_id) VALUES (?, ?)");
+                foreach ($deptIds as $deptId) {
+                    if (!empty($deptId)) $ins->execute([$_POST['project_id'], $deptId]);
+                }
+            }
             
             header('Content-Type: application/json');
             echo json_encode(['success' => $result]);
@@ -214,6 +233,8 @@ class ProjectManagementController extends Controller {
         try {
             $db = Database::connect();
             
+            $stmt = $db->prepare("DELETE FROM project_departments WHERE project_id = ?");
+            $stmt->execute([$_POST['project_id']]);
             $stmt = $db->prepare("DELETE FROM projects WHERE id = ?");
             $result = $stmt->execute([$_POST['project_id']]);
             
