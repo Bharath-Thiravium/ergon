@@ -97,8 +97,16 @@ $defaultTab = $canPaste ? 'paste' : 'manual';
             <input type="hidden" name="remarks"         id="f_remarks" value="">
             <div id="f_mp_fields"></div>
             <div id="f_mach_fields"></div>
-            <div id="f_task_fields"></div>
             <div id="f_exp_fields"></div>
+            <!-- Work Progress / Remarks — editable before saving -->
+            <div class="sr-section" style="margin-top:1rem">
+                <h3>📌 Work Progress / Remarks <span style="font-weight:400;font-size:.8rem;color:#94a3b8">(optional — add tasks or notes)</span></h3>
+                <div id="f_tasks_editable" style="margin-bottom:.75rem"></div>
+                <button type="button" class="btn-add" onclick="addParsedTask()">+ Add Task</button>
+                <textarea name="remarks" id="f_remarks_input" class="form-control" rows="3"
+                    placeholder="Any additional notes or work progress not in the message..."
+                    style="margin-top:.75rem"></textarea>
+            </div>
             <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-bottom:2rem">
                 <button type="button" class="btn btn--secondary" onclick="document.getElementById('previewSection').style.display='none'">← Re-parse</button>
                 <button type="submit" class="btn btn--primary">✅ Confirm & Save</button>
@@ -267,7 +275,7 @@ function parseWA(text) {
 
     // Section keyword → category key (order matters: more specific first)
     const sectionMap = [
-        [/today.?s?\s*task/i,           'tasks'],
+        [/today.?s?\s*task|work\s*progress|progress|task\s*done|work\s*done|activities/i, 'tasks'],
         [/total\s*manpower/i,           'total_manpower'],  // sentinel — stops section absorption
         [/ac\s*[&\+]\s*dc/i,           'ac_dc_team'],
         [/local\s*labour/i,             'local_labour'],
@@ -547,12 +555,23 @@ function parseAndPreview() {
         machDiv.innerHTML += `<input type="hidden" name="mach[${key}][count]" value="${count}">`;
     }
 
-    // Tasks hidden fields
-    const taskDiv = document.getElementById('f_task_fields');
+    // Tasks hidden fields — now rendered as editable inputs
+    const taskDiv = document.getElementById('f_tasks_editable');
     taskDiv.innerHTML = '';
-    d.tasks.forEach(t => {
-        taskDiv.innerHTML += `<input type="hidden" name="tasks[]" value="${esc(t)}">`;
-    });
+    if (d.tasks.length) {
+        d.tasks.forEach((t, i) => {
+            taskDiv.innerHTML += `<div class="task-row">
+                <input type="text" name="tasks[]" class="form-control" value="${esc(t)}">
+                <button type="button" class="remove-btn" onclick="removeRow(this)">✕</button>
+            </div>`;
+        });
+    } else {
+        // Always show one empty row so user can type
+        taskDiv.innerHTML = `<div class="task-row">
+            <input type="text" name="tasks[]" class="form-control" placeholder="e.g. Panel installation completed">
+            <button type="button" class="remove-btn" onclick="removeRow(this)">✕</button>
+        </div>`;
+    }
 
     document.getElementById('previewSection').style.display = 'block';
     document.getElementById('previewSection').scrollIntoView({behavior:'smooth'});
@@ -592,6 +611,14 @@ function addExpense() {
                      <button type="button" class="remove-btn" onclick="removeRow(this)">✕</button>`;
     document.getElementById('expensesList').appendChild(div);
     expIdx++;
+}
+
+function addParsedTask() {
+    const div = document.createElement('div');
+    div.className = 'task-row';
+    div.innerHTML = `<input type="text" name="tasks[]" class="form-control" placeholder="Task description">
+                     <button type="button" class="remove-btn" onclick="removeRow(this)">✕</button>`;
+    document.getElementById('f_tasks_editable').appendChild(div);
 }
 
 function removeRow(btn) { btn.closest('div').remove(); }
