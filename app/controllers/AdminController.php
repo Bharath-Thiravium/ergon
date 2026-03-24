@@ -310,12 +310,20 @@ class AdminController extends Controller {
             $projects = [];
         }
 
+        // Load owners for "Paid By" dropdown
+        $owners = [];
+        try {
+            $ownerStmt = $db->query("SELECT id, name FROM users WHERE role IN ('owner','company_owner') AND status = 'active' ORDER BY name ASC");
+            $owners = $ownerStmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {}
+
         if ($this->isPost()) {
             header('Content-Type: application/json');
             try {
                 $type = $_POST['entry_type'] ?? '';
                 $userId = intval($_POST['user_id'] ?? 0);
                 $amount = floatval($_POST['amount'] ?? 0);
+                $paidByOwnerId = !empty($_POST['paid_by_owner_id']) ? intval($_POST['paid_by_owner_id']) : $_SESSION['user_id'];
 
                 if (!$userId || $amount <= 0 || !in_array($type, ['advance', 'expense'])) {
                     echo json_encode(['success' => false, 'error' => 'Invalid input']);
@@ -323,6 +331,9 @@ class AdminController extends Controller {
                 }
 
                 require_once __DIR__ . '/../helpers/LedgerHelper.php';
+                try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_to_user_id INT NULL", "Alter table"); } catch (Exception $e) {}
+                try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN source_advance_id INT NULL", "Alter table"); } catch (Exception $e) {}
+                try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_to_name VARCHAR(255) NULL", "Alter table"); } catch (Exception $e) {}
 
                 if ($type === 'advance') {
                     $advType = trim($_POST['advance_type'] ?? 'General Advance');
@@ -333,19 +344,30 @@ class AdminController extends Controller {
 
                     $stmt = $db->prepare("INSERT INTO advances (user_id, project_id, type, amount, reason, requested_date, repayment_date, status, approved_by, approved_at, approved_amount, paid_by, paid_at, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, 'paid', ?, NOW(), ?, ?, NOW(), NOW())");
-                    $stmt->execute([$userId, $projectId, $advType, $amount, $reason, $advanceDate, $repaymentDate, $_SESSION['user_id'], $amount, $_SESSION['user_id']]);
+                    $stmt->execute([$userId, $projectId, $advType, $amount, $reason, $advanceDate, $repaymentDate, $_SESSION['user_id'], $amount, $paidByOwnerId]);
                     $id = $db->lastInsertId();
                     LedgerHelper::recordEntry($userId, 'advance', 'advance', $id, $amount, 'credit', $advanceDate);
+
+                    // Auto-create expense entry for the paying owner
+                    $empStmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                    $empStmt->execute([$userId]);
+                    $empName = $empStmt->fetchColumn() ?: 'Employee';
+                    $expDesc = "Advance paid to {$empName} ({$advType})";
+                    $expStmt = $db->prepare("INSERT INTO expenses (user_id, category, amount, description, expense_date, status, paid_by, paid_at, paid_to_user_id, source_advance_id, created_at) VALUES (?, 'work_advance', ?, ?, ?, 'paid', ?, NOW(), ?, ?, NOW())");
+                    $expStmt->execute([$paidByOwnerId, $amount, $expDesc, $advanceDate, $paidByOwnerId, $userId, $id]);
+
                     echo json_encode(['success' => true, 'message' => 'Advance entry saved successfully']);
                 } else {
                     $category    = trim($_POST['category'] ?? 'other');
                     $description = trim($_POST['description'] ?? '');
                     $expenseDate = $this->toDbDate($_POST['expense_date'] ?? '', date('Y-m-d'));
                     $projectId   = intval($_POST['project_id'] ?? 0) ?: null;
+                    $paidToUserId = (!empty($_POST['paid_to_user_id']) && $_POST['paid_to_user_id'] !== 'others') ? intval($_POST['paid_to_user_id']) : null;
+                    $paidToName   = ($_POST['paid_to_user_id'] ?? '') === 'others' ? trim($_POST['paid_to_name_manual'] ?? '') : null;
 
-                    $stmt = $db->prepare("INSERT INTO expenses (user_id, project_id, category, amount, description, expense_date, status, approved_by, approved_at, approved_amount, paid_by, paid_at, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, 'paid', ?, NOW(), ?, ?, NOW(), NOW())");
-                    $stmt->execute([$userId, $projectId, $category, $amount, $description, $expenseDate, $_SESSION['user_id'], $amount, $_SESSION['user_id']]);
+                    $stmt = $db->prepare("INSERT INTO expenses (user_id, project_id, category, amount, description, expense_date, status, approved_by, approved_at, approved_amount, paid_by, paid_at, paid_to_user_id, paid_to_name, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, 'paid', ?, NOW(), ?, ?, NOW(), ?, ?, NOW())");
+                    $stmt->execute([$userId, $projectId, $category, $amount, $description, $expenseDate, $_SESSION['user_id'], $amount, $_SESSION['user_id'], $paidToUserId, $paidToName]);
                     $id = $db->lastInsertId();
                     LedgerHelper::recordEntry($userId, 'expense', 'expense', $id, $amount, 'debit', $expenseDate);
                     echo json_encode(['success' => true, 'message' => 'Expense entry saved successfully']);
@@ -360,6 +382,7 @@ class AdminController extends Controller {
         $this->view('admin/entry', [
             'users'       => $users,
             'projects'    => $projects,
+            'owners'      => $owners,
             'active_page' => 'admin-entry'
         ]);
     }
@@ -414,7 +437,7 @@ class AdminController extends Controller {
             fputcsv($out, ['# project_name options (leave blank if none):', implode(' | ', $projects)]);
             fputcsv($out, ['# employee_name options:', implode(' | ', $users)]);
         } else {
-            fputcsv($out, ['employee_name', 'category', 'amount', 'description', 'expense_date', 'project_name']);
+            fputcsv($out, ['employee_name', 'category', 'amount', 'description', 'expense_date', 'paid_to_name', 'project_name']);
             foreach (array_slice($users, 0, 5) as $i => $name) {
                 fputcsv($out, [
                     $name,
@@ -422,12 +445,14 @@ class AdminController extends Controller {
                     (($i + 1) * 500),
                     'Sample expense description',
                     $today,
+                    '',
                     $i === 1 ? $proj1 : ''
                 ]);
             }
             fputcsv($out, []);
             fputcsv($out, ['# --- REFERENCE ---']);
             fputcsv($out, ['# category options:', implode(' | ', $expenseCategories)]);
+            fputcsv($out, ['# paid_to_name: name of employee who received the payment (optional, must match system name)']);
             fputcsv($out, ['# project_name options (leave blank if none):', implode(' | ', $projects)]);
             fputcsv($out, ['# employee_name options:', implode(' | ', $users)]);
         }
@@ -557,11 +582,13 @@ class AdminController extends Controller {
                         $id = $db->lastInsertId();
                         LedgerHelper::recordEntry($userId,'advance','advance',$id,$amount,'credit',$advDate);
                     } else {
-                        $category = trim($data['category'] ?? 'other') ?: 'other';
-                        $desc     = trim($data['description'] ?? '') ?: 'Bulk entry by admin';
-                        $expDate = $this->toDbDate($data['expense_date'] ?? '', date('Y-m-d'));
-                        $stmt = $db->prepare("INSERT INTO expenses (user_id,project_id,category,amount,description,expense_date,status,approved_by,approved_at,approved_amount,paid_by,paid_at,created_at) VALUES (?,?,?,?,?,?,'paid',?,NOW(),?,?,NOW(),NOW())");
-                        $stmt->execute([$userId,$projectId,$category,$amount,$desc,$expDate,$_SESSION['user_id'],$amount,$_SESSION['user_id']]);
+                        $category   = trim($data['category'] ?? 'other') ?: 'other';
+                        $desc       = trim($data['description'] ?? '') ?: 'Bulk entry by admin';
+                        $expDate    = $this->toDbDate($data['expense_date'] ?? '', date('Y-m-d'));
+                        $paidToId   = $validator->getUserId($data['paid_to_name'] ?? '') ?: null;
+                        $paidToName = (!$paidToId && !empty($data['paid_to_name'])) ? trim($data['paid_to_name']) : null;
+                        $stmt = $db->prepare("INSERT INTO expenses (user_id,project_id,category,amount,description,expense_date,status,approved_by,approved_at,approved_amount,paid_by,paid_at,paid_to_user_id,paid_to_name,created_at) VALUES (?,?,?,?,?,?,'paid',?,NOW(),?,?,NOW(),?,?,NOW())");
+                        $stmt->execute([$userId,$projectId,$category,$amount,$desc,$expDate,$_SESSION['user_id'],$amount,$_SESSION['user_id'],$paidToId,$paidToName]);
                         $id = $db->lastInsertId();
                         LedgerHelper::recordEntry($userId,'expense','expense',$id,$amount,'debit',$expDate);
                     }

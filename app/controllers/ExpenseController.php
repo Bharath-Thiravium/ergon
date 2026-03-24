@@ -53,7 +53,9 @@ class ExpenseController extends Controller {
             try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN approval_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
             try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN payment_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
             try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses MODIFY COLUMN status ENUM('pending','approved','rejected','paid') DEFAULT 'pending'", "Alter table"); } catch (Exception $e) {}
-
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_to_user_id INT NULL", "Alter table"); } catch (Exception $e) {}
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN source_advance_id INT NULL", "Alter table"); } catch (Exception $e) {}
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_to_name VARCHAR(255) NULL", "Alter table"); } catch (Exception $e) {}
             // Create approved_expenses table to store approved/processed expense records separately
             DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS approved_expenses (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -150,7 +152,7 @@ class ExpenseController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("SELECT e.*, u.name as user_name FROM expenses e JOIN users u ON e.user_id = u.id WHERE e.user_id = ? ORDER BY e.created_at DESC");
+            $stmt = $db->prepare("SELECT e.*, u.name as user_name, u.role as user_role, pt.name as paid_to_user_name, e.paid_to_name FROM expenses e JOIN users u ON e.user_id = u.id LEFT JOIN users pt ON e.paid_to_user_id = pt.id WHERE e.user_id = ? ORDER BY e.created_at DESC");
             $stmt->execute([$userId]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
@@ -164,7 +166,7 @@ class ExpenseController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("SELECT e.*, u.name as user_name, u.role as user_role FROM expenses e JOIN users u ON e.user_id = u.id WHERE (u.role = 'user' OR e.user_id = ?) ORDER BY e.created_at DESC");
+            $stmt = $db->prepare("SELECT e.*, u.name as user_name, u.role as user_role, pt.name as paid_to_user_name, e.paid_to_name FROM expenses e JOIN users u ON e.user_id = u.id LEFT JOIN users pt ON e.paid_to_user_id = pt.id WHERE (u.role = 'user' OR e.user_id = ?) ORDER BY e.created_at DESC");
             $stmt->execute([$adminUserId]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
@@ -211,55 +213,35 @@ class ExpenseController extends Controller {
                 'amount' => $amount,
                 'description' => Security::sanitizeString($_POST['description'], 500),
                 'expense_date' => $_POST['expense_date'] ?? date('Y-m-d'),
-                'attachment' => $attachment
+                'attachment' => $attachment,
+                'paid_to_user_id' => (!empty($_POST['paid_to_user_id']) && $_POST['paid_to_user_id'] !== 'others') ? intval($_POST['paid_to_user_id']) : null,
+                'paid_to_name'    => ($_POST['paid_to_user_id'] ?? '') === 'others' ? trim($_POST['paid_to_name_manual'] ?? '') : null,
             ];
             
-            if ($this->expense->create($data)) {
-                // Get the expense ID and create notification
-                try {
-                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
-                    require_once __DIR__ . '/../config/database.php';
-                    $db = Database::connect();
-                    $expenseId = $db->lastInsertId();
-                    $stmt = $db->prepare("SELECT name FROM users WHERE id = ?");
-                    $stmt->execute([$userId]);
-                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    if ($user) {
-                        NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount, $expenseId);
+            // Use direct insert to support paid_to_user_id
+            try {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+                $stmt = $db->prepare("INSERT INTO expenses (user_id, project_id, category, amount, description, expense_date, attachment, paid_to_user_id, paid_to_name, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
+                $result = $stmt->execute([$data['user_id'], $data['project_id'], $data['category'], $data['amount'], $data['description'], $data['expense_date'], $data['attachment'], $data['paid_to_user_id'], $data['paid_to_name']]);
+                if ($result) {
+                    try {
+                        require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                        $expenseId = $db->lastInsertId();
+                        $stmt2 = $db->prepare("SELECT name FROM users WHERE id = ?");
+                        $stmt2->execute([$userId]);
+                        $user = $stmt2->fetch(PDO::FETCH_ASSOC);
+                        if ($user) NotificationHelper::notifyExpenseClaim($userId, $user['name'], $amount, $expenseId);
+                    } catch (Exception $notifError) {
+                        error_log('Notification error (non-critical): ' . $notifError->getMessage());
                     }
-                } catch (Exception $notifError) {
-                    error_log('Notification error (non-critical): ' . $notifError->getMessage());
+                    echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => Environment::getBaseUrl() . '/expenses']);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Database error: Unable to save expense']);
                 }
-                
-                echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => Environment::getBaseUrl() . '/expenses']);
-            } else {
-                // Fallback: try direct database insertion
-                try {
-                    require_once __DIR__ . '/../config/database.php';
-                    $db = Database::connect();
-                    
-                    $stmt = $db->prepare("INSERT INTO expenses (user_id, project_id, category, amount, description, expense_date, attachment, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
-                    $result = $stmt->execute([
-                        $data['user_id'],
-                        $data['project_id'],
-                        $data['category'],
-                        $data['amount'],
-                        $data['description'],
-                        $data['expense_date'],
-                        $data['attachment']
-                    ]);
-                    
-                    if ($result) {
-                        echo json_encode(['success' => true, 'message' => 'Expense claim submitted successfully', 'redirect' => Environment::getBaseUrl() . '/expenses']);
-                    } else {
-                        error_log('Direct expense insert failed: ' . implode(' - ', $stmt->errorInfo()));
-                        echo json_encode(['success' => false, 'error' => 'Database error: Unable to save expense']);
-                    }
-                } catch (Exception $e) {
-                    error_log('Expense fallback error: ' . $e->getMessage());
-                    echo json_encode(['success' => false, 'error' => 'System error: ' . $e->getMessage()]);
-                }
+            } catch (Exception $e) {
+                error_log('Expense create error: ' . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'System error: ' . $e->getMessage()]);
             }
             return;
         }
@@ -601,8 +583,8 @@ class ExpenseController extends Controller {
             exit;
         }
 
-        // Only admin/owner can mark paid
-        if (!in_array($_SESSION['role'] ?? 'user', ['admin','owner'])) {
+        // Only admin/owner/company_owner can mark paid
+        if (!in_array($_SESSION['role'] ?? 'user', ['admin','owner','company_owner'])) {
             header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Unauthorized');
             exit;
         }

@@ -57,10 +57,10 @@ class AdvanceController extends Controller {
             try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN approved_amount DECIMAL(10,2) NULL", "Alter table"); } catch (Exception $e) {}
             
             if ($role === 'user') {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name FROM advances a JOIN users u ON a.user_id = u.id LEFT JOIN projects p ON a.project_id = p.id WHERE a.user_id = ? ORDER BY a.created_at DESC");
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name, pb.name as paid_by_name FROM advances a JOIN users u ON a.user_id = u.id LEFT JOIN projects p ON a.project_id = p.id LEFT JOIN users pb ON a.paid_by = pb.id WHERE a.user_id = ? ORDER BY a.created_at DESC");
                 $stmt->execute([$user_id]);
             } else {
-                $stmt = $db->query("SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name FROM advances a JOIN users u ON a.user_id = u.id LEFT JOIN projects p ON a.project_id = p.id ORDER BY a.created_at DESC");
+                $stmt = $db->query("SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name, pb.name as paid_by_name FROM advances a JOIN users u ON a.user_id = u.id LEFT JOIN projects p ON a.project_id = p.id LEFT JOIN users pb ON a.paid_by = pb.id ORDER BY a.created_at DESC");
             }
             $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
@@ -139,9 +139,9 @@ class AdvanceController extends Controller {
                     exit;
                 }
                 
-                // Only allow editing if user owns it or is admin/owner, and status is pending
+                // Only allow editing if user owns it or is admin/owner/company_owner, and status is pending
                 $canEdit = (($advance['user_id'] == $_SESSION['user_id']) || 
-                           in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) && 
+                           in_array($_SESSION['role'] ?? '', ['admin', 'owner', 'company_owner'])) && 
                            $advance['status'] === 'pending';
                 
                 if (!$canEdit) {
@@ -221,9 +221,9 @@ class AdvanceController extends Controller {
             }
         }
         
-        // Check authorization - only admin/owner can approve
+        // Check authorization - only admin/owner/company_owner can approve
         $currentUserRole = $_SESSION['role'] ?? 'user';
-        if (!in_array($currentUserRole, ['admin', 'owner'])) {
+        if (!in_array($currentUserRole, ['admin', 'owner', 'company_owner'])) {
             if ($_SERVER['REQUEST_METHOD'] === 'POST' || $this->isAjaxRequest()) {
                 header('Content-Type: application/json');
                 http_response_code(403);
@@ -334,8 +334,8 @@ class AdvanceController extends Controller {
             exit;
         }
 
-        // Only admin/owner can mark paid
-        if (!in_array($_SESSION['role'] ?? 'user', ['admin','owner'])) {
+        // Only admin/owner/company_owner can mark paid
+        if (!in_array($_SESSION['role'] ?? 'user', ['admin','owner','company_owner'])) {
             header('Location: ' . Environment::getBaseUrl() . '/advances?error=Unauthorized');
             exit;
         }
@@ -355,6 +355,13 @@ class AdvanceController extends Controller {
 
             $proof = null;
             $paymentRemarks = trim($_POST['payment_remarks'] ?? '');
+            // Use explicitly selected owner, or fall back to company_owner, then owner, then current user
+            if (!empty($_POST['paid_by_owner_id'])) {
+                $paidByOwnerId = intval($_POST['paid_by_owner_id']);
+            } else {
+                $ownerRow = $db->query("SELECT id FROM users WHERE role IN ('company_owner','owner') AND status='active' ORDER BY FIELD(role,'company_owner','owner') LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+                $paidByOwnerId = $ownerRow ? intval($ownerRow['id']) : $_SESSION['user_id'];
+            }
             
             // Validate that either proof or remarks is provided
             $hasFile = isset($_FILES['proof']) && $_FILES['proof']['error'] === 0;
@@ -397,15 +404,14 @@ class AdvanceController extends Controller {
                 }
             }
 
-            // Add payment_remarks column if it doesn't exist
+            // Add payment columns if they don't exist
             try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN payment_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
 
-            // Update advance with payment details
+            // Update advance with payment details (paid_by = the owner who paid)
             $stmt = $db->prepare("UPDATE advances SET status = 'paid', payment_proof = ?, payment_remarks = ?, paid_by = ?, paid_at = NOW() WHERE id = ?");
-            $result = $stmt->execute([$proof, $paymentRemarks, $_SESSION['user_id'], $id]);
+            $result = $stmt->execute([$proof, $paymentRemarks, $paidByOwnerId, $id]);
 
             if ($result) {
-                // Record ledger credit for the advance amount
                 // Use approved_amount if present else original amount
                 $ledgerAmount = floatval($advance['amount']);
                 try {
@@ -415,6 +421,28 @@ class AdvanceController extends Controller {
                     if ($row2 && $row2['approved_amount']) $ledgerAmount = floatval($row2['approved_amount']);
                 } catch (Exception $e) {}
                 LedgerHelper::recordEntry($advance['user_id'], 'advance', 'advance', $id, $ledgerAmount, 'credit', $advance['requested_date']);
+
+                // Auto-create expense entry for the paying owner
+                try {
+                    // Ensure paid_to_user_id column exists in expenses
+                    try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_to_user_id INT NULL", "Alter table"); } catch (Exception $ex) {}
+                    try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN source_advance_id INT NULL", "Alter table"); } catch (Exception $ex) {}
+
+                    // Get employee name for description
+                    $empStmt = $db->prepare("SELECT name FROM users WHERE id = ?");
+                    $empStmt->execute([$advance['user_id']]);
+                    $empName = $empStmt->fetchColumn() ?: 'Employee';
+
+                    $advType = $advance['type'] ?? 'General Advance';
+                    $expDesc = "Advance paid to {$empName} ({$advType})";
+                    if ($paymentRemarks) $expDesc .= ' - ' . $paymentRemarks;
+
+                    $expStmt = $db->prepare("INSERT INTO expenses (user_id, category, amount, description, expense_date, status, paid_by, paid_at, paid_to_user_id, source_advance_id, payment_proof, payment_remarks, created_at) VALUES (?, 'work_advance', ?, ?, NOW(), 'paid', ?, NOW(), ?, ?, ?, ?, NOW())");
+                    $expStmt->execute([$paidByOwnerId, $ledgerAmount, $expDesc, $paidByOwnerId, $advance['user_id'], $id, $proof, $paymentRemarks]);
+                } catch (Exception $expEx) {
+                    error_log('Auto-expense creation for advance payment failed: ' . $expEx->getMessage());
+                }
+
                 header('Location: ' . Environment::getBaseUrl() . '/advances?success=Advance marked as paid');
             } else {
                 header('Location: ' . Environment::getBaseUrl() . '/advances?error=Failed to mark paid');
@@ -438,9 +466,9 @@ class AdvanceController extends Controller {
             exit;
         }
         
-        // Check authorization - only admin/owner can reject
+        // Check authorization - only admin/owner/company_owner can reject
         $currentUserRole = $_SESSION['role'] ?? 'user';
-        if (!in_array($currentUserRole, ['admin', 'owner'])) {
+        if (!in_array($currentUserRole, ['admin', 'owner', 'company_owner'])) {
             header('Location: ' . Environment::getBaseUrl() . '/advances?error=Unauthorized access');
             exit;
         }
@@ -492,10 +520,10 @@ class AdvanceController extends Controller {
             $db = Database::connect();
             
             if ($_SESSION['role'] === 'user') {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name FROM advances a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN projects p ON a.project_id = p.id WHERE a.id = ? AND a.user_id = ?");
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name, pb.name as paid_by_name FROM advances a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN projects p ON a.project_id = p.id LEFT JOIN users pb ON a.paid_by = pb.id WHERE a.id = ? AND a.user_id = ?");
                 $stmt->execute([$id, $_SESSION['user_id']]);
             } else {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name FROM advances a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN projects p ON a.project_id = p.id WHERE a.id = ?");
+                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name, pb.name as paid_by_name FROM advances a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN projects p ON a.project_id = p.id LEFT JOIN users pb ON a.paid_by = pb.id WHERE a.id = ?");
                 $stmt->execute([$id]);
             }
             

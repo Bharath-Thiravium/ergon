@@ -122,6 +122,9 @@ ob_start();
                         <?php if (!empty($advance['paid_at'])): ?>
                         <span><strong>Paid:</strong> 📅 <?= date('M d, Y', strtotime($advance['paid_at'])) ?></span>
                         <?php endif; ?>
+                        <?php if (!empty($advance['paid_by_name'])): ?>
+                        <span><strong>Paid By:</strong> 👤 <?= htmlspecialchars($advance['paid_by_name']) ?></span>
+                        <?php endif; ?>
                         <?php if (isset($advance['repayment_months']) && $advance['repayment_months']): ?>
                         <span><strong>Repayment:</strong> 📅 <?= $advance['repayment_months'] ?> month<?= $advance['repayment_months'] != 1 ? 's' : '' ?></span>
                         <?php endif; ?>
@@ -188,6 +191,37 @@ ob_start();
         </div>
         <form id="markPaidForm" enctype="multipart/form-data">
             <div class="modal-body">
+                <div class="form-group" style="background:#f0f9ff;padding:10px;border-radius:6px;border-left:3px solid #3b82f6;margin-bottom:12px;">
+                    <strong>Paying to:</strong> <?= htmlspecialchars($advance['user_name'] ?? 'Employee') ?>
+                </div>
+                <?php
+                $owners = [];
+                try {
+                    require_once __DIR__ . '/../../app/config/database.php';
+                    $db = Database::connect();
+                    $ownerStmt = $db->query("SELECT id, name, role as role_name FROM users WHERE role IN ('owner','company_owner') AND status = 'active' ORDER BY FIELD(role,'company_owner','owner'), name");
+                    $owners = $ownerStmt->fetchAll(PDO::FETCH_ASSOC);
+                } catch (Exception $e) {}
+                ?>
+                <?php if (count($owners) > 1): ?>
+                <div class="form-group">
+                    <label for="paid_by_owner_id">Paid By (Owner) *</label>
+                    <select id="paid_by_owner_id" name="paid_by_owner_id" class="form-control" required>
+                    <?php 
+                    $defaultOwnerId = null;
+                    foreach ($owners as $o) { if ($o['role_name'] === 'company_owner') { $defaultOwnerId = $o['id']; break; } }
+                    if (!$defaultOwnerId) $defaultOwnerId = $owners[0]['id'] ?? ($_SESSION['user_id'] ?? 0);
+                    ?>
+                    <?php foreach ($owners as $owner): ?>
+                        <option value="<?= $owner['id'] ?>" <?= $owner['id'] == $defaultOwnerId ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($owner['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php else: ?>
+                <input type="hidden" name="paid_by_owner_id" value="<?= $owners[0]['id'] ?? ($_SESSION['user_id'] ?? '') ?>">
+                <?php endif; ?>
                 <div class="form-group">
                     <label for="payment_proof">Payment Proof (Image/PDF)</label>
                     <input type="file" id="payment_proof" name="proof" class="form-control" accept=".jpg,.jpeg,.png,.pdf">

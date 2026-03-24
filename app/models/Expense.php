@@ -88,9 +88,10 @@ class Expense {
     
     public function getAll() {
         try {
-            $sql = "SELECT e.*, u.name as user_name, u.role as user_role 
+            $sql = "SELECT e.*, u.name as user_name, u.role as user_role, pt.name as paid_to_user_name
                     FROM expenses e 
-                    JOIN users u ON e.user_id = u.id 
+                    JOIN users u ON e.user_id = u.id
+                    LEFT JOIN users pt ON e.paid_to_user_id = pt.id
                     ORDER BY e.created_at DESC";
             $stmt = $this->db->query($sql);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);

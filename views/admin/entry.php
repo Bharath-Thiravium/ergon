@@ -716,6 +716,19 @@ ob_start();
                             </select>
                         </div>
                     </div>
+                    <?php if (!empty($owners)): ?>
+                    <div class="form-row form-row--single">
+                        <div class="form-group">
+                            <label class="form-label" for="adv_paid_by_owner">Paid By (Owner) <span style="color: var(--error);">*</span></label>
+                            <select id="adv_paid_by_owner" name="paid_by_owner_id" class="form-control" required>
+                                <?php foreach ($owners as $o): ?>
+                                <option value="<?= $o['id'] ?>"><?= htmlspecialchars($o['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-hint">Which owner is paying this advance — will appear in their expenses</div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="form-section">
@@ -790,6 +803,20 @@ ob_start();
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label class="form-label" for="exp_paid_to">Paid To (Employee) <span style="color: var(--text-muted); font-weight:400;">(optional)</span></label>
+                            <select id="exp_paid_to" name="paid_to_user_id" class="form-control" onchange="togglePaidToOthers(this,'exp_paid_to_name')">
+                                <option value="">— None —</option>
+                                <?php foreach ($users as $u): ?>
+                                <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['name']) ?> (<?= ucfirst($u['role']) ?>)</option>
+                                <?php endforeach; ?>
+                                <option value="others">✏️ Others (enter name)</option>
+                            </select>
+                            <input type="text" id="exp_paid_to_name" name="paid_to_name_manual" class="form-control" placeholder="Enter recipient name" style="display:none; margin-top: var(--space-2);">
+                            <div class="form-hint">Which employee received this payment</div>
+                        </div>
+                    </div>
+                    <div class="form-row">
                         <div class="form-group">
                             <label class="form-label" for="exp_category">Category <span style="color: var(--error);">*</span></label>
                             <select id="exp_category" name="category" class="form-control" required style="height: auto; max-height: 300px; overflow-y: auto;">
@@ -916,7 +943,7 @@ ob_start();
             <div id="colRef-expense" class="column-ref" style="display:none;">
                 <div class="column-ref-title">Required columns for Expenses:</div>
                 <div class="column-code">
-                    employee_name &nbsp;|&nbsp; category &nbsp;|&nbsp; amount &nbsp;|&nbsp; description &nbsp;|&nbsp; expense_date <em>(DD-MM-YYYY)</em> &nbsp;|&nbsp; project_name <em>(optional)</em>
+                    employee_name &nbsp;|&nbsp; category &nbsp;|&nbsp; amount &nbsp;|&nbsp; description &nbsp;|&nbsp; expense_date <em>(DD-MM-YYYY)</em> &nbsp;|&nbsp; paid_to_name <em>(optional)</em> &nbsp;|&nbsp; project_name <em>(optional)</em>
                 </div>
             </div>
 
@@ -982,6 +1009,15 @@ ob_start();
 </div>
 
 <script>
+/* ── Paid To Others Toggle ──────────────────────────────────────────────── */
+function togglePaidToOthers(sel, inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.style.display = sel.value === 'others' ? 'block' : 'none';
+    input.required = sel.value === 'others';
+    if (sel.value !== 'others') input.value = '';
+}
+
 /* ── Enhanced Tab Switching ──────────────────────────────────────────────── */
 function switchTab(tab) {
     const isAdv = tab === 'advance';

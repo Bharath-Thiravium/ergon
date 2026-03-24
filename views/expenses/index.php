@@ -218,7 +218,7 @@ $expenseClaimsDistribution = ExpenseDistributionHelper::getStatusDistribution($e
             <table class="table">
                 <thead>
                     <tr>
-                        <th class="col-employee">Employee</th>
+                        <th class="col-employee">Employee / Owner</th>
                         <th class="col-description">Description</th>
                         <th class="col-amount">Amount</th>
                         <th class="col-date">Date</th>
@@ -251,6 +251,11 @@ $expenseClaimsDistribution = ExpenseDistributionHelper::getStatusDistribution($e
                             ?>
                             <strong><?= $displayName ?></strong>
                             <br><small class="text-muted"><?= $employeeRole ?></small>
+                            <?php if (!empty($expense['paid_to_user_name'])): ?>
+                            <br><small class="text-muted">→ Paid to: <strong><?= htmlspecialchars($expense['paid_to_user_name']) ?></strong></small>
+                            <?php elseif (!empty($expense['paid_to_name'])): ?>
+                            <br><small class="text-muted">→ Paid to: <strong><?= htmlspecialchars($expense['paid_to_name']) ?></strong></small>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <strong><?= htmlspecialchars($expense['description'] ?? '') ?></strong>
@@ -596,6 +601,15 @@ document.getElementById('markPaidForm').addEventListener('submit', function(e) {
         <div class="modal-body">
             <form id="expenseForm" enctype="multipart/form-data">
                 <input type="hidden" id="expense_id" name="expense_id">
+                <?php if (in_array($user_role ?? '', ['owner','company_owner'])): ?>
+                <div style="margin-bottom: 12px;">
+                    <label>Paid To (Employee) <span style="color:#6b7280;font-weight:400;">(optional)</span></label>
+                    <select id="paid_to_user_id" name="paid_to_user_id" class="form-input" onchange="togglePaidToOthersModal(this)">
+                        <option value="">— Select Employee —</option>
+                    </select>
+                    <input type="text" id="paid_to_name_manual" name="paid_to_name_manual" class="form-input" placeholder="Enter recipient name" style="display:none; margin-top:8px;">
+                </div>
+                <?php endif; ?>
                 <div style="display: flex; gap: 12px; margin-bottom: 12px;">
                     <div style="flex: 1;">
                         <label>Category *</label>
@@ -662,6 +676,7 @@ function showExpenseModal() {
     document.getElementById('expense_date').value = new Date().toISOString().split('T')[0];
     showModal('expenseModal');
     loadProjects('project_id');
+    loadEmployeesForPaidTo();
 }
 
 function editExpense(id) {
@@ -699,6 +714,37 @@ function editExpense(id) {
 
 function closeExpenseModal() {
     hideModal('expenseModal');
+}
+
+function loadEmployeesForPaidTo() {
+    const sel = document.getElementById('paid_to_user_id');
+    if (!sel) return;
+    fetch('/ergon/api/users')
+        .then(r => r.json())
+        .then(data => {
+            sel.innerHTML = '<option value="">— Select Employee —</option>';
+            if (data.success && data.users) {
+                data.users.forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = u.name + ' (' + u.role + ')';
+                    sel.appendChild(opt);
+                });
+            }
+            const othersOpt = document.createElement('option');
+            othersOpt.value = 'others';
+            othersOpt.textContent = '✏️ Others (enter name)';
+            sel.appendChild(othersOpt);
+        })
+        .catch(() => {});
+}
+
+function togglePaidToOthersModal(sel) {
+    const input = document.getElementById('paid_to_name_manual');
+    if (!input) return;
+    input.style.display = sel.value === 'others' ? 'block' : 'none';
+    input.required = sel.value === 'others';
+    if (sel.value !== 'others') input.value = '';
 }
 
 function loadProjects(selectId, selectedId = null) {

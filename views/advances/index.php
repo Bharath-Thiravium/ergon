@@ -153,6 +153,9 @@ $pendingRequestsDistribution = AdvanceDistributionHelper::getStatusDistribution(
                                 $displayName = $isCurrentUser ? "Myself ({$employeeName})" : $employeeName;
                                 echo $displayName . ' - ' . $employeeRole;
                                 ?>
+                                <?php if (!empty($advance['paid_by_name']) && ($advance['status'] ?? '') === 'paid'): ?>
+                                <br><small class="text-muted">💸 Paid by: <?= htmlspecialchars($advance['paid_by_name']) ?></small>
+                                <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars(!empty($advance['type']) ? $advance['type'] : 'General Advance') ?></td>
                             <td>₹<?= number_format($advance['amount'] ?? 0, 2) ?></td>
@@ -303,6 +306,39 @@ $pendingRequestsDistribution = AdvanceDistributionHelper::getStatusDistribution(
         </div>
         <form id="markPaidForm" enctype="multipart/form-data">
             <div class="modal-body">
+                <div class="form-group" id="paidToInfo" style="background:#f0f9ff;padding:10px;border-radius:6px;border-left:3px solid #3b82f6;margin-bottom:12px;display:none;">
+                    <strong>Paying to:</strong> <span id="paidToName"></span>
+                </div>
+                <?php
+                // Load owners for "Paid by" dropdown
+                $owners = [];
+                try {
+                    require_once __DIR__ . '/../../app/config/database.php';
+                    $db = Database::connect();
+                    $ownerStmt = $db->query("SELECT id, name, role as role_name FROM users WHERE role IN ('owner','company_owner') AND status = 'active' ORDER BY FIELD(role,'company_owner','owner'), name");
+                    $owners = $ownerStmt->fetchAll(PDO::FETCH_ASSOC);
+                } catch (Exception $e) {}
+                ?>
+                <?php if (count($owners) > 1): ?>
+                <div class="form-group">
+                    <label for="paid_by_owner_id">Paid By (Owner) *</label>
+                    <select id="paid_by_owner_id" name="paid_by_owner_id" class="form-control" required>
+                        <?php 
+                    $defaultOwnerId = null;
+                    foreach ($owners as $o) { if ($o['role_name'] === 'company_owner') { $defaultOwnerId = $o['id']; break; } }
+                    if (!$defaultOwnerId) foreach ($owners as $o) { if ($o['role_name'] === 'owner') { $defaultOwnerId = $o['id']; break; } }
+                    if (!$defaultOwnerId) $defaultOwnerId = $owners[0]['id'] ?? ($_SESSION['user_id'] ?? 0);
+                    ?>
+                    <?php foreach ($owners as $owner): ?>
+                        <option value="<?= $owner['id'] ?>" <?= $owner['id'] == $defaultOwnerId ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($owner['name']) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php else: ?>
+                <input type="hidden" name="paid_by_owner_id" value="<?= $owners[0]['id'] ?? ($_SESSION['user_id'] ?? '') ?>">
+                <?php endif; ?>
                 <div class="form-group">
                     <label for="payment_proof">Payment Proof (Image/PDF)</label>
                     <input type="file" id="payment_proof" name="proof" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
@@ -415,6 +451,15 @@ function showMarkPaidModal(advanceId) {
     currentAdvanceId = advanceId;
     document.getElementById('payment_proof').value = '';
     document.getElementById('payment_remarks').value = '';
+    // Show who this advance is being paid to
+    const row = document.querySelector(`button[onclick="showMarkPaidModal(${advanceId})"]`)?.closest('tr');
+    const paidToInfo = document.getElementById('paidToInfo');
+    const paidToName = document.getElementById('paidToName');
+    if (row && paidToInfo && paidToName) {
+        const employeeCell = row.querySelector('td:first-child');
+        paidToName.textContent = employeeCell ? employeeCell.textContent.trim() : '';
+        paidToInfo.style.display = 'block';
+    }
     document.getElementById('markPaidModal').setAttribute('data-visible', 'true');
     document.getElementById('markPaidModal').style.display = 'flex';
 }

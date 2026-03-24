@@ -54,7 +54,8 @@ ob_start();
                     <select name="role" class="form-control" required>
                         <option value="user" <?= ($user['role'] ?? '') === 'user' ? 'selected' : '' ?>>User</option>
                         <option value="admin" <?= ($user['role'] ?? '') === 'admin' ? 'selected' : '' ?>>Admin</option>
-
+                        <option value="owner" <?= ($user['role'] ?? '') === 'owner' ? 'selected' : '' ?>>Owner</option>
+                        <option value="company_owner" <?= ($user['role'] ?? '') === 'company_owner' ? 'selected' : '' ?>>Company Owner</option>
                     </select>
                 </div>
             </div>
