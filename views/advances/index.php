@@ -566,10 +566,16 @@ document.getElementById('markPaidForm').addEventListener('submit', function(e) {
                     </div>
                     <div style="flex: 1;">
                         <label>Project *</label>
-                        <select id="adv_project_id" name="project_id" class="form-input" required>
+                        <select id="adv_project_id" name="project_id" class="form-input" onchange="loadAdvSubcategories(this.value)" required>
                     <option value="">Select Project</option>
                         </select>
                     </div>
+                </div>
+                <div class="form-group" id="adv_subcategory_group" style="display:none;">
+                    <label>Work Category</label>
+                    <select id="adv_subcategory_id" name="subcategory_id" class="form-input">
+                        <option value="">-- Select work category --</option>
+                    </select>
                 </div>
                 <label>Amount (₹) *</label>
                 <input type="number" id="adv_amount" name="amount" class="form-input" step="0.01" min="1" required style="margin-bottom: 12px;">
@@ -648,6 +654,29 @@ function editAdvance(id) {
 function closeAdvanceModal() {
     document.getElementById('advanceModal').setAttribute('data-visible', 'false');
     document.getElementById('advanceModal').style.display = 'none';
+}
+
+function loadAdvSubcategories(projectId) {
+    const group = document.getElementById('adv_subcategory_group');
+    const sel   = document.getElementById('adv_subcategory_id');
+    sel.innerHTML = '<option value="">-- Select work category --</option>';
+    if (!projectId) { group.style.display = 'none'; return; }
+    fetch('/ergon/api/project-subcategories/' + projectId)
+        .then(r => r.json())
+        .then(data => {
+            if (data.length) {
+                data.forEach(s => {
+                    const o = document.createElement('option');
+                    o.value = s.id;
+                    o.textContent = s.name + (s.budget > 0 ? ' (₹' + parseFloat(s.budget).toLocaleString() + ')' : '');
+                    sel.appendChild(o);
+                });
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+            }
+        })
+        .catch(() => { group.style.display = 'none'; });
 }
 
 function loadAdvanceProjects(selectId, selectedId = null) {

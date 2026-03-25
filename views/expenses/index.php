@@ -636,10 +636,16 @@ document.getElementById('markPaidForm').addEventListener('submit', function(e) {
                     </div>
                     <div style="flex: 1;">
                         <label>Project (Optional)</label>
-                        <select id="project_id" name="project_id" class="form-input">
+                        <select id="project_id" name="project_id" class="form-input" onchange="loadExpSubcategories(this.value)">
                             <option value="">Select Project</option>
                         </select>
                     </div>
+                </div>
+                <div style="margin-bottom:12px;" id="exp_subcategory_group" style="display:none;">
+                    <label>Work Category <span style="color:#6b7280;font-weight:400;">(optional)</span></label>
+                    <select id="exp_subcategory_id" name="subcategory_id" class="form-input">
+                        <option value="">-- Select work category --</option>
+                    </select>
                 </div>
                 <div style="display: flex; gap: 12px; margin-bottom: 12px;">
                     <div style="flex: 1;">
@@ -745,6 +751,29 @@ function togglePaidToOthersModal(sel) {
     input.style.display = sel.value === 'others' ? 'block' : 'none';
     input.required = sel.value === 'others';
     if (sel.value !== 'others') input.value = '';
+}
+
+function loadExpSubcategories(projectId) {
+    const group = document.getElementById('exp_subcategory_group');
+    const sel   = document.getElementById('exp_subcategory_id');
+    sel.innerHTML = '<option value="">-- Select work category --</option>';
+    if (!projectId) { group.style.display = 'none'; return; }
+    fetch('/ergon/api/project-subcategories/' + projectId)
+        .then(r => r.json())
+        .then(data => {
+            if (data.length) {
+                data.forEach(s => {
+                    const o = document.createElement('option');
+                    o.value = s.id;
+                    o.textContent = s.name + (s.budget > 0 ? ' (₹' + parseFloat(s.budget).toLocaleString() + ')' : '');
+                    sel.appendChild(o);
+                });
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+            }
+        })
+        .catch(() => { group.style.display = 'none'; });
 }
 
 function loadProjects(selectId, selectedId = null) {

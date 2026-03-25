@@ -165,6 +165,14 @@ $router->post('/advances/reject/{id}', 'AdvanceController', 'reject');
 $router->post('/advances/paid/{id}', 'AdvanceController', 'markPaid');
 $router->post('/expenses/paid/{id}', 'ExpenseController', 'markPaid');
 
+// Project Subcategory Routes
+$router->get('/project-subcategories', 'ProjectSubcategoryController', 'index');
+$router->get('/project-subcategories/{projectId}', 'ProjectSubcategoryController', 'index');
+$router->post('/project-subcategories/store', 'ProjectSubcategoryController', 'store');
+$router->post('/project-subcategories/update/{id}', 'ProjectSubcategoryController', 'update');
+$router->post('/project-subcategories/delete/{id}', 'ProjectSubcategoryController', 'delete');
+$router->get('/api/project-subcategories/{projectId}', 'ProjectSubcategoryController', 'byProject');
+
 // Ledger viewing
 $router->get('/ledgers/user/{id}', 'LedgerController', 'userLedger');
 $router->get('/ledgers/project', 'LedgerController', 'projectLedger');

@@ -103,6 +103,7 @@ ob_start();
                         <td><?= date('M j, Y', strtotime($project['created_at'])) ?></td>
                         <td>
                             <div class="ab-container">
+                                <a href="/ergon/project-subcategories/<?= $project['id'] ?>" class="btn btn--sm" style="background:#8b5cf6;color:#fff;border:none;padding:.3rem .6rem;border-radius:4px;font-size:.85rem;text-decoration:none;" title="Work Categories">📂 Works</a>
                                 <button class="ab-btn ab-btn--edit"
                                     data-id="<?= $project['id'] ?>"
                                     data-name="<?= htmlspecialchars($project['name'], ENT_QUOTES) ?>"

@@ -27,8 +27,15 @@ ob_start();
             
             <div class="form-group">
                 <label class="form-label">Project *</label>
-                <select name="project_id" id="project_id" class="form-control" required>
+                <select name="project_id" id="project_id" class="form-control" onchange="loadSubcategories(this.value, 'subcategory_id')" required>
                     <option value="">Select Project</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="subcategory_group" style="display:none;">
+                <label class="form-label">Work Category (Subcategory)</label>
+                <select name="subcategory_id" id="subcategory_id" class="form-control">
+                    <option value="">-- Select work category --</option>
                 </select>
             </div>
             
@@ -86,6 +93,29 @@ fetch('/ergon/api/projects.php')
         }
     })
     .catch(error => console.error('Error loading projects:', error));
+
+function loadSubcategories(projectId, selectId) {
+    const group = document.getElementById('subcategory_group');
+    const sel   = document.getElementById(selectId);
+    sel.innerHTML = '<option value="">-- Select work category --</option>';
+    if (!projectId) { group.style.display = 'none'; return; }
+    fetch('/ergon/api/project-subcategories/' + projectId)
+        .then(r => r.json())
+        .then(data => {
+            if (data.length) {
+                data.forEach(s => {
+                    const o = document.createElement('option');
+                    o.value = s.id;
+                    o.textContent = s.name + (s.budget > 0 ? ' (Budget: ₹' + parseFloat(s.budget).toLocaleString() + ')' : '');
+                    sel.appendChild(o);
+                });
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+            }
+        })
+        .catch(() => { group.style.display = 'none'; });
+}
 </script>
 
 <?php
