@@ -257,6 +257,10 @@ function submitManualEntry() {
             showNotification('Manual attendance entry submitted successfully', 'success');
             document.getElementById('manualAttendanceForm').reset();
             loadRecentEntries();
+            const savedDate = formData.get('entry_date');
+            if (savedDate) {
+                setTimeout(() => { window.location.href = '/ergon/attendance?date=' + savedDate; }, 1500);
+            }
         } else {
             showNotification('Error: ' + data.message, 'error');
         }
@@ -279,9 +283,9 @@ function loadRecentEntries() {
                     <div class="entry-info">
                         <strong>${entry.user_name}</strong> - ${entry.entry_type_display}
                         <div class="entry-meta">
-                            ${entry.entry_date} ${entry.entry_time || ''} | 
+                            ${entry.check_in ? entry.check_in.substring(0, 10) : ''} ${entry.entry_time || ''} | 
                             Reason: ${entry.reason_display} | 
-                            By: ${entry.created_by_name}
+                            By: ${entry.created_by_name || '-'}
                         </div>
                         ${entry.notes ? `<div class="entry-meta">Notes: ${entry.notes}</div>` : ''}
                     </div>
