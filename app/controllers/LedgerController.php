@@ -68,6 +68,23 @@ class LedgerController extends Controller {
                 }
             }
 
+            // Backfill: for owner/company_owner, record debit entries for advances they paid out
+            if (in_array($user['role'], ['owner', 'company_owner'])) {
+                $stmt = $db->prepare("
+                    SELECT id, COALESCE(approved_amount, amount) as amount, requested_date, paid_at
+                    FROM advances
+                    WHERE paid_by = ? AND status = 'paid'
+                ");
+                $stmt->execute([$id]);
+                $paidOutAdvances = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($paidOutAdvances as $pa) {
+                    if (!in_array($pa['id'], $existingAdvanceIds)) {
+                        $entryDate = $pa['requested_date'] ?: ($pa['paid_at'] ?: date('Y-m-d'));
+                        LedgerHelper::recordEntry($id, 'advance', 'advance', $pa['id'], floatval($pa['amount']), 'debit', $entryDate);
+                    }
+                }
+            }
+
             // Backfill: find paid expenses for this user that have no user_ledger entry
             $existingExpenseIds = array_column(
                 array_filter($rawEntries, fn($r) => $r['reference_type'] === 'expense'),
