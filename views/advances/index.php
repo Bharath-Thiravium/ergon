@@ -310,35 +310,14 @@ $pendingRequestsDistribution = AdvanceDistributionHelper::getStatusDistribution(
                     <strong>Paying to:</strong> <span id="paidToName"></span>
                 </div>
                 <?php
-                // Load owners for "Paid by" dropdown
-                $owners = [];
                 try {
                     require_once __DIR__ . '/../../app/config/database.php';
                     $db = Database::connect();
-                    $ownerStmt = $db->query("SELECT id, name, role as role_name FROM users WHERE role IN ('owner','company_owner') AND status = 'active' ORDER BY FIELD(role,'company_owner','owner'), name");
-                    $owners = $ownerStmt->fetchAll(PDO::FETCH_ASSOC);
-                } catch (Exception $e) {}
+                    $ownerRow = $db->query("SELECT id FROM users WHERE role = 'company_owner' AND status = 'active' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+                    $companyOwnerId = $ownerRow['id'] ?? ($_SESSION['user_id'] ?? 0);
+                } catch (Exception $e) { $companyOwnerId = $_SESSION['user_id'] ?? 0; }
                 ?>
-                <?php if (count($owners) > 1): ?>
-                <div class="form-group">
-                    <label for="paid_by_owner_id">Paid By (Owner) *</label>
-                    <select id="paid_by_owner_id" name="paid_by_owner_id" class="form-control" required>
-                        <?php 
-                    $defaultOwnerId = null;
-                    foreach ($owners as $o) { if ($o['role_name'] === 'company_owner') { $defaultOwnerId = $o['id']; break; } }
-                    if (!$defaultOwnerId) foreach ($owners as $o) { if ($o['role_name'] === 'owner') { $defaultOwnerId = $o['id']; break; } }
-                    if (!$defaultOwnerId) $defaultOwnerId = $owners[0]['id'] ?? ($_SESSION['user_id'] ?? 0);
-                    ?>
-                    <?php foreach ($owners as $owner): ?>
-                        <option value="<?= $owner['id'] ?>" <?= $owner['id'] == $defaultOwnerId ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($owner['name']) ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <?php else: ?>
-                <input type="hidden" name="paid_by_owner_id" value="<?= $owners[0]['id'] ?? ($_SESSION['user_id'] ?? '') ?>">
-                <?php endif; ?>
+                <input type="hidden" name="paid_by_owner_id" value="<?= $companyOwnerId ?>">
                 <div class="form-group">
                     <label for="payment_proof">Payment Proof (Image/PDF)</label>
                     <input type="file" id="payment_proof" name="proof" class="form-control" accept=".jpg,.jpeg,.png,.pdf">

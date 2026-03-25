@@ -355,11 +355,11 @@ class AdvanceController extends Controller {
 
             $proof = null;
             $paymentRemarks = trim($_POST['payment_remarks'] ?? '');
-            // Use explicitly selected owner, or fall back to company_owner, then owner, then current user
+            // Always use company_owner as the payer
             if (!empty($_POST['paid_by_owner_id'])) {
                 $paidByOwnerId = intval($_POST['paid_by_owner_id']);
             } else {
-                $ownerRow = $db->query("SELECT id FROM users WHERE role IN ('company_owner','owner') AND status='active' ORDER BY FIELD(role,'company_owner','owner') LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+                $ownerRow = $db->query("SELECT id FROM users WHERE role = 'company_owner' AND status='active' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
                 $paidByOwnerId = $ownerRow ? intval($ownerRow['id']) : $_SESSION['user_id'];
             }
             

@@ -70,18 +70,28 @@ class LedgerController extends Controller {
 
             // Backfill: find paid expenses for this user that have no user_ledger entry
             // For owner/company_owner include advance-payment expenses (source_advance_id set)
+            // Also include expenses where paid_by = this user (covers cases where another user's
+            // account was used as the payer but the cost belongs to this owner)
             $existingExpenseIds = array_column(
                 array_filter($rawEntries, fn($r) => $r['reference_type'] === 'expense'),
                 'reference_id'
             );
             $isOwner = in_array($user['role'], ['owner', 'company_owner']);
-            $expenseFilter = $isOwner ? '' : 'AND (source_advance_id IS NULL OR source_advance_id = 0)';
-            $stmt = $db->prepare("
-                SELECT id, COALESCE(approved_amount, amount) as amount, expense_date, paid_at
-                FROM expenses
-                WHERE user_id = ? AND status = 'paid' $expenseFilter
-            ");
-            $stmt->execute([$id]);
+            if ($isOwner) {
+                $stmt = $db->prepare("
+                    SELECT id, COALESCE(approved_amount, amount) as amount, expense_date, paid_at
+                    FROM expenses
+                    WHERE (user_id = ? OR paid_by = ?) AND status = 'paid'
+                ");
+                $stmt->execute([$id, $id]);
+            } else {
+                $stmt = $db->prepare("
+                    SELECT id, COALESCE(approved_amount, amount) as amount, expense_date, paid_at
+                    FROM expenses
+                    WHERE user_id = ? AND status = 'paid' AND (source_advance_id IS NULL OR source_advance_id = 0)
+                ");
+                $stmt->execute([$id]);
+            }
             $paidExpenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
             foreach ($paidExpenses as $pe) {
                 if (!in_array($pe['id'], $existingExpenseIds)) {
@@ -104,15 +114,27 @@ class LedgerController extends Controller {
                         WHEN ul.reference_type = 'expense' THEN e.status
                         WHEN ul.reference_type = 'advance' THEN a.status
                         ELSE 'N/A'
-                    END as status
+                    END as status,
+                    pt.name as paid_to_name
                 FROM user_ledgers ul
                 LEFT JOIN expenses e ON ul.reference_type = 'expense' AND ul.reference_id = e.id
                 LEFT JOIN advances a ON ul.reference_type = 'advance' AND ul.reference_id = a.id
+                LEFT JOIN users pt ON e.paid_to_user_id = pt.id
                 WHERE ul.user_id = ? 
                 ORDER BY ul.created_at ASC, ul.id ASC
             ");
             $stmt->execute([$id]);
             $rawEntries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // For owner: append paid_to_name to description on advance-payment expenses
+            if ($isOwner) {
+                foreach ($rawEntries as &$entry) {
+                    if ($entry['reference_type'] === 'expense' && !empty($entry['paid_to_name'])) {
+                        $entry['description'] .= ' → ' . $entry['paid_to_name'];
+                    }
+                }
+                unset($entry);
+            }
 
             // Recalculate running balance in chronological order
             $runningBalance = 0;
