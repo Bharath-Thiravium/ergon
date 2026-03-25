@@ -400,7 +400,7 @@ function showDayTasks(date, dayTasks) {
         <div class="task-modal-content">
                 <div class="task-modal-header">
                 <h3>Tasks for ${dateStr}</h3>
-                <button onclick="hideClosestModal(this)">&times;</button>
+                <button onclick="this.closest('.task-modal').remove()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;line-height:1;">&times;</button>
             </div>
             <div class="task-modal-body">
                 ${dayTasks.map(task => `
