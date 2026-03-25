@@ -74,8 +74,6 @@ class LedgerController extends Controller {
                 unset($entry);
 
             } else {
-
-            } else {
                 // Non-owner: use user_ledgers with backfill
                 $stmt = $db->prepare("
                     SELECT 
