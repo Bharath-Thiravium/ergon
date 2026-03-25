@@ -170,7 +170,7 @@ $content = ob_start();
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="project_id">📁 Project *</label>
-                        <select id="project_id" name="project_id" onchange="loadDepartmentsByProject()" required>
+                        <select id="project_id" name="project_id" onchange="loadDepartmentsByProject(); loadSubcats('project_id','subcategory_id','task_subcat_group')" required>
                             <option value="">Select Project First</option>
                             <?php if (!empty($projects)): ?>
                                 <?php foreach ($projects as $project): ?>
@@ -179,6 +179,12 @@ $content = ob_start();
                             <?php endif; ?>
                         </select>
                         <small class="field-hint">Select project first to filter departments and categories</small>
+                    </div>
+                    <div class="form-group" id="task_subcat_group" style="display:none;">
+                        <label for="subcategory_id">📂 Work Category</label>
+                        <select id="subcategory_id" name="subcategory_id">
+                            <option value="">-- Select work category --</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="department_id">🏢 Department</label>
@@ -431,6 +437,31 @@ $content = ob_start();
 </div>
 
 <script>
+// Shared: load subcategories for any project dropdown
+function loadSubcats(projectSelectId, subcatSelectId, groupId) {
+    const projectId = document.getElementById(projectSelectId).value;
+    const group = document.getElementById(groupId);
+    const sel = document.getElementById(subcatSelectId);
+    sel.innerHTML = '<option value="">-- Select work category --</option>';
+    if (!projectId) { if(group) group.style.display='none'; return; }
+    fetch('/ergon/api/project-subcategories/' + projectId)
+        .then(r => r.json())
+        .then(data => {
+            if (data.length) {
+                data.forEach(s => {
+                    const o = document.createElement('option');
+                    o.value = s.id;
+                    o.textContent = s.name;
+                    sel.appendChild(o);
+                });
+                if(group) group.style.display = 'block';
+            } else {
+                if(group) group.style.display = 'none';
+            }
+        })
+        .catch(() => { if(group) group.style.display='none'; });
+}
+
 // Update progress value display
 function updateProgressValue(value) {
     document.getElementById('progressValue').textContent = value + '%';

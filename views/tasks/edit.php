@@ -188,13 +188,19 @@ $content = ob_start();
                 </div>
                 <div class="form-group">
                     <label for="project_id">📁 Project</label>
-                    <select id="project_id" name="project_id">
+                    <select id="project_id" name="project_id" onchange="loadSubcats('project_id','subcategory_id','task_subcat_group')">
                         <option value="">Select Project</option>
                         <?php if (!empty($projects)): ?>
                             <?php foreach ($projects as $project): ?>
                                 <option value="<?= $project['id'] ?>" <?= ($task['project_id'] ?? '') == $project['id'] ? 'selected' : '' ?>><?= htmlspecialchars($project['name']) ?></option>
                             <?php endforeach; ?>
                         <?php endif; ?>
+                    </select>
+                </div>
+                <div class="form-group" id="task_subcat_group" style="display:none;">
+                    <label for="subcategory_id">📂 Work Category</label>
+                    <select id="subcategory_id" name="subcategory_id">
+                        <option value="">-- Select work category --</option>
                     </select>
                 </div>
             </div>
@@ -439,6 +445,32 @@ $content = ob_start();
 </div>
 
 <script>
+// Shared: load subcategories
+function loadSubcats(projectSelectId, subcatSelectId, groupId, selectedId) {
+    const projectId = document.getElementById(projectSelectId).value;
+    const group = document.getElementById(groupId);
+    const sel = document.getElementById(subcatSelectId);
+    sel.innerHTML = '<option value="">-- Select work category --</option>';
+    if (!projectId) { if(group) group.style.display='none'; return; }
+    fetch('/ergon/api/project-subcategories/' + projectId)
+        .then(r => r.json())
+        .then(data => {
+            if (data.length) {
+                data.forEach(s => {
+                    const o = document.createElement('option');
+                    o.value = s.id;
+                    o.textContent = s.name;
+                    if (selectedId && s.id == selectedId) o.selected = true;
+                    sel.appendChild(o);
+                });
+                if(group) group.style.display = 'block';
+            } else {
+                if(group) group.style.display = 'none';
+            }
+        })
+        .catch(() => { if(group) group.style.display='none'; });
+}
+
 // Update progress value display
 function updateProgressValue(value) {
     document.getElementById('progressValue').textContent = value + '%';
@@ -926,6 +958,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (currentDeptId) {
         loadTaskCategories();
+    }
+
+    // Pre-load subcategories if project is already selected
+    const currentProjectId = '<?= $task['project_id'] ?? '' ?>';
+    const currentSubcatId  = '<?= $task['subcategory_id'] ?? '' ?>';
+    if (currentProjectId) {
+        loadSubcats('project_id', 'subcategory_id', 'task_subcat_group', currentSubcatId);
     }
     
     const followupCheckbox = document.getElementById('followup_required');

@@ -1,8 +1,6 @@
 <?php
 ob_start();
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
@@ -14,307 +12,384 @@ if (empty($_SESSION['user_id']) || empty($_SESSION['role']) || !in_array($_SESSI
 }
 
 require_once __DIR__ . '/../../app/helpers/ModuleManager.php';
-
 $systemAdminDisabled = false;
 $reportsDisabled = false;
 try {
     $systemAdminDisabled = ModuleManager::isModuleDisabled('system_admin');
-    $reportsDisabled = ModuleManager::isModuleDisabled('reports');
-} catch (Exception $e) {
-    // Silently fail
-}
+    $reportsDisabled     = ModuleManager::isModuleDisabled('reports');
+} catch (Exception $e) {}
 
-$title = 'Executive Dashboard';
+$title       = 'Executive Dashboard';
 $active_page = 'dashboard';
-?>
 
-<div class="header-actions">
-    <a href="/ergon/system-admin" class="btn btn--primary <?= $systemAdminDisabled ? 'btn--disabled' : '' ?>" <?= $systemAdminDisabled ? 'onclick="return false;" style="opacity: 0.5; cursor: not-allowed;"' : '' ?>>🔧 System Admins<?= $systemAdminDisabled ? ' 🔒' : '' ?></a>
-    <a href="/ergon/users" class="btn btn--secondary">👥 User Admins</a>
-    <a href="/ergon/owner/approvals" class="btn btn--secondary">Review Approvals</a>
-    <a href="/ergon/reports" class="btn btn--secondary <?= $reportsDisabled ? 'btn--disabled' : '' ?>" <?= $reportsDisabled ? 'onclick="return false;" style="opacity: 0.5; cursor: not-allowed;"' : '' ?>>View Reports<?= $reportsDisabled ? ' 🔒' : '' ?></a>
-    <?php if (!$systemAdminDisabled): ?>
-    <a href="/ergon/settings" class="btn btn--secondary">System Settings</a>
-    <?php else: ?>
-    <span class="btn btn--secondary btn--disabled" style="opacity: 0.5; cursor: not-allowed;">System Settings 🔒</span>
+// Shorthand helpers
+$d           = $data ?? [];
+$stats       = $d['stats'] ?? [];
+$alerts      = $d['alerts'] ?? [];
+$attToday    = $d['att_today'] ?? 0;
+$onLeave     = $d['on_leave_today'] ?? 0;
+$absent      = $d['absent_today'] ?? 0;
+$late        = $d['late_today'] ?? 0;
+$totalPend   = $d['total_pending'] ?? 0;
+$revMonth    = $d['revenue_month'] ?? 0;
+$expMonth    = $d['expenses_month'] ?? 0;
+$outstanding = $d['outstanding_total'] ?? 0;
+$netProfit   = $revMonth - $expMonth;
+$overdueInv  = $d['overdue_invoices'] ?? [];
+$advOut      = $d['advances_outstanding'] ?? [];
+$topExpCats  = $d['top_expense_cats'] ?? [];
+$attBehavior = $d['attendance_behavior'] ?? [];
+$recentActs  = $d['recent_activities'] ?? [];
+?>
+<style>
+.intel-strip{display:flex;flex-wrap:wrap;gap:12px;background:linear-gradient(135deg,#1e3a5f,#0f2340);border-radius:12px;padding:16px 20px;margin-bottom:20px;align-items:center}
+.intel-strip__item{display:flex;align-items:center;gap:8px;color:#fff;font-size:13px;font-weight:600;padding:6px 14px;border-radius:20px;background:rgba(255,255,255,0.12)}
+.intel-strip__item.green{background:rgba(16,185,129,0.25);color:#6ee7b7}
+.intel-strip__item.red{background:rgba(239,68,68,0.25);color:#fca5a5}
+.intel-strip__item.yellow{background:rgba(245,158,11,0.25);color:#fde68a}
+.intel-strip__item.blue{background:rgba(59,130,246,0.25);color:#93c5fd}
+.intel-strip__label{font-size:11px;opacity:.8;font-weight:400}
+
+.priority-alerts{margin-bottom:20px}
+.alert-item{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-radius:10px;margin-bottom:8px;font-size:13px;font-weight:500}
+.alert-item.danger{background:#fef2f2;border-left:4px solid #ef4444;color:#991b1b}
+.alert-item.warning{background:#fffbeb;border-left:4px solid #f59e0b;color:#92400e}
+.alert-item.info{background:#eff6ff;border-left:4px solid #3b82f6;color:#1e40af}
+[data-theme="dark"] .alert-item.danger{background:rgba(239,68,68,.12);color:#fca5a5}
+[data-theme="dark"] .alert-item.warning{background:rgba(245,158,11,.12);color:#fde68a}
+[data-theme="dark"] .alert-item.info{background:rgba(59,130,246,.12);color:#93c5fd}
+
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.kpi-box{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-top:3px solid #e5e7eb;transition:transform .15s}
+.kpi-box:hover{transform:translateY(-2px)}
+.kpi-box.red{border-top-color:#ef4444}
+.kpi-box.green{border-top-color:#10b981}
+.kpi-box.blue{border-top-color:#3b82f6}
+.kpi-box.yellow{border-top-color:#f59e0b}
+.kpi-box.purple{border-top-color:#8b5cf6}
+.kpi-box__val{font-size:24px;font-weight:800;color:#111827;line-height:1.1}
+.kpi-box__lbl{font-size:11px;color:#6b7280;margin-top:4px;font-weight:500;text-transform:uppercase;letter-spacing:.4px}
+.kpi-box__sub{font-size:12px;color:#9ca3af;margin-top:2px}
+[data-theme="dark"] .kpi-box{background:#1f2937;color:#f9fafb}
+[data-theme="dark"] .kpi-box__val{color:#f9fafb}
+[data-theme="dark"] .kpi-box__lbl{color:#9ca3af}
+
+.quick-actions-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.qa-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;border:none;cursor:pointer;transition:all .15s}
+.qa-btn.primary{background:#1e40af;color:#fff}
+.qa-btn.primary:hover{background:#1d4ed8}
+.qa-btn.success{background:#059669;color:#fff}
+.qa-btn.success:hover{background:#047857}
+.qa-btn.warning{background:#d97706;color:#fff}
+.qa-btn.warning:hover{background:#b45309}
+.qa-btn.danger{background:#dc2626;color:#fff}
+.qa-btn.danger:hover{background:#b91c1c}
+
+.intel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:20px}
+.intel-card{background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.07);overflow:hidden}
+.intel-card__head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #f3f4f6;font-weight:700;font-size:14px}
+.intel-card__head a{font-size:12px;color:#3b82f6;text-decoration:none;font-weight:500}
+.intel-card__body{padding:14px 16px}
+[data-theme="dark"] .intel-card{background:#1f2937}
+[data-theme="dark"] .intel-card__head{border-color:#374151;color:#f9fafb}
+
+.risk-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px}
+.risk-row:last-child{border-bottom:none}
+.risk-badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.risk-badge.high{background:#fef2f2;color:#dc2626}
+.risk-badge.medium{background:#fffbeb;color:#d97706}
+.risk-badge.low{background:#f0fdf4;color:#16a34a}
+[data-theme="dark"] .risk-row{border-color:#374151;color:#d1d5db}
+[data-theme="dark"] .risk-badge.high{background:rgba(220,38,38,.2);color:#fca5a5}
+[data-theme="dark"] .risk-badge.medium{background:rgba(217,119,6,.2);color:#fde68a}
+[data-theme="dark"] .risk-badge.low{background:rgba(22,163,74,.2);color:#86efac}
+
+.bar-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12px}
+.bar-row__label{width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#374151;font-weight:500}
+.bar-row__track{flex:1;background:#f3f4f6;border-radius:4px;height:8px}
+.bar-row__fill{height:8px;border-radius:4px;background:#3b82f6;transition:width .4s}
+.bar-row__val{width:60px;text-align:right;color:#6b7280;font-weight:600}
+[data-theme="dark"] .bar-row__label{color:#d1d5db}
+[data-theme="dark"] .bar-row__track{background:#374151}
+[data-theme="dark"] .bar-row__val{color:#9ca3af}
+
+.act-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:12px}
+.act-item:last-child{border-bottom:none}
+.act-dot{width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-top:4px;flex-shrink:0}
+.act-meta{color:#9ca3af;font-size:11px;margin-top:2px}
+[data-theme="dark"] .act-item{border-color:#374151;color:#d1d5db}
+[data-theme="dark"] .act-meta{color:#6b7280}
+
+.empty-state{text-align:center;padding:24px;color:#9ca3af;font-size:13px}
+</style>
+
+<!-- Quick Actions Bar -->
+<div class="quick-actions-bar">
+    <a href="/ergon/owner/approvals" class="qa-btn primary">✅ Approve Requests <?php if($totalPend>0): ?><span style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px"><?= $totalPend ?></span><?php endif; ?></a>
+    <a href="/ergon/leaves" class="qa-btn success">🏖️ Approve Leaves</a>
+    <a href="/ergon/expenses" class="qa-btn warning">💰 Approve Expenses</a>
+    <?php if(!$reportsDisabled): ?>
+    <a href="/ergon/reports" class="qa-btn primary" style="background:#7c3aed">📊 View Reports</a>
+    <?php endif; ?>
+    <?php if(!$systemAdminDisabled): ?>
+    <a href="/ergon/settings" class="qa-btn danger" style="background:#6b7280">⚙️ Settings</a>
     <?php endif; ?>
 </div>
 
-<style>
-/* Hide header actions for company_owner users */
-body[data-user-role="company_owner"] .header-actions {
-    display: none !important;
-}
-</style>
+<!-- Priority Alerts -->
+<?php if (!empty($alerts)): ?>
+<div class="priority-alerts">
+    <?php foreach ($alerts as $a): ?>
+    <div class="alert-item <?= htmlspecialchars($a['type'], ENT_QUOTES, 'UTF-8') ?>">
+        <span style="font-size:18px"><?= $a['icon'] ?></span>
+        <span><?= htmlspecialchars($a['msg'], ENT_QUOTES, 'UTF-8') ?></span>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
 
-<div class="dashboard-grid">
-    <div class="kpi-card">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">👥</div>
-            <div class="kpi-card__trend">↗ +5%</div>
-        </div>
-        <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['total_users'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
-        <div class="kpi-card__label">Active Users</div>
-        <div class="kpi-card__status">Online</div>
+<!-- Today Summary Strip -->
+<div class="intel-strip">
+    <div class="intel-strip__item green">👥 Present: <strong><?= $attToday ?></strong></div>
+    <div class="intel-strip__item blue">🏖️ On Leave: <strong><?= $onLeave ?></strong></div>
+    <div class="intel-strip__item red">❌ Absent: <strong><?= $absent ?></strong></div>
+    <div class="intel-strip__item yellow">⏰ Late: <strong><?= $late ?></strong></div>
+    <div class="intel-strip__item <?= $totalPend > 0 ? 'red' : 'green' ?>">📋 Pending Approvals: <strong><?= $totalPend ?></strong></div>
+    <?php if ($revMonth > 0): ?>
+    <div class="intel-strip__item green">💰 Revenue: <strong>₹<?= number_format($revMonth) ?></strong></div>
+    <?php endif; ?>
+    <?php if ($outstanding > 0): ?>
+    <div class="intel-strip__item red">⚠️ Outstanding: <strong>₹<?= number_format($outstanding) ?></strong></div>
+    <?php endif; ?>
+</div>
+
+<!-- Owner KPIs -->
+<div class="kpi-row">
+    <div class="kpi-box green">
+        <div class="kpi-box__val"><?= htmlspecialchars($stats['total_users'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
+        <div class="kpi-box__lbl">Active Employees</div>
+        <div class="kpi-box__sub">👥 Total workforce</div>
     </div>
-    
-    <div class="kpi-card">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">📋</div>
-            <div class="kpi-card__trend">↗ +18%</div>
-        </div>
-        <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['active_tasks'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
-        <div class="kpi-card__label">Active Tasks</div>
-        <div class="kpi-card__status">In Progress</div>
+    <div class="kpi-box blue">
+        <div class="kpi-box__val"><?= htmlspecialchars($stats['active_tasks'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
+        <div class="kpi-box__lbl">Active Tasks</div>
+        <div class="kpi-box__sub">📋 In progress + pending</div>
     </div>
-    
-    <div class="kpi-card kpi-card--warning">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">🏖️</div>
-            <div class="kpi-card__trend kpi-card__trend--down">— 0%</div>
-        </div>
-        <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['pending_leaves'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
-        <div class="kpi-card__label">Pending Leaves</div>
-        <div class="kpi-card__status kpi-card__status--pending">Needs Review</div>
+    <div class="kpi-box <?= $totalPend > 5 ? 'red' : 'yellow' ?>">
+        <div class="kpi-box__val"><?= $totalPend ?></div>
+        <div class="kpi-box__lbl">Pending Approvals</div>
+        <div class="kpi-box__sub">🏖️<?= $stats['pending_leaves']??0 ?> leaves · 💰<?= $stats['pending_expenses']??0 ?> exp · 💳<?= $stats['pending_advances']??0 ?> adv</div>
     </div>
-    
-    <div class="kpi-card">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">💰</div>
-            <div class="kpi-card__trend kpi-card__trend--down">↘ -3%</div>
-        </div>
-        <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['pending_expenses'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
-        <div class="kpi-card__label">Pending Expenses</div>
-        <div class="kpi-card__status">Under Review</div>
+    <?php if ($revMonth > 0 || $expMonth > 0): ?>
+    <div class="kpi-box green">
+        <div class="kpi-box__val">₹<?= number_format($revMonth/100000, 1) ?>L</div>
+        <div class="kpi-box__lbl">Revenue This Month</div>
+        <div class="kpi-box__sub">📈 Invoiced amount</div>
     </div>
-    
-    <div class="kpi-card kpi-card--info">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">💳</div>
-            <div class="kpi-card__trend">↗ +2%</div>
-        </div>
-        <div class="kpi-card__value"><?php
-            try {
-                if (!isset($db)) {
-                    require_once __DIR__ . '/../../app/config/database.php';
-                    $db = Database::connect();
-                }
-                $stmt = $db->query("SELECT COUNT(*) FROM advances WHERE status = 'pending'");
-                echo $stmt->fetchColumn();
-            } catch (Exception $e) {
-                echo '0';
-            }
-        ?></div>
-        <div class="kpi-card__label">Pending Advances</div>
-        <div class="kpi-card__status kpi-card__status--pending">Awaiting Approval</div>
+    <div class="kpi-box <?= $expMonth > $revMonth * 0.8 ? 'red' : 'yellow' ?>">
+        <div class="kpi-box__val">₹<?= number_format($expMonth/100000, 1) ?>L</div>
+        <div class="kpi-box__lbl">Expenses This Month</div>
+        <div class="kpi-box__sub">💸 Approved expenses</div>
+    </div>
+    <div class="kpi-box <?= $netProfit >= 0 ? 'green' : 'red' ?>">
+        <div class="kpi-box__val">₹<?= number_format($netProfit/100000, 1) ?>L</div>
+        <div class="kpi-box__lbl">Net Profit</div>
+        <div class="kpi-box__sub"><?= $netProfit >= 0 ? '✅ Positive' : '⚠️ Negative' ?></div>
+    </div>
+    <?php endif; ?>
+    <?php if ($outstanding > 0): ?>
+    <div class="kpi-box red">
+        <div class="kpi-box__val">₹<?= number_format($outstanding/100000, 1) ?>L</div>
+        <div class="kpi-box__lbl">Outstanding</div>
+        <div class="kpi-box__sub">⚠️ Unpaid invoices</div>
+    </div>
+    <?php endif; ?>
+    <div class="kpi-box purple">
+        <div class="kpi-box__val"><?= htmlspecialchars($stats['completion_rate'] ?? '0', ENT_QUOTES, 'UTF-8') ?>%</div>
+        <div class="kpi-box__lbl">Task Completion Rate</div>
+        <div class="kpi-box__sub">🎯 Overall progress</div>
     </div>
 </div>
 
-<div class="dashboard-grid">
-    <div class="card">
-        <div class="card__header">
-            <h2 class="card__title">🎯 Project Progress Overview</h2>
-            <div class="card-actions">
-                <a href="/ergon/dashboard/project-overview" class="btn btn--primary btn--sm">View Details</a>
-            </div>
-        </div>
-        <div class="card__body">
-            <div class="overview-summary">
-                <div class="summary-stat">
-                    <?php
-                try {
-                    require_once __DIR__ . '/../../app/config/database.php';
-                    $db = Database::connect();
-                    $stmt = $db->query("SELECT COUNT(*) FROM projects WHERE status = 'active'");
-                    $activeProjects = $stmt->fetchColumn();
-                    if ($activeProjects == 0) {
-                        $stmt = $db->query("SELECT COUNT(DISTINCT project_name) FROM tasks WHERE project_name IS NOT NULL AND project_name != ''");
-                        $activeProjects = $stmt->fetchColumn();
-                    }
-                } catch (Exception $e) {
-                    $activeProjects = 0;
-                }
-                ?>
-                <span class="summary-number">📁 <?= $activeProjects ?></span>
-                    <span class="summary-label">Active Projects</span>
-                </div>
-                <div class="summary-stat">
-                    <?php
-                try {
-                    $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE status = 'completed'");
-                    $completedTasks = $stmt->fetchColumn();
-                } catch (Exception $e) {
-                    $completedTasks = 0;
-                }
-                ?>
-                <span class="summary-number">✅ <?= $completedTasks ?></span>
-                    <span class="summary-label">Completed Tasks</span>
-                </div>
-                <div class="summary-stat">
-                    <span class="summary-number">📊 <?= htmlspecialchars($data['stats']['avg_progress'] ?? '0', ENT_QUOTES, 'UTF-8') ?>%</span>
-                    <span class="summary-label">Avg Progress</span>
-                </div>
-            </div>
-            <div class="overview-stats">
-                <div class="stat-row">
-                    <div class="stat-item-inline">
-                        <div class="stat-icon">📈</div>
-                        <div>
-                            <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['in_progress'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="stat-label-sm">In Progress</div>
-                        </div>
-                    </div>
-                    <div class="stat-item-inline">
-                        <div class="stat-icon">⏳</div>
-                        <div>
-                            <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['pending'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="stat-label-sm">Pending</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="overview-progress">
-                <div class="progress-header">
-                    <span class="progress-label">Overall Completion</span>
-                    <span class="progress-value"><?= htmlspecialchars($data['stats']['completion_rate'] ?? '0', ENT_QUOTES, 'UTF-8') ?>%</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: <?= htmlspecialchars($data['stats']['completion_rate'] ?? '0', ENT_QUOTES, 'UTF-8') ?>%"></div>
-                </div>
-                <div class="progress-footer">
-                    <span class="progress-trend">↗ +12% this month</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="card">
-        <div class="card__header">
-            <h2 class="card__title">⚠️ Delayed Tasks Overview</h2>
-            <div class="card-actions">
-                <a href="/ergon/dashboard/delayed-tasks-overview" class="btn btn--primary btn--sm">View Details</a>
-            </div>
-        </div>
-        <div class="card__body">
-            <div class="overview-summary">
-                <div class="summary-stat">
-                    <?php
-                try {
-                    $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (due_date < CURDATE() OR deadline < CURDATE()) AND status NOT IN ('completed', 'cancelled')");
-                    $overdueTasks = $stmt->fetchColumn();
-                } catch (Exception $e) {
-                    $overdueTasks = 0;
-                }
-                ?>
-                <span class="summary-number">🚨 <?= $overdueTasks ?></span>
-                    <span class="summary-label">Overdue Tasks</span>
-                </div>
-                <div class="summary-stat">
-                    <?php
-                try {
-                    $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) OR deadline BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AND status NOT IN ('completed', 'cancelled')");
-                    $dueThisWeek = $stmt->fetchColumn();
-                } catch (Exception $e) {
-                    $dueThisWeek = 0;
-                }
-                ?>
-                <span class="summary-number">⏰ <?= $dueThisWeek ?></span>
-                    <span class="summary-label">Due This Week</span>
-                </div>
-                <div class="summary-stat">
-                    <?php
-                try {
-                    $stmt = $db->query("SELECT COUNT(*) FROM tasks WHERE (DATE(due_date) = DATE_ADD(CURDATE(), INTERVAL 1 DAY) OR DATE(deadline) = DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AND status NOT IN ('completed', 'cancelled')");
-                    $dueTomorrow = $stmt->fetchColumn();
-                } catch (Exception $e) {
-                    $dueTomorrow = 0;
-                }
-                ?>
-                <span class="summary-number">📅 <?= $dueTomorrow ?></span>
-                    <span class="summary-label">Due Tomorrow</span>
-                </div>
-            </div>
-            <div class="overview-stats">
-                <div class="stat-row">
-                    <div class="stat-item-inline">
-                        <div class="stat-icon">🔄</div>
-                        <div>
-                            <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['rescheduled'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="stat-label-sm">Rescheduled</div>
-                        </div>
-                    </div>
-                    <div class="stat-item-inline">
-                        <div class="stat-icon">⚠️</div>
-                        <div>
-                            <div class="stat-value-sm"><?= htmlspecialchars($data['stats']['critical'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="stat-label-sm">Critical</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="overview-progress">
-                <div class="progress-header">
-                    <span class="progress-label">On-Time Rate</span>
-                    <span class="progress-value"><?= htmlspecialchars($data['stats']['ontime_rate'] ?? '0', ENT_QUOTES, 'UTF-8') ?>%</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: <?= htmlspecialchars($data['stats']['ontime_rate'] ?? '0', ENT_QUOTES, 'UTF-8') ?>%"></div>
-                </div>
-                <div class="progress-footer">
-                    <span class="progress-trend">↘ -5% from last month</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Intelligence Grid -->
+<div class="intel-grid">
 
-<div class="dashboard-grid">
-    <div class="card">
-        <div class="card__header">
-            <h2 class="card__title">📊 Approval Summary</h2>
+    <!-- Attendance Intelligence -->
+    <div class="intel-card">
+        <div class="intel-card__head">
+            📍 Attendance Intelligence
+            <a href="/ergon/attendance">View All →</a>
         </div>
-        <div class="card__body">
-            <div class="approval-summary">
-                <div class="approval-item">
-                    <div class="approval-label">Leave Requests</div>
-                    <div class="approval-value"><?= htmlspecialchars($data['stats']['leave_requests'] ?? '3', ENT_QUOTES, 'UTF-8') ?></div>
+        <div class="intel-card__body">
+            <?php if (!empty($attBehavior)): ?>
+                <div style="font-size:11px;color:#6b7280;margin-bottom:8px;font-weight:600;text-transform:uppercase">Frequent Late Arrivals (This Month)</div>
+                <?php foreach ($attBehavior as $row): ?>
+                <div class="risk-row">
+                    <span><?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="risk-badge <?= $row['late_count'] >= 5 ? 'high' : ($row['late_count'] >= 3 ? 'medium' : 'low') ?>">
+                        <?= $row['late_count'] ?> times late
+                    </span>
                 </div>
-                <div class="approval-item">
-                    <div class="approval-label">Expense Claims</div>
-                    <div class="approval-value"><?= htmlspecialchars($data['stats']['expense_claims'] ?? '5', ENT_QUOTES, 'UTF-8') ?></div>
-                </div>
-                <div class="approval-item">
-                    <div class="approval-label">Advance Requests</div>
-                    <div class="approval-value"><?= htmlspecialchars($data['stats']['advance_requests'] ?? '2', ENT_QUOTES, 'UTF-8') ?></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="card">
-        <div class="card__header">
-            <h2 class="card__title">⚡ Recent Activities</h2>
-        </div>
-        <div class="card__body card__body--scrollable">
-            <?php if (empty($data['recent_activities'])): ?>
-            <div class="form-group">
-                <div class="form-label">📝 System Initialized</div>
-                <p>ERGON system is ready for use</p>
-            </div>
+                <?php endforeach; ?>
             <?php else: ?>
-            <?php foreach ($data['recent_activities'] as $activity): ?>
-            <div class="form-group">
-                <div class="form-label">📋 <?= htmlspecialchars($activity['action'], ENT_QUOTES, 'UTF-8') ?></div>
-                <p><?= htmlspecialchars($activity['description'], ENT_QUOTES, 'UTF-8') ?></p>
-                <small><?= date('M d, H:i', strtotime($activity['created_at'])) ?></small>
+                <div class="empty-state">✅ No late arrivals this month</div>
+            <?php endif; ?>
+            <div style="margin-top:14px;padding-top:12px;border-top:1px solid #f3f4f6">
+                <div style="display:flex;gap:16px;font-size:12px">
+                    <div><strong style="color:#10b981"><?= $attToday ?></strong> <span style="color:#6b7280">Present</span></div>
+                    <div><strong style="color:#ef4444"><?= $absent ?></strong> <span style="color:#6b7280">Absent</span></div>
+                    <div><strong style="color:#f59e0b"><?= $late ?></strong> <span style="color:#6b7280">Late</span></div>
+                    <div><strong style="color:#3b82f6"><?= $onLeave ?></strong> <span style="color:#6b7280">On Leave</span></div>
+                </div>
             </div>
-            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <!-- Overdue Invoices -->
+    <div class="intel-card">
+        <div class="intel-card__head">
+            💰 Overdue Invoice Risk
+            <a href="/ergon/finance">View Finance →</a>
+        </div>
+        <div class="intel-card__body">
+            <?php if (!empty($overdueInv)): ?>
+                <?php foreach ($overdueInv as $inv): ?>
+                <div class="risk-row">
+                    <div>
+                        <div style="font-weight:600;font-size:13px"><?= htmlspecialchars($inv['customer_name'] ?? 'Customer', ENT_QUOTES, 'UTF-8') ?></div>
+                        <div style="font-size:11px;color:#9ca3af">₹<?= number_format($inv['amount']) ?> · Due <?= date('d M', strtotime($inv['due_date'])) ?></div>
+                    </div>
+                    <span class="risk-badge <?= $inv['days_overdue'] > 90 ? 'high' : ($inv['days_overdue'] > 30 ? 'medium' : 'low') ?>">
+                        <?= $inv['days_overdue'] ?>d overdue
+                    </span>
+                </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="empty-state">✅ No overdue invoices</div>
+            <?php endif; ?>
+            <?php if ($outstanding > 0): ?>
+            <div style="margin-top:12px;padding:10px;background:#fef2f2;border-radius:8px;font-size:12px;color:#991b1b;font-weight:600">
+                ⚠️ Total Outstanding: ₹<?= number_format($outstanding) ?>
+            </div>
             <?php endif; ?>
         </div>
     </div>
+
+    <!-- Advances Outstanding -->
+    <div class="intel-card">
+        <div class="intel-card__head">
+            💳 Advance Recovery Tracker
+            <a href="/ergon/advances">View All →</a>
+        </div>
+        <div class="intel-card__body">
+            <?php if (!empty($advOut)): ?>
+                <?php foreach ($advOut as $adv): ?>
+                <div class="risk-row">
+                    <div>
+                        <div style="font-weight:600;font-size:13px"><?= htmlspecialchars($adv['name'], ENT_QUOTES, 'UTF-8') ?></div>
+                        <div style="font-size:11px;color:#9ca3af">₹<?= number_format($adv['amount']) ?></div>
+                    </div>
+                    <span class="risk-badge <?= $adv['days_pending'] > 60 ? 'high' : ($adv['days_pending'] > 30 ? 'medium' : 'low') ?>">
+                        <?= $adv['days_pending'] ?>d pending
+                    </span>
+                </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="empty-state">✅ No outstanding advances</div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Top Expense Categories -->
+    <div class="intel-card">
+        <div class="intel-card__head">
+            📊 Expense Breakdown (This Month)
+            <a href="/ergon/expenses">View All →</a>
+        </div>
+        <div class="intel-card__body">
+            <?php if (!empty($topExpCats)): ?>
+                <?php
+                $maxExp = max(array_column($topExpCats, 'total')) ?: 1;
+                foreach ($topExpCats as $cat):
+                    $pct = round(($cat['total'] / $maxExp) * 100);
+                ?>
+                <div class="bar-row">
+                    <div class="bar-row__label"><?= htmlspecialchars(ucfirst($cat['category'] ?? 'Other'), ENT_QUOTES, 'UTF-8') ?></div>
+                    <div class="bar-row__track"><div class="bar-row__fill" style="width:<?= $pct ?>%"></div></div>
+                    <div class="bar-row__val">₹<?= number_format($cat['total']/1000, 1) ?>K</div>
+                </div>
+                <?php endforeach; ?>
+                <?php if ($expMonth > 0): ?>
+                <div style="margin-top:10px;font-size:12px;color:#6b7280">Total: ₹<?= number_format($expMonth) ?></div>
+                <?php endif; ?>
+            <?php else: ?>
+                <div class="empty-state">No expense data this month</div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Project & Task Overview -->
+    <div class="intel-card">
+        <div class="intel-card__head">
+            🎯 Task & Project Status
+            <a href="/ergon/tasks">View Tasks →</a>
+        </div>
+        <div class="intel-card__body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+                <div style="text-align:center;padding:12px;background:#f0fdf4;border-radius:8px">
+                    <div style="font-size:22px;font-weight:800;color:#16a34a"><?= htmlspecialchars($stats['completion_rate']??'0', ENT_QUOTES, 'UTF-8') ?>%</div>
+                    <div style="font-size:11px;color:#6b7280">Completion Rate</div>
+                </div>
+                <div style="text-align:center;padding:12px;background:#eff6ff;border-radius:8px">
+                    <div style="font-size:22px;font-weight:800;color:#1d4ed8"><?= htmlspecialchars($stats['ontime_rate']??'0', ENT_QUOTES, 'UTF-8') ?>%</div>
+                    <div style="font-size:11px;color:#6b7280">On-Time Rate</div>
+                </div>
+            </div>
+            <div class="bar-row">
+                <div class="bar-row__label">In Progress</div>
+                <div class="bar-row__track"><div class="bar-row__fill" style="width:<?= min(100, ($stats['in_progress']??0) * 5) ?>%;background:#3b82f6"></div></div>
+                <div class="bar-row__val"><?= $stats['in_progress']??0 ?></div>
+            </div>
+            <div class="bar-row">
+                <div class="bar-row__label">Pending</div>
+                <div class="bar-row__track"><div class="bar-row__fill" style="width:<?= min(100, ($stats['pending']??0) * 5) ?>%;background:#f59e0b"></div></div>
+                <div class="bar-row__val"><?= $stats['pending']??0 ?></div>
+            </div>
+            <div class="bar-row">
+                <div class="bar-row__label">Critical</div>
+                <div class="bar-row__track"><div class="bar-row__fill" style="width:<?= min(100, ($stats['critical']??0) * 10) ?>%;background:#ef4444"></div></div>
+                <div class="bar-row__val"><?= $stats['critical']??0 ?></div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px">
+                <a href="/ergon/dashboard/project-overview" style="font-size:12px;color:#3b82f6;text-decoration:none">📁 Project Overview →</a>
+                <a href="/ergon/dashboard/delayed-tasks-overview" style="font-size:12px;color:#ef4444;text-decoration:none">⚠️ Delayed Tasks →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="intel-card">
+        <div class="intel-card__head">
+            ⚡ Recent Activities
+        </div>
+        <div class="intel-card__body">
+            <?php if (!empty($recentActs)): ?>
+                <?php foreach ($recentActs as $act): ?>
+                <div class="act-item">
+                    <div class="act-dot"></div>
+                    <div>
+                        <div style="font-weight:500;font-size:13px"><?= htmlspecialchars($act['description'] ?? $act['action'] ?? '', ENT_QUOTES, 'UTF-8') ?></div>
+                        <div class="act-meta"><?= htmlspecialchars($act['user_name'] ?? 'System', ENT_QUOTES, 'UTF-8') ?> · <?= isset($act['created_at']) ? date('d M, H:i', strtotime($act['created_at'])) : '' ?></div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="empty-state">📝 No recent activities</div>
+            <?php endif; ?>
+        </div>
+    </div>
+
 </div>
-
-
 
 <?php
 $content = ob_get_clean();

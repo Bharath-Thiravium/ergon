@@ -24,6 +24,20 @@ ob_start();
     </div>
     <div class="card__body">
         <form method="POST" action="/ergon/expenses/edit/<?= $expense['id'] ?>" class="form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="project_id" class="form-label">Project</label>
+                <select class="form-control" id="project_id" name="project_id" onchange="loadExpSubcats(this.value)">
+                    <option value="">-- Select Project --</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="exp_subcat_group" style="display:none;">
+                <label class="form-label">Work Category</label>
+                <select class="form-control" id="subcategory_id" name="subcategory_id">
+                    <option value="">-- Select work category --</option>
+                </select>
+            </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label for="category" class="form-label">Category *</label>
@@ -65,7 +79,7 @@ ob_start();
                 <small class="form-text">Include purpose, location, and any relevant details</small>
             </div>
             
-            <div class="form-actions">
+            <div class="form-actions" id="expense-form-actions">
                 <button type="submit" class="btn btn--primary">
                     💸 Update Expense Claim
                 </button>
@@ -74,6 +88,51 @@ ob_start();
         </form>
     </div>
 </div>
+
+<script>
+fetch('/ergon/api/projects.php')
+    .then(r => r.json())
+    .then(data => {
+        const sel = document.getElementById('project_id');
+        if (data.success && data.projects) {
+            data.projects.forEach(p => {
+                const o = document.createElement('option');
+                o.value = p.id;
+                o.textContent = p.name;
+                if (p.id == '<?= $expense['project_id'] ?? '' ?>') o.selected = true;
+                sel.appendChild(o);
+            });
+            if ('<?= $expense['project_id'] ?? '' ?>') {
+                loadExpSubcats('<?= $expense['project_id'] ?? '' ?>', '<?= $expense['subcategory_id'] ?? '' ?>');
+            }
+        }
+    })
+    .catch(() => {});
+
+function loadExpSubcats(projectId, selectedId) {
+    const group = document.getElementById('exp_subcat_group');
+    const sel   = document.getElementById('subcategory_id');
+    sel.innerHTML = '<option value="">-- Select work category --</option>';
+    if (!projectId) { group.style.display = 'none'; return; }
+    fetch('/ergon/api/project-subcategories/' + projectId)
+        .then(r => r.json())
+        .then(data => {
+            if (data.length) {
+                data.forEach(s => {
+                    const o = document.createElement('option');
+                    o.value = s.id;
+                    o.textContent = s.name;
+                    if (selectedId && s.id == selectedId) o.selected = true;
+                    sel.appendChild(o);
+                });
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+            }
+        })
+        .catch(() => { group.style.display = 'none'; });
+}
+</script>
 
 <?php
 $content = ob_get_clean();

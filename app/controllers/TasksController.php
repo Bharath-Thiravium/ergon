@@ -111,7 +111,8 @@ class TasksController extends Controller {
             'sla_hours' => max(0.01, floatval($_POST['sla_hours'] ?? 0.25)),
             'department_id' => !empty($_POST['department_id']) ? intval($_POST['department_id']) : null,
             'task_category' => trim($_POST['task_category'] ?? ''),
-            'project_id' => !empty($_POST['project_id']) ? intval($_POST['project_id']) : null
+            'project_id' => !empty($_POST['project_id']) ? intval($_POST['project_id']) : null,
+            'subcategory_id' => !empty($_POST['subcategory_id']) ? intval($_POST['subcategory_id']) : null
         ];
         
         error_log('Task store data: ' . json_encode($taskData));
@@ -134,7 +135,7 @@ class TasksController extends Controller {
             
             $followupRequired = !empty($_POST['followup_required']) ? 1 : 0;
             
-            $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, planned_date, status, progress, sla_hours, department_id, task_category, project_id, followup_required, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt = $db->prepare("INSERT INTO tasks (title, description, assigned_by, assigned_to, task_type, priority, deadline, planned_date, status, progress, sla_hours, department_id, task_category, project_id, subcategory_id, followup_required, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
             $result = $stmt->execute([
                 $taskData['title'], 
                 $taskData['description'], 
@@ -150,6 +151,7 @@ class TasksController extends Controller {
                 $taskData['department_id'],
                 $taskData['task_category'],
                 $taskData['project_id'],
+                $taskData['subcategory_id'],
                 $followupRequired
             ]);
             
@@ -275,7 +277,8 @@ class TasksController extends Controller {
                 'task_category' => trim($_POST['task_category'] ?? ''),
                 'project_id' => !empty($_POST['project_id']) ? intval($_POST['project_id']) : null,
                 'planned_date' => !empty($_POST['planned_date']) ? $_POST['planned_date'] : null,
-                'followup_required' => !empty($_POST['followup_required']) ? 1 : 0
+                'followup_required' => !empty($_POST['followup_required']) ? 1 : 0,
+                'subcategory_id' => !empty($_POST['subcategory_id']) ? intval($_POST['subcategory_id']) : null
             ];
             
             if (empty($taskData['title']) || $taskData['assigned_to'] <= 0) {
@@ -299,7 +302,7 @@ class TasksController extends Controller {
                 $stmt->execute([$id]);
                 $oldTaskFull = $stmt->fetch(PDO::FETCH_ASSOC);
                 
-                $stmt = $db->prepare("UPDATE tasks SET title=?, description=?, assigned_to=?, task_type=?, priority=?, deadline=?, planned_date=?, status=?, progress=?, sla_hours=?, department_id=?, task_category=?, project_id=?, followup_required=?, updated_at=NOW() WHERE id=?");
+                $stmt = $db->prepare("UPDATE tasks SET title=?, description=?, assigned_to=?, task_type=?, priority=?, deadline=?, planned_date=?, status=?, progress=?, sla_hours=?, department_id=?, task_category=?, project_id=?, subcategory_id=?, followup_required=?, updated_at=NOW() WHERE id=?");
                 $result = $stmt->execute([
                     $taskData['title'], 
                     $taskData['description'], 
@@ -314,6 +317,7 @@ class TasksController extends Controller {
                     $taskData['department_id'],
                     $taskData['task_category'],
                     $taskData['project_id'],
+                    $taskData['subcategory_id'],
                     $taskData['followup_required'],
                     $id
                 ]);
@@ -1777,6 +1781,22 @@ class TasksController extends Controller {
             if ($stmt->rowCount() == 0) {
                 DatabaseHelper::safeExec($db, "ALTER TABLE tasks ADD COLUMN planned_date DATE DEFAULT NULL", "Alter table");
                 error_log('Added planned_date column to tasks table');
+            }
+
+            // Check if subcategory_id column exists, if not add it
+            $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'subcategory_id'");
+            $stmt->execute();
+            if ($stmt->rowCount() == 0) {
+                DatabaseHelper::safeExec($db, "ALTER TABLE tasks ADD COLUMN subcategory_id INT DEFAULT NULL", "Alter table");
+                error_log('Added subcategory_id column to tasks table');
+            }
+
+            // Check if subcategory_id column exists, if not add it
+            $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'subcategory_id'");
+            $stmt->execute();
+            if ($stmt->rowCount() == 0) {
+                DatabaseHelper::safeExec($db, "ALTER TABLE tasks ADD COLUMN subcategory_id INT DEFAULT NULL", "Alter table");
+                error_log('Added subcategory_id column to tasks table');
             }
             
             // Update sla_hours column to DECIMAL if it's still INT

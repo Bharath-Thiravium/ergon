@@ -86,10 +86,12 @@ class AdvanceController extends Controller {
                 $db = Database::connect();
                 
                 $repaymentDate = !empty($_POST['repayment_date']) ? $_POST['repayment_date'] : null;
-                $stmt = $db->prepare("INSERT INTO advances (user_id, project_id, type, amount, reason, requested_date, repayment_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
+                $subcategoryId = !empty($_POST['subcategory_id']) ? intval($_POST['subcategory_id']) : null;
+                $stmt = $db->prepare("INSERT INTO advances (user_id, project_id, subcategory_id, type, amount, reason, requested_date, repayment_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
                 $result = $stmt->execute([
                     $_SESSION['user_id'],
                     $_POST['project_id'] ?: null,
+                    $subcategoryId,
                     trim($_POST['type'] ?? ''),
                     floatval($_POST['amount'] ?? 0),
                     trim($_POST['reason'] ?? ''),
@@ -151,9 +153,10 @@ class AdvanceController extends Controller {
                 
                 header('Content-Type: application/json');
                 $repaymentDate = !empty($_POST['repayment_date']) ? $_POST['repayment_date'] : null;
-                $stmt = $db->prepare("UPDATE advances SET project_id = ?, type = ?, amount = ?, reason = ?, repayment_date = ? WHERE id = ?");
+                $stmt = $db->prepare("UPDATE advances SET project_id = ?, subcategory_id = ?, type = ?, amount = ?, reason = ?, repayment_date = ? WHERE id = ?");
                 $result = $stmt->execute([
                     $_POST['project_id'] ?: null,
+                    !empty($_POST['subcategory_id']) ? intval($_POST['subcategory_id']) : null,
                     trim($_POST['type'] ?? ''),
                     floatval($_POST['amount'] ?? 0),
                     trim($_POST['reason'] ?? ''),

@@ -23,21 +23,125 @@ class OwnerController extends Controller {
         
         try {
             $db = Database::connect();
-            
-            // Get basic statistics only
+
+            // --- Attendance Today ---
+            $attToday = $db->query("SELECT COUNT(*) FROM attendance WHERE DATE(clock_in) = CURDATE()")->fetchColumn();
+            $totalActive = $this->getTotalUsers($db);
+            $onLeaveToday = $db->query("SELECT COUNT(*) FROM leaves WHERE status='approved' AND CURDATE() BETWEEN start_date AND end_date")->fetchColumn();
+            $absentToday = max(0, $totalActive - $attToday - $onLeaveToday);
+            $lateToday = $db->query("SELECT COUNT(*) FROM attendance WHERE DATE(clock_in)=CURDATE() AND TIME(clock_in) > '09:30:00'")->fetchColumn();
+
+            // --- Pending Approvals ---
+            $pendingLeaves   = $this->getPendingLeavesCount($db);
+            $pendingExpenses = $this->getPendingExpensesCount($db);
+            $pendingAdvances = $this->getPendingAdvancesCount($db);
+            $totalPendingApprovals = $pendingLeaves + $pendingExpenses + $pendingAdvances;
+
+            // --- Finance KPIs ---
+            $revenueThisMonth  = 0; $expensesThisMonth = 0; $outstandingTotal  = 0;
+            try {
+                $revenueThisMonth  = $db->query("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE MONTH(invoice_date)=MONTH(CURDATE()) AND YEAR(invoice_date)=YEAR(CURDATE())")->fetchColumn();
+                $expensesThisMonth = $db->query("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE status='approved' AND MONTH(created_at)=MONTH(CURDATE()) AND YEAR(created_at)=YEAR(CURDATE())")->fetchColumn();
+                $outstandingTotal  = $db->query("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE payment_status IN ('unpaid','partial','overdue')")->fetchColumn();
+            } catch (Exception $e) { /* finance tables may not exist */ }
+
+            // --- Overdue Invoices ---
+            $overdueInvoices = [];
+            try {
+                $stmt = $db->query("SELECT customer_name, amount, due_date, DATEDIFF(CURDATE(),due_date) as days_overdue FROM invoices WHERE payment_status IN ('unpaid','overdue') AND due_date < CURDATE() ORDER BY days_overdue DESC LIMIT 5");
+                $overdueInvoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {}
+
+            // --- Advances Outstanding ---
+            $advancesOutstanding = [];
+            try {
+                $stmt = $db->query("SELECT u.name, a.amount, a.created_at, DATEDIFF(CURDATE(),a.created_at) as days_pending FROM advances a JOIN users u ON a.user_id=u.id WHERE a.status='approved' AND (a.recovered IS NULL OR a.recovered=0) ORDER BY days_pending DESC LIMIT 5");
+                $advancesOutstanding = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {}
+
+            // --- Cross-Module Alerts ---
+            $crossAlerts = [];
+            // Absent with no leave
+            try {
+                $stmt = $db->query("SELECT u.name FROM users u WHERE u.status='active' AND u.id NOT IN (SELECT user_id FROM attendance WHERE DATE(clock_in)=CURDATE()) AND u.id NOT IN (SELECT user_id FROM leaves WHERE status='approved' AND CURDATE() BETWEEN start_date AND end_date) LIMIT 5");
+                $absentNoLeave = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                if (!empty($absentNoLeave)) {
+                    $crossAlerts[] = ['type'=>'danger','icon'=>'🚨','msg'=>count($absentNoLeave).' employee(s) absent with no leave: '.implode(', ',$absentNoLeave)];
+                }
+            } catch (Exception $e) {}
+            // Employees on leave with open tasks
+            try {
+                $stmt = $db->query("SELECT COUNT(DISTINCT t.assigned_to) as cnt FROM tasks t JOIN leaves l ON t.assigned_to=l.user_id WHERE l.status='approved' AND CURDATE() BETWEEN l.start_date AND l.end_date AND t.status NOT IN ('completed','cancelled')");
+                $leaveWithTasks = $stmt->fetchColumn();
+                if ($leaveWithTasks > 0) {
+                    $crossAlerts[] = ['type'=>'warning','icon'=>'⚠️','msg'>"{$leaveWithTasks} employee(s) on leave have open tasks assigned"];
+                }
+            } catch (Exception $e) {}
+            // High expenses vs revenue
+            if ($revenueThisMonth > 0 && $expensesThisMonth > ($revenueThisMonth * 0.8)) {
+                $crossAlerts[] = ['type'=>'warning','icon'=>'💸','msg'=>'Expenses are above 80% of revenue this month'];
+            }
+            if ($outstandingTotal > 0) {
+                $crossAlerts[] = ['type'=>'danger','icon'=>'💰','msg'=>'₹'.number_format($outstandingTotal).' outstanding invoices need follow-up'];
+            }
+
+            // --- Top Expense Categories ---
+            $topExpenseCategories = [];
+            try {
+                $stmt = $db->query("SELECT category, SUM(amount) as total FROM expenses WHERE status='approved' AND MONTH(created_at)=MONTH(CURDATE()) GROUP BY category ORDER BY total DESC LIMIT 5");
+                $topExpenseCategories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {}
+
+            // --- Attendance Behavior ---
+            $attendanceBehavior = [];
+            try {
+                $stmt = $db->query("SELECT u.name, COUNT(*) as late_count FROM attendance a JOIN users u ON a.user_id=u.id WHERE TIME(a.clock_in)>'09:30:00' AND MONTH(a.clock_in)=MONTH(CURDATE()) GROUP BY a.user_id ORDER BY late_count DESC LIMIT 5");
+                $attendanceBehavior = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {}
+
+            // --- Recent Activities ---
+            $recentActivities = [];
+            try {
+                $stmt = $db->query("SELECT al.action, al.description, al.created_at, u.name as user_name FROM activity_logs al LEFT JOIN users u ON al.user_id=u.id ORDER BY al.created_at DESC LIMIT 8");
+                $recentActivities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {}
+
             $stats = [
-                'total_users' => $this->getTotalUsers($db),
-                'pending_leaves' => $this->getPendingLeavesCount($db),
-                'pending_expenses' => $this->getPendingExpensesCount($db),
-                'active_tasks' => $this->getActiveTasks($db)
+                'total_users'          => $totalActive,
+                'pending_leaves'       => $pendingLeaves,
+                'pending_expenses'     => $pendingExpenses,
+                'pending_advances'     => $pendingAdvances,
+                'active_tasks'         => $this->getActiveTasks($db),
+                'avg_progress'         => $this->getAverageProgress($db),
+                'completion_rate'      => $this->getCompletionRate($db),
+                'in_progress'          => $this->getInProgressTasksCount($db),
+                'pending'              => $this->getPendingTasksCount($db),
+                'ontime_rate'          => $this->getOntimeRate($db),
+                'rescheduled'          => $this->getRescheduledTasksCount($db),
+                'critical'             => $this->getCriticalTasksCount($db),
+                'leave_requests'       => $pendingLeaves,
+                'expense_claims'       => $pendingExpenses,
+                'advance_requests'     => $pendingAdvances,
             ];
-            
+
             $this->view('owner/dashboard', [
                 'data' => [
-                    'stats' => $stats,
-                    'final_approvals' => [],
-                    'alerts' => [],
-                    'recent_activities' => []
+                    'stats'                 => $stats,
+                    'final_approvals'       => [],
+                    'alerts'                => $crossAlerts,
+                    'recent_activities'     => $recentActivities,
+                    'att_today'             => $attToday,
+                    'on_leave_today'        => $onLeaveToday,
+                    'absent_today'          => $absentToday,
+                    'late_today'            => $lateToday,
+                    'total_pending'         => $totalPendingApprovals,
+                    'revenue_month'         => $revenueThisMonth,
+                    'expenses_month'        => $expensesThisMonth,
+                    'outstanding_total'     => $outstandingTotal,
+                    'overdue_invoices'      => $overdueInvoices,
+                    'advances_outstanding'  => $advancesOutstanding,
+                    'top_expense_cats'      => $topExpenseCategories,
+                    'attendance_behavior'   => $attendanceBehavior,
                 ],
                 'active_page' => 'dashboard'
             ]);
