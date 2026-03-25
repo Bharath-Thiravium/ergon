@@ -203,6 +203,7 @@ class LedgerController extends Controller {
                 } else {
                     $totalDebits += $entry['amount'];
                     if ($entry['reference_type'] === 'expense') $expenseCount++;
+                    if ($entry['reference_type'] === 'advance') $advanceCount++;
                 }
             }
 
