@@ -98,7 +98,7 @@ ob_start();
         </div>
         <div class="kpi-card__value" style="color:#dc2626;">₹<?= number_format($totalDebits, 2) ?></div>
         <div class="kpi-card__label">Total Debits</div>
-        <div class="kpi-card__status"><?= $expenseCount ?> Expenses<?= $advanceCount > 0 && in_array($user['role'] ?? '', ['owner','company_owner']) ? ' + ' . $advanceCount . ' Advances' : '' ?></div>
+        <div class="kpi-card__status"><?= $expenseCount ?> Expenses</div>
     </div>
 
     <div class="kpi-card">

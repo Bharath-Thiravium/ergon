@@ -68,32 +68,18 @@ class LedgerController extends Controller {
                 }
             }
 
-            // Backfill: for owner/company_owner, record debit entries for advances they paid out
-            if (in_array($user['role'], ['owner', 'company_owner'])) {
-                $stmt = $db->prepare("
-                    SELECT id, COALESCE(approved_amount, amount) as amount, requested_date, paid_at
-                    FROM advances
-                    WHERE paid_by = ? AND status = 'paid'
-                ");
-                $stmt->execute([$id]);
-                $paidOutAdvances = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                foreach ($paidOutAdvances as $pa) {
-                    if (!in_array($pa['id'], $existingAdvanceIds)) {
-                        $entryDate = $pa['requested_date'] ?: ($pa['paid_at'] ?: date('Y-m-d'));
-                        LedgerHelper::recordEntry($id, 'advance', 'advance', $pa['id'], floatval($pa['amount']), 'debit', $entryDate);
-                    }
-                }
-            }
-
             // Backfill: find paid expenses for this user that have no user_ledger entry
+            // For owner/company_owner include advance-payment expenses (source_advance_id set)
             $existingExpenseIds = array_column(
                 array_filter($rawEntries, fn($r) => $r['reference_type'] === 'expense'),
                 'reference_id'
             );
+            $isOwner = in_array($user['role'], ['owner', 'company_owner']);
+            $expenseFilter = $isOwner ? '' : 'AND (source_advance_id IS NULL OR source_advance_id = 0)';
             $stmt = $db->prepare("
                 SELECT id, COALESCE(approved_amount, amount) as amount, expense_date, paid_at
                 FROM expenses
-                WHERE user_id = ? AND status = 'paid' AND (source_advance_id IS NULL OR source_advance_id = 0)
+                WHERE user_id = ? AND status = 'paid' $expenseFilter
             ");
             $stmt->execute([$id]);
             $paidExpenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -128,49 +114,6 @@ class LedgerController extends Controller {
             $stmt->execute([$id]);
             $rawEntries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // For owner/company_owner: also pull expenses directly from expenses table
-            // (advance-payment expenses auto-created under the owner have no user_ledger entry)
-            if (in_array($user['role'], ['owner', 'company_owner'])) {
-                $stmt = $db->prepare("
-                    SELECT 
-                        NULL as id,
-                        e.user_id,
-                        'expense' as reference_type,
-                        e.id as reference_id,
-                        'expense' as entry_type,
-                        'debit' as direction,
-                        e.amount,
-                        NULL as balance_after,
-                        e.created_at,
-                        e.description,
-                        e.category,
-                        e.status,
-                        pt.name as paid_to_name
-                    FROM expenses e
-                    LEFT JOIN users pt ON e.paid_to_user_id = pt.id
-                    WHERE e.user_id = ? AND e.status = 'paid'
-                    ORDER BY e.created_at ASC
-                ");
-                $stmt->execute([$id]);
-                $ownerExpenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                // Merge: only add expense entries not already in user_ledgers
-                $existingExpenseIds = array_column(
-                    array_filter($rawEntries, fn($r) => $r['reference_type'] === 'expense'),
-                    'reference_id'
-                );
-                foreach ($ownerExpenses as $oe) {
-                    if (!in_array($oe['reference_id'], $existingExpenseIds)) {
-                        if (!empty($oe['paid_to_name'])) {
-                            $oe['description'] = $oe['description'] . ' → ' . $oe['paid_to_name'];
-                        }
-                        $rawEntries[] = $oe;
-                    }
-                }
-                // Re-sort by created_at ASC
-                usort($rawEntries, fn($a, $b) => strtotime($a['created_at']) - strtotime($b['created_at']));
-            }
-
             // Recalculate running balance in chronological order
             $runningBalance = 0;
             $entries = [];
@@ -203,7 +146,6 @@ class LedgerController extends Controller {
                 } else {
                     $totalDebits += $entry['amount'];
                     if ($entry['reference_type'] === 'expense') $expenseCount++;
-                    if ($entry['reference_type'] === 'advance') $advanceCount++;
                 }
             }
 

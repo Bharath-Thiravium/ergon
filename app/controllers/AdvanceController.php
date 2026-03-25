@@ -421,8 +421,6 @@ class AdvanceController extends Controller {
                     if ($row2 && $row2['approved_amount']) $ledgerAmount = floatval($row2['approved_amount']);
                 } catch (Exception $e) {}
                 LedgerHelper::recordEntry($advance['user_id'], 'advance', 'advance', $id, $ledgerAmount, 'credit', $advance['requested_date']);
-                // Record debit on the paying owner's ledger
-                LedgerHelper::recordEntry($paidByOwnerId, 'advance', 'advance', $id, $ledgerAmount, 'debit', $advance['requested_date']);
 
                 // Auto-create expense entry for the paying owner
                 try {
