@@ -84,11 +84,16 @@ try {
             }
         }
         
-        $stmt = $db->prepare("INSERT INTO attendance_logs (user_id, action, details, created_by, created_at) VALUES (?, 'manual_entry', ?, ?, NOW())");
-        $logDetails = json_encode(['entry_type' => $entryType, 'date' => $entryDate, 'time' => $entryTime, 'reason' => $reason, 'notes' => $notes]);
-        $stmt->execute([$userId, $logDetails, $_SESSION['user_id']]);
-        
         $db->commit();
+        
+        // Log the manual entry (non-critical — ignore if table structure differs)
+        try {
+            $stmt = $db->prepare("INSERT INTO attendance_logs (user_id, action, details, created_by, created_at) VALUES (?, 'manual_entry', ?, ?, NOW())");
+            $logDetails = json_encode(['entry_type' => $entryType, 'date' => $entryDate, 'time' => $entryTime, 'reason' => $reason, 'notes' => $notes]);
+            $stmt->execute([$userId, $logDetails, $_SESSION['user_id']]);
+        } catch (Exception $logEx) {
+            error_log('Manual attendance log insert skipped: ' . $logEx->getMessage());
+        }
         
         echo json_encode(['success' => true, 'message' => 'Manual attendance entry created successfully']);
         
