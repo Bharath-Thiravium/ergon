@@ -27,14 +27,14 @@ class LedgerController extends Controller {
 
             $isOwner = in_array($user['role'], ['owner', 'company_owner']);
 
+            // Always query directly from source tables — never use user_ledgers as display source.
+            // This ensures deletions/edits are instantly reflected with no stale data.
             if ($isOwner) {
-                // For owner/company_owner: query directly from source tables
-                // All paid advances are the owner's cost regardless of who clicked "mark paid"
+                // Owner sees: their own direct expenses + ALL paid advances (owner pays all advances)
                 $stmt = $db->prepare("
                     SELECT
                         e.id as reference_id,
                         'expense' as reference_type,
-                        'expense' as entry_type,
                         'debit' as direction,
                         e.amount,
                         e.description,
@@ -44,12 +44,12 @@ class LedgerController extends Controller {
                         pt.name as paid_to_name
                     FROM expenses e
                     LEFT JOIN users pt ON e.paid_to_user_id = pt.id
-                    WHERE e.user_id = ? AND e.status = 'paid' AND (e.source_advance_id IS NULL OR e.source_advance_id = 0)
+                    WHERE e.user_id = ? AND e.status = 'paid'
+                      AND (e.source_advance_id IS NULL OR e.source_advance_id = 0)
                     UNION ALL
                     SELECT
                         a.id as reference_id,
                         'advance' as reference_type,
-                        'advance' as entry_type,
                         'debit' as direction,
                         COALESCE(a.approved_amount, a.amount) as amount,
                         CONCAT('Advance paid to ', u.name, ' (', a.type, ')') as description,
@@ -63,83 +63,48 @@ class LedgerController extends Controller {
                     ORDER BY created_at ASC
                 ");
                 $stmt->execute([$id]);
-                $rawEntries = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                // Append paid_to_name to description for advance-payment expenses
-                foreach ($rawEntries as &$entry) {
-                    if ($entry['reference_type'] === 'expense' && !empty($entry['paid_to_name'])) {
-                        $entry['description'] .= ' → ' . $entry['paid_to_name'];
-                    }
-                }
-                unset($entry);
-
             } else {
-                // Non-owner: use user_ledgers with backfill
+                // Regular user sees: advances credited to them + expenses debited from them
                 $stmt = $db->prepare("
-                    SELECT 
-                        ul.*,
-                        COALESCE(e.description, a.reason, 'N/A') as description,
-                        CASE WHEN ul.reference_type = 'expense' THEN e.category
-                             WHEN ul.reference_type = 'advance' THEN a.type
-                             ELSE 'N/A' END as category,
-                        CASE WHEN ul.reference_type = 'expense' THEN e.status
-                             WHEN ul.reference_type = 'advance' THEN a.status
-                             ELSE 'N/A' END as status
-                    FROM user_ledgers ul
-                    LEFT JOIN expenses e ON ul.reference_type = 'expense' AND ul.reference_id = e.id
-                    LEFT JOIN advances a ON ul.reference_type = 'advance' AND ul.reference_id = a.id
-                    WHERE ul.user_id = ?
-                    ORDER BY ul.created_at ASC, ul.id ASC
+                    SELECT
+                        a.id as reference_id,
+                        'advance' as reference_type,
+                        'credit' as direction,
+                        COALESCE(a.approved_amount, a.amount) as amount,
+                        a.reason as description,
+                        a.type as category,
+                        a.status,
+                        COALESCE(a.requested_date, a.paid_at, a.created_at) as created_at,
+                        NULL as paid_to_name
+                    FROM advances a
+                    WHERE a.user_id = ? AND a.status = 'paid'
+                    UNION ALL
+                    SELECT
+                        e.id as reference_id,
+                        'expense' as reference_type,
+                        'debit' as direction,
+                        COALESCE(e.approved_amount, e.amount) as amount,
+                        e.description,
+                        e.category,
+                        e.status,
+                        COALESCE(e.expense_date, e.created_at) as created_at,
+                        NULL as paid_to_name
+                    FROM expenses e
+                    WHERE e.user_id = ? AND e.status = 'paid'
+                      AND (e.source_advance_id IS NULL OR e.source_advance_id = 0)
+                    ORDER BY created_at ASC
                 ");
-                $stmt->execute([$id]);
-                $rawEntries = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                // Backfill missing advance credits
-                $existingAdvanceIds = array_column(
-                    array_filter($rawEntries, fn($r) => $r['reference_type'] === 'advance'), 'reference_id'
-                );
-                $stmt = $db->prepare("SELECT id, COALESCE(approved_amount, amount) as amount, requested_date, paid_at FROM advances WHERE user_id = ? AND status = 'paid'");
-                $stmt->execute([$id]);
-                foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $pa) {
-                    if (!in_array($pa['id'], $existingAdvanceIds)) {
-                        $entryDate = $pa['requested_date'] ?: ($pa['paid_at'] ?: date('Y-m-d'));
-                        LedgerHelper::recordEntry($id, 'advance', 'advance', $pa['id'], floatval($pa['amount']), 'credit', $entryDate);
-                    }
-                }
-
-                // Backfill missing expense debits
-                $existingExpenseIds = array_column(
-                    array_filter($rawEntries, fn($r) => $r['reference_type'] === 'expense'), 'reference_id'
-                );
-                $stmt = $db->prepare("SELECT id, COALESCE(approved_amount, amount) as amount, expense_date, paid_at FROM expenses WHERE user_id = ? AND status = 'paid' AND (source_advance_id IS NULL OR source_advance_id = 0)");
-                $stmt->execute([$id]);
-                foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $pe) {
-                    if (!in_array($pe['id'], $existingExpenseIds)) {
-                        $entryDate = $pe['expense_date'] ?: ($pe['paid_at'] ?: date('Y-m-d'));
-                        LedgerHelper::recordEntry($id, 'expense', 'expense', $pe['id'], floatval($pe['amount']), 'debit', $entryDate);
-                    }
-                }
-
-                // Re-fetch after backfill
-                $stmt = $db->prepare("
-                    SELECT 
-                        ul.*,
-                        COALESCE(e.description, a.reason, 'N/A') as description,
-                        CASE WHEN ul.reference_type = 'expense' THEN e.category
-                             WHEN ul.reference_type = 'advance' THEN a.type
-                             ELSE 'N/A' END as category,
-                        CASE WHEN ul.reference_type = 'expense' THEN e.status
-                             WHEN ul.reference_type = 'advance' THEN a.status
-                             ELSE 'N/A' END as status
-                    FROM user_ledgers ul
-                    LEFT JOIN expenses e ON ul.reference_type = 'expense' AND ul.reference_id = e.id
-                    LEFT JOIN advances a ON ul.reference_type = 'advance' AND ul.reference_id = a.id
-                    WHERE ul.user_id = ?
-                    ORDER BY ul.created_at ASC, ul.id ASC
-                ");
-                $stmt->execute([$id]);
-                $rawEntries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $stmt->execute([$id, $id]);
             }
+            $rawEntries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Append paid_to_name to description for owner's advance-payment expenses
+            foreach ($rawEntries as &$entry) {
+                if (!empty($entry['paid_to_name'])) {
+                    $entry['description'] .= ' → ' . $entry['paid_to_name'];
+                }
+            }
+            unset($entry);
 
             // Recalculate running balance in chronological order
             $runningBalance = 0;

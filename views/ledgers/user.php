@@ -11,6 +11,7 @@ ob_start();
     </div>
     <div class="page-actions">
         <a href="/ergon/users" class="btn btn--secondary">← Back to Users</a>
+        <button onclick="refreshLedger()" class="btn btn--info" id="refreshBtn">🔄 Refresh</button>
         <button onclick="window.print()" class="btn btn--outline">🖨️ Print</button>
         <button onclick="downloadLedger()" class="btn btn--primary">📥 Download CSV</button>
     </div>
@@ -118,10 +119,11 @@ ob_start();
     <div class="card__header">
         <h2 class="card__title">📋 Transaction History</h2>
         <div class="card__actions">
-            <span class="badge badge--info"><?= count($filteredEntries ?? $entries) ?> Entries</span>
+            <span class="badge badge--info" id="entryCount"><?= count($filteredEntries ?? $entries) ?> Entries</span>
             <?php if (isset($fromDate) || isset($toDate) || isset($transactionType)): ?>
                 <span class="badge badge--warning">Filtered</span>
             <?php endif; ?>
+            <button onclick="refreshLedger()" class="btn btn--sm btn--info" id="refreshBtnInline" title="Fetch latest transactions">🔄 Refresh</button>
         </div>
     </div>
     <div class="card__body">
@@ -209,6 +211,10 @@ ob_start();
 </div>
 
 <style>
+.btn--info { background: #0ea5e9; color: #fff; border: none; cursor: pointer; }
+.btn--info:hover { background: #0284c7; }
+.btn--info:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn--sm { padding: 0.25rem 0.6rem; font-size: 0.8rem; }
 /* Ledger-specific styles */
 .filter-section { margin-bottom: 2rem; }
 .filter-form { margin: 0; }
@@ -458,6 +464,18 @@ function clearFilter() {
     document.getElementById('transactionType').value = 'all';
     
     window.location.search = params.toString();
+}
+
+function refreshLedger() {
+    const btn = document.getElementById('refreshBtn');
+    const btnInline = document.getElementById('refreshBtnInline');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Refreshing...'; }
+    if (btnInline) { btnInline.disabled = true; btnInline.textContent = '⏳...'; }
+    // Strip any existing refresh param and reload — controller re-fetches all source data
+    const url = new URL(window.location.href);
+    url.searchParams.delete('_r');
+    url.searchParams.set('_r', Date.now());
+    window.location.href = url.toString();
 }
 
 function downloadLedger() {
