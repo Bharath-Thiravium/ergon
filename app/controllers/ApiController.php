@@ -477,6 +477,31 @@ class ApiController extends Controller {
         }
     }
     
+    public function tasks() {
+        $this->requireAuth();
+        header('Content-Type: application/json');
+        
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            
+            $role = $_SESSION['role'] ?? 'user';
+            if (in_array($role, ['admin', 'owner', 'company_owner'])) {
+                $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.status NOT IN ('completed','cancelled') ORDER BY COALESCE(t.planned_date, t.deadline, t.created_at) ASC");
+                $stmt->execute();
+            } else {
+                $stmt = $db->prepare("SELECT t.*, u.name as assigned_user FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.assigned_to = ? AND t.status NOT IN ('completed','cancelled') ORDER BY COALESCE(t.planned_date, t.deadline, t.created_at) ASC");
+                $stmt->execute([$_SESSION['user_id']]);
+            }
+            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode(['success' => true, 'tasks' => $tasks]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     protected function requireAuth() {
         if (!isset($_SESSION['user_id'])) {
             header('Content-Type: application/json');

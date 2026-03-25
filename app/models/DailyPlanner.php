@@ -184,7 +184,7 @@ class DailyPlanner {
                 ");
                 $stmt->execute([$userId, $date]);
             } else {
-                // Current date - fetch ONLY tasks with planned_date = today
+                // Current date - fetch tasks planned for today OR overdue (planned_date < today)
                 $stmt = $this->db->prepare("
                     SELECT 
                         t.id, t.title, t.description, t.priority, t.status,
@@ -193,13 +193,16 @@ class DailyPlanner {
                     FROM tasks t
                     WHERE t.assigned_to = ? 
                     AND t.status NOT IN ('completed', 'cancelled', 'deleted')
-                    AND t.planned_date = ?
+                    AND (
+                        t.planned_date = ?
+                        OR (t.planned_date < ? AND t.planned_date IS NOT NULL)
+                    )
                     ORDER BY 
                         CASE WHEN t.assigned_by != t.assigned_to THEN 1 ELSE 2 END,
                         CASE t.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
                         t.created_at DESC
                 ");
-                $stmt->execute([$userId, $date]);
+                $stmt->execute([$userId, $date, $date]);
             }
             
             $relevantTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);

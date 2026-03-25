@@ -221,30 +221,36 @@ ob_start();
 </style>
 
 <script>
-let currentDate = new Date();
 let tasks = <?= json_encode($tasks ?? []) ?>;
 
-// Debug: Log tasks data
-console.log('Tasks loaded:', tasks);
+// Default to the month of the first task if no tasks fall in current month
+function getInitialDate() {
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 7); // YYYY-MM
+    const hasTasksThisMonth = tasks.some(t => {
+        const d = (t.planned_date || t.deadline || t.due_date || '').split(' ')[0];
+        return d && d.slice(0, 7) === todayStr;
+    });
+    if (hasTasksThisMonth || tasks.length === 0) return today;
+    // Find earliest task date
+    const dates = tasks.map(t => (t.planned_date || t.deadline || t.due_date || '').split(' ')[0]).filter(Boolean).sort();
+    return dates.length ? new Date(dates[0] + 'T00:00:00') : today;
+}
+
+let currentDate = getInitialDate();
 
 document.addEventListener('DOMContentLoaded', function() {
     renderCalendar();
 });
 
 function loadTasks() {
-    const userId = <?= $_SESSION['user_id'] ?? 'null' ?>;
-    if (!userId) {
-        console.error('No user ID available');
-        return;
-    }
-    
-    fetch('/ergon/api/tasks?user_id=' + userId)
+    fetch('/ergon/api/tasks')
         .then(response => response.json())
         .then(data => {
-            console.log('API Response:', data);
-            tasks = data.tasks || [];
-            console.log('Updated tasks:', tasks);
-            renderCalendar();
+            if (data.success) {
+                tasks = data.tasks || [];
+                renderCalendar();
+            }
         })
         .catch(error => console.error('Error loading tasks:', error));
 }
