@@ -36,12 +36,16 @@ class SimpleAttendanceController extends Controller {
         }
         
         // Use date filter if provided, otherwise use time-based filter
+        $dateParams = [];
         if (isset($_GET['date']) && $_GET['date'] !== TimezoneHelper::getCurrentDate()) {
             $dateCondition = "DATE(a.check_in) = ?";
-            $roleParams[] = $selectedDate;
+            $dateParams[] = $selectedDate;
         } else {
             $dateCondition = $this->getDateCondition($filter);
         }
+        
+        // Build params in correct order: date params (used in JOIN) come before role params (used in WHERE)
+        $queryParams = array_merge($dateParams, $roleParams);
         
         $stmt = $this->db->prepare("
             SELECT 
@@ -81,7 +85,7 @@ class SimpleAttendanceController extends Controller {
             WHERE u.status = 'active' {$roleFilter}
             ORDER BY u.role DESC, u.name
         ");
-        $stmt->execute($roleParams);
+        $stmt->execute($queryParams);
         $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Group by role for owner and admin view
