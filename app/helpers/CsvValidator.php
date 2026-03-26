@@ -213,11 +213,7 @@ class CsvValidator {
         // expense_date
         $this->validateDate($data['expense_date'] ?? '', 'expense_date', true, $errors, $warnings);
 
-        // paid_to_name (optional)
-        $paidTo = trim($data['paid_to_name'] ?? '');
-        if ($paidTo !== '' && !isset($this->userMap[strtolower($paidTo)])) {
-            $warnings[] = "paid_to_name \"{$paidTo}\" not found in system — will be saved without paid_to";
-        }
+        // paid_to_name (optional) — can be a system user or any external person
 
         // project_name (optional)
         $this->validateProject($data['project_name'] ?? '', $warnings);

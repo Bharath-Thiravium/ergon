@@ -452,7 +452,7 @@ class AdminController extends Controller {
             fputcsv($out, []);
             fputcsv($out, ['# --- REFERENCE ---']);
             fputcsv($out, ['# category options:', implode(' | ', $expenseCategories)]);
-            fputcsv($out, ['# paid_to_name: name of employee who received the payment (optional, must match system name)']);
+            fputcsv($out, ['# paid_to_name: name of person who received the payment (optional, can be anyone — system user or external person)']);
             fputcsv($out, ['# project_name options (leave blank if none):', implode(' | ', $projects)]);
             fputcsv($out, ['# employee_name options:', implode(' | ', $users)]);
         }
