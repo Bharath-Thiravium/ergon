@@ -63,24 +63,67 @@ $expTypes  = ['labour'=>'Labour Payment','machinery'=>'Machinery','transport'=>'
 </div>
 
 <?php if (isset($_GET['error'])): ?>
-<div class="alert alert--error">Failed to save report. Please try again.</div>
+<div class="alert alert--error">
+    <?= $_GET['error'] === 'window_closed' ? '🚫 Report submission is currently closed. Window: 9:00 AM – 6:00 PM (grace until next morning 9 AM).' : 'Failed to save report. Please try again.' ?>
+</div>
+<?php endif; ?>
+
+<!-- Report Window Status Banner -->
+<?php
+$role = $_SESSION['role'] ?? 'user';
+if (!in_array($role, ['admin', 'owner', 'company_owner'])):
+?>
+<div id="reportWindowBanner" style="margin-bottom:1rem;padding:.75rem 1rem;border-radius:8px;font-size:.875rem;font-weight:600;display:flex;align-items:center;justify-content:space-between">
+    <span id="windowStatusText">⏳ Checking report window...</span>
+    <span id="windowCountdown" style="font-size:.8rem;font-weight:500"></span>
+</div>
+<script>
+(function(){
+    function updateWindowBanner(){
+        fetch('/ergon/site-reports/window-status')
+        .then(r=>r.json())
+        .then(d=>{
+            const banner=document.getElementById('reportWindowBanner');
+            const text=document.getElementById('windowStatusText');
+            const cd=document.getElementById('windowCountdown');
+            if(d.report_status==='on_time'){
+                banner.style.background='#f0fdf4';banner.style.border='1px solid #bbf7d0';banner.style.color='#166534';
+                text.textContent='✅ Report window is open (9:00 AM – 6:00 PM)';
+                if(d.mins_left>0){
+                    const h=Math.floor(d.mins_left/60),m=d.mins_left%60;
+                    cd.textContent='Closes in '+(h>0?h+'h ':'')+m+'m';
+                }
+            } else if(d.report_status==='late'){
+                banner.style.background='#fffbeb';banner.style.border='1px solid #fcd34d';banner.style.color='#92400e';
+                text.textContent='⚠️ Submitting late (after 6:00 PM) — report will be marked LATE';
+                cd.textContent='';
+            } else {
+                banner.style.background='#fef2f2';banner.style.border='1px solid #fecaca';banner.style.color='#991b1b';
+                text.textContent='🚫 Report window closed. Opens at 9:00 AM';
+                cd.textContent='';
+                document.querySelectorAll('#siteReportForm button[type=submit],#parsedForm button[type=submit]').forEach(b=>{b.disabled=true;b.title='Window closed';});
+            }
+        }).catch(()=>{});
+    }
+    updateWindowBanner();
+    setInterval(updateWindowBanner,60000);
+})();
+</script>
 <?php endif; ?>
 
 <?php
-$canPaste = in_array($_SESSION['role'] ?? '', ['admin','owner','company_owner']);
-$defaultTab = $canPaste ? 'paste' : 'manual';
+$canPaste = true; // All roles can use WhatsApp paste
+$defaultTab = 'paste';
 ?>
 
 <!-- Tabs -->
 <div class="sr-tabs">
-    <?php if ($canPaste): ?>
-    <button class="sr-tab <?= $defaultTab==='paste'?'active':'' ?>" onclick="switchTab('paste')">📱 Paste WhatsApp Message</button>
-    <?php endif; ?>
-    <button class="sr-tab <?= $defaultTab==='manual'?'active':'' ?>" onclick="switchTab('manual')">✏️ Manual Entry</button>
+    <button class="sr-tab active" onclick="switchTab('paste')">📱 Paste WhatsApp Message</button>
+    <button class="sr-tab" onclick="switchTab('manual')">✏️ Manual Entry</button>
 </div>
 
 <!-- PASTE TAB -->
-<div id="pane-paste" class="sr-pane <?= $defaultTab==='paste'?'active':'' ?>" <?= !$canPaste?'style="display:none"':'' ?>>
+<div id="pane-paste" class="sr-pane active">
     <div class="sr-section">
         <h3>Paste WhatsApp Report Message</h3>
         <textarea id="waInput" class="parse-box" placeholder="Paste the WhatsApp daily report message here..."></textarea>
@@ -123,7 +166,7 @@ $defaultTab = $canPaste ? 'paste' : 'manual';
 </div>
 
 <!-- MANUAL TAB -->
-<div id="pane-manual" class="sr-pane <?= $defaultTab==='manual'?'active':'' ?>">
+<div id="pane-manual" class="sr-pane">
 <form method="POST" action="/ergon/site-reports/store" id="siteReportForm">
 
 <div class="sr-section">

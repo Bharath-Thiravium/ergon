@@ -11,6 +11,7 @@ $attMonth       = $stats['attendance_this_month'] ?? 0;
 $pendingReqs    = $stats['pending_requests'] ?? 0;
 $completedMonth = $stats['completed_tasks_this_month'] ?? 0;
 $leaveBalance   = $stats['leave_balance'] ?? 0;
+$quickFinance   = $stats['quick_finance'] ?? [];
 
 ob_start();
 ?>
@@ -69,6 +70,20 @@ ob_start();
 .act-dot{width:7px;height:7px;border-radius:50%;background:#3b82f6;margin-top:4px;flex-shrink:0}
 .act-meta{color:#9ca3af;font-size:11px;margin-top:1px}
 [data-theme="dark"] .act-item{border-color:#374151;color:#d1d5db}
+
+.qsv-tabs{display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:12px}
+.qsv-tab{padding:7px 14px;font-size:12px;font-weight:600;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;background:none;border-top:none;border-left:none;border-right:none}
+.qsv-tab.active{color:#3b82f6;border-bottom-color:#3b82f6}
+.qsv-pane{display:none}.qsv-pane.active{display:block}
+.qsv-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:13px}
+.qsv-row:last-child{border-bottom:none}
+.qsv-lbl{color:#6b7280}
+.qsv-val{font-weight:700;color:#111827}
+.qsv-val.green{color:#16a34a}.qsv-val.yellow{color:#d97706}.qsv-val.red{color:#dc2626}
+[data-theme="dark"] .qsv-tabs{border-color:#374151}
+[data-theme="dark"] .qsv-row{border-color:#374151;color:#d1d5db}
+[data-theme="dark"] .qsv-lbl{color:#9ca3af}
+[data-theme="dark"] .qsv-val{color:#f9fafb}
 </style>
 
 <!-- KPI Row -->
@@ -200,6 +215,42 @@ ob_start();
         </div>
     </div>
 
+    <!-- Quick Finance Status Viewer -->
+    <div class="ud-card">
+        <div class="ud-card__head">💰 Quick Finance Status</div>
+        <div class="ud-card__body">
+            <div class="qsv-tabs">
+                <button class="qsv-tab active" onclick="qsvSwitch('advance',this)">Advance</button>
+                <button class="qsv-tab" onclick="qsvSwitch('expense',this)">Expense</button>
+                <button class="qsv-tab" onclick="qsvSwitch('unclaimed',this)">Unclaimed</button>
+            </div>
+            <?php
+            $adv = $quickFinance['advance'] ?? ['total'=>0,'pending'=>0,'approved'=>0,'paid'=>0];
+            $exp = $quickFinance['expense'] ?? ['total'=>0,'pending'=>0,'approved'=>0,'reimbursed'=>0];
+            $unc = $quickFinance['unclaimed'] ?? ['pending_expense'=>0,'pending_advance'=>0,'total_unclaimed'=>0];
+            ?>
+            <div id="qsv-advance" class="qsv-pane active">
+                <div class="qsv-row"><span class="qsv-lbl">Total Requested</span><span class="qsv-val">₹<?= number_format($adv['total']) ?></span></div>
+                <div class="qsv-row"><span class="qsv-lbl">Pending Approval</span><span class="qsv-val yellow">₹<?= number_format($adv['pending']) ?></span></div>
+                <div class="qsv-row"><span class="qsv-lbl">Approved</span><span class="qsv-val green">₹<?= number_format($adv['approved']) ?></span></div>
+                <div class="qsv-row"><span class="qsv-lbl">Paid Out</span><span class="qsv-val green">₹<?= number_format($adv['paid']) ?></span></div>
+                <div style="margin-top:8px"><a href="/ergon/advances" style="font-size:12px;color:#3b82f6;text-decoration:none">View all advances →</a></div>
+            </div>
+            <div id="qsv-expense" class="qsv-pane">
+                <div class="qsv-row"><span class="qsv-lbl">Total Submitted</span><span class="qsv-val">₹<?= number_format($exp['total']) ?></span></div>
+                <div class="qsv-row"><span class="qsv-lbl">Pending Approval</span><span class="qsv-val yellow">₹<?= number_format($exp['pending']) ?></span></div>
+                <div class="qsv-row"><span class="qsv-lbl">Approved</span><span class="qsv-val green">₹<?= number_format($exp['approved']) ?></span></div>
+                <div class="qsv-row"><span class="qsv-lbl">Reimbursed</span><span class="qsv-val green">₹<?= number_format($exp['reimbursed']) ?></span></div>
+                <div style="margin-top:8px"><a href="/ergon/expenses" style="font-size:12px;color:#3b82f6;text-decoration:none">View all expenses →</a></div>
+            </div>
+            <div id="qsv-unclaimed" class="qsv-pane">
+                <div class="qsv-row"><span class="qsv-lbl">Pending Expenses</span><span class="qsv-val <?= $unc['pending_expense']>0?'red':'' ?>">₹<?= number_format($unc['pending_expense']) ?></span></div>
+                <div class="qsv-row"><span class="qsv-lbl">Pending Advances</span><span class="qsv-val <?= $unc['pending_advance']>0?'yellow':'' ?>">₹<?= number_format($unc['pending_advance']) ?></span></div>
+                <div class="qsv-row" style="border-top:2px solid #e5e7eb;margin-top:4px;padding-top:8px"><span class="qsv-lbl" style="font-weight:700">Total Unclaimed</span><span class="qsv-val <?= $unc['total_unclaimed']>0?'red':'' ?>" style="font-size:15px">₹<?= number_format($unc['total_unclaimed']) ?></span></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Recent Activities -->
     <div class="ud-card">
         <div class="ud-card__head">🕐 Recent Activity</div>
@@ -220,6 +271,16 @@ ob_start();
         </div>
     </div>
 </div>
+
+<script>
+function qsvSwitch(tab, btn) {
+    document.querySelectorAll('.qsv-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.qsv-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const pane = document.getElementById('qsv-' + tab);
+    if (pane) pane.classList.add('active');
+}
+</script>
 
 <?php
 $content = ob_get_clean();

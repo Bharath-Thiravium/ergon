@@ -532,17 +532,28 @@ class AttendanceController extends Controller {
         }
     }
     
+    // Returns effective radius for a project based on its type
+    private function getEffectiveRadius($project): int {
+        $type = strtolower($project['project_type'] ?? '');
+        $stored = (int)($project['checkin_radius'] ?? 0);
+        if ($stored > 0) return $stored;
+        // Default by type: site work gets 400m, office gets 150m
+        if (in_array($type, ['site', 'field', 'construction', 'outdoor'])) return 400;
+        return 150;
+    }
+
     private function validateProjectBasedLocation($db, $userLat, $userLng) {
         // Check project locations first
-        $stmt = $db->prepare("SELECT id, name, place, latitude, longitude, checkin_radius FROM projects WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND status = 'active'");
+        $stmt = $db->prepare("SELECT id, name, place, latitude, longitude, checkin_radius, project_type FROM projects WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND status = 'active'");
         $stmt->execute();
         $projects = $stmt->fetchAll();
         
         foreach ($projects as $project) {
             if ($project['latitude'] != 0 && $project['longitude'] != 0) {
                 $distance = $this->calculateDistance($userLat, $userLng, $project['latitude'], $project['longitude']);
+                $radius = $this->getEffectiveRadius($project);
                 
-                if ($distance <= $project['checkin_radius']) {
+                if ($distance <= $radius) {
                     return [
                         'allowed' => true,
                         'location_info' => [
@@ -626,7 +637,7 @@ class AttendanceController extends Controller {
                 company_name VARCHAR(255) DEFAULT 'ERGON Company',
                 base_location_lat DECIMAL(10,8) DEFAULT 0,
                 base_location_lng DECIMAL(11,8) DEFAULT 0,
-                attendance_radius INT DEFAULT 5,
+                attendance_radius INT DEFAULT 150,
                 location_title VARCHAR(255) DEFAULT 'Main Office',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -643,7 +654,7 @@ class AttendanceController extends Controller {
             $stmt = $db->query("SELECT COUNT(*) as count FROM settings");
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($result['count'] == 0) {
-                DatabaseHelper::safeExec($db, "INSERT INTO settings (company_name, base_location_lat, base_location_lng, attendance_radius, location_title) VALUES ('ERGON Company', 0, 0, 5, 'Main Office')", "Insert data");
+                DatabaseHelper::safeExec($db, "INSERT INTO settings (company_name, base_location_lat, base_location_lng, attendance_radius, location_title) VALUES ('ERGON Company', 0, 0, 150, 'Main Office')", "Insert data");
             }
             
             // Update existing records to have location_title if null

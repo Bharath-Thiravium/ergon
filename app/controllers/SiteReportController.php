@@ -58,6 +58,35 @@ class SiteReportController extends Controller {
         require_once __DIR__ . '/../../views/layouts/dashboard.php';
     }
 
+    // Reporting window: 9:00 AM – 6:00 PM IST, with grace until 9:00 AM next morning
+    private function getReportSubmissionStatus(): array {
+        $now = new DateTime('now', new DateTimeZone('Asia/Kolkata'));
+        $hour = (int)$now->format('G');
+        $minute = (int)$now->format('i');
+        $totalMins = $hour * 60 + $minute;
+        $windowStart = 9 * 60;   // 9:00 AM
+        $windowEnd   = 18 * 60;  // 6:00 PM
+        $graceEnd    = 9 * 60;   // next day 9:00 AM
+
+        if ($totalMins >= $windowStart && $totalMins < $windowEnd) {
+            $minsLeft = $windowEnd - $totalMins;
+            return ['allowed' => true, 'report_status' => 'on_time', 'mins_left' => $minsLeft];
+        }
+        // Grace: after 6 PM until midnight, or midnight until 9 AM next day
+        if ($totalMins >= $windowEnd || $totalMins < $graceEnd) {
+            return ['allowed' => true, 'report_status' => 'late', 'mins_left' => 0];
+        }
+        return ['allowed' => false, 'report_status' => 'blocked', 'mins_left' => 0];
+    }
+
+    // GET /site-reports/window-status  (AJAX)
+    public function windowStatus($request = []) {
+        $this->requireAuth();
+        header('Content-Type: application/json');
+        echo json_encode($this->getReportSubmissionStatus());
+        exit;
+    }
+
     // POST /site-reports/store
     public function store($request = []) {
         $this->requireAuth();
@@ -65,14 +94,26 @@ class SiteReportController extends Controller {
 
         $p = $_POST;
 
+        // Enforce reporting window (skip for admin/owner)
+        $role = $_SESSION['role'] ?? 'user';
+        if (!in_array($role, ['admin', 'owner', 'company_owner'])) {
+            $windowStatus = $this->getReportSubmissionStatus();
+            if (!$windowStatus['allowed']) {
+                $this->redirect('/site-reports/create?error=window_closed');
+                return;
+            }
+        } else {
+            $windowStatus = ['report_status' => 'on_time'];
+        }
+
         try {
             $this->db->beginTransaction();
 
             // 1. Main report row
             $stmt = $this->db->prepare("
                 INSERT INTO site_reports
-                    (company_id, project_id, site_name, report_date, submitted_by, total_manpower, remarks, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted')
+                    (company_id, project_id, site_name, report_date, submitted_by, total_manpower, remarks, status, submission_timing)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted', ?)
             ");
             $stmt->execute([
                 $_SESSION['company_id'] ?? null,
@@ -82,6 +123,7 @@ class SiteReportController extends Controller {
                 $_SESSION['user_id'],
                 (int)($p['total_manpower'] ?? 0),
                 trim($p['remarks'] ?? ''),
+                $windowStatus['report_status'],
             ]);
             $reportId = $this->db->lastInsertId();
 

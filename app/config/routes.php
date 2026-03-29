@@ -414,6 +414,7 @@ $router->get('/site-reports/create', 'SiteReportController', 'create');
 $router->post('/site-reports/store', 'SiteReportController', 'store');
 $router->get('/site-reports/view/{id}', 'SiteReportController', 'viewReport');
 $router->get('/site-reports/summary', 'SiteReportController', 'summary');
+$router->get('/site-reports/window-status', 'SiteReportController', 'windowStatus');
 $router->post('/site-reports/expense/approve', 'SiteReportController', 'approveExpense');
 
 // Finance Module Routes - Main

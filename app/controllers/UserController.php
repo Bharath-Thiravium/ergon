@@ -31,7 +31,8 @@ class UserController extends Controller {
                 'attendance_this_month' => $this->getAttendanceStats($db, $userId),
                 'pending_requests' => $this->getPendingRequestsCount($db, $userId),
                 'completed_tasks_this_month' => $this->getCompletedTasksCount($db, $userId),
-                'leave_balance' => $this->getLeaveBalance($db, $userId)
+                'leave_balance' => $this->getLeaveBalance($db, $userId),
+                'quick_finance' => $this->getQuickFinanceStats($db, $userId),
             ];
             
             // Get today's tasks
@@ -495,7 +496,7 @@ class UserController extends Controller {
     }
     
     private function getAttendanceStats($db, $userId) {
-        $stmt = $db->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = ? AND MONTH(clock_in) = MONTH(CURDATE())");
+        $stmt = $db->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = ? AND MONTH(check_in) = MONTH(CURDATE()) AND YEAR(check_in) = YEAR(CURDATE())");
         $stmt->execute([$userId]);
         return $stmt->fetchColumn();
     }
@@ -546,16 +547,16 @@ class UserController extends Controller {
     }
     
     private function getTodayAttendanceStatus($db, $userId) {
-        $stmt = $db->prepare("SELECT clock_in, clock_out FROM attendance WHERE user_id = ? AND DATE(clock_in) = CURDATE()");
+        $stmt = $db->prepare("SELECT check_in, check_out FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() ORDER BY id DESC LIMIT 1");
         $stmt->execute([$userId]);
         $attendance = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$attendance) {
             return ['status' => 'not_clocked_in', 'can_clock_in' => true, 'can_clock_out' => false];
-        } elseif ($attendance['clock_out']) {
-            return ['status' => 'clocked_out', 'can_clock_in' => false, 'can_clock_out' => false, 'clock_in' => $attendance['clock_in'], 'clock_out' => $attendance['clock_out']];
+        } elseif ($attendance['check_out']) {
+            return ['status' => 'clocked_out', 'can_clock_in' => false, 'can_clock_out' => false, 'clock_in' => $attendance['check_in'], 'clock_out' => $attendance['check_out']];
         } else {
-            return ['status' => 'clocked_in', 'can_clock_in' => false, 'can_clock_out' => true, 'clock_in' => $attendance['clock_in']];
+            return ['status' => 'clocked_in', 'can_clock_in' => false, 'can_clock_out' => true, 'clock_in' => $attendance['check_in']];
         }
     }
     
@@ -653,6 +654,44 @@ class UserController extends Controller {
         return true;
     }
     
+    private function getQuickFinanceStats($db, $userId): array {
+        // Advances
+        $advStmt = $db->prepare("
+            SELECT
+                COALESCE(SUM(amount),0) as total,
+                COALESCE(SUM(CASE WHEN status='pending' THEN amount ELSE 0 END),0) as pending,
+                COALESCE(SUM(CASE WHEN status IN ('approved','paid') THEN amount ELSE 0 END),0) as approved,
+                COALESCE(SUM(CASE WHEN status='paid' THEN amount ELSE 0 END),0) as paid
+            FROM advances WHERE user_id = ?
+        ");
+        $advStmt->execute([$userId]);
+        $adv = $advStmt->fetch(PDO::FETCH_ASSOC) ?: ['total'=>0,'pending'=>0,'approved'=>0,'paid'=>0];
+
+        // Expenses
+        $expStmt = $db->prepare("
+            SELECT
+                COALESCE(SUM(amount),0) as total,
+                COALESCE(SUM(CASE WHEN status='pending' THEN amount ELSE 0 END),0) as pending,
+                COALESCE(SUM(CASE WHEN status IN ('approved','reimbursed') THEN amount ELSE 0 END),0) as approved,
+                COALESCE(SUM(CASE WHEN status='reimbursed' THEN amount ELSE 0 END),0) as reimbursed
+            FROM expenses WHERE user_id = ?
+        ");
+        $expStmt->execute([$userId]);
+        $exp = $expStmt->fetch(PDO::FETCH_ASSOC) ?: ['total'=>0,'pending'=>0,'approved'=>0,'reimbursed'=>0];
+
+        $pendingExp = (float)$exp['pending'];
+        $pendingAdv = (float)$adv['pending'];
+        return [
+            'advance'  => $adv,
+            'expense'  => $exp,
+            'unclaimed' => [
+                'pending_expense'  => $pendingExp,
+                'pending_advance'  => $pendingAdv,
+                'total_unclaimed'  => $pendingExp + $pendingAdv,
+            ],
+        ];
+    }
+
     private function logActivity($db, $userId, $action, $description) {
         try {
             $stmt = $db->prepare("INSERT INTO activity_logs (user_id, action, description, created_at) VALUES (?, ?, ?, NOW())");
