@@ -65,19 +65,6 @@ $recentActs  = $d['recent_activities'] ?? [];
 [data-theme="dark"] .alert-item.info{background:rgba(59,130,246,.12);color:#93c5fd}
 
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
-.kpi-box{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-top:3px solid #e5e7eb;transition:transform .15s}
-.kpi-box:hover{transform:translateY(-2px)}
-.kpi-box.red{border-top-color:#ef4444}
-.kpi-box.green{border-top-color:#10b981}
-.kpi-box.blue{border-top-color:#3b82f6}
-.kpi-box.yellow{border-top-color:#f59e0b}
-.kpi-box.purple{border-top-color:#8b5cf6}
-.kpi-box__val{font-size:24px;font-weight:800;color:#111827;line-height:1.1}
-.kpi-box__lbl{font-size:11px;color:#6b7280;margin-top:4px;font-weight:500;text-transform:uppercase;letter-spacing:.4px}
-.kpi-box__sub{font-size:12px;color:#9ca3af;margin-top:2px}
-[data-theme="dark"] .kpi-box{background:#1f2937;color:#f9fafb}
-[data-theme="dark"] .kpi-box__val{color:#f9fafb}
-[data-theme="dark"] .kpi-box__lbl{color:#9ca3af}
 
 .quick-actions-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
 .qa-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;border:none;cursor:pointer;transition:all .15s}
@@ -175,56 +162,65 @@ $recentActs  = $d['recent_activities'] ?? [];
 
 <!-- Owner KPIs -->
 <div class="kpi-row">
-    <div class="kpi-box green">
-        <div class="kpi-box__val"><?= $stats['total_users'] ?? 0 ?></div>
-        <div class="kpi-box__lbl">Active Employees</div>
-        <div class="kpi-box__sub">👥 <?= $attPct ?>% present today</div>
+    <div class="kpi-card">
+        <div class="kpi-card__header"><div class="kpi-card__icon">👥</div><div class="kpi-card__trend">↗ Active</div></div>
+        <div class="kpi-card__value"><?= htmlspecialchars($stats['total_users'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
+        <div class="kpi-card__label">Active Employees</div>
+        <div class="kpi-card__status"><?= $attPct ?>% present today</div>
     </div>
-    <div class="kpi-box blue">
-        <div class="kpi-box__val"><?= $stats['active_tasks'] ?? 0 ?></div>
-        <div class="kpi-box__lbl">Active Tasks</div>
-        <div class="kpi-box__sub">📋 <?= $stats['critical']??0 ?> critical</div>
+    <div class="kpi-card">
+        <div class="kpi-card__header"><div class="kpi-card__icon">📋</div><div class="kpi-card__trend">— Tasks</div></div>
+        <div class="kpi-card__value"><?= htmlspecialchars($stats['active_tasks'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
+        <div class="kpi-card__label">Active Tasks</div>
+        <div class="kpi-card__status"><?= $stats['critical']??0 ?> critical</div>
     </div>
-    <div class="kpi-box <?= $totalPend > 5 ? 'red' : 'yellow' ?>">
-        <div class="kpi-box__val"><?= $totalPend ?></div>
-        <div class="kpi-box__lbl">Pending Approvals</div>
-        <div class="kpi-box__sub">🏖️<?= $stats['pending_leaves']??0 ?> · 💰<?= $stats['pending_expenses']??0 ?> · 💳<?= $stats['pending_advances']??0 ?></div>
+    <div class="kpi-card">
+        <div class="kpi-card__header"><div class="kpi-card__icon"><?= $totalPend > 5 ? '🔴' : '🟡' ?></div><div class="kpi-card__trend">— Pending</div></div>
+        <div class="kpi-card__value"><?= $totalPend ?></div>
+        <div class="kpi-card__label">Pending Approvals</div>
+        <div class="kpi-card__status">🏖️<?= $stats['pending_leaves']??0 ?> · 💰<?= $stats['pending_expenses']??0 ?> · 💳<?= $stats['pending_advances']??0 ?></div>
     </div>
     <?php if ($revMonth > 0 || $expMonth > 0): ?>
-    <div class="kpi-box green">
-        <div class="kpi-box__val">₹<?= number_format($revMonth/100000,1) ?>L</div>
-        <div class="kpi-box__lbl">Revenue This Month</div>
-        <div class="kpi-box__sub">📈 Invoiced</div>
+    <div class="kpi-card">
+        <div class="kpi-card__header"><div class="kpi-card__icon">📈</div><div class="kpi-card__trend">↗ Revenue</div></div>
+        <div class="kpi-card__value">₹<?= number_format($revMonth/100000,1) ?>L</div>
+        <div class="kpi-card__label">Revenue This Month</div>
+        <div class="kpi-card__status">Invoiced amount</div>
     </div>
-    <div class="kpi-box <?= $expMonth > $revMonth * 0.8 ? 'red' : 'yellow' ?>">
-        <div class="kpi-box__val">₹<?= number_format($expMonth/100000,1) ?>L</div>
-        <div class="kpi-box__lbl">Expenses This Month</div>
-        <div class="kpi-box__sub">💸 Approved</div>
+    <div class="kpi-card">
+        <div class="kpi-card__header"><div class="kpi-card__icon">💸</div><div class="kpi-card__trend"><?= $expMonth > $revMonth * 0.8 ? '⚠️ High' : '— Normal' ?></div></div>
+        <div class="kpi-card__value">₹<?= number_format($expMonth/100000,1) ?>L</div>
+        <div class="kpi-card__label">Expenses This Month</div>
+        <div class="kpi-card__status">Approved expenses</div>
     </div>
-    <div class="kpi-box <?= $netProfit >= 0 ? 'green' : 'red' ?>">
-        <div class="kpi-box__val">₹<?= number_format($netProfit/100000,1) ?>L</div>
-        <div class="kpi-box__lbl">Net Profit</div>
-        <div class="kpi-box__sub"><?= $netProfit >= 0 ? '✅ Positive' : '⚠️ Negative' ?></div>
+    <div class="kpi-card">
+        <div class="kpi-card__header"><div class="kpi-card__icon"><?= $netProfit >= 0 ? '✅' : '⚠️' ?></div><div class="kpi-card__trend"><?= $netProfit >= 0 ? '↗ Positive' : '↘ Negative' ?></div></div>
+        <div class="kpi-card__value">₹<?= number_format($netProfit/100000,1) ?>L</div>
+        <div class="kpi-card__label">Net Profit</div>
+        <div class="kpi-card__status">Revenue - Expenses</div>
     </div>
     <?php endif; ?>
     <?php if ($outstanding > 0): ?>
-    <div class="kpi-box red">
-        <div class="kpi-box__val">₹<?= number_format($outstanding/100000,1) ?>L</div>
-        <div class="kpi-box__lbl">Outstanding</div>
-        <div class="kpi-box__sub">⚠️ Unpaid invoices</div>
+    <div class="kpi-card">
+        <div class="kpi-card__header"><div class="kpi-card__icon">⚠️</div><div class="kpi-card__trend">↘ Overdue</div></div>
+        <div class="kpi-card__value">₹<?= number_format($outstanding/100000,1) ?>L</div>
+        <div class="kpi-card__label">Outstanding</div>
+        <div class="kpi-card__status">Unpaid invoices</div>
     </div>
     <?php endif; ?>
     <?php if ($tdsRec > 0): ?>
-    <div class="kpi-box <?= ($tdsRec - $tdsPaid) > 0 ? 'yellow' : 'green' ?>">
-        <div class="kpi-box__val">₹<?= number_format(($tdsRec-$tdsPaid)/1000,1) ?>K</div>
-        <div class="kpi-box__lbl">TDS Pending</div>
-        <div class="kpi-box__sub">📊 ₹<?= number_format($tdsPaid/1000,1) ?>K received of ₹<?= number_format($tdsRec/1000,1) ?>K</div>
+    <div class="kpi-card">
+        <div class="kpi-card__header"><div class="kpi-card__icon">📊</div><div class="kpi-card__trend"><?= ($tdsRec-$tdsPaid)>0 ? '— Pending' : '✅ Clear' ?></div></div>
+        <div class="kpi-card__value">₹<?= number_format(($tdsRec-$tdsPaid)/1000,1) ?>K</div>
+        <div class="kpi-card__label">TDS Pending</div>
+        <div class="kpi-card__status">₹<?= number_format($tdsPaid/1000,1) ?>K received</div>
     </div>
     <?php endif; ?>
-    <div class="kpi-box purple">
-        <div class="kpi-box__val"><?= $stats['completion_rate'] ?? 0 ?>%</div>
-        <div class="kpi-box__lbl">Task Completion</div>
-        <div class="kpi-box__sub">🎯 On-time: <?= $stats['ontime_rate']??0 ?>%</div>
+    <div class="kpi-card">
+        <div class="kpi-card__header"><div class="kpi-card__icon">🎯</div><div class="kpi-card__trend">On-time: <?= $stats['ontime_rate']??0 ?>%</div></div>
+        <div class="kpi-card__value"><?= htmlspecialchars($stats['completion_rate'] ?? '0', ENT_QUOTES, 'UTF-8') ?>%</div>
+        <div class="kpi-card__label">Task Completion</div>
+        <div class="kpi-card__status">Overall progress</div>
     </div>
 </div>
 
