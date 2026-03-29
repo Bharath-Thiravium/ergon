@@ -23,13 +23,16 @@ class OwnerController extends Controller {
         
         try {
             $db = Database::connect();
+            date_default_timezone_set('Asia/Kolkata');
+            $db->exec("SET time_zone = '+05:30'");
 
-            // --- Attendance Today ---
-            $attToday = $db->query("SELECT COUNT(*) FROM attendance WHERE DATE(clock_in) = CURDATE()")->fetchColumn();
-            $totalActive = $this->getTotalUsers($db);
-            $onLeaveToday = $db->query("SELECT COUNT(*) FROM leaves WHERE status='approved' AND CURDATE() BETWEEN start_date AND end_date")->fetchColumn();
+            // --- Attendance Today (uses check_in) ---
+            $attToday    = (int)$db->query("SELECT COUNT(DISTINCT user_id) FROM attendance WHERE DATE(check_in) = CURDATE()")->fetchColumn();
+            $totalActive = (int)$this->getTotalUsers($db);
+            $onLeaveToday = (int)$db->query("SELECT COUNT(*) FROM leaves WHERE status='approved' AND CURDATE() BETWEEN start_date AND end_date")->fetchColumn();
             $absentToday = max(0, $totalActive - $attToday - $onLeaveToday);
-            $lateToday = $db->query("SELECT COUNT(*) FROM attendance WHERE DATE(clock_in)=CURDATE() AND TIME(clock_in) > '09:30:00'")->fetchColumn();
+            $lateToday   = (int)$db->query("SELECT COUNT(*) FROM attendance WHERE DATE(check_in)=CURDATE() AND TIME(check_in) > '09:30:00'")->fetchColumn();
+            $attPct      = $totalActive > 0 ? round(($attToday / $totalActive) * 100) : 0;
 
             // --- Pending Approvals ---
             $pendingLeaves   = $this->getPendingLeavesCount($db);
@@ -38,12 +41,37 @@ class OwnerController extends Controller {
             $totalPendingApprovals = $pendingLeaves + $pendingExpenses + $pendingAdvances;
 
             // --- Finance KPIs ---
-            $revenueThisMonth  = 0; $expensesThisMonth = 0; $outstandingTotal  = 0;
+            $revenueThisMonth = $expensesThisMonth = $outstandingTotal = $tdsReceivable = $tdsReceived = 0;
             try {
-                $revenueThisMonth  = $db->query("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE MONTH(invoice_date)=MONTH(CURDATE()) AND YEAR(invoice_date)=YEAR(CURDATE())")->fetchColumn();
-                $expensesThisMonth = $db->query("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE status='approved' AND MONTH(created_at)=MONTH(CURDATE()) AND YEAR(created_at)=YEAR(CURDATE())")->fetchColumn();
-                $outstandingTotal  = $db->query("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE payment_status IN ('unpaid','partial','overdue')")->fetchColumn();
-            } catch (Exception $e) { /* finance tables may not exist */ }
+                $revenueThisMonth  = (float)$db->query("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE MONTH(invoice_date)=MONTH(CURDATE()) AND YEAR(invoice_date)=YEAR(CURDATE())")->fetchColumn();
+                $expensesThisMonth = (float)$db->query("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE status='approved' AND MONTH(created_at)=MONTH(CURDATE()) AND YEAR(created_at)=YEAR(CURDATE())")->fetchColumn();
+                $outstandingTotal  = (float)$db->query("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE payment_status IN ('unpaid','partial','overdue')")->fetchColumn();
+                // TDS = 2% of invoice amount (standard TDS on services)
+                $tdsReceivable = (float)$db->query("SELECT COALESCE(SUM(amount)*0.02,0) FROM invoices WHERE payment_status IN ('unpaid','partial','overdue')")->fetchColumn();
+                $tdsReceived   = (float)$db->query("SELECT COALESCE(SUM(tds_amount),0) FROM invoices WHERE tds_amount > 0")->fetchColumn();
+            } catch (Exception $e) {}
+
+            // --- Aging Buckets ---
+            $agingBuckets = ['0_30'=>0,'31_60'=>0,'61_90'=>0,'90_plus'=>0];
+            try {
+                $stmt = $db->query("SELECT
+                    SUM(CASE WHEN DATEDIFF(CURDATE(),due_date) BETWEEN 0 AND 30 THEN amount ELSE 0 END) as b0,
+                    SUM(CASE WHEN DATEDIFF(CURDATE(),due_date) BETWEEN 31 AND 60 THEN amount ELSE 0 END) as b31,
+                    SUM(CASE WHEN DATEDIFF(CURDATE(),due_date) BETWEEN 61 AND 90 THEN amount ELSE 0 END) as b61,
+                    SUM(CASE WHEN DATEDIFF(CURDATE(),due_date) > 90 THEN amount ELSE 0 END) as b90
+                    FROM invoices WHERE payment_status IN ('unpaid','partial','overdue') AND due_date < CURDATE()");
+                $ab = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($ab) $agingBuckets = ['0_30'=>(float)$ab['b0'],'31_60'=>(float)$ab['b31'],'61_90'=>(float)$ab['b61'],'90_plus'=>(float)$ab['b90']];
+            } catch (Exception $e) {}
+
+            // --- Cash Ledger Summary ---
+            $cashSummary = ['credits'=>0,'debits'=>0,'balance'=>0];
+            try {
+                $credits = (float)$db->query("SELECT COALESCE(SUM(amount_received),0) FROM invoices WHERE amount_received > 0")->fetchColumn();
+                $debits  = (float)$db->query("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE status='approved'")->fetchColumn();
+                $advPaid = (float)$db->query("SELECT COALESCE(SUM(amount),0) FROM advances WHERE status='approved'")->fetchColumn();
+                $cashSummary = ['credits'=>$credits,'debits'=>$debits+$advPaid,'balance'=>$credits-$debits-$advPaid];
+            } catch (Exception $e) {}
 
             // --- Overdue Invoices ---
             $overdueInvoices = [];
@@ -59,31 +87,26 @@ class OwnerController extends Controller {
                 $advancesOutstanding = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } catch (Exception $e) {}
 
-            // --- Cross-Module Alerts ---
+            // --- Smart Alerts ---
             $crossAlerts = [];
-            // Absent with no leave
             try {
-                $stmt = $db->query("SELECT u.name FROM users u WHERE u.status='active' AND u.id NOT IN (SELECT user_id FROM attendance WHERE DATE(clock_in)=CURDATE()) AND u.id NOT IN (SELECT user_id FROM leaves WHERE status='approved' AND CURDATE() BETWEEN start_date AND end_date) LIMIT 5");
+                $stmt = $db->query("SELECT u.name FROM users u WHERE u.status='active' AND u.role='user' AND u.id NOT IN (SELECT user_id FROM attendance WHERE DATE(check_in)=CURDATE()) AND u.id NOT IN (SELECT user_id FROM leaves WHERE status='approved' AND CURDATE() BETWEEN start_date AND end_date) LIMIT 5");
                 $absentNoLeave = $stmt->fetchAll(PDO::FETCH_COLUMN);
-                if (!empty($absentNoLeave)) {
+                if (!empty($absentNoLeave))
                     $crossAlerts[] = ['type'=>'danger','icon'=>'🚨','msg'=>count($absentNoLeave).' employee(s) absent with no leave: '.implode(', ',$absentNoLeave)];
-                }
             } catch (Exception $e) {}
-            // Employees on leave with open tasks
             try {
-                $stmt = $db->query("SELECT COUNT(DISTINCT t.assigned_to) as cnt FROM tasks t JOIN leaves l ON t.assigned_to=l.user_id WHERE l.status='approved' AND CURDATE() BETWEEN l.start_date AND l.end_date AND t.status NOT IN ('completed','cancelled')");
-                $leaveWithTasks = $stmt->fetchColumn();
-                if ($leaveWithTasks > 0) {
-                    $crossAlerts[] = ['type'=>'warning','icon'=>'⚠️','msg'>"{$leaveWithTasks} employee(s) on leave have open tasks assigned"];
-                }
+                $cnt = $db->query("SELECT COUNT(DISTINCT t.assigned_to) FROM tasks t JOIN leaves l ON t.assigned_to=l.user_id WHERE l.status='approved' AND CURDATE() BETWEEN l.start_date AND l.end_date AND t.status NOT IN ('completed','cancelled')")->fetchColumn();
+                if ($cnt > 0) $crossAlerts[] = ['type'=>'warning','icon'=>'⚠️','msg'=>"{$cnt} employee(s) on leave have open tasks assigned"];
             } catch (Exception $e) {}
-            // High expenses vs revenue
-            if ($revenueThisMonth > 0 && $expensesThisMonth > ($revenueThisMonth * 0.8)) {
+            if ($revenueThisMonth > 0 && $expensesThisMonth > ($revenueThisMonth * 0.8))
                 $crossAlerts[] = ['type'=>'warning','icon'=>'💸','msg'=>'Expenses are above 80% of revenue this month'];
-            }
-            if ($outstandingTotal > 0) {
+            if ($outstandingTotal > 0)
                 $crossAlerts[] = ['type'=>'danger','icon'=>'💰','msg'=>'₹'.number_format($outstandingTotal).' outstanding invoices need follow-up'];
-            }
+            if ($agingBuckets['90_plus'] > 0)
+                $crossAlerts[] = ['type'=>'danger','icon'=>'🔴','msg'=>'₹'.number_format($agingBuckets['90_plus']).' overdue 90+ days — high collection risk'];
+            if ($totalPendingApprovals > 0)
+                $crossAlerts[] = ['type'=>'info','icon'=>'📋','msg'>"{$totalPendingApprovals} request(s) pending your approval"];
 
             // --- Top Expense Categories ---
             $topExpenseCategories = [];
@@ -92,10 +115,10 @@ class OwnerController extends Controller {
                 $topExpenseCategories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } catch (Exception $e) {}
 
-            // --- Attendance Behavior ---
+            // --- Attendance Behavior (late arrivals) ---
             $attendanceBehavior = [];
             try {
-                $stmt = $db->query("SELECT u.name, COUNT(*) as late_count FROM attendance a JOIN users u ON a.user_id=u.id WHERE TIME(a.clock_in)>'09:30:00' AND MONTH(a.clock_in)=MONTH(CURDATE()) GROUP BY a.user_id ORDER BY late_count DESC LIMIT 5");
+                $stmt = $db->query("SELECT u.name, COUNT(*) as late_count FROM attendance a JOIN users u ON a.user_id=u.id WHERE TIME(a.check_in)>'09:30:00' AND MONTH(a.check_in)=MONTH(CURDATE()) GROUP BY a.user_id ORDER BY late_count DESC LIMIT 5");
                 $attendanceBehavior = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } catch (Exception $e) {}
 
@@ -107,48 +130,48 @@ class OwnerController extends Controller {
             } catch (Exception $e) {}
 
             $stats = [
-                'total_users'          => $totalActive,
-                'pending_leaves'       => $pendingLeaves,
-                'pending_expenses'     => $pendingExpenses,
-                'pending_advances'     => $pendingAdvances,
-                'active_tasks'         => $this->getActiveTasks($db),
-                'avg_progress'         => $this->getAverageProgress($db),
-                'completion_rate'      => $this->getCompletionRate($db),
-                'in_progress'          => $this->getInProgressTasksCount($db),
-                'pending'              => $this->getPendingTasksCount($db),
-                'ontime_rate'          => $this->getOntimeRate($db),
-                'rescheduled'          => $this->getRescheduledTasksCount($db),
-                'critical'             => $this->getCriticalTasksCount($db),
-                'leave_requests'       => $pendingLeaves,
-                'expense_claims'       => $pendingExpenses,
-                'advance_requests'     => $pendingAdvances,
+                'total_users'      => $totalActive,
+                'pending_leaves'   => $pendingLeaves,
+                'pending_expenses' => $pendingExpenses,
+                'pending_advances' => $pendingAdvances,
+                'active_tasks'     => $this->getActiveTasks($db),
+                'completion_rate'  => $this->getCompletionRate($db),
+                'in_progress'      => $this->getInProgressTasksCount($db),
+                'pending'          => $this->getPendingTasksCount($db),
+                'ontime_rate'      => $this->getOntimeRate($db),
+                'critical'         => $this->getCriticalTasksCount($db),
+                'att_pct'          => $attPct,
             ];
 
             $this->view('owner/dashboard', [
                 'data' => [
-                    'stats'                 => $stats,
-                    'final_approvals'       => [],
-                    'alerts'                => $crossAlerts,
-                    'recent_activities'     => $recentActivities,
-                    'att_today'             => $attToday,
-                    'on_leave_today'        => $onLeaveToday,
-                    'absent_today'          => $absentToday,
-                    'late_today'            => $lateToday,
-                    'total_pending'         => $totalPendingApprovals,
-                    'revenue_month'         => $revenueThisMonth,
-                    'expenses_month'        => $expensesThisMonth,
-                    'outstanding_total'     => $outstandingTotal,
-                    'overdue_invoices'      => $overdueInvoices,
-                    'advances_outstanding'  => $advancesOutstanding,
-                    'top_expense_cats'      => $topExpenseCategories,
-                    'attendance_behavior'   => $attendanceBehavior,
+                    'stats'                => $stats,
+                    'alerts'               => $crossAlerts,
+                    'recent_activities'    => $recentActivities,
+                    'att_today'            => $attToday,
+                    'att_pct'              => $attPct,
+                    'on_leave_today'       => $onLeaveToday,
+                    'absent_today'         => $absentToday,
+                    'late_today'           => $lateToday,
+                    'total_pending'        => $totalPendingApprovals,
+                    'revenue_month'        => $revenueThisMonth,
+                    'expenses_month'       => $expensesThisMonth,
+                    'outstanding_total'    => $outstandingTotal,
+                    'tds_receivable'       => $tdsReceivable,
+                    'tds_received'         => $tdsReceived,
+                    'aging_buckets'        => $agingBuckets,
+                    'cash_summary'         => $cashSummary,
+                    'overdue_invoices'     => $overdueInvoices,
+                    'advances_outstanding' => $advancesOutstanding,
+                    'top_expense_cats'     => $topExpenseCategories,
+                    'attendance_behavior'  => $attendanceBehavior,
                 ],
                 'active_page' => 'dashboard'
             ]);
             
         } catch (Exception $e) {
             error_log('Owner dashboard error: ' . $e->getMessage());
-            $this->view('owner/dashboard', ['error' => 'Unable to load dashboard data']);
+            $this->view('owner/dashboard', ['data'=>[], 'active_page'=>'dashboard']);
         }
     }
     

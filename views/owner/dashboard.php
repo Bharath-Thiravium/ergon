@@ -27,6 +27,7 @@ $d           = $data ?? [];
 $stats       = $d['stats'] ?? [];
 $alerts      = $d['alerts'] ?? [];
 $attToday    = $d['att_today'] ?? 0;
+$attPct      = $d['att_pct'] ?? 0;
 $onLeave     = $d['on_leave_today'] ?? 0;
 $absent      = $d['absent_today'] ?? 0;
 $late        = $d['late_today'] ?? 0;
@@ -34,6 +35,10 @@ $totalPend   = $d['total_pending'] ?? 0;
 $revMonth    = $d['revenue_month'] ?? 0;
 $expMonth    = $d['expenses_month'] ?? 0;
 $outstanding = $d['outstanding_total'] ?? 0;
+$tdsRec      = $d['tds_receivable'] ?? 0;
+$tdsPaid     = $d['tds_received'] ?? 0;
+$aging       = $d['aging_buckets'] ?? ['0_30'=>0,'31_60'=>0,'61_90'=>0,'90_plus'=>0];
+$cashSum     = $d['cash_summary'] ?? ['credits'=>0,'debits'=>0,'balance'=>0];
 $netProfit   = $revMonth - $expMonth;
 $overdueInv  = $d['overdue_invoices'] ?? [];
 $advOut      = $d['advances_outstanding'] ?? [];
@@ -125,11 +130,13 @@ $recentActs  = $d['recent_activities'] ?? [];
 
 <!-- Quick Actions Bar -->
 <div class="quick-actions-bar">
-    <a href="/ergon/owner/approvals" class="qa-btn primary">✅ Approve Requests <?php if($totalPend>0): ?><span style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px"><?= $totalPend ?></span><?php endif; ?></a>
-    <a href="/ergon/leaves" class="qa-btn success">🏖️ Approve Leaves</a>
-    <a href="/ergon/expenses" class="qa-btn warning">💰 Approve Expenses</a>
+    <a href="/ergon/owner/approvals" class="qa-btn primary">✅ Approval Center <?php if($totalPend>0): ?><span style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px"><?= $totalPend ?></span><?php endif; ?></a>
+    <a href="/ergon/advances" class="qa-btn primary" style="background:#0369a1">💳 Advances <span style="background:rgba(255,255,255,.2);border-radius:10px;padding:1px 6px;font-size:11px"><?= $stats['pending_advances']??0 ?></span></a>
+    <a href="/ergon/leaves" class="qa-btn success">🏖️ Leaves <span style="background:rgba(255,255,255,.2);border-radius:10px;padding:1px 6px;font-size:11px"><?= $stats['pending_leaves']??0 ?></span></a>
+    <a href="/ergon/expenses" class="qa-btn warning">💰 Expenses <span style="background:rgba(255,255,255,.2);border-radius:10px;padding:1px 6px;font-size:11px"><?= $stats['pending_expenses']??0 ?></span></a>
+    <a href="/ergon/ledgers/project" class="qa-btn primary" style="background:#0f766e">📒 Cash Ledger</a>
     <?php if(!$reportsDisabled): ?>
-    <a href="/ergon/reports" class="qa-btn primary" style="background:#7c3aed">📊 View Reports</a>
+    <a href="/ergon/reports" class="qa-btn primary" style="background:#7c3aed">📊 Reports</a>
     <?php endif; ?>
     <?php if(!$systemAdminDisabled): ?>
     <a href="/ergon/settings" class="qa-btn danger" style="background:#6b7280">⚙️ Settings</a>
@@ -150,9 +157,9 @@ $recentActs  = $d['recent_activities'] ?? [];
 
 <!-- Today Summary Strip -->
 <div class="intel-strip">
-    <div class="intel-strip__item green">👥 Present: <strong><?= $attToday ?></strong></div>
+    <div class="intel-strip__item <?= $attPct >= 80 ? 'green' : ($attPct >= 50 ? 'yellow' : 'red') ?>">👥 Present: <strong><?= $attToday ?></strong><span class="intel-strip__label"> (<?= $attPct ?>%)</span></div>
     <div class="intel-strip__item blue">🏖️ On Leave: <strong><?= $onLeave ?></strong></div>
-    <div class="intel-strip__item red">❌ Absent: <strong><?= $absent ?></strong></div>
+    <div class="intel-strip__item <?= $absent > 0 ? 'red' : 'green' ?>">❌ Absent: <strong><?= $absent ?></strong></div>
     <div class="intel-strip__item yellow">⏰ Late: <strong><?= $late ?></strong></div>
     <div class="intel-strip__item <?= $totalPend > 0 ? 'red' : 'green' ?>">📋 Pending Approvals: <strong><?= $totalPend ?></strong></div>
     <?php if ($revMonth > 0): ?>
@@ -161,55 +168,130 @@ $recentActs  = $d['recent_activities'] ?? [];
     <?php if ($outstanding > 0): ?>
     <div class="intel-strip__item red">⚠️ Outstanding: <strong>₹<?= number_format($outstanding) ?></strong></div>
     <?php endif; ?>
+    <?php if ($cashSum['balance'] != 0): ?>
+    <div class="intel-strip__item <?= $cashSum['balance'] >= 0 ? 'green' : 'red' ?>">🏦 Cash Balance: <strong>₹<?= number_format($cashSum['balance']) ?></strong></div>
+    <?php endif; ?>
 </div>
 
 <!-- Owner KPIs -->
 <div class="kpi-row">
     <div class="kpi-box green">
-        <div class="kpi-box__val"><?= htmlspecialchars($stats['total_users'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
+        <div class="kpi-box__val"><?= $stats['total_users'] ?? 0 ?></div>
         <div class="kpi-box__lbl">Active Employees</div>
-        <div class="kpi-box__sub">👥 Total workforce</div>
+        <div class="kpi-box__sub">👥 <?= $attPct ?>% present today</div>
     </div>
     <div class="kpi-box blue">
-        <div class="kpi-box__val"><?= htmlspecialchars($stats['active_tasks'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
+        <div class="kpi-box__val"><?= $stats['active_tasks'] ?? 0 ?></div>
         <div class="kpi-box__lbl">Active Tasks</div>
-        <div class="kpi-box__sub">📋 In progress + pending</div>
+        <div class="kpi-box__sub">📋 <?= $stats['critical']??0 ?> critical</div>
     </div>
     <div class="kpi-box <?= $totalPend > 5 ? 'red' : 'yellow' ?>">
         <div class="kpi-box__val"><?= $totalPend ?></div>
         <div class="kpi-box__lbl">Pending Approvals</div>
-        <div class="kpi-box__sub">🏖️<?= $stats['pending_leaves']??0 ?> leaves · 💰<?= $stats['pending_expenses']??0 ?> exp · 💳<?= $stats['pending_advances']??0 ?> adv</div>
+        <div class="kpi-box__sub">🏖️<?= $stats['pending_leaves']??0 ?> · 💰<?= $stats['pending_expenses']??0 ?> · 💳<?= $stats['pending_advances']??0 ?></div>
     </div>
     <?php if ($revMonth > 0 || $expMonth > 0): ?>
     <div class="kpi-box green">
-        <div class="kpi-box__val">₹<?= number_format($revMonth/100000, 1) ?>L</div>
+        <div class="kpi-box__val">₹<?= number_format($revMonth/100000,1) ?>L</div>
         <div class="kpi-box__lbl">Revenue This Month</div>
-        <div class="kpi-box__sub">📈 Invoiced amount</div>
+        <div class="kpi-box__sub">📈 Invoiced</div>
     </div>
     <div class="kpi-box <?= $expMonth > $revMonth * 0.8 ? 'red' : 'yellow' ?>">
-        <div class="kpi-box__val">₹<?= number_format($expMonth/100000, 1) ?>L</div>
+        <div class="kpi-box__val">₹<?= number_format($expMonth/100000,1) ?>L</div>
         <div class="kpi-box__lbl">Expenses This Month</div>
-        <div class="kpi-box__sub">💸 Approved expenses</div>
+        <div class="kpi-box__sub">💸 Approved</div>
     </div>
     <div class="kpi-box <?= $netProfit >= 0 ? 'green' : 'red' ?>">
-        <div class="kpi-box__val">₹<?= number_format($netProfit/100000, 1) ?>L</div>
+        <div class="kpi-box__val">₹<?= number_format($netProfit/100000,1) ?>L</div>
         <div class="kpi-box__lbl">Net Profit</div>
         <div class="kpi-box__sub"><?= $netProfit >= 0 ? '✅ Positive' : '⚠️ Negative' ?></div>
     </div>
     <?php endif; ?>
     <?php if ($outstanding > 0): ?>
     <div class="kpi-box red">
-        <div class="kpi-box__val">₹<?= number_format($outstanding/100000, 1) ?>L</div>
+        <div class="kpi-box__val">₹<?= number_format($outstanding/100000,1) ?>L</div>
         <div class="kpi-box__lbl">Outstanding</div>
         <div class="kpi-box__sub">⚠️ Unpaid invoices</div>
     </div>
     <?php endif; ?>
+    <?php if ($tdsRec > 0): ?>
+    <div class="kpi-box <?= ($tdsRec - $tdsPaid) > 0 ? 'yellow' : 'green' ?>">
+        <div class="kpi-box__val">₹<?= number_format(($tdsRec-$tdsPaid)/1000,1) ?>K</div>
+        <div class="kpi-box__lbl">TDS Pending</div>
+        <div class="kpi-box__sub">📊 ₹<?= number_format($tdsPaid/1000,1) ?>K received of ₹<?= number_format($tdsRec/1000,1) ?>K</div>
+    </div>
+    <?php endif; ?>
     <div class="kpi-box purple">
-        <div class="kpi-box__val"><?= htmlspecialchars($stats['completion_rate'] ?? '0', ENT_QUOTES, 'UTF-8') ?>%</div>
-        <div class="kpi-box__lbl">Task Completion Rate</div>
-        <div class="kpi-box__sub">🎯 Overall progress</div>
+        <div class="kpi-box__val"><?= $stats['completion_rate'] ?? 0 ?>%</div>
+        <div class="kpi-box__lbl">Task Completion</div>
+        <div class="kpi-box__sub">🎯 On-time: <?= $stats['ontime_rate']??0 ?>%</div>
     </div>
 </div>
+
+<!-- Finance Intelligence Row -->
+<?php if ($outstanding > 0 || $cashSum['credits'] > 0): ?>
+<div class="intel-grid" style="margin-bottom:20px">
+
+    <!-- Aging Analysis -->
+    <div class="intel-card">
+        <div class="intel-card__head">📅 Outstanding Aging Analysis <a href="/ergon/finance">Finance →</a></div>
+        <div class="intel-card__body">
+            <?php
+            $agingMax = max(array_values($aging)) ?: 1;
+            $agingLabels = ['0_30'=>'0–30 days','31_60'=>'31–60 days','61_90'=>'61–90 days','90_plus'=>'90+ days'];
+            $agingColors = ['0_30'=>'#10b981','31_60'=>'#f59e0b','61_90'=>'#f97316','90_plus'=>'#ef4444'];
+            foreach ($aging as $key => $val):
+                $pct = $agingMax > 0 ? round(($val/$agingMax)*100) : 0;
+            ?>
+            <div class="bar-row">
+                <div class="bar-row__label"><?= $agingLabels[$key] ?></div>
+                <div class="bar-row__track"><div class="bar-row__fill" style="width:<?= $pct ?>%;background:<?= $agingColors[$key] ?>"></div></div>
+                <div class="bar-row__val" style="color:<?= $val>0?$agingColors[$key]:'#9ca3af' ?>"><?= $val>0?'₹'.number_format($val/1000,1).'K':'-' ?></div>
+            </div>
+            <?php endforeach; ?>
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid #f3f4f6;font-size:12px;color:#6b7280">
+                Total Outstanding: <strong style="color:#ef4444">₹<?= number_format($outstanding) ?></strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cash Summary -->
+    <div class="intel-card">
+        <div class="intel-card__head">🏦 Cash Flow Summary <a href="/ergon/ledgers/project">Ledger →</a></div>
+        <div class="intel-card__body">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+                <div style="text-align:center;padding:10px;background:#f0fdf4;border-radius:8px">
+                    <div style="font-size:16px;font-weight:800;color:#16a34a">₹<?= number_format($cashSum['credits']/1000,1) ?>K</div>
+                    <div style="font-size:10px;color:#6b7280;margin-top:2px">CREDITS</div>
+                </div>
+                <div style="text-align:center;padding:10px;background:#fef2f2;border-radius:8px">
+                    <div style="font-size:16px;font-weight:800;color:#dc2626">₹<?= number_format($cashSum['debits']/1000,1) ?>K</div>
+                    <div style="font-size:10px;color:#6b7280;margin-top:2px">DEBITS</div>
+                </div>
+                <div style="text-align:center;padding:10px;background:<?= $cashSum['balance']>=0?'#eff6ff':'#fef2f2' ?>;border-radius:8px">
+                    <div style="font-size:16px;font-weight:800;color:<?= $cashSum['balance']>=0?'#1d4ed8':'#dc2626' ?>">₹<?= number_format($cashSum['balance']/1000,1) ?>K</div>
+                    <div style="font-size:10px;color:#6b7280;margin-top:2px">BALANCE</div>
+                </div>
+            </div>
+            <?php if ($tdsRec > 0): ?>
+            <div style="padding:10px;background:#fffbeb;border-radius:8px;font-size:12px">
+                <div style="font-weight:700;color:#92400e;margin-bottom:6px">📊 TDS Tracker</div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="color:#6b7280">TDS Receivable</span><span style="font-weight:600">₹<?= number_format($tdsRec) ?></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="color:#6b7280">TDS Received (26AS)</span><span style="font-weight:600;color:#16a34a">₹<?= number_format($tdsPaid) ?></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding-top:4px;border-top:1px solid #fcd34d">
+                    <span style="color:#92400e;font-weight:700">Pending TDS</span><span style="font-weight:800;color:#dc2626">₹<?= number_format($tdsRec-$tdsPaid) ?></span>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+</div>
+<?php endif; ?>
 
 <!-- Intelligence Grid -->
 <div class="intel-grid">
@@ -221,27 +303,35 @@ $recentActs  = $d['recent_activities'] ?? [];
             <a href="/ergon/attendance">View All →</a>
         </div>
         <div class="intel-card__body">
-            <?php if (!empty($attBehavior)): ?>
-                <div style="font-size:11px;color:#6b7280;margin-bottom:8px;font-weight:600;text-transform:uppercase">Frequent Late Arrivals (This Month)</div>
-                <?php foreach ($attBehavior as $row): ?>
-                <div class="risk-row">
-                    <span><?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?></span>
-                    <span class="risk-badge <?= $row['late_count'] >= 5 ? 'high' : ($row['late_count'] >= 3 ? 'medium' : 'low') ?>">
-                        <?= $row['late_count'] ?> times late
-                    </span>
+            <!-- Live attendance bar -->
+            <div style="margin-bottom:14px">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+                    <span style="color:#6b7280">Today's Attendance</span>
+                    <span style="font-weight:700;color:<?= $attPct>=80?'#16a34a':($attPct>=50?'#d97706':'#dc2626') ?>"><?= $attPct ?>%</span>
                 </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="empty-state">✅ No late arrivals this month</div>
-            <?php endif; ?>
-            <div style="margin-top:14px;padding-top:12px;border-top:1px solid #f3f4f6">
-                <div style="display:flex;gap:16px;font-size:12px">
+                <div style="background:#f3f4f6;border-radius:6px;height:10px">
+                    <div style="height:10px;border-radius:6px;background:<?= $attPct>=80?'#10b981':($attPct>=50?'#f59e0b':'#ef4444') ?>;width:<?= $attPct ?>%;transition:width .4s"></div>
+                </div>
+                <div style="display:flex;gap:16px;font-size:12px;margin-top:8px">
                     <div><strong style="color:#10b981"><?= $attToday ?></strong> <span style="color:#6b7280">Present</span></div>
                     <div><strong style="color:#ef4444"><?= $absent ?></strong> <span style="color:#6b7280">Absent</span></div>
                     <div><strong style="color:#f59e0b"><?= $late ?></strong> <span style="color:#6b7280">Late</span></div>
                     <div><strong style="color:#3b82f6"><?= $onLeave ?></strong> <span style="color:#6b7280">On Leave</span></div>
                 </div>
             </div>
+            <?php if (!empty($attBehavior)): ?>
+                <div style="font-size:11px;color:#6b7280;margin-bottom:8px;font-weight:600;text-transform:uppercase">Frequent Late Arrivals (This Month)</div>
+                <?php foreach ($attBehavior as $row): ?>
+                <div class="risk-row">
+                    <span><?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="risk-badge <?= $row['late_count'] >= 5 ? 'high' : ($row['late_count'] >= 3 ? 'medium' : 'low') ?>">
+                        <?= $row['late_count'] ?>x late
+                    </span>
+                </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="empty-state">✅ No late arrivals this month</div>
+            <?php endif; ?>
         </div>
     </div>
 

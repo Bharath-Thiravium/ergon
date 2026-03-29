@@ -189,16 +189,23 @@ ob_start();
         <div class="adm-card__body">
             <?php if (!empty($teamData)): ?>
                 <?php foreach (array_slice($teamData, 0, 8) as $member): ?>
+                <?php
+                    $displayName = $member['name'] ?? $member['department_name'] ?? '?';
+                    $subText = '';
+                    if (isset($member['user_count'])) {
+                        $subText = $member['user_count'] . ' member' . ($member['user_count'] != 1 ? 's' : '');
+                    } elseif (isset($member['role'])) {
+                        $subText = ucfirst($member['role']) . (isset($member['designation']) && $member['designation'] ? ' · ' . $member['designation'] : '');
+                    }
+                ?>
                 <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:13px">
                     <div style="width:30px;height:30px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1d4ed8;font-size:12px;flex-shrink:0">
-                        <?= strtoupper(substr($member['name'] ?? $member['department_name'] ?? '?', 0, 1)) ?>
+                        <?= strtoupper(substr($displayName, 0, 1)) ?>
                     </div>
                     <div style="flex:1">
-                        <div style="font-weight:500"><?= htmlspecialchars($member['name'] ?? $member['department_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></div>
-                        <?php if (isset($member['role'])): ?>
-                        <div style="font-size:11px;color:#9ca3af"><?= ucfirst($member['role']) ?></div>
-                        <?php elseif (isset($member['user_count'])): ?>
-                        <div style="font-size:11px;color:#9ca3af"><?= $member['user_count'] ?> members</div>
+                        <div style="font-weight:500"><?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php if ($subText): ?>
+                        <div style="font-size:11px;color:#9ca3af"><?= htmlspecialchars($subText, ENT_QUOTES, 'UTF-8') ?></div>
                         <?php endif; ?>
                     </div>
                 </div>

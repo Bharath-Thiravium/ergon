@@ -690,12 +690,12 @@ class AdminController extends Controller {
     
     private function getTeamData($db, $isSystemAdmin) {
         if ($isSystemAdmin) {
-            // System admin sees all teams
-            $stmt = $db->query("SELECT d.name, COUNT(u.id) as user_count FROM departments d LEFT JOIN users u ON d.id = u.department_id WHERE u.status = 'active' GROUP BY d.id");
+            // System admin sees all teams grouped by department
+            $stmt = $db->query("SELECT d.name as department_name, COUNT(u.id) as user_count FROM departments d LEFT JOIN users u ON d.id = u.department_id AND u.status = 'active' GROUP BY d.id, d.name ORDER BY user_count DESC");
         } else {
-            // Department admin sees only their team
-            $stmt = $db->prepare("SELECT u.name, u.role, u.last_login FROM users u WHERE u.department_id = ? AND u.status = 'active'");
-            $stmt->execute([$_SESSION['department_id']]);
+            // Department admin sees only their team members
+            $stmt = $db->prepare("SELECT u.name, u.role, u.designation FROM users u WHERE u.department_id = ? AND u.status = 'active' ORDER BY u.name ASC");
+            $stmt->execute([$_SESSION['department_id'] ?? 0]);
         }
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
