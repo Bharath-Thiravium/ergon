@@ -47,7 +47,7 @@ class UserController extends Controller {
             // Check if user needs to clock in/out
             $attendanceStatus = $this->getTodayAttendanceStatus($db, $userId);
             
-            $this->view('user/dashboard', [
+            $this->view('dashboard/user', [
                 'stats' => $stats,
                 'today_tasks' => $todayTasks,
                 'recent_activities' => $recentActivities,
@@ -496,7 +496,7 @@ class UserController extends Controller {
     }
     
     private function getAttendanceStats($db, $userId) {
-        $stmt = $db->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = ? AND MONTH(check_in) = MONTH(CURDATE()) AND YEAR(check_in) = YEAR(CURDATE())");
+        $stmt = $db->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = ? AND MONTH(check_in) = MONTH(CURDATE()) AND YEAR(check_in) = YEAR(CURDATE()) AND status != 'absent'");
         $stmt->execute([$userId]);
         return $stmt->fetchColumn();
     }
@@ -603,7 +603,7 @@ class UserController extends Controller {
     }
     
     private function getAttendanceHistory($db, $userId) {
-        $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? ORDER BY clock_in DESC LIMIT 30");
+        $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? ORDER BY check_in DESC LIMIT 30");
         $stmt->execute([$userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -615,14 +615,14 @@ class UserController extends Controller {
                 AVG(work_hours) as avg_hours,
                 SUM(work_hours) as total_hours
             FROM attendance 
-            WHERE user_id = ? AND MONTH(clock_in) = MONTH(CURDATE())
+            WHERE user_id = ? AND MONTH(check_in) = MONTH(CURDATE())
         ");
         $stmt->execute([$userId]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
     
     private function getWeeklyHours($db, $userId) {
-        $stmt = $db->prepare("SELECT SUM(work_hours) FROM attendance WHERE user_id = ? AND WEEK(clock_in) = WEEK(CURDATE())");
+        $stmt = $db->prepare("SELECT SUM(work_hours) FROM attendance WHERE user_id = ? AND WEEK(check_in) = WEEK(CURDATE())");
         $stmt->execute([$userId]);
         return $stmt->fetchColumn() ?: 0;
     }

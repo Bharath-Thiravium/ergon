@@ -30,41 +30,41 @@ ob_start();
     <div class="kpi-card">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">👥</div>
-            <div class="kpi-card__trend">↗ +5%</div>
+            <div class="kpi-card__trend">↗ Active</div>
         </div>
         <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['total_users'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
         <div class="kpi-card__label">Active Users</div>
-        <div class="kpi-card__status">Online</div>
+        <div class="kpi-card__status"><?= $attPct ?>% present today</div>
     </div>
     
     <div class="kpi-card">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">📋</div>
-            <div class="kpi-card__trend">↗ +18%</div>
+            <div class="kpi-card__trend">— Tasks</div>
         </div>
         <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['active_tasks'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
         <div class="kpi-card__label">Active Tasks</div>
-        <div class="kpi-card__status">In Progress</div>
+        <div class="kpi-card__status"><?= $data['stats']['critical'] ?? 0 ?> critical</div>
     </div>
     
     <div class="kpi-card kpi-card--warning">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">🏖️</div>
-            <div class="kpi-card__trend kpi-card__trend--down">— 0%</div>
+            <div class="kpi-card__trend"><?= ($data['stats']['pending_leaves'] ?? 0) > 0 ? '⏳ Needs Review' : '✅ Clear' ?></div>
         </div>
         <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['pending_leaves'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
         <div class="kpi-card__label">Pending Leaves</div>
-        <div class="kpi-card__status kpi-card__status--pending">Needs Review</div>
+        <div class="kpi-card__status kpi-card__status--pending"><?= ($data['stats']['pending_leaves'] ?? 0) > 0 ? 'Needs Review' : 'All Clear' ?></div>
     </div>
     
     <div class="kpi-card">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">💰</div>
-            <div class="kpi-card__trend kpi-card__trend--down">↘ -3%</div>
+            <div class="kpi-card__trend"><?= ($data['stats']['pending_expenses'] ?? 0) > 0 ? '⏳ Pending' : '✅ Clear' ?></div>
         </div>
         <div class="kpi-card__value"><?= htmlspecialchars($data['stats']['pending_expenses'] ?? '0', ENT_QUOTES, 'UTF-8') ?></div>
         <div class="kpi-card__label">Pending Expenses</div>
-        <div class="kpi-card__status">Under Review</div>
+        <div class="kpi-card__status"><?= ($data['stats']['pending_expenses'] ?? 0) > 0 ? 'Under Review' : 'All Processed' ?></div>
     </div>
 </div>
 
