@@ -10,11 +10,57 @@ define('ERGON_ROOT', __DIR__);
 require_once __DIR__ . '/app/config/environment.php';
 require_once __DIR__ . '/app/config/database.php';
 
-// ── Simple auth guard — only localhost ───────────────────────────────────────
-$ip = $_SERVER['REMOTE_ADDR'] ?? '';
-if (!in_array($ip, ['127.0.0.1', '::1'])) {
-    http_response_code(403);
-    die('Access denied. Run from localhost only.');
+// ── Simple auth guard — password protected ──────────────────────────────────
+$SECRET = 'ergon_migrate_2025';
+$authorized = ($_GET['token'] ?? '') === $SECRET || ($_POST['token'] ?? '') === $SECRET || (isset($_SESSION['migration_auth']) && $_SESSION['migration_auth'] === $SECRET);
+
+if (!$authorized) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['token'])) {
+        // Wrong password submitted
+        $authError = 'Invalid token. Access denied.';
+    }
+    if (!isset($authError)) {
+        // Show password form
+        ?>
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="UTF-8">
+        <title>Migration Runner — ERGON</title>
+        <style>
+          *{box-sizing:border-box;margin:0;padding:0}
+          body{font-family:system-ui,sans-serif;background:#f1f5f9;display:flex;justify-content:center;align-items:center;min-height:100vh}
+          .card{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);width:100%;max-width:380px;overflow:hidden}
+          .card-head{padding:1.25rem 1.5rem;background:#1e293b;color:#fff}
+          .card-head h1{font-size:1.1rem;font-weight:700}
+          .card-body{padding:1.5rem;display:flex;flex-direction:column;gap:1rem}
+          input{width:100%;padding:.65rem .85rem;border:1px solid #e2e8f0;border-radius:8px;font-size:.9rem}
+          button{padding:.7rem;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer}
+          button:hover{background:#2563eb}
+          .err{color:#dc2626;font-size:.82rem}
+        </style>
+        </head>
+        <body>
+        <div class="card">
+          <div class="card-head"><h1>⚙️ Migration Runner</h1></div>
+          <div class="card-body">
+            <form method="POST">
+              <div style="display:flex;flex-direction:column;gap:.75rem">
+                <label style="font-size:.85rem;font-weight:600;color:#374151">Enter migration token</label>
+                <input type="password" name="token" placeholder="Token" autofocus>
+                <?php if (isset($authError)): ?>
+                <div class="err"><?= htmlspecialchars($authError) ?></div>
+                <?php endif; ?>
+                <button type="submit">Run Migration →</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
 }
 
 // ── Run migrations ────────────────────────────────────────────────────────────
