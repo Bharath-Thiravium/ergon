@@ -9,6 +9,9 @@ class SiteReportController extends Controller {
 
     public function __construct() {
         $this->db = Database::connect();
+        // Force IST for all date/time operations in this controller
+        date_default_timezone_set('Asia/Kolkata');
+        $this->db->exec("SET time_zone = '+05:30'");
     }
 
     // GET /site-reports  — list all reports (admin/owner)

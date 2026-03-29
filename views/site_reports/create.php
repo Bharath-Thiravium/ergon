@@ -174,7 +174,7 @@ $defaultTab = 'paste';
     <div class="sr-grid">
         <div class="form-group">
             <label class="form-label">Date *</label>
-            <input type="date" name="report_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+            <input type="date" name="report_date" class="form-control" value="<?= (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d') ?>" required>
         </div>
         <div class="form-group">
             <label class="form-label">Project</label>
@@ -624,7 +624,7 @@ function parseAndPreview() {
     document.getElementById('previewContent').innerHTML = html;
 
     // Populate hidden form fields
-    document.getElementById('f_date').value    = d.date || new Date().toISOString().slice(0,10);
+    document.getElementById('f_date').value    = d.date || '<?= (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d') ?>';
     document.getElementById('f_site').value    = d.site || 'Unknown Site';
     document.getElementById('f_total_mp').value = d.total_manpower;
 
