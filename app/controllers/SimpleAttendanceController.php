@@ -77,6 +77,9 @@ class SimpleAttendanceController extends Controller {
                     WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
                         CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, a.check_out), 'h ', 
                                TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) % 60, 'm')
+                    WHEN a.check_in IS NOT NULL THEN
+                        CONCAT(TIMESTAMPDIFF(HOUR, a.check_in, NOW()), 'h ',
+                               TIMESTAMPDIFF(MINUTE, a.check_in, NOW()) % 60, 'm')
                     ELSE '0h 0m'
                 END as working_hours
             FROM users u
@@ -493,11 +496,9 @@ class SimpleAttendanceController extends Controller {
             if ($record['check_in'] && $record['status'] === 'Present') {
                 $presentDays++;
                 
-                // Calculate working hours only if both check_in and check_out exist
-                if ($record['check_out']) {
-                    $minutes = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 60;
-                    $totalMinutes += $minutes;
-                }
+                $endTime = $record['check_out'] ?: date('Y-m-d H:i:s');
+                $minutes = max(0, (strtotime($endTime) - strtotime($record['check_in'])) / 60);
+                $totalMinutes += $minutes;
             }
         }
         

@@ -170,7 +170,7 @@ class LedgerController extends Controller {
         
         error_log('Project Ledger - User role: ' . ($_SESSION['role'] ?? 'none'));
         
-        if (!in_array($_SESSION['role'] ?? '', ['owner', 'admin'])) {
+        if (!in_array($_SESSION['role'] ?? '', ['owner', 'company_owner', 'admin'])) {
             error_log('Project Ledger - Access denied for role: ' . ($_SESSION['role'] ?? 'none'));
             header('Location: /ergon/dashboard');
             exit;

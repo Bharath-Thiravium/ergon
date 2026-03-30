@@ -103,6 +103,26 @@ ob_start();
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
+
+.module-filters {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.module-filters__group {
+    min-width: 240px;
+}
+
+.module-filters__label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #374151;
+}
 </style>
 
 <div class="page-header">
@@ -111,8 +131,24 @@ ob_start();
         <p>Track and manage employee expense claims</p>
     </div>
     <div class="page-actions">
+        <form method="GET" class="module-filters">
+            <div class="module-filters__group">
+                <label for="expense-project-filter" class="module-filters__label">Filter By Project</label>
+                <select id="expense-project-filter" name="project_id" class="form-control" onchange="this.form.submit()">
+                    <option value="">All Projects</option>
+                    <?php foreach (($projects ?? []) as $project): ?>
+                    <option value="<?= (int) ($project['id'] ?? 0) ?>" <?= ((int) ($filters['project_id'] ?? 0) === (int) ($project['id'] ?? 0)) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($project['name'] ?? 'Unnamed Project', ENT_QUOTES, 'UTF-8') ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php if (!empty($filters['project_id'])): ?>
+            <a href="/ergon/expenses" class="btn btn--secondary">Clear Filter</a>
+            <?php endif; ?>
+        </form>
         <button onclick="showExpenseModal()" class="btn btn--primary">
-            <span>💰</span> Submit Expense
+            <span></span> Submit Expense
         </button>
     </div>
 </div>
@@ -213,6 +249,7 @@ $expenseClaimsDistribution = ExpenseDistributionHelper::getStatusDistribution($e
             <span>💰</span> Expense Claims
         </h2>
     </div>
+    <div class="card__body">
     <div class="card__body">
         <div class="table-responsive">
             <table class="table">
@@ -912,3 +949,4 @@ document.addEventListener('click', function(e) {
 $content = ob_get_clean();
 include __DIR__ . '/../layouts/dashboard.php';
 ?>
+

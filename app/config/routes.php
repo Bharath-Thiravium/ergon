@@ -258,6 +258,10 @@ $router->get('/planner/getPlansForDate', 'PlannerController', 'getPlansForDate')
 $router->get('/daily-planner/dashboard', 'DailyWorkflowController', 'progressDashboard');
 // Note: project-overview and delayed-tasks-overview routes are handled by DashboardController above
 
+// WhatsApp parsing — shared across all roles
+$router->post('/api/parse-whatsapp', 'ApiController', 'parseWhatsApp');
+$router->post('/api/parse-whatsapp-site-report', 'ApiController', 'parseWhatsAppSiteReport');
+
 // API Routes
 $router->post('/api/login', 'ApiController', 'login');
 $router->post('/api/attendance', 'ApiController', 'attendance');

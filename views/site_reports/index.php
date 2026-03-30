@@ -14,7 +14,7 @@
     <div class="page-header-content">
         <h1 class="page-title">📋 Site Daily Reports</h1>
         <div style="display:flex;gap:.5rem">
-            <?php if ($role === 'admin' || $role === 'company_owner'): ?>
+            <?php if (in_array($role, ['admin', 'owner', 'company_owner'], true)): ?>
             <a href="/ergon/site-reports/summary" class="btn btn--secondary btn--sm">📊 Summary</a>
             <?php endif; ?>
             <a href="/ergon/site-reports/create" class="btn btn--primary btn--sm">+ Submit Report</a>

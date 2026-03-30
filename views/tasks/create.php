@@ -899,6 +899,15 @@ function checkUrlMessages() {
 
 // Form initialization
 document.addEventListener('DOMContentLoaded', function() {
+    // WhatsApp paste widget — works for all roles (user, admin, owner)
+    if (typeof WhatsAppWidget !== 'undefined') {
+        WhatsAppWidget.init({ pasteTarget: '#description' });
+    } else {
+        const waScript = document.createElement('script');
+        waScript.src = '/ergon/assets/js/whatsapp-widget.js';
+        waScript.onload = () => WhatsAppWidget.init({ pasteTarget: '#description' });
+        document.head.appendChild(waScript);
+    }
     // Check for messages first
     checkUrlMessages();
     // SLA time inputs event listeners

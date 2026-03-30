@@ -24,6 +24,7 @@ class UserController extends Controller {
         try {
             $db = Database::connect();
             $userId = $_SESSION['user_id'];
+            $financialSummary = $this->getDashboardFinancialSummary($db, $userId);
             
             // Get user's personal statistics
             $stats = [
@@ -46,6 +47,7 @@ class UserController extends Controller {
             
             // Check if user needs to clock in/out
             $attendanceStatus = $this->getTodayAttendanceStatus($db, $userId);
+            $smartAlerts = $this->getSmartAlerts($db, $userId, $attendanceStatus);
             
             $this->view('dashboard/user', [
                 'stats' => $stats,
@@ -53,6 +55,10 @@ class UserController extends Controller {
                 'recent_activities' => $recentActivities,
                 'notifications' => $notifications,
                 'attendance_status' => $attendanceStatus,
+                'smart_alerts' => $smartAlerts,
+                'expense_total' => $financialSummary['expense_total'],
+                'advance_total' => $financialSummary['advance_total'],
+                'outstanding_total' => $financialSummary['outstanding_total'],
                 'active_page' => 'dashboard'
             ]);
             
@@ -465,7 +471,15 @@ class UserController extends Controller {
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
                 SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN due_date < CURDATE() AND status != 'completed' THEN 1 ELSE 0 END) as overdue
+                SUM(
+                    CASE
+                        WHEN COALESCE(deadline, due_date, planned_date) IS NOT NULL
+                         AND DATE(COALESCE(deadline, due_date, planned_date)) < CURDATE()
+                         AND status NOT IN ('completed', 'cancelled', 'suspended')
+                        THEN 1
+                        ELSE 0
+                    END
+                ) as overdue
             FROM tasks WHERE assigned_to = ?
         ");
         $stmt->execute([$userId]);
@@ -473,7 +487,14 @@ class UserController extends Controller {
     }
     
     private function getAttendanceStats($db, $userId) {
-        $stmt = $db->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = ? AND MONTH(check_in) = MONTH(CURDATE()) AND YEAR(check_in) = YEAR(CURDATE()) AND status != 'absent'");
+        $stmt = $db->prepare("
+            SELECT COUNT(*)
+            FROM attendance
+            WHERE user_id = ?
+              AND MONTH(check_in) = MONTH(CURDATE())
+              AND YEAR(check_in) = YEAR(CURDATE())
+              AND check_in IS NOT NULL
+        ");
         $stmt->execute([$userId]);
         return $stmt->fetchColumn();
     }
@@ -490,7 +511,14 @@ class UserController extends Controller {
     }
     
     private function getCompletedTasksCount($db, $userId) {
-        $stmt = $db->prepare("SELECT COUNT(*) FROM tasks WHERE assigned_to = ? AND status = 'completed' AND MONTH(updated_at) = MONTH(CURDATE())");
+        $stmt = $db->prepare("
+            SELECT COUNT(*)
+            FROM tasks
+            WHERE assigned_to = ?
+              AND status = 'completed'
+              AND MONTH(updated_at) = MONTH(CURDATE())
+              AND YEAR(updated_at) = YEAR(CURDATE())
+        ");
         $stmt->execute([$userId]);
         return $stmt->fetchColumn();
     }
@@ -498,7 +526,13 @@ class UserController extends Controller {
     private function getLeaveBalance($db, $userId) {
         // Calculate leave balance based on company policy
         $totalLeaves = 24; // Annual leave entitlement
-        $stmt = $db->prepare("SELECT COALESCE(SUM(days), 0) FROM leaves WHERE user_id = ? AND status = 'approved' AND YEAR(start_date) = YEAR(CURDATE())");
+        $stmt = $db->prepare("
+            SELECT COALESCE(SUM(days_requested), 0)
+            FROM leaves
+            WHERE user_id = ?
+              AND YEAR(start_date) = YEAR(CURDATE())
+              AND status = 'approved'
+        ");
         $stmt->execute([$userId]);
         $usedLeaves = $stmt->fetchColumn();
         
@@ -506,7 +540,26 @@ class UserController extends Controller {
     }
     
     private function getTodayTasks($db, $userId) {
-        $stmt = $db->prepare("SELECT * FROM tasks WHERE assigned_to = ? AND (due_date = CURDATE() OR status = 'in_progress') ORDER BY priority DESC, due_date ASC");
+        $stmt = $db->prepare("
+            SELECT *
+            FROM tasks
+            WHERE assigned_to = ?
+              AND (
+                    planned_date = CURDATE()
+                    OR due_date = CURDATE()
+                    OR DATE(deadline) = CURDATE()
+                    OR status = 'in_progress'
+                  )
+              AND status NOT IN ('completed', 'cancelled', 'suspended')
+            ORDER BY
+                CASE priority
+                    WHEN 'high' THEN 1
+                    WHEN 'medium' THEN 2
+                    ELSE 3
+                END,
+                COALESCE(deadline, due_date, planned_date) ASC,
+                created_at DESC
+        ");
         $stmt->execute([$userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -518,7 +571,7 @@ class UserController extends Controller {
     }
     
     private function getRecentNotifications($db, $userId) {
-        $stmt = $db->prepare("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
+        $stmt = $db->prepare("SELECT * FROM notifications WHERE receiver_id = ? ORDER BY created_at DESC LIMIT 5");
         $stmt->execute([$userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -543,7 +596,7 @@ class UserController extends Controller {
         
         switch ($filter) {
             case 'pending':
-                $whereClause .= " AND status = 'pending'";
+                $whereClause .= " AND status IN ('assigned', 'pending')";
                 break;
             case 'in_progress':
                 $whereClause .= " AND status = 'in_progress'";
@@ -552,11 +605,11 @@ class UserController extends Controller {
                 $whereClause .= " AND status = 'completed'";
                 break;
             case 'overdue':
-                $whereClause .= " AND due_date < CURDATE() AND status != 'completed'";
+                $whereClause .= " AND DATE(COALESCE(deadline, due_date, planned_date)) < CURDATE() AND status NOT IN ('completed', 'cancelled', 'suspended')";
                 break;
         }
         
-        $stmt = $db->prepare("SELECT * FROM tasks WHERE {$whereClause} ORDER BY due_date ASC, priority DESC");
+        $stmt = $db->prepare("SELECT * FROM tasks WHERE {$whereClause} ORDER BY COALESCE(deadline, due_date, planned_date, created_at) ASC, priority DESC");
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -649,8 +702,8 @@ class UserController extends Controller {
             SELECT
                 COALESCE(SUM(amount),0) as total,
                 COALESCE(SUM(CASE WHEN status='pending' THEN amount ELSE 0 END),0) as pending,
-                COALESCE(SUM(CASE WHEN status IN ('approved','reimbursed') THEN amount ELSE 0 END),0) as approved,
-                COALESCE(SUM(CASE WHEN status='reimbursed' THEN amount ELSE 0 END),0) as reimbursed
+                COALESCE(SUM(CASE WHEN status IN ('approved','paid','reimbursed') THEN COALESCE(approved_amount, amount) ELSE 0 END),0) as approved,
+                COALESCE(SUM(CASE WHEN status IN ('paid','reimbursed') THEN COALESCE(approved_amount, amount) ELSE 0 END),0) as reimbursed
             FROM expenses WHERE user_id = ?
         ");
         $expStmt->execute([$userId]);
@@ -667,6 +720,99 @@ class UserController extends Controller {
                 'total_unclaimed'  => $pendingExp + $pendingAdv,
             ],
         ];
+    }
+
+    private function getDashboardFinancialSummary($db, $userId): array {
+        $expenseStmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?");
+        $expenseStmt->execute([$userId]);
+        $expenseTotal = (float) $expenseStmt->fetchColumn();
+
+        $advanceStmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) FROM advances WHERE user_id = ?");
+        $advanceStmt->execute([$userId]);
+        $advanceTotal = (float) $advanceStmt->fetchColumn();
+
+        return [
+            'expense_total' => $expenseTotal,
+            'advance_total' => $advanceTotal,
+            'outstanding_total' => $advanceTotal - $expenseTotal,
+        ];
+    }
+
+    private function getSmartAlerts($db, $userId, array $attendanceStatus): array {
+        $alerts = [];
+
+        if (($attendanceStatus['status'] ?? 'not_clocked_in') === 'not_clocked_in' && !$this->isUserOnApprovedLeaveToday($db, $userId)) {
+            $alerts[] = [
+                'type' => 'warning',
+                'title' => 'Clock-in missing',
+                'message' => 'You have not clocked in today.',
+                'action_label' => 'Open Attendance',
+                'action_url' => '/ergon/attendance',
+            ];
+        }
+
+        $taskStmt = $db->prepare("
+            SELECT COUNT(*) as overdue_count,
+                   MAX(DATEDIFF(CURDATE(), DATE(COALESCE(deadline, due_date, planned_date)))) as max_days_overdue
+            FROM tasks
+            WHERE assigned_to = ?
+              AND COALESCE(deadline, due_date, planned_date) IS NOT NULL
+              AND DATE(COALESCE(deadline, due_date, planned_date)) < CURDATE()
+              AND status NOT IN ('completed', 'cancelled', 'suspended')
+        ");
+        $taskStmt->execute([$userId]);
+        $taskAlert = $taskStmt->fetch(PDO::FETCH_ASSOC) ?: ['overdue_count' => 0, 'max_days_overdue' => 0];
+
+        if ((int) ($taskAlert['overdue_count'] ?? 0) > 0) {
+            $alerts[] = [
+                'type' => 'danger',
+                'title' => 'Task overdue',
+                'message' => (int) $taskAlert['overdue_count'] . ' task(s) are overdue' .
+                    ((int) ($taskAlert['max_days_overdue'] ?? 0) > 0 ? ' by up to ' . (int) $taskAlert['max_days_overdue'] . ' day(s).' : '.'),
+                'action_label' => 'View Tasks',
+                'action_url' => '/ergon/tasks?filter=overdue',
+            ];
+        }
+
+        try {
+            $tableStmt = $db->query("SHOW TABLES LIKE 'site_reports'");
+            if ($tableStmt && $tableStmt->rowCount() > 0) {
+                $reportStmt = $db->prepare("SELECT COUNT(*) FROM site_reports WHERE submitted_by = ? AND report_date = CURDATE()");
+                $reportStmt->execute([$userId]);
+                $hasReportToday = (int) $reportStmt->fetchColumn() > 0;
+
+                if (!$hasReportToday) {
+                    $alerts[] = [
+                        'type' => 'info',
+                        'title' => 'Submit today\'s report',
+                        'message' => 'Your daily site report has not been submitted yet.',
+                        'action_label' => 'Submit Report',
+                        'action_url' => '/ergon/site-reports/create',
+                    ];
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Smart alert report check error: ' . $e->getMessage());
+        }
+
+        return $alerts;
+    }
+
+    private function isUserOnApprovedLeaveToday($db, $userId): bool {
+        try {
+            $stmt = $db->prepare("
+                SELECT COUNT(*)
+                FROM leaves
+                WHERE user_id = ?
+                  AND status = 'approved'
+                  AND CURDATE() BETWEEN start_date AND end_date
+            ");
+            $stmt->execute([$userId]);
+            return (int) $stmt->fetchColumn() > 0;
+        } catch (Exception $e) {
+            error_log('Approved leave check error: ' . $e->getMessage());
+            return false;
+        }
     }
 
     private function logActivity($db, $userId, $action, $description) {

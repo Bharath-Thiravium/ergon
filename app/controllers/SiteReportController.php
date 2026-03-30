@@ -21,8 +21,9 @@ class SiteReportController extends Controller {
         $userId = $_SESSION['user_id'];
         $role   = $_SESSION['role'] ?? 'user';
 
-        $where  = ($role === 'admin' || $role === 'company_owner') ? '' : 'WHERE sr.submitted_by = ?';
-        $params = ($role === 'admin' || $role === 'company_owner') ? [] : [$userId];
+        $canViewAllReports = in_array($role, ['admin', 'owner', 'company_owner'], true);
+        $where = $canViewAllReports ? '' : 'WHERE sr.submitted_by = ?';
+        $params = $canViewAllReports ? [] : [$userId];
 
         $reports = $this->db->prepare("
             SELECT sr.*, u.name AS submitted_by_name,
@@ -96,6 +97,37 @@ class SiteReportController extends Controller {
         if (!$this->isPost()) { $this->redirect('/site-reports/create'); return; }
 
         $p = $_POST;
+
+        // ── Server-side WhatsApp parsing ───────────────────────────────────────────────
+        // If raw WhatsApp text was submitted (paste tab), parse it server-side.
+        // This ensures consistent output regardless of JS execution.
+        require_once __DIR__ . '/../services/WhatsAppParser.php';
+        if (!empty(trim($p['wa_raw'] ?? ''))) {
+            $parsed = WhatsAppParser::parseSiteReport($p['wa_raw']);
+            // Fill in any fields the client didn’t populate
+            if (empty($p['report_date']) && $parsed['date'])   $p['report_date']    = $parsed['date'];
+            if (empty($p['site_name'])   && $parsed['site'])   $p['site_name']      = $parsed['site'];
+            if (empty($p['total_manpower']) && $parsed['total_manpower']) $p['total_manpower'] = $parsed['total_manpower'];
+            // Merge parsed tasks into tasks array
+            if (!empty($parsed['tasks'])) {
+                $p['tasks'] = array_merge($p['tasks'] ?? [], $parsed['tasks']);
+            }
+            // Merge manpower counts
+            foreach ($parsed['manpower_counts'] as $cat => $count) {
+                if (empty($p['mp'][$cat]['count'])) $p['mp'][$cat]['count'] = $count;
+            }
+            foreach ($parsed['manpower_names'] as $cat => $names) {
+                if (empty($p['mp'][$cat]['names'])) $p['mp'][$cat]['names'] = implode("\n", $names);
+            }
+            foreach ($parsed['machinery'] as $mach => $count) {
+                if (empty($p['mach'][$mach]['count'])) $p['mach'][$mach]['count'] = $count;
+            }
+        }
+
+        // Always clean the remarks field to strip WhatsApp noise
+        if (!empty($p['remarks'])) {
+            $p['remarks'] = WhatsAppParser::clean($p['remarks']);
+        }
 
         // Enforce reporting window (skip for admin/owner)
         $role = $_SESSION['role'] ?? 'user';

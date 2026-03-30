@@ -1,6 +1,7 @@
 <?php
 ob_start();
 header('Content-Type: text/html; charset=UTF-8');
+require_once __DIR__ . '/../../app/config/environment.php';
 require_once __DIR__ . '/../../app/helpers/Security.php';
 require_once __DIR__ . '/../../app/helpers/SecurityHeaders.php';
 require_once __DIR__ . '/../../app/helpers/ModuleManager.php';
@@ -86,8 +87,8 @@ ob_end_clean();
     
     <script src="/ergon/assets/js/theme-preload.js?v=<?= time() ?>"></script>
     <script>const APP_BASE = (location.protocol + '//' + location.host + '/ergon');</script>
-        <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    <script>
+    // Convert title attributes to data-tooltip for custom tooltips
         document.querySelectorAll('[title]').forEach(function(el) {
             el.setAttribute('data-tooltip', el.getAttribute('title'));
             el.removeAttribute('title');
@@ -194,49 +195,47 @@ ob_end_clean();
     }
     </style>
     
-    <link href="/ergon/assets/css/bootstrap-icons.min.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/ergon.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/theme-enhanced.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/utilities-new.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/instant-theme.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/global-tooltips.css?v=1.0" rel="stylesheet">
-
-
-    <link href="/ergon/assets/css/responsive-mobile.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/_archive_legacy/css/user-management-mobile.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/_archive_legacy/css/management-mobile-fix.css?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/bootstrap-icons.min.css') ?>?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/ergon.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/theme-enhanced.css') ?>?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/utilities-new.css') ?>?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/instant-theme.css') ?>?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/global-tooltips.css') ?>?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/responsive-mobile.css') ?>?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/_archive_legacy/css/user-management-mobile.css') ?>?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/_archive_legacy/css/management-mobile-fix.css') ?>?v=1.0" rel="stylesheet">
     <!-- Mobile Dark Theme Fixes - Critical for visibility -->
-    <link href="/ergon/assets/css/mobile-dark-theme-fixes.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/mobile-dark-theme-fixes.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Dark Mode Alert & Notification Fixes - Critical for visibility -->
-    <link href="/ergon/assets/css/dark-mode-alerts-fix.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/dark-mode-alerts-fix.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- New Simplified Modal CSS -->
-    <link href="/ergon/assets/css/modal.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/modal.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Dashboard overrides loaded last to ensure overrides on compiled CSS in deployments -->
-    <link href="/ergon/assets/css/ergon-overrides.css?v=<?= time() ?>" rel="stylesheet">
-    <link href="/ergon/assets/css/access-denied.css?v=1.0" rel="stylesheet">
-    <link href="/ergon/assets/css/premium-navigation.css?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/ergon-overrides.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/access-denied.css') ?>?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/premium-navigation.css') ?>?v=1.0" rel="stylesheet">
     <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
-    <link href="/ergon/assets/css/dashboard-owner.css?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/dashboard-owner.css') ?>?v=1.0" rel="stylesheet">
     <?php endif; ?>
     <?php if (isset($additional_css)): ?>
     <?= $additional_css ?>
     <?php endif; ?>
 
-    <script src="/ergon/assets/js/theme-switcher.js?v=1.0" defer></script>
-    <script src="/ergon/assets/js/ergon-core.min.js?v=1.0" defer></script>
+    <script src="<?= Environment::asset('assets/js/theme-switcher.js') ?>?v=1.0" defer></script>
+    <script src="<?= Environment::asset('assets/js/ergon-core.min.js') ?>?v=1.0" defer></script>
     <!-- New Simplified Modal JS -->
-    <script src="/ergon/assets/js/modal.js?v=1.0" defer></script>
-    <script src="/ergon/assets/_archive_legacy/js/action-button-clean.js?v=1.0" defer></script>
-    <script src="/ergon/assets/_archive_legacy/js/mobile-enhanced.js?v=1.0" defer></script>
-    <script src="/ergon/assets/js/mobile-table-cards.js?v=1.0" defer></script>
-    <script src="/ergon/assets/js/table-utils.js?v=1.0" defer></script>
-    <script src="/ergon/assets/js/user-status-check.js?v=1.0" defer></script>
-    <script src="/ergon/assets/js/premium-navigation.js?v=1.0" defer></script>
+    <script src="<?= Environment::asset('assets/js/modal.js') ?>?v=1.0" defer></script>
+    <script src="<?= Environment::asset('assets/_archive_legacy/js/action-button-clean.js') ?>?v=1.0" defer></script>
+    <script src="<?= Environment::asset('assets/_archive_legacy/js/mobile-enhanced.js') ?>?v=1.0" defer></script>
+    <script src="<?= Environment::asset('assets/js/mobile-table-cards.js') ?>?v=1.0" defer></script>
+    <script src="<?= Environment::asset('assets/js/table-utils.js') ?>?v=1.0" defer></script>
+    <script src="<?= Environment::asset('assets/js/user-status-check.js') ?>?v=1.0" defer></script>
+    <script src="<?= Environment::asset('assets/js/premium-navigation.js') ?>?v=1.0" defer></script>
     <!-- Dark Mode Alert Enhancements -->
-    <script src="/ergon/assets/js/dark-mode-alerts.js?v=<?= time() ?>" defer></script>
+    <script src="<?= Environment::asset('assets/js/dark-mode-alerts.js') ?>?v=<?= time() ?>" defer></script>
 
     <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
-    <script src="/ergon/assets/js/mobile-validation.js?v=<?= time() ?>" defer></script>
+    <script src="<?= Environment::asset('assets/js/mobile-validation.js') ?>?v=<?= time() ?>" defer></script>
     <?php endif; ?>
 </head>
 <body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>" data-user-role="<?= $_SESSION['role'] ?? 'user' ?>" data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>">
@@ -475,6 +474,10 @@ ob_end_clean();
                             <a href="/ergon/finance" class="nav-dropdown-item <?= ($active_page ?? '') === 'finance' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">💰</span>
                                 Finance
+                            </a>
+                            <a href="/ergon/site-reports" class="nav-dropdown-item <?= ($active_page ?? '') === 'site_reports' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📋</span>
+                                Site Reports
                             </a>
                         </div>
                     </div>
@@ -1771,3 +1774,4 @@ ob_end_clean();
 
 </body>
 </html>
+

@@ -6,14 +6,52 @@ require_once __DIR__ . '/../../app/helpers/AdvanceDistributionHelper.php';
 ob_start();
 ?>
 
+<style>
+.module-filters {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.module-filters__group {
+    min-width: 240px;
+}
+
+.module-filters__label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #374151;
+}
+</style>
+
 <div class="page-header">
     <div class="page-title">
         <h1><span>💳</span> Advance Requests</h1>
         <p>Manage employee salary advance requests and approvals</p>
     </div>
     <div class="page-actions">
+        <form method="GET" class="module-filters">
+            <div class="module-filters__group">
+                <label for="advance-project-filter" class="module-filters__label">Filter By Project</label>
+                <select id="advance-project-filter" name="project_id" class="form-control" onchange="this.form.submit()">
+                    <option value="">All Projects</option>
+                    <?php foreach (($projects ?? []) as $project): ?>
+                    <option value="<?= (int) ($project['id'] ?? 0) ?>" <?= ((int) ($filters['project_id'] ?? 0) === (int) ($project['id'] ?? 0)) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($project['name'] ?? 'Unnamed Project', ENT_QUOTES, 'UTF-8') ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php if (!empty($filters['project_id'])): ?>
+            <a href="/ergon/advances" class="btn btn--secondary">Clear Filter</a>
+            <?php endif; ?>
+        </form>
         <button onclick="showAdvanceModal()" class="btn btn--primary">
-            <span>➕</span> Request Advance
+            Request Advance
         </button>
     </div>
 </div>
@@ -114,6 +152,7 @@ $pendingRequestsDistribution = AdvanceDistributionHelper::getStatusDistribution(
             <span>💳</span> Advance Requests
         </h2>
     </div>
+    <div class="card__body">
     <div class="card__body">
         <div class="table-responsive">
             <table class="table">
@@ -864,3 +903,4 @@ document.addEventListener('click', function(e) {
 $content = ob_get_clean();
 include __DIR__ . '/../layouts/dashboard.php';
 ?>
+

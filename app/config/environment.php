@@ -65,7 +65,19 @@ class Environment {
             || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
         $protocol = $isHttps ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        // Production domains with explicit protocol
+        if (strpos($host, 'bkgreenenergy.com') !== false) {
+            return 'https://bkgreenenergy.com/ergon';
+        }
+        if (strpos($host, 'athenas.co.in') !== false) {
+            return 'https://athenas.co.in/ergon';
+        }
+
         return $protocol . '://' . $host . '/ergon';
+    }
+
+    public static function asset($path) {
+        return self::getBaseUrl() . '/' . ltrim($path, '/');
     }
     
     public static function isHostinger() {

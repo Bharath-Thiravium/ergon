@@ -5,6 +5,53 @@ require_once __DIR__ . '/../services/LocationService.php';
 
 class ApiController extends Controller {
     
+    public function parseWhatsApp() {
+        $this->requireAuth();
+        header('Content-Type: application/json');
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $raw   = trim($input['text'] ?? ($_POST['text'] ?? ''));
+
+        if ($raw === '') {
+            echo json_encode(['success' => false, 'error' => 'No text provided']);
+            exit;
+        }
+
+        require_once __DIR__ . '/../services/WhatsAppParser.php';
+        $parsed = WhatsAppParser::parse($raw);
+        $errors = WhatsAppParser::validate($parsed);
+
+        echo json_encode([
+            'success'        => empty($errors),
+            'errors'         => $errors,
+            'is_whatsapp'    => $parsed['is_whatsapp'],
+            'work_done'      => $parsed['work_done'],
+            'materials_used' => $parsed['materials_used'],
+            'issues_faced'   => $parsed['issues_faced'],
+            'raw_cleaned'    => $parsed['raw_cleaned'],
+        ]);
+        exit;
+    }
+
+    public function parseWhatsAppSiteReport() {
+        $this->requireAuth();
+        header('Content-Type: application/json');
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $raw   = trim($input['text'] ?? ($_POST['text'] ?? ''));
+
+        if ($raw === '') {
+            echo json_encode(['success' => false, 'error' => 'No text provided']);
+            exit;
+        }
+
+        require_once __DIR__ . '/../services/WhatsAppParser.php';
+        $parsed = WhatsAppParser::parseSiteReport($raw);
+
+        echo json_encode(['success' => true] + $parsed);
+        exit;
+    }
+
     public function userProjects() {
         $this->requireAuth();
         
