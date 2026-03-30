@@ -264,7 +264,7 @@ ob_start();
             <div class="progress-form-group">
                 <label for="progressDescription">Progress Description *</label>
                 <textarea id="progressDescription" class="progress-description" 
-                          placeholder="Describe what you've accomplished, current status, or next steps..." 
+                          placeholder="Paste WhatsApp message or describe what you've accomplished…" 
                           required></textarea>
             </div>
             
@@ -366,6 +366,16 @@ document.addEventListener('DOMContentLoaded', function() {
 const script = document.createElement('script');
 script.src = '/ergon/assets/js/task-progress-enhanced.js';
 document.head.appendChild(script);
+
+// WhatsApp paste widget — works for all roles (user, admin, owner)
+const waScript = document.createElement('script');
+waScript.src = '/ergon/assets/js/whatsapp-widget.js';
+waScript.onload = function() {
+    WhatsAppWidget.init({
+        pasteTarget : '#progressDescription',
+    });
+};
+document.head.appendChild(waScript);
 </script>
 
 <style>

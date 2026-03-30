@@ -12,17 +12,22 @@ $pendingReqs    = $stats['pending_requests'] ?? 0;
 $completedMonth = $stats['completed_tasks_this_month'] ?? 0;
 $leaveBalance   = $stats['leave_balance'] ?? 0;
 $quickFinance   = $stats['quick_finance'] ?? [];
+$smartAlerts    = $smart_alerts ?? [];
+$expenseTotal   = isset($expense_total) ? (float) $expense_total : 0.0;
+$advanceTotal   = isset($advance_total) ? (float) $advance_total : 0.0;
+$outstandingTotal = isset($outstanding_total) ? (float) $outstanding_total : 0.0;
+
+if (!function_exists('formatDashboardCurrency')) {
+    function formatDashboardCurrency($amount): string {
+        return '&#8377; ' . number_format((float) $amount, 2);
+    }
+}
 
 ob_start();
 ?>
 <style>
 .ud-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
-.ud-kpi-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-top:3px solid #e5e7eb}
-.ud-kpi-card.green{border-top-color:#10b981}
-.ud-kpi-card.blue{border-top-color:#3b82f6}
-.ud-kpi-card.yellow{border-top-color:#f59e0b}
-.ud-kpi-card.purple{border-top-color:#8b5cf6}
-.ud-kpi-card.red{border-top-color:#ef4444}
+.ud-kpi-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
 .ud-kpi-val{font-size:22px;font-weight:800;color:#111827}
 .ud-kpi-lbl{font-size:11px;color:#6b7280;margin-top:3px;text-transform:uppercase;letter-spacing:.4px;font-weight:500}
 .ud-kpi-sub{font-size:12px;color:#9ca3af;margin-top:2px}
@@ -84,6 +89,26 @@ ob_start();
 [data-theme="dark"] .qsv-row{border-color:#374151;color:#d1d5db}
 [data-theme="dark"] .qsv-lbl{color:#9ca3af}
 [data-theme="dark"] .qsv-val{color:#f9fafb}
+
+.finance-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px}
+.finance-summary-value{font-size:26px}
+.finance-summary-value.negative{color:#dc2626}
+.finance-summary-value.positive{color:#16a34a}
+[data-theme="dark"] .finance-summary-value.negative{color:#fca5a5}
+[data-theme="dark"] .finance-summary-value.positive{color:#6ee7b7}
+
+.smart-alerts{display:grid;gap:12px;margin-bottom:20px}
+.smart-alert{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #cbd5e1}
+.smart-alert.warning{border-left-color:#f59e0b}
+.smart-alert.danger{border-left-color:#ef4444}
+.smart-alert.info{border-left-color:#3b82f6}
+.smart-alert__title{font-size:14px;font-weight:700;color:#111827;margin-bottom:4px}
+.smart-alert__msg{font-size:13px;color:#475569}
+.smart-alert__action{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;padding:8px 12px;border-radius:8px;background:#eff6ff;color:#1d4ed8;text-decoration:none;font-size:12px;font-weight:700}
+[data-theme="dark"] .smart-alert{background:#1f2937}
+[data-theme="dark"] .smart-alert__title{color:#f9fafb}
+[data-theme="dark"] .smart-alert__msg{color:#cbd5e1}
+[data-theme="dark"] .smart-alert__action{background:#1e3a8a;color:#dbeafe}
 </style>
 
 <!-- KPI Row -->
@@ -125,6 +150,44 @@ ob_start();
         <div class="ud-kpi-val"><?= (int)$leaveBalance ?></div>
         <div class="ud-kpi-lbl">Leave Balance</div>
         <div class="ud-kpi-sub">🏖️ Days remaining</div>
+    </div>
+</div>
+
+<?php if (!empty($smartAlerts)): ?>
+<div class="smart-alerts">
+    <?php foreach ($smartAlerts as $alert): ?>
+    <div class="smart-alert <?= htmlspecialchars($alert['type'] ?? 'info', ENT_QUOTES, 'UTF-8') ?>">
+        <div>
+            <div class="smart-alert__title"><?= htmlspecialchars($alert['title'] ?? '', ENT_QUOTES, 'UTF-8') ?></div>
+            <div class="smart-alert__msg"><?= htmlspecialchars($alert['message'] ?? '', ENT_QUOTES, 'UTF-8') ?></div>
+        </div>
+        <?php if (!empty($alert['action_url']) && !empty($alert['action_label'])): ?>
+        <a class="smart-alert__action" href="<?= htmlspecialchars($alert['action_url'], ENT_QUOTES, 'UTF-8') ?>">
+            <?= htmlspecialchars($alert['action_label'], ENT_QUOTES, 'UTF-8') ?>
+        </a>
+        <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<?php $outstandingClass = $outstandingTotal < 0 ? 'outstanding-negative' : 'outstanding-positive'; ?>
+<?php $outstandingValueClass = $outstandingTotal < 0 ? 'negative' : 'positive'; ?>
+<div class="finance-summary-grid">
+    <div class="ud-kpi-card yellow">
+        <div class="ud-kpi-lbl">Total Expenses</div>
+        <div class="ud-kpi-val finance-summary-value"><?= formatDashboardCurrency($expenseTotal) ?></div>
+        <div class="ud-kpi-sub">Submitted by you</div>
+    </div>
+    <div class="ud-kpi-card blue">
+        <div class="ud-kpi-lbl">Project Advance</div>
+        <div class="ud-kpi-val finance-summary-value"><?= formatDashboardCurrency($advanceTotal) ?></div>
+        <div class="ud-kpi-sub">Assigned to you</div>
+    </div>
+    <div class="ud-kpi-card <?= $outstandingTotal < 0 ? 'red' : 'green' ?>">
+        <div class="ud-kpi-lbl">Outstanding Amount</div>
+        <div class="ud-kpi-val finance-summary-value <?= $outstandingValueClass ?>"><?= formatDashboardCurrency($outstandingTotal) ?></div>
+        <div class="ud-kpi-sub">Advance minus expenses</div>
     </div>
 </div>
 
@@ -250,26 +313,6 @@ ob_start();
             </div>
         </div>
     </div>
-
-    <!-- Recent Activities -->
-    <div class="ud-card">
-        <div class="ud-card__head">🕐 Recent Activity</div>
-        <div class="ud-card__body">
-            <?php if (!empty($recentActs)): ?>
-                <?php foreach (array_slice($recentActs, 0, 8) as $act): ?>
-                <div class="act-item">
-                    <div class="act-dot"></div>
-                    <div>
-                        <div style="font-weight:500"><?= htmlspecialchars($act['description'] ?? $act['action'] ?? '', ENT_QUOTES, 'UTF-8') ?></div>
-                        <div class="act-meta"><?= isset($act['created_at']) ? date('d M, H:i', strtotime($act['created_at'])) : '' ?></div>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px">No recent activity</div>
-            <?php endif; ?>
-        </div>
-    </div>
 </div>
 
 <script>
@@ -286,3 +329,4 @@ function qsvSwitch(tab, btn) {
 $content = ob_get_clean();
 include __DIR__ . '/../layouts/dashboard.php';
 ?>
+

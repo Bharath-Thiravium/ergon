@@ -115,6 +115,17 @@ class Expense {
             return [];
         }
     }
+
+    public function getTotalAmountByUserId($userId): float {
+        try {
+            $stmt = $this->db->prepare("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            return (float) $stmt->fetchColumn();
+        } catch (Exception $e) {
+            error_log('Expense getTotalAmountByUserId error: ' . $e->getMessage());
+            return 0.0;
+        }
+    }
     
     public function getById($id) {
         try {

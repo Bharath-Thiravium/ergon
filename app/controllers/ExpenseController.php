@@ -86,19 +86,22 @@ class ExpenseController extends Controller {
         try {
             $user_id = $_SESSION['user_id'];
             $role = $_SESSION['role'];
+            $projectId = isset($_GET['project_id']) && is_numeric($_GET['project_id']) ? (int) $_GET['project_id'] : null;
             
             if ($role === 'user') {
-                $expenses = $this->getExpensesForUser($user_id);
+                $expenses = $this->getExpensesForUser($user_id, $projectId);
             } elseif ($role === 'admin') {
                 // Admin sees only user expenses and their own expenses
-                $expenses = $this->getExpensesForAdmin($user_id);
+                $expenses = $this->getExpensesForAdmin($user_id, $projectId);
             } else {
                 // Owner sees all expenses
-                $expenses = $this->expense->getAll();
+                $expenses = $this->getAllExpenses($projectId);
             }
             
             $data = [
                 'expenses' => $expenses ?? [],
+                'projects' => $this->getProjects(),
+                'filters' => ['project_id' => $projectId],
                 'user_role' => $role,
                 'active_page' => 'expenses'
             ];
@@ -108,6 +111,8 @@ class ExpenseController extends Controller {
             error_log('Expense index error: ' . $e->getMessage());
             $data = [
                 'expenses' => [],
+                'projects' => $this->getProjects(),
+                'filters' => ['project_id' => isset($_GET['project_id']) && is_numeric($_GET['project_id']) ? (int) $_GET['project_id'] : null],
                 'user_role' => $_SESSION['role'],
                 'error' => 'Unable to load expense data.',
                 'active_page' => 'expenses'
@@ -147,13 +152,27 @@ class ExpenseController extends Controller {
         }
     }
     
-    private function getExpensesForUser($userId) {
+    private function getExpensesForUser($userId, $projectId = null) {
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("SELECT e.*, u.name as user_name, u.role as user_role, pt.name as paid_to_user_name, e.paid_to_name FROM expenses e JOIN users u ON e.user_id = u.id LEFT JOIN users pt ON e.paid_to_user_id = pt.id WHERE e.user_id = ? ORDER BY e.created_at DESC");
-            $stmt->execute([$userId]);
+            $sql = "SELECT e.*, u.name as user_name, u.role as user_role, p.name as project_name, pt.name as paid_to_user_name, e.paid_to_name
+                    FROM expenses e
+                    JOIN users u ON e.user_id = u.id
+                    LEFT JOIN projects p ON e.project_id = p.id
+                    LEFT JOIN users pt ON e.paid_to_user_id = pt.id
+                    WHERE e.user_id = ?";
+            $params = [$userId];
+
+            if ($projectId) {
+                $sql .= " AND e.project_id = ?";
+                $params[] = $projectId;
+            }
+
+            $sql .= " ORDER BY e.created_at DESC";
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             error_log('Error getting expenses for user: ' . $e->getMessage());
@@ -161,16 +180,69 @@ class ExpenseController extends Controller {
         }
     }
     
-    private function getExpensesForAdmin($adminUserId) {
+    private function getExpensesForAdmin($adminUserId, $projectId = null) {
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            $stmt = $db->prepare("SELECT e.*, u.name as user_name, u.role as user_role, pt.name as paid_to_user_name, e.paid_to_name FROM expenses e JOIN users u ON e.user_id = u.id LEFT JOIN users pt ON e.paid_to_user_id = pt.id WHERE (u.role = 'user' OR e.user_id = ?) ORDER BY e.created_at DESC");
-            $stmt->execute([$adminUserId]);
+            $sql = "SELECT e.*, u.name as user_name, u.role as user_role, p.name as project_name, pt.name as paid_to_user_name, e.paid_to_name
+                    FROM expenses e
+                    JOIN users u ON e.user_id = u.id
+                    LEFT JOIN projects p ON e.project_id = p.id
+                    LEFT JOIN users pt ON e.paid_to_user_id = pt.id
+                    WHERE (u.role = 'user' OR e.user_id = ?)";
+            $params = [$adminUserId];
+
+            if ($projectId) {
+                $sql .= " AND e.project_id = ?";
+                $params[] = $projectId;
+            }
+
+            $sql .= " ORDER BY e.created_at DESC";
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             error_log('Error getting expenses for admin: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function getAllExpenses($projectId = null) {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+
+            $sql = "SELECT e.*, u.name as user_name, u.role as user_role, p.name as project_name, pt.name as paid_to_user_name, e.paid_to_name
+                    FROM expenses e
+                    JOIN users u ON e.user_id = u.id
+                    LEFT JOIN projects p ON e.project_id = p.id
+                    LEFT JOIN users pt ON e.paid_to_user_id = pt.id";
+            $params = [];
+
+            if ($projectId) {
+                $sql .= " WHERE e.project_id = ?";
+                $params[] = $projectId;
+            }
+
+            $sql .= " ORDER BY e.created_at DESC";
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Error getting all expenses: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function getProjects() {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $stmt = $db->query("SELECT id, name FROM projects ORDER BY name ASC");
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Error getting projects for expense filter: ' . $e->getMessage());
             return [];
         }
     }

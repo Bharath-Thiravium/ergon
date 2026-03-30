@@ -47,6 +47,22 @@ class Advance {
         $stmt->execute([$userId]);
         return $stmt->fetchAll();
     }
+
+    public function getTotalAmountByUserId($userId): float {
+        if (!$this->db) {
+            error_log('Advance getTotalAmountByUserId: No database connection');
+            return 0.0;
+        }
+
+        try {
+            $stmt = $this->db->prepare("SELECT COALESCE(SUM(amount), 0) FROM {$this->table} WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            return (float) $stmt->fetchColumn();
+        } catch (Exception $e) {
+            error_log('Advance getTotalAmountByUserId error: ' . $e->getMessage());
+            return 0.0;
+        }
+    }
     
     public function create($data) {
         $stmt = $this->db->prepare("

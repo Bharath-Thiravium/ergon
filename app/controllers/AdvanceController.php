@@ -20,6 +20,7 @@ class AdvanceController extends Controller {
         try {
             $user_id = $_SESSION['user_id'];
             $role = $_SESSION['role'] ?? 'user';
+            $projectId = isset($_GET['project_id']) && is_numeric($_GET['project_id']) ? (int) $_GET['project_id'] : null;
             
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
@@ -57,17 +58,55 @@ class AdvanceController extends Controller {
             try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN approved_amount DECIMAL(10,2) NULL", "Alter table"); } catch (Exception $e) {}
             
             if ($role === 'user') {
-                $stmt = $db->prepare("SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name, pb.name as paid_by_name FROM advances a JOIN users u ON a.user_id = u.id LEFT JOIN projects p ON a.project_id = p.id LEFT JOIN users pb ON a.paid_by = pb.id WHERE a.user_id = ? ORDER BY a.created_at DESC");
-                $stmt->execute([$user_id]);
+                $sql = "SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name, pb.name as paid_by_name
+                        FROM advances a
+                        JOIN users u ON a.user_id = u.id
+                        LEFT JOIN projects p ON a.project_id = p.id
+                        LEFT JOIN users pb ON a.paid_by = pb.id
+                        WHERE a.user_id = ?";
+                $params = [$user_id];
+                if ($projectId) {
+                    $sql .= " AND a.project_id = ?";
+                    $params[] = $projectId;
+                }
+                $sql .= " ORDER BY a.created_at DESC";
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
             } else {
-                $stmt = $db->query("SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name, pb.name as paid_by_name FROM advances a JOIN users u ON a.user_id = u.id LEFT JOIN projects p ON a.project_id = p.id LEFT JOIN users pb ON a.paid_by = pb.id ORDER BY a.created_at DESC");
+                $sql = "SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name, pb.name as paid_by_name
+                        FROM advances a
+                        JOIN users u ON a.user_id = u.id
+                        LEFT JOIN projects p ON a.project_id = p.id
+                        LEFT JOIN users pb ON a.paid_by = pb.id";
+                $params = [];
+                if ($projectId) {
+                    $sql .= " WHERE a.project_id = ?";
+                    $params[] = $projectId;
+                }
+                $sql .= " ORDER BY a.created_at DESC";
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
             }
             $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $this->view('advances/index', ['advances' => $advances, 'user_role' => $role, 'active_page' => 'advances']);
+
+            $projects = $db->query("SELECT id, name FROM projects ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+            $this->view('advances/index', [
+                'advances' => $advances,
+                'projects' => $projects,
+                'filters' => ['project_id' => $projectId],
+                'user_role' => $role,
+                'active_page' => 'advances'
+            ]);
         } catch (Exception $e) {
             error_log('Advance index error: ' . $e->getMessage());
-            $this->view('advances/index', ['advances' => [], 'user_role' => $_SESSION['role'] ?? 'user', 'error' => 'Unable to load advances', 'active_page' => 'advances']);
+            $this->view('advances/index', [
+                'advances' => [],
+                'projects' => [],
+                'filters' => ['project_id' => isset($_GET['project_id']) && is_numeric($_GET['project_id']) ? (int) $_GET['project_id'] : null],
+                'user_role' => $_SESSION['role'] ?? 'user',
+                'error' => 'Unable to load advances',
+                'active_page' => 'advances'
+            ]);
         }
     }
     

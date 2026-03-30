@@ -1,6 +1,10 @@
 <?php
 $title = 'My Dashboard';
 $active_page = 'dashboard';
+$smartAlerts = $smart_alerts ?? [];
+$expenseTotal = isset($expense_total) ? (float) $expense_total : 0.0;
+$advanceTotal = isset($advance_total) ? (float) $advance_total : 0.0;
+$outstandingTotal = isset($outstanding_total) ? (float) $outstanding_total : 0.0;
 ob_start();
 ?>
 
@@ -32,6 +36,24 @@ ob_start();
 <?php elseif (isset($attendance_status) && $attendance_status['status'] === 'clocked_out'): ?>
 <div class="alert alert--info">
     ℹ️ You completed your day from <?= date('h:i A', strtotime($attendance_status['clock_in'])) ?> to <?= date('h:i A', strtotime($attendance_status['clock_out'])) ?>.
+</div>
+<?php endif; ?>
+
+<?php if (!empty($smartAlerts)): ?>
+<div style="display:grid;gap:12px;margin-bottom:20px;">
+    <?php foreach ($smartAlerts as $alert): ?>
+    <div class="alert alert--<?= htmlspecialchars($alert['type'] ?? 'info', ENT_QUOTES, 'UTF-8') ?>" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <div>
+            <strong><?= htmlspecialchars($alert['title'] ?? '', ENT_QUOTES, 'UTF-8') ?></strong><br>
+            <span><?= htmlspecialchars($alert['message'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
+        </div>
+        <?php if (!empty($alert['action_url']) && !empty($alert['action_label'])): ?>
+        <a href="<?= htmlspecialchars($alert['action_url'], ENT_QUOTES, 'UTF-8') ?>" class="btn btn--secondary">
+            <?= htmlspecialchars($alert['action_label'], ENT_QUOTES, 'UTF-8') ?>
+        </a>
+        <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
 </div>
 <?php endif; ?>
 
@@ -74,6 +96,39 @@ ob_start();
         <div class="kpi-card__value"><?= $stats['leave_balance'] ?? 0 ?></div>
         <div class="kpi-card__label">Leave Balance</div>
         <div class="kpi-card__status">Days Remaining</div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <?php $outstandingNegative = $outstandingTotal < 0; ?>
+    <div class="kpi-card kpi-card--warning">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">INR</div>
+            <div class="kpi-card__trend">User Total</div>
+        </div>
+        <div class="kpi-card__value">&#8377; <?= number_format($expenseTotal, 2) ?></div>
+        <div class="kpi-card__label">Total Expenses</div>
+        <div class="kpi-card__status">Submitted by you</div>
+    </div>
+
+    <div class="kpi-card kpi-card--info">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">ADV</div>
+            <div class="kpi-card__trend">User Total</div>
+        </div>
+        <div class="kpi-card__value">&#8377; <?= number_format($advanceTotal, 2) ?></div>
+        <div class="kpi-card__label">Project Advance</div>
+        <div class="kpi-card__status">Assigned to you</div>
+    </div>
+
+    <div class="kpi-card <?= $outstandingNegative ? 'kpi-card--warning' : 'kpi-card--success' ?>">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">OUT</div>
+            <div class="kpi-card__trend"><?= $outstandingNegative ? 'Negative' : 'Positive' ?></div>
+        </div>
+        <div class="kpi-card__value" style="color: <?= $outstandingNegative ? '#dc3545' : '#198754' ?>;">&#8377; <?= number_format($outstandingTotal, 2) ?></div>
+        <div class="kpi-card__label">Outstanding Amount</div>
+        <div class="kpi-card__status">Advance minus expenses</div>
     </div>
 </div>
 

@@ -145,6 +145,7 @@ $defaultTab = 'paste';
             <input type="hidden" name="project_id"      id="f_project" value="">
             <input type="hidden" name="total_manpower"  id="f_total_mp">
             <input type="hidden" name="remarks"         id="f_remarks" value="">
+            <input type="hidden" name="wa_raw"          id="f_wa_raw" value="">
             <div id="f_mp_fields"></div>
             <div id="f_mach_fields"></div>
             <div id="f_exp_fields"></div>

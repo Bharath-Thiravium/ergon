@@ -5,7 +5,7 @@ require_once __DIR__ . '/../middlewares/ModuleMiddleware.php';
 
 class FinanceController {
     
-    public function dashboard($request) {
+    public function dashboard($request = null) {
         ModuleMiddleware::requireModule('finance');
         
         // Render finance dashboard view
@@ -15,7 +15,7 @@ class FinanceController {
         require_once __DIR__ . '/../../views/finance/dashboard.php';
     }
     
-    public function syncData($request) {
+    public function syncData($request = null) {
         try {
             $syncService = new DataSyncService();
             $results = $syncService->syncAllTables();
