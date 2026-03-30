@@ -19,19 +19,24 @@ ob_start();
     </div>
 </div>
 
-<?php if (isset($attendance_status) && $attendance_status['status'] === 'not_clocked_in'): ?>
+<?php if (isset($attendance_status) && ($attendance_status['status'] ?? '') === 'not_clocked_in'): ?>
 <div class="alert alert--warning">
     ⏰ You haven't clocked in today. 
     <button class="btn btn--warning" onclick="clockIn()">Clock In Now</button>
 </div>
-<?php elseif (isset($attendance_status) && $attendance_status['status'] === 'clocked_in'): ?>
+<?php elseif (isset($attendance_status) && ($attendance_status['status'] ?? '') === 'clocked_in'): ?>
 <div class="alert alert--success">
     ✅ You clocked in at <?= date('h:i A', strtotime($attendance_status['clock_in'])) ?>. 
     <button class="btn btn--success" onclick="clockOut()">Clock Out</button>
 </div>
-<?php elseif (isset($attendance_status) && $attendance_status['status'] === 'clocked_out'): ?>
+<?php elseif (isset($attendance_status) && ($attendance_status['status'] ?? '') === 'clocked_out'): ?>
 <div class="alert alert--info">
     ℹ️ You completed your day from <?= date('h:i A', strtotime($attendance_status['clock_in'])) ?> to <?= date('h:i A', strtotime($attendance_status['clock_out'])) ?>.
+</div>
+<?php else: ?>
+<div class="alert alert--warning">
+    ⏰ You haven't clocked in today. 
+    <button class="btn btn--warning" onclick="clockIn()">Clock In Now</button>
 </div>
 <?php endif; ?>
 
@@ -150,29 +155,32 @@ ob_start();
             </h2>
         </div>
         <div class="card__body" style="text-align: center;">
-            <?php if (isset($attendance_status) && $attendance_status['can_clock_in']): ?>
+            <?php if (isset($attendance_status) && ($attendance_status['status'] ?? '') === 'not_clocked_in'): ?>
                 <button class="btn btn--success" onclick="clockIn()" style="padding: 1rem 2rem; font-size: 1.2rem;">
                     ▶️ Clock In
                 </button>
                 <p style="margin-top: 1rem; color: #666;">Start your workday</p>
-            <?php elseif (isset($attendance_status) && $attendance_status['can_clock_out']): ?>
+            <?php elseif (isset($attendance_status) && ($attendance_status['status'] ?? '') === 'clocked_in'): ?>
                 <p style="color: #28a745; margin-bottom: 1rem;">
                     ✅ Clocked in at <?= date('h:i A', strtotime($attendance_status['clock_in'])) ?>
                 </p>
                 <button class="btn btn--warning" onclick="clockOut()" style="padding: 1rem 2rem; font-size: 1.2rem;">
                     ⏹️ Clock Out
                 </button>
-            <?php else: ?>
+            <?php elseif (isset($attendance_status) && ($attendance_status['status'] ?? '') === 'clocked_out'): ?>
                 <div style="color: #28a745;">
                     <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
                     <p>Work completed for today!</p>
-                    <?php if (isset($attendance_status['clock_in']) && isset($attendance_status['clock_out'])): ?>
                     <small style="color: #666;">
                         <?= date('h:i A', strtotime($attendance_status['clock_in'])) ?> - 
                         <?= date('h:i A', strtotime($attendance_status['clock_out'])) ?>
                     </small>
-                    <?php endif; ?>
                 </div>
+            <?php else: ?>
+                <button class="btn btn--success" onclick="clockIn()" style="padding: 1rem 2rem; font-size: 1.2rem;">
+                    ▶️ Clock In
+                </button>
+                <p style="margin-top: 1rem; color: #666;">Start your workday</p>
             <?php endif; ?>
         </div>
     </div>

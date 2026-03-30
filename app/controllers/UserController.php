@@ -58,7 +58,7 @@ class UserController extends Controller {
             
         } catch (Exception $e) {
             error_log('User dashboard error: ' . $e->getMessage());
-            $this->view('user/dashboard', ['error' => 'Unable to load dashboard data']);
+            $this->view('dashboard/user', ['error' => 'Unable to load dashboard data']);
         }
     }
     
@@ -394,27 +394,16 @@ class UserController extends Controller {
             $db = Database::connect();
             $userId = $_SESSION['user_id'];
             
-            // Check if already clocked in today
-            $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(clock_in) = CURDATE() AND clock_out IS NULL");
+            $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND check_out IS NULL");
             $stmt->execute([$userId]);
-            
             if ($stmt->fetch()) {
                 throw new Exception('Already clocked in today');
             }
             
-            $latitude = $_POST['latitude'] ?? null;
+            $latitude  = $_POST['latitude']  ?? null;
             $longitude = $_POST['longitude'] ?? null;
             
-            // Validate GPS coordinates if required
-            if (!$this->validateLocation($latitude, $longitude)) {
-                throw new Exception('Invalid location. Please ensure you are at the office premises.');
-            }
-            
-            $stmt = $db->prepare("
-                INSERT INTO attendance (user_id, clock_in, latitude, longitude, status, created_at) 
-                VALUES (?, NOW(), ?, ?, 'present', NOW())
-            ");
-            
+            $stmt = $db->prepare("INSERT INTO attendance (user_id, check_in, latitude, longitude, status, created_at) VALUES (?, NOW(), ?, ?, 'present', NOW())");
             $result = $stmt->execute([$userId, $latitude, $longitude]);
             
             if ($result) {
@@ -423,7 +412,6 @@ class UserController extends Controller {
             } else {
                 $this->json(['success' => false, 'message' => 'Failed to clock in']);
             }
-            
         } catch (Exception $e) {
             error_log('Clock in error: ' . $e->getMessage());
             $this->json(['success' => false, 'message' => $e->getMessage()]);
@@ -442,8 +430,7 @@ class UserController extends Controller {
             $db = Database::connect();
             $userId = $_SESSION['user_id'];
             
-            // Find today's attendance record
-            $stmt = $db->prepare("SELECT id, clock_in FROM attendance WHERE user_id = ? AND DATE(clock_in) = CURDATE() AND clock_out IS NULL");
+            $stmt = $db->prepare("SELECT id, check_in FROM attendance WHERE user_id = ? AND DATE(check_in) = CURDATE() AND check_out IS NULL");
             $stmt->execute([$userId]);
             $attendance = $stmt->fetch(PDO::FETCH_ASSOC);
             
@@ -451,21 +438,12 @@ class UserController extends Controller {
                 throw new Exception('No clock-in record found for today');
             }
             
-            $latitude = $_POST['latitude'] ?? null;
-            $longitude = $_POST['longitude'] ?? null;
+            $checkIn   = new DateTime($attendance['check_in']);
+            $checkOut  = new DateTime();
+            $workHours = round($checkIn->diff($checkOut)->h + ($checkIn->diff($checkOut)->i / 60), 2);
             
-            // Calculate work hours
-            $clockIn = new DateTime($attendance['clock_in']);
-            $clockOut = new DateTime();
-            $workHours = $clockIn->diff($clockOut)->h + ($clockIn->diff($clockOut)->i / 60);
-            
-            $stmt = $db->prepare("
-                UPDATE attendance 
-                SET clock_out = NOW(), out_latitude = ?, out_longitude = ?, work_hours = ? 
-                WHERE id = ?
-            ");
-            
-            $result = $stmt->execute([$latitude, $longitude, $workHours, $attendance['id']]);
+            $stmt = $db->prepare("UPDATE attendance SET check_out = NOW() WHERE id = ?");
+            $result = $stmt->execute([$attendance['id']]);
             
             if ($result) {
                 $this->logActivity($db, $userId, 'clocked_out', "Clocked out after {$workHours} hours");
@@ -473,7 +451,6 @@ class UserController extends Controller {
             } else {
                 $this->json(['success' => false, 'message' => 'Failed to clock out']);
             }
-            
         } catch (Exception $e) {
             error_log('Clock out error: ' . $e->getMessage());
             $this->json(['success' => false, 'message' => $e->getMessage()]);
