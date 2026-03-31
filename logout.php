@@ -1,19 +1,12 @@
 <?php
-// Simple logout handler
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/app/config/session.php';
+require_once __DIR__ . '/app/core/Session.php';
 
-session_unset();
-session_destroy();
+Session::destroy();
 
-if (ini_get('session.use_cookies')) {
-    $params = session_get_cookie_params();
-    setcookie(session_name(), '', time() - 42000,
-        $params['path'], $params['domain'],
-        $params['secure'], $params['httponly']
-    );
-}
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+setcookie('PHPSESSID', '', time() - 3600, '/', '', $isHttps, true);
 
 header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
 header('Pragma: no-cache');

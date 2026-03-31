@@ -35,6 +35,9 @@ class AuthController extends Controller {
             return;
         }
         
+        // Ensure session is running before we read POST or write errors
+        Session::init();
+        
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
         $clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
@@ -95,9 +98,22 @@ class AuthController extends Controller {
                 $securityService->logAttempt($clientIp, 'login', true);
                 
                 if (session_status() === PHP_SESSION_NONE) {
-                    session_start();
+                    Session::init();
                 }
                 session_regenerate_id(true);
+                // Re-send cookie with new session ID after regeneration
+                $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+                setcookie('ERGON_SID', session_id(), [
+                    'expires'  => 0,
+                    'path'     => '/',
+                    'domain'   => '',
+                    'secure'   => $isHttps,
+                    'httponly' => true,
+                    'samesite' => 'Lax',
+                ]);
+                unset($_COOKIE['ERGON_SID']);
+                $_COOKIE['ERGON_SID'] = session_id();
                 
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_name'] = $user['name'];
@@ -170,20 +186,13 @@ class AuthController extends Controller {
     }
     
     public function logout() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        Session::init();
+        Session::destroy();
         
-        session_unset();
-        session_destroy();
-        
-        if (ini_get('session.use_cookies')) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
-                $params['path'], $params['domain'],
-                $params['secure'], $params['httponly']
-            );
-        }
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+        // Clear legacy PHPSESSID if the server ever set one
+        setcookie('PHPSESSID', '', time() - 3600, '/', '', $isHttps, true);
         
         header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
         header('Pragma: no-cache');
