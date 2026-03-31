@@ -4,6 +4,24 @@
  * Main Application Entry Point
  */
 
+// Temporary diagnostic — remove after checking live server
+if (isset($_GET['diag']) && $_GET['diag'] === 'session123') {
+    header('Content-Type: text/plain');
+    echo "PHP: " . PHP_VERSION . "\n";
+    echo "cookie_domain (php.ini): '" . ini_get('session.cookie_domain') . "'\n";
+    echo "use_cookies (php.ini): '" . ini_get('session.use_cookies') . "'\n";
+    echo "HTTP_HOST: " . ($_SERVER['HTTP_HOST'] ?? 'unknown') . "\n";
+    echo "HTTPS: " . ($_SERVER['HTTPS'] ?? 'off') . "\n";
+    echo "HTTP_X_FORWARDED_PROTO: " . ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? 'none') . "\n";
+    echo "session.php exists: " . (file_exists(__DIR__ . '/app/config/session.php') ? 'YES' : 'NO') . "\n";
+    echo "session.php first line: " . trim(file(__DIR__ . '/app/config/session.php')[0] ?? 'N/A') . "\n";
+    $p = session_get_cookie_params();
+    echo "cookie params domain BEFORE start: '" . $p['domain'] . "'\n";
+    echo "session status: " . session_status() . "\n";
+    foreach (headers_list() as $h) echo "header: $h\n";
+    exit;
+}
+
 // Error reporting
 if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !== false) {
     error_reporting(E_ALL);
