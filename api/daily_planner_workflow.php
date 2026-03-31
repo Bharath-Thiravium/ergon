@@ -1,5 +1,7 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
+error_reporting(0);          // prevent PHP warnings from corrupting JSON
+ini_set('display_errors', 0);
 session_start();
 
 if (!isset($_SESSION['user_id'])) {

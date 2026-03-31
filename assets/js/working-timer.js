@@ -163,9 +163,11 @@ function updateTaskUI(taskId, status) {
 
 window.startTask = function(taskId, event) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
-    const btn = event && event.target ? event.target : null;
+    // Always get the actual <button> element, not a child icon
+    const btn = event ? (event.target.closest('button') || event.target) : null;
     if (btn) btn.disabled = true;
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    console.log('[startTask] taskId:', taskId, 'btn:', btn);
 
     fetch('/ergon/api/daily_planner_workflow.php?action=start', {
         method: 'POST',
@@ -201,7 +203,7 @@ window.pauseTask = function(taskId, event) {
     if (!card || !isRunningStatus(card.dataset.status)) {
         showNotification('Task must be running to pause', 'error'); return false;
     }
-    const btn = event && event.target ? event.target : null;
+    const btn = event ? (event.target.closest('button') || event.target) : null;
     if (btn) btn.disabled = true;
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -234,7 +236,7 @@ window.pauseTask = function(taskId, event) {
 
 window.resumeTask = function(taskId, event) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
-    const btn = event && event.target ? event.target : null;
+    const btn = event ? (event.target.closest('button') || event.target) : null;
     if (btn) btn.disabled = true;
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -307,13 +309,42 @@ window.submitPostpone = function() {
     .catch(e => showNotification('Error: ' + e.message, 'error'));
 };
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// ── Init + event delegation ──────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Normalise all numeric ms/sec data attributes
     document.querySelectorAll('.task-card').forEach(card => {
-        // Normalise all numeric ms/sec data attributes
         ['startTsMs', 'pauseStartTsMs', 'pausedAccumMs', 'slaDuration'].forEach(attr => {
             card.dataset[attr] = String(parseInt(card.dataset[attr]) || 0);
         });
     });
+
+    // Active event delegation for Start / Pause / Resume buttons.
+    // This is the primary handler — it fires in the capture phase before
+    // the onclick attribute, prevents the onclick from double-firing, and
+    // ensures event.target.closest('button') is always the <button> element.
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest(
+            'button[onclick^="startTask"], button[onclick^="pauseTask"], button[onclick^="resumeTask"]'
+        );
+        if (!btn || btn.disabled) return;
+
+        const onclickAttr = btn.getAttribute('onclick') || '';
+        const match = onclickAttr.match(/^(startTask|pauseTask|resumeTask)\((\d+)/);
+        if (!match) return;
+
+        const fnName = match[1];
+        const taskId = parseInt(match[2]);
+        if (!taskId) return;
+
+        // Prevent the inline onclick from also firing
+        e.stopImmediatePropagation();
+        e.preventDefault();
+
+        // Call with the button as the event target so btn.disabled works correctly
+        const syntheticEvent = { preventDefault: function(){}, stopPropagation: function(){}, target: btn };
+        if (typeof window[fnName] === 'function') {
+            window[fnName](taskId, syntheticEvent);
+        }
+    }, true); // capture phase
 });
