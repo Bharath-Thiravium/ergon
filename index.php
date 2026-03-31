@@ -4,6 +4,15 @@
  * Main Application Entry Point
  */
 
+// Force session cookie domain to empty BEFORE anything else runs.
+// This overrides php.ini and works on all hosts including shared hosting.
+ini_set('session.cookie_domain', '');
+ini_set('session.cookie_path', '/');
+ini_set('session.cookie_httponly', '1');
+ini_set('session.cookie_samesite', 'Lax');
+ini_set('session.gc_maxlifetime', '28800');
+ini_set('session.use_strict_mode', '1');
+
 // Error reporting - production safe
 if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !== false) {
     error_reporting(E_ALL);
