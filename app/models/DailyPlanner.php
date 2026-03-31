@@ -27,6 +27,7 @@ class DailyPlanner {
                     user_id INT NOT NULL,
                     task_id INT NULL,
                     original_task_id INT NULL,
+                    recurring_task_id INT NULL,
                     title VARCHAR(255) NOT NULL,
                     description TEXT,
                     scheduled_date DATE NOT NULL,
@@ -53,6 +54,7 @@ class DailyPlanner {
                     INDEX idx_user_date (user_id, scheduled_date),
                     INDEX idx_task_id (task_id),
                     INDEX idx_original_task_id (original_task_id),
+                    INDEX idx_recurring_task_id (recurring_task_id),
                     INDEX idx_status (status),
                     INDEX idx_rollover_source (rollover_source_date),
                     INDEX idx_user_task_date (user_id, original_task_id, scheduled_date)
@@ -75,13 +77,19 @@ class DailyPlanner {
                 'active_seconds' => "ALTER TABLE daily_tasks ADD COLUMN active_seconds INT DEFAULT 0",
                 'postponed_to_date' => "ALTER TABLE daily_tasks ADD COLUMN postponed_to_date DATE NULL",
                 'original_task_id' => "ALTER TABLE daily_tasks ADD COLUMN original_task_id INT NULL",
+                'recurring_task_id' => "ALTER TABLE daily_tasks ADD COLUMN recurring_task_id INT NULL",
                 'source_field' => "ALTER TABLE daily_tasks ADD COLUMN source_field VARCHAR(50) NULL",
                 'rollover_source_date' => "ALTER TABLE daily_tasks ADD COLUMN rollover_source_date DATE NULL",
                 'rollover_timestamp' => "ALTER TABLE daily_tasks ADD COLUMN rollover_timestamp TIMESTAMP NULL",
                 'remaining_sla_time' => "ALTER TABLE daily_tasks ADD COLUMN remaining_sla_time INT DEFAULT 0",
                 'total_pause_duration' => "ALTER TABLE daily_tasks ADD COLUMN total_pause_duration INT DEFAULT 0",
                 'overdue_start_time' => "ALTER TABLE daily_tasks ADD COLUMN overdue_start_time TIMESTAMP NULL",
-                'time_used' => "ALTER TABLE daily_tasks ADD COLUMN time_used INT DEFAULT 0"
+                'time_used' => "ALTER TABLE daily_tasks ADD COLUMN time_used INT DEFAULT 0",
+                'sla_hours' => "ALTER TABLE daily_tasks ADD COLUMN sla_hours DECIMAL(6,4) DEFAULT 0.25 COMMENT 'SLA hours at task creation'",
+                'start_ts_ms' => "ALTER TABLE daily_tasks ADD COLUMN start_ts_ms BIGINT DEFAULT 0 COMMENT 'Start timestamp in milliseconds'",
+                'pause_start_ts_ms' => "ALTER TABLE daily_tasks ADD COLUMN pause_start_ts_ms BIGINT DEFAULT 0 COMMENT 'Pause start timestamp in milliseconds'",
+                'paused_accum_ms' => "ALTER TABLE daily_tasks ADD COLUMN paused_accum_ms BIGINT DEFAULT 0 COMMENT 'Accumulated active time in milliseconds'",
+                'sla_duration_seconds' => "ALTER TABLE daily_tasks ADD COLUMN sla_duration_seconds INT DEFAULT 0 COMMENT 'SLA duration in seconds at task start'"
             ];
             
             foreach ($columns as $column => $sql) {
@@ -106,6 +114,7 @@ class DailyPlanner {
     
     public function getTasksForDate($userId, $date) {
         try { // ✅ FIXED: Simplified logic, removed redundant try-catch blocks
+            $this->materializeRecurringTasksForDate($userId, $date);
             // Step 1: Fetch assigned tasks first
             $this->fetchAssignedTasksForDate($userId, $date);
             
@@ -115,12 +124,14 @@ class DailyPlanner {
                     dt.id, dt.title, dt.description, dt.priority, dt.status,
                     dt.completed_percentage, dt.start_time, dt.active_seconds,
                     dt.planned_duration, dt.task_id, dt.original_task_id, dt.pause_duration,
+                    dt.start_ts_ms, dt.pause_start_ts_ms, dt.paused_accum_ms, dt.sla_duration_seconds,
                     dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
-                    dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date, dt.status,
-                    dt.pause_start_time, dt.pause_time, dt.resume_time,
-                    COALESCE(t.sla_hours, 0.25) as sla_hours,
+                    dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
+                    dt.pause_start_time, dt.resume_time,
+                    COALESCE(t.sla_hours, dt.sla_hours, 0.25) as sla_hours,
                     dt.sla_end_time,
                     CASE 
+                        WHEN dt.source_field = 'recurring_daily' THEN 'Recurring Daily Task'
                         WHEN dt.rollover_source_date IS NOT NULL THEN CONCAT('🔄 Rolled over from: ', dt.rollover_source_date)
                         WHEN dt.source_field IS NOT NULL THEN CONCAT('📌 Source: ', dt.source_field, ' on ', dt.scheduled_date)
                         WHEN t.assigned_by != t.assigned_to THEN '👥 From Others'
@@ -128,11 +139,12 @@ class DailyPlanner {
                     END as task_indicator,
                     'current_day' as view_type
                 FROM daily_tasks dt
-                LEFT JOIN tasks t ON dt.original_task_id = t.id
+                LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id)
                 WHERE dt.user_id = ? AND dt.scheduled_date = ?
                 ORDER BY
                     CASE WHEN dt.rollover_source_date IS NOT NULL THEN 0 ELSE 1 END,
                     CASE dt.status 
+                        WHEN 'overdue' THEN 1
                         WHEN 'in_progress' THEN 1 
                         WHEN 'on_break' THEN 2 
                         WHEN 'not_started' THEN 3
@@ -184,7 +196,7 @@ class DailyPlanner {
                 ");
                 $stmt->execute([$userId, $date]);
             } else {
-                // Current date - fetch tasks planned for today OR overdue (planned_date < today)
+                // Current date - fetch tasks planned for today, due today, created today, or already active
                 $stmt = $this->db->prepare("
                     SELECT 
                         t.id, t.title, t.description, t.priority, t.status,
@@ -195,6 +207,9 @@ class DailyPlanner {
                     AND t.status NOT IN ('completed', 'cancelled', 'deleted')
                     AND (
                         t.planned_date = ?
+                        OR DATE(t.deadline) = ?
+                        OR DATE(t.created_at) = ?
+                        OR t.status IN ('in_progress', 'overdue', 'on_break')
                         OR (t.planned_date < ? AND t.planned_date IS NOT NULL)
                     )
                     ORDER BY 
@@ -202,7 +217,7 @@ class DailyPlanner {
                         CASE t.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
                         t.created_at DESC
                 ");
-                $stmt->execute([$userId, $date, $date]);
+                $stmt->execute([$userId, $date, $date, $date, $date]);
             }
             
             $relevantTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -228,14 +243,16 @@ class DailyPlanner {
                     $insertStmt = $this->db->prepare("
                         INSERT INTO daily_tasks 
                         (user_id, task_id, original_task_id, title, description, scheduled_date, 
-                         priority, status, planned_duration, completed_percentage, source_field, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                         priority, status, planned_duration, completed_percentage, source_field, sla_hours, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                     ");
                     
                     // Get progress from original task
-                    $progressStmt = $this->db->prepare("SELECT progress FROM tasks WHERE id = ?");
+                    $progressStmt = $this->db->prepare("SELECT progress, sla_hours FROM tasks WHERE id = ?");
                     $progressStmt->execute([$task['id']]);
-                    $originalProgress = (int)($progressStmt->fetchColumn() ?: 0);
+                    $origRow = $progressStmt->fetch(PDO::FETCH_ASSOC);
+                    $originalProgress = (int)($origRow['progress'] ?? 0);
+                    $originalSlaHours = max(0.0167, (float)($origRow['sla_hours'] ?? 0.25));
                     
                     $result = $insertStmt->execute([
                         $userId,
@@ -248,7 +265,8 @@ class DailyPlanner {
                         $initialStatus,
                         $task['estimated_duration'] ?: 60,
                         $originalProgress,
-                        $task['source_field']
+                        $task['source_field'],
+                        $originalSlaHours
                     ]);
                     
                     if ($result) {
@@ -279,16 +297,184 @@ class DailyPlanner {
             return 0;
         }
     }
-    
+
+    public function syncTasksFromSourceTable($userId, $date) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT
+                    t.id,
+                    t.title,
+                    t.description,
+                    t.priority,
+                    t.status,
+                    t.progress,
+                    t.deadline,
+                    t.estimated_duration,
+                    t.assigned_to,
+                    t.assigned_by,
+                    t.planned_date,
+                    t.created_at
+                FROM tasks t
+                WHERE t.assigned_to = ?
+                AND (
+                    DATE(t.planned_date) = ?
+                    OR DATE(t.deadline) = ?
+                    OR DATE(t.created_at) = ?
+                    OR t.status IN ('in_progress', 'overdue', 'on_break')
+                    OR (? = CURDATE() AND t.planned_date IS NOT NULL AND DATE(t.planned_date) < ?)
+                )
+                ORDER BY
+                    CASE WHEN t.assigned_by != t.assigned_to THEN 1 ELSE 2 END,
+                    CASE t.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+                    t.created_at DESC
+            ");
+            $stmt->execute([$userId, $date, $date, $date, $date, $date]);
+            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $addedCount = 0;
+            foreach ($tasks as $task) {
+                $normalizedStatus = $this->normalizeTaskStatus($task['status'] ?? '');
+                if (in_array($normalizedStatus, ['completed', 'cancelled', 'deleted'], true)) {
+                    continue;
+                }
+
+                $checkStmt = $this->db->prepare("
+                    SELECT id FROM daily_tasks
+                    WHERE user_id = ? AND scheduled_date = ?
+                    AND (original_task_id = ? OR (task_id = ? AND original_task_id IS NULL))
+                    LIMIT 1
+                ");
+                $checkStmt->execute([$userId, $date, $task['id'], $task['id']]);
+                $existingId = $checkStmt->fetchColumn();
+
+                $plannerStatus = $normalizedStatus === 'assigned' ? 'not_started' : $normalizedStatus;
+                if (!in_array($plannerStatus, ['not_started', 'in_progress', 'on_break', 'overdue', 'postponed', 'completed'], true)) {
+                    $plannerStatus = 'not_started';
+                }
+
+                if ($existingId) {
+                    $updateStmt = $this->db->prepare("
+                        UPDATE daily_tasks
+                        SET title = ?, description = ?, priority = ?, planned_duration = ?, completed_percentage = ?, status = ?, updated_at = NOW()
+                        WHERE id = ?
+                    ");
+                    $updateStmt->execute([
+                        $task['title'],
+                        $task['description'],
+                        $task['priority'] ?: 'medium',
+                        (int)($task['estimated_duration'] ?: 60),
+                        (int)($task['progress'] ?: 0),
+                        $plannerStatus,
+                        $existingId
+                    ]);
+                    continue;
+                }
+
+                $insertStmt = $this->db->prepare("
+                    INSERT INTO daily_tasks
+                    (user_id, task_id, original_task_id, title, description, scheduled_date, priority, status, planned_duration, completed_percentage, source_field, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planned_date', NOW())
+                ");
+                $result = $insertStmt->execute([
+                    $userId,
+                    $task['id'],
+                    $task['id'],
+                    $task['title'],
+                    $task['description'],
+                    $date,
+                    $task['priority'] ?: 'medium',
+                    $plannerStatus,
+                    (int)($task['estimated_duration'] ?: 60),
+                    (int)($task['progress'] ?: 0)
+                ]);
+
+                if ($result) {
+                    $addedCount++;
+                }
+            }
+
+            return $addedCount;
+        } catch (Exception $e) {
+            error_log("syncTasksFromSourceTable error: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    private function normalizeTaskStatus($status) {
+        $normalized = strtolower(trim((string)$status));
+        $normalized = str_replace([' ', '-'], '_', $normalized);
+
+        return match ($normalized) {
+            'pending', 'assigned' => 'assigned',
+            'inprogress', 'in_progress', 'active', 'started' => 'in_progress',
+            'pause', 'paused', 'on_break', 'break' => 'on_break',
+            'done', 'finished', 'complete', 'completed' => 'completed',
+            'postpone', 'postponed' => 'postponed',
+            'overdue' => 'overdue',
+            'cancelled', 'canceled', 'deleted' => $normalized === 'canceled' ? 'cancelled' : $normalized,
+            default => 'not_started',
+        };
+    }
+
+    private function materializeRecurringTasksForDate($userId, $date) {
+        try {
+            require_once __DIR__ . '/RecurringTask.php';
+            $recurringTaskModel = new RecurringTask();
+            $recurringTasks = $recurringTaskModel->getDueDailyTasksForUserUntilDate($userId, $date);
+
+            foreach ($recurringTasks as $recurringTask) {
+                $nextDueDate = $recurringTask['next_due_date'];
+                $endDate = $recurringTask['end_date'] ?? null;
+
+                while ($nextDueDate <= $date && ($endDate === null || $nextDueDate <= $endDate)) {
+                    $existsStmt = $this->db->prepare("
+                        SELECT COUNT(*)
+                        FROM daily_tasks
+                        WHERE user_id = ? AND recurring_task_id = ? AND scheduled_date = ?
+                    ");
+                    $existsStmt->execute([$userId, $recurringTask['id'], $nextDueDate]);
+
+                    if ((int)$existsStmt->fetchColumn() === 0) {
+                        $insertStmt = $this->db->prepare("
+                            INSERT INTO daily_tasks
+                            (user_id, recurring_task_id, title, description, scheduled_date, planned_start_time, planned_duration, priority, status, source_field, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'not_started', 'recurring_daily', NOW())
+                        ");
+                        $insertStmt->execute([
+                            $userId,
+                            $recurringTask['id'],
+                            $recurringTask['title'],
+                            $recurringTask['description'],
+                            $nextDueDate,
+                            $recurringTask['planned_start_time'] ?? null,
+                            $recurringTask['planned_duration'] ?? 60,
+                            $recurringTask['priority'] ?? 'medium'
+                        ]);
+                    }
+
+                    $nextDueDate = date('Y-m-d', strtotime($nextDueDate . ' +1 day'));
+                }
+
+                if ($endDate !== null && $nextDueDate > $endDate) {
+                    $recurringTaskModel->deactivate($recurringTask['id']);
+                } else {
+                    $recurringTaskModel->updateNextDueDate($recurringTask['id'], $nextDueDate);
+                }
+            }
+        } catch (Exception $e) {
+            error_log("materializeRecurringTasksForDate error: " . $e->getMessage());
+        }
+    }
+
     public function startTask($taskId, $userId) {
         try {
             $this->db->beginTransaction();
             
             // Get SLA hours for proper end time calculation
             $stmt = $this->db->prepare("
-                SELECT dt.*, COALESCE(t.sla_hours, 0.25) as sla_hours 
+                SELECT dt.*, COALESCE(t.sla_hours, dt.sla_hours, 0.25) as sla_hours 
                 FROM daily_tasks dt 
-                LEFT JOIN tasks t ON dt.original_task_id = t.id 
+                LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id) 
                 WHERE dt.id = ?
             ");
             $stmt->execute([$taskId]);
@@ -339,9 +525,9 @@ class DailyPlanner {
             
             // Get current task state with SLA info
             $stmt = $this->db->prepare("
-                SELECT dt.*, COALESCE(t.sla_hours, 0.25) as sla_hours
+                SELECT dt.*, COALESCE(t.sla_hours, dt.sla_hours, 0.25) as sla_hours
                 FROM daily_tasks dt
-                LEFT JOIN tasks t ON dt.original_task_id = t.id
+                LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id)
                 WHERE dt.id = ?
             ");
             $stmt->execute([$taskId]);
@@ -699,9 +885,9 @@ class DailyPlanner {
                 
                 // Calculate SLA totals from today's assigned tasks only
                 $stmt = $this->db->prepare("
-                    SELECT SUM(COALESCE(t.sla_hours, 0.25) * 3600) as total_sla_seconds
+                    SELECT SUM(COALESCE(t.sla_hours, dt.sla_hours, 0.25) * 3600) as total_sla_seconds
                     FROM daily_tasks dt
-                    LEFT JOIN tasks t ON dt.original_task_id = t.id
+                    LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id)
                     WHERE dt.user_id = ? AND dt.scheduled_date = ?
                 ");
                 $stmt->execute([$userId, $date]);
@@ -968,7 +1154,7 @@ class DailyPlanner {
             // - scheduled_date < today
             // - status IN ('not_started', 'in_progress', 'on_break')
             // - rollover_source_date IS NULL (not already rolled over)
-            $whereClause = "scheduled_date < ? AND status IN ('not_started', 'in_progress', 'on_break') AND completed_percentage < 100";
+            $whereClause = "scheduled_date < ? AND status IN ('not_started', 'in_progress', 'overdue', 'on_break') AND completed_percentage < 100";
             $params = [$today];
             
             // User-specific filtering
@@ -1187,7 +1373,7 @@ class DailyPlanner {
      * 📋 Status Management Rules
      */
     public function isEligibleForRollover($status) {
-        $eligibleStatuses = ['not_started', 'in_progress', 'on_break'];
+        $eligibleStatuses = ['not_started', 'in_progress', 'overdue', 'on_break'];
         return in_array($status, $eligibleStatuses);
     }
     

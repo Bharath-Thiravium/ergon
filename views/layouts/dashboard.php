@@ -93,7 +93,6 @@ ob_end_clean();
             el.setAttribute('data-tooltip', el.getAttribute('title'));
             el.removeAttribute('title');
         });
-    });
     </script>
     
     <style>

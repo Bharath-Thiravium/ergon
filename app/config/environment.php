@@ -65,14 +65,9 @@ class Environment {
             || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
         $protocol = $isHttps ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        // Production domains with explicit protocol
-        if (strpos($host, 'bkgreenenergy.com') !== false) {
-            return 'https://bkgreenenergy.com/ergon';
-        }
-        if (strpos($host, 'athenas.co.in') !== false) {
-            return 'https://athenas.co.in/ergon';
-        }
-
+        // Always use the actual request host so subdomain requests
+        // (e.g. aes.athenas.co.in) are not incorrectly rewritten to the
+        // main domain and cause redirect loops.
         return $protocol . '://' . $host . '/ergon';
     }
 

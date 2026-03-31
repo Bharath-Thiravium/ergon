@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../helpers/TimezoneHelper.php';
 require_once __DIR__ . '/../helpers/DatabaseHelper.php';
+require_once __DIR__ . '/../helpers/TimeHelper.php';
 
 class AttendanceController extends Controller {
     
@@ -35,11 +36,13 @@ class AttendanceController extends Controller {
             
             $dateCondition = $this->getDateCondition($filter);
             
-            $stmt = $db->prepare("SELECT a.*, u.name as user_name, COALESCE(p.place, ?) as location_display, COALESCE(p.name, ?) as project_name, COALESCE(d.name, 'Not Assigned') as department, CASE WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN CONCAT(FLOOR(TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) / 60), 'h ', MOD(TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out), 60), 'm') ELSE '0h 0m' END as working_hours FROM attendance a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN departments d ON u.department_id = d.id LEFT JOIN projects p ON a.project_id = p.id WHERE a.user_id = ? AND $dateCondition ORDER BY a.check_in DESC");
+            $stmt = $db->prepare("SELECT a.*, u.name as user_name, COALESCE(p.place, ?) as location_display, COALESCE(p.name, ?) as project_name, COALESCE(d.name, 'Not Assigned') as department FROM attendance a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN departments d ON u.department_id = d.id LEFT JOIN projects p ON a.project_id = p.id WHERE a.user_id = ? AND $dateCondition ORDER BY a.check_in DESC");
             $stmt->execute([$defaultLocation, $defaultProjectName, $_SESSION['user_id']]);
             $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            // Times are already in IST, no conversion needed
+            foreach ($attendance as &$row) {
+                $row['working_hours'] = TimeHelper::calcWorkingHours($row['check_in'] ?? null, $row['check_out'] ?? null);
+            }
+            unset($row);
             
             $stats = $this->calculateUserStats($attendance);
             
@@ -66,7 +69,6 @@ class AttendanceController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            DatabaseHelper::safeExec($db, "SET time_zone = '+00:00'", "Set variable");
             $this->ensureAttendanceTable($db);
             
             $filterDate = $_GET['date'] ?? date('Y-m-d');
@@ -100,13 +102,7 @@ class AttendanceController extends Controller {
                         WHEN a.location_name = 'On Approved Leave' THEN 'On Leave'
                         WHEN a.check_in IS NOT NULL THEN 'Present'
                         ELSE 'Absent'
-                    END as status,
-                    CASE 
-                        WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN 
-                            CONCAT(FLOOR(TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) / 60), 'h ', 
-                                   MOD(TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out), 60), 'm')
-                        ELSE '0h 0m'
-                    END as working_hours
+                    END as status
                 FROM users u
                 LEFT JOIN departments d ON u.department_id = d.id
                 LEFT JOIN attendance a ON u.id = a.user_id AND DATE(a.check_in) = ?
@@ -116,11 +112,18 @@ class AttendanceController extends Controller {
             ");
             $stmt->execute([$defaultLocation, $defaultProjectName, $filterDate]);
             $employeeAttendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($employeeAttendance as &$row) {
+                $row['working_hours'] = TimeHelper::calcWorkingHours($row['check_in'] ?? null, $row['check_out'] ?? null);
+            }
+            unset($row);
             
             // Get admin's own attendance with location data from projects table
-            $stmt = $db->prepare("SELECT a.*, COALESCE(p.place, ?) as location_display, COALESCE(p.name, ?) as project_name, CASE WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL THEN CONCAT(FLOOR(TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) / 60), 'h ', MOD(TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out), 60), 'm') ELSE '0h 0m' END as working_hours FROM attendance a LEFT JOIN projects p ON a.project_id = p.id WHERE a.user_id = ? AND DATE(a.check_in) = ?");
+            $stmt = $db->prepare("SELECT a.*, COALESCE(p.place, ?) as location_display, COALESCE(p.name, ?) as project_name FROM attendance a LEFT JOIN projects p ON a.project_id = p.id WHERE a.user_id = ? AND DATE(a.check_in) = ?");
             $stmt->execute([$defaultLocation, $defaultProjectName, $_SESSION['user_id'], $filterDate]);
             $adminAttendance = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($adminAttendance) {
+                $adminAttendance['working_hours'] = TimeHelper::calcWorkingHours($adminAttendance['check_in'] ?? null, $adminAttendance['check_out'] ?? null);
+            }
             
         } catch (Exception $e) {
             error_log('Attendance error: ' . $e->getMessage());
@@ -315,7 +318,6 @@ class AttendanceController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            DatabaseHelper::safeExec($db, "SET time_zone = '+00:00'", "Set variable");
             $this->ensureAttendanceTable($db);
             
             $type = $_POST['type'] ?? '';

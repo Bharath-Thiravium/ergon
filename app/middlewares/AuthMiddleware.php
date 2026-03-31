@@ -3,20 +3,9 @@ require_once __DIR__ . '/../helpers/SessionManager.php';
 
 class AuthMiddleware {
     public static function requireAuth() {
-        // Set secure session cookie parameters before starting session
-        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
-            $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
-            $domain = $_SERVER['HTTP_HOST'];
-            session_set_cookie_params([
-                'lifetime' => 28800,
-                'path' => '/ergon/',
-                'domain' => $domain,
-                'secure' => $isSecure,
-                'httponly' => true,
-                'samesite' => 'Lax'
-            ]);
-        }
-        
+        // session.php (loaded by index.php) already configured cookie params
+        // before session_start(). Do NOT call session_set_cookie_params() here
+        // — it has no effect once the session is already active.
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }

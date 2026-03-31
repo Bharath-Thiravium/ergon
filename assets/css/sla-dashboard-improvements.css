@@ -30,6 +30,17 @@
     align-items: flex-start;
     justify-content: flex-end;
     flex-shrink: 0;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.sla-task-filter {
+    min-width: 220px;
+}
+
+.sla-task-filter label {
+    display: block;
+    margin-bottom: 0.35rem;
 }
 
 .sla-refresh-btn {

@@ -83,6 +83,15 @@ class UnifiedWorkflowController extends Controller {
             require_once __DIR__ . '/../models/DailyPlanner.php';
             $planner = new DailyPlanner();
             $plannedTasks = $planner->getTasksForDate($currentUserId, $date);
+            if (empty($plannedTasks)) {
+                $forcedSyncCount = $planner->syncTasksFromSourceTable($currentUserId, $date);
+                if ($forcedSyncCount > 0) {
+                    $plannedTasks = $planner->getTasksForDate($currentUserId, $date);
+                    if (!isset($_SESSION['sync_message'])) {
+                        $_SESSION['sync_message'] = "Loaded {$forcedSyncCount} task(s) from Tasks";
+                    }
+                }
+            }
             $dailyStats = $planner->getDailyStats($currentUserId, $date);
             
             $this->view('daily_workflow/unified_daily_planner', [
@@ -755,6 +764,8 @@ class UnifiedWorkflowController extends Controller {
         $plannedTime = $_POST['planned_time'] ?? null;
         $duration = intval($_POST['duration'] ?? 60);
         $priority = $_POST['priority'] ?? 'medium';
+        $repeatDaily = !empty($_POST['repeat_daily']);
+        $endDate = !empty($_POST['end_date']) ? $_POST['end_date'] : null;
         
         if (empty($title)) {
             echo json_encode(['success' => false, 'message' => 'Title is required']);
@@ -767,6 +778,31 @@ class UnifiedWorkflowController extends Controller {
             
             // Ensure daily_tasks table exists
             $this->ensureDailyTasksTable($db);
+
+            if ($repeatDaily) {
+                require_once __DIR__ . '/../models/RecurringTask.php';
+                $recurringTaskModel = new RecurringTask();
+
+                $created = $recurringTaskModel->create([
+                    'title' => $title,
+                    'description' => $description,
+                    'assigned_to' => $_SESSION['user_id'],
+                    'frequency' => 'daily',
+                    'planned_start_time' => $plannedTime,
+                    'planned_duration' => $duration,
+                    'priority' => $priority,
+                    'next_due_date' => $scheduledDate,
+                    'end_date' => $endDate,
+                    'created_by' => $_SESSION['user_id']
+                ]);
+
+                if ($created) {
+                    echo json_encode(['success' => true, 'message' => 'Recurring daily task created successfully']);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Failed to create recurring task']);
+                }
+                return;
+            }
             
             // Create daily task entry
             $stmt = $db->prepare("
@@ -908,6 +944,7 @@ class UnifiedWorkflowController extends Controller {
         $validStatuses = [
             'not_started',
             'in_progress', 
+            'overdue',
             'on_break',
             'completed',
             'postponed'
@@ -1162,7 +1199,8 @@ class UnifiedWorkflowController extends Controller {
             // Check and add missing columns
             $columnsToAdd = [
                 'sla_end_time' => 'TIMESTAMP NULL',
-                'total_pause_duration' => 'INT DEFAULT 0'
+                'total_pause_duration' => 'INT DEFAULT 0',
+                'recurring_task_id' => 'INT NULL'
             ];
             
             foreach ($columnsToAdd as $column => $definition) {

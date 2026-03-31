@@ -53,7 +53,9 @@ ob_start();
         </a>
         <?php endif; ?>
     </div>
+    <?php endforeach; ?>
 </div>
+<?php endif; ?>
 
 <?php if (isset($attendance_status) && ($attendance_status['status'] ?? '') === 'not_clocked_in'): ?>
 <div class="alert alert--warning">

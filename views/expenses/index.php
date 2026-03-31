@@ -131,6 +131,7 @@ ob_start();
         <p>Track and manage employee expense claims</p>
     </div>
     <div class="page-actions">
+        <?php if (($user_role ?? '') !== 'user'): ?>
         <form method="GET" class="module-filters">
             <div class="module-filters__group">
                 <label for="expense-project-filter" class="module-filters__label">Filter By Project</label>
@@ -147,6 +148,7 @@ ob_start();
             <a href="/ergon/expenses" class="btn btn--secondary">Clear Filter</a>
             <?php endif; ?>
         </form>
+        <?php endif; ?>
         <button onclick="showExpenseModal()" class="btn btn--primary">
             <span></span> Submit Expense
         </button>

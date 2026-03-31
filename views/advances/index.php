@@ -34,6 +34,7 @@ ob_start();
         <p>Manage employee salary advance requests and approvals</p>
     </div>
     <div class="page-actions">
+        <?php if (($user_role ?? '') !== 'user'): ?>
         <form method="GET" class="module-filters">
             <div class="module-filters__group">
                 <label for="advance-project-filter" class="module-filters__label">Filter By Project</label>
@@ -50,6 +51,7 @@ ob_start();
             <a href="/ergon/advances" class="btn btn--secondary">Clear Filter</a>
             <?php endif; ?>
         </form>
+        <?php endif; ?>
         <button onclick="showAdvanceModal()" class="btn btn--primary">
             Request Advance
         </button>

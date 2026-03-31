@@ -100,7 +100,7 @@ class ExpenseController extends Controller {
             
             $data = [
                 'expenses' => $expenses ?? [],
-                'projects' => $this->getProjects(),
+                'projects' => $this->getProjects($user_id, $role),
                 'filters' => ['project_id' => $projectId],
                 'user_role' => $role,
                 'active_page' => 'expenses'
@@ -111,7 +111,7 @@ class ExpenseController extends Controller {
             error_log('Expense index error: ' . $e->getMessage());
             $data = [
                 'expenses' => [],
-                'projects' => $this->getProjects(),
+                'projects' => $this->getProjects($_SESSION['user_id'] ?? null, $_SESSION['role'] ?? null),
                 'filters' => ['project_id' => isset($_GET['project_id']) && is_numeric($_GET['project_id']) ? (int) $_GET['project_id'] : null],
                 'user_role' => $_SESSION['role'],
                 'error' => 'Unable to load expense data.',
@@ -235,10 +235,29 @@ class ExpenseController extends Controller {
         }
     }
 
-    private function getProjects() {
+    private function getProjects($userId = null, $role = null) {
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
+
+            if ($role === 'user' && $userId) {
+                $stmt = $db->prepare("
+                    SELECT DISTINCT p.id, p.name
+                    FROM projects p
+                    LEFT JOIN user_projects up
+                        ON up.project_id = p.id
+                       AND up.user_id = ?
+                       AND up.status = 'active'
+                    LEFT JOIN expenses e
+                        ON e.project_id = p.id
+                       AND e.user_id = ?
+                    WHERE up.project_id IS NOT NULL OR e.project_id IS NOT NULL
+                    ORDER BY p.name ASC
+                ");
+                $stmt->execute([$userId, $userId]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+
             $stmt = $db->query("SELECT id, name FROM projects ORDER BY name ASC");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {

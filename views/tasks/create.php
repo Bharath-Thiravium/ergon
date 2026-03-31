@@ -328,6 +328,7 @@ $content = ob_start();
                     <div class="form-group">
                         <label for="recurrence_type">Repeat Frequency *</label>
                         <select id="recurrence_type" name="recurrence_type">
+                            <option value="daily">📅 Daily</option>
                             <option value="weekly">📅 Weekly</option>
                             <option value="monthly">📆 Monthly</option>
                             <option value="quarterly">📅 Quarterly (3 months)</option>
@@ -335,7 +336,7 @@ $content = ob_start();
                             <option value="annually">📅 Annually (12 months)</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="recurrence_interval_group">
                         <label for="recurrence_interval">Repeat Every</label>
                         <div class="interval-input">
                             <input type="number" id="recurrence_interval" name="recurrence_interval" min="1" max="12" value="1">
@@ -710,8 +711,10 @@ function updateIntervalLabel() {
     const type = document.getElementById('recurrence_type').value;
     const label = document.getElementById('interval_label');
     const intervalInput = document.getElementById('recurrence_interval');
+    const intervalGroup = document.getElementById('recurrence_interval_group');
     
     const labels = {
+        'daily': 'day(s)',
         'weekly': 'week(s)',
         'monthly': 'month(s)',
         'quarterly': 'quarter(s)',
@@ -726,6 +729,15 @@ function updateIntervalLabel() {
         'half_yearly': 2,
         'annually': 5
     };
+
+    if (type === 'daily') {
+        intervalInput.value = 1;
+        intervalInput.max = 1;
+        if (intervalGroup) intervalGroup.style.display = 'none';
+        return;
+    }
+
+    if (intervalGroup) intervalGroup.style.display = '';
     
     label.textContent = labels[type] || 'period(s)';
     intervalInput.max = maxValues[type] || 12;

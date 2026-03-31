@@ -89,7 +89,7 @@ class AdvanceController extends Controller {
             }
             $advances = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $projects = $db->query("SELECT id, name FROM projects ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+            $projects = $this->getFilterProjects($db, $user_id, $role);
             $this->view('advances/index', [
                 'advances' => $advances,
                 'projects' => $projects,
@@ -107,6 +107,33 @@ class AdvanceController extends Controller {
                 'error' => 'Unable to load advances',
                 'active_page' => 'advances'
             ]);
+        }
+    }
+
+    private function getFilterProjects($db, $userId, $role) {
+        try {
+            if ($role === 'user' && $userId) {
+                $stmt = $db->prepare("
+                    SELECT DISTINCT p.id, p.name
+                    FROM projects p
+                    LEFT JOIN user_projects up
+                        ON up.project_id = p.id
+                       AND up.user_id = ?
+                       AND up.status = 'active'
+                    LEFT JOIN advances a
+                        ON a.project_id = p.id
+                       AND a.user_id = ?
+                    WHERE up.project_id IS NOT NULL OR a.project_id IS NOT NULL
+                    ORDER BY p.name ASC
+                ");
+                $stmt->execute([$userId, $userId]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+
+            return $db->query("SELECT id, name FROM projects ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Advance filter projects error: ' . $e->getMessage());
+            return [];
         }
     }
     
