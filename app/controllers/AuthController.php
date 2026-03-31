@@ -101,29 +101,14 @@ class AuthController extends Controller {
                     Session::init();
                 }
                 session_regenerate_id(true);
-                // Re-send cookie with new session ID after regeneration
-                $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-                    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
-                setcookie('ERGON_SID', session_id(), [
-                    'expires'  => 0,
-                    'path'     => '/',
-                    'domain'   => '',
-                    'secure'   => $isHttps,
-                    'httponly' => true,
-                    'samesite' => 'Lax',
-                ]);
-                unset($_COOKIE['ERGON_SID']);
-                $_COOKIE['ERGON_SID'] = session_id();
-                
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_name'] = $user['name'];
-                $_SESSION['user_email'] = $user['email'];
-                $_SESSION['role'] = $user['role'];
-                
-                // Set timezone to IST for Hostinger
+
+                $_SESSION['user_id']         = $user['id'];
+                $_SESSION['user_name']       = $user['name'];
+                $_SESSION['user_email']      = $user['email'];
+                $_SESSION['role']            = $user['role'];
                 date_default_timezone_set('Asia/Kolkata');
-                $_SESSION['login_time'] = time();
-                $_SESSION['last_activity'] = time();
+                $_SESSION['login_time']      = time();
+                $_SESSION['last_activity']   = time();
                 $_SESSION['login_timestamp'] = date('Y-m-d H:i:s');
                 
                 $redirectUrl = $this->getRedirectUrl($user['role']);
