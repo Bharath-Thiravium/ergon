@@ -1,8 +1,10 @@
 <?php
-header('Content-Type: application/json');
+ob_start();
 error_reporting(0);
 ini_set('display_errors', 0);
 session_start();
+ob_clean();
+header('Content-Type: application/json; charset=utf-8');
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
@@ -12,6 +14,7 @@ if (!isset($_SESSION['user_id'])) {
 
 try {
     require_once __DIR__ . '/../app/config/database.php';
+    ob_clean();
     $db = Database::connect();
 
     $userId = (int)$_SESSION['user_id'];

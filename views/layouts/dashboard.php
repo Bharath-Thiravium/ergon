@@ -1160,6 +1160,11 @@ ob_end_clean();
         checkAttendanceStatus();
         loadNotificationCount();
 
+        // Stop polling when the page is being unloaded (navigation/logout)
+        window.addEventListener('beforeunload', function() {
+            clearInterval(notificationInterval);
+        });
+
         // Ensure profile button is clickable
         var profileBtn = document.getElementById('profileButton');
         if (profileBtn) {
@@ -1171,7 +1176,7 @@ ob_end_clean();
         }
         
         // Refresh notifications every 30 seconds
-        setInterval(loadNotificationCount, 30000);
+        var notificationInterval = setInterval(loadNotificationCount, 30000);
     });
 
     function toggleProfile() {

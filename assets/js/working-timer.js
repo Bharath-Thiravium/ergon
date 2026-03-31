@@ -43,7 +43,11 @@ function getWorkingTimeMs(card) {
 }
 
 function getSlaDurationMs(card) {
-    return (parseInt(card.dataset.slaDuration) || 900) * 1000;
+    const sec = parseInt(card.dataset.slaDuration) || 0;
+    if (sec > 0) return sec * 1000;
+    // Task not yet started — fall back to sla_hours attribute
+    const hours = parseFloat(card.dataset.slaHours) || 0.25;
+    return Math.max(60, Math.round(hours * 3600)) * 1000;
 }
 
 // ── 1-second UI tick ──────────────────────────────────────────────────────────
@@ -65,14 +69,20 @@ setInterval(() => {
             display.textContent = '00:00:00';
             display.style.color = '#6b7280';
             display.style.fontWeight = 'normal';
+            display.style.opacity   = '1';
+        } else if (status === 'on_break') {
+            // Timer is frozen — show accumulated work time, dim it to signal paused
+            display.textContent     = fmt(workingMs);
+            display.style.color     = '#f59e0b';
+            display.style.fontWeight = 'normal';
+            display.style.opacity   = '0.6';
+            label = 'Paused';
         } else {
             display.textContent  = fmt(workingMs);
             display.style.fontWeight = isRunningStatus(status) ? 'bold' : 'normal';
+            display.style.opacity   = '1';
 
-            if (status === 'on_break') {
-                display.style.color = '#f59e0b';
-                label = 'Paused At';
-            } else if (status === 'completed') {
+            if (status === 'completed') {
                 display.style.color = '#10b981';
                 label = 'Total Time';
             } else if (remainingMs <= 0) {
@@ -88,20 +98,31 @@ setInterval(() => {
         const timingLabel = card.querySelector('.timing-card--primary .timing-label');
         if (timingLabel && label) timingLabel.textContent = label;
 
-        // ── Remaining SLA display ──
+        // ── Remaining SLA display — frozen during break ──
         const remainEl = document.getElementById('remaining-sla-' + taskId);
         if (remainEl) {
             if (status === 'not_started' || status === 'assigned') {
-                remainEl.textContent = fmt(slaDurMs);
+                remainEl.textContent   = fmt(slaDurMs);
+                remainEl.style.color   = '';
+                remainEl.style.opacity = '1';
+            } else if (status === 'on_break') {
+                // Frozen — show remaining at the moment of pause, dimmed
+                remainEl.textContent   = remainingMs > 0 ? fmt(remainingMs) : '00:00:00';
+                remainEl.style.color   = remainingMs <= 0 ? '#dc2626' : '#f59e0b';
+                remainEl.style.opacity = '0.6';
             } else {
-                remainEl.textContent = remainingMs > 0 ? fmt(remainingMs) : '00:00:00';
-                remainEl.style.color = remainingMs <= 0 ? '#dc2626' : '';
+                remainEl.textContent   = remainingMs > 0 ? fmt(remainingMs) : '00:00:00';
+                remainEl.style.color   = remainingMs <= 0 ? '#dc2626' : '';
+                remainEl.style.opacity = '1';
             }
         }
 
-        // ── Time Used (elapsed + any break time shown separately) ──
+        // ── Time Used — frozen during break ──
         const timeUsedEl = document.getElementById('time-used-' + taskId);
-        if (timeUsedEl) timeUsedEl.textContent = fmt(workingMs);
+        if (timeUsedEl) {
+            timeUsedEl.textContent   = fmt(workingMs);
+            timeUsedEl.style.opacity = status === 'on_break' ? '0.6' : '1';
+        }
     });
 }, 1000);
 
@@ -121,6 +142,7 @@ function markTaskOverdue(taskId) {
     .then(data => {
         if (data.success) {
             card.dataset.status = 'overdue';
+            applyCardState(card, 'overdue');
             updateTaskUI(taskId, 'overdue');
             showNotification('Task is now overdue', 'error');
             if (window.forceSLARefresh) window.forceSLARefresh();
@@ -128,6 +150,37 @@ function markTaskOverdue(taskId) {
     })
     .catch(() => {})
     .finally(() => { delete card.dataset.overdueSyncing; });
+}
+
+// ── Apply visual state to a card immediately (no tick delay) ─────────────────
+
+function applyCardState(card, status) {
+    // Swap the activity CSS class
+    card.classList.remove('task-card--active', 'task-card--break', 'task-card--completed');
+    if (status === 'in_progress' || status === 'overdue') card.classList.add('task-card--active');
+    else if (status === 'on_break')                       card.classList.add('task-card--break');
+    else if (status === 'completed')                      card.classList.add('task-card--completed');
+
+    // Update the timing label immediately
+    const timingLabel = card.querySelector('.timing-card--primary .timing-label');
+    if (timingLabel) {
+        if (status === 'on_break')                              timingLabel.textContent = 'Paused';
+        else if (status === 'in_progress')                      timingLabel.textContent = 'Elapsed';
+        else if (status === 'overdue')                          timingLabel.textContent = 'Overdue';
+        else if (status === 'completed')                        timingLabel.textContent = 'Total Time';
+    }
+
+    // Freeze / unfreeze the three timer displays immediately
+    const taskId     = card.dataset.taskId;
+    const frozen     = status === 'on_break';
+    const opacity    = frozen ? '0.6' : '1';
+    const display    = card.querySelector('#countdown-' + taskId + ' .countdown-display');
+    const remainEl   = document.getElementById('remaining-sla-' + taskId);
+    const timeUsedEl = document.getElementById('time-used-' + taskId);
+
+    if (display)    { display.style.opacity    = opacity; if (frozen) display.style.color    = '#f59e0b'; }
+    if (remainEl)   { remainEl.style.opacity   = opacity; if (frozen) remainEl.style.color   = '#f59e0b'; }
+    if (timeUsedEl) { timeUsedEl.style.opacity = opacity; }
 }
 
 // ── UI update after action ────────────────────────────────────────────────────
@@ -163,33 +216,39 @@ function updateTaskUI(taskId, status) {
 
 window.startTask = function(taskId, event) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
-    // Always get the actual <button> element, not a child icon
     const btn = event ? (event.target.closest('button') || event.target) : null;
+    if (btn && btn.disabled) return false;
     if (btn) btn.disabled = true;
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    console.log('[startTask] taskId:', taskId, 'btn:', btn);
 
     fetch('/ergon/api/daily_planner_workflow.php?action=start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task_id: parseInt(taskId), csrf_token: csrf })
     })
-    .then(r => r.json())
-    .then(data => {
+    .then(r => r.text())
+    .then(text => {
+        let data;
+        try { data = JSON.parse(text); }
+        catch (_) {
+            console.error('start API non-JSON response:', text.slice(0, 500));
+            throw new Error('Server returned non-JSON response');
+        }
         if (data.success) {
             const card = document.querySelector('[data-task-id="' + taskId + '"]');
             if (card) {
-                card.dataset.status              = 'in_progress';
-                card.dataset.startTsMs           = String(data.start_ts_ms);
-                card.dataset.pausedAccumMs       = '0';
-                card.dataset.pauseStartTsMs      = '0';
-                card.dataset.slaDuration         = String(data.sla_duration_seconds);
+                card.dataset.status         = 'in_progress';
+                card.dataset.startTsMs      = String(data.start_ts_ms);
+                card.dataset.pausedAccumMs  = '0';
+                card.dataset.pauseStartTsMs = '0';
+                card.dataset.slaDuration    = String(data.sla_duration_seconds);
+                applyCardState(card, 'in_progress');
             }
             updateTaskUI(taskId, 'in_progress');
             showNotification('Task started', 'success');
             if (window.forceSLARefresh) window.forceSLARefresh();
         } else {
-            showNotification('Failed to start: ' + (data.error || ''), 'error');
+            showNotification('Failed to start: ' + (data.message || ''), 'error');
         }
     })
     .catch(e => showNotification('Error: ' + e.message, 'error'))
@@ -199,11 +258,12 @@ window.startTask = function(taskId, event) {
 
 window.pauseTask = function(taskId, event) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
+    const btn = event ? (event.target.closest('button') || event.target) : null;
+    if (btn && btn.disabled) return false;
     const card = document.querySelector('[data-task-id="' + taskId + '"]');
     if (!card || !isRunningStatus(card.dataset.status)) {
         showNotification('Task must be running to pause', 'error'); return false;
     }
-    const btn = event ? (event.target.closest('button') || event.target) : null;
     if (btn) btn.disabled = true;
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -212,21 +272,30 @@ window.pauseTask = function(taskId, event) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task_id: parseInt(taskId), csrf_token: csrf })
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            const card = document.querySelector('[data-task-id="' + taskId + '"]');
-            if (card) {
-                card.dataset.status         = 'on_break';
-                card.dataset.pauseStartTsMs = String(data.pause_start_ts_ms);
-                card.dataset.pausedAccumMs  = String(data.paused_accum_ms);
-                card.dataset.startTsMs      = '0';
+    .then(r => r.text())
+    .then(text => {
+        let data;
+        try { data = JSON.parse(text); }
+        catch (_) {
+            console.error('pause API non-JSON response:', text.slice(0, 500));
+            throw new Error('Server returned non-JSON response');
+        }
+        // Also handle the case where DB is already on_break (DOM/DB desync)
+        const alreadyOnBreak = !data.success && data.message && data.message.includes('on_break');
+        if (data.success || alreadyOnBreak) {
+            const c = document.querySelector('[data-task-id="' + taskId + '"]');
+            if (c) {
+                c.dataset.status         = 'on_break';
+                c.dataset.startTsMs      = '0';
+                if (data.pause_start_ts_ms) c.dataset.pauseStartTsMs = String(data.pause_start_ts_ms);
+                if (data.paused_accum_ms)   c.dataset.pausedAccumMs  = String(data.paused_accum_ms);
+                applyCardState(c, 'on_break');
             }
             updateTaskUI(taskId, 'on_break');
-            showNotification('Break started', 'success');
+            if (data.success) showNotification('Break started', 'success');
             if (window.forceSLARefresh) window.forceSLARefresh();
         } else {
-            showNotification('Failed to pause: ' + (data.error || ''), 'error');
+            showNotification('Failed to pause: ' + (data.message || ''), 'error');
         }
     })
     .catch(e => showNotification('Error: ' + e.message, 'error'))
@@ -237,6 +306,7 @@ window.pauseTask = function(taskId, event) {
 window.resumeTask = function(taskId, event) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
     const btn = event ? (event.target.closest('button') || event.target) : null;
+    if (btn && btn.disabled) return false;
     if (btn) btn.disabled = true;
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -245,22 +315,29 @@ window.resumeTask = function(taskId, event) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task_id: parseInt(taskId), csrf_token: csrf })
     })
-    .then(r => r.json())
-    .then(data => {
+    .then(r => r.text())
+    .then(text => {
+        let data;
+        try { data = JSON.parse(text); }
+        catch (_) {
+            console.error('resume API non-JSON response:', text.slice(0, 500));
+            throw new Error('Server returned non-JSON response');
+        }
         if (data.success) {
             const card = document.querySelector('[data-task-id="' + taskId + '"]');
             if (card) {
                 card.dataset.status         = data.status;
-                card.dataset.startTsMs      = String(data.start_ts_ms);   // fresh reference
+                card.dataset.startTsMs      = String(data.start_ts_ms);
                 card.dataset.pausedAccumMs  = String(data.paused_accum_ms);
                 card.dataset.pauseStartTsMs = '0';
                 if (data.sla_duration_seconds) card.dataset.slaDuration = String(data.sla_duration_seconds);
+                applyCardState(card, data.status);
             }
             updateTaskUI(taskId, data.status);
             showNotification('Task resumed', 'success');
             if (window.forceSLARefresh) window.forceSLARefresh();
         } else {
-            showNotification('Failed to resume: ' + (data.error || ''), 'error');
+            showNotification('Failed to resume: ' + (data.message || ''), 'error');
         }
     })
     .catch(e => showNotification('Error: ' + e.message, 'error'))
@@ -304,7 +381,7 @@ window.submitPostpone = function() {
     .then(r => r.json())
     .then(data => {
         if (data.success) { showNotification('Task postponed', 'success'); setTimeout(() => location.reload(), 600); }
-        else showNotification(data.error || 'Failed to postpone', 'error');
+        else showNotification(data.message || 'Failed to postpone', 'error');
     })
     .catch(e => showNotification('Error: ' + e.message, 'error'));
 };
@@ -319,32 +396,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Active event delegation for Start / Pause / Resume buttons.
-    // This is the primary handler — it fires in the capture phase before
-    // the onclick attribute, prevents the onclick from double-firing, and
-    // ensures event.target.closest('button') is always the <button> element.
-    document.addEventListener('click', function(e) {
-        const btn = e.target.closest(
-            'button[onclick^="startTask"], button[onclick^="pauseTask"], button[onclick^="resumeTask"]'
-        );
-        if (!btn || btn.disabled) return;
 
-        const onclickAttr = btn.getAttribute('onclick') || '';
-        const match = onclickAttr.match(/^(startTask|pauseTask|resumeTask)\((\d+)/);
-        if (!match) return;
-
-        const fnName = match[1];
-        const taskId = parseInt(match[2]);
-        if (!taskId) return;
-
-        // Prevent the inline onclick from also firing
-        e.stopImmediatePropagation();
-        e.preventDefault();
-
-        // Call with the button as the event target so btn.disabled works correctly
-        const syntheticEvent = { preventDefault: function(){}, stopPropagation: function(){}, target: btn };
-        if (typeof window[fnName] === 'function') {
-            window[fnName](taskId, syntheticEvent);
-        }
-    }, true); // capture phase
 });

@@ -33,7 +33,7 @@ function activatePostponedTask(taskId, event) {
             if (typeof showNotification === 'function') showNotification('Task activated', 'success');
             setTimeout(() => location.reload(), 600);
         } else {
-            if (typeof showNotification === 'function') showNotification(data.error || 'Failed to activate', 'error');
+            if (typeof showNotification === 'function') showNotification(data.message || 'Failed to activate', 'error');
         }
     })
     .catch(() => { if (typeof showNotification === 'function') showNotification('Network error', 'error'); });
@@ -92,7 +92,7 @@ if (typeof window.submitPostpone !== 'function') {
                 if (typeof showNotification === 'function') showNotification('Task postponed', 'success');
                 setTimeout(() => location.reload(), 600);
             } else {
-                if (typeof showNotification === 'function') showNotification(data.error || 'Failed to postpone', 'error');
+                if (typeof showNotification === 'function') showNotification(data.message || 'Failed to postpone', 'error');
             }
         })
         .catch(() => { if (typeof showNotification === 'function') showNotification('Network error', 'error'); });

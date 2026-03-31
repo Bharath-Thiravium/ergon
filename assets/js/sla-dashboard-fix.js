@@ -78,8 +78,14 @@
             credentials: 'same-origin',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const payload = await r.json();
+        const text = await r.text();
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + text.slice(0, 120));
+        let payload;
+        try { payload = JSON.parse(text); }
+        catch (_) {
+            console.error('sla_dashboard.php raw response:', text.slice(0, 500));
+            throw new Error('Non-JSON response from sla_dashboard.php');
+        }
         if (!payload.success) throw new Error(payload.message || 'Failed');
 
         const d = payload.sla_data;

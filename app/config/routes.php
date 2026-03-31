@@ -10,9 +10,6 @@ $router->post('/project-management/create', 'ProjectManagementController', 'crea
 $router->post('/project-management/update', 'ProjectManagementController', 'update');
 $router->post('/project-management/delete', 'ProjectManagementController', 'delete');
 
-// Favicon route
-$router->get('/favicon.ico', 'StaticController', 'favicon');
-
 // Test routes
 // TestController routes removed - controller archived
 

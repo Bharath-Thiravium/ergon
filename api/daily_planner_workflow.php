@@ -1,17 +1,20 @@
 <?php
-header('Content-Type: application/json; charset=utf-8');
-error_reporting(0);          // prevent PHP warnings from corrupting JSON
+ob_start();
+error_reporting(0);
 ini_set('display_errors', 0);
 session_start();
+ob_clean();
+header('Content-Type: application/json; charset=utf-8');
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
-    echo json_encode(['error' => 'Authentication required']);
+    echo json_encode(['success' => false, 'message' => 'Authentication required']);
     exit;
 }
 
 require_once __DIR__ . '/../app/config/database.php';
 require_once __DIR__ . '/../app/helpers/DatabaseHelper.php';
+ob_clean();
 
 $raw   = file_get_contents('php://input');
 $input = json_decode($raw, true);
@@ -22,13 +25,13 @@ $task_id = $input['task_id'] ?? null;
 
 if (empty($action)) {
     http_response_code(400);
-    echo json_encode(['error' => 'missing action']);
+    echo json_encode(['success' => false, 'message' => 'missing action']);
     exit;
 }
 
 if (in_array($action, ['start', 'pause', 'resume', 'update-progress', 'postpone', 'mark-overdue']) && !$task_id) {
     http_response_code(400);
-    echo json_encode(['error' => 'missing task_id']);
+    echo json_encode(['success' => false, 'message' => 'missing task_id']);
     exit;
 }
 
@@ -51,10 +54,10 @@ try {
             $stmt->execute([$task_id, $userId]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$task) { http_response_code(404); echo json_encode(['error' => 'Task not found']); exit; }
+            if (!$task) { http_response_code(404); echo json_encode(['success' => false, 'message' => 'Task not found']); exit; }
             if (!in_array($task['status'], ['not_started', 'assigned'])) {
                 http_response_code(400);
-                echo json_encode(['error' => 'Task cannot be started. Status: ' . $task['status']]);
+                echo json_encode(['success' => false, 'message' => 'Task cannot be started. Status: ' . $task['status']]);
                 exit;
             }
 
@@ -75,7 +78,7 @@ try {
             ");
             $stmt->execute([$nowMs, $slaDurationSeconds, $task_id, $userId]);
 
-            if ($stmt->rowCount() === 0) { http_response_code(400); echo json_encode(['error' => 'Failed to start task']); exit; }
+            if ($stmt->rowCount() === 0) { http_response_code(400); echo json_encode(['success' => false, 'message' => 'Failed to start task']); exit; }
 
             $linked = (int)($task['original_task_id'] ?: $task['task_id']);
             if ($linked > 0) {
@@ -101,10 +104,20 @@ try {
             $stmt->execute([$task_id, $userId]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$task) { http_response_code(404); echo json_encode(['error' => 'Task not found']); exit; }
+            if (!$task) { http_response_code(404); echo json_encode(['success' => false, 'message' => 'Task not found']); exit; }
+            if ($task['status'] === 'on_break') {
+                // Already paused — return current state so JS can sync
+                echo json_encode([
+                    'success'          => true,
+                    'status'           => 'on_break',
+                    'pause_start_ts_ms'=> (int)($task['paused_accum_ms'] ?? 0),
+                    'paused_accum_ms'  => (int)($task['paused_accum_ms'] ?? 0),
+                ]);
+                exit;
+            }
             if (!in_array($task['status'], ['in_progress', 'overdue'])) {
                 http_response_code(400);
-                echo json_encode(['error' => 'Task is not running. Status: ' . $task['status']]);
+                echo json_encode(['success' => false, 'message' => 'Task is not running. Status: ' . $task['status']]);
                 exit;
             }
 
@@ -126,11 +139,11 @@ try {
             ");
             $stmt->execute([$nowMs, $newAccumMs, $task_id, $userId]);
 
-            if ($stmt->rowCount() === 0) { http_response_code(400); echo json_encode(['error' => 'Failed to pause task']); exit; }
+            if ($stmt->rowCount() === 0) { http_response_code(400); echo json_encode(['success' => false, 'message' => 'Failed to pause task']); exit; }
 
             $linked = (int)($task['original_task_id'] ?: $task['task_id']);
             if ($linked > 0) {
-                $db->prepare("UPDATE tasks SET status='on_break', updated_at=NOW() WHERE id=?")->execute([$linked]);
+                $db->prepare("UPDATE tasks SET status='in_progress', updated_at=NOW() WHERE id=?")->execute([$linked]);
             }
 
             echo json_encode([
@@ -155,10 +168,10 @@ try {
             $stmt->execute([$task_id, $userId]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$task) { http_response_code(404); echo json_encode(['error' => 'Task not found']); exit; }
+            if (!$task) { http_response_code(404); echo json_encode(['success' => false, 'message' => 'Task not found']); exit; }
             if ($task['status'] !== 'on_break') {
                 http_response_code(400);
-                echo json_encode(['error' => 'Task is not paused. Status: ' . $task['status']]);
+                echo json_encode(['success' => false, 'message' => 'Task is not paused. Status: ' . $task['status']]);
                 exit;
             }
 
@@ -188,11 +201,13 @@ try {
             ");
             $stmt->execute([$nextStatus, $nowMs, $newAccumMs, $task_id, $userId]);
 
-            if ($stmt->rowCount() === 0) { http_response_code(400); echo json_encode(['error' => 'Failed to resume task']); exit; }
+            if ($stmt->rowCount() === 0) { http_response_code(400); echo json_encode(['success' => false, 'message' => 'Failed to resume task']); exit; }
 
             $linked = (int)($task['original_task_id'] ?: $task['task_id']);
             if ($linked > 0) {
-                $db->prepare("UPDATE tasks SET status=?, updated_at=NOW() WHERE id=?")->execute([$nextStatus, $linked]);
+                // Map daily_tasks statuses to the subset tasks table supports
+                $tasksStatus = in_array($nextStatus, ['completed']) ? 'completed' : 'in_progress';
+                $db->prepare("UPDATE tasks SET status=?, updated_at=NOW() WHERE id=?")->execute([$tasksStatus, $linked]);
             }
 
             echo json_encode([
@@ -210,11 +225,11 @@ try {
             $stmt->execute([$task_id, $userId]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$task) { http_response_code(404); echo json_encode(['error' => 'Task not found']); exit; }
+            if (!$task) { http_response_code(404); echo json_encode(['success' => false, 'message' => 'Task not found']); exit; }
             if ($task['status'] === 'overdue') { echo json_encode(['success' => true, 'status' => 'overdue']); exit; }
-            if ($task['status'] !== 'in_progress') {
+            if (!in_array($task['status'], ['in_progress', 'overdue'])) {
                 http_response_code(400);
-                echo json_encode(['error' => 'Only in_progress tasks can be marked overdue']);
+                echo json_encode(['success' => false, 'message' => 'Only in_progress tasks can be marked overdue']);
                 exit;
             }
 
@@ -222,7 +237,8 @@ try {
 
             $linked = (int)($task['original_task_id'] ?: $task['task_id']);
             if ($linked > 0) {
-                $db->prepare("UPDATE tasks SET status='overdue', updated_at=NOW() WHERE id=?")->execute([$linked]);
+                // tasks table only tracks in_progress — overdue is a daily_tasks concept
+                $db->prepare("UPDATE tasks SET status='in_progress', updated_at=NOW() WHERE id=?")->execute([$linked]);
             }
 
             echo json_encode(['success' => true, 'status' => 'overdue']);
@@ -234,7 +250,7 @@ try {
             $status   = $input['status']   ?? null;
 
             if ($progress === null || $status === null) {
-                http_response_code(400); echo json_encode(['error' => 'missing progress or status']); exit;
+                http_response_code(400); echo json_encode(['success' => false, 'message' => 'missing progress or status']); exit;
             }
 
             $progress = (int)$progress;
@@ -242,7 +258,7 @@ try {
             $stmt->execute([$task_id, $userId]);
             $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$dailyTask) { http_response_code(404); echo json_encode(['error' => 'Task not found']); exit; }
+            if (!$dailyTask) { http_response_code(404); echo json_encode(['success' => false, 'message' => 'Task not found']); exit; }
 
             $db->beginTransaction();
             if ($progress >= 100 || $status === 'completed') {
@@ -254,7 +270,9 @@ try {
 
             $origId = $dailyTask['original_task_id'] ?: $dailyTask['task_id'];
             if ($origId) {
-                $db->prepare("UPDATE tasks SET status=?, progress=?, updated_at=NOW() WHERE id=?")->execute([$status, $progress, $origId]);
+                // Map to tasks-table-safe status (only completed/in_progress supported)
+                $tasksStatus = ($status === 'completed') ? 'completed' : 'in_progress';
+                $db->prepare("UPDATE tasks SET status=?, progress=?, updated_at=NOW() WHERE id=?")->execute([$tasksStatus, $progress, $origId]);
             }
             $db->commit();
 
@@ -264,7 +282,7 @@ try {
         // ── POSTPONE ──────────────────────────────────────────────────────────
         case 'postpone':
             $new_date = $input['new_date'] ?? null;
-            if (!$new_date) { http_response_code(400); echo json_encode(['error' => 'missing new_date']); exit; }
+            if (!$new_date) { http_response_code(400); echo json_encode(['success' => false, 'message' => 'missing new_date']); exit; }
 
             require_once __DIR__ . '/../app/models/DailyPlanner.php';
             $planner = new DailyPlanner();
@@ -272,21 +290,21 @@ try {
                 if ($planner->postponeTask($task_id, $userId, $new_date)) {
                     echo json_encode(['success' => true, 'message' => 'Task postponed to ' . $new_date]);
                 } else {
-                    http_response_code(400); echo json_encode(['error' => 'Failed to postpone task']);
+                    http_response_code(400); echo json_encode(['success' => false, 'message' => 'Failed to postpone task']);
                 }
             } catch (Exception $e) {
-                http_response_code(400); echo json_encode(['error' => $e->getMessage()]);
+                http_response_code(400); echo json_encode(['success' => false, 'message' => $e->getMessage()]);
             }
             break;
 
         default:
             http_response_code(400);
-            echo json_encode(['error' => 'Unknown action: ' . $action]);
+            echo json_encode(['success' => false, 'message' => 'Unknown action: ' . $action]);
     }
 
 } catch (Exception $e) {
     error_log('Daily planner workflow error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['error' => 'Internal server error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Internal server error: ' . $e->getMessage()]);
 }
 ?>

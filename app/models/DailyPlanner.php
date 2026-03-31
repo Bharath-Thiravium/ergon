@@ -964,25 +964,27 @@ class DailyPlanner {
     private function calculateActiveTime($taskId) {
         try {
             $stmt = $this->db->prepare("
-                SELECT start_time, resume_time, status, active_seconds
-                FROM daily_tasks 
+                SELECT status, start_ts_ms, paused_accum_ms
+                FROM daily_tasks
                 WHERE id = ?
             ");
             $stmt->execute([$taskId]);
             $task = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$task || !in_array($task['status'], ['in_progress', 'on_break'])) {
-                return 0;
+
+            if (!$task) return 0;
+
+            $accumMs   = (int)($task['paused_accum_ms'] ?? 0);
+            $startTsMs = (int)($task['start_ts_ms']    ?? 0);
+
+            // in_progress / overdue: working_time = paused_accum_ms + (now - start_ts_ms)
+            if (in_array($task['status'], ['in_progress', 'overdue']) && $startTsMs > 0) {
+                $nowMs      = (int)(microtime(true) * 1000);
+                $workingMs  = $accumMs + max(0, $nowMs - $startTsMs);
+                return (int)($workingMs / 1000);
             }
 
-            // Use resume_time if available, otherwise start_time
-            $referenceTime = $task['resume_time'] ?: $task['start_time'];
-            if (!$referenceTime) return 0;
-            
-            // Calculate time since last start/resume
-            $currentSessionTime = max(0, time() - strtotime($referenceTime));
-            
-            return max(0, $currentSessionTime);
+            // on_break: timer is frozen at paused_accum_ms
+            return (int)($accumMs / 1000);
         } catch (Exception $e) {
             error_log("calculateActiveTime error: " . $e->getMessage());
             return 0;
@@ -991,26 +993,14 @@ class DailyPlanner {
     
     private function calculateRemainingSlaTime($task) {
         try {
-            $now = time();
-            
-            // If task has remaining_sla_time saved (from previous pause), use it
-            if ($task['remaining_sla_time'] > 0) {
-                return $task['remaining_sla_time'];
+            $slaDurationSeconds = (int)($task['sla_duration_seconds'] ?? 0);
+            if ($slaDurationSeconds <= 0) {
+                $slaDurationSeconds = max(60, (int)round((float)($task['sla_hours'] ?? 0.25) * 3600));
             }
-            
-            // Calculate from SLA end time
-            if ($task['sla_end_time']) {
-                $slaEndTimestamp = strtotime($task['sla_end_time']);
-                $remaining = max(0, $slaEndTimestamp - $now);
-                return $remaining;
-            }
-            
-            // Fallback: calculate from SLA hours
-            $slaSeconds = $task['sla_hours'] * 3600;
-            $startTime = strtotime($task['start_time']);
-            $elapsed = $now - $startTime;
-            
-            return max(0, $slaSeconds - $elapsed);
+
+            $activeSeconds = $this->calculateActiveTime((int)$task['id']);
+
+            return max(0, $slaDurationSeconds - $activeSeconds);
         } catch (Exception $e) {
             error_log("calculateRemainingSlaTime error: " . $e->getMessage());
             return 0;

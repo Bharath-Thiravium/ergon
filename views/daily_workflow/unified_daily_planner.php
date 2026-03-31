@@ -64,11 +64,8 @@ ob_start();
             <a href="<?= DAILY_PLANNER_BASE_URL . $selected_date ?>?refresh=1" class="btn btn--info" title="Add new tasks from Tasks module (preserves existing progress)">
                 <i class="bi bi-plus-circle"></i> Sync New Tasks
             </a>
-            <button type="button" class="btn btn--secondary" onclick="showModal('quickTaskModal')">
-                <i class="bi bi-plus"></i> Add Task
-            </button>
             <a href="/ergon/tasks/create" class="btn btn--secondary">
-                <i class="bi bi-list-task"></i> Full Task
+                <i class="bi bi-plus"></i> Add Task
             </a>
         <?php endif; ?>
     </div>
@@ -131,7 +128,11 @@ ob_start();
                         $taskId = $task['id'];
                         // BUSINESS CHANGE: Default SLA changed from 1.0 to 0.25 hours for better granularity
                         $slaHours = (float)($task['sla_hours'] ?? DEFAULT_SLA_HOURS);
-                        $slaDuration = (int)(max(0.25, $slaHours) * 3600);
+                        // Prefer sla_duration_seconds (written at start), fall back to sla_hours
+                        $slaDurationFromDb = (int)($task['sla_duration_seconds'] ?? 0);
+                        $slaDuration = $slaDurationFromDb > 0
+                            ? $slaDurationFromDb
+                            : (int)(max(DEFAULT_SLA_HOURS, $slaHours) * 3600);
                         $startTime = $task['start_time'] ?? null;
                         $startTimestamp = $startTime ? strtotime($startTime) : 0;
                         $postponeContext = $task['postpone_context'] ?? 'normal';
@@ -152,9 +153,9 @@ ob_start();
                         );
 
                         $cssClass = '';
-                        if ($status === 'in_progress' || $status === 'overdue') $cssClass = 'task-item--active';
-                        elseif ($status === 'on_break') $cssClass = 'task-item--break';
-                        elseif ($status === 'completed') $cssClass = 'task-item--completed';
+                        if ($status === 'in_progress' || $status === 'overdue') $cssClass = 'task-card--active';
+                        elseif ($status === 'on_break') $cssClass = 'task-card--break';
+                        elseif ($status === 'completed') $cssClass = 'task-card--completed';
                         elseif ($status === 'postponed') {
                             $isCurrentDate = ($selected_date === date('Y-m-d'));
                             $isPostponedToToday = ($postponeContext === 'postponed_to_today');
@@ -199,6 +200,7 @@ ob_start();
                             data-task-id="<?= $taskId ?>"
                             data-original-task-id="<?= $task['task_id'] ?? '' ?>"
                             data-sla-duration="<?= $slaDuration ?>"
+                            data-sla-hours="<?= $slaHours ?>"
                             data-start-time="<?= $currentStartTime ?>"
                             data-start-ts-ms="<?= $startTsMs ?>"
                             data-resume-time="<?= $currentResumeTime ?>"

@@ -70,7 +70,7 @@ function getAllTasksSLAData($db, $userId, $date) {
         LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id)
         WHERE dt.user_id = ? AND dt.scheduled_date = ?
         ORDER BY dt.id
-    ";
+    ");
     $stmt->execute([$userId, $date]);
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
