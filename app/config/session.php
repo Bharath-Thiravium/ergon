@@ -13,11 +13,21 @@ if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
     $host = $_SERVER['HTTP_HOST'] ?? '';
     $host = strtolower(preg_replace('/:\d+$/', '', $host)); // strip port
     $parts = explode('.', $host);
-    // Use the last two labels as the root domain when there are at least 3 labels
-    // (handles  sub.example.com  and  sub.example.co.in  alike).
-    $cookieDomain = (count($parts) >= 3)
-        ? '.' . implode('.', array_slice($parts, -2))
-        : $host;
+
+    // Public second-level TLDs that need 3 labels for the root domain
+    // e.g. aes.athenas.co.in → .athenas.co.in  (not .co.in)
+    $multiPartTlds = ['co.in','com.au','co.uk','co.nz','co.za','com.br','co.jp','org.uk','net.au'];
+    $lastTwo = implode('.', array_slice($parts, -2));
+    if (count($parts) >= 4 || (count($parts) === 3 && in_array($lastTwo, $multiPartTlds))) {
+        // sub.example.co.in  → .example.co.in  (last 3 labels)
+        $cookieDomain = '.' . implode('.', array_slice($parts, -3));
+    } elseif (count($parts) >= 3) {
+        // sub.example.com  → .example.com  (last 2 labels)
+        $cookieDomain = '.' . implode('.', array_slice($parts, -2));
+    } else {
+        // localhost or bare IP
+        $cookieDomain = $host;
+    }
 
     ini_set('session.use_strict_mode', 1);
     ini_set('session.gc_maxlifetime', 28800);
