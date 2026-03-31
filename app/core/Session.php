@@ -2,16 +2,20 @@
 class Session {
     public static function init() {
         if (session_status() === PHP_SESSION_NONE) {
-            // Only use custom session path in development
-            if (strpos($_SERVER['DOCUMENT_ROOT'] ?? '', 'laragon') !== false) {
-                $sessionPath = __DIR__ . '/../../storage/sessions';
-                if (!is_dir($sessionPath)) {
-                    @mkdir($sessionPath, 0755, true);
-                }
-                if (is_writable($sessionPath)) {
-                    session_save_path($sessionPath);
-                }
-            }
+            // Apply cookie params before session_start() so they take effect
+            $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+                || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+
+            session_set_cookie_params([
+                'lifetime' => 0,
+                'path'     => '/',
+                'domain'   => '',   // empty = browser uses current host automatically
+                'secure'   => $isHttps,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+
             session_start();
         }
         if (!headers_sent()) {
