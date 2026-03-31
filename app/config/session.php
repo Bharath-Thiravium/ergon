@@ -6,28 +6,52 @@ if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
         || (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on')
         || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
 
-    // Derive cookie domain dynamically from the current request host.
-    // This works on any domain or subdomain without hardcoding.
-    //
-    // athenas.co.in       → .athenas.co.in
-    // aes.athenas.co.in   → .athenas.co.in
-    // localhost            → (empty — no domain restriction)
+    // Derive the correct cookie domain from the current request host.
+    // athenas.co.in     → .athenas.co.in
+    // aes.athenas.co.in → .athenas.co.in
+    // localhost         → '' (no restriction)
     $host  = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
     $parts = explode('.', $host);
     $count = count($parts);
 
     if ($host === 'localhost' || filter_var($host, FILTER_VALIDATE_IP)) {
-        // Local dev — no domain restriction
         $cookieDomain = '';
     } elseif ($count >= 3 && $parts[$count - 1] === 'in' && $parts[$count - 2] === 'co') {
-        // x.y.co.in  →  .y.co.in  (keep last 3 labels)
-        $cookieDomain = '.' . implode('.', array_slice($parts, -3));
+        $cookieDomain = '.' . implode('.', array_slice($parts, -3)); // .athenas.co.in
     } elseif ($count >= 2) {
-        // sub.example.com  →  .example.com  (keep last 2 labels)
-        $cookieDomain = '.' . implode('.', array_slice($parts, -2));
+        $cookieDomain = '.' . implode('.', array_slice($parts, -2)); // .example.com
     } else {
         $cookieDomain = '';
     }
+
+    // ── Purge stale cookies that were set with the wrong domain ──────────────
+    // The browser may have an old PHPSESSID with domain=athenas.co.in (no dot)
+    // sitting alongside the correct .athenas.co.in one. Expire both the bare
+    // domain and the exact host variants so only our canonical cookie survives.
+    if ($cookieDomain !== '') {
+        $bareHost = ltrim($cookieDomain, '.'); // athenas.co.in
+        foreach (['PHPSESSID', session_name()] as $cookieName) {
+            // Expire the no-dot variant (the bad one)
+            setcookie($cookieName, '', [
+                'expires'  => time() - 3600,
+                'path'     => '/',
+                'domain'   => $bareHost,
+                'secure'   => $isHttps,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+            // Expire the exact-host variant (e.g. aes.athenas.co.in)
+            setcookie($cookieName, '', [
+                'expires'  => time() - 3600,
+                'path'     => '/',
+                'domain'   => $host,
+                'secure'   => $isHttps,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     ini_set('session.gc_maxlifetime', '28800');
     ini_set('session.use_strict_mode', '1');

@@ -60,15 +60,37 @@ class Session {
         if (session_status() === PHP_SESSION_NONE) {
             self::init();
         }
+
+        $domain   = self::cookieDomain();
+        $https    = self::isHttps();
+        $name     = session_name();
+        $bareHost = ltrim($domain, '.');
+        $host     = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+
         session_unset();
-        setcookie(session_name(), '', [
+
+        // Expire the correct cookie
+        setcookie($name, '', [
             'expires'  => time() - 3600,
             'path'     => '/',
-            'domain'   => self::cookieDomain(),
-            'secure'   => self::isHttps(),
+            'domain'   => $domain,
+            'secure'   => $https,
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
+
+        // Also expire any stale variants
+        foreach ([$bareHost, $host, 'PHPSESSID'] as $variant) {
+            setcookie($variant === 'PHPSESSID' ? 'PHPSESSID' : $name, '', [
+                'expires'  => time() - 3600,
+                'path'     => '/',
+                'domain'   => in_array($variant, [$bareHost, $host]) ? $variant : $domain,
+                'secure'   => $https,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+        }
+
         session_destroy();
     }
 
