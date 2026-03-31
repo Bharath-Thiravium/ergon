@@ -1,7 +1,19 @@
 <?php
 class Session {
+
     private static function cookieDomain(): string {
-        return '.athenas.co.in';
+        $host  = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+        $parts = explode('.', $host);
+        $count = count($parts);
+
+        if ($host === 'localhost' || filter_var($host, FILTER_VALIDATE_IP)) {
+            return '';
+        } elseif ($count >= 3 && $parts[$count - 1] === 'in' && $parts[$count - 2] === 'co') {
+            return '.' . implode('.', array_slice($parts, -3));
+        } elseif ($count >= 2) {
+            return '.' . implode('.', array_slice($parts, -2));
+        }
+        return '';
     }
 
     private static function isHttps(): bool {
@@ -11,7 +23,7 @@ class Session {
             || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
     }
 
-    public static function init() {
+    public static function init(): void {
         if (session_status() === PHP_SESSION_NONE) {
             ini_set('session.gc_maxlifetime', '28800');
             ini_set('session.use_strict_mode', '1');
@@ -36,7 +48,7 @@ class Session {
         }
     }
 
-    public static function set($key, $value) {
+    public static function set($key, $value): void {
         $_SESSION[$key] = $value;
     }
 
@@ -44,7 +56,7 @@ class Session {
         return $_SESSION[$key] ?? null;
     }
 
-    public static function destroy() {
+    public static function destroy(): void {
         if (session_status() === PHP_SESSION_NONE) {
             self::init();
         }
@@ -60,11 +72,11 @@ class Session {
         session_destroy();
     }
 
-    public static function isLoggedIn() {
+    public static function isLoggedIn(): bool {
         return isset($_SESSION['user_id']);
     }
 
-    public static function getUser() {
+    public static function getUser(): array {
         return [
             'id'    => $_SESSION['user_id']    ?? null,
             'name'  => $_SESSION['user_name']  ?? null,
