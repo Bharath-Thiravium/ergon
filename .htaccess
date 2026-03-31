@@ -4,7 +4,17 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php [QSA,L]
 
-# Force session cookie to use current host — prevents domain mismatch on subdomains
+# ── Session cookie domain fix ─────────────────────────────────────────────────
+# The server php.ini sets session.cookie_domain=.athenas.co.in which the browser
+# rejects on aes.athenas.co.in. We strip the domain attribute from the outgoing
+# Set-Cookie header entirely so the browser scopes it to the exact request host.
+<IfModule mod_headers.c>
+    # Remove the domain= attribute from any PHPSESSID or ERGON_SID cookie
+    Header edit Set-Cookie "(PHPSESSID=[^;]+)(;[^;]*)*" "$1; Path=/; HttpOnly; Secure; SameSite=Lax"
+    Header edit Set-Cookie "(ERGON_SID=[^;]+)(;[^;]*)*" "$1; Path=/; HttpOnly; Secure; SameSite=Lax"
+</IfModule>
+
+# php_value kept for hosts where AllowOverride permits it
 php_value session.cookie_domain ""
 php_value session.cookie_path "/"
 php_flag session.cookie_httponly On
