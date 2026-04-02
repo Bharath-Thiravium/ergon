@@ -144,6 +144,13 @@ class AdvanceController extends Controller {
     
     public function store() {
         $this->requireAuth();
+
+        if (($_SESSION['role'] ?? '') === 'company_owner') {
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Not allowed']);
+            exit;
+        }
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Content-Type: application/json');

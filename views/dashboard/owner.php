@@ -24,7 +24,27 @@ ob_start();
     <a href="/ergon/owner/approvals" class="btn btn--secondary">Review Approvals</a>
     <a href="/ergon/reports" class="btn btn--secondary">View Reports</a>
     <a href="/ergon/settings" class="btn btn--secondary">System Settings</a>
+    <button onclick="triggerBackup(this)" class="btn btn--secondary" id="backupBtn">🗄️ Backup Now</button>
 </div>
+
+<script>
+function triggerBackup(btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Backing up...';
+    fetch('/ergon/api/backup.php', { method: 'POST', credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message || data.error || 'Done');
+            btn.disabled = false;
+            btn.textContent = '🗄️ Backup Now';
+        })
+        .catch(() => {
+            alert('Backup request failed.');
+            btn.disabled = false;
+            btn.textContent = '🗄️ Backup Now';
+        });
+}
+</script>
 
 <div class="dashboard-grid">
     <div class="kpi-card">

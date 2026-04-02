@@ -52,9 +52,11 @@ ob_start();
             <?php endif; ?>
         </form>
         <?php endif; ?>
+        <?php if (($user_role ?? '') !== 'company_owner'): ?>
         <button onclick="showAdvanceModal()" class="btn btn--primary">
             Request Advance
         </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -594,7 +596,7 @@ document.getElementById('markPaidForm').addEventListener('submit', function(e) {
         <div class="modal-body">
             <form id="advanceForm">
                 <input type="hidden" id="advance_id" name="advance_id">
-                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                <div class="form-row" style="display: flex; gap: 12px; margin-bottom: 12px;">
                     <div style="flex: 1;">
                         <label>Advance Type *</label>
                         <select id="type" name="type" class="form-input" required>

@@ -1,6 +1,6 @@
 <?php
 ob_start();
-if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../../app/config/session.php';
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
@@ -125,7 +125,165 @@ $renderableAlerts = array_values(array_filter($alerts, function ($alert) {
     <?php if (!$systemAdminDisabled): ?>
     <a href="/ergon/settings" class="qa-btn danger" style="background:#6b7280">⚙️ Settings</a>
     <?php endif; ?>
+    <button onclick="openBackupModal()" class="qa-btn danger" style="background:#7c3aed" id="backupBtn">🗄️ Backup Now</button>
 </div>
+
+<!-- ── Backup & Restore Modal ──────────────────────────────────────────────── -->
+<div id="backupModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:560px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+
+    <!-- header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #e5e7eb">
+      <div style="font-size:16px;font-weight:700;color:#111">🗄️ Backup &amp; Restore</div>
+      <button onclick="closeBackupModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;line-height:1">&times;</button>
+    </div>
+
+    <!-- body -->
+    <div style="padding:20px 22px;overflow-y:auto;flex:1">
+
+      <!-- Create backup -->
+      <div style="margin-bottom:20px">
+        <button onclick="runBackup()" id="doBackupBtn"
+          style="width:100%;padding:11px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
+          ⏳ Create New Backup
+        </button>
+        <div id="backupMsg" style="margin-top:8px;font-size:13px;text-align:center"></div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin-bottom:18px">
+
+      <!-- Backup list -->
+      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px">Available Backups</div>
+      <div id="backupList"><div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px">⏳ Loading...</div></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Restore confirm modal ──────────────────────────────────────────────── -->
+<div id="restoreConfirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:100%;max-width:420px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="font-size:22px;text-align:center;margin-bottom:10px">⚠️</div>
+    <div style="font-size:15px;font-weight:700;text-align:center;margin-bottom:8px;color:#111">Confirm Restore</div>
+    <div style="font-size:13px;color:#6b7280;text-align:center;margin-bottom:6px">You are about to restore the system from:</div>
+    <div id="restoreFileName" style="font-size:13px;font-weight:600;text-align:center;color:#7c3aed;margin-bottom:16px;word-break:break-all"></div>
+    <div style="font-size:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;color:#991b1b;margin-bottom:20px">
+      🔴 This will <strong>overwrite the current database and uploaded files</strong>. This action cannot be undone.
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closeRestoreConfirm()" style="flex:1;padding:10px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+      <button onclick="confirmRestore()" id="confirmRestoreBtn" style="flex:1;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">🔄 Yes, Restore</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let _restoreDateDir = '';
+let _restoreFile    = '';
+
+function openBackupModal() {
+    document.getElementById('backupModal').style.display = 'flex';
+    loadBackupList();
+}
+
+function closeBackupModal() {
+    document.getElementById('backupModal').style.display = 'none';
+}
+
+function loadBackupList() {
+    const list = document.getElementById('backupList');
+    list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px">⏳ Loading...</div>';
+    fetch('/ergon/api/backup.php', { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success || !data.backups.length) {
+                list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px">📂 No backups found. Create one above.</div>';
+                return;
+            }
+            list.innerHTML = data.backups.map(b => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px">
+                    <div>
+                        <div style="font-size:13px;font-weight:600;color:#111">${b.name}</div>
+                        <div style="font-size:11px;color:#9ca3af;margin-top:2px">${b.created} &nbsp;&bull;&nbsp; ${b.size}</div>
+                    </div>
+                    <button onclick="askRestore('${b.date_dir}','${b.name}')"
+                        style="padding:6px 14px;background:#0f766e;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+                        🔄 Restore
+                    </button>
+                </div>
+            `).join('');
+        })
+        .catch(() => {
+            list.innerHTML = '<div style="text-align:center;color:#dc2626;font-size:13px;padding:20px">❌ Failed to load backups.</div>';
+        });
+}
+
+function runBackup() {
+    const btn = document.getElementById('doBackupBtn');
+    const msg = document.getElementById('backupMsg');
+    btn.disabled = true;
+    btn.textContent = '⏳ Creating backup...';
+    msg.textContent = '';
+    fetch('/ergon/api/backup.php', { method: 'POST', credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            msg.style.color = data.success ? '#16a34a' : '#dc2626';
+            msg.textContent = data.success ? '✔ ' + data.message : '❌ ' + (data.error || 'Failed');
+            btn.disabled = false;
+            btn.textContent = '⏳ Create New Backup';
+            if (data.success) loadBackupList();
+        })
+        .catch(() => {
+            msg.style.color = '#dc2626';
+            msg.textContent = '❌ Request failed.';
+            btn.disabled = false;
+            btn.textContent = '⏳ Create New Backup';
+        });
+}
+
+function askRestore(dateDir, file) {
+    _restoreDateDir = dateDir;
+    _restoreFile    = file;
+    document.getElementById('restoreFileName').textContent = file;
+    document.getElementById('restoreConfirmModal').style.display = 'flex';
+}
+
+function closeRestoreConfirm() {
+    document.getElementById('restoreConfirmModal').style.display = 'none';
+}
+
+function confirmRestore() {
+    const btn = document.getElementById('confirmRestoreBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Restoring...';
+    fetch('/ergon/api/restore.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date_dir: _restoreDateDir, file: _restoreFile })
+    })
+    .then(r => r.json())
+    .then(data => {
+        closeRestoreConfirm();
+        closeBackupModal();
+        if (data.success) {
+            alert('✔ ' + data.message + '\n\nThe page will now reload.');
+            location.reload();
+        } else {
+            alert('❌ Restore failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(() => {
+        closeRestoreConfirm();
+        alert('❌ Restore request failed.');
+    });
+}
+
+// Close modal on backdrop click
+document.getElementById('backupModal').addEventListener('click', function(e) {
+    if (e.target === this) closeBackupModal();
+});
+</script>
 
 <!-- Priority Alerts -->
 <?php if (!empty($renderableAlerts)): ?>
