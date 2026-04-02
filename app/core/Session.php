@@ -1,6 +1,14 @@
 <?php
 class Session {
 
+    public static function getCorrectDomain(): string {
+        return self::cookieDomain();
+    }
+
+    public static function isHttpsPublic(): bool {
+        return self::isHttps();
+    }
+
     private static function cookieDomain(): string {
         $host  = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
         $parts = explode('.', $host);
@@ -64,31 +72,24 @@ class Session {
         $domain   = self::cookieDomain();
         $https    = self::isHttps();
         $name     = session_name();
-        $bareHost = ltrim($domain, '.');
+        $bare     = ltrim($domain, '.');
         $host     = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
 
         session_unset();
 
-        // Expire the correct cookie
-        setcookie($name, '', [
-            'expires'  => time() - 3600,
-            'path'     => '/',
-            'domain'   => $domain,
-            'secure'   => $https,
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
-
-        // Also expire any stale variants
-        foreach ([$bareHost, $host, 'PHPSESSID'] as $variant) {
-            setcookie($variant === 'PHPSESSID' ? 'PHPSESSID' : $name, '', [
-                'expires'  => time() - 3600,
-                'path'     => '/',
-                'domain'   => in_array($variant, [$bareHost, $host]) ? $variant : $domain,
-                'secure'   => $https,
-                'httponly' => true,
-                'samesite' => 'Lax',
-            ]);
+        // Expire the session cookie under every domain variant the browser may have stored
+        $domains = array_unique(array_filter([$domain, $bare, $host]));
+        foreach ($domains as $d) {
+            foreach ([$name, 'PHPSESSID'] as $cn) {
+                setcookie($cn, '', [
+                    'expires'  => time() - 3600,
+                    'path'     => '/',
+                    'domain'   => $d,
+                    'secure'   => $https,
+                    'httponly' => true,
+                    'samesite' => 'Lax',
+                ]);
+            }
         }
 
         session_destroy();

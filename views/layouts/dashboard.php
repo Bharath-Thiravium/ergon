@@ -36,7 +36,7 @@ try {
 SecurityHeaders::apply();
 require_once __DIR__ . '/../../app/config/session.php';
 if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) { header('Location: /ergon/login'); exit; }
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) { session_unset(); session_destroy(); header('Location: /ergon/login?timeout=1'); exit; }
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) { Session::destroy(); header('Location: /ergon/login?timeout=1'); exit; }
 
 // Note: Success/error messages are now handled by individual pages
 
@@ -51,22 +51,18 @@ try {
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user || $user['status'] !== 'active') {
-        session_unset();
-        session_destroy();
+        Session::destroy();
         header('Location: /ergon/login?deactivated=1');
         exit;
     }
     if ($user['role'] !== $_SESSION['role']) {
-        session_unset();
-        session_destroy();
+        Session::destroy();
         header('Location: /ergon/login?role_changed=1');
         exit;
     }
 } catch (Exception $e) {
     error_log('User status check failed: ' . $e->getMessage());
-    // Redirect to login on database connection failure
-    session_unset();
-    session_destroy();
+    Session::destroy();
     header('Location: /ergon/login?error=database');
     exit;
 }

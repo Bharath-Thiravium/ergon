@@ -100,7 +100,17 @@ class AuthController extends Controller {
                 if (session_status() === PHP_SESSION_NONE) {
                     Session::init();
                 }
+
+                // Regenerate session ID and re-send cookie with correct domain
                 session_regenerate_id(true);
+                setcookie(session_name(), session_id(), [
+                    'expires'  => 0,
+                    'path'     => '/',
+                    'domain'   => Session::getCorrectDomain(),
+                    'secure'   => Session::isHttpsPublic(),
+                    'httponly' => true,
+                    'samesite' => 'Lax',
+                ]);
 
                 $_SESSION['user_id']         = $user['id'];
                 $_SESSION['user_name']       = $user['name'];
@@ -173,16 +183,9 @@ class AuthController extends Controller {
     public function logout() {
         Session::init();
         Session::destroy();
-        
-        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
-        // Clear legacy PHPSESSID if the server ever set one
-        setcookie('PHPSESSID', '', time() - 3600, '/', '', $isHttps, true);
-        
         header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
         header('Pragma: no-cache');
         header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
-        
         require_once __DIR__ . '/../config/environment.php';
         $baseUrl = Environment::getBaseUrl();
         header('Location: ' . $baseUrl . '/login');
