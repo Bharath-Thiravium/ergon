@@ -2,7 +2,7 @@
 ob_start();
 error_reporting(0);
 ini_set('display_errors', 0);
-session_start();
+require_once __DIR__ . '/../app/config/session.php';
 ob_clean();
 header('Content-Type: application/json; charset=utf-8');
 
@@ -77,6 +77,8 @@ try {
             'completed_tasks'      => count(array_filter($tasks, fn($t) => $t['status'] === 'completed')),
             'in_progress_tasks'    => count(array_filter($tasks, fn($t) => in_array($t['status'], ['in_progress', 'overdue'], true))),
             'postponed_tasks'      => count(array_filter($tasks, fn($t) => $t['status'] === 'postponed')),
+            'total_sla_seconds'    => (int)round($totalSlaDurMs / 1000),
+            'total_working_seconds'=> (int)round($totalWorkingMs / 1000),
         ],
         'date'     => $date,
     ]);

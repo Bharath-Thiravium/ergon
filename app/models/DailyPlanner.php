@@ -124,7 +124,8 @@ class DailyPlanner {
                     dt.id, dt.title, dt.description, dt.priority, dt.status,
                     dt.completed_percentage, dt.start_time, dt.active_seconds,
                     dt.planned_duration, dt.task_id, dt.original_task_id, dt.pause_duration,
-                    dt.start_ts_ms, dt.pause_start_ts_ms, dt.paused_accum_ms, dt.sla_duration_seconds,
+                    dt.start_ts_ms, dt.pause_start_ts_ms, dt.paused_accum_ms,
+                    COALESCE(NULLIF(dt.sla_duration_seconds, 0), COALESCE(t.sla_hours, dt.sla_hours, 0.25) * 3600) as sla_duration_seconds,
                     dt.completion_time, dt.postponed_from_date, dt.postponed_to_date,
                     dt.created_at, dt.scheduled_date, dt.source_field, dt.rollover_source_date,
                     dt.pause_start_time, dt.resume_time,
@@ -243,8 +244,8 @@ class DailyPlanner {
                     $insertStmt = $this->db->prepare("
                         INSERT INTO daily_tasks 
                         (user_id, task_id, original_task_id, title, description, scheduled_date, 
-                         priority, status, planned_duration, completed_percentage, source_field, sla_hours, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                         priority, status, planned_duration, completed_percentage, source_field, sla_hours, sla_duration_seconds, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                     ");
                     
                     // Get progress from original task
@@ -254,6 +255,8 @@ class DailyPlanner {
                     $originalProgress = (int)($origRow['progress'] ?? 0);
                     $originalSlaHours = max(0.0167, (float)($origRow['sla_hours'] ?? 0.25));
                     
+                    $slaDurationSeconds = max(60, (int)round($originalSlaHours * 3600));
+
                     $result = $insertStmt->execute([
                         $userId,
                         $task['id'],
@@ -266,7 +269,8 @@ class DailyPlanner {
                         $task['estimated_duration'] ?: 60,
                         $originalProgress,
                         $task['source_field'],
-                        $originalSlaHours
+                        $originalSlaHours,
+                        $slaDurationSeconds
                     ]);
                     
                     if ($result) {
@@ -885,7 +889,7 @@ class DailyPlanner {
                 
                 // Calculate SLA totals from today's assigned tasks only
                 $stmt = $this->db->prepare("
-                    SELECT SUM(COALESCE(t.sla_hours, dt.sla_hours, 0.25) * 3600) as total_sla_seconds
+                    SELECT SUM(COALESCE(NULLIF(dt.sla_duration_seconds, 0), COALESCE(t.sla_hours, dt.sla_hours, 0.25) * 3600)) as total_sla_seconds
                     FROM daily_tasks dt
                     LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id)
                     WHERE dt.user_id = ? AND dt.scheduled_date = ?

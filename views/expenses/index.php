@@ -649,7 +649,7 @@ document.getElementById('markPaidForm').addEventListener('submit', function(e) {
                     <input type="text" id="paid_to_name_manual" name="paid_to_name_manual" class="form-input" placeholder="Enter recipient name" style="display:none; margin-top:8px;">
                 </div>
                 <?php endif; ?>
-                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                <div class="form-row" style="display: flex; gap: 12px; margin-bottom: 12px;">
                     <div style="flex: 1;">
                         <label>Category *</label>
                         <select id="category" name="category" class="form-input" required>
@@ -686,7 +686,7 @@ document.getElementById('markPaidForm').addEventListener('submit', function(e) {
                         <option value="">-- Select work category --</option>
                     </select>
                 </div>
-                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                <div class="form-row" style="display: flex; gap: 12px; margin-bottom: 12px;">
                     <div style="flex: 1;">
                         <label>Amount (₹) *</label>
                         <input type="number" id="amount" name="amount" class="form-input" step="0.01" min="0.01" required>

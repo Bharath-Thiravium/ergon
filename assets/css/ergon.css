@@ -882,13 +882,15 @@ canvas { width: 100% !important; height: auto !important; }
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  overflow: visible; /* was: hidden — clips fixed-position modal overlays */
   transition: var(--transition);
 }
 
 .card:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+  /* Removed transform:translateY(-1px) — a transform creates a stacking
+     context that traps position:fixed descendants (modal overlays) inside
+     the card instead of the viewport. Use box-shadow lift instead. */
+  box-shadow: var(--shadow);
 }
 
 .card__header {
@@ -1889,7 +1891,7 @@ canvas { width: 100% !important; height: auto !important; }
     padding: 16px;
     margin-bottom: 15px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border-left: 2px solid #3b82f6;
+    border: 1px solid #e5e7eb;
     position: relative;
     max-height: none;
     overflow: visible;
@@ -2021,9 +2023,9 @@ canvas { width: 100% !important; height: auto !important; }
   .status-completed { background: #d1fae5; color: #059669; }
   .status-overdue { background: #fee2e2; color: #dc2626; }
   
-  .priority-high { border-left-color: #dc2626; }
-  .priority-medium { border-left-color: #d97706; }
-  .priority-low { border-left-color: #059669; }
+  .priority-high { }
+  .priority-medium { }
+  .priority-low { }
   
   .mobile-card {
     background: white;
@@ -2031,7 +2033,7 @@ canvas { width: 100% !important; height: auto !important; }
     padding: 16px;
     margin-bottom: 12px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border-left: 4px solid #3b82f6;
+    border: 1px solid #e5e7eb;
   }
   
   .mobile-card__header {
@@ -2337,9 +2339,10 @@ canvas { width: 100% !important; height: auto !important; }
     -webkit-overflow-scrolling: touch;
   }
   
-  * {
-    -webkit-transform: translate3d(0,0,0);
-  }
+  /* Removed: * { -webkit-transform: translate3d(0,0,0) }
+     This wildcard transform created a stacking context on every element,
+     which trapped position:fixed descendants (modals) inside the scroll
+     container instead of the viewport, causing bottom-sticking on mobile. */
 
 /* Mobile Button Optimizations */
   .btn {
@@ -3047,9 +3050,11 @@ canvas { width: 100% !important; height: auto !important; }
   z-index: 99999 !important;
 }
 
-.modal-content {
-  z-index: 100000 !important;
-}
+/* Removed: .modal-content { z-index: 100000 !important }
+   .modal-content must NOT have a higher z-index than its overlay parent.
+   Doing so forces a separate stacking context, causing a two-step paint
+   (overlay first, content on top) which appears as a flicker on open.
+   The overlay's z-index is sufficient for the entire modal stack. */
 
 .modal-backdrop {
   z-index: 99998 !important;
@@ -3086,32 +3091,8 @@ canvas { width: 100% !important; height: auto !important; }
   padding: var(--space-4);
   transition: var(--transition);
   position: relative;
-  border-left: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
-}
-
-.followup-card.completed {
-  border-left-color: #10b981;
-}
-
-.followup-card.in_progress {
-  border-left-color: #3b82f6;
-}
-
-.followup-card.postponed {
-  border-left-color: #f59e0b;
-}
-
-.followup-card.pending {
-  border-left-color: #6b7280;
-}
-
-.followup-card.cancelled {
-  border-left-color: #ef4444;
-}
-
-.followup-card.overdue {
-  border-left-color: #ef4444;
 }
 
 .followup-card:hover {

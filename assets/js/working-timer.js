@@ -116,13 +116,6 @@ setInterval(() => {
                 remainEl.style.opacity = '1';
             }
         }
-
-        // ── Time Used — frozen during break ──
-        const timeUsedEl = document.getElementById('time-used-' + taskId);
-        if (timeUsedEl) {
-            timeUsedEl.textContent   = fmt(workingMs);
-            timeUsedEl.style.opacity = status === 'on_break' ? '0.6' : '1';
-        }
     });
 }, 1000);
 
@@ -170,17 +163,15 @@ function applyCardState(card, status) {
         else if (status === 'completed')                        timingLabel.textContent = 'Total Time';
     }
 
-    // Freeze / unfreeze the three timer displays immediately
+    // Freeze / unfreeze the two timer displays immediately
     const taskId     = card.dataset.taskId;
     const frozen     = status === 'on_break';
     const opacity    = frozen ? '0.6' : '1';
     const display    = card.querySelector('#countdown-' + taskId + ' .countdown-display');
     const remainEl   = document.getElementById('remaining-sla-' + taskId);
-    const timeUsedEl = document.getElementById('time-used-' + taskId);
 
-    if (display)    { display.style.opacity    = opacity; if (frozen) display.style.color    = '#f59e0b'; }
-    if (remainEl)   { remainEl.style.opacity   = opacity; if (frozen) remainEl.style.color   = '#f59e0b'; }
-    if (timeUsedEl) { timeUsedEl.style.opacity = opacity; }
+    if (display)  { display.style.opacity  = opacity; if (frozen) display.style.color  = '#f59e0b'; }
+    if (remainEl) { remainEl.style.opacity = opacity; if (frozen) remainEl.style.color = '#f59e0b'; }
 }
 
 // ── UI update after action ────────────────────────────────────────────────────

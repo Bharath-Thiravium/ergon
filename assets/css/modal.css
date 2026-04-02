@@ -1,27 +1,54 @@
 /* ========================================
-   SIMPLE MODAL SYSTEM - SINGLE SOURCE OF TRUTH
+   MODAL SYSTEM — SINGLE SOURCE OF TRUTH
+   Loaded after ergon.css, so all rules here win the cascade.
    ======================================== */
 
-/* Modal Overlay */
+/* ── Overlay ──────────────────────────────────────────────────
+   position:fixed is broken on mobile by ergon.css's wildcard
+   `* { -webkit-transform: translate3d(0,0,0) }` rule, which
+   creates a new stacking context on every ancestor and traps
+   fixed-position descendants.  We escape it by promoting the
+   overlay itself to its own compositing layer with will-change,
+   which re-establishes the correct fixed-position behaviour.
+   ──────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
-  top: 120px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: none;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  box-sizing: border-box;
+
+  /* Centering — identical on every screen size */
+  display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
-  padding: 1rem;
+  padding: 110px 1rem 1rem; /* top clears the fixed 110px header */
+
+  /* Hidden state — opacity fade instead of display:none→flex
+     so the browser never has to recalculate layout on open,
+     which is the root cause of the desktop flicker.           */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, visibility 0.18s ease;
+
+  /* Escape the translate3d stacking-context trap */
+  will-change: opacity;
+  transform: translateZ(0);
 }
 
 .modal-overlay[data-visible="true"] {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
-/* Modal Content */
+/* ── Modal Content ────────────────────────────────────────────
+   margin:0 overrides ergon.css `margin: 10%/5% auto` rules.
+   z-index is intentionally UNSET here — the overlay's z-index
+   is enough; giving .modal-content a higher z-index than its
+   own overlay parent causes the repaint race (flicker).
+   ──────────────────────────────────────────────────────────── */
 .modal-content {
   background: var(--bg-primary, #fff);
   color: var(--text-primary, #000);
@@ -29,19 +56,26 @@
   border-radius: 8px;
   max-width: 600px;
   width: 100%;
-  max-height: calc(100vh - 180px);
-  overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  contain: layout style paint;
+  max-height: calc(100vh - 130px); /* viewport minus header + padding */
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin: 0;          /* override ergon.css margin:10%/5% auto  */
+  z-index: auto;      /* override ergon.css z-index:100000      */
+
+  /* Prevent sub-pixel jitter during the opacity transition */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-/* Modal Header */
+/* ── Modal Header — never scrolls ───────────────────────────── */
 .modal-header {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-color, #e5e7eb);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -50,9 +84,13 @@
   font-weight: 600;
 }
 
-/* Modal Body */
+/* ── Modal Body — the ONLY scrolling region ─────────────────── */
 .modal-body {
   padding: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1 1 auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-body label {
@@ -71,6 +109,7 @@
   font-size: 14px;
   background: var(--bg-primary, #fff);
   color: var(--text-primary, #000);
+  box-sizing: border-box;
 }
 
 .modal-body .form-input:focus,
@@ -80,16 +119,19 @@
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
-/* Modal Footer */
+/* ── Modal Footer — never scrolls, always visible ───────────── */
 .modal-footer {
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--border-color, #e5e7eb);
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
+  flex-shrink: 0;
+  background: var(--bg-primary, #fff);
+  border-radius: 0 0 8px 8px;
 }
 
-/* Close Button */
+/* ── Close Button ───────────────────────────────────────────── */
 .modal-close {
   background: none;
   border: none;
@@ -100,39 +142,66 @@
   padding: 0;
   width: 24px;
   height: 24px;
+  flex-shrink: 0;
 }
 
 .modal-close:hover {
   color: var(--text-primary, #000);
 }
 
-/* Dark Theme */
-[data-theme="dark"] .modal-content {
+/* ── Dark Theme ─────────────────────────────────────────────── */
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .modal-footer {
   background: var(--gray-800, #1f2937);
   color: var(--white, #fff);
   border-color: var(--gray-600, #4b5563);
 }
 
-/* Mobile */
+/* ── Mobile ≤ 640px ─────────────────────────────────────────── */
 @media (max-width: 640px) {
   .modal-overlay {
-    top: 110px;
-    padding: 0.5rem;
+    padding: 120px 0.75rem 1rem;
+    /* align-items stays `center` — same as desktop, no bottom-sheet */
   }
-  
+
   .modal-content {
-    max-width: 100%;
-    max-height: calc(100vh - 130px);
+    max-height: calc(100vh - 132px);
   }
-  
+
   .modal-header,
   .modal-body,
   .modal-footer {
     padding: 0.75rem;
   }
+
+  /* Stack side-by-side form rows vertically */
+  .modal-body .form-row {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  .modal-body .form-row > div {
+    width: 100% !important;
+    flex: none !important;
+    margin-bottom: 12px;
+  }
+
+  /* Full-width, touch-friendly footer buttons */
+  .modal-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
 }
 
-/* Body Lock */
+/* ── Body lock ──────────────────────────────────────────────── */
 body.modal-open {
   overflow: hidden;
+  /* Prevent the scrollbar-removal from shifting page content */
+  padding-right: 0 !important;
 }

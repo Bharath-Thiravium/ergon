@@ -137,14 +137,16 @@ ob_start();
                         $startTimestamp = $startTime ? strtotime($startTime) : 0;
                         $postponeContext = $task['postpone_context'] ?? 'normal';
 
-                        // Stopwatch: count up from 0 (elapsed active time)
-                        $activeSeconds   = (int)($task['active_seconds'] ?? $task['time_used'] ?? 0);
-                        $resumeTime      = $task['resume_time'] ?? $task['last_resume_time'] ?? null;
-                        $elapsedSeconds  = $activeSeconds;
-                        if ($startTimestamp > 0 && in_array($status, ['in_progress', 'overdue'])) {
-                            $refTime        = $resumeTime ? strtotime($resumeTime) : $startTimestamp;
-                            $elapsedSeconds = $activeSeconds + max(0, time() - $refTime);
+                        // Spec-exact: working_time = paused_accum_ms + (now - start_ts_ms) if in_progress
+                        $accumMs     = (int)($task['paused_accum_ms'] ?? 0);
+                        $startTsMs_  = (int)($task['start_ts_ms'] ?? 0);
+                        $nowMs_      = (int)(microtime(true) * 1000);
+                        if (in_array($status, ['in_progress', 'overdue']) && $startTsMs_ > 0) {
+                            $workingMs_ = $accumMs + max(0, $nowMs_ - $startTsMs_);
+                        } else {
+                            $workingMs_ = $accumMs;
                         }
+                        $elapsedSeconds = (int)round($workingMs_ / 1000);
                         $timeDisplay = sprintf(
                             '%02d:%02d:%02d',
                             floor($elapsedSeconds / 3600),
@@ -268,19 +270,17 @@ ob_start();
                                 <?php endif; ?>
 
                                 <?php
-                                $activeSeconds = $task['active_seconds'] ?? 0;
+                                $activeSeconds = $elapsedSeconds;
                                 $pauseSeconds = $task['pause_duration'] ?? 0;
 
                                 // Static pause time only - no live calculation
                                 $totalPauseTime = (int)($task['pause_duration'] ?? 0);
 
                                 // Apply formula: Overdue = Duration Exceeding the SLA Time
-                                $isOverdue = $activeSeconds > $slaDuration;
-                                $overdueSeconds = $isOverdue ? $activeSeconds - $slaDuration : 0;
-                                // Apply formula: Time Used = Overdue + SLA Time (when overdue)
-                                // Solution 2: Fix PHP Time Used Formula - Time Used = Active Time + Break Time
-                                $timeUsedSeconds = $activeSeconds + $totalPauseTime;
-                                $remainingSeconds = max(0, $slaDuration - $activeSeconds);
+                                $isOverdue = $elapsedSeconds > $slaDuration;
+                                $overdueSeconds = $isOverdue ? $elapsedSeconds - $slaDuration : 0;
+                                $timeUsedSeconds = $elapsedSeconds;
+                                $remainingSeconds = max(0, $slaDuration - $elapsedSeconds);
 
                                 $slaTimeDisplay = sprintf(
                                     '%02d:%02d:%02d',
@@ -300,12 +300,8 @@ ob_start();
                                         <div class="timing-value"><?= $slaTimeDisplay ?></div>
                                         <div class="timing-label">SLA Time</div>
                                     </div>
-                                    <div class="timing-card">
-                                        <div class="timing-value" id="time-used-<?= $taskId ?>"><?= sprintf('%02d:%02d:%02d', floor($timeUsedSeconds / 3600), floor(($timeUsedSeconds % 3600) / 60), $timeUsedSeconds % 60) ?></div>
-                                        <div class="timing-label">Time Used</div>
-                                    </div>
-                                    <div class="timing-card <?= ($slaDuration > 0 && (int)round(($pausedAccumMs > 0 ? $pausedAccumMs : $activeSeconds * 1000) / 1000) >= $slaDuration) ? 'timing-card--overdue' : '' ?>">
-                                        <div class="timing-value" id="remaining-sla-<?= $taskId ?>"><?= sprintf('%02d:%02d:%02d', floor(max(0,$slaDuration-(int)round(($pausedAccumMs>0?$pausedAccumMs:$activeSeconds*1000)/1000))/3600), floor((max(0,$slaDuration-(int)round(($pausedAccumMs>0?$pausedAccumMs:$activeSeconds*1000)/1000))%3600)/60), max(0,$slaDuration-(int)round(($pausedAccumMs>0?$pausedAccumMs:$activeSeconds*1000)/1000))%60) ?></div>
+                                    <div class="timing-card <?= ($slaDuration > 0 && (int)round($pausedAccumMs / 1000) >= $slaDuration) ? 'timing-card--overdue' : '' ?>">
+                                        <div class="timing-value" id="remaining-sla-<?= $taskId ?>"><?= sprintf('%02d:%02d:%02d', floor($remainingSeconds / 3600), floor(($remainingSeconds % 3600) / 60), $remainingSeconds % 60) ?></div>
                                         <div class="timing-label">Remaining</div>
                                     </div>
                                 </div>
@@ -519,16 +515,8 @@ ob_start();
                     <span class="metric-value sla-total-time">Loading...</span>
                 </div>
                 <div class="metric-row">
-                    <span class="metric-label">Time Used:</span>
-                    <span class="metric-value sla-used-time">Loading...</span>
-                </div>
-                <div class="metric-row">
                     <span class="metric-label">Remaining Time:</span>
                     <span class="metric-value sla-remaining-time">Loading...</span>
-                </div>
-                <div class="metric-row">
-                    <span class="metric-label">Pause Duration:</span>
-                    <span class="metric-value sla-pause-time">Loading...</span>
                 </div>
             </div>
 

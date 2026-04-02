@@ -97,6 +97,26 @@ class AuthController extends Controller {
                 $securityService->recordLoginAttempt($email, true);
                 $securityService->logAttempt($clientIp, 'login', true);
                 
+                // Expire any stale PHPSESSID cookies that may exist under
+                // both the bare domain and the leading-dot form, preventing
+                // the browser from sending the wrong cookie on future requests.
+                $host = $_SERVER['HTTP_HOST'] ?? '';
+                if (strpos($host, ':') !== false) {
+                    $host = explode(':', $host)[0];
+                }
+                $dotDomain = (strpos($host, '.') !== false && !filter_var($host, FILTER_VALIDATE_IP))
+                    ? '.' . ltrim($host, '.')
+                    : $host;
+                $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+                    || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
+                setcookie('PHPSESSID', '', time() - 3600, '/', $host,      $isHttps, true);
+                setcookie('PHPSESSID', '', time() - 3600, '/', $dotDomain, $isHttps, true);
+
+                // Regenerate session ID to bind the fresh session to the
+                // correct cookie (set by session.php bootstrap).
+                session_regenerate_id(true);
+
                 // session already started by index.php
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_name'] = $user['name'];

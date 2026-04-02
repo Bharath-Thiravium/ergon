@@ -6,6 +6,13 @@
         if (el) el.textContent = val;
     }
 
+    function setBar(sel, pct) {
+        const el = document.querySelector(sel);
+        if (!el) return;
+        el.style.width = Math.min(pct, 100) + '%';
+        el.classList.toggle('progress-over', pct > 100);
+    }
+
     function fmtMs(ms) {
         const sec = Math.max(0, Math.floor(ms / 1000));
         return String(Math.floor(sec / 3600)).padStart(2, '0') + ':' +
@@ -52,18 +59,22 @@
         const remainMs    = slaDurMs - wMs;
         const isOverdue   = wMs >= slaDurMs && (status === 'in_progress' || status === 'overdue');
 
-        const titleEl = card.querySelector('.task-card__title');
+        const titleEl       = card.querySelector('.task-card__title');
+        const completedPct = parseInt(card.dataset.completedPercentage) || 0;
+        const utilPct      = slaDurMs > 0 ? (wMs / slaDurMs) * 100 : 0;
+
         setText('.sla-selected-task-name', titleEl ? titleEl.textContent.trim() : 'Task #' + taskId);
         setText('.sla-total-time',     fmtMs(slaDurMs));
-        setText('.sla-used-time',      fmtMs(wMs));
         setText('.sla-remaining-time', isOverdue ? '00:00:00' : fmtMs(Math.max(0, remainMs)));
-        setText('.sla-pause-time',     '00:00:00');   // break time not tracked separately in spec
 
         setText('.sla-stat-total',     '1');
         setText('.sla-stat-completed', status === 'completed' ? '1' : '0');
         setText('.sla-stat-active',    (status === 'in_progress' || status === 'overdue') ? '1' : '0');
         setText('.sla-stat-postponed', status === 'postponed' ? '1' : '0');
-        setText('.sla-completion-rate', (parseInt(card.dataset.completedPercentage) || 0) + '%');
+        setText('.sla-completion-rate', completedPct + '%');
+
+        setBar('.progress-item:nth-child(1) .progress-fill', completedPct);
+        setBar('.progress-item:nth-child(2) .progress-fill', utilPct);
     }
 
     function startLiveSync(taskId) {
@@ -89,18 +100,21 @@
         if (!payload.success) throw new Error(payload.message || 'Failed');
 
         const d = payload.sla_data;
+        const completionPct = d.total_tasks > 0 ? (d.completed_tasks / d.total_tasks) * 100 : 0;
+        const utilPct       = d.total_sla_seconds > 0
+            ? (d.total_working_seconds / d.total_sla_seconds) * 100 : 0;
+
         setText('.sla-selected-task-name', 'All Tasks');
         setText('.sla-total-time',     d.total_sla_time       || '00:00:00');
-        setText('.sla-used-time',      d.total_time_used      || '00:00:00');
         setText('.sla-remaining-time', d.total_remaining_time || '00:00:00');
-        setText('.sla-pause-time',     d.total_pause_time     || '00:00:00');
         setText('.sla-stat-total',     String(d.total_tasks       || 0));
         setText('.sla-stat-completed', String(d.completed_tasks   || 0));
         setText('.sla-stat-active',    String(d.in_progress_tasks || 0));
         setText('.sla-stat-postponed', String(d.postponed_tasks   || 0));
-        const rate = d.total_tasks > 0
-            ? ((d.completed_tasks / d.total_tasks) * 100).toFixed(1) + '%' : '0%';
-        setText('.sla-completion-rate', rate);
+        setText('.sla-completion-rate', completionPct.toFixed(1) + '%');
+
+        setBar('.progress-item:nth-child(1) .progress-fill', completionPct);
+        setBar('.progress-item:nth-child(2) .progress-fill', utilPct);
     }
 
     // ── Entry ─────────────────────────────────────────────────────────────────
@@ -113,13 +127,13 @@
         if (taskId) {
             startLiveSync(taskId);
         } else {
-            ['.sla-total-time', '.sla-used-time', '.sla-remaining-time', '.sla-pause-time']
+            ['.sla-total-time', '.sla-remaining-time']
                 .forEach(s => setText(s, 'Loading...'));
             try {
                 await loadAggregate(date);
             } catch (e) {
                 console.error('SLA aggregate failed:', e);
-                ['.sla-total-time', '.sla-used-time', '.sla-remaining-time', '.sla-pause-time']
+                ['.sla-total-time', '.sla-remaining-time']
                     .forEach(s => setText(s, '--:--:--'));
             }
         }

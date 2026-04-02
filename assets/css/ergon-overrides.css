@@ -6,7 +6,7 @@
   background: var(--bg-primary) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: 8px !important;
-  overflow: hidden !important;
+  overflow: visible !important; /* was: hidden — creates stacking context, clips content */
 }
 .dashboard-grid .stat-card .stat-card__header {
   display: flex !important;
@@ -28,6 +28,36 @@
 
 /* Ensure canvas responsive behaviour */
 .dashboard-grid canvas { width: 100% !important; height: auto !important; }
+
+/* ── Stacking context fixes ──────────────────────────────────────────────────
+   .main-content has position:relative + z-index:1 in ergon.css.
+   position:relative alone is harmless, but combined with any z-index it
+   creates a stacking context that can interfere with overlays.
+   Removing z-index (setting to auto) collapses the context while keeping
+   the element in normal flow. The modal JS teleport to <body> handles the
+   rest, but this prevents any future regression.
+   .modal-content still has z-index:100000 (non-!important) in ergon.css —
+   override it to auto so it paints as part of the overlay's layer.
+   ──────────────────────────────────────────────────────────────────────── */
+.main-content {
+  z-index: auto !important;
+}
+
+.modal-content {
+  z-index: auto !important;
+  margin: 0 !important; /* override ergon.css margin:5%/10% auto in media queries */
+}
+
+/* ── Mobile header-height correction ────────────────────────────────────────
+   ergon.css sets .main-header { height: 60px } at ≤1024px but keeps
+   .main-content { margin-top: 140px } at ≤768px — an 80px dead zone.
+   Correct it here so content starts immediately below the header.
+   ──────────────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .main-content {
+    margin-top: 60px !important;
+  }
+}
 
 /* Higher specificity for mobile responsiveness */
 @media (max-width: 768px) {

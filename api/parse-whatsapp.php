@@ -5,8 +5,7 @@
  * Accessible to: owner, admin, user (all authenticated roles).
  */
 
-require_once __DIR__ . '/../../app/config/session.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../app/config/session.php';
 
 header('Content-Type: application/json');
 

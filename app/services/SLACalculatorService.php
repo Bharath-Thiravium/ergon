@@ -9,41 +9,37 @@ class SLACalculatorService {
     }
     
     public function calculateDailySLA($userId, $date) {
-        // Get today's tasks with SLA data
         $stmt = $this->db->prepare("
-            SELECT dt.*, COALESCE(t.sla_hours, 1.0) as sla_hours
-            FROM daily_tasks dt 
-            LEFT JOIN tasks t ON dt.task_id = t.id
+            SELECT dt.status, dt.start_ts_ms, dt.paused_accum_ms,
+                   COALESCE(dt.sla_duration_seconds,
+                            COALESCE(t.sla_hours, dt.sla_hours, 0.25) * 3600) AS sla_duration_seconds
+            FROM daily_tasks dt
+            LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id)
             WHERE dt.user_id = ? AND dt.scheduled_date = ?
         ");
         $stmt->execute([$userId, $date]);
         $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        $totalSlaSeconds = 0;
+
+        $totalSlaSeconds    = 0;
         $totalActiveSeconds = 0;
-        $totalPauseSeconds = 0;
-        $completedTasks = 0;
-        $now = time();
-        
+        $totalPauseSeconds  = 0;
+        $completedTasks     = 0;
+        $nowMs              = (int)(microtime(true) * 1000);
+
         foreach ($tasks as $task) {
-            // SLA calculation
-            $slaSeconds = max(900, floatval($task['sla_hours']) * 3600);
-            $totalSlaSeconds += $slaSeconds;
-            
-            // Active time calculation (including current session)
-            $currentActiveTime = 0;
-            if ($task['status'] === 'in_progress' && $task['start_time']) {
-                $lastActiveTime = $task['resume_time'] ?: $task['start_time'];
-                $currentActiveTime = $now - strtotime($lastActiveTime);
+            $slaSec  = max(60, (int)round((float)$task['sla_duration_seconds']));
+            $accumMs = (int)($task['paused_accum_ms'] ?? 0);
+            $startMs = (int)($task['start_ts_ms'] ?? 0);
+
+            if (in_array($task['status'], ['in_progress', 'overdue'], true) && $startMs > 0) {
+                $workingMs = $accumMs + max(0, $nowMs - $startMs);
+            } else {
+                $workingMs = $accumMs;
             }
-            
-            $taskActiveTime = intval($task['active_seconds'] ?? 0) + $currentActiveTime;
-            $totalActiveSeconds += $taskActiveTime;
-            
-            // Pause duration
-            $totalPauseSeconds += intval($task['total_pause_duration'] ?? 0);
-            
-            // Count completed tasks
+
+            $totalSlaSeconds    += $slaSec;
+            $totalActiveSeconds += (int)round($workingMs / 1000);
+
             if ($task['status'] === 'completed') {
                 $completedTasks++;
             }
@@ -51,24 +47,23 @@ class SLACalculatorService {
         
         $totalRemainingSeconds = max(0, $totalSlaSeconds - $totalActiveSeconds);
         $completionRate = count($tasks) > 0 ? ($completedTasks / count($tasks)) * 100 : 0;
-        
-        // Update summary table
+
         $this->updateSLASummary($userId, $date, [
-            'total_sla_seconds' => $totalSlaSeconds,
+            'total_sla_seconds'    => $totalSlaSeconds,
             'total_active_seconds' => $totalActiveSeconds,
-            'total_pause_seconds' => $totalPauseSeconds,
-            'total_tasks' => count($tasks),
-            'completed_tasks' => $completedTasks
+            'total_pause_seconds'  => $totalPauseSeconds,
+            'total_tasks'          => count($tasks),
+            'completed_tasks'      => $completedTasks,
         ]);
-        
+
         return [
             'sla_total_seconds' => $totalSlaSeconds,
-            'active_seconds' => $totalActiveSeconds,
+            'active_seconds'    => $totalActiveSeconds,
             'remaining_seconds' => $totalRemainingSeconds,
-            'pause_seconds' => $totalPauseSeconds,
-            'completion_rate' => round($completionRate, 1),
-            'task_count' => count($tasks),
-            'completed_tasks' => $completedTasks
+            'pause_seconds'     => $totalPauseSeconds,
+            'completion_rate'   => round($completionRate, 1),
+            'task_count'        => count($tasks),
+            'completed_tasks'   => $completedTasks,
         ];
     }
     

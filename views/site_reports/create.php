@@ -337,23 +337,19 @@ function parseWA(text) {
         tasks: [], expenses: []
     };
 
-    // ── Date ── supports "20 Mar 2026", "20/03/2026", "Date: 20-03-26"
-    const dateMatch = text.match(/date[:\s]*([\d]{1,2})\s*([A-Za-z]+|[\/\-\.][\d]{1,2}[\/\-\.])\s*([\d]{2,4})/i)
-        || text.match(/date[:\s]*(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/i);
-    if (dateMatch) {
-        const raw = dateMatch[0].replace(/date[:\s]*/i,'').trim();
-        const parsed = new Date(raw);
-        if (!isNaN(parsed)) {
-            result.date = parsed.toISOString().slice(0,10);
-        } else {
-            // fallback numeric
-            const nm = raw.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
-            if (nm) {
-                let [,d,m,y] = nm;
-                if (y.length === 2) y = '20' + y;
-                result.date = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
-            }
-        }
+    // ── Date ── DD/MM/YYYY (Indian format) — never use new Date() on ambiguous strings
+    const numericDate = text.match(/date\s*[:\-]?\s*(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/i);
+    const textDate    = text.match(/date\s*[:\-]?\s*(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{2,4})/i);
+    if (numericDate) {
+        let [, d, m, y] = numericDate;
+        if (y.length === 2) y = '20' + y;
+        result.date = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    } else if (textDate) {
+        // "Date: 20 Mar 2026" — unambiguous, safe to parse
+        let [, d, mon, y] = textDate;
+        if (y.length === 2) y = '20' + y;
+        const parsed = new Date(`${d} ${mon} ${y}`);
+        if (!isNaN(parsed)) result.date = parsed.toISOString().slice(0, 10);
     }
 
     // ── Site ──

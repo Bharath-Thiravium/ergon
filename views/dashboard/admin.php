@@ -14,11 +14,7 @@ ob_start();
 ?>
 <style>
 .adm-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
-.adm-kpi-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-top:3px solid #e5e7eb}
-.adm-kpi-card.blue{border-top-color:#3b82f6}
-.adm-kpi-card.green{border-top-color:#10b981}
-.adm-kpi-card.yellow{border-top-color:#f59e0b}
-.adm-kpi-card.red{border-top-color:#ef4444}
+.adm-kpi-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,.07);border:1px solid #f1f5f9}
 .adm-kpi-val{font-size:22px;font-weight:800;color:#111827}
 .adm-kpi-lbl{font-size:11px;color:#6b7280;margin-top:3px;text-transform:uppercase;letter-spacing:.4px;font-weight:500}
 .adm-kpi-sub{font-size:12px;color:#9ca3af;margin-top:2px}

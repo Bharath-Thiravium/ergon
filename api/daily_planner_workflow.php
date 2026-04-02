@@ -2,7 +2,7 @@
 ob_start();
 error_reporting(0);
 ini_set('display_errors', 0);
-session_start();
+require_once __DIR__ . '/../app/config/session.php';
 ob_clean();
 header('Content-Type: application/json; charset=utf-8');
 
@@ -46,7 +46,8 @@ try {
         case 'start':
             $stmt = $db->prepare("
                 SELECT dt.id, dt.task_id, dt.original_task_id, dt.status, dt.completed_percentage,
-                       COALESCE(t.sla_hours, dt.sla_hours, 0.25) as sla_hours
+                       COALESCE(dt.sla_duration_seconds,
+                                COALESCE(t.sla_hours, dt.sla_hours, 0.25) * 3600) AS sla_duration_seconds
                 FROM daily_tasks dt
                 LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id)
                 WHERE dt.id = ? AND dt.user_id = ?
@@ -62,7 +63,7 @@ try {
             }
 
             $nowMs              = (int)(microtime(true) * 1000);
-            $slaDurationSeconds = max(60, (int)round((float)$task['sla_hours'] * 3600));
+            $slaDurationSeconds = max(60, (int)round((float)$task['sla_duration_seconds']));
 
             // start_ts_ms = now  |  paused_accum_ms = 0  |  status = in_progress
             $stmt = $db->prepare("

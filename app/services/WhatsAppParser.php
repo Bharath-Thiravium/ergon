@@ -211,20 +211,38 @@ class WhatsAppParser {
             'is_whatsapp'     => self::isWhatsAppContent($raw),
         ];
 
-        // ── Date ──────────────────────────────────────────────────────────────
-        // Supports: "Date: 20 Mar 2026", "Date: 20/03/2026", "Date: 20-03-26"
-        if (preg_match('/date\s*[:\-]?\s*(\d{1,2})[\s\/\-\.](\w+)[\s\/\-\.](\d{2,4})/i', $text, $m)) {
-            $raw_date = $m[1] . ' ' . $m[2] . ' ' . $m[3];
-            $ts = strtotime($raw_date);
-            if ($ts) {
-                $result['date'] = date('Y-m-d', $ts);
-            } else {
-                // numeric fallback: d/m/y
-                if (preg_match('/(\d{1,2})[\s\/\-\.](\d{1,2})[\s\/\-\.](\d{2,4})/', $raw_date, $nm)) {
-                    $y = strlen($nm[3]) === 2 ? '20' . $nm[3] : $nm[3];
-                    $result['date'] = $y . '-' . str_pad($nm[2], 2, '0', STR_PAD_LEFT) . '-' . str_pad($nm[1], 2, '0', STR_PAD_LEFT);
-                }
+        // ── Date ────────────────────────────────────────────────────────────────
+        // Use $raw (before clean()) — clean() can strip bare date lines.
+        // Priority 1: numeric DD/MM/YYYY — Indian format, locale-safe. Never use strtotime().
+        if (preg_match('/date\s*[:\-]?\s*(\d{1,2})\s*[\/\-\.]\s*(\d{1,2})\s*[\/\-\.]\s*(\d{2,4})/i', $raw, $m)) {
+            $d  = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+            $mo = str_pad($m[2], 2, '0', STR_PAD_LEFT);
+            $y  = strlen($m[3]) === 2 ? '20' . $m[3] : $m[3];
+            $dateObj = DateTime::createFromFormat('d/m/Y', "{$d}/{$mo}/{$y}");
+            $errs    = DateTime::getLastErrors();
+            // PHP 8.2+: getLastErrors() returns false when no errors (not an array)
+            $hasErrors = is_array($errs) && ($errs['warning_count'] + $errs['error_count']) > 0;
+            if ($dateObj && !$hasErrors) {
+                $result['date'] = $dateObj->format('Y-m-d');
+                error_log('WhatsAppParser parsed date: ' . $result['date']);
             }
+        }
+        // Priority 2: text month — "Date: 20 Mar 2026" (unambiguous)
+        if (empty($result['date']) &&
+            preg_match('/date\s*[:\-]?\s*(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{2,4})/i', $raw, $m)) {
+            $y = strlen($m[3]) === 2 ? '20' . $m[3] : $m[3];
+            $dateObj = DateTime::createFromFormat('d M Y', $m[1] . ' ' . $m[2] . ' ' . $y)
+                    ?: DateTime::createFromFormat('d F Y', $m[1] . ' ' . $m[2] . ' ' . $y);
+            $errs    = DateTime::getLastErrors();
+            $hasErrors = is_array($errs) && ($errs['warning_count'] + $errs['error_count']) > 0;
+            if ($dateObj && !$hasErrors) {
+                $result['date'] = $dateObj->format('Y-m-d');
+                error_log('WhatsAppParser parsed date: ' . $result['date']);
+            }
+        }
+        // Fallback: today
+        if (empty($result['date'])) {
+            $result['date'] = date('Y-m-d');
         }
 
         // ── Site / Project ────────────────────────────────────────────────────

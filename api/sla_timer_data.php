@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-session_start();
+require_once __DIR__ . '/../app/config/session.php';
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);

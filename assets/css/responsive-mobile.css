@@ -217,6 +217,28 @@
   }
 }
 
+/* Standalone form pages - ensure submit button is always reachable */
+@media (max-width: 768px) {
+  .form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+    margin-bottom: 1rem;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  /* Ensure card body doesn't clip form content */
+  .card__body {
+    overflow: visible;
+  }
+}
+
 /* Focus Management for Mobile */
 @media (width <= 768px) {
   .form-control:focus,

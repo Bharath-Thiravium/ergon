@@ -8,9 +8,7 @@ ini_set('error_log', __DIR__ . '/../storage/notification_errors.log');
 
 try {
     // Use same session handling as main app
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    require_once __DIR__ . '/../app/config/session.php';
     
     if (!isset($_SESSION['user_id'])) {
         echo json_encode(['success' => true, 'notifications' => [], 'unread_count' => 0]);
