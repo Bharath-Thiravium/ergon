@@ -322,7 +322,7 @@ $router->get('/users/download-document/{userId}/{filename}', 'UsersController', 
 $router->post('/users/delete-document/{userId}/{filename}', 'UsersController', 'deleteDocument');
 
 // Admin Routes - Department vs System Admin
-
+$router->get('/admin/audit-report', 'AdminController', 'auditReport');
 $router->get('/admin/manage-tasks', 'AdminController', 'manageTasks');
 $router->post('/admin/approve-request', 'AdminController', 'approveRequest');
 $router->get('/admin/manage-users', 'AdminController', 'manageUsers');

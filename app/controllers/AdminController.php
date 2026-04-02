@@ -61,6 +61,16 @@ class AdminController extends Controller {
     
 
     
+    public function auditReport() {
+        AuthMiddleware::requireRole('admin');
+        $title       = 'UI Audit Report';
+        $active_page = 'audit';
+        ob_start();
+        require_once __DIR__ . '/../../views/admin/audit_report.php';
+        $content = ob_get_clean();
+        require_once __DIR__ . '/../../views/layouts/dashboard.php';
+    }
+
     public function manageTasks() {
         AuthMiddleware::requireRole('admin');
         
