@@ -172,6 +172,7 @@ $router->get('/api/project-subcategories/{projectId}', 'ProjectSubcategoryContro
 
 // Ledger viewing
 $router->get('/ledgers/user/{id}', 'LedgerController', 'userLedger');
+$router->get('/ledgers/user/{id}/download-csv', 'LedgerController', 'downloadCsv');
 $router->get('/ledgers/project', 'LedgerController', 'projectLedger');
 // Approved expenses admin listing
 $router->get('/approved-expenses', 'ApprovedExpensesController', 'index');

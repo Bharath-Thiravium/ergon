@@ -10,10 +10,10 @@ ob_start();
         <p>Financial transaction history for <strong><?= htmlspecialchars($user['name'] ?? 'Unknown User') ?></strong> (<?= htmlspecialchars($user['role'] ?? 'N/A') ?>)</p>
     </div>
     <div class="page-actions">
-        <a href="/ergon/users" class="btn btn--secondary">← Back to Users</a>
-        <button onclick="refreshLedger()" class="btn btn--info" id="refreshBtn">🔄 Refresh</button>
-        <button onclick="window.print()" class="btn btn--outline">🖨️ Print</button>
-        <button onclick="downloadLedger()" class="btn btn--primary">📥 Download CSV</button>
+        <a href="/ergon/users" class="btn btn--secondary no-print">← Back to Users</a>
+        <button onclick="refreshLedger()" class="btn btn--info no-print" id="refreshBtn">🔄 Refresh</button>
+        <button onclick="window.print()" class="btn btn--outline no-print">🖨️ Print</button>
+        <button onclick="downloadLedger()" class="btn btn--primary no-print">📥 Download CSV</button>
     </div>
 </div>
 
@@ -119,15 +119,15 @@ ob_start();
     <div class="card__header">
         <h2 class="card__title">📋 Transaction History</h2>
         <div class="card__actions">
-            <span class="badge badge--info" id="entryCount"><?= count($filteredEntries ?? $entries) ?> Entries</span>
-            <?php if (isset($fromDate) || isset($toDate) || isset($transactionType)): ?>
+            <span class="badge badge--info" id="entryCount"><?= count($entries) ?> Entries</span>
+            <?php if ($fromDate || $toDate || $transactionType): ?>
                 <span class="badge badge--warning">Filtered</span>
             <?php endif; ?>
-            <button onclick="refreshLedger()" class="btn btn--sm btn--info" id="refreshBtnInline" title="Fetch latest transactions">🔄 Refresh</button>
+            <button onclick="refreshLedger()" class="btn btn--sm btn--info no-print" id="refreshBtnInline" title="Fetch latest transactions">🔄 Refresh</button>
         </div>
     </div>
     <div class="card__body">
-        <?php if (empty($filteredEntries ?? $entries)): ?>
+        <?php if (empty($entries)): ?>
             <div class="empty-state">
                 <div class="empty-state__icon">📝</div>
                 <h3>No Transactions Found</h3>
@@ -149,7 +149,7 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach (($filteredEntries ?? $entries) as $entry): ?>
+                        <?php foreach ($entries as $entry): ?>
                         <tr class="ledger-entry ledger-entry--<?= $entry['direction'] ?>">
                             <td class="ledger-date">
                                 <strong><?= date('M d, Y', strtotime($entry['created_at'])) ?></strong>
@@ -225,6 +225,8 @@ ob_start();
 .filter-group input:focus, .filter-group select:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.25); }
 .filter-actions { display: flex; gap: 0.5rem; align-items: end; }
 .filter-actions .btn { white-space: nowrap; }
+
+.ledger-entry--credit {
     background-color: rgba(40, 167, 69, 0.05);
 }
 
@@ -350,16 +352,50 @@ ob_start();
 }
 
 @media print {
-    .page-actions, .card__actions, .filter-section {
+    .no-print,
+    .page-actions,
+    .card__actions,
+    .filter-section,
+    nav, header, aside, footer,
+    .sidebar, .navbar, .top-bar {
         display: none !important;
     }
-    
-    .stats-grid {
+
+    body * {
+        visibility: hidden;
+    }
+
+    .dashboard-grid,
+    .dashboard-grid *,
+    .card,
+    .card * {
+        visibility: visible;
+    }
+
+    .dashboard-grid,
+    .card {
+        position: static !important;
+    }
+
+    .dashboard-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .stat-card {
         break-inside: avoid;
+    }
+
+    table {
+        width: 100%;
+        font-size: 11px;
+    }
+
+    .ledger-description {
+        max-width: none;
+    }
+
+    .description-text {
+        white-space: normal;
     }
 }
 </style>
@@ -479,11 +515,10 @@ function refreshLedger() {
 }
 
 function downloadLedger() {
+    const userId = <?= (int)($user_id ?? 0) ?>;
     const params = new URLSearchParams(window.location.search);
-    params.set('download', 'csv');
-    
-    const downloadUrl = window.location.pathname + '?' + params.toString();
-    window.open(downloadUrl, '_blank');
+    params.delete('_r');
+    window.location.href = '/ergon/ledgers/user/' + userId + '/download-csv?' + params.toString();
 }
 
 // Initialize date range selector based on current URL params
