@@ -38,9 +38,6 @@ class Controller {
     }
     
     protected function requireAuth() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('/login');
         }

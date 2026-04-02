@@ -3,13 +3,6 @@ require_once __DIR__ . '/../helpers/SessionManager.php';
 
 class AuthMiddleware {
     public static function requireAuth() {
-        // session.php (loaded by index.php) already configured cookie params
-        // before session_start(). Do NOT call session_set_cookie_params() here
-        // — it has no effect once the session is already active.
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
         // Check if session is valid
         if (empty($_SESSION['user_id'])) {
             error_log('AuthMiddleware: No user_id in session, redirecting to login');

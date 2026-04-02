@@ -8,9 +8,7 @@ class ProjectManagementController extends Controller {
     
     public function index() {
         // Check authentication
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         if (!isset($_SESSION['user_id'])) {
             header('Location: /ergon/login');
@@ -90,9 +88,7 @@ class ProjectManagementController extends Controller {
     }
     
     public function create() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         if (!isset($_SESSION['user_id'])) {
             header('Content-Type: application/json');
@@ -151,9 +147,7 @@ class ProjectManagementController extends Controller {
     }
     
     public function update() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         if (!isset($_SESSION['user_id'])) {
             header('Content-Type: application/json');
@@ -219,9 +213,7 @@ class ProjectManagementController extends Controller {
     }
     
     public function delete() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         if (!isset($_SESSION['user_id'])) {
             header('Content-Type: application/json');

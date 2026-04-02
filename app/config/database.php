@@ -6,10 +6,21 @@
 
 require_once __DIR__ . '/environment.php';
 
-// Load environment variables - use .env.production only on production servers
-$_envProd = __DIR__ . '/../../.env.production';
-$_envDev  = __DIR__ . '/../../.env';
-$_envFile = (Environment::isProduction() && file_exists($_envProd)) ? $_envProd : $_envDev;
+// Load environment variables - detect subdomain to pick the right production env file
+$_host    = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
+$_envBase = __DIR__ . '/../..';
+$_envDev  = $_envBase . '/.env';
+if (Environment::isProduction()) {
+    if (strpos($_host, 'aes.') === 0 && file_exists($_envBase . '/.env.production.aes')) {
+        $_envFile = $_envBase . '/.env.production.aes';
+    } elseif (file_exists($_envBase . '/.env.production')) {
+        $_envFile = $_envBase . '/.env.production';
+    } else {
+        $_envFile = $_envDev;
+    }
+} else {
+    $_envFile = $_envDev;
+}
 if (file_exists($_envFile)) {
     $lines = file($_envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {

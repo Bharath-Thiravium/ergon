@@ -300,9 +300,7 @@ class AttendanceController extends Controller {
     }
     
     public function clock() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         $this->requireAuth();
         

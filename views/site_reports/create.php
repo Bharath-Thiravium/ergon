@@ -64,18 +64,7 @@ $expTypes  = ['labour'=>'Labour Payment','machinery'=>'Machinery','transport'=>'
 
 <?php if (isset($_GET['error'])): ?>
 <div class="alert alert--error">
-    <?php
-    $errCode = $_GET['error'] ?? '';
-    if ($errCode === 'window_closed') {
-        echo '🚫 Report submission is currently closed. Window: 9:00 AM – 6:00 PM (grace until next morning 9 AM).';
-    } elseif ($errCode === 'missing_fields') {
-        echo '⚠️ Site name and report date are required.';
-    } elseif ($errCode !== '') {
-        echo '❌ Failed to save report: ' . htmlspecialchars(urldecode($errCode), ENT_QUOTES, 'UTF-8');
-    } else {
-        echo 'Failed to save report. Please try again.';
-    }
-    ?>
+    <?= $_GET['error'] === 'window_closed' ? '🚫 Report submission is currently closed. Window: 9:00 AM – 6:00 PM (grace until next morning 9 AM).' : 'Failed to save report. Please try again.' ?>
 </div>
 <?php endif; ?>
 
@@ -165,7 +154,7 @@ $defaultTab = 'paste';
                 <h3>📌 Work Progress / Remarks <span style="font-weight:400;font-size:.8rem;color:#94a3b8">(optional — add tasks or notes)</span></h3>
                 <div id="f_tasks_editable" style="margin-bottom:.75rem"></div>
                 <button type="button" class="btn-add" onclick="addParsedTask()">+ Add Task</button>
-                <textarea name="remarks_input" id="f_remarks_input" class="form-control" rows="3"
+                <textarea name="remarks" id="f_remarks_input" class="form-control" rows="3"
                     placeholder="Any additional notes or work progress not in the message..."
                     style="margin-top:.75rem"></textarea>
             </div>
@@ -349,10 +338,22 @@ function parseWA(text) {
     };
 
     // ── Date ── supports "20 Mar 2026", "20/03/2026", "Date: 20-03-26"
-    // Always parse DD/MM/YYYY (Indian format) — never rely on new Date() which uses MM/DD
-    const dateMatch = text.match(/date[:\s]*(\d{1,2})[\s\/\-\.](\w+)[\s\/\-\.](\d{2,4})/i);
+    const dateMatch = text.match(/date[:\s]*([\d]{1,2})\s*([A-Za-z]+|[\/\-\.][\d]{1,2}[\/\-\.])\s*([\d]{2,4})/i)
+        || text.match(/date[:\s]*(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/i);
     if (dateMatch) {
-        result.date = parseDateDDMM(dateMatch[1], dateMatch[2], dateMatch[3]);
+        const raw = dateMatch[0].replace(/date[:\s]*/i,'').trim();
+        const parsed = new Date(raw);
+        if (!isNaN(parsed)) {
+            result.date = parsed.toISOString().slice(0,10);
+        } else {
+            // fallback numeric
+            const nm = raw.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+            if (nm) {
+                let [,d,m,y] = nm;
+                if (y.length === 2) y = '20' + y;
+                result.date = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+            }
+        }
     }
 
     // ── Site ──
@@ -506,38 +507,6 @@ function parseWA(text) {
     }
 
     return result;
-}
-
-/**
- * Parse date parts into YYYY-MM-DD, always treating numeric parts as DD/MM/YYYY.
- * Never uses new Date(string) which interprets MM/DD in most browsers.
- */
-function parseDateDDMM(day, month, year) {
-    // Expand 2-digit year
-    let y = String(year);
-    if (y.length === 2) y = '20' + y;
-
-    let d = String(day).padStart(2, '0');
-    let m;
-
-    // Month is a word ("Apr", "April", "mar", etc.)
-    if (/[a-z]/i.test(month)) {
-        const monthNames = {
-            jan:'01', feb:'02', mar:'03', apr:'04', may:'05', jun:'06',
-            jul:'07', aug:'08', sep:'09', oct:'10', nov:'11', dec:'12'
-        };
-        m = monthNames[month.slice(0, 3).toLowerCase()];
-        if (!m) return '';
-    } else {
-        // Numeric month — treat as MM in DD/MM/YYYY
-        m = String(month).padStart(2, '0');
-    }
-
-    // Basic range validation
-    if (parseInt(d) < 1 || parseInt(d) > 31) return '';
-    if (parseInt(m) < 1 || parseInt(m) > 12) return '';
-
-    return `${y}-${m}-${d}`;
 }
 
 function matchMachineKey(str) {

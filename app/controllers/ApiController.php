@@ -98,22 +98,7 @@ class ApiController extends Controller {
     
     public function departments() {
         // Set session cookie parameters to match AuthMiddleware
-        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
-            $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
-            $domain = $_SERVER['HTTP_HOST'];
-            session_set_cookie_params([
-                'lifetime' => 28800,
-                'path' => '/ergon/',
-                'domain' => $domain,
-                'secure' => $isSecure,
-                'httponly' => true,
-                'samesite' => 'Lax'
-            ]);
-        }
         
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
         
         header('Content-Type: application/json');
         
@@ -330,22 +315,7 @@ class ApiController extends Controller {
     
     public function users() {
         // Set session cookie parameters to match AuthMiddleware
-        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
-            $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
-            $domain = $_SERVER['HTTP_HOST'];
-            session_set_cookie_params([
-                'lifetime' => 28800,
-                'path' => '/ergon/',
-                'domain' => $domain,
-                'secure' => $isSecure,
-                'httponly' => true,
-                'samesite' => 'Lax'
-            ]);
-        }
         
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
         
         header('Content-Type: application/json');
         
@@ -373,22 +343,7 @@ class ApiController extends Controller {
     
     public function taskCategories() {
         // Set session cookie parameters to match AuthMiddleware
-        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
-            $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
-            $domain = $_SERVER['HTTP_HOST'];
-            session_set_cookie_params([
-                'lifetime' => 28800,
-                'path' => '/ergon/',
-                'domain' => $domain,
-                'secure' => $isSecure,
-                'httponly' => true,
-                'samesite' => 'Lax'
-            ]);
-        }
         
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
         
         header('Content-Type: application/json');
         

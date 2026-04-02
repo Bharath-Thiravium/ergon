@@ -1,22 +1,26 @@
 <?php
 class SessionManager {
     public static function start() {
-        if (session_status() === PHP_SESSION_NONE) {
-            ini_set('session.cookie_httponly', 1);
-            ini_set('session.use_strict_mode', 1);
-            ini_set('session.gc_maxlifetime', 3600);
-            session_start();
         }
-    }
     
     public static function regenerate() {
+        // Do not regenerate session ID — it causes cookie loss on Hostinger CDN.
+        // The session is already secure as it is started fresh on login.
         self::start();
-        session_regenerate_id(true);
     }
     
     public static function destroy() {
         self::start();
-        $_SESSION = [];
+        $_SESSION = array();
+        
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+        
         session_destroy();
     }
     

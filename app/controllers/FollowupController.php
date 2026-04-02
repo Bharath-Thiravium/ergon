@@ -4,9 +4,7 @@ require_once __DIR__ . '/../core/Controller.php';
 class FollowupController extends Controller {
     
     public function __construct() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
     }
     
     public function index() {

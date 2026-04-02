@@ -7,9 +7,7 @@ require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 class AdminManagementController extends Controller {
     
     public function index() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admin'])) {
             header('Location: /ergon/login');
@@ -37,9 +35,7 @@ class AdminManagementController extends Controller {
     }
     
     public function assignAdmin() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
             header('Location: /ergon/login');
@@ -63,9 +59,7 @@ class AdminManagementController extends Controller {
     }
     
     public function removeAdmin() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
             header('Location: /ergon/login');
@@ -89,9 +83,7 @@ class AdminManagementController extends Controller {
     }
     
     public function changePassword() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'owner') {
             header('Content-Type: application/json');
@@ -135,9 +127,7 @@ class AdminManagementController extends Controller {
     }
     
     public function deleteUser() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         header('Content-Type: application/json');
         

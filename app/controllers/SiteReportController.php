@@ -147,8 +147,8 @@ class SiteReportController extends Controller {
             // 1. Main report row
             $stmt = $this->db->prepare("
                 INSERT INTO site_reports
-                    (company_id, project_id, site_name, report_date, submitted_by, total_manpower, remarks, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted')
+                    (company_id, project_id, site_name, report_date, submitted_by, total_manpower, remarks, status, submission_timing)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted', ?)
             ");
             $stmt->execute([
                 $_SESSION['company_id'] ?? null,
@@ -158,6 +158,7 @@ class SiteReportController extends Controller {
                 $_SESSION['user_id'],
                 (int)($p['total_manpower'] ?? 0),
                 trim($p['remarks'] ?? ''),
+                $windowStatus['report_status'],
             ]);
             $reportId = $this->db->lastInsertId();
 
@@ -222,10 +223,10 @@ class SiteReportController extends Controller {
             $this->db->commit();
             $this->redirect('/site-reports/view/' . $reportId);
 
-        } catch (\Throwable $e) {
-            if ($this->db->inTransaction()) $this->db->rollBack();
-            error_log('SiteReport store error: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
-            $this->redirect('/site-reports/create?error=' . urlencode($e->getMessage()));
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log('SiteReport store error: ' . $e->getMessage());
+            $this->redirect('/site-reports/create?error=1');
         }
     }
 

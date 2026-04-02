@@ -13,7 +13,9 @@ $isProduction = strpos($host, 'bkgreenenergy.com') !== false || strpos($host, 'a
 if (strpos($host, 'bkgreenenergy.com') !== false) {
     define('APP_URL', 'https://bkgreenenergy.com/ergon');
 } elseif (strpos($host, 'athenas.co.in') !== false) {
-    define('APP_URL', 'https://athenas.co.in/ergon');
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+                (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
+    define('APP_URL', $protocol . '://' . $host . '/ergon');
 } else {
     define('APP_URL', 'http://localhost/ergon');
 }

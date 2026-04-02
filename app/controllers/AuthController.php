@@ -34,9 +34,9 @@ class AuthController extends Controller {
             $this->showLogin();
             return;
         }
-        
-        // Ensure session is running before we read POST or write errors
-        Session::init();
+
+        // Ensure session is active before writing to it
+        // (already started by index.php — this is a safety net only)
         
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
@@ -97,29 +97,17 @@ class AuthController extends Controller {
                 $securityService->recordLoginAttempt($email, true);
                 $securityService->logAttempt($clientIp, 'login', true);
                 
-                if (session_status() === PHP_SESSION_NONE) {
-                    Session::init();
-                }
-
-                // Regenerate session ID and re-send cookie with correct domain
-                session_regenerate_id(true);
-                setcookie(session_name(), session_id(), [
-                    'expires'  => 0,
-                    'path'     => '/',
-                    'domain'   => Session::getCorrectDomain(),
-                    'secure'   => Session::isHttpsPublic(),
-                    'httponly' => true,
-                    'samesite' => 'Lax',
-                ]);
-
-                $_SESSION['user_id']         = $user['id'];
-                $_SESSION['user_name']       = $user['name'];
-                $_SESSION['user_email']      = $user['email'];
-                $_SESSION['role']            = $user['role'];
-                date_default_timezone_set('Asia/Kolkata');
-                $_SESSION['login_time']      = time();
-                $_SESSION['last_activity']   = time();
+                // session already started by index.php
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_name'] = $user['name'];
+                $_SESSION['user_email'] = $user['email'];
+                $_SESSION['role'] = $user['role'];
+                $_SESSION['login_time'] = time();
+                $_SESSION['last_activity'] = time();
                 $_SESSION['login_timestamp'] = date('Y-m-d H:i:s');
+                // Do NOT call session_write_close() here — it sets session
+                // status to PHP_SESSION_NONE which causes bare session_start()
+                // calls in other files to fire without cookie params on LiteSpeed.
                 
                 $redirectUrl = $this->getRedirectUrl($user['role']);
                 
@@ -147,9 +135,9 @@ class AuthController extends Controller {
                 $securityService->recordLoginAttempt($email, false);
                 $securityService->logAttempt($clientIp, 'login', false);
                 
-                $remainingAttempts = $lockoutStatus['remaining_attempts'] - 1;
+                $remainingAttempts = ($lockoutStatus['remaining_attempts'] ?? $this->maxAttempts) - 1;
                 $message = 'Invalid email or password';
-                if ($remainingAttempts <= 2 && $remainingAttempts > 0) {
+                if ($remainingAttempts > 0 && $remainingAttempts <= 2) {
                     $message .= ". {$remainingAttempts} attempts remaining before account lockout.";
                 }
                 
@@ -181,11 +169,14 @@ class AuthController extends Controller {
     }
     
     public function logout() {
-        Session::init();
-        Session::destroy();
+        // session already started by index.php
+        session_unset();
+        session_destroy();
+        
         header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
         header('Pragma: no-cache');
         header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+        
         require_once __DIR__ . '/../config/environment.php';
         $baseUrl = Environment::getBaseUrl();
         header('Location: ' . $baseUrl . '/login');

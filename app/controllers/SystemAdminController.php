@@ -5,9 +5,7 @@ require_once __DIR__ . '/../config/database.php';
 class SystemAdminController extends Controller {
     
     protected function requireAuth() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         if (empty($_SESSION['user_id']) || empty($_SESSION['role']) || $_SESSION['role'] !== 'owner') {
             header('Location: /ergon/login');
             exit;

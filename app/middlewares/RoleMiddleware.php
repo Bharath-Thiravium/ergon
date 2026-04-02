@@ -4,7 +4,6 @@ require_once __DIR__ . '/../helpers/RoleManager.php';
 class RoleMiddleware {
     
     public static function check($requiredRole) {
-        session_start();
         
         if (!isset($_SESSION['user_id'])) {
             http_response_code(401);
@@ -24,7 +23,6 @@ class RoleMiddleware {
     }
     
     public static function requirePermission($permission) {
-        session_start();
         
         if (!isset($_SESSION['user_id'])) {
             http_response_code(401);
@@ -44,7 +42,6 @@ class RoleMiddleware {
     }
     
     public static function canAccess($resource, $action = 'view') {
-        session_start();
         
         if (!isset($_SESSION['user_id'])) {
             return false;

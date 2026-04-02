@@ -2,7 +2,7 @@
 ob_start();
 error_reporting(0);
 ini_set('display_errors', 0);
-require_once __DIR__ . '/../app/config/session.php';
+session_start();
 ob_clean();
 header('Content-Type: application/json; charset=utf-8');
 

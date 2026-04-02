@@ -514,9 +514,7 @@ class ExpenseController extends Controller {
     }
     
     public function approve($id = null) {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         if (!isset($_SESSION['role'])) {
             $_SESSION['role'] = 'admin';
@@ -601,9 +599,7 @@ class ExpenseController extends Controller {
 
     
     public function reject($id = null) {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         if (!isset($_SESSION['role'])) {
             $_SESSION['role'] = 'admin';
@@ -776,9 +772,7 @@ class ExpenseController extends Controller {
     }
     
     public function apiCreate() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         if (!isset($_SESSION['user_id'])) {
             echo json_encode(['success' => false, 'error' => 'Unauthorized']);

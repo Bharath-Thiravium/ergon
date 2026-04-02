@@ -214,9 +214,16 @@ class WhatsAppParser {
         // ── Date ──────────────────────────────────────────────────────────────
         // Supports: "Date: 20 Mar 2026", "Date: 20/03/2026", "Date: 20-03-26"
         if (preg_match('/date\s*[:\-]?\s*(\d{1,2})[\s\/\-\.](\w+)[\s\/\-\.](\d{2,4})/i', $text, $m)) {
-            $parsed_date = self::parseDate($m[1] . '/' . $m[2] . '/' . $m[3]);
-            if ($parsed_date !== '') {
-                $result['date'] = $parsed_date;
+            $raw_date = $m[1] . ' ' . $m[2] . ' ' . $m[3];
+            $ts = strtotime($raw_date);
+            if ($ts) {
+                $result['date'] = date('Y-m-d', $ts);
+            } else {
+                // numeric fallback: d/m/y
+                if (preg_match('/(\d{1,2})[\s\/\-\.](\d{1,2})[\s\/\-\.](\d{2,4})/', $raw_date, $nm)) {
+                    $y = strlen($nm[3]) === 2 ? '20' . $nm[3] : $nm[3];
+                    $result['date'] = $y . '-' . str_pad($nm[2], 2, '0', STR_PAD_LEFT) . '-' . str_pad($nm[1], 2, '0', STR_PAD_LEFT);
+                }
             }
         }
 
@@ -359,43 +366,6 @@ class WhatsAppParser {
         }
 
         return $result;
-    }
-
-    /**
-     * Parse a date string using DD/MM/YYYY priority (Indian format).
-     * Never uses strtotime() or new DateTime($string) - both are locale-dependent.
-     * Returns 'Y-m-d' string on success, empty string on failure.
-     */
-    public static function parseDate(string $raw): string {
-        $raw = trim($raw);
-        if ($raw === '') return '';
-
-        // Normalise all separators to '/'
-        $normalised = preg_replace('/[\-\.]/', '/', $raw);
-
-        // Formats tried in priority order - all DD-first (Indian / ISO)
-        $formats = [
-            'd/m/Y',  // 02/04/2026
-            'j/n/Y',  // 2/4/2026  (no zero-padding)
-            'd/m/y',  // 02/04/26
-            'j/n/y',  // 2/4/26
-            'd/M/Y',  // 02/Apr/2026
-            'j/M/Y',  // 2/Apr/2026
-            'd/F/Y',  // 02/April/2026
-            'j/F/Y',  // 2/April/2026
-        ];
-
-        foreach ($formats as $fmt) {
-            $dt = \DateTime::createFromFormat($fmt, $normalised);
-            if ($dt !== false) {
-                $errors = \DateTime::getLastErrors();
-                if (empty($errors['warnings']) && empty($errors['errors'])) {
-                    return $dt->format('Y-m-d');
-                }
-            }
-        }
-
-        return '';
     }
 
     private static function matchMachineKey(string $str): ?string {

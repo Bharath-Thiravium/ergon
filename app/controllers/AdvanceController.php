@@ -273,9 +273,7 @@ class AdvanceController extends Controller {
     }
     
     public function approve($id = null) {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         // Check authentication first
         if (!isset($_SESSION['user_id'])) {
@@ -524,9 +522,7 @@ class AdvanceController extends Controller {
     }
     
     public function reject($id = null) {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        
         
         $this->requireAuth();
         

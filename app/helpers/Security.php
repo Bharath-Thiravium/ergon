@@ -1,47 +1,14 @@
 <?php
 class Security {
     public static function generateCSRFToken() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        // Hostinger-specific session handling
-        if (self::isHostinger()) {
-            // Force session write and restart for Hostinger
-            session_write_close();
-            session_start();
-        }
-        
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-            // Force session write for Hostinger
-            if (self::isHostinger()) {
-                session_write_close();
-                session_start();
-            }
         }
         return $_SESSION['csrf_token'];
     }
     
     public static function validateCSRFToken($token) {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        // Hostinger-specific session handling
-        if (self::isHostinger()) {
-            session_write_close();
-            session_start();
-        }
-        
-        $isValid = isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
-        
-        // Log for debugging on Hostinger
-        if (self::isHostinger()) {
-            error_log('CSRF validation on Hostinger - Token exists: ' . (isset($_SESSION['csrf_token']) ? 'yes' : 'no') . ', Valid: ' . ($isValid ? 'yes' : 'no'));
-        }
-        
-        return $isValid;
+        return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
     }
     
     public static function sanitizeString($input, $maxLength = 255) {

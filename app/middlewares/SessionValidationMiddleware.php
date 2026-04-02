@@ -3,10 +3,6 @@
 class SessionValidationMiddleware {
     
     public static function validateSession() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
         // Skip validation for login/logout pages
         $currentPath = $_SERVER['REQUEST_URI'] ?? '';
         if (strpos($currentPath, '/login') !== false || strpos($currentPath, '/logout') !== false) {
@@ -44,16 +40,9 @@ class SessionValidationMiddleware {
     }
     
     private static function forceLogout($message = 'Session expired') {
-        // Clear session
         session_unset();
         session_destroy();
-        
-        // Start new session for message
-        session_start();
-        $_SESSION['logout_message'] = $message;
-        
-        // Redirect to login
-        header('Location: /ergon/login');
+        header('Location: /ergon/login?error=' . urlencode($message));
         exit;
     }
 }
