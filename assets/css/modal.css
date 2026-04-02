@@ -2,26 +2,30 @@
    SIMPLE MODAL SYSTEM - SINGLE SOURCE OF TRUTH
    ======================================== */
 
-/* Modal Overlay */
+/* Modal Overlay — covers full viewport and scrolls on overflow */
 .modal-overlay {
   position: fixed;
-  top: 120px;
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   background: rgba(0,0,0,0.5);
   display: none;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 10000;
-  padding: 1rem;
+  /* Overlay scrolls so modal content is never clipped */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Push content below the fixed header */
+  padding: 120px 1rem 1rem;
 }
 
 .modal-overlay[data-visible="true"] {
   display: flex;
 }
 
-/* Modal Content */
+/* Modal Content — flex column so header/footer are always visible */
 .modal-content {
   background: var(--bg-primary, #fff);
   color: var(--text-primary, #000);
@@ -29,19 +33,27 @@
   border-radius: 8px;
   max-width: 600px;
   width: 100%;
-  max-height: calc(100vh - 180px);
-  overflow-y: auto;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  contain: layout style paint;
+  /* Flex column: header shrinks, body grows+scrolls, footer shrinks */
+  display: flex;
+  flex-direction: column;
+  /* Cap height so body scrolls before footer is pushed off-screen */
+  max-height: calc(100vh - 140px);
+  /* Align to top of overlay so it doesn't float in the middle */
+  align-self: flex-start;
+  margin-bottom: 1rem;
 }
 
-/* Modal Header */
+/* Modal Header — sticky so it stays visible while body scrolls */
 .modal-header {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-color, #e5e7eb);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
+  background: var(--bg-primary, #fff);
+  border-radius: 8px 8px 0 0;
 }
 
 .modal-header h3 {
@@ -50,9 +62,12 @@
   font-weight: 600;
 }
 
-/* Modal Body */
+/* Modal Body — the ONLY scrolling region */
 .modal-body {
   padding: 1rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
 }
 
 .modal-body label {
@@ -80,13 +95,16 @@
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
-/* Modal Footer */
+/* Modal Footer — always visible, never scrolls away */
 .modal-footer {
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--border-color, #e5e7eb);
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
+  flex-shrink: 0;
+  background: var(--bg-primary, #fff);
+  border-radius: 0 0 8px 8px;
 }
 
 /* Close Button */
@@ -113,26 +131,56 @@
   border-color: var(--gray-600, #4b5563);
 }
 
-/* Mobile */
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-footer {
+  background: var(--gray-800, #1f2937);
+}
+
+/* Mobile ≤ 640px */
 @media (max-width: 640px) {
   .modal-overlay {
-    top: 110px;
-    padding: 0.5rem;
+    padding: 70px 0.5rem 0.5rem;
+    align-items: flex-start;
   }
-  
+
   .modal-content {
     max-width: 100%;
-    max-height: calc(100vh - 130px);
+    /* On small screens cap the total modal height so footer stays on-screen */
+    max-height: calc(100svh - 90px);
+    border-radius: 8px;
   }
-  
+
   .modal-header,
   .modal-body,
   .modal-footer {
     padding: 0.75rem;
   }
+
+  /* Stack buttons vertically, submit on top (column-reverse), full-width */
+  .modal-footer {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .modal-footer .btn {
+    width: 100% !important;
+    min-height: 44px;
+    justify-content: center;
+  }
 }
 
-/* Body Lock */
+/* Very small phones ≤ 375px */
+@media (max-width: 375px) {
+  .modal-overlay {
+    padding: 65px 0.25rem 0.25rem;
+  }
+
+  .modal-content {
+    max-height: calc(100svh - 80px);
+  }
+}
+
+/* Body Lock — prevent background scroll when modal is open */
 body.modal-open {
   overflow: hidden;
 }
