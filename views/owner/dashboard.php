@@ -125,10 +125,13 @@ $renderableAlerts = array_values(array_filter($alerts, function ($alert) {
     <?php if (!$systemAdminDisabled): ?>
     <a href="/ergon/settings" class="qa-btn danger" style="background:#6b7280">⚙️ Settings</a>
     <?php endif; ?>
+    <?php if (($_SESSION['role'] ?? '') === 'owner'): ?>
     <button onclick="openBackupModal()" class="qa-btn danger" style="background:#7c3aed" id="backupBtn">🗄️ Backup Now</button>
+    <?php endif; ?>
 </div>
 
-<!-- ── Backup & Restore Modal ──────────────────────────────────────────────── -->
+<!-- ── Backup & Restore Modal (owner only) ──────────────────────────────── -->
+<?php if (($_SESSION['role'] ?? '') === 'owner'): ?>
 <div id="backupModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:14px;width:100%;max-width:560px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
 
@@ -284,6 +287,7 @@ document.getElementById('backupModal').addEventListener('click', function(e) {
     if (e.target === this) closeBackupModal();
 });
 </script>
+<?php endif; ?>
 
 <!-- Priority Alerts -->
 <?php if (!empty($renderableAlerts)): ?>
