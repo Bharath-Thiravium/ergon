@@ -70,8 +70,65 @@ $renderableAlerts = array_values(array_filter($alerts, function ($alert) {
 
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
 
-.quick-actions-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
-.qa-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;border:none;cursor:pointer;transition:all .15s}
+/* Quick-actions: CSS grid — 2 equal columns, no flex-wrap misalignment */
+.quick-actions-bar{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+    margin-bottom:20px;
+    width:100%;
+}
+.qa-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:12px 14px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:600;
+    text-decoration:none;
+    border:none;
+    cursor:pointer;
+    transition:all .15s;
+    width:100%;
+    text-align:center;
+    box-sizing:border-box;
+    min-height:44px;
+    line-height:1.2;
+    white-space:nowrap;
+    overflow:hidden;
+}
+/* Icon (emoji) sizing — desktop baseline */
+.qa-btn .qa-icon{
+    font-size:16px;
+    line-height:1;
+    flex-shrink:0;
+}
+/* Label text — truncate if too tight */
+.qa-btn .qa-label{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    min-width:0;
+}
+/* Inline badge (count pill) */
+.qa-btn .qa-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(255,255,255,.25);
+    border-radius:10px;
+    padding:1px 7px;
+    font-size:11px;
+    font-weight:700;
+    flex-shrink:0;
+    line-height:1.4;
+}
+/* Last item spans full width when count is odd (e.g. Cash Ledger as 5th item) */
+.quick-actions-bar .qa-btn:last-child:nth-child(odd){
+    grid-column:span 2;
+}
 .qa-btn.primary{background:#1e40af;color:#fff}
 .qa-btn.primary:hover{background:#1d4ed8}
 .qa-btn.success{background:#059669;color:#fff}
@@ -80,6 +137,48 @@ $renderableAlerts = array_values(array_filter($alerts, function ($alert) {
 .qa-btn.warning:hover{background:#b45309}
 .qa-btn.danger{background:#dc2626;color:#fff}
 .qa-btn.danger:hover{background:#b91c1c}
+/* Tablet: 3 columns — slightly tighter padding */
+@media(min-width:600px){
+    .quick-actions-bar{
+        grid-template-columns:repeat(3,1fr);
+    }
+    .quick-actions-bar .qa-btn:last-child:nth-child(odd){
+        grid-column:auto;
+    }
+}
+/* Desktop: auto-fit, all in one row */
+@media(min-width:1024px){
+    .quick-actions-bar{
+        grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    }
+    .quick-actions-bar .qa-btn:last-child:nth-child(odd){
+        grid-column:auto;
+    }
+}
+/* Mobile ≤768px: compact padding + smaller text */
+@media(max-width:768px){
+    .qa-btn{
+        padding:10px 10px;
+        font-size:12px;
+        gap:5px;
+        min-height:42px;
+        border-radius:8px;
+    }
+    .qa-btn .qa-icon{ font-size:14px; }
+    .qa-btn .qa-badge{ font-size:10px; padding:1px 5px; }
+}
+/* Mobile ≤480px: most compact — icon + short label only */
+@media(max-width:480px){
+    .qa-btn{
+        padding:8px 8px;
+        font-size:11px;
+        gap:4px;
+        min-height:40px;
+        border-radius:7px;
+    }
+    .qa-btn .qa-icon{ font-size:13px; }
+    .qa-btn .qa-badge{ font-size:10px; padding:1px 4px; }
+}
 
 .intel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:20px}
 .intel-card{background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.07);overflow:hidden}
@@ -114,19 +213,19 @@ $renderableAlerts = array_values(array_filter($alerts, function ($alert) {
 
 <!-- Quick Actions Bar -->
 <div class="quick-actions-bar">
-    <a href="/ergon/owner/approvals" class="qa-btn primary">✅ Approval Center <?php if ($totalPend > 0): ?><span style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px"><?= $totalPend ?></span><?php endif; ?></a>
-    <a href="/ergon/advances" class="qa-btn primary" style="background:#0369a1">💳 Advances <span style="background:rgba(255,255,255,.2);border-radius:10px;padding:1px 6px;font-size:11px"><?= $stats['pending_advances'] ?? 0 ?></span></a>
-    <a href="/ergon/leaves" class="qa-btn success">🏖️ Leaves <span style="background:rgba(255,255,255,.2);border-radius:10px;padding:1px 6px;font-size:11px"><?= $stats['pending_leaves'] ?? 0 ?></span></a>
-    <a href="/ergon/expenses" class="qa-btn warning">💰 Expenses <span style="background:rgba(255,255,255,.2);border-radius:10px;padding:1px 6px;font-size:11px"><?= $stats['pending_expenses'] ?? 0 ?></span></a>
-    <a href="/ergon/owner/cash-ledger" class="qa-btn primary" style="background:#0f766e">📒 Cash Ledger</a>
+    <a href="/ergon/owner/approvals" class="qa-btn primary"><span class="qa-icon">✅</span><span class="qa-label">Approval Center</span><?php if ($totalPend > 0): ?><span class="qa-badge"><?= $totalPend ?></span><?php endif; ?></a>
+    <a href="/ergon/advances" class="qa-btn primary" style="background:#0369a1"><span class="qa-icon">💳</span><span class="qa-label">Advances</span><span class="qa-badge"><?= $stats['pending_advances'] ?? 0 ?></span></a>
+    <a href="/ergon/leaves" class="qa-btn success"><span class="qa-icon">🏖️</span><span class="qa-label">Leaves</span><span class="qa-badge"><?= $stats['pending_leaves'] ?? 0 ?></span></a>
+    <a href="/ergon/expenses" class="qa-btn warning"><span class="qa-icon">💰</span><span class="qa-label">Expenses</span><span class="qa-badge"><?= $stats['pending_expenses'] ?? 0 ?></span></a>
+    <a href="/ergon/owner/cash-ledger" class="qa-btn primary" style="background:#0f766e"><span class="qa-icon">📒</span><span class="qa-label">Cash Ledger</span></a>
     <?php if (!$reportsDisabled): ?>
-    <a href="/ergon/reports" class="qa-btn primary" style="background:#7c3aed">📊 Reports</a>
+    <a href="/ergon/reports" class="qa-btn primary" style="background:#7c3aed"><span class="qa-icon">📊</span><span class="qa-label">Reports</span></a>
     <?php endif; ?>
     <?php if (!$systemAdminDisabled): ?>
-    <a href="/ergon/settings" class="qa-btn danger" style="background:#6b7280">⚙️ Settings</a>
+    <a href="/ergon/settings" class="qa-btn danger" style="background:#6b7280"><span class="qa-icon">⚙️</span><span class="qa-label">Settings</span></a>
     <?php endif; ?>
     <?php if (($_SESSION['role'] ?? '') === 'owner'): ?>
-    <button onclick="openBackupModal()" class="qa-btn danger" style="background:#7c3aed" id="backupBtn">🗄️ Backup Now</button>
+    <button onclick="openBackupModal()" class="qa-btn danger" style="background:#7c3aed" id="backupBtn"><span class="qa-icon">🗄️</span><span class="qa-label">Backup Now</span></button>
     <?php endif; ?>
 </div>
 

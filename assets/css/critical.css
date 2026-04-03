@@ -65,8 +65,11 @@ body {
   padding: 24px !important;
   background: #f8fafc !important;
   min-height: calc(100vh - 110px) !important;
-  width: 100vw !important;
-  max-width: 100vw !important;
+  /* 100vw includes scrollbar width and causes horizontal overflow.
+     width:100% is relative to the parent block, which is correct. */
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
   overflow-x: hidden !important;
 }
 

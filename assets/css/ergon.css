@@ -454,7 +454,7 @@ canvas { width: 100% !important; height: auto !important; }
 /* Responsive adjustments */
 @media (max-width: 768px) {
   #customerFilter { min-width: 140px; }
-  .dashboard-grid { grid-template-columns: 1fr; }
+  /* dashboard-grid: 2-col minimum enforced in responsive-mobile.css */
   .kpi-card { min-height: 90px; }
 }
 
@@ -521,6 +521,10 @@ canvas { width: 100% !important; height: auto !important; }
   color: #f1f5f9;
   font-weight: 600;
   font-size: 18px;
+  /* Allow brand to shrink so controls always stay visible */
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 
 .brand-icon {
@@ -641,6 +645,9 @@ canvas { width: 100% !important; height: auto !important; }
   position: relative;
   z-index: 10002;
   pointer-events: auto;
+  /* Prevent controls from being pushed off-screen by the brand section */
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .control-btn,
@@ -2165,6 +2172,136 @@ canvas { width: 100% !important; height: auto !important; }
   }
 }
 
+/* ── Header mobile responsive fixes ───────────────────────────────────────
+   Priority order (always visible): menu-toggle → brand-icon → [controls]
+   Hidden progressively: role-badge → brand-text (already hidden ≤768px)
+   Attendance button: collapses to icon-only on small screens
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* Tablet portrait and below (≤768px) */
+@media (max-width: 768px) {
+  .header__top {
+    padding: 0 10px;
+    height: 60px;
+    gap: 6px;
+  }
+
+  .header__controls {
+    gap: 5px;
+  }
+
+  /* Hide role badge — saves ~60px */
+  .role-badge {
+    display: none;
+  }
+
+  /* Attendance button: keep icon, hide text label */
+  .btn--attendance-toggle .btn-text {
+    display: none;
+  }
+  .btn--attendance-toggle {
+    padding: 6px 8px !important;
+    min-height: 36px !important;
+    min-width: 36px;
+    gap: 0;
+  }
+
+  /* Icon-only control buttons */
+  .control-btn {
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    min-width: 34px;
+    flex-shrink: 0;
+  }
+
+  /* Profile button: avatar only, no name or arrow */
+  .profile-btn {
+    padding: 5px 7px;
+    gap: 0;
+    flex-shrink: 0;
+  }
+  .profile-btn .dropdown-arrow {
+    display: none;
+  }
+
+  /* Notification badge stays visible */
+  .notification-btn,
+  #notificationBtn {
+    display: flex !important;
+    visibility: visible !important;
+    flex-shrink: 0;
+  }
+
+  /* Profile button always visible */
+  #profileButton {
+    display: flex !important;
+    visibility: visible !important;
+    flex-shrink: 0;
+  }
+
+  /* PWA install button: hide on mobile to save space */
+  #pwa-install-btn {
+    display: none !important;
+  }
+
+  /* Attendance controls wrapper: no extra padding */
+  .attendance-controls {
+    flex-shrink: 0;
+  }
+}
+
+/* Small mobile (≤480px) — tightest layout */
+@media (max-width: 480px) {
+  .header__top {
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .header__controls {
+    gap: 4px;
+  }
+
+  /* Slightly smaller icon buttons */
+  .control-btn {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    min-width: 32px;
+  }
+
+  .profile-btn {
+    padding: 4px 6px;
+  }
+
+  .profile-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  .btn--attendance-toggle {
+    padding: 5px 7px !important;
+    min-height: 32px !important;
+    min-width: 32px;
+  }
+
+  /* Brand icon only — no gap needed */
+  .header__brand {
+    gap: 6px;
+  }
+
+  .brand-icon {
+    font-size: 20px;
+  }
+
+  .mobile-menu-toggle {
+    padding: 6px;
+    font-size: 1.25rem;
+  }
+}
+/* ── End header mobile fixes ─────────────────────────────────────────────── */
+
 /* Tablet Portrait (768px and below) */
 @media (width <= 768px) {
   .main-content {
@@ -2220,10 +2357,10 @@ canvas { width: 100% !important; height: auto !important; }
     justify-content: center;
   }
 
-  .dashboard-grid,
+  /* dashboard-grid: 2-col minimum enforced in responsive-mobile.css */
   .admin-grid,
   .user-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--space-3);
   }
 
@@ -2345,7 +2482,10 @@ canvas { width: 100% !important; height: auto !important; }
      container instead of the viewport, causing bottom-sticking on mobile. */
 
 /* Mobile Button Optimizations */
-  .btn {
+  /* Scoped to form/page action contexts only — NOT .action-buttons grid */
+  .page-actions .btn,
+  .form-actions .btn,
+  .btn-group .btn {
     min-height: 48px;
     padding: 14px 20px;
     font-size: 16px;
@@ -2739,7 +2879,7 @@ canvas { width: 100% !important; height: auto !important; }
 /* Card Stack on Mobile */
 @media (width <= 480px) {
   .dashboard-grid.user-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr); /* keep 2-col minimum */
   }
 
   .card.recent-activities .table-responsive {
@@ -2771,7 +2911,7 @@ canvas { width: 100% !important; height: auto !important; }
 
 @media (width <= 480px) {
   .quick-actions-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr); /* keep 2-col minimum */
     gap: var(--space-2);
   }
 }

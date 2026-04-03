@@ -44,24 +44,114 @@ ob_start();
 [data-theme="dark"] .appr-badge.expense{background:rgba(22,163,74,.2);color:#86efac}
 [data-theme="dark"] .appr-badge.advance{background:rgba(217,119,6,.2);color:#fde68a}
 
-.qa-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
-.qa-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;border:none;cursor:pointer;transition:all .15s}
+.qa-bar{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+    margin-bottom:20px;
+    width:100%;
+}
+.qa-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:11px 14px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:600;
+    text-decoration:none;
+    border:none;
+    cursor:pointer;
+    transition:all .15s;
+    width:100%;
+    box-sizing:border-box;
+    min-height:44px;
+    text-align:center;
+    line-height:1.2;
+    white-space:nowrap;
+    overflow:hidden;
+}
+.qa-btn .qa-icon{
+    font-size:16px;
+    line-height:1;
+    flex-shrink:0;
+}
+.qa-btn .qa-label{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    min-width:0;
+}
+.qa-btn .qa-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(255,255,255,.25);
+    border-radius:10px;
+    padding:1px 7px;
+    font-size:11px;
+    font-weight:700;
+    flex-shrink:0;
+    line-height:1.4;
+}
+.qa-bar .qa-btn:last-child:nth-child(odd){
+    grid-column:span 2;
+}
 .qa-btn.blue{background:#1e40af;color:#fff}
 .qa-btn.green{background:#059669;color:#fff}
 .qa-btn.yellow{background:#d97706;color:#fff}
 .qa-btn.gray{background:#6b7280;color:#fff}
+@media(max-width:768px){
+    .qa-btn{
+        padding:10px 10px;
+        font-size:12px;
+        gap:5px;
+        min-height:42px;
+        border-radius:7px;
+    }
+    .qa-btn .qa-icon{ font-size:14px; }
+    .qa-btn .qa-badge{ font-size:10px; padding:1px 5px; }
+}
+@media(max-width:480px){
+    .qa-btn{
+        padding:8px 8px;
+        font-size:11px;
+        gap:4px;
+        min-height:40px;
+        border-radius:7px;
+    }
+    .qa-btn .qa-icon{ font-size:13px; }
+    .qa-btn .qa-badge{ font-size:10px; padding:1px 4px; }
+}
+@media(min-width:600px){
+    .qa-bar{
+        grid-template-columns:repeat(3,1fr);
+    }
+    .qa-bar .qa-btn:last-child:nth-child(odd){
+        grid-column:auto;
+    }
+}
+@media(min-width:1024px){
+    .qa-bar{
+        grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+    }
+    .qa-bar .qa-btn:last-child:nth-child(odd){
+        grid-column:auto;
+    }
+}
 
 .empty-state{text-align:center;padding:20px;color:#9ca3af;font-size:13px}
 </style>
 
 <!-- Quick Actions -->
 <div class="qa-bar">
-    <a href="/ergon/tasks/create" class="qa-btn blue">➕ Create Task</a>
-    <a href="/ergon/leaves" class="qa-btn green">🏖️ Review Leaves <?php if(count($pendingLeaves)>0): ?><span style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px"><?= count($pendingLeaves) ?></span><?php endif; ?></a>
-    <a href="/ergon/expenses" class="qa-btn yellow">💰 Review Expenses <?php if(count($pendingExpenses)>0): ?><span style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px"><?= count($pendingExpenses) ?></span><?php endif; ?></a>
-    <a href="/ergon/attendance" class="qa-btn gray">📍 Attendance</a>
-    <a href="/ergon/users" class="qa-btn gray">👥 Team</a>
-    <a href="/ergon/reports/activity" class="qa-btn gray">📊 Reports</a>
+    <a href="/ergon/tasks/create" class="qa-btn blue"><span class="qa-icon">➕</span><span class="qa-label">Create Task</span></a>
+    <a href="/ergon/leaves" class="qa-btn green"><span class="qa-icon">🏖️</span><span class="qa-label">Review Leaves</span><?php if(count($pendingLeaves)>0): ?><span class="qa-badge"><?= count($pendingLeaves) ?></span><?php endif; ?></a>
+    <a href="/ergon/expenses" class="qa-btn yellow"><span class="qa-icon">💰</span><span class="qa-label">Review Expenses</span><?php if(count($pendingExpenses)>0): ?><span class="qa-badge"><?= count($pendingExpenses) ?></span><?php endif; ?></a>
+    <a href="/ergon/attendance" class="qa-btn gray"><span class="qa-icon">📍</span><span class="qa-label">Attendance</span></a>
+    <a href="/ergon/users" class="qa-btn gray"><span class="qa-icon">👥</span><span class="qa-label">Team</span></a>
+    <a href="/ergon/reports/activity" class="qa-btn gray"><span class="qa-icon">📊</span><span class="qa-label">Reports</span></a>
 </div>
 
 <!-- KPIs -->

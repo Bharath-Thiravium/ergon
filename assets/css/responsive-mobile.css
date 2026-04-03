@@ -65,8 +65,9 @@
     height: 28px;
   }
 
+  /* Keep 2-column minimum — never collapse to single column */
   .dashboard-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 6px;
   }
 
@@ -188,6 +189,100 @@
     transition: none;
   }
 }
+
+/* ============================================================
+   DASHBOARD RESPONSIVE GRID SYSTEM
+   Preserves desktop structure — minimum 2 columns on mobile
+   ============================================================ */
+
+/* Container: prevent full-width stretch */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+/* Prevent horizontal overflow globally */
+body {
+  overflow-x: hidden;
+}
+
+/* Dashboard grid: 4 cols desktop → 2 cols tablet → 2 cols mobile */
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+/* Stats container: 4 cols → 2 cols on tablet/mobile */
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .stats-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+/* Action buttons: always 2-column grid, never stacked */
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .action-buttons {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
+/* Card base: consistent padding and radius on all screen sizes */
+@media (max-width: 768px) {
+  .card {
+    padding: 16px;
+    border-radius: 12px;
+    min-height: 100px;
+  }
+}
+
+/* Typography scaling for mobile */
+@media (max-width: 600px) {
+  h1,
+  h2 {
+    font-size: 18px;
+  }
+
+  .card-title,
+  .card__title {
+    font-size: 14px;
+  }
+}
+
+/* Badge alignment fix */
+@media (max-width: 768px) {
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+}
+
+/* ============================================================ */
 
 /* Print Styles */
 @media print {

@@ -109,11 +109,12 @@ ob_end_clean();
     .main-header{background:#000080;position:fixed;top:0;left:0;right:0;z-index:1000;width:100%;height:110px}
     .header__top{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;height:60px}
     .header__nav-container{height:50px;/*border-top:1px solid rgba(255,255,255,0.1)*/}
-    .main-content{margin:110px 0 0 0;padding:24px 24px 24px 0;background:#f8fafc;min-height:calc(100vh - 110px);width:100%;max-width:100vw;overflow-x:hidden;position:relative}
+    .main-content{margin:110px 0 0 0;padding:24px 24px 24px 0;background:#f8fafc;min-height:calc(100vh - 110px);width:100%;max-width:100%;box-sizing:border-box;overflow-x:hidden;position:relative}
     .sidebar{position:fixed;left:-280px;top:0;width:280px;height:100vh;background:#fff;z-index:998;transition:left 0.3s ease}
     .mobile-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:997;display:none}
-    
-    /* Smart Attendance Button States - Enhanced Visibility */
+    /* Critical header mobile: prevent controls overflow */
+    @media(max-width:768px){.header__top{padding:0 10px;gap:6px}.header__brand{min-width:0;flex-shrink:1;overflow:hidden}.header__controls{flex-shrink:0}}
+    @media(max-width:480px){.header__top{padding:0 8px;gap:4px}}
     .btn--attendance-toggle{background:#10b981 !important;border:3px solid #059669 !important;color:#ffffff !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important;box-shadow:0 4px 12px rgba(16,185,129,0.4) !important;transition:all 0.3s ease;min-height:44px !important;padding:8px 16px !important;border-radius:8px !important}
     .btn--attendance-toggle.state-out{background:#10b981 !important;border:3px solid #059669 !important;color:#ffffff !important;font-weight:700 !important;text-shadow:0 2px 4px rgba(0,0,0,0.4) !important;box-shadow:0 4px 12px rgba(16,185,129,0.4) !important}
     .btn--attendance-toggle.state-in{background:#dc2626 !important;color:#ffffff !important;border:3px solid #991b1b !important;box-shadow:0 4px 16px rgba(220,38,38,0.6) !important;font-weight:800 !important;text-shadow:0 2px 4px rgba(0,0,0,0.5) !important;animation:pulse-red 2s infinite}

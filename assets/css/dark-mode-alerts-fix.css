@@ -419,11 +419,11 @@
     color: var(--white) !important;
   }
 
-  /* Mobile notification dropdown */
+  /* Mobile notification dropdown — 100% excludes scrollbar, preventing overflow */
   [data-theme='dark'] .notification-dropdown,
   .theme-dark .notification-dropdown {
-    width: calc(100vw - 20px) !important;
-    max-width: calc(100vw - 20px) !important;
+    width: calc(100% - 20px) !important;
+    max-width: calc(100% - 20px) !important;
     left: 10px !important;
     right: 10px !important;
   }

@@ -123,6 +123,254 @@ ob_start();
     margin-bottom: 6px;
     color: #374151;
 }
+
+/* ============================================================
+   EXPENSE MOBILE UX  —  max-width: 768px only
+   Desktop is completely unaffected.
+   ============================================================ */
+@media (max-width: 768px) {
+
+    /* ─ Show/hide toggle between views ─────────────────────────── */
+    .exp-desktop-table { display: none !important; }
+    .exp-mobile-list   { display: block; }
+
+    /* ─ Sticky section header ──────────────────────────────── */
+    .exp-list-header {
+        position: sticky;
+        top: 60px;          /* clears the fixed 60px mobile header */
+        z-index: 20;
+        background: var(--bg-secondary, #f8fafc);
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
+    }
+
+    /* ─ Accordion card list container ───────────────────────── */
+    .exp-mobile-list {
+        -webkit-overflow-scrolling: touch;
+        padding: 4px 0 80px;  /* bottom pad clears scroll-to-top btn */
+    }
+
+    /* ─ Individual expense card ────────────────────────────── */
+    .exp-card {
+        background: var(--bg-primary, #fff);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 10px;
+        margin: 0 0 10px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0,0,0,.06);
+        /* Smooth height transition when expanding */
+        transition: box-shadow .2s ease;
+    }
+    .exp-card.is-open {
+        box-shadow: 0 3px 10px rgba(0,0,0,.12);
+    }
+
+    /* ─ Summary row (always visible, acts as the tap target) ─── */
+    .exp-card__summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 13px 14px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        text-align: left;
+        gap: 8px;
+        min-height: 56px;   /* comfortable tap target */
+        -webkit-tap-highlight-color: transparent;
+    }
+    .exp-card__summary:active {
+        background: var(--bg-secondary, #f8fafc);
+    }
+
+    .exp-card__left {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        flex: 1;
+    }
+    .exp-card__name {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary, #111827);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .exp-card__cat {
+        font-size: 11px;
+        color: var(--text-muted, #6b7280);
+    }
+
+    .exp-card__right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    .exp-card__amount {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-primary, #111827);
+    }
+
+    /* Status badges */
+    .exp-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .exp-badge--pending  { background: #fef3c7; color: #d97706; }
+    .exp-badge--approved { background: #d1fae5; color: #059669; }
+    .exp-badge--rejected { background: #fee2e2; color: #dc2626; }
+
+    /* Chevron rotates when open */
+    .exp-card__chevron {
+        font-size: 18px;
+        color: var(--text-muted, #9ca3af);
+        transition: transform .25s ease;
+        line-height: 1;
+    }
+    .exp-card.is-open .exp-card__chevron {
+        transform: rotate(90deg);
+    }
+
+    /* ─ Detail panel ───────────────────────────────────────── */
+    .exp-card__detail {
+        border-top: 1px solid var(--border-color, #e2e8f0);
+        padding: 12px 14px 14px;
+        background: var(--bg-secondary, #f8fafc);
+        /* Animate open/close */
+        animation: expSlideDown .2s ease;
+    }
+    @keyframes expSlideDown {
+        from { opacity: 0; transform: translateY(-6px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .exp-card__detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 5px 0;
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
+        font-size: 13px;
+    }
+    .exp-card__detail-row:last-of-type { border-bottom: none; }
+    .exp-card__detail-label {
+        color: var(--text-muted, #6b7280);
+        font-weight: 500;
+        flex-shrink: 0;
+        min-width: 80px;
+    }
+    .exp-card__detail-value {
+        color: var(--text-primary, #111827);
+        text-align: right;
+        word-break: break-word;
+    }
+
+    /* ─ Action buttons inside detail panel ──────────────────── */
+    .exp-card__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border-color, #e2e8f0);
+    }
+    .exp-act-btn {
+        flex: 1;
+        min-width: 72px;
+        padding: 9px 10px;
+        border-radius: 7px;
+        font-size: 12px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        transition: opacity .15s;
+    }
+    .exp-act-btn:active { opacity: .75; }
+    .exp-act-btn--view    { background: #dbeafe; color: #1d4ed8; }
+    .exp-act-btn--edit    { background: #fef3c7; color: #d97706; }
+    .exp-act-btn--approve { background: #d1fae5; color: #059669; }
+    .exp-act-btn--reject  { background: #fee2e2; color: #dc2626; }
+    .exp-act-btn--pay     { background: #ede9fe; color: #7c3aed; }
+    .exp-act-btn--delete  { background: #fee2e2; color: #dc2626; }
+
+    /* ─ Empty state ─────────────────────────────────────────── */
+    .exp-empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-muted, #9ca3af);
+        font-size: 14px;
+    }
+
+    /* ─ Scroll-to-top FAB ─────────────────────────────────── */
+    .exp-scroll-top {
+        position: fixed;
+        bottom: 80px;
+        right: 16px;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #4f46e5;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        display: none;          /* shown by JS after scrolling */
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        box-shadow: 0 4px 12px rgba(79,70,229,.4);
+        z-index: 500;
+        transition: opacity .2s, transform .2s;
+    }
+    .exp-scroll-top.visible {
+        display: flex;
+    }
+    .exp-scroll-top:active {
+        transform: scale(.92);
+    }
+
+    /* Dark theme adjustments */
+    [data-theme='dark'] .exp-card {
+        background: var(--gray-800);
+        border-color: var(--gray-700);
+    }
+    [data-theme='dark'] .exp-card__detail {
+        background: var(--gray-900);
+        border-color: var(--gray-700);
+    }
+    [data-theme='dark'] .exp-card__detail-row {
+        border-color: var(--gray-700);
+    }
+    [data-theme='dark'] .exp-card__name,
+    [data-theme='dark'] .exp-card__amount,
+    [data-theme='dark'] .exp-card__detail-value { color: #f9fafb; }
+    [data-theme='dark'] .exp-card__cat,
+    [data-theme='dark'] .exp-card__detail-label { color: #9ca3af; }
+    [data-theme='dark'] .exp-list-header {
+        background: var(--gray-900);
+        border-color: var(--gray-700);
+    }
+}
+
+/* Desktop: hide mobile-only elements */
+@media (min-width: 769px) {
+    .exp-mobile-list,
+    .exp-scroll-top { display: none !important; }
+}
 </style>
 
 <div class="page-header">
@@ -246,14 +494,16 @@ $expenseClaimsDistribution = ExpenseDistributionHelper::getStatusDistribution($e
 
 
 <div class="card">
-    <div class="card__header">
+    <div class="card__header exp-list-header">
         <h2 class="card__title">
             <span>💰</span> Expense Claims
         </h2>
     </div>
     <div class="card__body">
     <div class="card__body">
-        <div class="table-responsive">
+
+        <!-- ── Desktop table view (hidden on mobile) ── -->
+        <div class="table-responsive exp-desktop-table">
             <table class="table">
                 <thead>
                     <tr>
@@ -390,6 +640,95 @@ $expenseClaimsDistribution = ExpenseDistributionHelper::getStatusDistribution($e
                 </tbody>
             </table>
         </div>
+
+        <!-- ── Mobile accordion card list (hidden on desktop) ── -->
+        <div class="exp-mobile-list" id="expMobileList">
+            <?php if (empty($expenses ?? [])): ?>
+            <div class="exp-empty">
+                <div style="font-size:2.5rem;margin-bottom:8px">💰</div>
+                <p>No expense claims yet.</p>
+            </div>
+            <?php else: ?>
+                <?php foreach ($expenses as $i => $expense): ?>
+                <?php
+                $eStatus   = $expense['status'] ?? 'pending';
+                $eBadge    = match($eStatus) { 'approved'=>'exp-badge--approved', 'rejected'=>'exp-badge--rejected', default=>'exp-badge--pending' };
+                $eName     = htmlspecialchars($expense['user_name'] ?? 'Unknown');
+                $eIsSelf   = ($expense['user_id'] ?? 0) == ($_SESSION['user_id'] ?? 0);
+                $eDisplay  = $eIsSelf ? "Myself ({$eName})" : $eName;
+                $eRole     = ucfirst($expense['user_role'] ?? 'user'); if($eRole==='User') $eRole='Employee';
+                $eDesc     = htmlspecialchars($expense['description'] ?? '');
+                $eCat      = htmlspecialchars($expense['category'] ?? 'General');
+                $eAmt      = number_format($expense['amount'] ?? 0, 2);
+                $eDate     = !empty($expense['expense_date']) ? date('d M Y', strtotime($expense['expense_date'])) : 'N/A';
+                $eId       = (int)$expense['id'];
+
+                $uRole     = $user_role ?? '';
+                $isOwner   = $uRole === 'owner';
+                $isAdmin   = $uRole === 'admin';
+                $isPending = $eStatus === 'pending';
+                $isNotOwn  = ($expense['user_id'] ?? 0) != ($_SESSION['user_id'] ?? 0);
+                $canApprove = $isPending && ($isOwner || ($isAdmin && $isNotOwn));
+                $canEdit   = $isPending && $eIsSelf;
+                $canDelete = $eIsSelf && $isPending;
+                $canPay    = $eStatus === 'approved' && $isNotOwn;
+                ?>
+                <div class="exp-card" id="expCard<?= $eId ?>">
+                    <!-- Summary row (always visible) — tap to expand -->
+                    <button class="exp-card__summary" onclick="expToggle(<?= $eId ?>)" aria-expanded="false" aria-controls="expDetail<?= $eId ?>">
+                        <div class="exp-card__left">
+                            <span class="exp-card__name"><?= $eDisplay ?></span>
+                            <span class="exp-card__cat"><?= $eCat ?></span>
+                        </div>
+                        <div class="exp-card__right">
+                            <span class="exp-card__amount">₹<?= $eAmt ?></span>
+                            <span class="exp-badge <?= $eBadge ?>"><?= ucfirst($eStatus) ?></span>
+                            <span class="exp-card__chevron" aria-hidden="true">›</span>
+                        </div>
+                    </button>
+                    <!-- Detail panel (collapsed by default) -->
+                    <div class="exp-card__detail" id="expDetail<?= $eId ?>" hidden>
+                        <div class="exp-card__detail-row">
+                            <span class="exp-card__detail-label">Description</span>
+                            <span class="exp-card__detail-value"><?= $eDesc ?></span>
+                        </div>
+                        <div class="exp-card__detail-row">
+                            <span class="exp-card__detail-label">Date</span>
+                            <span class="exp-card__detail-value"><?= $eDate ?></span>
+                        </div>
+                        <div class="exp-card__detail-row">
+                            <span class="exp-card__detail-label">Role</span>
+                            <span class="exp-card__detail-value"><?= $eRole ?></span>
+                        </div>
+                        <?php if (!empty($expense['paid_to_user_name']) || !empty($expense['paid_to_name'])): ?>
+                        <div class="exp-card__detail-row">
+                            <span class="exp-card__detail-label">Paid To</span>
+                            <span class="exp-card__detail-value"><?= htmlspecialchars($expense['paid_to_user_name'] ?? $expense['paid_to_name'] ?? '') ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <!-- Action buttons -->
+                        <div class="exp-card__actions">
+                            <a class="exp-act-btn exp-act-btn--view" href="/ergon/expenses/view/<?= $eId ?>">View</a>
+                            <?php if ($canEdit): ?>
+                            <button class="exp-act-btn exp-act-btn--edit" onclick="editExpense(<?= $eId ?>)">Edit</button>
+                            <?php endif; ?>
+                            <?php if ($canApprove): ?>
+                            <button class="exp-act-btn exp-act-btn--approve" onclick="showApprovalModal(<?= $eId ?>)">Approve</button>
+                            <button class="exp-act-btn exp-act-btn--reject" onclick="showRejectModal(<?= $eId ?>)">Reject</button>
+                            <?php endif; ?>
+                            <?php if ($canPay): ?>
+                            <button class="exp-act-btn exp-act-btn--pay" onclick="showMarkPaidModal(<?= $eId ?>)">Mark Paid</button>
+                            <?php endif; ?>
+                            <?php if ($canDelete): ?>
+                            <button class="exp-act-btn exp-act-btn--delete" data-action="delete" data-module="expenses" data-id="<?= $eId ?>" data-name="Expense Claim">Delete</button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
     </div>
 </div>
 
@@ -944,6 +1283,69 @@ document.addEventListener('click', function(e) {
     } else if (action === 'delete' && module && id && name) {
         deleteRecord(module, id, name);
     }
+});
+</script>
+
+<!-- Scroll-to-top FAB (mobile only, shown by JS) -->
+<button class="exp-scroll-top" id="expScrollTop" aria-label="Scroll to top" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+    &#8679;
+</button>
+
+<script>
+// ── Accordion toggle ─────────────────────────────────────────────────
+function expToggle(id) {
+    const card   = document.getElementById('expCard' + id);
+    const detail = document.getElementById('expDetail' + id);
+    const btn    = card ? card.querySelector('.exp-card__summary') : null;
+    if (!card || !detail) return;
+
+    const isOpen = !detail.hidden;
+    // Close all other open cards first
+    document.querySelectorAll('.exp-card.is-open').forEach(function(c) {
+        if (c !== card) {
+            c.classList.remove('is-open');
+            const d = c.querySelector('.exp-card__detail');
+            const b = c.querySelector('.exp-card__summary');
+            if (d) d.hidden = true;
+            if (b) b.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    // Toggle current card
+    detail.hidden = isOpen;
+    card.classList.toggle('is-open', !isOpen);
+    if (btn) btn.setAttribute('aria-expanded', String(!isOpen));
+
+    // Scroll card into view smoothly when opening
+    if (!isOpen) {
+        setTimeout(function() {
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 50);
+    }
+}
+
+// ── Scroll-to-top FAB visibility ─────────────────────────────────
+(function() {
+    var fab = document.getElementById('expScrollTop');
+    if (!fab) return;
+    var threshold = 300;
+    function onScroll() {
+        if (window.scrollY > threshold) {
+            fab.classList.add('visible');
+        } else {
+            fab.classList.remove('visible');
+        }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+})();
+
+// ── Delete button handler for mobile cards ──────────────────────
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.exp-act-btn--delete');
+    if (!btn) return;
+    var id   = btn.dataset.id;
+    var name = btn.dataset.name || 'Expense Claim';
+    if (id) deleteRecord('expenses', id, name);
 });
 </script>
 
