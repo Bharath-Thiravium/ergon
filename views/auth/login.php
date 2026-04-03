@@ -560,12 +560,106 @@
             }
         });
         
-        // Simple form submission - no AJAX
+        // ── Persistent token helpers ──────────────────────────────────────────
+        const TOKEN_KEY = 'ergon_auth_token';
+
+        function storeToken(token) {
+            try { localStorage.setItem(TOKEN_KEY, token); } catch(e) {}
+        }
+
+        function getToken() {
+            try { return localStorage.getItem(TOKEN_KEY) || ''; } catch(e) { return ''; }
+        }
+
+        function clearToken() {
+            try { localStorage.removeItem(TOKEN_KEY); } catch(e) {}
+        }
+
+        // ── Auto-login on page load ───────────────────────────────────────────
+        // If a stored token exists, try to exchange it for a session silently.
+        // Only runs on the login page so it never interferes with authenticated pages.
+        (function autoLogin() {
+            const token = getToken();
+            if (!token) return;
+
+            const form    = document.getElementById('loginForm');
+            const btn     = form ? form.querySelector('button[type="submit"]') : null;
+            const msgEl   = document.getElementById('message');
+
+            if (btn) { btn.textContent = 'Resuming session…'; btn.disabled = true; }
+
+            fetch('/ergon/api/auth/validate-token', {
+                method:  'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Accept':        'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.valid && data.redirect) {
+                    window.location.href = data.redirect;
+                } else {
+                    // Token rejected — clear it and show the login form normally
+                    clearToken();
+                    if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+                }
+            })
+            .catch(function() {
+                // Network error — fall back to manual login silently
+                if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+            });
+        })();
+
+        // ── Login form: AJAX submission to capture the token ─────────────────
         document.getElementById('loginForm').addEventListener('submit', function(e) {
-            const submitBtn = this.querySelector('button[type="submit"]');
-            submitBtn.textContent = 'Signing In...';
-            submitBtn.disabled = true;
-            // Let the form submit normally
+            e.preventDefault();
+
+            const form    = this;
+            const btn     = form.querySelector('button[type="submit"]');
+            const msgEl   = document.getElementById('message');
+            const email   = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            btn.textContent = 'Signing In…';
+            btn.disabled    = true;
+            if (msgEl) msgEl.innerHTML = '';
+
+            const body = new URLSearchParams({ email: email, password: password });
+
+            fetch('/ergon/login', {
+                method:  'POST',
+                headers: {
+                    'Content-Type':     'application/x-www-form-urlencoded',
+                    'Accept':           'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: body.toString()
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    // Store the persistent token if the server returned one
+                    if (data.auth_token) {
+                        storeToken(data.auth_token);
+                    }
+                    window.location.href = data.redirect || '/ergon/dashboard';
+                } else {
+                    const errMsg = data.error || 'Login failed. Please try again.';
+                    if (msgEl) {
+                        msgEl.innerHTML = '<div class="alert alert-error">⚠ ' +
+                            errMsg.replace(/</g,'&lt;') + '</div>';
+                    }
+                    btn.textContent = 'Sign In';
+                    btn.disabled    = false;
+                }
+            })
+            .catch(function() {
+                // Network failure — fall back to a normal form POST
+                clearToken();
+                form.submit();
+            });
         });
     </script>
     <script src="/ergon/assets/js/pwa-install.js" defer></script>

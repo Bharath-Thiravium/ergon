@@ -59,9 +59,59 @@
   }
 }
 
-/* Higher specificity for mobile responsiveness */
+/* Higher specificity for mobile responsiveness — scaling only, no layout changes */
 @media (max-width: 768px) {
-  .dashboard-grid { grid-template-columns: 1fr !important; }
+  /* dashboard-grid: 2-col minimum enforced in responsive-mobile.css — do NOT override here */
+
+  /* Fluid containers: scale to fit, preserve original layout */
+  .card,
+  .stat-card,
+  .kpi-card,
+  .dashboard-header,
+  .section {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Prevent any child from blowing out its parent */
+  .card *,
+  .stat-card *,
+  .kpi-card * {
+    min-width: 0;
+  }
+
+  /* Reduce card padding to reclaim horizontal space */
+  .card__header,
+  .card__body,
+  .card__footer {
+    padding: 10px 12px;
+  }
+
+  /* Scale down KPI values so they fit in 2-col cells */
+  .kpi-card__value {
+    font-size: 1.1rem !important;
+  }
+
+  .kpi-card__label {
+    font-size: 0.65rem !important;
+  }
+
+  /* Scale headings without changing their position */
+  h1 { font-size: clamp(1rem, 4vw, 1.5rem); }
+  h2 { font-size: clamp(0.9rem, 3.5vw, 1.25rem); }
+
+  /* Stat-card inner icon/label scaling */
+  .stat-card__icon  { font-size: 1.1rem; }
+  .stat-card__label { font-size: 0.85rem; }
+  .stat-card__sub   { font-size: 0.7rem; }
+
+  /* Scrollable sections that contain wide content */
+  .section-scroll,
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Finance dashboard additions (migrated from assets/css/finance.css) */

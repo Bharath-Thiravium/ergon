@@ -190,6 +190,46 @@
   }
 }
 
+/* Notification Dropdown Mobile Overrides - High Specificity */
+.header__controls .notification-dropdown,
+.notification-dropdown {
+  position: fixed !important;
+  z-index: 10002 !important;
+  box-sizing: border-box !important;
+}
+
+/* Mobile notification dropdown */
+@media (max-width: 768px) {
+  .header__controls .notification-dropdown,
+  .notification-dropdown {
+    top: 80px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: calc(100vw - 16px) !important;
+    max-width: none !important;
+    min-width: unset !important;
+    max-height: 70vh !important;
+    border-radius: 16px !important;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4) !important;
+  }
+  
+  .notification-dropdown .notification-list {
+    max-height: 55vh !important;
+    overflow-y: auto !important;
+    scrollbar-width: thin !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 8px !important;
+  }
+  
+  /* Ensure no parent clipping */
+  .main-header,
+  .header__top,
+  html,
+  body {
+    overflow: visible !important;
+  }
+}
+
 /* ============================================================
    DASHBOARD RESPONSIVE GRID SYSTEM
    Preserves desktop structure — minimum 2 columns on mobile

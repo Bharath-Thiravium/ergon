@@ -485,6 +485,7 @@ canvas { width: 100% !important; height: auto !important; }
   padding: 12px 24px;
   pointer-events: auto;
   position: relative;
+  overflow: visible;
 }
 
 .header__nav-container {
@@ -645,9 +646,9 @@ canvas { width: 100% !important; height: auto !important; }
   position: relative;
   z-index: 10002;
   pointer-events: auto;
-  /* Prevent controls from being pushed off-screen by the brand section */
   flex-shrink: 0;
   min-width: 0;
+  overflow: visible;
 }
 
 .control-btn,
@@ -807,16 +808,20 @@ canvas { width: 100% !important; height: auto !important; }
 
 /* Notification System */
 .notification-dropdown {
-  position: fixed;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
   width: 350px;
+  max-width: calc(100vw - 40px);
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  z-index: 10000;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 10010;
   max-height: 400px;
   overflow: hidden;
   display: none;
+  box-sizing: border-box;
 }
 
 .notification-header {

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../core/Controller.php';
 require_once __DIR__ . '/../core/Session.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../config/constants.php';
+require_once __DIR__ . '/../services/TokenService.php';
 
 class AuthController extends Controller {
     private $userModel;
@@ -131,20 +132,37 @@ class AuthController extends Controller {
                 
                 $redirectUrl = $this->getRedirectUrl($user['role']);
                 
+                // Issue a persistent token for the Capacitor mobile app.
+                // Only included in AJAX responses so the JS layer can store it.
+                $persistentToken = null;
+                try {
+                    require_once __DIR__ . '/../config/database.php';
+                    $tokenService    = new TokenService(Database::connect());
+                    $deviceHint      = mb_substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+                    $persistentToken = $tokenService->issue((int)$user['id'], $deviceHint);
+                } catch (Exception $te) {
+                    error_log('Token issuance failed: ' . $te->getMessage());
+                    // Non-fatal — session login still works
+                }
+
                 if ($isAjax) {
                     header('Content-Type: application/json');
                     http_response_code(200);
-                    echo json_encode([
+                    $payload = [
                         'success' => true,
                         'message' => 'Login successful',
                         'user' => [
-                            'id' => $user['id'],
-                            'name' => $user['name'],
+                            'id'    => $user['id'],
+                            'name'  => $user['name'],
                             'email' => $user['email'],
-                            'role' => $user['role']
+                            'role'  => $user['role']
                         ],
                         'redirect' => $redirectUrl
-                    ]);
+                    ];
+                    if ($persistentToken !== null) {
+                        $payload['auth_token'] = $persistentToken;
+                    }
+                    echo json_encode($payload);
                 } else {
                     // Regular form submission - redirect directly
                     header('Location: ' . $redirectUrl);
@@ -189,6 +207,18 @@ class AuthController extends Controller {
     }
     
     public function logout() {
+        // Revoke persistent token if the client sent one
+        $rawToken = $this->extractBearerToken();
+        if ($rawToken) {
+            try {
+                require_once __DIR__ . '/../config/database.php';
+                require_once __DIR__ . '/../services/TokenService.php';
+                (new TokenService(Database::connect()))->revoke($rawToken);
+            } catch (Exception $e) {
+                error_log('Token revocation failed: ' . $e->getMessage());
+            }
+        }
+
         // session already started by index.php
         session_unset();
         session_destroy();
@@ -201,6 +231,92 @@ class AuthController extends Controller {
         $baseUrl = Environment::getBaseUrl();
         header('Location: ' . $baseUrl . '/login');
         exit;
+    }
+
+    /**
+     * POST /api/auth/validate-token
+     * Called by the Capacitor app on startup to exchange a stored token
+     * for a fresh PHP session without re-entering credentials.
+     */
+    public function validateToken(): void
+    {
+        header('Content-Type: application/json');
+
+        $rawToken = $this->extractBearerToken();
+        if (!$rawToken) {
+            http_response_code(401);
+            echo json_encode(['valid' => false, 'error' => 'No token provided']);
+            exit;
+        }
+
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            require_once __DIR__ . '/../services/TokenService.php';
+            $tokenService = new TokenService(Database::connect());
+            $user = $tokenService->validate($rawToken);
+        } catch (Exception $e) {
+            error_log('Token validation error: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['valid' => false, 'error' => 'Server error']);
+            exit;
+        }
+
+        if (!$user) {
+            http_response_code(401);
+            echo json_encode(['valid' => false, 'error' => 'Token invalid or expired']);
+            exit;
+        }
+
+        // Hydrate a PHP session so the rest of the app works normally
+        session_regenerate_id(true);
+        $_SESSION['user_id']         = $user['id'];
+        $_SESSION['user_name']       = $user['name'];
+        $_SESSION['user_email']      = $user['email'];
+        $_SESSION['role']            = $user['role'];
+        $_SESSION['login_time']      = time();
+        $_SESSION['last_activity']   = time();
+        $_SESSION['login_timestamp'] = date('Y-m-d H:i:s');
+
+        require_once __DIR__ . '/../config/environment.php';
+        $baseUrl = Environment::getBaseUrl();
+
+        http_response_code(200);
+        echo json_encode([
+            'valid'    => true,
+            'user'     => [
+                'id'    => $user['id'],
+                'name'  => $user['name'],
+                'email' => $user['email'],
+                'role'  => $user['role'],
+            ],
+            'redirect' => $baseUrl . '/dashboard',
+        ]);
+        exit;
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Extract a Bearer token from the Authorization header or JSON body.
+     */
+    private function extractBearerToken(): ?string
+    {
+        $header = $_SERVER['HTTP_AUTHORIZATION']
+               ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+               ?? '';
+
+        if (preg_match('/^Bearer\s+([0-9a-f]{64})$/i', trim($header), $m)) {
+            return strtolower($m[1]);
+        }
+
+        // Fallback: JSON body { "token": "..." }
+        $body = json_decode(file_get_contents('php://input'), true);
+        $t    = $body['token'] ?? '';
+        if (strlen($t) === 64 && ctype_xdigit($t)) {
+            return strtolower($t);
+        }
+
+        return null;
     }
     
     public function resetPassword() {

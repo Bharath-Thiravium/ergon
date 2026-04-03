@@ -158,7 +158,7 @@ ob_start();
                         <tr class="<?= $isUnread ? 'notification--unread' : '' ?>" data-notification-id="<?= (int)$notification['id'] ?>">
                             <td>
                                 <input type="checkbox" class="notification-checkbox" name="notification_<?= (int)$notification['id'] ?>" value="<?= (int)$notification['id'] ?>" onchange="updateMarkSelectedButton()" style="margin-right: 8px; vertical-align: top;">
-                                <div class="notification-content" style="display: inline-block; width: calc(100% - 30px);">
+<div class="notification-content">
                                     <div class="notification-title">
                                         <strong><?= htmlspecialchars($notification['title'] ?? ucfirst($referenceType ?: 'General')) ?></strong>
                                         <?php if ($isUnread): ?>

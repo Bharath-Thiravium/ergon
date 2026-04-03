@@ -1,7 +1,17 @@
 <?php
-// Simple logout handler
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+// Simple logout handler — also revokes any persistent mobile token
+require_once __DIR__ . '/app/config/session.php';
+
+// Revoke persistent token if present in Authorization header
+$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+if (preg_match('/^Bearer\s+([0-9a-f]{64})$/i', trim($authHeader), $m)) {
+    try {
+        require_once __DIR__ . '/app/config/database.php';
+        require_once __DIR__ . '/app/services/TokenService.php';
+        (new TokenService(Database::connect()))->revoke(strtolower($m[1]));
+    } catch (Exception $e) {
+        error_log('logout.php token revocation: ' . $e->getMessage());
+    }
 }
 
 session_unset();

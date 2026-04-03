@@ -26,6 +26,10 @@ $router->post('/auth/reset-password', 'AuthController', 'resetPassword');
 $router->get('/auth/forgot-password', 'AuthController', 'forgotPassword');
 $router->post('/auth/forgot-password', 'AuthController', 'forgotPassword');
 
+// Persistent-token API (Capacitor mobile app)
+$router->post('/api/auth/validate-token', 'AuthController', 'validateToken');
+$router->post('/api/auth/logout',         'AuthController', 'logout');
+
 // Dashboard Routes
 $router->get('/dashboard', 'DashboardController', 'index');
 $router->get('/dashboard/project-overview', 'DashboardController', 'projectOverview');
