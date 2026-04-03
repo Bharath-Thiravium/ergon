@@ -1,1 +1,104 @@
-/* Mobile login fixes - placeholder file to prevent 404 errors */
+/* ─── Mobile Login Fixes ────────────────────────────────────────────────────
+   Loaded after ergon.css and the login page's own <style> block.
+   All rules are scoped to ≤1024px so desktop is untouched.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+
+    /* 1. Lock the page to the viewport — no scroll on the login screen */
+    html, body {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    /* 2. Full-viewport flex column; form section will fill all remaining space */
+    .login-container {
+        flex-direction: column;
+        height: 100vh;
+        min-height: 100vh;
+        overflow: hidden;
+    }
+
+    /* 3. Hide the marketing slides — irrelevant on a phone */
+    .slides-section {
+        display: none !important;
+    }
+
+    /* 4. Form section fills the entire screen and centres its card */
+    .login-form-section {
+        flex: 1 1 auto;
+        min-height: 0;          /* allow flex shrink inside the 100vh container */
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 20px;
+        /* Subtle gradient so it doesn't look like a plain white sheet */
+        background: linear-gradient(160deg, #f0f4ff 0%, #ffffff 60%, #faf5ff 100%);
+        overflow-y: auto;       /* safety valve if the card is taller than the screen */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 5. Card sizing and spacing */
+    .login-form-card {
+        width: 100%;
+        max-width: 400px;
+        padding: 2rem 1.5rem;   /* tighter than the desktop 3rem 2.5rem */
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(79, 70, 229, 0.12),
+                    0 2px 8px  rgba(0, 0, 0, 0.06);
+        border: 1px solid rgba(79, 70, 229, 0.08);
+    }
+
+    /* 6. Header — reduce the large h1 so it doesn't crowd the form */
+    .login-header {
+        margin-bottom: 1.75rem;
+    }
+
+    .login-header h1 {
+        font-size: 1.75rem;
+    }
+
+    .login-header p {
+        font-size: 0.9rem;
+    }
+
+    /* 7. Form fields — 16px font prevents iOS auto-zoom on focus */
+    .form-control {
+        font-size: 16px;
+        padding: 0.75rem 1rem;
+    }
+
+    /* 8. Submit button — full-width, tall enough for a thumb tap */
+    .btn-login {
+        min-height: 48px;
+        font-size: 16px;
+        margin-bottom: 1rem;
+    }
+
+    /* 9. Tighten form group spacing so everything fits without scrolling */
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+}
+
+/* ── Extra-small phones (≤ 375px) ─────────────────────────────────────────── */
+@media (max-width: 375px) {
+
+    .login-form-section {
+        padding: 16px;
+    }
+
+    .login-form-card {
+        padding: 1.5rem 1.25rem;
+        border-radius: 12px;
+    }
+
+    .login-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+}

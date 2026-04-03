@@ -1,10 +1,12 @@
 <?php
 $title = 'User Ledger - ' . ($user['name'] ?? 'Unknown User');
 $active_page = 'ledgers';
+$csvParams = array_filter(['from_date' => $fromDate ?? '', 'to_date' => $toDate ?? '', 'transaction_type' => $transactionType ?? '']);
+$csvUrl = '/ergon/ledgers/user/' . (int)$user_id . '/download-csv' . ($csvParams ? '?' . http_build_query($csvParams) : '');
 ob_start();
 ?>
 
-<div class="page-header">
+<div class="page-header" id="ledger-header">
     <div class="page-title">
         <h1>💰 User Ledger</h1>
         <p>Financial transaction history for <strong><?= htmlspecialchars($user['name'] ?? 'Unknown User') ?></strong> (<?= htmlspecialchars($user['role'] ?? 'N/A') ?>)</p>
@@ -13,11 +15,12 @@ ob_start();
         <a href="/ergon/users" class="btn btn--secondary">← Back to Users</a>
         <button onclick="refreshLedger()" class="btn btn--info" id="refreshBtn">🔄 Refresh</button>
         <button onclick="window.print()" class="btn btn--outline">🖨️ Print</button>
-        <button onclick="downloadLedger()" class="btn btn--primary">📥 Download CSV</button>
+        <a href="<?= htmlspecialchars($csvUrl) ?>" class="btn btn--primary">📥 Download CSV</a>
     </div>
 </div>
 
 <!-- Date Filter Section -->
+<div id="ledger-section">
 <div class="filter-section">
     <div class="card">
         <div class="card__header">
@@ -44,12 +47,12 @@ ob_start();
                     
                     <div class="filter-group">
                         <label for="fromDate">From Date:</label>
-                        <input type="date" id="fromDate" name="from_date" value="<?= $fromDate ?? '' ?>">
+                        <input type="date" id="fromDate" name="from_date" value="<?= htmlspecialchars($fromDate ?? '') ?>">
                     </div>
                     
                     <div class="filter-group">
                         <label for="toDate">To Date:</label>
-                        <input type="date" id="toDate" name="to_date" value="<?= $toDate ?? '' ?>">
+                        <input type="date" id="toDate" name="to_date" value="<?= htmlspecialchars($toDate ?? '') ?>">
                     </div>
                     
                     <div class="filter-group">
@@ -119,15 +122,15 @@ ob_start();
     <div class="card__header">
         <h2 class="card__title">📋 Transaction History</h2>
         <div class="card__actions">
-            <span class="badge badge--info" id="entryCount"><?= count($filteredEntries ?? $entries) ?> Entries</span>
-            <?php if (isset($fromDate) || isset($toDate) || isset($transactionType)): ?>
+            <span class="badge badge--info" id="entryCount"><?= count($entries) ?> Entries</span>
+            <?php if ($isFiltered ?? false): ?>
                 <span class="badge badge--warning">Filtered</span>
             <?php endif; ?>
             <button onclick="refreshLedger()" class="btn btn--sm btn--info" id="refreshBtnInline" title="Fetch latest transactions">🔄 Refresh</button>
         </div>
     </div>
     <div class="card__body">
-        <?php if (empty($filteredEntries ?? $entries)): ?>
+        <?php if (empty($entries)): ?>
             <div class="empty-state">
                 <div class="empty-state__icon">📝</div>
                 <h3>No Transactions Found</h3>
@@ -149,7 +152,7 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach (($filteredEntries ?? $entries) as $entry): ?>
+                        <?php foreach ($entries as $entry): ?>
                         <tr class="ledger-entry ledger-entry--<?= $entry['direction'] ?>">
                             <td class="ledger-date">
                                 <strong><?= date('M d, Y', strtotime($entry['created_at'])) ?></strong>
@@ -350,17 +353,11 @@ ob_start();
 }
 
 @media print {
-    .page-actions, .card__actions, .filter-section {
-        display: none !important;
-    }
-    
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .stat-card {
-        break-inside: avoid;
-    }
+    body * { visibility: hidden; }
+    #ledger-section, #ledger-section * { visibility: visible; }
+    #ledger-section { position: absolute; top: 0; left: 0; width: 100%; }
+    .filter-section, .card__actions, .btn { display: none !important; }
+    .stat-card { break-inside: avoid; }
 }
 </style>
 
@@ -479,30 +476,23 @@ function refreshLedger() {
 }
 
 function downloadLedger() {
-    const params = new URLSearchParams(window.location.search);
-    params.set('download', 'csv');
-    
-    const downloadUrl = window.location.pathname + '?' + params.toString();
-    window.open(downloadUrl, '_blank');
+    window.location.href = '<?= htmlspecialchars($csvUrl) ?>';
 }
 
-// Initialize date range selector based on current URL params
+// Initialize quick-filter dropdown to match current filter state
 document.addEventListener('DOMContentLoaded', function() {
-    const params = new URLSearchParams(window.location.search);
-    const fromDate = params.get('from_date');
-    const toDate = params.get('to_date');
-    const transactionType = params.get('transaction_type');
-    
-    if (fromDate) document.getElementById('fromDate').value = fromDate;
-    if (toDate) document.getElementById('toDate').value = toDate;
-    if (transactionType) document.getElementById('transactionType').value = transactionType;
-    
-    // Set quick filter if it matches a predefined range
+    const fromDate       = document.getElementById('fromDate').value;
+    const toDate         = document.getElementById('toDate').value;
+    const typeSelect     = document.getElementById('transactionType');
+
+    // Inputs are already pre-filled by PHP; just set the quick-filter label
     if (fromDate || toDate) {
         document.getElementById('dateRange').value = 'custom';
     }
 });
 </script>
+
+</div><!-- /#ledger-section -->
 
 <?php
 $content = ob_get_clean();

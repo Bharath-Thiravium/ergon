@@ -345,6 +345,205 @@ class OwnerController extends Controller {
         }
     }
     
+    // ── Owner Cash Ledger ────────────────────────────────────────────────────
+
+    private function readLedgerFilters(): array {
+        $fromDate        = !empty($_GET['from_date'])        ? $_GET['from_date']        : null;
+        $toDate          = !empty($_GET['to_date'])          ? $_GET['to_date']          : null;
+        $transactionType = !empty($_GET['transaction_type']) ? $_GET['transaction_type'] : null;
+        $projectId       = !empty($_GET['project_id']) && is_numeric($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+
+        if ($fromDate && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate)) $fromDate = null;
+        if ($toDate   && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDate))   $toDate   = null;
+        if ($transactionType && !in_array($transactionType, ['expense', 'advance'])) $transactionType = null;
+
+        return [$fromDate, $toDate, $transactionType, $projectId];
+    }
+
+    /**
+     * Fetch all company-wide paid expenses + advances with optional filters.
+     * Returns rows in chronological ASC order with balance_after attached.
+     */
+    private function fetchOwnerLedgerEntries(PDO $db, ?string $fromDate, ?string $toDate, ?string $transactionType, ?int $projectId): array {
+        $expenseDateClause  = '';
+        $advanceDateClause  = '';
+        $expenseProjectClause = '';
+        $advanceProjectClause = '';
+        $dateParams         = [];
+
+        if ($fromDate) {
+            $expenseDateClause .= " AND COALESCE(e.expense_date, e.created_at) >= ?";
+            $advanceDateClause .= " AND COALESCE(a.requested_date, a.paid_at, a.created_at) >= ?";
+            $dateParams[]       = $fromDate;
+        }
+        if ($toDate) {
+            $expenseDateClause .= " AND COALESCE(e.expense_date, e.created_at) <= ?";
+            $advanceDateClause .= " AND COALESCE(a.requested_date, a.paid_at, a.created_at) <= ?";
+            $dateParams[]       = $toDate . ' 23:59:59';
+        }
+        if ($projectId) {
+            $expenseProjectClause = " AND e.project_id = ?";
+            $advanceProjectClause = " AND a.project_id = ?";
+        }
+
+        $parts  = [];
+        $params = [];
+
+        if ($transactionType !== 'advance') {
+            $parts[]  = "
+                SELECT e.id as reference_id, 'expense' as reference_type, 'debit' as direction,
+                       COALESCE(e.approved_amount, e.amount) as amount,
+                       e.description, e.category, e.status,
+                       COALESCE(e.expense_date, e.created_at) as created_at,
+                       u.name as employee_name,
+                       COALESCE(p.name, '') as project_name
+                FROM expenses e
+                JOIN users u ON e.user_id = u.id
+                LEFT JOIN projects p ON e.project_id = p.id
+                WHERE e.status = 'paid'
+                  AND (e.source_advance_id IS NULL OR e.source_advance_id = 0)
+                  {$expenseDateClause}
+                  {$expenseProjectClause}";
+            foreach ($dateParams as $p) $params[] = $p;
+            if ($projectId) $params[] = $projectId;
+        }
+
+        if ($transactionType !== 'expense') {
+            $parts[]  = "
+                SELECT a.id as reference_id, 'advance' as reference_type, 'debit' as direction,
+                       COALESCE(a.approved_amount, a.amount) as amount,
+                       COALESCE(a.reason, CONCAT('Advance – ', a.type)) as description,
+                       a.type as category, a.status,
+                       COALESCE(a.requested_date, a.paid_at, a.created_at) as created_at,
+                       u.name as employee_name,
+                       COALESCE(p.name, '') as project_name
+                FROM advances a
+                JOIN users u ON a.user_id = u.id
+                LEFT JOIN projects p ON a.project_id = p.id
+                WHERE a.status = 'paid'
+                  {$advanceDateClause}
+                  {$advanceProjectClause}";
+            foreach ($dateParams as $p) $params[] = $p;
+            if ($projectId) $params[] = $projectId;
+        }
+
+        if (empty($parts)) return [];
+
+        $sql  = implode(" UNION ALL ", $parts) . " ORDER BY created_at ASC";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Attach running balance (all owner entries are debits from company cash)
+        $balance = 0;
+        foreach ($rows as &$row) {
+            $balance -= $row['amount'];   // every paid expense/advance is a cash outflow
+            $row['balance_after'] = $balance;
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    public function ownerCashLedger() {
+        AuthMiddleware::requireRole('owner');
+
+        try {
+            $db = Database::connect();
+
+            [$fromDate, $toDate, $transactionType, $projectId] = $this->readLedgerFilters();
+
+            // Projects list for filter dropdown
+            $projects = [];
+            try {
+                $projects = $db->query("SELECT id, name FROM projects ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {}
+
+            $rawEntries = $this->fetchOwnerLedgerEntries($db, $fromDate, $toDate, $transactionType, $projectId);
+
+            // Reverse for display (most recent first)
+            $entries      = array_reverse($rawEntries);
+            $totalDebits  = array_sum(array_column($rawEntries, 'amount'));
+            $expenseCount = count(array_filter($rawEntries, fn($r) => $r['reference_type'] === 'expense'));
+            $advanceCount = count(array_filter($rawEntries, fn($r) => $r['reference_type'] === 'advance'));
+
+            $csvParams = array_filter([
+                'from_date'        => $fromDate ?? '',
+                'to_date'          => $toDate ?? '',
+                'transaction_type' => $transactionType ?? '',
+                'project_id'       => $projectId ? (string)$projectId : '',
+            ]);
+            $csvUrl = '/ergon/owner/cash-ledger/download-csv' . ($csvParams ? '?' . http_build_query($csvParams) : '');
+
+            $this->view('owner/cash_ledger', [
+                'entries'         => $entries,
+                'totalDebits'     => $totalDebits,
+                'expenseCount'    => $expenseCount,
+                'advanceCount'    => $advanceCount,
+                'projects'        => $projects,
+                'fromDate'        => $fromDate,
+                'toDate'          => $toDate,
+                'transactionType' => $transactionType,
+                'projectId'       => $projectId,
+                'isFiltered'      => (bool)($fromDate || $toDate || $transactionType || $projectId),
+                'csvUrl'          => $csvUrl,
+                'active_page'     => 'ledgers',
+            ]);
+        } catch (Exception $e) {
+            error_log('Owner cash ledger error: ' . $e->getMessage());
+            header('Location: /ergon/dashboard?error=ledger_failed');
+            exit;
+        }
+    }
+
+    public function ownerCashLedgerCsv() {
+        AuthMiddleware::requireRole('owner');
+
+        try {
+            $db = Database::connect();
+
+            [$fromDate, $toDate, $transactionType, $projectId] = $this->readLedgerFilters();
+
+            // Identical query as the UI — guaranteed match
+            $rows = $this->fetchOwnerLedgerEntries($db, $fromDate, $toDate, $transactionType, $projectId);
+
+            $nameParts = ['cash_ledger'];
+            if ($fromDate)        $nameParts[] = 'from_' . $fromDate;
+            if ($toDate)          $nameParts[] = 'to_' . $toDate;
+            if ($transactionType) $nameParts[] = $transactionType;
+            if ($projectId)       $nameParts[] = 'project_' . $projectId;
+            $filename = implode('_', $nameParts) . '.csv';
+
+            $safe = fn($v) => $v ?? '';
+
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Date', 'Employee', 'Type', 'Project', 'Description', 'Category', 'Debit', 'Balance']);
+            foreach ($rows as $row) {
+                fputcsv($out, [
+                    $safe($row['created_at']),
+                    $safe($row['employee_name']),
+                    $safe($row['reference_type']),
+                    $safe($row['project_name']),
+                    $safe($row['description']),
+                    $safe($row['category']),
+                    number_format($row['amount'], 2, '.', ''),
+                    number_format($row['balance_after'], 2, '.', ''),
+                ]);
+            }
+            fclose($out);
+            exit;
+        } catch (Exception $e) {
+            error_log('Owner cash ledger CSV error: ' . $e->getMessage());
+            http_response_code(500);
+            exit('Export failed');
+        }
+    }
+
     // Legacy methods for backward compatibility
     public function approveRequest() {
         AuthMiddleware::requireRole('owner');

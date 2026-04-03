@@ -118,7 +118,7 @@ $renderableAlerts = array_values(array_filter($alerts, function ($alert) {
     <a href="/ergon/advances" class="qa-btn primary" style="background:#0369a1">💳 Advances <span style="background:rgba(255,255,255,.2);border-radius:10px;padding:1px 6px;font-size:11px"><?= $stats['pending_advances'] ?? 0 ?></span></a>
     <a href="/ergon/leaves" class="qa-btn success">🏖️ Leaves <span style="background:rgba(255,255,255,.2);border-radius:10px;padding:1px 6px;font-size:11px"><?= $stats['pending_leaves'] ?? 0 ?></span></a>
     <a href="/ergon/expenses" class="qa-btn warning">💰 Expenses <span style="background:rgba(255,255,255,.2);border-radius:10px;padding:1px 6px;font-size:11px"><?= $stats['pending_expenses'] ?? 0 ?></span></a>
-    <a href="/ergon/ledgers/project" class="qa-btn primary" style="background:#0f766e">📒 Cash Ledger</a>
+    <a href="/ergon/owner/cash-ledger" class="qa-btn primary" style="background:#0f766e">📒 Cash Ledger</a>
     <?php if (!$reportsDisabled): ?>
     <a href="/ergon/reports" class="qa-btn primary" style="background:#7c3aed">📊 Reports</a>
     <?php endif; ?>

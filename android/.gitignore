@@ -1,0 +1,73 @@
+# =========================
+# 🔒 ENV & SECRETS
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# 🧠 NODE / JS
+# =========================
+node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+
+# =========================
+# 📱 ANDROID (FULL IGNORE)
+# =========================
+android/
+*.apk
+*.aab
+
+# =========================
+# ⚙️ BUILD & CACHE
+# =========================
+build/
+dist/
+tmp/
+temp/
+.cache/
+.gradle/
+
+# =========================
+# 🧾 LOGS
+# =========================
+logs/
+*.log
+debug/
+storage/logs/
+
+# =========================
+# 🧪 TEST / DEBUG FILES
+# =========================
+.phpunit.result.cache
+
+# =========================
+# 💻 IDE FILES
+# =========================
+.vscode/
+.idea/
+*.iml
+
+# =========================
+# 🗑 SYSTEM FILES
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# 🔧 LOCAL CONFIG
+# =========================
+local.properties
+
+# =========================
+# 📦 OPTIONAL (KEEP CLEAN)
+# =========================
+www/build/
+public/build/
+
+# =========================
+# 🚫 GIT INTERNAL (SAFETY)
+# =========================
+.git/

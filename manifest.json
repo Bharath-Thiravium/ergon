@@ -1,0 +1,44 @@
+{
+  "name": "Ergon Workforce Management",
+  "short_name": "Ergon",
+  "description": "Workforce, site reporting, and project management system.",
+  "start_url": "/ergon/login",
+  "scope": "/ergon/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0a0f2c",
+  "background_color": "#0a0f2c",
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "/ergon/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/ergon/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/ergon/dashboard",
+      "description": "Open main dashboard"
+    },
+    {
+      "name": "Attendance",
+      "url": "/ergon/attendance",
+      "description": "View attendance"
+    },
+    {
+      "name": "Site Reports",
+      "url": "/ergon/site-reports",
+      "description": "Submit site reports"
+    }
+  ],
+  "prefer_related_applications": false
+}

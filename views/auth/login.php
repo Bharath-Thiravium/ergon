@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Ergon</title>
+    <link rel="manifest" href="/ergon/manifest.json">
+    <meta name="theme-color" content="#0a0f2c">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Ergon">
+    <link rel="apple-touch-icon" href="/ergon/assets/icons/icon-192.png">
     <link rel="stylesheet" href="/ergon/assets/css/ergon.css">
     <link rel="stylesheet" href="/ergon/assets/css/mobile-login-fixes.css">
     <style>
@@ -391,6 +398,12 @@
                 </form>
                 
                 <div id="message"></div>
+
+                <!-- PWA Install Button -->
+                <button id="pwa-install-btn" onclick="ergonPWA.install()" style="display:none;width:100%;align-items:center;justify-content:center;gap:8px;margin-top:12px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;color:#374151;cursor:pointer;font-size:0.875rem;font-weight:600;padding:10px 16px;transition:all .2s" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f8fafc'">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v13M7 11l5 5 5-5"/><path d="M3 19h18"/></svg>
+                    Add to Home Screen
+                </button>
             </div>
         </div>
         
@@ -555,5 +568,6 @@
             // Let the form submit normally
         });
     </script>
+    <script src="/ergon/assets/js/pwa-install.js" defer></script>
 </body>
 </html>

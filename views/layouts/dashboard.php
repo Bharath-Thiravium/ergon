@@ -81,6 +81,13 @@ ob_end_clean();
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <link rel="manifest" href="/ergon/manifest.json">
+    <meta name="theme-color" content="#0a0f2c">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Ergon">
+    <link rel="apple-touch-icon" href="/ergon/assets/icons/icon-192.png">
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
@@ -232,6 +239,8 @@ ob_end_clean();
     <script src="<?= Environment::asset('assets/js/premium-navigation.js') ?>?v=1.0" defer></script>
     <!-- Dark Mode Alert Enhancements -->
     <script src="<?= Environment::asset('assets/js/dark-mode-alerts.js') ?>?v=<?= time() ?>" defer></script>
+    <!-- PWA: install prompt + SW lifecycle -->
+    <script src="/ergon/assets/js/pwa-install.js" defer></script>
 
     <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
     <script src="<?= Environment::asset('assets/js/mobile-validation.js') ?>?v=<?= time() ?>" defer></script>
@@ -250,6 +259,11 @@ ob_end_clean();
             </div>
             
             <div class="header__controls">
+                <!-- PWA Install Button -->
+                <button id="pwa-install-btn" onclick="ergonPWA.install()" title="Install Ergon App" style="display:none;align-items:center;gap:6px;background:#4f46e5;border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:12px;font-weight:600;padding:8px 12px;transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v13M7 11l5 5 5-5"/><path d="M3 19h18"/></svg>
+                    Install App
+                </button>
                 <div class="attendance-controls">
                     <button class="btn btn--attendance-toggle" id="attendanceToggle" onclick="toggleAttendance()" title="Toggle Attendance">
                         <div class="attendance-icon">

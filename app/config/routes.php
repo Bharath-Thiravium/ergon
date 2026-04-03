@@ -172,6 +172,7 @@ $router->get('/api/project-subcategories/{projectId}', 'ProjectSubcategoryContro
 
 // Ledger viewing
 $router->get('/ledgers/user/{id}', 'LedgerController', 'userLedger');
+$router->get('/ledgers/user/{id}/download-csv', 'LedgerController', 'downloadCsv');
 $router->get('/ledgers/project', 'LedgerController', 'projectLedger');
 // Approved expenses admin listing
 $router->get('/approved-expenses', 'ApprovedExpensesController', 'index');
@@ -203,6 +204,8 @@ $router->post('/owner/assign-role', 'OwnerController', 'assignRole');
 $router->get('/owner/system-settings', 'OwnerController', 'systemSettings');
 $router->post('/owner/system-settings', 'OwnerController', 'systemSettings');
 $router->get('/owner/analytics', 'OwnerController', 'analytics');
+$router->get('/owner/cash-ledger', 'OwnerController', 'ownerCashLedger');
+$router->get('/owner/cash-ledger/download-csv', 'OwnerController', 'ownerCashLedgerCsv');
 
 // Legacy Owner Routes
 $router->post('/owner/approveRequest', 'OwnerController', 'approveRequest');
