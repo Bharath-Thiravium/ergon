@@ -2,13 +2,25 @@
 // Simple logout handler — also revokes any persistent mobile token
 require_once __DIR__ . '/app/config/session.php';
 
-// Revoke persistent token if present in Authorization header
+// Revoke persistent token if present in Authorization header or POST body
+$rawToken = null;
 $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
 if (preg_match('/^Bearer\s+([0-9a-f]{64})$/i', trim($authHeader), $m)) {
+    $rawToken = strtolower($m[1]);
+} else {
+    // Fallback: JSON body { "token": "..." }
+    $body = json_decode(file_get_contents('php://input'), true);
+    $t = $body['token'] ?? ($_POST['token'] ?? '');
+    if (strlen($t) === 64 && ctype_xdigit($t)) {
+        $rawToken = strtolower($t);
+    }
+}
+
+if ($rawToken) {
     try {
         require_once __DIR__ . '/app/config/database.php';
         require_once __DIR__ . '/app/services/TokenService.php';
-        (new TokenService(Database::connect()))->revoke(strtolower($m[1]));
+        (new TokenService(Database::connect()))->revoke($rawToken);
     } catch (Exception $e) {
         error_log('logout.php token revocation: ' . $e->getMessage());
     }

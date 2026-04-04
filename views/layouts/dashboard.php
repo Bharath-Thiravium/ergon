@@ -318,7 +318,7 @@ ob_end_clean();
                     </a>
                     <?php endif; ?>
                     <div class="profile-menu-divider"></div>
-                    <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger">
+                    <a href="/ergon/logout" class="profile-menu-item profile-menu-item--danger" id="logoutLink" onclick="handleLogout(event)">
                         <span class="menu-icon"><i class="bi bi-box-arrow-right"></i></span>
                         Logout
                     </a>
@@ -1789,6 +1789,33 @@ ob_end_clean();
             });
         }
     });
+
+    // ── Secure logout: revoke persistent token before redirecting ─────────────
+    function handleLogout(e) {
+        e.preventDefault();
+        var token = '';
+        try { token = localStorage.getItem('ergon_auth_token') || ''; } catch(ex) {}
+
+        function doLogout() {
+            try { localStorage.removeItem('ergon_auth_token'); } catch(ex) {}
+            window.location.href = '/ergon/logout';
+        }
+
+        if (!token) { doLogout(); return; }
+
+        fetch('/ergon/api/auth/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ token: token })
+        })
+        .then(doLogout)
+        .catch(doLogout);
+    }
+    window.handleLogout = handleLogout;
     </script>
 
 </body>
