@@ -1,3 +1,7 @@
+# ── Daily rollover + recurring task generation at midnight ───────────────────
+# Generates due recurring tasks for all users, then rolls over incomplete tasks.
+0 0 * * * /usr/bin/php /path/to/ergon/cron/daily_rollover.php >> /var/log/ergon_rollover.log 2>&1
+
 # ── Finance sync (every 30 minutes) ──────────────────────────────────────────
 */30 * * * * /usr/bin/php /path/to/ergon/cron/auto_sync.php >> /var/log/finance_sync.log 2>&1
 
@@ -8,6 +12,11 @@
 5 3 * * * /usr/bin/php /path/to/ergon/scripts/cleanup_backups.php >> /var/log/ergon_backup.log 2>&1
 
 # ── Windows Task Scheduler equivalents ───────────────────────────────────────
+# Daily rollover + recurring:
+#   Program:   php.exe
+#   Arguments: C:\laragon\www\ergon\cron\daily_rollover.php
+#   Trigger:   Daily at 00:00
+#
 # Backup:
 #   Program:   php.exe
 #   Arguments: C:\laragon\www\ergon\scripts\backup.php

@@ -34,11 +34,11 @@ class RecurringTask {
 
         $requiredColumns = [
             'planned_start_time' => "ALTER TABLE {$this->table} ADD COLUMN planned_start_time TIME NULL",
-            'planned_duration' => "ALTER TABLE {$this->table} ADD COLUMN planned_duration INT NOT NULL DEFAULT 60",
-            'priority' => "ALTER TABLE {$this->table} ADD COLUMN priority VARCHAR(20) NOT NULL DEFAULT 'medium'",
-            'end_date' => "ALTER TABLE {$this->table} ADD COLUMN end_date DATE NULL",
-            'created_at' => "ALTER TABLE {$this->table} ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-            'updated_at' => "ALTER TABLE {$this->table} ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+            'planned_duration'   => "ALTER TABLE {$this->table} ADD COLUMN planned_duration INT NOT NULL DEFAULT 60",
+            'priority'           => "ALTER TABLE {$this->table} ADD COLUMN priority VARCHAR(20) NOT NULL DEFAULT 'medium'",
+            'end_date'           => "ALTER TABLE {$this->table} ADD COLUMN end_date DATE NULL",
+            'created_at'         => "ALTER TABLE {$this->table} ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            'updated_at'         => "ALTER TABLE {$this->table} ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
         ];
 
         foreach ($requiredColumns as $column => $sql) {
@@ -49,11 +49,11 @@ class RecurringTask {
             }
         }
     }
-    
+
     public function create($data) {
         $stmt = $this->db->prepare("
             INSERT INTO {$this->table}
-            (title, description, assigned_to, frequency, planned_start_time, planned_duration, priority, next_due_date, end_date, created_by) 
+            (title, description, assigned_to, frequency, planned_start_time, planned_duration, priority, next_due_date, end_date, created_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         return $stmt->execute([
@@ -66,48 +66,58 @@ class RecurringTask {
             $data['priority'] ?? 'medium',
             $data['next_due_date'],
             $data['end_date'] ?? null,
-            $data['created_by']
+            $data['created_by'],
         ]);
     }
-    
+
+    /**
+     * Return all recurring tasks that are due today and have not yet been
+     * generated today (last_generated IS NULL or was set on a previous day).
+     * This is the duplicate guard that prevents the cron from inserting the
+     * same daily_tasks row more than once per calendar day.
+     */
     public function getDueTasks() {
-        $stmt = $this->db->query("
-            SELECT rt.*, u.name as assigned_user 
-            FROM {$this->table} rt 
-            JOIN users u ON rt.assigned_to = u.id 
-            WHERE rt.next_due_date <= CURDATE() AND rt.is_active = 1
+        $today = date('Y-m-d');
+        $stmt  = $this->db->prepare("
+            SELECT rt.*, u.name AS assigned_user
+            FROM   {$this->table} rt
+            JOIN   users u ON u.id = rt.assigned_to
+            WHERE  rt.is_active    = 1
+              AND  rt.next_due_date <= ?
+              AND  (rt.last_generated IS NULL OR DATE(rt.last_generated) < ?)
         ");
-        return $stmt->fetchAll();
+        $stmt->execute([$today, $today]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     public function updateNextDueDate($id, $nextDate) {
         $stmt = $this->db->prepare("
-            UPDATE {$this->table} 
-            SET next_due_date = ?, last_generated = NOW() 
+            UPDATE {$this->table}
+            SET next_due_date = ?, last_generated = NOW()
             WHERE id = ?
         ");
         return $stmt->execute([$nextDate, $id]);
     }
-    
+
     public function getByUserId($userId) {
         $stmt = $this->db->prepare("
-            SELECT * FROM {$this->table} 
-            WHERE assigned_to = ? AND is_active = 1 
+            SELECT * FROM {$this->table}
+            WHERE assigned_to = ? AND is_active = 1
             ORDER BY next_due_date ASC
         ");
         $stmt->execute([$userId]);
-        return $stmt->fetchAll();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getDueDailyTasksForUserUntilDate($userId, $date) {
         $stmt = $this->db->prepare("
             SELECT *
-            FROM {$this->table}
-            WHERE assigned_to = ?
-            AND is_active = 1
-            AND frequency = 'daily'
-            AND next_due_date <= ?
-            AND (end_date IS NULL OR end_date >= next_due_date)
+            FROM   {$this->table}
+            WHERE  assigned_to  = ?
+              AND  is_active     = 1
+              AND  frequency     = 'daily'
+              AND  next_due_date <= ?
+              AND  (end_date IS NULL OR end_date >= next_due_date)
             ORDER BY next_due_date ASC, id ASC
         ");
         $stmt->execute([$userId, $date]);
