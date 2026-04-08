@@ -46,8 +46,7 @@ try {
         case 'start':
             $stmt = $db->prepare("
                 SELECT dt.id, dt.task_id, dt.original_task_id, dt.status, dt.completed_percentage,
-                       COALESCE(dt.sla_duration_seconds,
-                                COALESCE(t.sla_hours, dt.sla_hours, 0.25) * 3600) AS sla_duration_seconds
+                       COALESCE(NULLIF(t.sla_hours, 0), NULLIF(dt.sla_hours, 0), 0.25) * 3600 AS sla_duration_seconds
                 FROM daily_tasks dt
                 LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id)
                 WHERE dt.id = ? AND dt.user_id = ?
@@ -160,8 +159,8 @@ try {
             $stmt = $db->prepare("
                 SELECT dt.id, dt.task_id, dt.original_task_id, dt.status,
                        dt.pause_start_ts_ms, dt.paused_accum_ms,
-                       COALESCE(t.sla_hours, dt.sla_hours, 0.25) as sla_hours,
-                       dt.sla_duration_seconds
+                       dt.sla_duration_seconds,
+                       COALESCE(NULLIF(t.sla_hours, 0), NULLIF(dt.sla_hours, 0), 0.25) as sla_hours
                 FROM daily_tasks dt
                 LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id)
                 WHERE dt.id = ? AND dt.user_id = ?
@@ -255,7 +254,7 @@ try {
             }
 
             $progress = (int)$progress;
-            $stmt = $db->prepare("SELECT original_task_id, task_id FROM daily_tasks WHERE id = ? AND user_id = ?");
+            $stmt = $db->prepare("SELECT original_task_id, task_id, status as current_status, start_ts_ms, paused_accum_ms FROM daily_tasks WHERE id = ? AND user_id = ?");
             $stmt->execute([$task_id, $userId]);
             $dailyTask = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -264,7 +263,26 @@ try {
             $db->beginTransaction();
             if ($progress >= 100 || $status === 'completed') {
                 $status = 'completed'; $progress = 100;
-                $db->prepare("UPDATE daily_tasks SET status='completed', completed_percentage=100, completion_time=NOW(), updated_at=NOW() WHERE id=? AND user_id=?")->execute([$task_id, $userId]);
+
+                // Accumulate any running session time before completing
+                $nowMs       = (int)(microtime(true) * 1000);
+                $startTsMs   = (int)($dailyTask['start_ts_ms'] ?? 0);
+                $accumMs     = (int)($dailyTask['paused_accum_ms'] ?? 0);
+                $sessionMs   = (in_array($dailyTask['current_status'], ['in_progress', 'overdue']) && $startTsMs > 0)
+                               ? max(0, $nowMs - $startTsMs) : 0;
+                $finalAccumMs = $accumMs + $sessionMs;
+
+                $db->prepare("
+                    UPDATE daily_tasks
+                    SET status            = 'completed',
+                        completed_percentage = 100,
+                        paused_accum_ms   = ?,
+                        start_ts_ms       = NULL,
+                        pause_start_ts_ms = NULL,
+                        completion_time   = NOW(),
+                        updated_at        = NOW()
+                    WHERE id = ? AND user_id = ?
+                ")->execute([$finalAccumMs, $task_id, $userId]);
             } else {
                 $db->prepare("UPDATE daily_tasks SET status=?, completed_percentage=?, updated_at=NOW() WHERE id=? AND user_id=?")->execute([$status, $progress, $task_id, $userId]);
             }
@@ -277,7 +295,12 @@ try {
             }
             $db->commit();
 
-            echo json_encode(['success' => true, 'progress' => $progress, 'status' => $status]);
+            $responseData = ['success' => true, 'progress' => $progress, 'status' => $status];
+            if ($status === 'completed') {
+                $responseData['worked_seconds']  = (int)round($finalAccumMs / 1000);
+                $responseData['paused_accum_ms'] = $finalAccumMs;
+            }
+            echo json_encode($responseData);
             break;
 
         // ── POSTPONE ──────────────────────────────────────────────────────────

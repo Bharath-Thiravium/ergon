@@ -27,8 +27,9 @@ if ($rawToken) {
 }
 
 session_unset();
-session_destroy();
 
+// Expire the session cookie BEFORE session_destroy so
+// session_get_cookie_params() still returns correct values.
 if (ini_get('session.use_cookies')) {
     $params = session_get_cookie_params();
     setcookie(session_name(), '', time() - 42000,
@@ -37,9 +38,11 @@ if (ini_get('session.use_cookies')) {
     );
 }
 
+session_destroy();
+
 header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
-header('Location: /ergon/login');
+header('Location: /ergon/login?logout=1');
 exit;
 ?>

@@ -31,8 +31,14 @@ class UsersController extends Controller {
             }
             $users = array_values($uniqueUsers);
             
+            // KPI: count only active user/admin roles, excluding owner/company_owner and terminated/deleted
+            $kpiStmt = $db->prepare("SELECT COUNT(*) FROM users WHERE role IN ('user', 'admin') AND status = 'active'");
+            $kpiStmt->execute();
+            $totalUsersKpi = (int) $kpiStmt->fetchColumn();
+            
             $data = [
                 'users' => $users,
+                'total_users_kpi' => $totalUsersKpi,
                 'active_page' => 'users'
             ];
             

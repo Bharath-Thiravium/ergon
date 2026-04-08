@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../app/config/session.php';
+date_default_timezone_set('Asia/Kolkata');
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../app/config/database.php';
@@ -141,8 +142,9 @@ try {
                 $timeRecord = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($timeRecord && $timeRecord['check_in'] && $timeRecord['check_out']) {
-                    $checkIn = new DateTime($timeRecord['check_in']);
-                    $checkOut = new DateTime($timeRecord['check_out']);
+                    $tz = new DateTimeZone('Asia/Kolkata');
+                    $checkIn = new DateTime($timeRecord['check_in'], $tz);
+                    $checkOut = new DateTime($timeRecord['check_out'], $tz);
                     $diff = $checkIn->diff($checkOut);
                     $record['working_hours_calculated'] = $diff->format('%H:%I');
                 } else {

@@ -40,8 +40,8 @@ function getTaskSLAData($db, $taskId, $userId) {
             dt.pause_start_time, dt.pause_start_ts_ms,
             dt.active_seconds, dt.paused_accum_ms, dt.pause_duration,
             dt.sla_end_time,
-            COALESCE(t.sla_hours, dt.sla_hours, 0.25) as sla_hours,
-            COALESCE(t.sla_duration_seconds, dt.sla_duration_seconds, 0) as sla_duration_seconds
+            COALESCE(NULLIF(t.sla_hours, 0), NULLIF(dt.sla_hours, 0), 0.25) as sla_hours,
+            COALESCE(dt.sla_duration_seconds, 0) as sla_duration_seconds
         FROM daily_tasks dt
         LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id)
         WHERE dt.id = ? AND dt.user_id = ?
@@ -64,8 +64,8 @@ function getAllTasksSLAData($db, $userId, $date) {
             dt.pause_start_time, dt.pause_start_ts_ms,
             dt.active_seconds, dt.paused_accum_ms, dt.pause_duration,
             dt.sla_end_time,
-            COALESCE(t.sla_hours, dt.sla_hours, 0.25) as sla_hours,
-            COALESCE(t.sla_duration_seconds, dt.sla_duration_seconds, 0) as sla_duration_seconds
+            COALESCE(NULLIF(t.sla_hours, 0), NULLIF(dt.sla_hours, 0), 0.25) as sla_hours,
+            COALESCE(dt.sla_duration_seconds, 0) as sla_duration_seconds
         FROM daily_tasks dt
         LEFT JOIN tasks t ON t.id = COALESCE(dt.original_task_id, dt.task_id)
         WHERE dt.user_id = ? AND dt.scheduled_date = ?
@@ -110,10 +110,11 @@ function calculateTaskSLAMetrics($task) {
     $nowMs   = (int)(microtime(true) * 1000);
     $now     = time();
 
-    // SLA duration: prefer sla_duration_seconds column, fall back to sla_hours
+    // SLA duration: prefer sla_duration_seconds (written at task start), fall back to sla_hours from tasks table
     $slaDuration = (int)($task['sla_duration_seconds'] ?? 0);
     if ($slaDuration <= 0) {
-        $slaDuration = max(60, (int)round((float)$task['sla_hours'] * 3600));
+        $slaHours = (float)($task['sla_hours'] ?? 0);
+        $slaDuration = $slaHours > 0 ? max(60, (int)round($slaHours * 3600)) : 900; // 900 = 15 min only when truly no SLA set
     }
 
     // Elapsed active time: prefer paused_accum_ms (ms precision), fall back to active_seconds

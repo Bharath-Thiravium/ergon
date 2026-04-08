@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../app/config/database.php';
+date_default_timezone_set('Asia/Kolkata');
 
 class AttendanceCron {
     private $db;
@@ -35,8 +36,8 @@ class AttendanceCron {
             $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             foreach ($records as $record) {
-                $checkIn = new DateTime($record['check_in']);
-                $autoCheckout = new DateTime(date('Y-m-d 18:00:00'));
+                $checkIn = new DateTime($record['check_in'], new DateTimeZone('Asia/Kolkata'));
+                $autoCheckout = new DateTime(date('Y-m-d 18:00:00'), new DateTimeZone('Asia/Kolkata'));
                 $totalHours = $autoCheckout->diff($checkIn)->h + ($autoCheckout->diff($checkIn)->i / 60);
                 
                 $updateStmt = $this->db->prepare("

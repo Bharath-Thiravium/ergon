@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../app/config/session.php';
+date_default_timezone_set('Asia/Kolkata');
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../app/config/database.php';
@@ -21,8 +22,8 @@ try {
             $userId = $input['user_id'] ?? null;
             if (!$userId) throw new Exception('User ID required');
             
-            $today = date('Y-m-d');
-            $now = date('Y-m-d H:i:s');
+            $today = (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
+            $now = (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
             
             // Check if already clocked in today
             $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ?");
@@ -57,8 +58,8 @@ try {
             $userId = $input['user_id'] ?? null;
             if (!$userId) throw new Exception('User ID required');
             
-            $today = date('Y-m-d');
-            $now = date('Y-m-d H:i:s');
+            $today = (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
+            $now = (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
             
             // Update existing record
             $stmt = $db->prepare("
@@ -140,15 +141,17 @@ try {
             
             // Calculate working hours
             if ($record['check_in'] && $record['check_out']) {
-                $clockIn = new DateTime($record['check_in']);
-                $clockOut = new DateTime($record['check_out']);
+                $tz = new DateTimeZone('Asia/Kolkata');
+                $clockIn = new DateTime($record['check_in'], $tz);
+                $clockOut = new DateTime($record['check_out'], $tz);
                 $diff = $clockIn->diff($clockOut);
                 $record['working_hours_calculated'] = $diff->format('%H:%I');
             }
             
             // Format times for display
-            $record['check_in_time'] = $record['check_in'] ? date('H:i', strtotime($record['check_in'])) : null;
-            $record['check_out_time'] = $record['check_out'] ? date('H:i', strtotime($record['check_out'])) : null;
+            $tz = new DateTimeZone('Asia/Kolkata');
+            $record['check_in_time'] = $record['check_in'] ? (new DateTime($record['check_in'], $tz))->format('H:i') : null;
+            $record['check_out_time'] = $record['check_out'] ? (new DateTime($record['check_out'], $tz))->format('H:i') : null;
             
             echo json_encode(['success' => true, 'data' => $record, 'record' => $record});
             break;

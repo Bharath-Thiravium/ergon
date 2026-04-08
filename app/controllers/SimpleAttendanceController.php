@@ -241,7 +241,7 @@ class SimpleAttendanceController extends Controller {
                         exit;
                     }
                     
-                    $currentTime = date('Y-m-d H:i:s');
+                    $currentTime = (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
                     
                     // Check for project match based on GPS coordinates
                     $projectId = $this->getProjectIdByGPS($latitude, $longitude);
@@ -254,7 +254,7 @@ class SimpleAttendanceController extends Controller {
                         'message' => $result ? 'Clocked in successfully' : 'Failed to clock in'
                     ]);
                 } elseif ($type === 'out') {
-                    $currentTime = date('Y-m-d H:i:s');
+                    $currentTime = (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
                     $currentDate = TimezoneHelper::getCurrentDate();
                     
                     $stmt = $this->db->prepare("SELECT id FROM attendance WHERE user_id = ? AND DATE(check_in) = ? AND check_out IS NULL");
@@ -496,7 +496,7 @@ class SimpleAttendanceController extends Controller {
             if ($record['check_in'] && $record['status'] === 'Present') {
                 $presentDays++;
                 
-                $endTime = $record['check_out'] ?: date('Y-m-d H:i:s');
+                $endTime = $record['check_out'] ?: (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
                 $minutes = max(0, (strtotime($endTime) - strtotime($record['check_in'])) / 60);
                 $totalMinutes += $minutes;
             }

@@ -45,9 +45,9 @@ function getWorkingTimeMs(card) {
 function getSlaDurationMs(card) {
     const sec = parseInt(card.dataset.slaDuration) || 0;
     if (sec > 0) return sec * 1000;
-    // Task not yet started — fall back to sla_hours attribute
-    const hours = parseFloat(card.dataset.slaHours) || 0.25;
-    return Math.max(60, Math.round(hours * 3600)) * 1000;
+    // sla_duration_seconds not yet written (task not started) — use sla_hours from task creation
+    const hours = parseFloat(card.dataset.slaHours) || 0;
+    return hours > 0 ? Math.max(60, Math.round(hours * 3600)) * 1000 : 900000; // 900000ms = 15 min only as last resort
 }
 
 // ── 1-second UI tick ──────────────────────────────────────────────────────────

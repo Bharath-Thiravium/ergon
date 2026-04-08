@@ -69,7 +69,7 @@ WHERE active_seconds IS NULL
 ALTER TABLE tasks 
 ADD COLUMN IF NOT EXISTS sla_hours DECIMAL(4,2) DEFAULT 0.25 COMMENT 'SLA time in hours (default 15 minutes)';
 
--- Update existing tasks to have default SLA
+-- Update existing tasks to have default SLA only when truly unset (NULL), never overwrite a stored value
 UPDATE tasks 
 SET sla_hours = 0.25 
-WHERE sla_hours IS NULL OR sla_hours = 0;
+WHERE sla_hours IS NULL;

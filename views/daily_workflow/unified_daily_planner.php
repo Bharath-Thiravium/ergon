@@ -721,6 +721,11 @@ renderModal('quickTaskModal', 'Quick Add Task', $quickTaskContent, $quickTaskFoo
                 if (taskCard) {
                     taskCard.dataset.status = status;
                     taskCard.dataset.completedPercentage = String(progress);
+                    // Persist final worked time so timer display is correct without reload
+                    if (status === 'completed' && data.paused_accum_ms !== undefined) {
+                        taskCard.dataset.pausedAccumMs = String(data.paused_accum_ms);
+                        taskCard.dataset.startTsMs     = '0';
+                    }
                     var progressBar = taskCard.querySelector('.progress-fill');
                     if (progressBar) progressBar.style.width = progress + '%';
                     var progressValue = taskCard.querySelector('.progress-value');
@@ -730,6 +735,7 @@ renderModal('quickTaskModal', 'Quick Add Task', $quickTaskContent, $quickTaskFoo
                         statusBadge.textContent = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
                         statusBadge.className = 'badge badge--' + status;
                     }
+                    if (typeof applyCardState === 'function') applyCardState(taskCard, status);
                     if (typeof updateTaskUI === 'function') updateTaskUI(currentTaskId, status);
                 }
                 closeDialog();

@@ -680,11 +680,14 @@ class AttendanceController extends Controller {
     private function calculateUserStats($attendance) {
         $totalMinutes = 0;
         $presentDays = 0;
+        $tz = new DateTimeZone('Asia/Kolkata');
         
         foreach ($attendance as $record) {
             if ($record['check_in'] && $record['check_out']) {
-                $minutes = (strtotime($record['check_out']) - strtotime($record['check_in'])) / 60;
-                $totalMinutes += $minutes;
+                $in = new DateTime($record['check_in'], $tz);
+                $out = new DateTime($record['check_out'], $tz);
+                $minutes = ($out->getTimestamp() - $in->getTimestamp()) / 60;
+                $totalMinutes += max(0, $minutes);
                 $presentDays++;
             } elseif ($record['check_in']) {
                 $presentDays++;

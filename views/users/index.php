@@ -52,7 +52,7 @@ if (isset($_GET['success'])): ?>
             <div class="kpi-card__icon">👥</div>
             <div class="kpi-card__trend">↗ Total</div>
         </div>
-        <div class="kpi-card__value"><?= count($users ?? []) ?></div>
+        <div class="kpi-card__value"><?= $total_users_kpi ?? 0 ?></div>
         <div class="kpi-card__label">Total Users</div>
         <div class="kpi-card__status">Active</div>
     </div>
@@ -62,7 +62,7 @@ if (isset($_GET['success'])): ?>
             <div class="kpi-card__icon">🔑</div>
             <div class="kpi-card__trend">↗ Admins</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($users ?? [], fn($u) => ($u['role'] ?? 'user') === 'admin')) ?></div>
+        <div class="kpi-card__value"><?= count(array_filter($users ?? [], fn($u) => ($u['role'] ?? '') === 'admin' && ($u['status'] ?? '') === 'active')) ?></div>
         <div class="kpi-card__label">Admin Users</div>
         <div class="kpi-card__status">Elevated</div>
     </div>
@@ -72,7 +72,7 @@ if (isset($_GET['success'])): ?>
             <div class="kpi-card__icon">👤</div>
             <div class="kpi-card__trend">— Regular</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($users ?? [], fn($u) => ($u['role'] ?? 'user') === 'user')) ?></div>
+        <div class="kpi-card__value"><?= count(array_filter($users ?? [], fn($u) => ($u['role'] ?? '') === 'user' && ($u['status'] ?? '') === 'active')) ?></div>
         <div class="kpi-card__label">Regular Users</div>
         <div class="kpi-card__status">Standard</div>
     </div>

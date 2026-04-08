@@ -379,7 +379,7 @@
                 <form id="loginForm" action="/ergon/login" method="POST">
                     <div class="form-group">
                         <label for="email" class="form-label">Email Address</label>
-                        <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" autocomplete="username" required>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" autocomplete="email" required>
                     </div>
                     
                     <div class="form-group">
@@ -579,6 +579,14 @@
         // If a stored token exists, try to exchange it for a session silently.
         // Only runs on the login page so it never interferes with authenticated pages.
         (function autoLogin() {
+            // Clear stale storage when arriving here after a timeout or explicit logout
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('timeout') || params.has('logout')) {
+                clearToken();
+                sessionStorage.clear();
+                return;
+            }
+
             const token = getToken();
             if (!token) return;
 
@@ -603,6 +611,7 @@
                 } else {
                     // Token rejected — clear it and show the login form normally
                     clearToken();
+                    sessionStorage.clear();
                     if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
                 }
             })
@@ -613,8 +622,11 @@
         })();
 
         // ── Login form: AJAX submission to capture the token ─────────────────
+        var _manualSubmitting = false;
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            if (_manualSubmitting) return;
+            _manualSubmitting = true;
 
             const form    = this;
             const btn     = form.querySelector('button[type="submit"]');
@@ -653,11 +665,13 @@
                     }
                     btn.textContent = 'Sign In';
                     btn.disabled    = false;
+                    _manualSubmitting = false;
                 }
             })
             .catch(function() {
                 // Network failure — fall back to a normal form POST
                 clearToken();
+                _manualSubmitting = false;
                 form.submit();
             });
         });
