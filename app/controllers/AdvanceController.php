@@ -56,6 +56,7 @@ class AdvanceController extends Controller {
             try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN paid_by INT NULL", "Alter table"); } catch (Exception $e) {}
             try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN paid_at DATETIME NULL", "Alter table"); } catch (Exception $e) {}
             try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN approved_amount DECIMAL(10,2) NULL", "Alter table"); } catch (Exception $e) {}
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN ledger_synced TINYINT(1) NOT NULL DEFAULT 0", "Alter table"); } catch (Exception $e) {}
             
             if ($role === 'user') {
                 $sql = "SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name, pb.name as paid_by_name
@@ -341,28 +342,38 @@ class AdvanceController extends Controller {
             // Handle POST request for approval
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Content-Type: application/json');
-                
-                $approvedAmount = isset($_POST['approved_amount']) && $_POST['approved_amount'] > 0 ? floatval($_POST['approved_amount']) : floatval($advance['amount']);
+
+                $approvedAmount  = isset($_POST['approved_amount']) && $_POST['approved_amount'] > 0 ? floatval($_POST['approved_amount']) : floatval($advance['amount']);
                 $approvalRemarks = trim($_POST['approval_remarks'] ?? '');
-                
-                // Add approval_remarks column if it doesn't exist
+
                 try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN approval_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
-                
-                // Update advance with approval details
+
+                require_once __DIR__ . '/../helpers/LedgerHelper.php';
+                $db->beginTransaction();
+
                 $stmt = $db->prepare("UPDATE advances SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, approval_remarks = ? WHERE id = ?");
                 $result = $stmt->execute([$_SESSION['user_id'], $approvedAmount, $approvalRemarks, $id]);
-                
+
                 if ($result && $stmt->rowCount() > 0) {
-                    // Create notification for user
+                    // Ledger entry at approval — construction mode: approval = financial acknowledgment
+                    $ledgerOk = LedgerHelper::recordEntry($advance['user_id'], 'advance_payment', 'advance', $id, $approvedAmount, 'credit', $advance['requested_date'], $db);
+                    if (!$ledgerOk) {
+                        throw new Exception("Ledger entry failed for advance id=$id");
+                    }
+
+                    $db->commit();
+                    error_log("Advance approved+ledger: id=$id user_id={$advance['user_id']} amount=$approvedAmount approved_by={$_SESSION['user_id']}");
+
                     try {
                         require_once __DIR__ . '/../helpers/NotificationHelper.php';
                         NotificationHelper::notifyAdvanceStatusChange($id, 'approved', $_SESSION['user_id']);
                     } catch (Exception $notifError) {
                         error_log('Advance approval notification error: ' . $notifError->getMessage());
                     }
-                    
+
                     echo json_encode(['success' => true, 'message' => 'Advance approved successfully']);
                 } else {
+                    $db->rollBack();
                     echo json_encode(['success' => false, 'error' => 'Failed to approve advance']);
                 }
                 exit;
@@ -481,20 +492,26 @@ class AdvanceController extends Controller {
             // Add payment columns if they don't exist
             try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN payment_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
 
-            // Update advance with payment details (paid_by = the owner who paid)
+            $ledgerAmount = !empty($advance['approved_amount']) ? floatval($advance['approved_amount']) : floatval($advance['amount']);
+
+            $db->beginTransaction();
+
             $stmt = $db->prepare("UPDATE advances SET status = 'paid', payment_proof = ?, payment_remarks = ?, paid_by = ?, paid_at = NOW() WHERE id = ?");
             $result = $stmt->execute([$proof, $paymentRemarks, $paidByOwnerId, $id]);
 
             if ($result) {
-                // Use approved_amount if present else original amount
-                $ledgerAmount = floatval($advance['amount']);
-                try {
-                    $stmt2 = $db->prepare("SELECT approved_amount FROM advances WHERE id = ? LIMIT 1");
-                    $stmt2->execute([$id]);
-                    $row2 = $stmt2->fetch(PDO::FETCH_ASSOC);
-                    if ($row2 && $row2['approved_amount']) $ledgerAmount = floatval($row2['approved_amount']);
-                } catch (Exception $e) {}
-                LedgerHelper::recordEntry($advance['user_id'], 'advance', 'advance', $id, $ledgerAmount, 'credit', $advance['requested_date']);
+                // Ledger was already created at approval (ledger_synced = 1).
+                // Only create it here as a safety net if somehow missed.
+                if (empty($advance['ledger_synced'])) {
+                    require_once __DIR__ . '/../helpers/LedgerHelper.php';
+                    $ledgerOk = LedgerHelper::recordEntry($advance['user_id'], 'advance_payment', 'advance', $id, $ledgerAmount, 'credit', $advance['requested_date'], $db);
+                    if (!$ledgerOk) {
+                        throw new Exception("Ledger safety-net entry failed for advance id=$id");
+                    }
+                    error_log("Advance markPaid: safety-net ledger created for id=$id");
+                }
+                $db->commit();
+                error_log("Advance paid: id=$id user_id={$advance['user_id']} amount=$ledgerAmount");
 
                 // Auto-create expense entry for the paying owner
                 try {
@@ -519,9 +536,11 @@ class AdvanceController extends Controller {
 
                 header('Location: ' . Environment::getBaseUrl() . '/advances?success=Advance marked as paid');
             } else {
+                $db->rollBack();
                 header('Location: ' . Environment::getBaseUrl() . '/advances?error=Failed to mark paid');
             }
         } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) $db->rollBack();
             error_log('Advance markPaid error: ' . $e->getMessage());
             header('Location: ' . Environment::getBaseUrl() . '/advances?error=Failed to mark paid');
         }

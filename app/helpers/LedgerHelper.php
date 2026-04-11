@@ -2,9 +2,11 @@
 require_once __DIR__ . '/DatabaseHelper.php';
 
 class LedgerHelper {
-    public static function ensureTable() {
-        require_once __DIR__ . '/../config/database.php';
-        $db = Database::connect();
+    public static function ensureTable($db = null) {
+        if (!$db) {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+        }
         DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS user_ledgers (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
@@ -18,44 +20,85 @@ class LedgerHelper {
         )");
     }
 
-    public static function recordEntry($userId, $entryType, $referenceType, $referenceId, $amount, $direction = 'credit', $entryDate = null) {
+    /**
+     * Record a ledger entry.
+     *
+     * Duplicate guard uses the source table's ledger_synced flag — NOT content
+     * matching — so identical amounts/descriptions on the same day are allowed
+     * (construction workflow requirement).
+     *
+     * @param int         $userId        Employee user_id (NOT the approver)
+     * @param string      $entryType     'advance_payment' | 'expense_payment'
+     * @param string      $referenceType 'advance' | 'expense'
+     * @param int         $referenceId   advances.id | expenses.id
+     * @param float       $amount        Approved amount
+     * @param string      $direction     'credit'
+     * @param string|null $entryDate
+     * @param PDO|null    $db            Shared connection (keeps INSERT inside caller's transaction)
+     */
+    public static function recordEntry($userId, $entryType, $referenceType, $referenceId, $amount, $direction = 'credit', $entryDate = null, $db = null) {
         try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            self::ensureTable();
+            if (!$db) {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+            }
+            self::ensureTable($db);
 
-            // Use provided date or current timestamp
+            // Duplicate guard: check ledger_synced on the source record.
+            // This is construction-safe — it does NOT block same amount/description.
+            $sourceTable = ($referenceType === 'advance') ? 'advances' : 'expenses';
+            $chk = $db->prepare("SELECT ledger_synced FROM {$sourceTable} WHERE id = ? LIMIT 1");
+            $chk->execute([$referenceId]);
+            $row = $chk->fetch(PDO::FETCH_ASSOC);
+            if ($row && !empty($row['ledger_synced'])) {
+                error_log("LedgerHelper: skipped — ledger_synced=1 on $sourceTable id=$referenceId");
+                return true;
+            }
+
             $dateToUse = $entryDate ? $entryDate : date('Y-m-d H:i:s');
 
-            // compute previous balance
-            $stmt = $db->prepare("SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END) - SUM(CASE WHEN direction='debit' THEN amount ELSE 0 END),0) as bal FROM user_ledgers WHERE user_id = ?");
-            $stmt->execute([$userId]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $prev = $row ? floatval($row['bal']) : 0.0;
+            $bal = $db->prepare("SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END) - SUM(CASE WHEN direction='debit' THEN amount ELSE 0 END), 0) FROM user_ledgers WHERE user_id = ?");
+            $bal->execute([$userId]);
+            $prev = floatval($bal->fetchColumn());
 
             $balanceAfter = $prev + ($direction === 'credit' ? $amount : -$amount);
 
-            $stmt = $db->prepare("INSERT INTO user_ledgers (user_id, reference_type, reference_id, entry_type, direction, amount, balance_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            return $stmt->execute([$userId, $referenceType, $referenceId, $entryType, $direction, $amount, $balanceAfter, $dateToUse]);
+            $ins = $db->prepare("INSERT INTO user_ledgers (user_id, reference_type, reference_id, entry_type, direction, amount, balance_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $result = $ins->execute([$userId, $referenceType, $referenceId, $entryType, $direction, $amount, $balanceAfter, $dateToUse]);
+
+            if ($result) {
+                // Mark source record as synced — prevents any re-entry on retry or markPaid
+                $db->prepare("UPDATE {$sourceTable} SET ledger_synced = 1 WHERE id = ?")->execute([$referenceId]);
+                error_log("LedgerHelper: entry created user_id=$userId $referenceType/$referenceId type=$entryType dir=$direction amount=$amount balance_after=$balanceAfter");
+
+                // Post-insert integrity log
+                $verify = $db->prepare("SELECT COUNT(*) FROM user_ledgers WHERE reference_type = ? AND reference_id = ? AND entry_type = ?");
+                $verify->execute([$referenceType, $referenceId, $entryType]);
+                $count = (int) $verify->fetchColumn();
+                if ($count !== 1) {
+                    error_log("LedgerHelper: WARNING integrity check found $count rows for $referenceType/$referenceId type=$entryType");
+                }
+            }
+
+            return $result;
         } catch (Exception $e) {
-            error_log('Ledger record error: ' . $e->getMessage());
+            error_log('LedgerHelper::recordEntry error: ' . $e->getMessage());
             return false;
         }
     }
 
-    public static function getUserBalance($userId) {
+    public static function getUserBalance($userId, $db = null) {
         try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            $stmt = $db->prepare("SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END) - SUM(CASE WHEN direction='debit' THEN amount ELSE 0 END),0) as bal FROM user_ledgers WHERE user_id = ?");
+            if (!$db) {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+            }
+            $stmt = $db->prepare("SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END) - SUM(CASE WHEN direction='debit' THEN amount ELSE 0 END), 0) FROM user_ledgers WHERE user_id = ?");
             $stmt->execute([$userId]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $row ? floatval($row['bal']) : 0.0;
+            return floatval($stmt->fetchColumn());
         } catch (Exception $e) {
-            error_log('Ledger balance error: ' . $e->getMessage());
+            error_log('LedgerHelper::getUserBalance error: ' . $e->getMessage());
             return 0.0;
         }
     }
 }
-
-?>

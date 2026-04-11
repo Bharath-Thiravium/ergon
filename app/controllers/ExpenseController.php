@@ -56,6 +56,7 @@ class ExpenseController extends Controller {
             try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_to_user_id INT NULL", "Alter table"); } catch (Exception $e) {}
             try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN source_advance_id INT NULL", "Alter table"); } catch (Exception $e) {}
             try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_to_name VARCHAR(255) NULL", "Alter table"); } catch (Exception $e) {}
+            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN ledger_synced TINYINT(1) NOT NULL DEFAULT 0", "Alter table"); } catch (Exception $e) {}
             // Create approved_expenses table to store approved/processed expense records separately
             DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS approved_expenses (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -514,16 +515,20 @@ class ExpenseController extends Controller {
     }
     
     public function approve($id = null) {
-        
-        
-        if (!isset($_SESSION['role'])) {
-            $_SESSION['role'] = 'admin';
-        }
-        
         if (!isset($_SESSION['user_id'])) {
-            $_SESSION['user_id'] = 1;
+            header('Content-Type: application/json');
+            http_response_code(401);
+            echo json_encode(['success' => false, 'error' => 'Authentication required']);
+            exit;
         }
-        
+
+        if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner', 'company_owner'])) {
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+
         if (!$id) {
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['success' => false, 'error' => 'Invalid expense ID']);
@@ -532,16 +537,15 @@ class ExpenseController extends Controller {
             }
             exit;
         }
-        
+
         try {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
-            
-            // Get expense details first
+
             $stmt = $db->prepare("SELECT * FROM expenses WHERE id = ? AND status = 'pending'");
             $stmt->execute([$id]);
             $expense = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if (!$expense) {
                 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     echo json_encode(['success' => false, 'error' => 'Expense not found or already processed']);
@@ -550,43 +554,55 @@ class ExpenseController extends Controller {
                 }
                 exit;
             }
-            
-            // Handle POST request for approval
+
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Content-Type: application/json');
-                
-                $approvedAmount = isset($_POST['approved_amount']) && $_POST['approved_amount'] > 0 ? floatval($_POST['approved_amount']) : floatval($expense['amount']);
+
+                $approvedAmount  = isset($_POST['approved_amount']) && $_POST['approved_amount'] > 0 ? floatval($_POST['approved_amount']) : floatval($expense['amount']);
                 $approvalRemarks = trim($_POST['approval_remarks'] ?? '');
-                
-                // Update expense with approval details
+
+                require_once __DIR__ . '/../helpers/LedgerHelper.php';
+                $db->beginTransaction();
+
                 $stmt = $db->prepare("UPDATE expenses SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, approval_remarks = ? WHERE id = ?");
                 $result = $stmt->execute([$_SESSION['user_id'], $approvedAmount, $approvalRemarks, $id]);
-                
+
                 if ($result && $stmt->rowCount() > 0) {
-                    // Create notification for user
+                    // Insert into approved_expenses for amount audit trail
+                    $ins = $db->prepare("INSERT INTO approved_expenses (expense_id, user_id, category, claimed_amount, approved_amount, description, approved_by, approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+                    $ins->execute([$id, $expense['user_id'], $expense['category'], $expense['amount'], $approvedAmount, $expense['description'], $_SESSION['user_id']]);
+
+                    // Ledger entry at approval — construction mode: approval = financial acknowledgment
+                    $ledgerOk = LedgerHelper::recordEntry($expense['user_id'], 'expense_payment', 'expense', $id, $approvedAmount, 'credit', $expense['expense_date'], $db);
+                    if (!$ledgerOk) {
+                        throw new Exception("Ledger entry failed for expense id=$id");
+                    }
+
+                    $db->commit();
+                    error_log("Expense approved+ledger: id=$id user_id={$expense['user_id']} amount=$approvedAmount approved_by={$_SESSION['user_id']}");
+
                     try {
                         require_once __DIR__ . '/../helpers/NotificationHelper.php';
                         NotificationHelper::notifyExpenseStatusChange($id, 'approved', $_SESSION['user_id']);
                     } catch (Exception $notifError) {
                         error_log('Expense approval notification error: ' . $notifError->getMessage());
                     }
-                    
+
                     echo json_encode(['success' => true, 'message' => 'Expense approved successfully']);
                 } else {
+                    $db->rollBack();
                     echo json_encode(['success' => false, 'error' => 'Failed to approve expense']);
                 }
                 exit;
             }
-            
-            // GET request - return expense data for modal
+
+            // GET — return expense data for modal
             header('Content-Type: application/json');
-            echo json_encode([
-                'success' => true,
-                'expense' => $expense
-            ]);
+            echo json_encode(['success' => true, 'expense' => $expense]);
             exit;
-            
+
         } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) $db->rollBack();
             error_log('Expense approval error: ' . $e->getMessage());
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['success' => false, 'error' => 'Approval failed']);
@@ -599,16 +615,16 @@ class ExpenseController extends Controller {
 
     
     public function reject($id = null) {
-        
-        
-        if (!isset($_SESSION['role'])) {
-            $_SESSION['role'] = 'admin';
-        }
-        
         if (!isset($_SESSION['user_id'])) {
-            $_SESSION['user_id'] = 1;
+            header('Location: ' . Environment::getBaseUrl() . '/login');
+            exit;
         }
-        
+
+        if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner', 'company_owner'])) {
+            header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Unauthorized');
+            exit;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['rejection_reason'])) {
             $reason = $_POST['rejection_reason'];
             
@@ -739,32 +755,40 @@ class ExpenseController extends Controller {
 
             // Update expense with payment details
             $stmt = $db->prepare("UPDATE expenses SET status = 'paid', payment_proof = ?, payment_remarks = ?, paid_by = ?, paid_at = NOW() WHERE id = ?");
+
+            // Single source of truth: approved_expenses.approved_amount → expenses.approved_amount → expenses.amount
+            $stmt2 = $db->prepare("SELECT approved_amount FROM approved_expenses WHERE expense_id = ? ORDER BY id DESC LIMIT 1");
+            $stmt2->execute([$id]);
+            $approvedRow  = $stmt2->fetch(PDO::FETCH_ASSOC);
+            $ledgerAmount = !empty($approvedRow['approved_amount'])
+                ? floatval($approvedRow['approved_amount'])
+                : (!empty($expense['approved_amount']) ? floatval($expense['approved_amount']) : floatval($expense['amount']));
+
+            $db->beginTransaction();
             $result = $stmt->execute([$proof, $paymentRemarks, $_SESSION['user_id'], $id]);
 
             if ($result) {
-                // Update approved_expenses record with proof and paid_at if exists
-                try {
-                    $upd = $db->prepare("UPDATE approved_expenses SET payment_proof = ?, paid_at = NOW() WHERE expense_id = ?");
-                    $updResult = $upd->execute([$proof, $id]);
-                    error_log("markPaid: approved_expenses update result: " . ($updResult ? 'success' : 'failed'));
-                } catch (Exception $ue) {
-                    error_log('Failed to update approved_expenses with proof: ' . $ue->getMessage());
+                $upd = $db->prepare("UPDATE approved_expenses SET payment_proof = ?, paid_at = NOW() WHERE expense_id = ?");
+                $upd->execute([$proof, $id]);
+
+                // Ledger was already created at approval (ledger_synced = 1).
+                // Only create it here as a safety net if somehow missed.
+                if (empty($expense['ledger_synced'])) {
+                    $ledgerOk = LedgerHelper::recordEntry($expense['user_id'], 'expense_payment', 'expense', $id, $ledgerAmount, 'credit', $expense['expense_date'], $db);
+                    if (!$ledgerOk) {
+                        throw new Exception("Ledger safety-net entry failed for expense id=$id");
+                    }
+                    error_log("Expense markPaid: safety-net ledger created for id=$id");
                 }
-                // Determine approved amount (from approved_expenses) and record ledger debit
-                try {
-                    $stmt2 = $db->prepare("SELECT approved_amount FROM approved_expenses WHERE expense_id = ? ORDER BY id DESC LIMIT 1");
-                    $stmt2->execute([$id]);
-                    $approvedRow = $stmt2->fetch(PDO::FETCH_ASSOC);
-                    $ledgerAmount = $approvedRow && $approvedRow['approved_amount'] ? floatval($approvedRow['approved_amount']) : floatval($expense['amount']);
-                } catch (Exception $le) {
-                    $ledgerAmount = floatval($expense['amount']);
-                }
-                LedgerHelper::recordEntry($expense['user_id'], 'expense', 'expense', $id, $ledgerAmount, 'debit', $expense['expense_date']);
+                $db->commit();
+                error_log("Expense paid: id=$id user_id={$expense['user_id']} amount=$ledgerAmount");
                 header('Location: ' . Environment::getBaseUrl() . '/expenses?success=Expense marked as paid');
             } else {
+                $db->rollBack();
                 header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Failed to mark paid');
             }
         } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) $db->rollBack();
             error_log('Expense markPaid error: ' . $e->getMessage());
             header('Location: ' . Environment::getBaseUrl() . '/expenses/view/' . $id . '?error=' . urlencode($e->getMessage()));
         }

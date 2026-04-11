@@ -15,103 +15,64 @@ class LedgerController extends Controller {
         return [$fromDate, $toDate, $transactionType];
     }
 
-    private function fetchLedgerEntries(PDO $db, int $id, bool $isOwner, ?string $fromDate, ?string $toDate, ?string $transactionType): array {
-        $dateExpenseClause = '';
-        $dateAdvanceClause = '';
-        $dateParams        = [];
+    private function fetchLedgerEntries(PDO $db, int $id, ?string $fromDate, ?string $toDate, ?string $transactionType): array {
+        // Always read from user_ledgers — the single source of truth written by LedgerHelper.
+        // Join source tables only for description/category metadata.
+        $where  = ['ul.user_id = ?'];
+        $params = [$id];
+
+        if ($transactionType === 'advance') {
+            $where[]  = "ul.entry_type = 'advance_payment'";
+        } elseif ($transactionType === 'expense') {
+            $where[]  = "ul.entry_type = 'expense_payment'";
+        } else {
+            $where[]  = "ul.entry_type IN ('advance_payment', 'expense_payment')";
+        }
 
         if ($fromDate) {
-            $dateExpenseClause .= " AND COALESCE(e.expense_date, e.created_at) >= ?";
-            $dateAdvanceClause .= " AND COALESCE(a.requested_date, a.paid_at, a.created_at) >= ?";
-            $dateParams[]       = $fromDate;
+            $where[]  = 'ul.created_at >= ?';
+            $params[] = $fromDate . ' 00:00:00';
         }
         if ($toDate) {
-            $dateExpenseClause .= " AND COALESCE(e.expense_date, e.created_at) <= ?";
-            $dateAdvanceClause .= " AND COALESCE(a.requested_date, a.paid_at, a.created_at) <= ?";
-            $dateParams[]       = $toDate . ' 23:59:59';
+            $where[]  = 'ul.created_at <= ?';
+            $params[] = $toDate . ' 23:59:59';
         }
 
-        $parts  = [];
-        $params = [];
+        $whereClause = implode(' AND ', $where);
 
-        if ($isOwner) {
-            if ($transactionType !== 'advance') {
-                $parts[]  = "
-                    SELECT e.id as reference_id, 'expense' as reference_type, 'debit' as direction,
-                           e.amount, e.description, e.category, e.status,
-                           COALESCE(e.expense_date, e.created_at) as created_at, pt.name as paid_to_name
-                    FROM expenses e
-                    LEFT JOIN users pt ON e.paid_to_user_id = pt.id
-                    WHERE e.user_id = ? AND e.status = 'paid'
-                      AND (e.source_advance_id IS NULL OR e.source_advance_id = 0)
-                      {$dateExpenseClause}";
-                $params[] = $id;
-                foreach ($dateParams as $p) $params[] = $p;
-            }
-            if ($transactionType !== 'expense') {
-                $parts[]  = "
-                    SELECT a.id as reference_id, 'advance' as reference_type, 'debit' as direction,
-                           COALESCE(a.approved_amount, a.amount) as amount,
-                           CONCAT('Advance paid to ', u.name, ' (', a.type, ')') as description,
-                           a.type as category, a.status,
-                           COALESCE(a.requested_date, a.paid_at, a.created_at) as created_at,
-                           u.name as paid_to_name
-                    FROM advances a
-                    JOIN users u ON a.user_id = u.id
-                    WHERE a.status = 'paid'
-                      {$dateAdvanceClause}";
-                foreach ($dateParams as $p) $params[] = $p;
-            }
-        } else {
-            if ($transactionType !== 'expense') {
-                $parts[]  = "
-                    SELECT a.id as reference_id, 'advance' as reference_type, 'credit' as direction,
-                           COALESCE(a.approved_amount, a.amount) as amount,
-                           a.reason as description, a.type as category, a.status,
-                           COALESCE(a.requested_date, a.paid_at, a.created_at) as created_at,
-                           NULL as paid_to_name
-                    FROM advances a
-                    WHERE a.user_id = ? AND a.status = 'paid'
-                      {$dateAdvanceClause}";
-                $params[] = $id;
-                foreach ($dateParams as $p) $params[] = $p;
-            }
-            if ($transactionType !== 'advance') {
-                $parts[]  = "
-                    SELECT e.id as reference_id, 'expense' as reference_type, 'debit' as direction,
-                           COALESCE(e.approved_amount, e.amount) as amount,
-                           e.description, e.category, e.status,
-                           COALESCE(e.expense_date, e.created_at) as created_at,
-                           NULL as paid_to_name
-                    FROM expenses e
-                    WHERE e.user_id = ? AND e.status = 'paid'
-                      AND (e.source_advance_id IS NULL OR e.source_advance_id = 0)
-                      {$dateExpenseClause}";
-                $params[] = $id;
-                foreach ($dateParams as $p) $params[] = $p;
-            }
-        }
+        $sql = "
+            SELECT
+                ul.id,
+                ul.reference_id,
+                ul.reference_type,
+                ul.entry_type,
+                ul.direction,
+                ul.amount,
+                ul.balance_after,
+                ul.created_at,
+                CASE
+                    WHEN ul.reference_type = 'advance'
+                        THEN COALESCE(a.reason, 'Advance')
+                    ELSE COALESCE(e.description, 'Expense')
+                END AS description,
+                CASE
+                    WHEN ul.reference_type = 'advance' THEN COALESCE(a.type, 'advance')
+                    ELSE COALESCE(e.category, 'expense')
+                END AS category,
+                CASE
+                    WHEN ul.reference_type = 'advance' THEN a.status
+                    ELSE e.status
+                END AS status
+            FROM user_ledgers ul
+            LEFT JOIN advances a  ON ul.reference_type = 'advance'  AND ul.reference_id = a.id
+            LEFT JOIN expenses e  ON ul.reference_type = 'expense'  AND ul.reference_id = e.id
+            WHERE {$whereClause}
+            ORDER BY ul.created_at ASC, ul.id ASC
+        ";
 
-        $sql  = implode(" UNION ALL ", $parts) . " ORDER BY created_at ASC";
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($rows as &$row) {
-            if (!empty($row['paid_to_name'])) {
-                $row['description'] .= ' → ' . $row['paid_to_name'];
-            }
-        }
-        unset($row);
-
-        $balance = 0;
-        foreach ($rows as &$row) {
-            $balance += $row['direction'] === 'credit' ? $row['amount'] : -$row['amount'];
-            $row['balance_after'] = $balance;
-        }
-        unset($row);
-
-        return $rows;
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function userLedger($id = null) {
@@ -140,9 +101,9 @@ class LedgerController extends Controller {
             }
 
             $isOwner    = in_array($user['role'], ['owner', 'company_owner']);
-            $rawEntries = $this->fetchLedgerEntries($db, (int)$id, $isOwner, $fromDate, $toDate, $transactionType);
+            $rawEntries = $this->fetchLedgerEntries($db, (int)$id, $fromDate, $toDate, $transactionType);
 
-            // Reverse for display (most recent first); running total is the last balance_after
+            // Reverse for display (most recent first); balance is already stored per-row
             $entries        = array_reverse($rawEntries);
             $runningBalance = empty($rawEntries) ? 0 : end($rawEntries)['balance_after'];
 
@@ -154,9 +115,9 @@ class LedgerController extends Controller {
                 if ($entry['direction'] === 'credit') {
                     $totalCredits += $entry['amount'];
                     if ($entry['reference_type'] === 'advance') $advanceCount++;
+                    if ($entry['reference_type'] === 'expense') $expenseCount++;
                 } else {
                     $totalDebits += $entry['amount'];
-                    if ($entry['reference_type'] === 'expense') $expenseCount++;
                 }
             }
 
@@ -206,8 +167,7 @@ class LedgerController extends Controller {
             [$fromDate, $toDate, $transactionType] = $this->readFilterParams();
             $isOwner = in_array($user['role'], ['owner', 'company_owner']);
 
-            // Identical query logic as the UI — guaranteed to match what was displayed
-            $rows = $this->fetchLedgerEntries($db, (int)$id, $isOwner, $fromDate, $toDate, $transactionType);
+            $rows = $this->fetchLedgerEntries($db, (int)$id, $fromDate, $toDate, $transactionType);
 
             // Descriptive filename that reflects active filters
             $nameParts = ['ledger', 'user', $id];
