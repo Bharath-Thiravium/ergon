@@ -42,7 +42,14 @@ class LedgerHelper {
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
             }
-            self::ensureTable($db);
+
+            // ensureTable() issues DDL which causes an implicit commit in MySQL.
+            // It must NOT be called inside an open transaction.
+            // Callers are responsible for calling ensureTable() before beginTransaction().
+            // We only call it here when no external $db is provided (standalone use).
+            if (func_num_args() < 8) {
+                self::ensureTable($db);
+            }
 
             // Duplicate guard: check ledger_synced on the source record.
             // This is construction-safe — it does NOT block same amount/description.

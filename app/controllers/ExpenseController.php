@@ -562,6 +562,7 @@ class ExpenseController extends Controller {
                 $approvalRemarks = trim($_POST['approval_remarks'] ?? '');
 
                 require_once __DIR__ . '/../helpers/LedgerHelper.php';
+                LedgerHelper::ensureTable($db); // DDL must run before beginTransaction
                 $db->beginTransaction();
 
                 $stmt = $db->prepare("UPDATE expenses SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, approval_remarks = ? WHERE id = ?");

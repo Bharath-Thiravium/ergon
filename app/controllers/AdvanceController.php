@@ -349,6 +349,7 @@ class AdvanceController extends Controller {
                 try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN approval_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
 
                 require_once __DIR__ . '/../helpers/LedgerHelper.php';
+                LedgerHelper::ensureTable($db); // DDL must run before beginTransaction
                 $db->beginTransaction();
 
                 $stmt = $db->prepare("UPDATE advances SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, approval_remarks = ? WHERE id = ?");
