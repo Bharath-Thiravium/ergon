@@ -38,7 +38,7 @@ class Database {
     private $db_name;
     private $username;
     private $password;
-    private $conn;
+    public $conn = null;
     private static $instance = null;
     
     public function __construct() {
@@ -49,8 +49,9 @@ class Database {
     }
 
     public function getConnection() {
-        $this->conn = null;
-        
+        if ($this->conn !== null) {
+            return $this->conn;
+        }
         try {
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -84,7 +85,10 @@ class Database {
         if (self::$instance === null) {
             self::$instance = new Database();
         }
-        return self::$instance->getConnection();
+        if (self::$instance->conn === null) {
+            self::$instance->conn = self::$instance->getConnection();
+        }
+        return self::$instance->conn;
     }
     
     public function getEnvironment() {

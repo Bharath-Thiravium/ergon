@@ -61,6 +61,7 @@ ob_start();
                             <option value="all">All Types</option>
                             <option value="advance" <?= ($transactionType ?? '') === 'advance' ? 'selected' : '' ?>>Advances Only</option>
                             <option value="expense" <?= ($transactionType ?? '') === 'expense' ? 'selected' : '' ?>>Expenses Only</option>
+                            <option value="manual" <?= ($transactionType ?? '') === 'manual' ? 'selected' : '' ?>>Manual Entries Only</option>
                         </select>
                     </div>
                     
@@ -93,7 +94,7 @@ ob_start();
         </div>
         <div class="kpi-card__value" style="color:#059669;">₹<?= number_format($totalCredits, 2) ?></div>
         <div class="kpi-card__label">Total Credits</div>
-        <div class="kpi-card__status"><?= $advanceCount ?> Advances</div>
+        <div class="kpi-card__status"><?= $advanceCount ?> Advance<?= $advanceCount !== 1 ? 's' : '' ?> · <?= $expenseCount ?> Expense<?= $expenseCount !== 1 ? 's' : '' ?> · <?= $manualCount ?? 0 ?> Manual</div>
     </div>
 
     <div class="kpi-card">
@@ -102,7 +103,7 @@ ob_start();
         </div>
         <div class="kpi-card__value" style="color:#dc2626;">₹<?= number_format($totalDebits, 2) ?></div>
         <div class="kpi-card__label">Total Debits</div>
-        <div class="kpi-card__status"><?= $expenseCount ?> Expenses</div>
+        <div class="kpi-card__status"><?= $totalDebits > 0 ? 'Deductions applied' : 'No deductions' ?></div>
     </div>
 
     <div class="kpi-card">
@@ -158,9 +159,13 @@ ob_start();
                                 <strong><?= date('M d, Y', strtotime($entry['created_at'])) ?></strong>
                             </td>
                             <td>
-                                <span class="badge badge--<?= $entry['reference_type'] === 'advance' ? 'success' : 'warning' ?>">
-                                    <?= $entry['reference_type'] === 'advance' ? '💸 Advance' : '💳 Expense' ?>
-                                </span>
+                                <?php if ($entry['reference_type'] === 'advance'): ?>
+                                    <span class="badge badge--success">💸 Advance</span>
+                                <?php elseif ($entry['reference_type'] === 'expense'): ?>
+                                    <span class="badge badge--warning">💳 Expense</span>
+                                <?php else: ?>
+                                    <span class="badge badge--info">✏️ Manual</span>
+                                <?php endif; ?>
                             </td>
                             <td class="ledger-reference">
                                 <strong><?= strtoupper($entry['reference_type']) ?> #<?= $entry['reference_id'] ?></strong>
@@ -228,6 +233,8 @@ ob_start();
 .filter-group input:focus, .filter-group select:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.25); }
 .filter-actions { display: flex; gap: 0.5rem; align-items: end; }
 .filter-actions .btn { white-space: nowrap; }
+
+.ledger-entry--credit {
     background-color: rgba(40, 167, 69, 0.05);
 }
 

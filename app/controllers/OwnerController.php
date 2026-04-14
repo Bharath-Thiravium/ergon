@@ -267,9 +267,9 @@ class OwnerController extends Controller {
         }
         
         try {
-            $type = $_POST['type'];
-            $id = $_POST['id'];
-            $action = $_POST['action']; // 'approve' or 'reject'
+            $type    = $_POST['type'];
+            $id      = (int)$_POST['id'];
+            $action  = $_POST['action']; // 'approve' or 'reject'
             $comments = $_POST['comments'] ?? '';
             
             $db = Database::connect();
@@ -292,6 +292,10 @@ class OwnerController extends Controller {
             }
             
             $result = $stmt->execute([$status, $action, $_SESSION['user_id'], $comments, $id]);
+            
+            if ($result && $action === 'approve' && in_array($type, ['advance', 'expense'])) {
+                $this->syncLedgerOnApproval($db, $type, $id);
+            }
             
             if ($result) {
                 $this->json(['success' => true, 'message' => ucfirst($type) . ' ' . $action . 'd successfully']);
@@ -555,7 +559,7 @@ class OwnerController extends Controller {
         
         try {
             $type = $_POST['type'];
-            $id = (int)$_POST['id'];
+            $id   = (int)$_POST['id'];
             
             $db = Database::connect();
             
@@ -576,6 +580,9 @@ class OwnerController extends Controller {
             $result = $stmt->execute([$_SESSION['user_id'], $id]);
             
             if ($result && $stmt->rowCount() > 0) {
+                if (in_array($type, ['advance', 'expense'])) {
+                    $this->syncLedgerOnApproval($db, $type, $id);
+                }
                 $this->json(['success' => true, 'message' => ucfirst($type) . ' approved successfully']);
             } else {
                 $this->json(['success' => false, 'message' => 'Failed to approve ' . $type . ' or already processed']);
@@ -935,6 +942,36 @@ class OwnerController extends Controller {
         return round($stmt->fetchColumn() ?: 0);
     }
     
+    /**
+     * Write a ledger entry for an advance or expense immediately on approval.
+     * Called from both approveRequest() and finalApprove().
+     * Safe to call multiple times — LedgerHelper guards against duplicates via ledger_synced.
+     */
+    private function syncLedgerOnApproval(PDO $db, string $type, int $id): void {
+        try {
+            require_once __DIR__ . '/../helpers/LedgerHelper.php';
+            LedgerHelper::ensureTable($db);
+
+            if ($type === 'advance') {
+                $row = $db->prepare("SELECT user_id, amount, approved_amount, requested_date FROM advances WHERE id = ? LIMIT 1");
+                $row->execute([$id]);
+                $rec = $row->fetch(PDO::FETCH_ASSOC);
+                if (!$rec) return;
+                $amount = !empty($rec['approved_amount']) ? floatval($rec['approved_amount']) : floatval($rec['amount']);
+                LedgerHelper::recordEntry((int)$rec['user_id'], 'advance_payment', 'advance', $id, $amount, 'credit', $rec['requested_date'], $db);
+            } else {
+                $row = $db->prepare("SELECT user_id, amount, approved_amount, expense_date FROM expenses WHERE id = ? LIMIT 1");
+                $row->execute([$id]);
+                $rec = $row->fetch(PDO::FETCH_ASSOC);
+                if (!$rec) return;
+                $amount = !empty($rec['approved_amount']) ? floatval($rec['approved_amount']) : floatval($rec['amount']);
+                LedgerHelper::recordEntry((int)$rec['user_id'], 'expense_payment', 'expense', $id, $amount, 'credit', $rec['expense_date'], $db);
+            }
+        } catch (Exception $e) {
+            error_log('OwnerController::syncLedgerOnApproval error: ' . $e->getMessage());
+        }
+    }
+
     private function ensureApprovalColumns($db) {
         try {
             // Add missing columns for multi-level approval

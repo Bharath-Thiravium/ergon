@@ -202,15 +202,15 @@ ob_end_clean();
     }
     </style>
     
-    <link href="<?= Environment::asset('assets/css/bootstrap-icons.min.css') ?>?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/bootstrap-icons.min.css') ?>?v=2.0" rel="stylesheet">
     <link href="<?= Environment::asset('assets/css/ergon.css') ?>?v=<?= time() ?>" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/theme-enhanced.css') ?>?v=1.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/utilities-new.css') ?>?v=1.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/instant-theme.css') ?>?v=1.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/global-tooltips.css') ?>?v=1.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/responsive-mobile.css') ?>?v=1.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/_archive_legacy/css/user-management-mobile.css') ?>?v=1.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/_archive_legacy/css/management-mobile-fix.css') ?>?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/theme-enhanced.css') ?>?v=2.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/utilities-new.css') ?>?v=2.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/instant-theme.css') ?>?v=2.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/global-tooltips.css') ?>?v=2.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/responsive-mobile.css') ?>?v=2.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/_archive_legacy/css/user-management-mobile.css') ?>?v=2.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/_archive_legacy/css/management-mobile-fix.css') ?>?v=2.0" rel="stylesheet">
     <!-- Mobile Dark Theme Fixes - Critical for visibility -->
     <link href="<?= Environment::asset('assets/css/mobile-dark-theme-fixes.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Dark Mode Alert & Notification Fixes - Critical for visibility -->
@@ -219,8 +219,8 @@ ob_end_clean();
     <link href="<?= Environment::asset('assets/css/modal.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Dashboard overrides loaded last to ensure overrides on compiled CSS in deployments -->
     <link href="<?= Environment::asset('assets/css/ergon-overrides.css') ?>?v=<?= time() ?>" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/access-denied.css') ?>?v=1.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/premium-navigation.css') ?>?v=1.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/access-denied.css') ?>?v=2.0" rel="stylesheet">
+    <link href="<?= Environment::asset('assets/css/premium-navigation.css') ?>?v=2.0" rel="stylesheet">
     <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
     <link href="<?= Environment::asset('assets/css/dashboard-owner.css') ?>?v=1.0" rel="stylesheet">
     <?php endif; ?>

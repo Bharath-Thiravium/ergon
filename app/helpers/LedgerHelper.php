@@ -52,14 +52,25 @@ class LedgerHelper {
             }
 
             // Duplicate guard: check ledger_synced on the source record.
-            // This is construction-safe — it does NOT block same amount/description.
-            $sourceTable = ($referenceType === 'advance') ? 'advances' : 'expenses';
-            $chk = $db->prepare("SELECT ledger_synced FROM {$sourceTable} WHERE id = ? LIMIT 1");
-            $chk->execute([$referenceId]);
-            $row = $chk->fetch(PDO::FETCH_ASSOC);
-            if ($row && !empty($row['ledger_synced'])) {
-                error_log("LedgerHelper: skipped — ledger_synced=1 on $sourceTable id=$referenceId");
-                return true;
+            // Manual entries have no source table — skip the guard for them.
+            if ($referenceType !== 'manual') {
+                $sourceTable = ($referenceType === 'advance') ? 'advances' : 'expenses';
+                $chk = $db->prepare("SELECT ledger_synced FROM {$sourceTable} WHERE id = ? LIMIT 1");
+                $chk->execute([$referenceId]);
+                $row = $chk->fetch(PDO::FETCH_ASSOC);
+                if ($row && !empty($row['ledger_synced'])) {
+                    error_log("LedgerHelper: skipped — ledger_synced=1 on $sourceTable id=$referenceId");
+                    return true;
+                }
+
+                // Secondary guard: also skip if a row already exists for this reference+entry_type
+                $chk2 = $db->prepare("SELECT id FROM user_ledgers WHERE user_id = ? AND reference_type = ? AND reference_id = ? AND entry_type = ? LIMIT 1");
+                $chk2->execute([$userId, $referenceType, $referenceId, $entryType]);
+                if ($chk2->fetch()) {
+                    $db->prepare("UPDATE {$sourceTable} SET ledger_synced = 1 WHERE id = ?")->execute([$referenceId]);
+                    error_log("LedgerHelper: skipped (row exists, fixed flag) — $referenceType/$referenceId type=$entryType");
+                    return true;
+                }
             }
 
             $dateToUse = $entryDate ? $entryDate : date('Y-m-d H:i:s');
@@ -73,8 +84,9 @@ class LedgerHelper {
             $ins = $db->prepare("INSERT INTO user_ledgers (user_id, reference_type, reference_id, entry_type, direction, amount, balance_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             $result = $ins->execute([$userId, $referenceType, $referenceId, $entryType, $direction, $amount, $balanceAfter, $dateToUse]);
 
-            if ($result) {
+            if ($result && $referenceType !== 'manual') {
                 // Mark source record as synced — prevents any re-entry on retry or markPaid
+                $sourceTable = ($referenceType === 'advance') ? 'advances' : 'expenses';
                 $db->prepare("UPDATE {$sourceTable} SET ledger_synced = 1 WHERE id = ?")->execute([$referenceId]);
                 error_log("LedgerHelper: entry created user_id=$userId $referenceType/$referenceId type=$entryType dir=$direction amount=$amount balance_after=$balanceAfter");
 
@@ -85,6 +97,8 @@ class LedgerHelper {
                 if ($count !== 1) {
                     error_log("LedgerHelper: WARNING integrity check found $count rows for $referenceType/$referenceId type=$entryType");
                 }
+            } elseif ($result) {
+                error_log("LedgerHelper: manual entry created user_id=$userId amount=$amount dir=$direction balance_after=$balanceAfter");
             }
 
             return $result;
