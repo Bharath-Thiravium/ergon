@@ -39,6 +39,27 @@ if ($action === 'dashboard-stats' || $path === 'dashboard-stats') {
     exit;
 }
 
+// ── One-time migration runner ─────────────────────────────────────────────────
+if ($action === 'run-migration') {
+    require_once __DIR__ . '/../app/config/environment.php';
+    require_once __DIR__ . '/../app/config/database.php';
+    $db  = Database::connect();
+    $sql = file_get_contents(__DIR__ . '/../sql/ra_bills.sql');
+    echo '<pre style="font-family:monospace;font-size:13px;padding:20px;">';
+    echo '<strong>Running ra_bills.sql...</strong>' . "\n\n";
+    foreach (array_filter(array_map('trim', explode(';', $sql)), fn($s) => strlen(preg_replace('/^--.*$/m', '', $s)) > 5) as $stmt) {
+        try {
+            $db->exec($stmt);
+            echo '✅ ' . htmlspecialchars(substr(preg_replace('/\s+/', ' ', $stmt), 0, 100)) . "\n";
+        } catch (PDOException $e) {
+            echo '❌ ' . htmlspecialchars(substr(preg_replace('/\s+/', ' ', $stmt), 0, 100)) . "\n";
+            echo '   <span style="color:red">' . htmlspecialchars($e->getMessage()) . '</span>' . "\n";
+        }
+    }
+    echo "\n<strong>Done.</strong></pre>";
+    exit;
+}
+
 if ($action === 'health' || $path === 'health') {
     header('Content-Type: application/json');
     echo json_encode([
