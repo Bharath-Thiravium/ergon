@@ -1,42 +1,75 @@
 <?php
 /**
- * SQL Migration Runner
- * Owner-only. Runs a .sql file from the /sql directory against MySQL.
- * Access: /ergon/run-migration?file=ra_bills.sql
+ * SQL Migration Runner — token-protected, no login required.
+ * Usage: /ergon/run-migration.php?token=YOUR_TOKEN&file=ra_bills.sql
+ *
+ * Set MIGRATION_TOKEN in your .env.production, OR define it below as fallback.
  */
 
-require_once __DIR__ . '/app/config/session.php';
+// ── Token: read from any env file that has it, fallback to constant ───────────
+$validToken = null;
+
+foreach ([__DIR__ . '/.env.production', __DIR__ . '/.env'] as $envFile) {
+    if (!file_exists($envFile)) continue;
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if (strncmp($line, 'MIGRATION_TOKEN=', 16) === 0) {
+            $validToken = trim(substr($line, 16));
+            break 2;
+        }
+    }
+}
+
+// ── If token not in any env file, show setup instructions ────────────────────
+if (!$validToken) {
+    http_response_code(503);
+    $suggested = bin2hex(random_bytes(16));
+    die('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Setup Required</title>
+    <style>body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:0 20px;}
+    pre{background:#f3f4f6;padding:12px;border-radius:6px;font-size:13px;}
+    code{background:#f3f4f6;padding:2px 6px;border-radius:4px;}</style></head><body>
+    <h2>⚙️ Setup Required</h2>
+    <p>Add <code>MIGRATION_TOKEN</code> to your <strong>.env.production</strong> file on the server:</p>
+    <pre>MIGRATION_TOKEN=' . $suggested . '</pre>
+    <p>Then access:</p>
+    <pre>/ergon/run-migration.php?token=' . $suggested . '&amp;file=ra_bills.sql</pre>
+    </body></html>');
+}
+
+// ── Validate token ────────────────────────────────────────────────────────────
+if (($_GET['token'] ?? '') !== $validToken) {
+    http_response_code(403);
+    die('<h2>403 — Invalid or missing token.</h2>
+         <p>Usage: <code>/ergon/run-migration.php?token=YOUR_TOKEN&amp;file=ra_bills.sql</code></p>');
+}
+
+// ── DB connect ────────────────────────────────────────────────────────────────
 require_once __DIR__ . '/app/config/environment.php';
 require_once __DIR__ . '/app/config/database.php';
+$db = Database::connect();
 
-// ── Auth: owner only ──────────────────────────────────────────────────────────
-if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) {
-    header('Location: /ergon/login'); exit;
-}
-if (!in_array($_SESSION['role'], ['owner', 'company_owner'])) {
-    http_response_code(403);
-    die('<h2>403 — Owner access required.</h2>');
-}
-
-// ── Allowed directory ─────────────────────────────────────────────────────────
+// ── File handling ─────────────────────────────────────────────────────────────
 $sqlDir  = __DIR__ . '/sql/';
-$file    = basename($_GET['file'] ?? '');          // strip any path traversal
+$file    = basename($_GET['file'] ?? '');
 $confirm = isset($_GET['confirm']) && $_GET['confirm'] === 'yes';
 
-// List available .sql files if no file specified
 if (!$file) {
     $files = glob($sqlDir . '*.sql');
-    echo '<h2 style="font-family:sans-serif">SQL Migration Runner</h2>';
-    echo '<p style="font-family:sans-serif;color:#6b7280">Select a file to run:</p><ul style="font-family:monospace">';
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Migration Runner</title>
+    <style>body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:0 20px;}
+    h2{color:#111827;}li{margin:8px 0;}a{color:#000080;font-weight:600;text-decoration:none;}
+    a:hover{text-decoration:underline;}</style></head><body>
+    <h2>🗄️ SQL Migration Runner</h2>
+    <p style="color:#6b7280">Select a file to run:</p><ul>';
     foreach ($files as $f) {
         $name = basename($f);
-        echo '<li><a href="?file=' . urlencode($name) . '">' . htmlspecialchars($name) . '</a></li>';
+        echo '<li><a href="?token=' . urlencode($validToken) . '&file=' . urlencode($name) . '">'
+           . htmlspecialchars($name) . '</a></li>';
     }
-    echo '</ul>';
+    echo '</ul></body></html>';
     exit;
 }
 
-// Validate file exists and is a .sql file
 if (!preg_match('/\.sql$/i', $file) || !file_exists($sqlDir . $file)) {
     http_response_code(404);
     die('<h2>File not found: ' . htmlspecialchars($file) . '</h2>');
@@ -46,31 +79,25 @@ $sqlContent = file_get_contents($sqlDir . $file);
 
 // ── Confirmation screen ───────────────────────────────────────────────────────
 if (!$confirm) {
-    $lineCount = substr_count($sqlContent, "\n");
-    echo '<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Run Migration</title>
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Run Migration</title>
     <style>
-        body{font-family:sans-serif;max-width:700px;margin:40px auto;padding:0 20px;}
-        pre{background:#f3f4f6;padding:16px;border-radius:8px;overflow:auto;max-height:300px;font-size:12px;}
+        body{font-family:sans-serif;max-width:720px;margin:40px auto;padding:0 20px;}
+        pre{background:#f3f4f6;padding:16px;border-radius:8px;overflow:auto;max-height:320px;font-size:12px;}
         .btn{display:inline-block;padding:10px 24px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px;}
         .btn-run{background:#dc2626;color:#fff;}
         .btn-cancel{background:#6b7280;color:#fff;margin-left:10px;}
         .warn{background:#fef2f2;border:1px solid #fca5a5;padding:12px 16px;border-radius:8px;margin-bottom:16px;color:#dc2626;}
     </style></head><body>
     <h2>Run Migration: ' . htmlspecialchars($file) . '</h2>
-    <div class="warn">⚠️ This will execute the SQL below against the <strong>live database</strong>. This cannot be undone.</div>
-    <p style="color:#6b7280;font-size:13px;">' . $lineCount . ' lines</p>
+    <div class="warn">⚠️ This will execute the SQL below against the <strong>live database</strong>.</div>
     <pre>' . htmlspecialchars($sqlContent) . '</pre>
-    <a href="?file=' . urlencode($file) . '&confirm=yes" class="btn btn-run">▶ Run Now</a>
-    <a href="?file=" class="btn btn-cancel">Cancel</a>
+    <a href="?token=' . urlencode($validToken) . '&file=' . urlencode($file) . '&confirm=yes" class="btn btn-run">▶ Run Now</a>
+    <a href="?token=' . urlencode($validToken) . '" class="btn btn-cancel">Cancel</a>
     </body></html>';
     exit;
 }
 
 // ── Execute ───────────────────────────────────────────────────────────────────
-$db = Database::connect();
-
-// Split on semicolons, skip empty/comment-only lines
 $statements = array_filter(
     array_map('trim', explode(';', $sqlContent)),
     fn($s) => strlen(preg_replace('/^--.*$/m', '', $s)) > 5
@@ -97,21 +124,19 @@ echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Migration Result</
     .ok{background:#ecfdf5;color:#065f46;border-left:4px solid #059669;}
     .fail{background:#fef2f2;color:#991b1b;border-left:4px solid #dc2626;}
     .summary{padding:12px 16px;border-radius:8px;font-weight:700;margin-bottom:16px;}
-    .s-ok{background:#ecfdf5;color:#065f46;}
-    .s-err{background:#fef2f2;color:#991b1b;}
+    .s-ok{background:#ecfdf5;color:#065f46;} .s-err{background:#fef2f2;color:#991b1b;}
     a{color:#000080;}
 </style></head><body>
-<h2>Migration Result: ' . htmlspecialchars($file) . '</h2>
+<h2>Result: ' . htmlspecialchars($file) . '</h2>
 <div class="summary ' . ($err > 0 ? 's-err' : 's-ok') . '">
-    ✅ ' . $ok . ' statement(s) succeeded &nbsp;|&nbsp; ❌ ' . $err . ' failed
+    ✅ ' . $ok . ' succeeded &nbsp;|&nbsp; ❌ ' . $err . ' failed
 </div>';
 
 foreach ($results as $r) {
-    $cls = $r['ok'] ? 'ok' : 'fail';
-    $icon = $r['ok'] ? '✅' : '❌';
-    echo '<div class="row ' . $cls . '">' . $icon . ' ' . htmlspecialchars($r['sql']);
+    echo '<div class="row ' . ($r['ok'] ? 'ok' : 'fail') . '">'
+       . ($r['ok'] ? '✅' : '❌') . ' ' . htmlspecialchars($r['sql']);
     if (!$r['ok']) echo '<br><small>' . htmlspecialchars($r['err']) . '</small>';
     echo '</div>';
 }
 
-echo '<br><a href="?file=">← Back to file list</a></body></html>';
+echo '<br><a href="?token=' . urlencode($validToken) . '">← Back to file list</a></body></html>';
