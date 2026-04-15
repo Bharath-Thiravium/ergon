@@ -454,6 +454,11 @@ ob_end_clean();
                                 Finance
                                 <?php if ($financeDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
+                            <a href="/ergon/finance/measurement-sheet" class="nav-dropdown-item <?= ($active_page ?? '') === 'measurement_sheet' ? 'nav-dropdown-item--active' : '' ?> <?= $financeDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
+                                <span class="nav-icon">📐</span>
+                                Measurement Sheet
+                                <?php if ($financeDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                            </a>
                             <a href="/ergon/reports" class="nav-dropdown-item <?= ($active_page ?? '') === 'reports' ? 'nav-dropdown-item--active' : '' ?> <?= $reportsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">📈</span>
                                 Reports
@@ -612,6 +617,11 @@ ob_end_clean();
                             <a href="/ergon/admin/entry" class="nav-dropdown-item <?= ($active_page ?? '') === 'admin-entry' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📝</span>
                                 Direct Entry
+                            </a>
+                            <a href="/ergon/finance/measurement-sheet" class="nav-dropdown-item <?= ($active_page ?? '') === 'measurement_sheet' ? 'nav-dropdown-item--active' : '' ?> <?= $financeDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
+                                <span class="nav-icon">📐</span>
+                                Measurement Sheet
+                                <?php if ($financeDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
                             <a href="/ergon/reports/activity" class="nav-dropdown-item <?= ($active_page ?? '') === 'activity' ? 'nav-dropdown-item--active' : '' ?> <?= $reportsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">⏱️</span>
@@ -796,6 +806,11 @@ ob_end_clean();
                     Finance
                     <?php if ($financeDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
+                <a href="/ergon/finance/measurement-sheet" class="sidebar__link <?= ($active_page ?? '') === 'measurement_sheet' ? 'sidebar__link--active' : '' ?> <?= $financeDisabled ? 'sidebar__link--disabled' : '' ?>">
+                    <span class="sidebar__icon">📐</span>
+                    Measurement Sheet
+                    <?php if ($financeDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                </a>
                 <?php else: // company_owner ?>
                 <div class="sidebar__divider">Overview</div>
                 <a href="/ergon/dashboard" class="sidebar__link <?= ($active_page ?? '') === 'dashboard' ? 'sidebar__link--active' : '' ?>">
@@ -893,6 +908,11 @@ ob_end_clean();
                 <a href="/ergon/admin/entry" class="sidebar__link <?= ($active_page ?? '') === 'admin-entry' ? 'sidebar__link--active' : '' ?>">
                     <span class="sidebar__icon">📝</span>
                     Direct Entry
+                </a>
+                <a href="/ergon/finance/measurement-sheet" class="sidebar__link <?= ($active_page ?? '') === 'measurement_sheet' ? 'sidebar__link--active' : '' ?> <?= $financeDisabled ? 'sidebar__link--disabled' : '' ?>">
+                    <span class="sidebar__icon">📐</span>
+                    Measurement Sheet
+                    <?php if ($financeDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
                 <a href="/ergon/reports/activity" class="sidebar__link <?= ($active_page ?? '') === 'activity' ? 'sidebar__link--active' : '' ?> <?= $reportsDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">⏱️</span>

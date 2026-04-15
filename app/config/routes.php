@@ -428,6 +428,14 @@ $router->post('/site-reports/expense/approve', 'SiteReportController', 'approveE
 // Finance Module Routes - Main
 $router->get('/finance', 'FinanceController', 'dashboard');
 
+// Measurement Sheet
+$router->get('/finance/measurement-sheet', 'FinanceController', 'measurementSheet');
+$router->get('/finance/measurement-sheet/{po_id}/opening-balance', 'FinanceController', 'measurementSheetOpeningBalance');
+$router->post('/finance/measurement-sheet/{po_id}/opening-balance', 'FinanceController', 'measurementSheetOpeningBalanceStore');
+$router->get('/finance/measurement-sheet/{po_id}/create', 'FinanceController', 'measurementSheetCreate');
+$router->post('/finance/measurement-sheet/{po_id}/store', 'FinanceController', 'measurementSheetStore');
+$router->get('/finance/measurement-sheet/{id}/print', 'FinanceController', 'measurementSheetPrint');
+
 // Finance Module Routes - Legacy (Old System)
 $router->get('/finance/old', 'FinanceController', 'dashboard');
 $router->get('/finance/recent-quotations', 'FinanceController', 'recentQuotations');
