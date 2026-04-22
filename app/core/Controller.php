@@ -39,6 +39,12 @@ class Controller {
     
     protected function requireAuth() {
         if (!isset($_SESSION['user_id'])) {
+            if ($this->isAjaxRequest()) {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Session expired', 'redirect' => '/ergon/login']);
+                exit;
+            }
             $this->redirect('/login');
         }
     }

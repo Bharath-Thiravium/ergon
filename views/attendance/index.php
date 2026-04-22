@@ -513,9 +513,12 @@ function markManualAttendance(userId, checkIn, checkOut) {
     const entryDate = hasCheckIn ? checkIn.split(' ')[0] : new Date().toISOString().split('T')[0];
     const checkInTime = hasCheckIn ? checkIn.split(' ')[1].substring(0, 5) : new Date().getHours().toString().padStart(2, '0') + ':' + new Date().getMinutes().toString().padStart(2, '0');
     const checkOutTime = hasCheckOut ? checkOut.split(' ')[1].substring(0, 5) : '17:00';
-    
+
+    document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
+    modal.setAttribute('data-visible', 'true');
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
@@ -761,9 +764,12 @@ function clockOutUser(userId) {
 function generateAttendanceReport(userId) {
     const defaultStartDate = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0];
     const defaultEndDate = new Date().toISOString().split('T')[0];
-    
+
+    document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
+    modal.setAttribute('data-visible', 'true');
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">

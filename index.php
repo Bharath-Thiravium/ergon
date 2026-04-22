@@ -1,7 +1,5 @@
 <?php
-ob_start();
-
-// Production error handling
+// Error reporting - production safe
 if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !== false) {
     error_reporting(E_ALL);
     ini_set('display_errors', 1);
@@ -11,10 +9,15 @@ if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !
     ini_set('log_errors', 1);
 }
 
-// Session bootstrap — sets cookie params and calls session_start() once.
-// All api/* files require_once the same file so params are always identical.
+// Session configuration
 require_once __DIR__ . '/app/config/session.php';
 
+// Start session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Set timezone
 date_default_timezone_set('Asia/Kolkata');
 
 require_once __DIR__ . '/app/config/environment.php';

@@ -1715,6 +1715,7 @@ ob_end_clean();
         
         fetch(APP_BASE + '/attendance/status', {
             signal: controller.signal,
+            credentials: 'same-origin',
             headers: {
                 'Cache-Control': 'no-cache',
                 'X-Requested-With': 'XMLHttpRequest'
@@ -1730,6 +1731,10 @@ ob_end_clean();
         .then(text => {
             try {
                 const data = JSON.parse(text);
+                if (data && data.error === 'Session expired') {
+                    window.location.href = '/ergon/login';
+                    return;
+                }
                 if (data && data.success) {
                     // Update header attendance status
                     headerAttendanceStatus = {

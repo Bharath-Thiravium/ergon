@@ -587,6 +587,7 @@ function suspendUser(userId, userName) {
 function showAddUserModal() {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
+    modal.setAttribute('data-visible', 'true');
     modal.innerHTML = `
         <div class="modal-content" style="width: 600px;">
                 <div class="modal-header">
@@ -808,6 +809,7 @@ window.showEditUserModal = function(userId) {
     
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
+    modal.setAttribute('data-visible', 'true');
     modal.innerHTML = `<div class="modal-content" style="width:600px"><div class="modal-header"><h3>✏️ Edit User</h3><button class="modal-close" onclick="hideClosestModal(this)">&times;</button></div><div class="modal-body"><div style="text-align:center;padding:20px">Loading...</div></div><div class="modal-footer"><button class="btn btn--secondary" onclick="hideClosestModal(this)">Cancel</button></div></div>`;
     document.body.appendChild(modal);
     
@@ -912,22 +914,29 @@ function submitUserForm(isEdit = false) {
     
     fetch(url, {
         method: 'POST',
+        credentials: 'same-origin',
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(function(response) { return response.text(); })
+    .then(function(text) {
+        var data;
+        try { data = JSON.parse(text); } catch(e) {
+            console.error('Non-JSON response:', text.substring(0, 300));
+            alert('Server error. Please refresh and try again.');
+            return;
+        }
         if (data.success) {
             const __existingModal = document.querySelector('.modal-overlay');
             if(__existingModal && typeof hideClosestModal === 'function') hideClosestModal(__existingModal);
             alert(isEdit ? 'User updated successfully!' : 'User created successfully!');
             location.reload();
         } else {
-            alert('Error: ' + (data.error || 'Failed to save user'));
+            alert('Error: ' + (data.error || data.message || 'Failed to save user'));
         }
     })
-    .catch(error => {
+    .catch(function(error) {
         console.error('Error:', error);
-        alert('Failed to save user');
+        alert('Failed to save user. Please try again.');
     });
 }
 </script>
