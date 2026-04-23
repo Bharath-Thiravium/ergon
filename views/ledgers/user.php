@@ -156,7 +156,7 @@ ob_start();
                         <?php foreach ($entries as $entry): ?>
                         <tr class="ledger-entry ledger-entry--<?= $entry['direction'] ?>">
                             <td class="ledger-date">
-                                <strong><?= date('M d, Y', strtotime($entry['created_at'])) ?></strong>
+                                <strong><?= date('M d, Y', strtotime($entry['date'])) ?></strong></strong>
                             </td>
                             <td>
                                 <?php if ($entry['reference_type'] === 'advance'): ?>

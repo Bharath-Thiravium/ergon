@@ -70,11 +70,11 @@ class LedgerController extends Controller {
                     'advance'         AS reference_type,
                     'advance_payment' AS entry_type,
                     'credit'          AS direction,
-                    COALESCE(a.approved_amount, a.amount)                    AS amount,
-                    COALESCE(a.reason, 'Advance')                            AS description,
-                    COALESCE(a.type, 'advance')                              AS category,
+                    COALESCE(a.approved_amount, a.amount)       AS amount,
+                    COALESCE(a.reason, 'Advance')               AS description,
+                    COALESCE(a.type, 'advance')                 AS category,
                     a.status,
-                    COALESCE(a.approved_at, a.requested_date, a.created_at) AS created_at
+                    COALESCE(a.requested_date, a.created_at)   AS date
                 FROM advances a
                 WHERE " . implode(' AND ', $advWhere);
             $params = array_merge($params, $advParams);
@@ -87,11 +87,11 @@ class LedgerController extends Controller {
                     'expense'         AS reference_type,
                     'expense_payment' AS entry_type,
                     'credit'          AS direction,
-                    COALESCE(e.approved_amount, e.amount)                         AS amount,
-                    COALESCE(e.description, 'Expense')                            AS description,
-                    COALESCE(e.category, 'expense')                               AS category,
+                    COALESCE(e.approved_amount, e.amount)       AS amount,
+                    COALESCE(e.description, 'Expense')          AS description,
+                    COALESCE(e.category, 'expense')             AS category,
                     e.status,
-                    COALESCE(e.approved_at, e.expense_date, e.created_at)         AS created_at
+                    COALESCE(e.expense_date, e.created_at)      AS date
                 FROM expenses e
                 WHERE " . implode(' AND ', $expWhere);
             $params = array_merge($params, $expParams);
@@ -108,7 +108,7 @@ class LedgerController extends Controller {
                     NULL          AS description,
                     NULL          AS category,
                     'manual'      AS status,
-                    ul.created_at AS created_at
+                    ul.created_at AS date
                 FROM user_ledgers ul
                 WHERE " . implode(' AND ', $manWhere);
             $params = array_merge($params, $manParams);
@@ -117,7 +117,7 @@ class LedgerController extends Controller {
         if (empty($parts)) return [];
 
         $sql  = implode(' UNION ALL ', $parts)
-              . ' ORDER BY created_at ASC, reference_type ASC, reference_id ASC';
+              . ' ORDER BY date DESC, reference_type ASC, reference_id ASC';
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -251,7 +251,7 @@ class LedgerController extends Controller {
             fputcsv($out, ['Date', 'Type', 'Direction', 'Amount', 'Description', 'Category', 'Status', 'Balance']);
             foreach ($rows as $row) {
                 fputcsv($out, [
-                    $safe($row['created_at']),
+                    $safe($row['date']),
                     $safe($row['reference_type']),
                     $safe($row['direction']),
                     number_format($row['amount'], 2, '.', ''),
