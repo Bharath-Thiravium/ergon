@@ -44,16 +44,16 @@ class LedgerController extends Controller {
         $manParams = [$id];
 
         if ($fromDate) {
-            $advWhere[]  = 'COALESCE(a.approved_at, a.requested_date, a.created_at) >= ?';
-            $expWhere[]  = 'COALESCE(e.approved_at, e.expense_date, e.created_at) >= ?';
+            $advWhere[]  = 'COALESCE(a.requested_date, a.approved_at, a.created_at) >= ?';
+            $expWhere[]  = 'COALESCE(e.expense_date, e.approved_at, e.created_at) >= ?';
             $manWhere[]  = 'ul.created_at >= ?';
             $advParams[] = $fromDate . ' 00:00:00';
             $expParams[] = $fromDate . ' 00:00:00';
             $manParams[] = $fromDate . ' 00:00:00';
         }
         if ($toDate) {
-            $advWhere[]  = 'COALESCE(a.approved_at, a.requested_date, a.created_at) <= ?';
-            $expWhere[]  = 'COALESCE(e.approved_at, e.expense_date, e.created_at) <= ?';
+            $advWhere[]  = 'COALESCE(a.requested_date, a.approved_at, a.created_at) <= ?';
+            $expWhere[]  = 'COALESCE(e.expense_date, e.approved_at, e.created_at) <= ?';
             $manWhere[]  = 'ul.created_at <= ?';
             $advParams[] = $toDate . ' 23:59:59';
             $expParams[] = $toDate . ' 23:59:59';
@@ -74,7 +74,7 @@ class LedgerController extends Controller {
                     COALESCE(a.reason, 'Advance')               AS description,
                     COALESCE(a.type, 'advance')                 AS category,
                     a.status,
-                    COALESCE(a.requested_date, a.created_at)   AS date
+                    COALESCE(a.requested_date, a.approved_at, a.created_at) AS date
                 FROM advances a
                 WHERE " . implode(' AND ', $advWhere);
             $params = array_merge($params, $advParams);
@@ -91,7 +91,7 @@ class LedgerController extends Controller {
                     COALESCE(e.description, 'Expense')          AS description,
                     COALESCE(e.category, 'expense')             AS category,
                     e.status,
-                    COALESCE(e.expense_date, e.created_at)      AS date
+                    COALESCE(e.expense_date, e.approved_at, e.created_at) AS date
                 FROM expenses e
                 WHERE " . implode(' AND ', $expWhere);
             $params = array_merge($params, $expParams);
