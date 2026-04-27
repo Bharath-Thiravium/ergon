@@ -6,6 +6,7 @@
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../app/config/session.php';
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
 // Basic authentication check
 if (!isset($_SESSION['user_id'])) {

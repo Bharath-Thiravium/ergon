@@ -4,6 +4,7 @@ header('Cache-Control: no-cache, must-revalidate');
 
 try {
     require_once __DIR__ . '/../app/config/session.php';
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
     require_once __DIR__ . '/../app/config/database.php';
     require_once __DIR__ . '/../app/models/Notification.php';
     

@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../app/config/session.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../app/config/database.php';
@@ -13,20 +16,25 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['owner', 'admi
 
 $db = Database::connect();
 
-// Ensure attendance_logs table exists
+// Ensure attendance_logs table exists with correct schema
 try {
     $db->exec("CREATE TABLE IF NOT EXISTS attendance_logs (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
-        log_action VARCHAR(50) NOT NULL,
+        action VARCHAR(50) NOT NULL,
         details TEXT,
         created_by INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_user_id (user_id),
-        INDEX idx_action (log_action)
+        INDEX idx_action (action)
     )");
+    // Migrate log_action -> action if table was created with old schema
+    $cols = $db->query("SHOW COLUMNS FROM attendance_logs LIKE 'log_action'")->fetchAll();
+    if (!empty($cols)) {
+        $db->exec("ALTER TABLE attendance_logs CHANGE log_action action VARCHAR(50) NOT NULL");
+    }
 } catch (Exception $e) {
-    error_log('Failed to create attendance_logs table: ' . $e->getMessage());
+    error_log('Failed to ensure attendance_logs table: ' . $e->getMessage());
 }
 
 try {
@@ -89,12 +97,16 @@ try {
         }
         
         // Log the manual entry
-        $stmt = $db->prepare("
-            INSERT INTO attendance_logs (user_id, log_action, details, created_by, created_at)
-            VALUES (?, 'manual_entry', ?, ?, NOW())
-        ");
-        $logDetails = "Manual {$entryType} for {$entryDate}. Reason: {$reason}. Notes: {$notes}";
-        $stmt->execute([$userId, $logDetails, $_SESSION['user_id']]);
+        try {
+            $stmt = $db->prepare("
+                INSERT INTO attendance_logs (user_id, action, details, created_by, created_at)
+                VALUES (?, 'manual_entry', ?, ?, NOW())
+            ");
+            $logDetails = "Manual {$entryType} for {$entryDate}. Reason: {$reason}. Notes: {$notes}";
+            $stmt->execute([$userId, $logDetails, $_SESSION['user_id']]);
+        } catch (Exception $logEx) {
+            error_log('Attendance log insert skipped: ' . $logEx->getMessage());
+        }
         
         $db->commit();
         
@@ -113,7 +125,7 @@ try {
             FROM attendance_logs l
             JOIN users u ON l.user_id = u.id
             LEFT JOIN users c ON l.created_by = c.id
-            WHERE l.log_action = 'manual_entry'
+            WHERE l.action = 'manual_entry'
             ORDER BY l.created_at DESC
             LIMIT 10
         ");

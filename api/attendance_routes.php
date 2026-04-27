@@ -43,6 +43,7 @@ switch ($method) {
             case 'status':
                 // Get current attendance status
                 require_once __DIR__ . '/../app/config/session.php';
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
                 if (!isset($_SESSION['user_id'])) {
                     echo json_encode(['error' => 'Unauthorized']);
                     exit;
