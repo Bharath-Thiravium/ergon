@@ -436,6 +436,10 @@ ob_end_clean();
                                 <span class="nav-icon">📒</span>
                                 Ledgers
                             </a>
+                            <a href="/ergon/client-ledger" class="nav-dropdown-item <?= ($active_page ?? '') === 'client_ledger' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🧾</span>
+                                Customer Ledger
+                            </a>
                             <a href="/ergon/attendance" class="nav-dropdown-item <?= ($active_page ?? '') === 'attendance' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">📍</span>
                                 Attendance
@@ -618,6 +622,10 @@ ob_end_clean();
                                 <span class="nav-icon">📝</span>
                                 Direct Entry
                             </a>
+                            <a href="/ergon/client-ledger" class="nav-dropdown-item <?= ($active_page ?? '') === 'client_ledger' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🧾</span>
+                                Customer Ledger
+                            </a>
                             <a href="/ergon/finance/measurement-sheet" class="nav-dropdown-item <?= ($active_page ?? '') === 'measurement_sheet' ? 'nav-dropdown-item--active' : '' ?> <?= $financeDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
                                 <span class="nav-icon">📐</span>
                                 Measurement Sheet
@@ -795,6 +803,10 @@ ob_end_clean();
                     <span class="sidebar__icon">📒</span>
                     Ledgers
                 </a>
+                <a href="/ergon/client-ledger" class="sidebar__link <?= ($active_page ?? '') === 'client_ledger' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🧾</span>
+                    Customer Ledger
+                </a>
                 <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
                     <span class="sidebar__icon">📍</span>
                     Attendance
@@ -908,6 +920,10 @@ ob_end_clean();
                 <a href="/ergon/admin/entry" class="sidebar__link <?= ($active_page ?? '') === 'admin-entry' ? 'sidebar__link--active' : '' ?>">
                     <span class="sidebar__icon">📝</span>
                     Direct Entry
+                </a>
+                <a href="/ergon/client-ledger" class="sidebar__link <?= ($active_page ?? '') === 'client_ledger' ? 'sidebar__link--active' : '' ?>">
+                    <span class="sidebar__icon">🧾</span>
+                    Customer Ledger
                 </a>
                 <a href="/ergon/finance/measurement-sheet" class="sidebar__link <?= ($active_page ?? '') === 'measurement_sheet' ? 'sidebar__link--active' : '' ?> <?= $financeDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">📐</span>

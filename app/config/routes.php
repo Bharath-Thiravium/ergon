@@ -425,6 +425,12 @@ $router->get('/site-reports/summary', 'SiteReportController', 'summary');
 $router->get('/site-reports/window-status', 'SiteReportController', 'windowStatus');
 $router->post('/site-reports/expense/approve', 'SiteReportController', 'approveExpense');
 
+// Client Ledger Routes
+$router->get('/client-ledger', 'ClientLedgerController', 'index');
+$router->get('/client-ledger/{id}', 'ClientLedgerController', 'ledger');
+$router->post('/client-ledger/store', 'ClientLedgerController', 'store');
+$router->post('/client-ledger/create-client', 'ClientLedgerController', 'createClient');
+
 // Finance Module Routes - Main
 $router->get('/finance', 'FinanceController', 'dashboard');
 
