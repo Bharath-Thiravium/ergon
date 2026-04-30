@@ -427,9 +427,13 @@ $router->post('/site-reports/expense/approve', 'SiteReportController', 'approveE
 
 // Client Ledger Routes
 $router->get('/client-ledger', 'ClientLedgerController', 'index');
-$router->get('/client-ledger/{id}', 'ClientLedgerController', 'ledger');
+$router->get('/client-ledger/check-reference', 'ClientLedgerController', 'checkReference');
+$router->get('/client-ledger/entry/{id}', 'ClientLedgerController', 'editEntry');
 $router->post('/client-ledger/store', 'ClientLedgerController', 'store');
 $router->post('/client-ledger/create-client', 'ClientLedgerController', 'createClient');
+$router->post('/client-ledger/entry/{id}/update', 'ClientLedgerController', 'updateEntry');
+$router->post('/client-ledger/entry/{id}/delete', 'ClientLedgerController', 'deleteEntry');
+$router->get('/client-ledger/{id}', 'ClientLedgerController', 'ledger');
 
 // Finance Module Routes - Main
 $router->get('/finance', 'FinanceController', 'dashboard');

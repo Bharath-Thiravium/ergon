@@ -105,7 +105,7 @@ class ClientLedgerController extends Controller {
 
     private function fetchLedgerEntries(PDO $db, int $clientId): array {
         $stmt = $db->prepare("
-            SELECT transaction_date, entry_type, description, reference_no,
+            SELECT id, transaction_date, entry_type, description, reference_no,
                    amount, direction, balance_after
             FROM client_ledgers
             WHERE client_id = :client_id
@@ -113,6 +113,180 @@ class ClientLedgerController extends Controller {
         ");
         $stmt->execute([':client_id' => $clientId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** AJAX: check if a reference_no already exists for this client (excluding a given entry id) */
+    public function checkReference(): void {
+        $this->requireAdmin();
+        $clientId    = (int)($_GET['client_id'] ?? 0);
+        $referenceNo = trim($_GET['reference_no'] ?? '');
+        $excludeId   = (int)($_GET['exclude_id'] ?? 0);
+
+        if (!$clientId || $referenceNo === '') {
+            $this->json(['duplicate' => false]);
+        }
+
+        $db   = $this->getDb();
+        $sql  = 'SELECT COUNT(*) FROM client_ledgers WHERE client_id = ? AND reference_no = ?';
+        $args = [$clientId, $referenceNo];
+        if ($excludeId > 0) {
+            $sql  .= ' AND id != ?';
+            $args[] = $excludeId;
+        }
+        $stmt = $db->prepare($sql);
+        $stmt->execute($args);
+        $this->json(['duplicate' => (int)$stmt->fetchColumn() > 0]);
+    }
+
+    /** POST: delete an entry and recalculate all remaining balance_after values */
+    public function deleteEntry(int $entryId): void {
+        $this->requireAdmin();
+        if (!$this->isPost()) {
+            $this->redirect('/client-ledger');
+        }
+
+        $db   = $this->getDb();
+        $stmt = $db->prepare('SELECT client_id FROM client_ledgers WHERE id = ?');
+        $stmt->execute([$entryId]);
+        $row  = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            $this->json(['success' => false, 'error' => 'Entry not found'], 404);
+        }
+        $clientId = (int)$row['client_id'];
+
+        $db->beginTransaction();
+        try {
+            $db->prepare('DELETE FROM client_ledgers WHERE id = ?')->execute([$entryId]);
+
+            // Recalculate balance_after for all remaining entries of this client
+            $all = $db->prepare('
+                SELECT id, direction, amount FROM client_ledgers
+                WHERE client_id = ?
+                ORDER BY transaction_date ASC, id ASC
+                FOR UPDATE
+            ');
+            $all->execute([$clientId]);
+            $rows = $all->fetchAll(PDO::FETCH_ASSOC);
+
+            $running = 0.0;
+            $updBal  = $db->prepare('UPDATE client_ledgers SET balance_after = ? WHERE id = ?');
+            foreach ($rows as $r) {
+                $running += $r['direction'] === 'credit' ? floatval($r['amount']) : -floatval($r['amount']);
+                $updBal->execute([$running, $r['id']]);
+            }
+
+            $db->commit();
+        } catch (Exception $e) {
+            $db->rollBack();
+            error_log('ClientLedger deleteEntry error: ' . $e->getMessage());
+            $this->json(['success' => false, 'error' => 'delete_failed']);
+        }
+
+        $this->json(['success' => true, 'client_id' => $clientId]);
+    }
+
+    /** AJAX GET: return a single entry as JSON for the edit modal */
+    public function editEntry(int $entryId): void {
+        $this->requireAdmin();
+        $db   = $this->getDb();
+        $stmt = $db->prepare("
+            SELECT id, client_id, entry_type, direction, amount, description, reference_no, transaction_date
+            FROM client_ledgers WHERE id = ?
+        ");
+        $stmt->execute([$entryId]);
+        $entry = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$entry) {
+            $this->json(['success' => false, 'error' => 'Entry not found'], 404);
+        }
+        $this->json(['success' => true, 'entry' => $entry]);
+    }
+
+    /** POST: update an entry and recalculate all subsequent balance_after values */
+    public function updateEntry(int $entryId): void {
+        $this->requireAdmin();
+        if (!$this->isPost()) {
+            $this->redirect('/client-ledger');
+        }
+
+        $entryType   = $_POST['entry_type'] ?? '';
+        $amount      = floatval($_POST['amount'] ?? 0);
+        $txDate      = $_POST['transaction_date'] ?? '';
+        $description = trim($_POST['description'] ?? '');
+        $referenceNo = trim($_POST['reference_no'] ?? '');
+
+        $validTypes = ['payment_received', 'payment_sent', 'adjustment'];
+        if (!in_array($entryType, $validTypes) || $amount <= 0 || !$txDate) {
+            $this->json(['success' => false, 'error' => 'Invalid input'], 422);
+        }
+
+        $directionMap = [
+            'payment_received' => 'credit',
+            'payment_sent'     => 'debit',
+            'adjustment'       => $_POST['adjustment_direction'] ?? 'credit',
+        ];
+        $direction = $directionMap[$entryType];
+        if (!in_array($direction, ['debit', 'credit'])) $direction = 'credit';
+
+        $db = $this->getDb();
+
+        // Verify entry exists and get client_id
+        $stmt = $db->prepare('SELECT client_id FROM client_ledgers WHERE id = ?');
+        $stmt->execute([$entryId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            $this->json(['success' => false, 'error' => 'Entry not found'], 404);
+        }
+        $clientId = (int)$row['client_id'];
+
+        // Duplicate reference check (exclude self)
+        if ($referenceNo !== '') {
+            $chk = $db->prepare('SELECT COUNT(*) FROM client_ledgers WHERE client_id = ? AND reference_no = ? AND id != ?');
+            $chk->execute([$clientId, $referenceNo, $entryId]);
+            if ((int)$chk->fetchColumn() > 0) {
+                $this->json(['success' => false, 'error' => 'duplicate_reference']);
+            }
+        }
+
+        $db->beginTransaction();
+        try {
+            // Update the target row (balance_after will be recalculated below)
+            $upd = $db->prepare("
+                UPDATE client_ledgers
+                SET entry_type = ?, direction = ?, amount = ?, description = ?,
+                    reference_no = ?, transaction_date = ?
+                WHERE id = ?
+            ");
+            $upd->execute([
+                $entryType, $direction, $amount,
+                $description ?: null, $referenceNo ?: null, $txDate,
+                $entryId,
+            ]);
+
+            // Recalculate balance_after for ALL entries of this client in chronological order
+            $all = $db->prepare("
+                SELECT id, direction, amount FROM client_ledgers
+                WHERE client_id = ?
+                ORDER BY transaction_date ASC, id ASC
+                FOR UPDATE
+            ");
+            $all->execute([$clientId]);
+            $rows = $all->fetchAll(PDO::FETCH_ASSOC);
+
+            $running = 0.0;
+            $updBal  = $db->prepare('UPDATE client_ledgers SET balance_after = ? WHERE id = ?');
+            foreach ($rows as $r) {
+                $running += $r['direction'] === 'credit' ? floatval($r['amount']) : -floatval($r['amount']);
+                $updBal->execute([$running, $r['id']]);
+            }
+
+            $db->commit();
+        } catch (Exception $e) {
+            $db->rollBack();
+            error_log('ClientLedger updateEntry error: ' . $e->getMessage());
+            $this->json(['success' => false, 'error' => 'save_failed']);
+        }
+
+        $this->json(['success' => true]);
     }
 
     public function store(): void {
@@ -133,8 +307,6 @@ class ClientLedgerController extends Controller {
             $this->redirect('/client-ledger?error=invalid_input');
         }
 
-        // direction: payment_received = credit (money IN), payment_sent = debit (money OUT)
-        // adjustment direction comes from entry_type mapping; for adjustment we use a sub-field
         $directionMap = [
             'payment_received' => 'credit',
             'payment_sent'     => 'debit',
@@ -146,9 +318,17 @@ class ClientLedgerController extends Controller {
         $db = $this->getDb();
         $this->ensureTables($db);
 
+        // Duplicate reference check before opening transaction
+        if ($referenceNo !== '') {
+            $chk = $db->prepare('SELECT COUNT(*) FROM client_ledgers WHERE client_id = ? AND reference_no = ?');
+            $chk->execute([$clientId, $referenceNo]);
+            if ((int)$chk->fetchColumn() > 0) {
+                $this->redirect('/client-ledger/' . $clientId . '?error=duplicate_reference');
+            }
+        }
+
         $db->beginTransaction();
         try {
-            // Lock last row for this client to get previous balance
             $stmt = $db->prepare("
                 SELECT balance_after FROM client_ledgers
                 WHERE client_id = ?
