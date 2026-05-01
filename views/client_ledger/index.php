@@ -71,13 +71,7 @@ ob_start();
                                 <?= ucfirst($c['status']) ?>
                             </span>
                         </td>
-<td style="text-align:center;white-space:nowrap;">
-                            <button onclick="openEditClientModal(<?= $c['id'] ?>, '<?= addslashes($c['name']) ?>', '<?= addslashes($c['company_name'] ?? '') ?>', '<?= addslashes($c['email'] ?? '') ?>', '<?= addslashes($c['phone'] ?? '') ?>')" title="Edit Client" style="background:none;border:none;padding:4px;cursor:pointer;color:#6b7280;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
-                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                    <path d="M15 5l4 4"/>
-                                </svg>
-                            </button>
+<td style="text-align:center;">
                             <a href="/ergon/client-ledger/<?= $c['id'] ?>" class="btn btn--sm btn--primary">View Ledger</a>
                         </td>
                     </tr>

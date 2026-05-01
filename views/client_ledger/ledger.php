@@ -194,7 +194,9 @@ ob_start();
         </div>
         <div id="viewModalBody" style="text-align:center;padding:24px;color:#6b7280;">Loading…</div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
-            <button type="button" onclick="closeModal('viewEntryModal')" class="btn btn--secondary">Close</button>
+            <button type="button" onclick="deleteFromView()" id="viewDeleteBtn" class="btn btn--danger" style="background:#fee2e2;color:#991b1b;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-right:auto;">Delete</button>
+            <button type="button" onclick="closeModal('viewEntryModal')" class="btn btn--secondary" style="background:none;border:1px solid #d1d5db;padding:8px 16px;border-radius:6px;cursor:pointer;">Close</button>
+            <button type="button" onclick="editFromView()" id="viewEditBtn" class="btn btn--primary" style="background:#1d4ed8;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;">Edit</button>
         </div>
     </div>
 </div>
@@ -346,8 +348,14 @@ const existingAttachment = e.attachment ? `<a href="/ergon/client-ledger/view/${
     .catch(() => { body.innerHTML = '<p style="color:#dc2626;">Network error. Please try again.</p>'; });
 }
 
-/* ── open view modal: fetch and display entry details ─────────────── */
+function number_format(num) {
+    return Number(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/* ── view modal actions ─────────────────────────────────────────── */
+let _currentViewEntryId = null;
 function openViewModal(entryId) {
+    _currentViewEntryId = entryId;
     const modal = document.getElementById('viewEntryModal');
     const body  = document.getElementById('viewModalBody');
     body.innerHTML = '<div style="text-align:center;padding:24px;color:#6b7280;">Loading…</div>';
@@ -385,6 +393,7 @@ function openViewModal(entryId) {
             ? '<a href="/ergon/client-ledger/view/' + encodeURIComponent(e.attachment) + '" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 10px;background:#d1fae5;color:#065f46;border-radius:6px;font-size:12px;text-decoration:none;"><i class="bi bi-paperclip"></i> View Attachment</a>'
             : '<span style="color:#9ca3af;font-size:13px;">None</span>';
 
+        _currentViewEntryId = entryId;
         body.innerHTML = `
             <div style="text-align:left;font-size:14px;line-height:1.6;">
                 <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #e5e7eb;">
@@ -430,8 +439,17 @@ function formatDate(dateStr) {
     return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
 }
 
-function number_format(num) {
-    return Number(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function editFromView() {
+    if (!_currentViewEntryId) return;
+    closeModal('viewEntryModal');
+    openEditModal(_currentViewEntryId);
+}
+
+function deleteFromView() {
+    if (!_currentViewEntryId) return;
+    if (!confirm('Delete this entry?\n\nThis will recalculate all subsequent balances.')) return;
+    closeModal('viewEntryModal');
+    deleteEntry(_currentViewEntryId);
 }
 
 /* ── submit edit via fetch, reload on success ───────────────────── */
