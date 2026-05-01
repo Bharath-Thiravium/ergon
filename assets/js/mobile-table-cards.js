@@ -3,126 +3,100 @@
  * Automatically converts tables to mobile-friendly cards on small screens
  */
 
+// Pages where this script should not run at all
+const DISABLED_PATHS = [
+  '/admin/management',
+  '/ledgers/',
+  '/users/view',
+];
+
+function isDisabledPage() {
+  const path = window.location.pathname;
+  return DISABLED_PATHS.some(p => path.includes(p));
+}
+
 function convertTablesToCards() {
-  if (window.location.pathname.includes('/admin/management')) return;
+  if (isDisabledPage()) return;
   if (window.innerWidth > 768) return;
 
-  const tables = document.querySelectorAll('.table-responsive');
-
-  tables.forEach(container => {
-    // ── Guard: skip if already converted ──────────────────────────────────
+  document.querySelectorAll('.table-responsive').forEach(container => {
     if (container.dataset.mobileConverted === '1') return;
 
-    const table = container.querySelector('table');
-    if (!table) return;
-
-    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-    const rows = table.querySelectorAll('tbody tr');
+    const tables = container.querySelectorAll('table');
+    if (!tables.length) return;
 
     const cardContainer = document.createElement('div');
     cardContainer.className = 'mobile-card-container';
-    cardContainer.style.display = 'block';
 
-    rows.forEach(row => {
-      const cells = row.querySelectorAll('td');
-      const card = createCard(headers, cells);
-      cardContainer.appendChild(card);
+    tables.forEach(table => {
+      const headers = Array.from(table.querySelectorAll('thead th'))
+        .map(th => th.textContent.trim().replace(/[⇅🔍▲▼]/g, '').trim());
+
+      const lastHeader = headers[headers.length - 1] || '';
+      const hasActionsCol = /action|edit|manage/i.test(lastHeader)
+        || table.querySelector('tbody td:last-child .ab-container') !== null;
+
+      table.querySelectorAll('tbody tr').forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (!cells.length) return;
+        cardContainer.appendChild(createCard(headers, cells, hasActionsCol));
+      });
+
+      table.style.display = 'none';
     });
 
-    container.style.position = 'relative';
     container.appendChild(cardContainer);
-    table.style.display = 'none';
-
-    // Mark as converted so subsequent calls skip it
     container.dataset.mobileConverted = '1';
   });
 }
 
-function createCard(headers, cells) {
+function createCard(headers, cells, hasActionsCol) {
   const card = document.createElement('div');
   card.className = 'task-card';
 
-  let cardHTML = `
-    <div class="task-card__header">
-      <h3 class="task-card__title">${cells[0]?.textContent.trim() || 'Item'}</h3>
-    </div>
-    <div class="task-card__meta">
-  `;
+  // Title = first cell text
+  const title = cells[0]?.textContent.trim() || 'Item';
 
-  // Add fields — skip first (used as title) AND last (action buttons)
-  const lastIndex = Math.min(headers.length, cells.length) - 1;
-  for (let i = 1; i < lastIndex; i++) {
-    if (cells[i] && headers[i]) {
-      cardHTML += `
-        <div class="task-card__field">
-          <div class="task-card__label">${headers[i]}</div>
-          <div class="task-card__value">${cells[i].innerHTML}</div>
-        </div>
-      `;
-    }
+  // Fields: skip first (title) and last if it's actions col
+  const fieldEnd = hasActionsCol ? cells.length - 1 : cells.length;
+
+  let fieldsHTML = '';
+  for (let i = 1; i < fieldEnd; i++) {
+    if (!cells[i] || !headers[i]) continue;
+    fieldsHTML += `
+      <div class="task-card__field">
+        <div class="task-card__label">${headers[i]}</div>
+        <div class="task-card__value">${cells[i].innerHTML}</div>
+      </div>`;
   }
 
-  cardHTML += '</div>';
-
-  // Add action buttons from last cell — take directly from ab-container or loose buttons
-  const lastCell = cells[cells.length - 1];
-  if (lastCell) {
-    const abContainer = lastCell.querySelector('.ab-container');
+  // Actions: only if last col is actions col
+  let actionsHTML = '';
+  if (hasActionsCol) {
+    const lastCell = cells[cells.length - 1];
+    const abContainer = lastCell?.querySelector('.ab-container');
     if (abContainer) {
-      // Clone the whole ab-container as-is
-      cardHTML += '<div class="task-card__actions">' + abContainer.outerHTML + '</div>';
+      actionsHTML = `<div class="task-card__actions">${abContainer.innerHTML}</div>`;
     } else {
-      // Fallback: grab loose buttons not inside ab-container
-      const buttons = Array.from(lastCell.querySelectorAll('button, a')).filter(btn => {
-        const text = btn.textContent.toLowerCase();
-        return !text.includes('view') && !text.includes('extended');
-      });
-      if (buttons.length > 0) {
-        cardHTML += '<div class="task-card__actions">';
-        buttons.slice(0, 2).forEach(btn => { cardHTML += btn.outerHTML; });
-        cardHTML += '</div>';
+      // loose buttons fallback
+      const btns = Array.from(lastCell?.querySelectorAll('a.btn, button.btn') || []);
+      if (btns.length) {
+        actionsHTML = `<div class="task-card__actions">${btns.map(b => b.outerHTML).join('')}</div>`;
       }
     }
   }
 
-  card.innerHTML = cardHTML;
+  card.innerHTML = `
+    <div class="task-card__header">
+      <h3 class="task-card__title">${title}</h3>
+    </div>
+    <div class="task-card__meta">${fieldsHTML}</div>
+    ${actionsHTML}`;
+
   return card;
 }
 
-function getStatusFromRow(cells) {
-  // Look for status in common column positions or badge elements
-  for (let cell of cells) {
-    const badge = cell.querySelector('.badge, .status, [class*="status"]');
-    if (badge) return badge.textContent.trim();
-    
-    const text = cell.textContent.trim().toLowerCase();
-    if (['pending', 'completed', 'in progress', 'overdue', 'active', 'inactive'].includes(text)) {
-      return text;
-    }
-  }
-  return 'pending';
-}
-
-function getPriorityFromRow(cells) {
-  // Look for priority indicators
-  for (let cell of cells) {
-    const text = cell.textContent.trim().toLowerCase();
-    if (['high', 'medium', 'low'].includes(text)) {
-      return text;
-    }
-    
-    const badge = cell.querySelector('.badge, .priority');
-    if (badge) {
-      const badgeText = badge.textContent.trim().toLowerCase();
-      if (['high', 'medium', 'low'].includes(badgeText)) {
-        return badgeText;
-      }
-    }
-  }
-  return 'medium';
-}
-
-// Initialize once on DOM ready
+// Init
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', convertTablesToCards);
 } else {
@@ -130,13 +104,10 @@ if (document.readyState === 'loading') {
 }
 
 window.addEventListener('resize', () => {
-  if (window.location.pathname.includes('/admin/management')) return;
-
+  if (isDisabledPage()) return;
   if (window.innerWidth > 768) {
-    // Remove cards and restore tables when switching to desktop
     document.querySelectorAll('.table-responsive').forEach(container => {
-      const cards = container.querySelector('.mobile-card-container');
-      if (cards) cards.remove();
+      container.querySelector('.mobile-card-container')?.remove();
       const table = container.querySelector('table');
       if (table) table.style.display = '';
       delete container.dataset.mobileConverted;
@@ -146,5 +117,4 @@ window.addEventListener('resize', () => {
   }
 });
 
-// Export for manual triggering
 window.convertTablesToCards = convertTablesToCards;
