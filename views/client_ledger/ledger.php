@@ -54,13 +54,12 @@ ob_start();
     <div class="card__body" style="padding:0;">
         <div class="table-responsive">
             <table class="table table--striped" style="margin:0;">
-                <thead>
+<thead>
                     <tr>
                         <th>Date</th>
                         <th>Type</th>
                         <th>Description</th>
 <th>Reference</th>
-                        <th style="text-align:center;">Attach</th>
                         <th style="text-align:right;">Debit</th>
                         <th style="text-align:right;">Credit</th>
                         <th style="text-align:right;">Balance</th>
@@ -68,8 +67,8 @@ ob_start();
                     </tr>
                 </thead>
                 <tbody>
-                <?php if (empty($entries)): ?>
-<tr><td colspan="9" style="text-align:center;padding:40px;color:#9ca3af;">No entries yet. Add the first entry.</td></tr>
+<?php if (empty($entries)): ?>
+<tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af;">No entries yet. Add the first entry.</td></tr>
                 <?php else: ?>
                     <?php foreach ($entries as $e): ?>
                     <?php
@@ -89,15 +88,6 @@ ob_start();
                         </td>
                         <td><?= htmlspecialchars($e['description'] ?? '—') ?></td>
 <td style="color:#6b7280;font-size:13px;"><?= htmlspecialchars($e['reference_no'] ?? '—') ?></td>
-                        <td style="text-align:center;">
-                            <?php if (!empty($e['attachment'])): ?>
-                            <a href="/ergon/client-ledger/view/<?= urlencode($e['attachment']) ?>" target="_blank" title="View attachment" style="color:#1d4ed8;text-decoration:none;">
-                                <i class="bi bi-paperclip"></i>
-                            </a>
-                            <?php else: ?>
-                            <span style="color:#9ca3af;">—</span>
-                            <?php endif; ?>
-                        </td>
                         <td style="text-align:right;color:#dc2626;font-weight:600;">
                             <?= $e['direction'] === 'debit' ? '₹' . number_format($e['amount'], 2) : '—' ?>
                         </td>
@@ -107,7 +97,11 @@ ob_start();
                         <td style="text-align:right;font-weight:700;color:<?= $e['balance_after'] >= 0 ? '#059669' : '#dc2626' ?>;">
                             <?= $e['balance_after'] < 0 ? '-' : '' ?>₹<?= number_format(abs($e['balance_after']), 2) ?>
                         </td>
-                        <td style="text-align:center;white-space:nowrap;">
+<td style="text-align:center;white-space:nowrap;">
+                            <button onclick="openViewModal(<?= $e['id'] ?>)"
+                                style="background:none;border:1px solid #93c5fd;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;color:#1d4ed8;display:inline-flex;align-items:center;gap:4px;margin-right:4px;">
+                                <i class="bi bi-eye"></i> View
+                            </button>
                             <button onclick="openEditModal(<?= $e['id'] ?>)"
                                 style="background:none;border:1px solid #d1d5db;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;color:#374151;display:inline-flex;align-items:center;gap:4px;margin-right:4px;">
                                 <i class="bi bi-pencil"></i> Edit
@@ -202,6 +196,20 @@ ob_start();
     </div>
 </div>
 
+<!-- ── VIEW ENTRY MODAL ────────────────────────────────────────── -->
+<div id="viewEntryModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;margin:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h3 style="margin:0;font-size:18px;font-weight:700;">Entry Details</h3>
+            <button onclick="closeModal('viewEntryModal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
+        </div>
+        <div id="viewModalBody" style="text-align:center;padding:24px;color:#6b7280;">Loading…</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+            <button type="button" onclick="closeModal('viewEntryModal')" class="btn btn--secondary">Close</button>
+        </div>
+    </div>
+</div>
+
 
 
 <script>
@@ -214,7 +222,7 @@ function openAddModal() {
 function closeModal(id) {
     document.getElementById(id).style.display = 'none';
 }
-['addEntryModal','editEntryModal'].forEach(function(id) {
+['addEntryModal','editEntryModal','viewEntryModal'].forEach(function(id) {
     document.getElementById(id).addEventListener('click', function(e) {
         if (e.target === this) closeModal(id);
     });
@@ -347,6 +355,94 @@ const existingAttachment = e.attachment ? `<a href="/ergon/client-ledger/view/${
         </form>`;
     })
     .catch(() => { body.innerHTML = '<p style="color:#dc2626;">Network error. Please try again.</p>'; });
+}
+
+/* ── open view modal: fetch and display entry details ─────────────── */
+function openViewModal(entryId) {
+    const modal = document.getElementById('viewEntryModal');
+    const body  = document.getElementById('viewModalBody');
+    body.innerHTML = '<div style="text-align:center;padding:24px;color:#6b7280;">Loading…</div>';
+    modal.style.display = 'flex';
+
+    fetch('/ergon/client-ledger/entry/' + entryId, {
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) { body.innerHTML = '<p style="color:#dc2626;">Failed to load entry.</p>'; return; }
+        const e = data.entry;
+
+        const typeLabels = {
+            'payment_received': 'Payment Received',
+            'payment_sent': 'Payment Sent',
+            'adjustment': 'Adjustment'
+        };
+        const typeLabel = typeLabels[e.entry_type] || e.entry_type;
+        
+        const typeColors = {
+            'payment_received': { bg: '#d1fae5', color: '#065f46' },
+            'payment_sent': { bg: '#fee2e2', color: '#991b1b' },
+            'adjustment': { bg: '#fef3c7', color: '#92400e' }
+        };
+        const typeStyle = typeColors[e.entry_type] || { bg: '#f3f4f6', color: '#374151' };
+        
+        const directionLabel = e.direction === 'credit' ? 'Credit' : (e.direction === 'debit' ? 'Debit' : '-');
+        const amountDisplay = e.direction === 'debit' 
+            ? '<span style="color:#dc2626;font-weight:600;">₹' + number_format(e.amount, 2) + '</span>'
+            : '<span style="color:#059669;font-weight:600;">₹' + number_format(e.amount, 2) + '</span>';
+        
+        const attachmentLink = e.attachment 
+            ? '<a href="/ergon/client-ledger/view/' + encodeURIComponent(e.attachment) + '" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 10px;background:#d1fae5;color:#065f46;border-radius:6px;font-size:12px;text-decoration:none;"><i class="bi bi-paperclip"></i> View Attachment</a>'
+            : '<span style="color:#9ca3af;font-size:13px;">None</span>';
+
+        body.innerHTML = `
+            <div style="text-align:left;font-size:14px;line-height:1.6;">
+                <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #e5e7eb;">
+                    <span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;background:${typeStyle.bg};color:${typeStyle.color};">
+                        ${typeLabel}
+                    </span>
+                    <span style="margin-left:8px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;">(${directionLabel})</span>
+                </div>
+                <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;margin-bottom:12px;">
+                    <div style="font-weight:600;color:#6b7280;">Amount</div>
+                    <div style="font-size:18px;font-weight:700;">${amountDisplay}</div>
+                </div>
+                <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;margin-bottom:12px;">
+                    <div style="font-weight:600;color:#6b7280;">Date</div>
+                    <div>${formatDate(e.transaction_date)}</div>
+                </div>
+                <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;margin-bottom:12px;">
+                    <div style="font-weight:600;color:#6b7280;">Reference No.</div>
+                    <div>${e.reference_no || '<span style="color:#9ca3af;">—</span>'}</div>
+                </div>
+                <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;margin-bottom:12px;">
+                    <div style="font-weight:600;color:#6b7280;">Description</div>
+                    <div>${e.description || '<span style="color:#9ca3af;">—</span>'}</div>
+                </div>
+                <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;margin-bottom:12px;">
+                    <div style="font-weight:600;color:#6b7280;">Attachment</div>
+                    <div>${attachmentLink}</div>
+                </div>
+                <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;">
+                    <div style="font-weight:600;color:#6b7280;">Balance After</div>
+                    <div style="font-weight:700;color:${e.balance_after >= 0 ? '#059669' : '#dc2626'};">
+                        ${e.balance_after < 0 ? '-' : ''}₹${number_format(Math.abs(e.balance_after), 2)}
+                    </div>
+                </div>
+            </div>`;
+    })
+    .catch(() => { body.innerHTML = '<p style="color:#dc2626;">Network error. Please try again.</p>'; });
+}
+
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+function number_format(num) {
+    return Number(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /* ── submit edit via fetch, reload on success ───────────────────── */
