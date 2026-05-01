@@ -98,7 +98,17 @@ ob_start();
                             <?= $e['balance_after'] < 0 ? '-' : '' ?>₹<?= number_format(abs($e['balance_after']), 2) ?>
                         </td>
 <td style="text-align:center;">
-                            <button onclick="openViewModal(<?= $e['id'] ?>)" class="btn btn--sm btn--primary">View</button>
+                            <div class="ab-container">
+                                <button class="ab-btn ab-btn--view" onclick="openViewModal(<?= $e['id'] ?>)" data-tooltip="View Details">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                <button class="ab-btn ab-btn--edit" onclick="openEditModal(<?= $e['id'] ?>)" data-tooltip="Edit Entry">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>
+                                </button>
+                                <button class="ab-btn ab-btn--delete" onclick="confirmDelete(<?= $e['id'] ?>, '<?= date('d M Y', strtotime($e['transaction_date'])) ?>', '<?= number_format($e['amount'], 2) ?>')" data-tooltip="Delete Entry">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -529,6 +539,14 @@ function escHtml(str) {
 const flash = document.getElementById('flashMsg');
 if (flash) setTimeout(() => flash.style.display = 'none', 4000);
 </script>
+
+<style>
+@media (max-width: 768px) {
+    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table { min-width: 700px; }
+    .ab-container { gap: 2px; }
+}
+</style>
 
 <?php
 $content = ob_get_clean();

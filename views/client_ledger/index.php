@@ -72,7 +72,15 @@ ob_start();
                             </span>
                         </td>
 <td style="text-align:center;">
-                            <a href="/ergon/client-ledger/<?= $c['id'] ?>" class="btn btn--sm btn--primary">View Ledger</a>
+                            <div class="ab-container">
+                                <a href="/ergon/client-ledger/<?= $c['id'] ?>" class="ab-btn ab-btn--view" data-tooltip="View Ledger">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </a>
+                                <button class="ab-btn ab-btn--edit" data-tooltip="Edit Client"
+                                    onclick="openEditClientModal(<?= $c['id'] ?>, '<?= addslashes(htmlspecialchars($c['name'])) ?>', '<?= addslashes(htmlspecialchars($c['company_name'] ?? '')) ?>', '<?= addslashes(htmlspecialchars($c['email'] ?? '')) ?>', '<?= addslashes(htmlspecialchars($c['phone'] ?? '')) ?>')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -286,6 +294,14 @@ function submitEditClient(e) {
     });
 }
 </script>
+
+<style>
+@media (max-width: 768px) {
+    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table { min-width: 600px; }
+    .ab-container { gap: 2px; }
+}
+</style>
 
 <?php
 $content = ob_get_clean();

@@ -8,6 +8,7 @@ const DISABLED_PATHS = [
   '/admin/management',
   '/ledgers/',
   '/users/view',
+  '/client-ledger',
 ];
 
 function isDisabledPage() {
