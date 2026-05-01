@@ -41,17 +41,17 @@ function convertTablesToCards() {
 function createCard(headers, cells) {
   const card = document.createElement('div');
   card.className = 'task-card';
-  
-  // Card content
+
   let cardHTML = `
     <div class="task-card__header">
       <h3 class="task-card__title">${cells[0]?.textContent.trim() || 'Item'}</h3>
     </div>
     <div class="task-card__meta">
   `;
-  
-  // Add fields (skip first column as it's the title)
-  for (let i = 1; i < Math.min(headers.length, cells.length); i++) {
+
+  // Add fields — skip first (used as title) AND last (action buttons)
+  const lastIndex = Math.min(headers.length, cells.length) - 1;
+  for (let i = 1; i < lastIndex; i++) {
     if (cells[i] && headers[i]) {
       cardHTML += `
         <div class="task-card__field">
@@ -61,29 +61,30 @@ function createCard(headers, cells) {
       `;
     }
   }
-  
+
   cardHTML += '</div>';
-  
-  // Add exactly two action buttons from last cell (exclude View button and extended actions)
+
+  // Add action buttons from last cell — take directly from ab-container or loose buttons
   const lastCell = cells[cells.length - 1];
   if (lastCell) {
-    const allButtons = lastCell.querySelectorAll('button, a, .ab-btn');
-    const filteredButtons = Array.from(allButtons).filter(btn => {
-      const text = btn.textContent.toLowerCase();
-      const hasAbContainer = btn.closest('.ab-container');
-      return !text.includes('view') && !text.includes('extended') && !hasAbContainer;
-    });
-    
-    if (filteredButtons.length > 0) {
-      cardHTML += '<div class="task-card__actions">';
-      // Take first two filtered buttons only
-      for (let i = 0; i < Math.min(2, filteredButtons.length); i++) {
-        cardHTML += filteredButtons[i].outerHTML;
+    const abContainer = lastCell.querySelector('.ab-container');
+    if (abContainer) {
+      // Clone the whole ab-container as-is
+      cardHTML += '<div class="task-card__actions">' + abContainer.outerHTML + '</div>';
+    } else {
+      // Fallback: grab loose buttons not inside ab-container
+      const buttons = Array.from(lastCell.querySelectorAll('button, a')).filter(btn => {
+        const text = btn.textContent.toLowerCase();
+        return !text.includes('view') && !text.includes('extended');
+      });
+      if (buttons.length > 0) {
+        cardHTML += '<div class="task-card__actions">';
+        buttons.slice(0, 2).forEach(btn => { cardHTML += btn.outerHTML; });
+        cardHTML += '</div>';
       }
-      cardHTML += '</div>';
     }
   }
-  
+
   card.innerHTML = cardHTML;
   return card;
 }
