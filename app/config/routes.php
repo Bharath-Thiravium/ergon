@@ -429,6 +429,7 @@ $router->post('/site-reports/expense/approve', 'SiteReportController', 'approveE
 $router->get('/client-ledger', 'ClientLedgerController', 'index');
 $router->get('/client-ledger/check-reference', 'ClientLedgerController', 'checkReference');
 $router->get('/client-ledger/entry/{id}', 'ClientLedgerController', 'editEntry');
+$router->get('/client-ledger/view/{filename}', 'ClientLedgerController', 'viewAttachment');
 $router->post('/client-ledger/store', 'ClientLedgerController', 'store');
 $router->post('/client-ledger/create-client', 'ClientLedgerController', 'createClient');
 $router->post('/client-ledger/entry/{id}/update', 'ClientLedgerController', 'updateEntry');

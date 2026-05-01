@@ -90,7 +90,7 @@ ob_start();
             <h3 style="margin:0;font-size:18px;font-weight:700;">Add Ledger Entry</h3>
             <button onclick="document.getElementById('addEntryModal').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
         </div>
-        <form method="POST" action="/ergon/client-ledger/store">
+<form method="POST" action="/ergon/client-ledger/store" enctype="multipart/form-data">
             <div style="margin-bottom:14px;">
                 <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Client *</label>
                 <select name="client_id" required style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;">
@@ -130,10 +130,16 @@ ob_start();
                 <textarea name="description" rows="2" placeholder="Optional note..."
                     style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;resize:vertical;"></textarea>
             </div>
-            <div style="margin-bottom:20px;">
+<div style="margin-bottom:20px;">
                 <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Reference No.</label>
                 <input type="text" name="reference_no" placeholder="Invoice / Cheque / UTR..."
                     style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Attachment</label>
+                <input type="file" name="attachment" accept="image/*,.pdf"
+                    style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;background:#fff;">
+                <div style="font-size:11px;color:#6b7280;margin-top:4px;">Allowed: JPG, PNG, GIF, WEBP, PDF (optional)</div>
             </div>
             <div style="display:flex;gap:10px;justify-content:flex-end;">
                 <button type="button" onclick="document.getElementById('addEntryModal').style.display='none'" class="btn btn--secondary">Cancel</button>

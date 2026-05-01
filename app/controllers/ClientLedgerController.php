@@ -30,12 +30,81 @@ class ClientLedgerController extends Controller {
                 balance_after DECIMAL(12,2) NOT NULL,
                 description TEXT,
                 reference_no VARCHAR(100),
+                attachment VARCHAR(500),
                 transaction_date DATE NOT NULL,
                 created_by INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (client_id) REFERENCES clients(id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+    }
+
+    private function getUploadDir(): string {
+        $dir = __DIR__ . '/../../public/uploads/client_ledger';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        return $dir;
+    }
+
+    private function handleAttachmentUpload(?array $file, int $clientId): ?string {
+        if (empty($file) || $file['error'] !== UPLOAD_ERR_OK) {
+            return null;
+        }
+
+        $allowedTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'application/pdf'
+        ];
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($file['tmp_name']);
+
+        if (!in_array($mimeType, $allowedTypes)) {
+            return null;
+        }
+
+        $extension = $mimeType === 'application/pdf' ? '.pdf' : '.' . explode('/', $mimeType)[1];
+        if ($extension === '.jpeg') $extension = '.jpg';
+
+        $fileName = 'ledger_' . $clientId . '_' . time() . '_' . uniqid() . $extension;
+        $targetPath = $this->getUploadDir() . '/' . $fileName;
+
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            return $fileName;
+        }
+
+        return null;
+    }
+
+    private function deleteAttachmentFile(?string $filename): void {
+        if (empty($filename)) return;
+        
+        $filePath = $this->getUploadDir() . '/' . $filename;
+        if (file_exists($filePath)) {
+            @unlink($filePath);
+        }
+    }
+
+    public function viewAttachment(string $filename): void {
+        $filePath = $this->getUploadDir() . '/' . $filename;
+        
+        if (!file_exists($filePath) || !is_readable($filePath)) {
+            http_response_code(404);
+            echo 'File not found';
+            return;
+        }
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($filePath);
+
+        header('Content-Type: ' . $mimeType);
+        header('Content-Length: ' . filesize($filePath));
+        readfile($filePath);
+        exit;
     }
 
     private function requireAdmin(): void {
@@ -103,9 +172,9 @@ class ClientLedgerController extends Controller {
         ]);
     }
 
-    private function fetchLedgerEntries(PDO $db, int $clientId): array {
+private function fetchLedgerEntries(PDO $db, int $clientId): array {
         $stmt = $db->prepare("
-            SELECT id, transaction_date, entry_type, description, reference_no,
+            SELECT id, transaction_date, entry_type, description, reference_no, attachment,
                    amount, direction, balance_after
             FROM client_ledgers
             WHERE client_id = :client_id
@@ -145,18 +214,24 @@ class ClientLedgerController extends Controller {
             $this->redirect('/client-ledger');
         }
 
-        $db   = $this->getDb();
-        $stmt = $db->prepare('SELECT client_id FROM client_ledgers WHERE id = ?');
+$db   = $this->getDb();
+        $stmt = $db->prepare('SELECT client_id, attachment FROM client_ledgers WHERE id = ?');
         $stmt->execute([$entryId]);
         $row  = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
             $this->json(['success' => false, 'error' => 'Entry not found'], 404);
         }
         $clientId = (int)$row['client_id'];
+        $oldAttachment = $row['attachment'] ?? null;
 
         $db->beginTransaction();
         try {
             $db->prepare('DELETE FROM client_ledgers WHERE id = ?')->execute([$entryId]);
+            
+            // Delete the attachment file if exists
+            if ($oldAttachment) {
+                $this->deleteAttachmentFile($oldAttachment);
+            }
 
             // Recalculate balance_after for all remaining entries of this client
             $all = $db->prepare('
@@ -185,12 +260,12 @@ class ClientLedgerController extends Controller {
         $this->json(['success' => true, 'client_id' => $clientId]);
     }
 
-    /** AJAX GET: return a single entry as JSON for the edit modal */
+/** AJAX GET: return a single entry as JSON for the edit modal */
     public function editEntry(int $entryId): void {
         $this->requireAdmin();
         $db   = $this->getDb();
         $stmt = $db->prepare("
-            SELECT id, client_id, entry_type, direction, amount, description, reference_no, transaction_date
+            SELECT id, client_id, entry_type, direction, amount, description, reference_no, attachment, transaction_date
             FROM client_ledgers WHERE id = ?
         ");
         $stmt->execute([$entryId]);
@@ -227,40 +302,59 @@ class ClientLedgerController extends Controller {
         $direction = $directionMap[$entryType];
         if (!in_array($direction, ['debit', 'credit'])) $direction = 'credit';
 
-        $db = $this->getDb();
+$db = $this->getDb();
 
         // Verify entry exists and get client_id
-        $stmt = $db->prepare('SELECT client_id FROM client_ledgers WHERE id = ?');
+        $stmt = $db->prepare('SELECT client_id, attachment FROM client_ledgers WHERE id = ?');
         $stmt->execute([$entryId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
             $this->json(['success' => false, 'error' => 'Entry not found'], 404);
         }
         $clientId = (int)$row['client_id'];
+        $oldAttachment = $row['attachment'] ?? null;
+
+        // Handle new attachment upload
+        $newAttachment = null;
+        if (!empty($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            $newAttachment = $this->handleAttachmentUpload($_FILES['attachment'], $clientId);
+        }
 
         // Duplicate reference check (exclude self)
         if ($referenceNo !== '') {
             $chk = $db->prepare('SELECT COUNT(*) FROM client_ledgers WHERE client_id = ? AND reference_no = ? AND id != ?');
             $chk->execute([$clientId, $referenceNo, $entryId]);
             if ((int)$chk->fetchColumn() > 0) {
+                // Delete uploaded file if we failed due to duplicate reference
+                if ($newAttachment) {
+                    $this->deleteAttachmentFile($newAttachment);
+                }
                 $this->json(['success' => false, 'error' => 'duplicate_reference']);
             }
         }
 
         $db->beginTransaction();
         try {
+            // Use new attachment if uploaded, otherwise keep old one
+            $attachment_to_save = $newAttachment ?: $oldAttachment;
+            
             // Update the target row (balance_after will be recalculated below)
             $upd = $db->prepare("
                 UPDATE client_ledgers
                 SET entry_type = ?, direction = ?, amount = ?, description = ?,
-                    reference_no = ?, transaction_date = ?
+                    reference_no = ?, attachment = ?, transaction_date = ?
                 WHERE id = ?
             ");
             $upd->execute([
                 $entryType, $direction, $amount,
-                $description ?: null, $referenceNo ?: null, $txDate,
+                $description ?: null, $referenceNo ?: null, $attachment_to_save, $txDate,
                 $entryId,
             ]);
+            
+            // If new file uploaded and old file exists, delete old file
+            if ($newAttachment && $oldAttachment) {
+                $this->deleteAttachmentFile($oldAttachment);
+            }
 
             // Recalculate balance_after for ALL entries of this client in chronological order
             $all = $db->prepare("
@@ -315,14 +409,24 @@ class ClientLedgerController extends Controller {
         $direction = $directionMap[$entryType];
         if (!in_array($direction, ['debit', 'credit'])) $direction = 'credit';
 
-        $db = $this->getDb();
+$db = $this->getDb();
         $this->ensureTables($db);
 
-        // Duplicate reference check before opening transaction
+        // Handle attachment upload
+        $attachment = null;
+        if (!empty($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            $attachment = $this->handleAttachmentUpload($_FILES['attachment'], $clientId);
+        }
+
+// Duplicate reference check before opening transaction
         if ($referenceNo !== '') {
             $chk = $db->prepare('SELECT COUNT(*) FROM client_ledgers WHERE client_id = ? AND reference_no = ?');
             $chk->execute([$clientId, $referenceNo]);
             if ((int)$chk->fetchColumn() > 0) {
+                // Delete uploaded file if we failed due to duplicate reference
+                if ($attachment) {
+                    $this->deleteAttachmentFile($attachment);
+                }
                 $this->redirect('/client-ledger/' . $clientId . '?error=duplicate_reference');
             }
         }
@@ -345,12 +449,12 @@ class ClientLedgerController extends Controller {
 
             $ins = $db->prepare("
                 INSERT INTO client_ledgers
-                    (client_id, entry_type, direction, amount, balance_after, description, reference_no, transaction_date, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (client_id, entry_type, direction, amount, balance_after, description, reference_no, attachment, transaction_date, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $ins->execute([
                 $clientId, $entryType, $direction, $amount, $newBalance,
-                $description ?: null, $referenceNo ?: null, $txDate,
+                $description ?: null, $referenceNo ?: null, $attachment, $txDate,
                 $_SESSION['user_id'] ?? null,
             ]);
 
@@ -358,6 +462,10 @@ class ClientLedgerController extends Controller {
         } catch (Exception $e) {
             $db->rollBack();
             error_log('ClientLedger store error: ' . $e->getMessage());
+            // Delete uploaded file on failure
+            if ($attachment) {
+                $this->deleteAttachmentFile($attachment);
+            }
             $this->redirect('/client-ledger/' . $clientId . '?error=save_failed');
         }
 

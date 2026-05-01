@@ -59,7 +59,8 @@ ob_start();
                         <th>Date</th>
                         <th>Type</th>
                         <th>Description</th>
-                        <th>Reference</th>
+<th>Reference</th>
+                        <th style="text-align:center;">Attach</th>
                         <th style="text-align:right;">Debit</th>
                         <th style="text-align:right;">Credit</th>
                         <th style="text-align:right;">Balance</th>
@@ -68,7 +69,7 @@ ob_start();
                 </thead>
                 <tbody>
                 <?php if (empty($entries)): ?>
-                    <tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af;">No entries yet. Add the first entry.</td></tr>
+<tr><td colspan="9" style="text-align:center;padding:40px;color:#9ca3af;">No entries yet. Add the first entry.</td></tr>
                 <?php else: ?>
                     <?php foreach ($entries as $e): ?>
                     <?php
@@ -87,7 +88,16 @@ ob_start();
                             </span>
                         </td>
                         <td><?= htmlspecialchars($e['description'] ?? '—') ?></td>
-                        <td style="color:#6b7280;font-size:13px;"><?= htmlspecialchars($e['reference_no'] ?? '—') ?></td>
+<td style="color:#6b7280;font-size:13px;"><?= htmlspecialchars($e['reference_no'] ?? '—') ?></td>
+                        <td style="text-align:center;">
+                            <?php if (!empty($e['attachment'])): ?>
+                            <a href="/ergon/client-ledger/view/<?= urlencode($e['attachment']) ?>" target="_blank" title="View attachment" style="color:#1d4ed8;text-decoration:none;">
+                                <i class="bi bi-paperclip"></i>
+                            </a>
+                            <?php else: ?>
+                            <span style="color:#9ca3af;">—</span>
+                            <?php endif; ?>
+                        </td>
                         <td style="text-align:right;color:#dc2626;font-weight:600;">
                             <?= $e['direction'] === 'debit' ? '₹' . number_format($e['amount'], 2) : '—' ?>
                         </td>
@@ -123,7 +133,7 @@ ob_start();
             <h3 style="margin:0;font-size:18px;font-weight:700;">Add Entry — <?= htmlspecialchars($client['name']) ?></h3>
             <button onclick="closeModal('addEntryModal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
         </div>
-        <form id="addEntryForm" method="POST" action="/ergon/client-ledger/store" onsubmit="return validateRefBeforeSubmit('addRefErr')">
+<form id="addEntryForm" method="POST" action="/ergon/client-ledger/store" enctype="multipart/form-data" onsubmit="return validateRefBeforeSubmit('addRefErr')">
             <input type="hidden" name="client_id" value="<?= $client['id'] ?>">
             <div style="margin-bottom:14px;">
                 <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Type *</label>
@@ -163,9 +173,15 @@ ob_start();
                     placeholder="Invoice / Cheque / UTR..."
                     oninput="checkRefDuplicate('add', 0)"
                     style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;">
-                <div id="addRefErr" style="display:none;margin-top:4px;font-size:12px;color:#dc2626;font-weight:600;">
+<div id="addRefErr" style="display:none;margin-top:4px;font-size:12px;color:#dc2626;font-weight:600;">
                     ⚠️ This reference number already exists for this client.
                 </div>
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Attachment</label>
+                <input type="file" name="attachment" accept="image/*,.pdf"
+                    style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;background:#fff;">
+                <div style="font-size:11px;color:#6b7280;margin-top:4px;">Allowed: JPG, PNG, GIF, WEBP, PDF (optional)</div>
             </div>
             <div style="display:flex;gap:10px;justify-content:flex-end;">
                 <button type="button" onclick="closeModal('addEntryModal')" class="btn btn--secondary">Cancel</button>
