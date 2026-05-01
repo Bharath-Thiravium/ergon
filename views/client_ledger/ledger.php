@@ -288,9 +288,11 @@ function openEditModal(entryId) {
         const adjCredit  = e.direction !== 'debit' ? 'selected' : '';
         const adjDebit   = e.direction === 'debit'  ? 'selected' : '';
 
+const existingAttachment = e.attachment ? `<a href="/ergon/client-ledger/view/${encodeURIComponent(e.attachment)}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 10px;background:#d1fae5;color:#065f46;border-radius:6px;font-size:12px;text-decoration:none;"><i class="bi bi-paperclip"></i> View Current</a>` : '<span style="color:#9ca3af;font-size:12px;">No attachment</span>';
         body.innerHTML = `
         <form id="editEntryForm"
               onsubmit="submitEdit(event, ${entryId})"
+              enctype="multipart/form-data"
               style="text-align:left;">
             <div style="margin-bottom:14px;">
                 <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Type *</label>
@@ -330,6 +332,13 @@ function openEditModal(entryId) {
                     ⚠️ This reference number already exists for this client.
                 </div>
             </div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Attachment <span style="font-weight:400;color:#6b7280;">(optional)</span></label>
+                <div style="margin-bottom:8px;">${existingAttachment}</div>
+                <input type="file" name="attachment" accept="image/*,.pdf"
+                    style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;background:#fff;">
+                <div style="font-size:11px;color:#6b7280;margin-top:4px;">Allowed: JPG, PNG, GIF, WEBP, PDF — Leave empty to keep existing</div>
+            </div>
             <div id="editFormErr" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:6px;background:#fee2e2;color:#991b1b;font-size:13px;"></div>
             <div style="display:flex;gap:10px;justify-content:flex-end;">
                 <button type="button" onclick="closeModal('editEntryModal')" class="btn btn--secondary">Cancel</button>
@@ -358,16 +367,13 @@ function submitEdit(e, entryId) {
     if (formErr) formErr.style.display = 'none';
 
     const form = document.getElementById('editEntryForm');
-    const body = new URLSearchParams(new FormData(form));
+    const formData = new FormData(form);
 
     fetch('/ergon/client-ledger/entry/' + entryId + '/update', {
         method: 'POST',
         credentials: 'same-origin',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: body.toString()
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
     })
     .then(r => r.json())
     .then(data => {
