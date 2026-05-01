@@ -31,7 +31,8 @@ ob_start();
 
 <div class="card">
     <div class="card__body" style="padding:0;">
-        <div class="table-responsive">
+        <!-- Desktop Table View -->
+        <div class="table-responsive desktop-view">
             <table class="table table--striped" style="margin:0;">
                 <thead>
                     <tr>
@@ -71,7 +72,7 @@ ob_start();
                                 <?= ucfirst($c['status']) ?>
                             </span>
                         </td>
-<td style="text-align:center;">
+                        <td style="text-align:center;">
                             <div class="ab-container">
                                 <a href="/ergon/client-ledger/<?= $c['id'] ?>" class="ab-btn ab-btn--view" data-tooltip="View Ledger">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -87,6 +88,63 @@ ob_start();
                 <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+        
+        <!-- Mobile Card View -->
+        <div class="mobile-card-view" style="display:none;padding:16px;">
+            <?php if (empty($clients)): ?>
+                <div style="text-align:center;padding:40px;color:#9ca3af;">No clients yet. Add your first client.</div>
+            <?php else: ?>
+                <?php foreach ($clients as $c): ?>
+                <div class="task-card">
+                    <div class="task-card__header">
+                        <div>
+                            <div class="task-card__title">
+                                <a href="/ergon/client-ledger/<?= $c['id'] ?>" style="color:#1d4ed8;text-decoration:none;">
+                                    <?= htmlspecialchars($c['name']) ?>
+                                </a>
+                            </div>
+                            <?php if ($c['company_name']): ?>
+                            <div style="font-size:14px;color:#6b7280;margin-top:4px;"><?= htmlspecialchars($c['company_name']) ?></div>
+                            <?php endif; ?>
+                            <?php if ($c['email']): ?>
+                            <div style="font-size:12px;color:#9ca3af;margin-top:2px;"><?= htmlspecialchars($c['email']) ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <span class="task-card__priority badge badge--<?= $c['status'] === 'active' ? 'success' : 'info' ?>">
+                            <?= ucfirst($c['status']) ?>
+                        </span>
+                    </div>
+                    
+                    <div class="task-card__meta">
+                        <div class="task-card__field">
+                            <span class="task-card__label">Total Credits</span>
+                            <span class="task-card__value" style="color:#059669;">₹<?= number_format($c['total_credits'], 2) ?></span>
+                        </div>
+                        <div class="task-card__field">
+                            <span class="task-card__label">Total Debits</span>
+                            <span class="task-card__value" style="color:#dc2626;">₹<?= number_format($c['total_debits'], 2) ?></span>
+                        </div>
+                        <div class="task-card__field">
+                            <span class="task-card__label">Current Balance</span>
+                            <span class="task-card__value" style="color:<?= $c['current_balance'] >= 0 ? '#059669' : '#dc2626' ?>;font-weight:700;">
+                                <?= $c['current_balance'] < 0 ? '-' : '' ?>₹<?= number_format(abs($c['current_balance']), 2) ?>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="task-card__actions">
+                        <a href="/ergon/client-ledger/<?= $c['id'] ?>" class="ab-btn ab-btn--view" data-tooltip="View Ledger">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </a>
+                        <button class="ab-btn ab-btn--edit" data-tooltip="Edit Client"
+                            onclick="openEditClientModal(<?= $c['id'] ?>, '<?= addslashes(htmlspecialchars($c['name'])) ?>', '<?= addslashes(htmlspecialchars($c['company_name'] ?? '')) ?>', '<?= addslashes(htmlspecialchars($c['email'] ?? '')) ?>', '<?= addslashes(htmlspecialchars($c['phone'] ?? '')) ?>')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -300,6 +358,16 @@ function submitEditClient(e) {
     .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .table { min-width: 600px; }
     .ab-container { gap: 2px; }
+    
+    /* Show mobile card view, hide desktop table */
+    .desktop-view { display: none !important; }
+    .mobile-card-view { display: block !important; }
+}
+
+@media (min-width: 769px) {
+    /* Show desktop table, hide mobile card view */
+    .desktop-view { display: block !important; }
+    .mobile-card-view { display: none !important; }
 }
 </style>
 

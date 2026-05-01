@@ -81,7 +81,8 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
         </h2>
     </div>
     <div class="card__body">
-        <div class="table-responsive">
+        <!-- Desktop Table View -->
+        <div class="table-responsive desktop-view">
             <table class="table">
                 <thead>
                     <tr>
@@ -239,6 +240,128 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                 </tbody>
             </table>
         </div>
+        
+        <!-- Mobile Card View -->
+        <div class="mobile-card-view" style="display:none;padding:16px;">
+            <?php if (empty($tasks ?? [])): ?>
+                <div class="empty-state">
+                    <div class="empty-icon">✅</div>
+                    <h3>No Tasks Found</h3>
+                    <p>No tasks have been created yet.</p>
+                </div>
+            <?php else: ?>
+                <?php foreach ($tasks as $task): ?>
+                <?php 
+                $progress = $task['progress'] ?? 0;
+                $status = $task['status'] ?? 'assigned';
+                $statusIcon = match($status) {
+                    'completed' => '✅',
+                    'in_progress' => '⚡',
+                    'blocked' => '🚫',
+                    default => '📋'
+                };
+                $priorityClass = match($task['priority']) {
+                    'high' => 'danger',
+                    'medium' => 'warning',
+                    default => 'info'
+                };
+                ?>
+                <div class="task-card">
+                    <div class="task-card__header">
+                        <div>
+                            <div class="task-card__title"><?= htmlspecialchars($task['title']) ?></div>
+                            <?php if ($task['description'] ?? ''): ?>
+                            <div style="font-size:14px;color:#6b7280;margin-top:4px;"><?= htmlspecialchars(substr($task['description'], 0, 60)) ?>...</div>
+                            <?php endif; ?>
+                        </div>
+                        <span class="task-card__priority badge badge--<?= $priorityClass ?>"><?= ucfirst($task['priority']) ?></span>
+                    </div>
+                    
+                    <div class="task-card__progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: <?= $progress ?>%; background: <?= $progress >= 100 ? '#10b981' : ($progress >= 75 ? '#8b5cf6' : ($progress >= 50 ? '#3b82f6' : ($progress >= 25 ? '#f59e0b' : '#e2e8f0'))) ?>"></div>
+                        </div>
+                        <div class="progress-text" style="font-size:12px;color:#6b7280;text-align:right;margin-top:4px;">
+                            <?= $statusIcon ?> <?= $progress ?>% - <?= ucfirst(str_replace('_', ' ', $status)) ?>
+                        </div>
+                    </div>
+                    
+                    <div class="task-card__meta">
+                        <div class="task-card__field">
+                            <span class="task-card__label">Assigned To</span>
+                            <span class="task-card__value"><?= htmlspecialchars($task['assigned_user'] ?? 'Unassigned') ?></span>
+                        </div>
+                        <div class="task-card__field">
+                            <span class="task-card__label">Due Date</span>
+                            <span class="task-card__value"><?= ($task['deadline'] ?? $task['due_date']) ? date('M d, Y', strtotime($task['deadline'] ?? $task['due_date'])) : 'No due date' ?></span>
+                        </div>
+                    </div>
+                    
+                    <div class="task-card__actions">
+                        <a class="ab-btn ab-btn--view" data-action="view" data-module="tasks" data-id="<?= $task['id'] ?>" data-tooltip="View Details">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </a>
+                        
+                        <?php 
+                        $currentUserId = $_SESSION['user_id'] ?? 0;
+                        $currentUserRole = $_SESSION['role'] ?? 'user';
+                        $isAssignedUser = ($task['assigned_to'] ?? 0) == $currentUserId;
+                        $isTaskCreator = ($task['assigned_by'] ?? 0) == $currentUserId;
+                        $isAdmin = in_array($currentUserRole, ['admin', 'owner', 'system_admin']);
+                        $canUpdateProgress = $isAssignedUser || $isAdmin;
+                        $canViewHistory = $isAssignedUser || $isTaskCreator || $isAdmin;
+                        $canEdit = $isAssignedUser || $isTaskCreator || $isAdmin;
+                        $canDelete = $isTaskCreator || $isAdmin;
+                        ?>
+                        
+                        <?php if ($canUpdateProgress && $task['status'] !== 'completed'): ?>
+                        <button class="ab-btn ab-btn--progress" onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>, 'assigned')" data-tooltip="Update Progress">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/>
+                                <polyline points="16,7 22,7 22,13"/>
+                            </svg>
+                        </button>
+                        <?php endif; ?>
+                        
+                        <?php if ($canViewHistory): ?>
+                        <button class="ab-btn history-btn" onclick="showProgressHistory(<?= $task['id'] ?>)" data-tooltip="View Progress History">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12,6 12,12 16,14"/>
+                            </svg>
+                        </button>
+                        <?php endif; ?>
+                        
+                        <?php if ($canEdit): ?>
+                        <a class="ab-btn ab-btn--edit" data-action="edit" data-module="tasks" data-id="<?= $task['id'] ?>" data-tooltip="Edit Task">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                <path d="M15 5l4 4"/>
+                            </svg>
+                        </a>
+                        <?php endif; ?>
+                        
+                        <?php if ($canDelete): ?>
+                        <button class="ab-btn ab-btn--delete" data-action="delete" data-module="tasks" data-id="<?= $task['id'] ?>" data-name="<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>" data-tooltip="Delete Task">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M3 6h18"/>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 
@@ -337,6 +460,20 @@ const script = document.createElement('script');
 script.src = '/ergon/assets/js/task-progress-enhanced.js';
 document.head.appendChild(script);
 </script>
+
+<style>
+@media (max-width: 768px) {
+    /* Show mobile card view, hide desktop table */
+    .desktop-view { display: none !important; }
+    .mobile-card-view { display: block !important; }
+}
+
+@media (min-width: 769px) {
+    /* Show desktop table, hide mobile card view */
+    .desktop-view { display: block !important; }
+    .mobile-card-view { display: none !important; }
+}
+</style>
 
 
 

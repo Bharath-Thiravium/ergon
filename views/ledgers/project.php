@@ -1,6 +1,7 @@
 <?php
 $title = 'Project Ledger';
 $active_page = 'ledgers';
+$additional_js = '<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>';
 ob_start();
 ?>
 
@@ -273,7 +274,6 @@ ob_start();
 }
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Prepare data from PHP

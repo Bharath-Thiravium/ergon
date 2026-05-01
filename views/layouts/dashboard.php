@@ -6,72 +6,74 @@ require_once __DIR__ . '/../../app/helpers/Security.php';
 require_once __DIR__ . '/../../app/helpers/SecurityHeaders.php';
 require_once __DIR__ . '/../../app/helpers/ModuleManager.php';
 
-// Check module status once at the top
-$tasksDisabled = false;
-$dailyPlannerDisabled = false;
-$followupsDisabled = false;
-$systemAdminDisabled = false;
-$usersDisabled = false;
-$departmentsDisabled = false;
-$projectsDisabled = false;
-$financeDisabled = false;
-$reportsDisabled = false;
-$analyticsDisabled = false;
-
-try {
-    $tasksDisabled = ModuleManager::isModuleDisabled('tasks');
-    $dailyPlannerDisabled = ModuleManager::isModuleDisabled('daily_planner');
-    $followupsDisabled = ModuleManager::isModuleDisabled('followups');
-    $systemAdminDisabled = ModuleManager::isModuleDisabled('system_admin');
-    $usersDisabled = ModuleManager::isModuleDisabled('users');
-    $departmentsDisabled = ModuleManager::isModuleDisabled('departments');
-    $projectsDisabled = ModuleManager::isModuleDisabled('projects');
-    $financeDisabled = ModuleManager::isModuleDisabled('finance');
-    $reportsDisabled = ModuleManager::isModuleDisabled('reports');
-    $analyticsDisabled = ModuleManager::isModuleDisabled('analytics');
-} catch (Exception $e) {
-    // Silently fail - all modules will appear enabled
-}
+// ── Asset version — single constant, no time() per request ───────────────────
+define('ASSET_VER', '2025.3');
 
 SecurityHeaders::apply();
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (empty($_SESSION['user_id']) || empty($_SESSION['role'])) { header('Location: /ergon/login'); exit; }
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) { session_unset(); session_destroy(); header('Location: /ergon/login?timeout=1'); exit; }
 
-// Note: Success/error messages are now handled by individual pages
-
-// Check if user is still active and role hasn't changed
-try {
-    require_once __DIR__ . '/../../app/config/database.php';
-    $db = Database::connect();
-    if (!$db) {
-        throw new Exception('Database connection failed');
+// ── User status check — cached in session for 5 minutes ──────────────────────
+if (!isset($_SESSION['user_verified_at']) || time() - $_SESSION['user_verified_at'] > 300) {
+    try {
+        require_once __DIR__ . '/../../app/config/database.php';
+        $db = Database::connect();
+        $stmt = $db->prepare("SELECT status, role FROM users WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$user || $user['status'] !== 'active') {
+            session_unset(); session_destroy();
+            header('Location: /ergon/login?deactivated=1'); exit;
+        }
+        if ($user['role'] !== $_SESSION['role']) {
+            session_unset(); session_destroy();
+            header('Location: /ergon/login?role_changed=1'); exit;
+        }
+        $_SESSION['user_verified_at'] = time();
+    } catch (Exception $e) {
+        error_log('User status check failed: ' . $e->getMessage());
+        session_unset(); session_destroy();
+        header('Location: /ergon/login?error=database'); exit;
     }
-    $stmt = $db->prepare("SELECT status, role FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$user || $user['status'] !== 'active') {
-        session_unset();
-        session_destroy();
-        header('Location: /ergon/login?deactivated=1');
-        exit;
-    }
-    if ($user['role'] !== $_SESSION['role']) {
-        session_unset();
-        session_destroy();
-        header('Location: /ergon/login?role_changed=1');
-        exit;
-    }
-} catch (Exception $e) {
-    error_log('User status check failed: ' . $e->getMessage());
-    // Redirect to login on database connection failure
-    session_unset();
-    session_destroy();
-    header('Location: /ergon/login?error=database');
-    exit;
 }
 $_SESSION['last_activity'] = time();
-$content = $content ?? '';
+
+// ── Module states — cached in session for 10 minutes ─────────────────────────
+if (!isset($_SESSION['module_cache_at']) || time() - $_SESSION['module_cache_at'] > 600) {
+    try {
+        $_SESSION['module_cache'] = [
+            'tasks'         => ModuleManager::isModuleDisabled('tasks'),
+            'daily_planner' => ModuleManager::isModuleDisabled('daily_planner'),
+            'followups'     => ModuleManager::isModuleDisabled('followups'),
+            'system_admin'  => ModuleManager::isModuleDisabled('system_admin'),
+            'users'         => ModuleManager::isModuleDisabled('users'),
+            'departments'   => ModuleManager::isModuleDisabled('departments'),
+            'projects'      => ModuleManager::isModuleDisabled('projects'),
+            'finance'       => ModuleManager::isModuleDisabled('finance'),
+            'reports'       => ModuleManager::isModuleDisabled('reports'),
+            'analytics'     => ModuleManager::isModuleDisabled('analytics'),
+            'notifications' => ModuleManager::isModuleDisabled('notifications'),
+        ];
+        $_SESSION['module_cache_at'] = time();
+    } catch (Exception $e) {
+        $_SESSION['module_cache'] = array_fill_keys(['tasks','daily_planner','followups','system_admin','users','departments','projects','finance','reports','analytics','notifications'], false);
+    }
+}
+$mc = $_SESSION['module_cache'];
+$tasksDisabled        = $mc['tasks'];
+$dailyPlannerDisabled = $mc['daily_planner'];
+$followupsDisabled    = $mc['followups'];
+$systemAdminDisabled  = $mc['system_admin'];
+$usersDisabled        = $mc['users'];
+$departmentsDisabled  = $mc['departments'];
+$projectsDisabled     = $mc['projects'];
+$financeDisabled      = $mc['finance'];
+$reportsDisabled      = $mc['reports'];
+$analyticsDisabled    = $mc['analytics'];
+$notificationsDisabled = $mc['notifications'];
+
+$content  = $content ?? '';
 $userPrefs = ['theme' => 'light', 'dashboard_layout' => 'default', 'language' => 'en'];
 ob_end_clean();
 ?>
@@ -80,7 +82,7 @@ ob_end_clean();
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
     <link rel="manifest" href="/ergon/manifest.json">
     <meta name="theme-color" content="#0a0f2c">
     <meta name="mobile-web-app-capable" content="yes">
@@ -91,16 +93,15 @@ ob_end_clean();
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
-    
-    <script src="/ergon/assets/js/theme-preload.js?v=<?= time() ?>"></script>
+
+    <!-- Resource hints -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="preload" href="/ergon/assets/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+
+    <!-- Theme preload must run before any CSS to prevent FOUC -->
+    <script src="/ergon/assets/js/theme-preload.js?v=<?= ASSET_VER ?>"></script>
     <script>const APP_BASE = (location.protocol + '//' + location.host + '/ergon');</script>
-    <script>
-    // Convert title attributes to data-tooltip for custom tooltips
-        document.querySelectorAll('[title]').forEach(function(el) {
-            el.setAttribute('data-tooltip', el.getAttribute('title'));
-            el.removeAttribute('title');
-        });
-    </script>
     
     <style>
     /* Critical inline CSS to prevent FOUC and layout forcing */
@@ -202,49 +203,22 @@ ob_end_clean();
     }
     </style>
     
-    <link href="<?= Environment::asset('assets/css/bootstrap-icons.min.css') ?>?v=2.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/ergon.css') ?>?v=<?= time() ?>" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/theme-enhanced.css') ?>?v=2.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/utilities-new.css') ?>?v=2.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/instant-theme.css') ?>?v=2.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/global-tooltips.css') ?>?v=2.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/responsive-mobile.css') ?>?v=2.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/_archive_legacy/css/user-management-mobile.css') ?>?v=2.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/_archive_legacy/css/management-mobile-fix.css') ?>?v=2.0" rel="stylesheet">
-    <!-- Mobile Dark Theme Fixes - Critical for visibility -->
-    <link href="<?= Environment::asset('assets/css/mobile-dark-theme-fixes.css') ?>?v=<?= time() ?>" rel="stylesheet">
-    <!-- Dark Mode Alert & Notification Fixes - Critical for visibility -->
-    <link href="<?= Environment::asset('assets/css/dark-mode-alerts-fix.css') ?>?v=<?= time() ?>" rel="stylesheet">
-    <!-- New Simplified Modal CSS -->
-    <link href="<?= Environment::asset('assets/css/modal.css') ?>?v=<?= time() ?>" rel="stylesheet">
-    <!-- Dashboard overrides loaded last to ensure overrides on compiled CSS in deployments -->
-    <link href="<?= Environment::asset('assets/css/ergon-overrides.css') ?>?v=<?= time() ?>" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/access-denied.css') ?>?v=2.0" rel="stylesheet">
-    <link href="<?= Environment::asset('assets/css/premium-navigation.css') ?>?v=2.0" rel="stylesheet">
+    <!-- 2 CSS requests instead of 12 -->
+    <link rel="stylesheet" href="<?= Environment::asset('assets/css/bootstrap-icons.min.css') ?>?v=<?= ASSET_VER ?>">
+    <link rel="stylesheet" href="<?= Environment::asset('assets/css/ergon.bundle.css') ?>?v=<?= ASSET_VER ?>">
     <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
-    <link href="<?= Environment::asset('assets/css/dashboard-owner.css') ?>?v=1.0" rel="stylesheet">
+    <link rel="stylesheet" href="<?= Environment::asset('assets/css/dashboard-owner.css') ?>?v=<?= ASSET_VER ?>">
     <?php endif; ?>
     <?php if (isset($additional_css)): ?>
     <?= $additional_css ?>
     <?php endif; ?>
 
-    <script src="<?= Environment::asset('assets/js/theme-switcher.js') ?>?v=1.0" defer></script>
-    <script src="<?= Environment::asset('assets/js/ergon-core.min.js') ?>?v=1.0" defer></script>
-    <!-- New Simplified Modal JS -->
-    <script src="<?= Environment::asset('assets/js/modal.js') ?>?v=1.0" defer></script>
-    <script src="<?= Environment::asset('assets/_archive_legacy/js/action-button-clean.js') ?>?v=1.0" defer></script>
-    <script src="<?= Environment::asset('assets/_archive_legacy/js/mobile-enhanced.js') ?>?v=1.0" defer></script>
-    <script src="<?= Environment::asset('assets/js/mobile-table-cards.js') ?>?v=1.0" defer></script>
-    <script src="<?= Environment::asset('assets/js/table-utils.js') ?>?v=1.0" defer></script>
-    <script src="<?= Environment::asset('assets/js/user-status-check.js') ?>?v=1.0" defer></script>
-    <script src="<?= Environment::asset('assets/js/premium-navigation.js') ?>?v=1.0" defer></script>
-    <!-- Dark Mode Alert Enhancements -->
-    <script src="<?= Environment::asset('assets/js/dark-mode-alerts.js') ?>?v=<?= time() ?>" defer></script>
-    <!-- PWA: install prompt + SW lifecycle -->
+    <!-- 1 JS bundle instead of 9 (chart.js loaded per-page only where needed) -->
+    <script src="<?= Environment::asset('assets/js/ergon.bundle.js') ?>?v=<?= ASSET_VER ?>" defer></script>
+    <!-- PWA -->
     <script src="/ergon/assets/js/pwa-install.js" defer></script>
-
-    <?php if (isset($_GET['validate']) && $_GET['validate'] === 'mobile'): ?>
-    <script src="<?= Environment::asset('assets/js/mobile-validation.js') ?>?v=<?= time() ?>" defer></script>
+    <?php if (isset($additional_js)): ?>
+    <?= $additional_js ?>
     <?php endif; ?>
 </head>
 <body data-layout="<?= isset($userPrefs['dashboard_layout']) ? $userPrefs['dashboard_layout'] : 'default' ?>" data-lang="<?= isset($userPrefs['language']) ? $userPrefs['language'] : 'en' ?>" data-page="<?= isset($active_page) ? $active_page : '' ?>" data-user-role="<?= $_SESSION['role'] ?? 'user' ?>" data-theme="<?= isset($userPrefs['theme']) ? $userPrefs['theme'] : 'light' ?>">
@@ -277,14 +251,6 @@ ob_end_clean();
                 <button class="control-btn" id="theme-toggle" title="Toggle Theme">
                     <i class="bi bi-<?= (isset($userPrefs['theme']) && $userPrefs['theme'] === 'dark') ? 'sun-fill' : 'moon-fill' ?>"></i>
                 </button>
-                <?php 
-                $notificationsDisabled = false;
-                try {
-                    $notificationsDisabled = ModuleManager::isModuleDisabled('notifications');
-                } catch (Exception $e) {
-                    // Silently fail - notifications will appear enabled
-                }
-                ?>
                 <?php if (!$notificationsDisabled): ?>
                 <button class="control-btn notification-btn" id="notificationBtn" onclick="toggleNotifications(event)" title="Notifications">
                     <i class="bi bi-bell-fill"></i>

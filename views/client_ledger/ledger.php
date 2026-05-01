@@ -52,14 +52,15 @@ ob_start();
 <!-- Ledger Table -->
 <div class="card">
     <div class="card__body" style="padding:0;">
-        <div class="table-responsive">
+        <!-- Desktop Table View -->
+        <div class="table-responsive desktop-view">
             <table class="table table--striped" style="margin:0;">
-<thead>
+                <thead>
                     <tr>
                         <th>Date</th>
                         <th>Type</th>
                         <th>Description</th>
-<th>Reference</th>
+                        <th>Reference</th>
                         <th style="text-align:right;">Debit</th>
                         <th style="text-align:right;">Credit</th>
                         <th style="text-align:right;">Balance</th>
@@ -67,54 +68,115 @@ ob_start();
                     </tr>
                 </thead>
                 <tbody>
-<?php if (empty($entries)): ?>
-<tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af;">No entries yet. Add the first entry.</td></tr>
-                <?php else: ?>
-                    <?php foreach ($entries as $e): ?>
-                    <?php
-                    $typeMap = [
-                        'payment_received' => ['Payment Received', '#d1fae5', '#065f46'],
-                        'payment_sent'     => ['Payment Sent',     '#fee2e2', '#991b1b'],
-                        'adjustment'       => ['Adjustment',        '#fef3c7', '#92400e'],
-                    ];
-                    [$typeLabel, $typeBg, $typeColor] = $typeMap[$e['entry_type']] ?? [$e['entry_type'], '#f3f4f6', '#374151'];
-                    ?>
-                    <tr>
-                        <td style="white-space:nowrap;"><?= date('d M Y', strtotime($e['transaction_date'])) ?></td>
-                        <td>
-                            <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:<?= $typeBg ?>;color:<?= $typeColor ?>;">
-                                <?= $typeLabel ?>
-                            </span>
-                        </td>
-                        <td><?= htmlspecialchars($e['description'] ?? '—') ?></td>
-<td style="color:#6b7280;font-size:13px;"><?= htmlspecialchars($e['reference_no'] ?? '—') ?></td>
-                        <td style="text-align:right;color:#dc2626;font-weight:600;">
-                            <?= $e['direction'] === 'debit' ? '₹' . number_format($e['amount'], 2) : '—' ?>
-                        </td>
-                        <td style="text-align:right;color:#059669;font-weight:600;">
-                            <?= $e['direction'] === 'credit' ? '₹' . number_format($e['amount'], 2) : '—' ?>
-                        </td>
-                        <td style="text-align:right;font-weight:700;color:<?= $e['balance_after'] >= 0 ? '#059669' : '#dc2626' ?>;">
-                            <?= $e['balance_after'] < 0 ? '-' : '' ?>₹<?= number_format(abs($e['balance_after']), 2) ?>
-                        </td>
-<td style="text-align:center;">
-                            <div class="ab-container">
-                                <button class="ab-btn ab-btn--view" onclick="openViewModal(<?= $e['id'] ?>)" data-tooltip="View Details">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                </button>
-                                <button class="ab-btn ab-btn--edit" onclick="openEditModal(<?= $e['id'] ?>)" data-tooltip="Edit Entry">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>
-                                </button>
-                                <button class="ab-btn ab-btn--delete" onclick="confirmDelete(<?= $e['id'] ?>, '<?= date('d M Y', strtotime($e['transaction_date'])) ?>', '<?= number_format($e['amount'], 2) ?>')" data-tooltip="Delete Entry">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                    <?php if (empty($entries)): ?>
+                    <tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af;">No entries yet. Add the first entry.</td></tr>
+                    <?php else: ?>
+                        <?php foreach ($entries as $e): ?>
+                        <?php
+                        $typeMap = [
+                            'payment_received' => ['Payment Received', '#d1fae5', '#065f46'],
+                            'payment_sent'     => ['Payment Sent',     '#fee2e2', '#991b1b'],
+                            'adjustment'       => ['Adjustment',        '#fef3c7', '#92400e'],
+                        ];
+                        [$typeLabel, $typeBg, $typeColor] = $typeMap[$e['entry_type']] ?? [$e['entry_type'], '#f3f4f6', '#374151'];
+                        ?>
+                        <tr>
+                            <td style="white-space:nowrap;"><?= date('d M Y', strtotime($e['transaction_date'])) ?></td>
+                            <td>
+                                <span style="padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:<?= $typeBg ?>;color:<?= $typeColor ?>;">
+                                    <?= $typeLabel ?>
+                                </span>
+                            </td>
+                            <td><?= htmlspecialchars($e['description'] ?? '—') ?></td>
+                            <td style="color:#6b7280;font-size:13px;"><?= htmlspecialchars($e['reference_no'] ?? '—') ?></td>
+                            <td style="text-align:right;color:#dc2626;font-weight:600;">
+                                <?= $e['direction'] === 'debit' ? '₹' . number_format($e['amount'], 2) : '—' ?>
+                            </td>
+                            <td style="text-align:right;color:#059669;font-weight:600;">
+                                <?= $e['direction'] === 'credit' ? '₹' . number_format($e['amount'], 2) : '—' ?>
+                            </td>
+                            <td style="text-align:right;font-weight:700;color:<?= $e['balance_after'] >= 0 ? '#059669' : '#dc2626' ?>;">
+                                <?= $e['balance_after'] < 0 ? '-' : '' ?>₹<?= number_format(abs($e['balance_after']), 2) ?>
+                            </td>
+                            <td style="text-align:center;">
+                                <div class="ab-container">
+                                    <button class="ab-btn ab-btn--view" onclick="openViewModal(<?= $e['id'] ?>)" data-tooltip="View Details">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    </button>
+                                    <button class="ab-btn ab-btn--edit" onclick="openEditModal(<?= $e['id'] ?>)" data-tooltip="Edit Entry">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>
+                                    </button>
+                                    <button class="ab-btn ab-btn--delete" onclick="confirmDelete(<?= $e['id'] ?>, '<?= date('d M Y', strtotime($e['transaction_date'])) ?>', '<?= number_format($e['amount'], 2) ?>')" data-tooltip="Delete Entry">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+        
+        <!-- Mobile Card View -->
+        <div class="mobile-card-view" style="display:none;padding:16px;">
+            <?php if (empty($entries)): ?>
+                <div style="text-align:center;padding:40px;color:#9ca3af;">No entries yet. Add the first entry.</div>
+            <?php else: ?>
+                <?php foreach ($entries as $e): ?>
+                <?php
+                $typeMap = [
+                    'payment_received' => ['Payment Received', '#d1fae5', '#065f46'],
+                    'payment_sent'     => ['Payment Sent',     '#fee2e2', '#991b1b'],
+                    'adjustment'       => ['Adjustment',        '#fef3c7', '#92400e'],
+                ];
+                [$typeLabel, $typeBg, $typeColor] = $typeMap[$e['entry_type']] ?? [$e['entry_type'], '#f3f4f6', '#374151'];
+                ?>
+                <div class="task-card">
+                    <div class="task-card__header">
+                        <div>
+                            <span class="task-card__priority badge badge--<?= $e['entry_type'] === 'payment_received' ? 'success' : ($e['entry_type'] === 'payment_sent' ? 'danger' : 'warning') ?>" style="background:<?= $typeBg ?>;color:<?= $typeColor ?>;">
+                                <?= $typeLabel ?>
+                            </span>
+                        </div>
+                        <span style="font-size:14px;color:#6b7280;font-weight:500;"><?= date('d M Y', strtotime($e['transaction_date'])) ?></span>
+                    </div>
+                    
+                    <div style="font-size:18px;font-weight:700;margin:8px 0;color:<?= $e['direction'] === 'credit' ? '#059669' : '#dc2626' ?>;">
+                        <?= $e['direction'] === 'credit' ? '+' : '-' ?>₹<?= number_format($e['amount'], 2) ?>
+                    </div>
+                    
+                    <div class="task-card__meta">
+                        <div class="task-card__field">
+                            <span class="task-card__label">Description</span>
+                            <span class="task-card__value"><?= htmlspecialchars($e['description'] ?? '—') ?></span>
+                        </div>
+                        <div class="task-card__field">
+                            <span class="task-card__label">Reference</span>
+                            <span class="task-card__value"><?= htmlspecialchars($e['reference_no'] ?? '—') ?></span>
+                        </div>
+                        <div class="task-card__field">
+                            <span class="task-card__label">Balance After</span>
+                            <span class="task-card__value" style="font-weight:700;color:<?= $e['balance_after'] >= 0 ? '#059669' : '#dc2626' ?>;">
+                                <?= $e['balance_after'] < 0 ? '-' : '' ?>₹<?= number_format(abs($e['balance_after']), 2) ?>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="task-card__actions">
+                        <button class="ab-btn ab-btn--view" onclick="openViewModal(<?= $e['id'] ?>)" data-tooltip="View Details">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="ab-btn ab-btn--edit" onclick="openEditModal(<?= $e['id'] ?>)" data-tooltip="Edit Entry">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>
+                        </button>
+                        <button class="ab-btn ab-btn--delete" onclick="confirmDelete(<?= $e['id'] ?>, '<?= date('d M Y', strtotime($e['transaction_date'])) ?>', '<?= number_format($e['amount'], 2) ?>')" data-tooltip="Delete Entry">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -545,6 +607,16 @@ if (flash) setTimeout(() => flash.style.display = 'none', 4000);
     .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .table { min-width: 700px; }
     .ab-container { gap: 2px; }
+    
+    /* Show mobile card view, hide desktop table */
+    .desktop-view { display: none !important; }
+    .mobile-card-view { display: block !important; }
+}
+
+@media (min-width: 769px) {
+    /* Show desktop table, hide mobile card view */
+    .desktop-view { display: block !important; }
+    .mobile-card-view { display: none !important; }
 }
 </style>
 
