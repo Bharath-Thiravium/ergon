@@ -4,39 +4,37 @@
  */
 
 function convertTablesToCards() {
-  // Completely disable on user management page
-  if (window.location.pathname.includes('/admin/management')) {
-    return;
-  }
-  
+  if (window.location.pathname.includes('/admin/management')) return;
   if (window.innerWidth > 768) return;
 
   const tables = document.querySelectorAll('.table-responsive');
-  
+
   tables.forEach(container => {
-    if (container.querySelector('.mobile-card-container')) return;
-    
+    // ── Guard: skip if already converted ──────────────────────────────────
+    if (container.dataset.mobileConverted === '1') return;
+
     const table = container.querySelector('table');
     if (!table) return;
 
     const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
     const rows = table.querySelectorAll('tbody tr');
-    
+
     const cardContainer = document.createElement('div');
     cardContainer.className = 'mobile-card-container';
     cardContainer.style.display = 'block';
-    
+
     rows.forEach(row => {
       const cells = row.querySelectorAll('td');
       const card = createCard(headers, cells);
       cardContainer.appendChild(card);
     });
-    
+
     container.style.position = 'relative';
     container.appendChild(cardContainer);
-    
-    // Hide table on mobile
     table.style.display = 'none';
+
+    // Mark as converted so subsequent calls skip it
+    container.dataset.mobileConverted = '1';
   });
 }
 
@@ -123,56 +121,29 @@ function getPriorityFromRow(cells) {
   return 'medium';
 }
 
-// Initialize immediately and on events
+// Initialize once on DOM ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', convertTablesToCards);
 } else {
   convertTablesToCards();
 }
 
-setTimeout(convertTablesToCards, 500);
-setTimeout(convertTablesToCards, 1000);
-
 window.addEventListener('resize', () => {
-  if (window.location.pathname.includes('/admin/management')) {
-    return;
-  }
-  
+  if (window.location.pathname.includes('/admin/management')) return;
+
   if (window.innerWidth > 768) {
-    document.querySelectorAll('.mobile-card-container').forEach(container => {
-      container.remove();
+    // Remove cards and restore tables when switching to desktop
+    document.querySelectorAll('.table-responsive').forEach(container => {
+      const cards = container.querySelector('.mobile-card-container');
+      if (cards) cards.remove();
+      const table = container.querySelector('table');
+      if (table) table.style.display = '';
+      delete container.dataset.mobileConverted;
     });
   } else {
-    setTimeout(convertTablesToCards, 100);
+    convertTablesToCards();
   }
 });
-
-// Run on any table updates
-const observer = new MutationObserver(() => {
-  if (window.location.pathname.includes('/admin/management')) {
-    return;
-  }
-  if (window.innerWidth <= 768) {
-    setTimeout(convertTablesToCards, 100);
-  }
-});
-
-if (document.body) {
-  observer.observe(document.body, { childList: true, subtree: true });
-}
-
-// Function to remove element by XPath
-function removeElementByXPath(xpath) {
-  const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-  const element = result.singleNodeValue;
-  if (element) {
-    element.remove();
-    console.log('Element removed:', xpath);
-    return true;
-  }
-  console.log('Element not found:', xpath);
-  return false;
-}
 
 // Export for manual triggering
 window.convertTablesToCards = convertTablesToCards;
