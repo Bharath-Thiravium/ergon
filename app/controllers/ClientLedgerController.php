@@ -265,7 +265,7 @@ $db   = $this->getDb();
         $this->requireAdmin();
         $db   = $this->getDb();
         $stmt = $db->prepare("
-            SELECT id, client_id, entry_type, direction, amount, description, reference_no, attachment, transaction_date
+            SELECT id, client_id, entry_type, direction, amount, description, reference_no, attachment, transaction_date, balance_after
             FROM client_ledgers WHERE id = ?
         ");
         $stmt->execute([$entryId]);
@@ -472,7 +472,7 @@ $db = $this->getDb();
         $this->redirect('/client-ledger/' . $clientId . '?success=1');
     }
 
-    public function createClient(): void {
+public function createClient(): void {
         $this->requireAdmin();
         if (!$this->isPost()) {
             $this->redirect('/client-ledger');
@@ -494,6 +494,39 @@ $db = $this->getDb();
         $stmt->execute([$name, $companyName ?: null, $email ?: null, $phone ?: null]);
 
         $this->redirect('/client-ledger?success=client_created');
+    }
+
+    public function updateClient(): void {
+        $this->requireAdmin();
+        if (!$this->isPost()) {
+            $this->json(['success' => false, 'error' => 'Invalid request'], 400);
+        }
+
+        $clientId   = (int)($_POST['client_id'] ?? 0);
+        $name       = trim($_POST['name'] ?? '');
+        $companyName = trim($_POST['company_name'] ?? '');
+        $email     = trim($_POST['email'] ?? '');
+        $phone     = trim($_POST['phone'] ?? '');
+
+        if (!$clientId || !$name) {
+            $this->json(['success' => false, 'error' => 'Invalid input'], 400);
+        }
+
+        $db = $this->getDb();
+        $this->ensureTables($db);
+
+        // Check if client exists
+        $stmt = $db->prepare('SELECT id FROM clients WHERE id = ?');
+        $stmt->execute([$clientId]);
+        if (!$stmt->fetch()) {
+            $this->json(['success' => false, 'error' => 'Client not found'], 404);
+        }
+
+        // Update client
+        $upd = $db->prepare("UPDATE clients SET name = ?, company_name = ?, email = ?, phone = ? WHERE id = ?");
+        $upd->execute([$name, $companyName ?: null, $email ?: null, $phone ?: null, $clientId]);
+
+        $this->json(['success' => true]);
     }
 }
 ?>

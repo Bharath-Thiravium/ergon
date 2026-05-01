@@ -432,6 +432,7 @@ $router->get('/client-ledger/entry/{id}', 'ClientLedgerController', 'editEntry')
 $router->get('/client-ledger/view/{filename}', 'ClientLedgerController', 'viewAttachment');
 $router->post('/client-ledger/store', 'ClientLedgerController', 'store');
 $router->post('/client-ledger/create-client', 'ClientLedgerController', 'createClient');
+$router->post('/client-ledger/update-client', 'ClientLedgerController', 'updateClient');
 $router->post('/client-ledger/entry/{id}/update', 'ClientLedgerController', 'updateEntry');
 $router->post('/client-ledger/entry/{id}/delete', 'ClientLedgerController', 'deleteEntry');
 $router->get('/client-ledger/{id}', 'ClientLedgerController', 'ledger');

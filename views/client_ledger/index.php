@@ -21,7 +21,7 @@ ob_start();
 
 <?php if (isset($_GET['success'])): ?>
 <div class="alert alert--success" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;">
-    <?= $_GET['success'] === 'client_created' ? '✅ Client created successfully.' : '✅ Entry saved successfully.' ?>
+    <?= $_GET['success'] === 'client_created' ? '✅ Client created successfully.' : ($_GET['success'] === 'client_updated' ? '✅ Client updated successfully.' : '✅ Entry saved successfully.') ?>
 </div>
 <?php elseif (isset($_GET['error'])): ?>
 <div class="alert alert--error" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">
@@ -71,7 +71,13 @@ ob_start();
                                 <?= ucfirst($c['status']) ?>
                             </span>
                         </td>
-                        <td style="text-align:center;">
+<td style="text-align:center;white-space:nowrap;">
+                            <button onclick="openEditClientModal(<?= $c['id'] ?>, '<?= addslashes($c['name']) ?>', '<?= addslashes($c['company_name'] ?? '') ?>', '<?= addslashes($c['email'] ?? '') ?>', '<?= addslashes($c['phone'] ?? '') ?>')" title="Edit Client" style="background:none;border:none;padding:4px;cursor:pointer;color:#6b7280;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                    <path d="M15 5l4 4"/>
+                                </svg>
+                            </button>
                             <a href="/ergon/client-ledger/<?= $c['id'] ?>" class="btn btn--sm btn--primary">View Ledger</a>
                         </td>
                     </tr>
@@ -185,6 +191,44 @@ ob_start();
     </div>
 </div>
 
+<!-- Edit Client Modal -->
+<div id="editClientModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:28px;width:100%;max-width:420px;margin:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h3 style="margin:0;font-size:18px;font-weight:700;">Edit Client</h3>
+            <button onclick="closeEditClientModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
+        </div>
+        <form id="editClientForm" onsubmit="submitEditClient(event)">
+            <input type="hidden" id="editClientId" name="client_id">
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Name *</label>
+                <input type="text" id="editClientName" name="name" required placeholder="Client name"
+                    style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Company</label>
+                <input type="text" id="editClientCompany" name="company_name" placeholder="Company name"
+                    style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Email</label>
+                <input type="email" id="editClientEmail" name="email" placeholder="email@example.com"
+                    style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Phone</label>
+                <input type="text" id="editClientPhone" name="phone" placeholder="+91 XXXXX XXXXX"
+                    style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div id="editClientErr" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:6px;background:#fee2e2;color:#991b1b;font-size:13px;"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button type="button" onclick="closeEditClientModal()" class="btn btn--secondary">Cancel</button>
+                <button type="submit" id="editClientSubmitBtn" class="btn btn--primary">Update Client</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function toggleAdjDirMain() {
     const v = document.getElementById('entryTypeSelectMain').value;
@@ -195,6 +239,58 @@ function toggleAdjDirMain() {
         if (e.target === this) this.style.display = 'none';
     });
 });
+
+/* ── Edit Client Modal ────────────────────────────────────────── */
+function openEditClientModal(clientId, name, companyName, email, phone) {
+    document.getElementById('editClientId').value = clientId;
+    document.getElementById('editClientName').value = name;
+    document.getElementById('editClientCompany').value = companyName;
+    document.getElementById('editClientEmail').value = email;
+    document.getElementById('editClientPhone').value = phone;
+    document.getElementById('editClientModal').style.display = 'flex';
+}
+
+function closeEditClientModal() {
+    document.getElementById('editClientModal').style.display = 'none';
+}
+
+document.getElementById('editClientModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeEditClientModal();
+});
+
+function submitEditClient(e) {
+    e.preventDefault();
+    const form = document.getElementById('editClientForm');
+    const formData = new FormData(form);
+    const btn = document.getElementById('editClientSubmitBtn');
+    const errDiv = document.getElementById('editClientErr');
+    
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    if (errDiv) errDiv.style.display = 'none';
+    
+    fetch('/ergon/client-ledger/update-client', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/ergon/client-ledger?success=client_updated';
+        } else {
+            if (errDiv) { errDiv.textContent = data.error || 'Failed to update client'; errDiv.style.display = 'block'; }
+            btn.disabled = false;
+            btn.textContent = 'Update Client';
+        }
+    })
+    .catch(() => {
+        if (errDiv) { errDiv.textContent = 'Network error'; errDiv.style.display = 'block'; }
+        btn.disabled = false;
+        btn.textContent = 'Update Client';
+    });
+}
 </script>
 
 <?php
