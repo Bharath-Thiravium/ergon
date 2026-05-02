@@ -442,11 +442,20 @@ $router->get('/finance', 'FinanceController', 'dashboard');
 
 // Measurement Sheet
 $router->get('/finance/measurement-sheet', 'FinanceController', 'measurementSheet');
+$router->get('/finance/measurement-sheet/manage', 'FinanceController', 'measurementSheetManage');
+$router->get('/finance/measurement-sheet/{id}/view', 'FinanceController', 'measurementSheetView');
+$router->get('/finance/measurement-sheet/{id}/select-media', 'FinanceController', 'measurementSheetSelectMedia');
+$router->post('/finance/measurement-sheet/{id}/update-media', 'FinanceController', 'measurementSheetUpdateMedia');
+$router->post('/finance/measurement-sheet/{id}/update-status', 'FinanceController', 'measurementSheetUpdateStatus');
+$router->post('/finance/measurement-sheet/{id}/delete', 'FinanceController', 'measurementSheetDelete');
 $router->get('/finance/measurement-sheet/{po_id}/opening-balance', 'FinanceController', 'measurementSheetOpeningBalance');
 $router->post('/finance/measurement-sheet/{po_id}/opening-balance', 'FinanceController', 'measurementSheetOpeningBalanceStore');
 $router->get('/finance/measurement-sheet/{po_id}/create', 'FinanceController', 'measurementSheetCreate');
 $router->post('/finance/measurement-sheet/{po_id}/store', 'FinanceController', 'measurementSheetStore');
 $router->get('/finance/measurement-sheet/{id}/print', 'FinanceController', 'measurementSheetPrint');
+$router->get('/finance/company-media', 'FinanceController', 'companyMedia');
+$router->post('/finance/company-media', 'FinanceController', 'companyMedia');
+$router->get('/api/media-files', 'FinanceController', 'getMediaFiles');
 
 // Finance Module Routes - Legacy (Old System)
 $router->get('/finance/old', 'FinanceController', 'dashboard');

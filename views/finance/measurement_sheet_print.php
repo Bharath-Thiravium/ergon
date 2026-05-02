@@ -72,7 +72,7 @@ body{font-family:Arial,sans-serif;font-size:11px;color:#000;background:#e5e7eb;}
 <body>
 
 <div class="print-controls">
-    <button class="btn-back" onclick="window.close()">✕ Close</button>
+    <button class="btn-back" onclick="history.back()">✕ Close</button>
     <button class="btn-print" onclick="window.print()">🖨 Print</button>
 </div>
 
@@ -104,13 +104,56 @@ body{font-family:Arial,sans-serif;font-size:11px;color:#000;background:#e5e7eb;}
 
     <table class="hdr-table">
         <tr>
-            <td class="logo-cell"><div class="placeholder-box">Insert<br>Logo</div></td>
+            <td class="logo-cell"><?php 
+                // Use selected logo or fallback logic
+                $selectedLogo = $ra['selected_logo'] ?? null;
+                
+                if ($selectedLogo) {
+                    // Try PNG first, then JPG
+                    $logoPath = "/ergon/storage/company/logos/{$selectedLogo}.png";
+                    $logoFile = __DIR__ . "/../../storage/company/logos/{$selectedLogo}.png";
+                    
+                    if (!file_exists($logoFile)) {
+                        $logoPath = "/ergon/storage/company/logos/{$selectedLogo}.jpg";
+                        $logoFile = __DIR__ . "/../../storage/company/logos/{$selectedLogo}.jpg";
+                    }
+                } else {
+                    // Fallback to company-specific or default
+                    $companyId = $po['company_id'] ?? 'default';
+                    $logoPath = "/ergon/storage/company/logos/{$companyId}.png";
+                    $logoFile = __DIR__ . "/../../storage/company/logos/{$companyId}.png";
+                    
+                    if (!file_exists($logoFile)) {
+                        $logoPath = "/ergon/storage/company/logos/{$companyId}.jpg";
+                        $logoFile = __DIR__ . "/../../storage/company/logos/{$companyId}.jpg";
+                    }
+                    
+                    if (!file_exists($logoFile)) {
+                        $logoPath = "/ergon/storage/company/logos/default.png";
+                        $logoFile = __DIR__ . "/../../storage/company/logos/default.png";
+                        
+                        if (!file_exists($logoFile)) {
+                            $logoPath = "/ergon/storage/company/logos/default.jpg";
+                            $logoFile = __DIR__ . "/../../storage/company/logos/default.jpg";
+                        }
+                    }
+                }
+                
+                if (file_exists($logoFile)) {
+                    echo '<img src="' . $logoPath . '" alt="Company Logo" style="max-width:64px;max-height:64px;object-fit:contain;">';
+                } else {
+                    echo '<div class="placeholder-box">Insert<br>Logo</div>';
+                }
+            ?></td>
             <td class="co-cell">
                 <div class="co-name"><?= htmlspecialchars($coName) ?></div>
                 <div class="co-sub">Civil &amp; Construction Works</div>
                 <div class="co-sub" style="margin-top:2px;">GSTIN: <?= htmlspecialchars($po['company_gstin'] ?? '') ?></div>
             </td>
-            <td class="seal-cell"><div class="placeholder-box seal-circle">Insert<br>Seal</div></td>
+            <td class="seal-cell">
+                <!-- Seal removed from header -->
+                <div class="placeholder-box seal-circle" style="visibility:hidden;">Space</div>
+            </td>
         </tr>
     </table>
 
@@ -140,25 +183,14 @@ body{font-family:Arial,sans-serif;font-size:11px;color:#000;background:#e5e7eb;}
     <table class="ms-table">
         <thead>
             <tr>
-                <th rowspan="2" style="width:28px;">S.No</th>
-                <th rowspan="2" style="min-width:150px;">Description of Work</th>
-                <th rowspan="2" style="width:36px;">Unit</th>
-                <th rowspan="2" style="width:52px;">PO Qty</th>
-                <th rowspan="2" style="width:60px;">PO Rate (₹)</th>
-                <th rowspan="2" style="width:68px;">PO Amount (₹)</th>
-                <th colspan="3" class="prev-hdr">Previous Claimed</th>
-                <th colspan="3" class="this-hdr">This Bill</th>
-                <th colspan="2" style="background:#374151;">Cumulative</th>
-            </tr>
-            <tr>
-                <th class="prev-hdr">Qty</th>
-                <th class="prev-hdr">%</th>
-                <th class="prev-hdr">Amount (₹)</th>
-                <th class="this-hdr">Qty</th>
-                <th class="this-hdr">%</th>
-                <th class="this-hdr">Amount (₹)</th>
-                <th style="background:#374151;">Qty</th>
-                <th style="background:#374151;">Amount (₹)</th>
+                <th style="width:40px;">S.NO</th>
+                <th style="min-width:200px;">Description</th>
+                <th style="width:50px;">UOM</th>
+                <th style="width:80px;">AS PER WO<br><small>Qty</small></th>
+                <th style="width:100px;">Previous Bills<br><small>Qty (%)</small></th>
+                <th style="width:100px;">Present Bill<br><small>Qty (%)</small></th>
+                <th style="width:100px;">Cumulative Bill<br><small>Qty (%)</small></th>
+                <th style="width:120px;">Remarks</th>
             </tr>
         </thead>
         <tbody>
@@ -172,52 +204,121 @@ body{font-family:Arial,sans-serif;font-size:11px;color:#000;background:#e5e7eb;}
                 <?php endif; ?>
             </td>
             <td><?= htmlspecialchars($item['unit'] ?? '') ?></td>
-            <td><?= number_format(floatval($item['po_quantity']),3) ?></td>
-            <td><?= number_format(floatval($item['po_unit_price']),2) ?></td>
-            <td><?= number_format(floatval($item['po_line_total']),2) ?></td>
-            <td style="background:#f0f0ff;"><?= number_format(floatval($item['prev_claimed_qty']),3) ?></td>
-            <td style="background:#f0f0ff;"><?= number_format(floatval($item['prev_claimed_pct']),2) ?>%</td>
-            <td style="background:#f0f0ff;"><?= number_format(floatval($item['prev_claimed_amount']),2) ?></td>
-            <td style="background:#f0fff4;font-weight:700;"><?= number_format(floatval($item['this_qty']),3) ?></td>
-            <td style="background:#f0fff4;font-weight:700;"><?= number_format(floatval($item['this_pct']),2) ?>%</td>
-            <td style="background:#f0fff4;font-weight:700;"><?= number_format(floatval($item['this_amount']),2) ?></td>
-            <td style="background:#f5f5f5;"><?= number_format(floatval($item['cumulative_qty']),3) ?></td>
-            <td style="background:#f5f5f5;font-weight:700;"><?= number_format(floatval($item['cumulative_amount']),2) ?></td>
+            <td><?= number_format(floatval($item['po_quantity']),2) ?></td>
+            <td style="background:#f0f0ff;"><?php 
+                $prevQty = floatval($item['prev_claimed_qty']);
+                $prevPct = floatval($item['prev_claimed_pct']);
+                $poQty = floatval($item['po_quantity']);
+                
+                // Calculate percentage from quantity if percentage is 0 but quantity exists
+                if ($prevPct == 0 && $prevQty > 0 && $poQty > 0) {
+                    $prevPct = ($prevQty / $poQty) * 100;
+                }
+                // Calculate quantity from percentage if quantity is 0 but percentage exists
+                else if ($prevQty == 0 && $prevPct > 0 && $poQty > 0) {
+                    $prevQty = ($prevPct / 100) * $poQty;
+                }
+                
+                echo number_format($prevQty, 2) . ' (' . number_format($prevPct, 1) . '%)';
+            ?></td>
+            <td style="background:#f0fff4;font-weight:700;"><?php 
+                $thisQty = floatval($item['this_qty']);
+                $thisPct = floatval($item['this_pct']);
+                $poQty = floatval($item['po_quantity']);
+                
+                // Calculate percentage from quantity if percentage is 0 but quantity exists
+                if ($thisPct == 0 && $thisQty > 0 && $poQty > 0) {
+                    $thisPct = ($thisQty / $poQty) * 100;
+                }
+                // Calculate quantity from percentage if quantity is 0 but percentage exists
+                else if ($thisQty == 0 && $thisPct > 0 && $poQty > 0) {
+                    $thisQty = ($thisPct / 100) * $poQty;
+                }
+                
+                echo number_format($thisQty, 2) . ' (' . number_format($thisPct, 1) . '%)';
+            ?></td>
+            <td style="background:#f5f5f5;font-weight:700;"><?php 
+                $cumQty = floatval($item['cumulative_qty']);
+                $poQty = floatval($item['po_quantity']);
+                
+                // Calculate cumulative percentage from quantity
+                $cumPct = $poQty > 0 ? ($cumQty / $poQty * 100) : 0;
+                
+                // If cumulative quantity is 0, calculate from previous + this
+                if ($cumQty == 0) {
+                    $prevQty = floatval($item['prev_claimed_qty']);
+                    $thisQty = floatval($item['this_qty']);
+                    $prevPct = floatval($item['prev_claimed_pct']);
+                    $thisPct = floatval($item['this_pct']);
+                    
+                    // Calculate quantities from percentages if needed
+                    if ($prevQty == 0 && $prevPct > 0 && $poQty > 0) {
+                        $prevQty = ($prevPct / 100) * $poQty;
+                    }
+                    if ($thisQty == 0 && $thisPct > 0 && $poQty > 0) {
+                        $thisQty = ($thisPct / 100) * $poQty;
+                    }
+                    
+                    $cumQty = $prevQty + $thisQty;
+                    $cumPct = $poQty > 0 ? ($cumQty / $poQty * 100) : 0;
+                }
+                
+                echo number_format($cumQty, 2) . ' (' . number_format($cumPct, 1) . '%)';
+            ?></td>
+            <td style="font-size:8px;"></td>
         </tr>
         <?php endforeach; ?>
         </tbody>
-        <tfoot>
-            <tr class="total-row">
-                <td colspan="5" style="text-align:right;padding-right:8px;">TOTAL</td>
-                <td>₹<?= number_format($poValue,2) ?></td>
-                <td></td><td></td>
-                <td>₹<?= number_format($prevTotal,2) ?></td>
-                <td></td><td></td>
-                <td>₹<?= number_format($totalClaimed,2) ?></td>
-                <td></td>
-                <td>₹<?= number_format($cumTotal,2) ?></td>
-            </tr>
-        </tfoot>
     </table>
 
-    <table class="sum-table" style="margin-top:10px;">
-        <tr>
-            <td class="lbl">PO Contract Value</td>
-            <td class="val">₹<?= number_format($poValue,2) ?></td>
-            <td class="lbl">Total Claimed to Date</td>
-            <td class="val">₹<?= number_format($cumTotal,2) ?></td>
-        </tr>
-        <tr>
-            <td class="lbl">This RA Bill Amount</td>
-            <td class="val" style="color:#059669;">₹<?= number_format($totalClaimed,2) ?></td>
-            <td class="lbl">Balance Remaining</td>
-            <td class="val" style="color:<?= $balance < 0 ? '#dc2626' : '#374151' ?>;">₹<?= number_format($balance,2) ?></td>
-        </tr>
-    </table>
+
 
     <table class="sig-table">
         <tr>
-            <td><div class="sig-line">Prepared By<br><span style="font-weight:400;">Name &amp; Designation</span></div></td>
+            <td>
+                <?php 
+                // Add company seal above "Prepared By" section with larger size
+                $selectedSeal = $ra['selected_seal'] ?? null;
+                
+                if ($selectedSeal) {
+                    // Try PNG first, then JPG
+                    $sealPath = "/ergon/storage/company/seals/{$selectedSeal}.png";
+                    $sealFile = __DIR__ . "/../../storage/company/seals/{$selectedSeal}.png";
+                    
+                    if (!file_exists($sealFile)) {
+                        $sealPath = "/ergon/storage/company/seals/{$selectedSeal}.jpg";
+                        $sealFile = __DIR__ . "/../../storage/company/seals/{$selectedSeal}.jpg";
+                    }
+                } else {
+                    // Fallback to company-specific or default
+                    $companyId = $po['company_id'] ?? 'default';
+                    $sealPath = "/ergon/storage/company/seals/{$companyId}.png";
+                    $sealFile = __DIR__ . "/../../storage/company/seals/{$companyId}.png";
+                    
+                    if (!file_exists($sealFile)) {
+                        $sealPath = "/ergon/storage/company/seals/{$companyId}.jpg";
+                        $sealFile = __DIR__ . "/../../storage/company/seals/{$companyId}.jpg";
+                    }
+                    
+                    if (!file_exists($sealFile)) {
+                        $sealPath = "/ergon/storage/company/seals/default.png";
+                        $sealFile = __DIR__ . "/../../storage/company/seals/default.png";
+                        
+                        if (!file_exists($sealFile)) {
+                            $sealPath = "/ergon/storage/company/seals/default.jpg";
+                            $sealFile = __DIR__ . "/../../storage/company/seals/default.jpg";
+                        }
+                    }
+                }
+                
+                if (file_exists($sealFile)) {
+                    echo '<div style="text-align:center;margin-bottom:8px;">';
+                    echo '<img src="' . $sealPath . '" alt="Company Seal" style="width:100px;height:100px;object-fit:contain;border-radius:50%;">';
+                    echo '</div>';
+                }
+                ?>
+                <div class="sig-line">Prepared By<br><span style="font-weight:400;">Name &amp; Designation</span></div>
+            </td>
             <td><div class="sig-line">Checked By<br><span style="font-weight:400;">Site Engineer</span></div></td>
             <td><div class="sig-line">Approved By<br><span style="font-weight:400;">Project Manager</span></div></td>
         </tr>
@@ -233,13 +334,38 @@ body{font-family:Arial,sans-serif;font-size:11px;color:#000;background:#e5e7eb;}
 
     <table class="hdr-table">
         <tr>
-            <td class="logo-cell"><div class="placeholder-box">Insert<br>Logo</div></td>
+            <td class="logo-cell"><?php 
+                // Use selected logo (same logic as page 1)
+                $selectedLogo = $ra['selected_logo'] ?? null;
+                
+                if ($selectedLogo) {
+                    $logoPath = "/ergon/storage/company/logos/{$selectedLogo}.png";
+                    $logoFile = __DIR__ . "/../../storage/company/logos/{$selectedLogo}.png";
+                } else {
+                    $logoPath = "/ergon/storage/company/logos/" . ($po['company_id'] ?? 'default') . ".png";
+                    $logoFile = __DIR__ . "/../../storage/company/logos/" . ($po['company_id'] ?? 'default') . ".png";
+                    
+                    if (!file_exists($logoFile)) {
+                        $logoPath = "/ergon/storage/company/logos/default.png";
+                        $logoFile = __DIR__ . "/../../storage/company/logos/default.png";
+                    }
+                }
+                
+                if (file_exists($logoFile)) {
+                    echo '<img src="' . $logoPath . '" alt="Company Logo" style="max-width:64px;max-height:64px;object-fit:contain;">';
+                } else {
+                    echo '<div class="placeholder-box">Insert<br>Logo</div>';
+                }
+            ?></td>
             <td class="co-cell">
                 <div class="co-name"><?= htmlspecialchars($coName) ?></div>
                 <div class="co-sub">Civil &amp; Construction Works</div>
                 <div class="co-sub" style="margin-top:2px;">GSTIN: <?= htmlspecialchars($po['company_gstin'] ?? '') ?></div>
             </td>
-            <td class="seal-cell"><div class="placeholder-box seal-circle">Insert<br>Seal</div></td>
+            <td class="seal-cell">
+                <!-- Seal removed from header -->
+                <div class="placeholder-box seal-circle" style="visibility:hidden;">Space</div>
+            </td>
         </tr>
     </table>
 

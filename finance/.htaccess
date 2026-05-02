@@ -1,6 +1,7 @@
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-# Pass measurement-sheet routes to the main application router
+# Pass measurement-sheet and company-media routes to the main application router
 RewriteRule ^measurement-sheet(/.*)?$ ../index.php [QSA,L]
+RewriteRule ^company-media(/.*)?$ ../index.php [QSA,L]
 RewriteRule ^(.*)$ index.php [QSA,L]

@@ -8,6 +8,11 @@ ob_start();
         <h2 style="margin:0;font-size:22px;font-weight:700;">Measurement Sheet</h2>
         <p style="margin:4px 0 0;color:#6b7280;font-size:14px;">Select a PO to raise an RA Bill</p>
     </div>
+    <div style="display:flex;gap:12px;">
+        <a href="/ergon/finance/measurement-sheet/manage" style="padding:10px 20px;background:#6b7280;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+            📋 Manage RA Bills
+        </a>
+    </div>
 </div>
 
 <?php if (!empty($error)): ?>
