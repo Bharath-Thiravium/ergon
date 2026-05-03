@@ -77,6 +77,7 @@ try {
                 `status` enum('draft','submitted','approved','rejected','paid') DEFAULT 'draft',
                 `selected_logo` varchar(100) DEFAULT NULL,
                 `selected_seal` varchar(100) DEFAULT NULL,
+                `selected_client_logo` varchar(100) DEFAULT NULL,
                 `created_by` int(11) DEFAULT NULL,
                 `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
                 `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -180,7 +181,9 @@ try {
                     __DIR__ . '/storage',
                     __DIR__ . '/storage/company',
                     __DIR__ . '/storage/company/logos',
-                    __DIR__ . '/storage/company/seals'
+                    __DIR__ . '/storage/company/seals',
+                    __DIR__ . '/storage/client',
+                    __DIR__ . '/storage/client/logos'
                 ];
                 
                 $created = [];
@@ -201,7 +204,8 @@ try {
             'php_action' => function() use ($db) {
                 $columns = [
                     ['selected_logo', 'varchar(100) DEFAULT NULL'],
-                    ['selected_seal', 'varchar(100) DEFAULT NULL']
+                    ['selected_seal', 'varchar(100) DEFAULT NULL'],
+                    ['selected_client_logo', 'varchar(100) DEFAULT NULL']
                 ];
                 
                 $results = [];

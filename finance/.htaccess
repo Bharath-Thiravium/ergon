@@ -4,4 +4,6 @@ RewriteCond %{REQUEST_FILENAME} !-d
 # Pass measurement-sheet and company-media routes to the main application router
 RewriteRule ^measurement-sheet(/.*)?$ ../index.php [QSA,L]
 RewriteRule ^company-media(/.*)?$ ../index.php [QSA,L]
+# Handle clearance-print route specifically
+RewriteRule ^measurement-sheet/([0-9]+)/clearance-print$ ../index.php [QSA,L]
 RewriteRule ^(.*)$ index.php [QSA,L]

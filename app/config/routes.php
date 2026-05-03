@@ -453,6 +453,7 @@ $router->post('/finance/measurement-sheet/{po_id}/opening-balance', 'FinanceCont
 $router->get('/finance/measurement-sheet/{po_id}/create', 'FinanceController', 'measurementSheetCreate');
 $router->post('/finance/measurement-sheet/{po_id}/store', 'FinanceController', 'measurementSheetStore');
 $router->get('/finance/measurement-sheet/{id}/print', 'FinanceController', 'measurementSheetPrint');
+$router->get('/finance/measurement-sheet/{id}/clearance-print', 'FinanceController', 'measurementSheetClearancePrint');
 $router->get('/finance/company-media', 'FinanceController', 'companyMedia');
 $router->post('/finance/company-media', 'FinanceController', 'companyMedia');
 $router->get('/api/media-files', 'FinanceController', 'getMediaFiles');

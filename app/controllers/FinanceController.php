@@ -444,6 +444,87 @@ class FinanceController {
         include __DIR__ . '/../../views/finance/measurement_sheet_print.php';
     }
 
+    public function measurementSheetClearancePrint($id = null) {
+        ModuleMiddleware::requireModule('finance');
+        require_once __DIR__ . '/../config/database.php';
+        $db    = Database::connect();
+        $ra    = null; $items = []; $po = null; $clearanceItems = []; $error = null;
+        try {
+            $safeId = (int)$id;
+            $raStmt = $db->prepare("SELECT * FROM ra_bills WHERE id=? LIMIT 1");
+            $raStmt->execute([$safeId]);
+            $ra = $raStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$ra) throw new Exception('RA Bill not found');
+
+            $iStmt = $db->prepare("SELECT * FROM ra_bill_items WHERE ra_bill_id=? ORDER BY line_number");
+            $iStmt->execute([$safeId]);
+            $items = $iStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Get clearance items
+            $clearanceStmt = $db->prepare("SELECT * FROM clearance_items WHERE ra_bill_id=? ORDER BY id");
+            $clearanceStmt->execute([$safeId]);
+            $clearanceItems = $clearanceStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // If no clearance items exist, create default ones
+            if (empty($clearanceItems)) {
+                $this->createDefaultClearanceItems($db, $safeId);
+                $clearanceStmt->execute([$safeId]);
+                $clearanceItems = $clearanceStmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+
+            // fetch PO + company + customer from PG
+            $pg   = $this->pgConnect();
+            $pStmt = $pg->prepare("
+                SELECT po.*, c.name AS customer_name, c.billing_address_line1, c.billing_city,
+                       co.name AS company_name, co.company_prefix, co.address AS company_address,
+                       co.gst_number AS company_gstin, co.logo AS company_logo
+                FROM finance_purchase_orders po
+                LEFT JOIN finance_customer c  ON c.id  = po.customer_id
+                LEFT JOIN authentication_company co ON co.id = po.company_id
+                WHERE po.id = ?
+            ");
+            $pStmt->execute([$ra['po_id']]);
+            $po = $pStmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $error = $e->getMessage();
+        }
+        include __DIR__ . '/../../views/finance/measurement_sheet_clearance_print.php';
+    }
+    
+    private function createDefaultClearanceItems($db, $raBillId) {
+        $defaultItems = [
+            [
+                'department' => 'Quality Clearance',
+                'checklist_items' => "• Cube test\n• Quality in Execution & Violation Debit\n• Material Consumption & Reconciliation"
+            ],
+            [
+                'department' => 'Safety Clearance', 
+                'checklist_items' => "• PPE Debit\n• Safety Violation Debit\n• Safety violation closing (NCR)"
+            ],
+            [
+                'department' => 'Store Clearance',
+                'checklist_items' => "• Material Issue Debits\n• Material Reconciliation\n• Store No Dues Certificate"
+            ],
+            [
+                'department' => 'HR & Admin Clearance',
+                'checklist_items' => "• Payment List of Subcontractor\n• Local labour proof of paid social insurance\n• Proof of paid PIT\n• Submission of ESI and PF\n• Insurance of local staff / labour"
+            ],
+            [
+                'department' => 'Site Engineer',
+                'checklist_items' => "• Any Pending Works\n• Any Punch Points"
+            ],
+            [
+                'department' => 'DGM / PM Projects Clearance',
+                'checklist_items' => "• No Due Certificate\n• Work Completion Certificate\n• Certificate of Takeover"
+            ]
+        ];
+        
+        $insertStmt = $db->prepare("INSERT INTO clearance_items (ra_bill_id, department, checklist_items) VALUES (?, ?, ?)");
+        foreach ($defaultItems as $item) {
+            $insertStmt->execute([$raBillId, $item['department'], $item['checklist_items']]);
+        }
+    }
+
     public function measurementSheetManage($request = null) {
         ModuleMiddleware::requireModule('finance');
         require_once __DIR__ . '/../config/database.php';
@@ -701,6 +782,10 @@ class FinanceController {
                 glob(__DIR__ . '/../../storage/company/seals/*.png') ?: [],
                 glob(__DIR__ . '/../../storage/company/seals/*.jpg') ?: []
             );
+            $clientLogoFiles = array_merge(
+                glob(__DIR__ . '/../../storage/client/logos/*.png') ?: [],
+                glob(__DIR__ . '/../../storage/client/logos/*.jpg') ?: []
+            );
             
         } catch (Exception $e) {
             $error = $e->getMessage();
@@ -724,11 +809,18 @@ class FinanceController {
         try {
             $selectedLogo = $_POST['selected_logo'] ?? '';
             $selectedSeal = $_POST['selected_seal'] ?? '';
+            $selectedClientLogo = $_POST['selected_client_logo'] ?? '';
+            $printType = $_POST['print_type'] ?? 'basic';
             
-            $stmt = $db->prepare("UPDATE ra_bills SET selected_logo = ?, selected_seal = ? WHERE id = ?");
-            $stmt->execute([$selectedLogo, $selectedSeal, $safeId]);
+            $stmt = $db->prepare("UPDATE ra_bills SET selected_logo = ?, selected_seal = ?, selected_client_logo = ? WHERE id = ?");
+            $stmt->execute([$selectedLogo, $selectedSeal, $selectedClientLogo, $safeId]);
             
-            header("Location: /ergon/finance/measurement-sheet/{$safeId}/print");
+            // Redirect based on print type
+            if ($printType === 'clearance') {
+                header("Location: /ergon/finance/measurement-sheet/{$safeId}/clearance-print");
+            } else {
+                header("Location: /ergon/finance/measurement-sheet/{$safeId}/print");
+            }
             exit;
             
         } catch (Exception $e) {
@@ -754,7 +846,14 @@ class FinanceController {
                 $allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
                 
                 if (in_array($file['type'], $allowedTypes)) {
-                    $targetDir = __DIR__ . '/../../storage/company/' . $uploadType . 's/';
+                    $targetDir = __DIR__ . '/../../storage/';
+                    
+                    // Determine target directory based on upload type
+                    if ($uploadType === 'client_logo') {
+                        $targetDir .= 'client/logos/';
+                    } else {
+                        $targetDir .= 'company/' . $uploadType . 's/';
+                    }
                     
                     // Create directory if it doesn't exist
                     if (!is_dir($targetDir)) {

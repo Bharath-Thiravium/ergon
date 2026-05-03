@@ -93,6 +93,37 @@ ob_start();
             </div>
         </div>
 
+        <!-- Client Logo Selection -->
+        <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
+            <h3 style="margin: 0 0 16px; font-size: 18px; font-weight: 600; color: #111827;">Client Logo</h3>
+            <p style="margin: 0 0 16px; font-size: 13px; color: #6b7280;">Select client logo for: <strong><?= htmlspecialchars($po['customer_name'] ?? 'Unknown Customer') ?></strong></p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px;">
+                <?php if (empty($clientLogoFiles)): ?>
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #9ca3af;">
+                        <p>No client logos available. <a href="#upload-section" style="color: #2563eb;">Upload one below</a></p>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($clientLogoFiles as $file): ?>
+                        <?php 
+                        $filename = pathinfo($file, PATHINFO_FILENAME);
+                        $extension = pathinfo($file, PATHINFO_EXTENSION);
+                        $relativePath = '/ergon/storage/client/logos/' . basename($file);
+                        ?>
+                        <label style="display: block; cursor: pointer; text-align: center; padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; transition: all 0.2s;" 
+                               onmouseover="this.style.borderColor='#059669'" 
+                               onmouseout="this.style.borderColor='#e5e7eb'"
+                               onclick="this.style.borderColor='#059669'; this.style.background='#f0fdf4'">
+                            <input type="radio" name="selected_client_logo" value="<?= $filename ?>" style="margin-bottom: 8px;" 
+                                   <?= ($ra['selected_client_logo'] ?? '') === $filename ? 'checked' : '' ?>
+                                   onchange="document.querySelectorAll('label').forEach(l => {l.style.borderColor='#e5e7eb'; l.style.background='white'}); this.parentElement.style.borderColor='#059669'; this.parentElement.style.background='#f0fdf4'">
+                            <img src="<?= $relativePath ?>?v=<?= time() ?>" alt="Client Logo" style="max-width: 80px; max-height: 80px; object-fit: contain; display: block; margin: 0 auto 8px;">
+                            <p style="margin: 0; font-size: 12px; font-weight: 600; color: #374151;"><?= $filename === 'default' ? 'Default Client' : "Client {$filename}" ?></p>
+                        </label>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+
         <!-- Seal Selection -->
         <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
             <h3 style="margin: 0 0 16px; font-size: 18px; font-weight: 600; color: #111827;">Company Seal</h3>
@@ -126,14 +157,17 @@ ob_start();
         <!-- Action Buttons -->
         <div style="padding: 24px; display: flex; justify-content: space-between; align-items: center; background: #f9fafb;">
             <a href="/ergon/finance/measurement-sheet/<?= $ra['id'] ?>/print" style="color: #6b7280; text-decoration: none; font-weight: 600;">
-                Skip & Print Without Media
+                Skip & Print Basic Sheet
             </a>
             <div style="display: flex; gap: 12px;">
                 <a href="/ergon/finance/measurement-sheet" style="padding: 10px 20px; background: #6b7280; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
                     Back to PO List
                 </a>
-                <button type="submit" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                <button type="submit" name="print_type" value="basic" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
                     Save & Print RA Bill
+                </button>
+                <button type="submit" name="print_type" value="clearance" style="padding: 10px 20px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Save & Print Clearance Sheet
                 </button>
             </div>
         </div>
@@ -154,6 +188,7 @@ ob_start();
                         <option value="">Select Type</option>
                         <option value="logo">Company Logo</option>
                         <option value="seal">Company Seal</option>
+                        <option value="client_logo">Client Logo</option>
                     </select>
                 </div>
                 

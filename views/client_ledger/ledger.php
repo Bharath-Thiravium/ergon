@@ -77,6 +77,14 @@ ob_start();
                             'payment_received' => ['Payment Received', '#d1fae5', '#065f46'],
                             'payment_sent'     => ['Payment Sent',     '#fee2e2', '#991b1b'],
                             'adjustment'       => ['Adjustment',        '#fef3c7', '#92400e'],
+                            'invoice_raised'   => ['Invoice Raised',    '#dbeafe', '#1e40af'],
+                            'invoice_received' => ['Invoice Received',  '#e0e7ff', '#3730a3'],
+                            'purchase'         => ['Purchase',          '#fce7f3', '#be185d'],
+                            'sale'            => ['Sale',              '#dcfce7', '#166534'],
+                            'expense'         => ['Expense',           '#fed7d7', '#b91c1c'],
+                            'income'          => ['Income',            '#d1fae5', '#047857'],
+                            'opening_balance' => ['Opening Balance',   '#f3e8ff', '#7c3aed'],
+                            'closing_balance' => ['Closing Balance',   '#fef3c7', '#a16207'],
                         ];
                         [$typeLabel, $typeBg, $typeColor] = $typeMap[$e['entry_type']] ?? [$e['entry_type'], '#f3f4f6', '#374151'];
                         ?>
@@ -129,13 +137,21 @@ ob_start();
                     'payment_received' => ['Payment Received', '#d1fae5', '#065f46'],
                     'payment_sent'     => ['Payment Sent',     '#fee2e2', '#991b1b'],
                     'adjustment'       => ['Adjustment',        '#fef3c7', '#92400e'],
+                    'invoice_raised'   => ['Invoice Raised',    '#dbeafe', '#1e40af'],
+                    'invoice_received' => ['Invoice Received',  '#e0e7ff', '#3730a3'],
+                    'purchase'         => ['Purchase',          '#fce7f3', '#be185d'],
+                    'sale'            => ['Sale',              '#dcfce7', '#166534'],
+                    'expense'         => ['Expense',           '#fed7d7', '#b91c1c'],
+                    'income'          => ['Income',            '#d1fae5', '#047857'],
+                    'opening_balance' => ['Opening Balance',   '#f3e8ff', '#7c3aed'],
+                    'closing_balance' => ['Closing Balance',   '#fef3c7', '#a16207'],
                 ];
                 [$typeLabel, $typeBg, $typeColor] = $typeMap[$e['entry_type']] ?? [$e['entry_type'], '#f3f4f6', '#374151'];
                 ?>
                 <div class="task-card">
                     <div class="task-card__header">
                         <div>
-                            <span class="task-card__priority badge badge--<?= $e['entry_type'] === 'payment_received' ? 'success' : ($e['entry_type'] === 'payment_sent' ? 'danger' : 'warning') ?>" style="background:<?= $typeBg ?>;color:<?= $typeColor ?>;">
+                            <span class="task-card__priority badge badge--<?= in_array($e['entry_type'], ['payment_received', 'sale', 'income']) ? 'success' : (in_array($e['entry_type'], ['payment_sent', 'purchase', 'expense']) ? 'danger' : 'warning') ?>" style="background:<?= $typeBg ?>;color:<?= $typeColor ?>;">
                                 <?= $typeLabel ?>
                             </span>
                         </div>
@@ -196,6 +212,14 @@ ob_start();
                     style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;">
                     <option value="payment_received">Payment Received (Credit — money IN)</option>
                     <option value="payment_sent">Payment Sent (Debit — money OUT)</option>
+                    <option value="invoice_raised">Invoice Raised (Debit — bill sent to client)</option>
+                    <option value="invoice_received">Invoice Received (Credit — bill from supplier)</option>
+                    <option value="purchase">Purchase (Debit — goods/services bought)</option>
+                    <option value="sale">Sale (Credit — goods/services sold)</option>
+                    <option value="expense">Expense (Debit — business expense)</option>
+                    <option value="income">Income (Credit — business income)</option>
+                    <option value="opening_balance">Opening Balance</option>
+                    <option value="closing_balance">Closing Balance</option>
                     <option value="adjustment">Adjustment</option>
                 </select>
             </div>
@@ -294,7 +318,8 @@ function closeModal(id) {
 /* ── adjustment direction toggle ───────────────────────────────── */
 function toggleAdjDir(prefix) {
     const v = document.getElementById(prefix + 'EntryType').value;
-    document.getElementById(prefix + 'AdjRow').style.display = v === 'adjustment' ? 'block' : 'none';
+    const needsDirection = ['adjustment', 'opening_balance', 'closing_balance'];
+    document.getElementById(prefix + 'AdjRow').style.display = needsDirection.includes(v) ? 'block' : 'none';
 }
 
 /* ── reference duplicate check (debounced) ─────────────────────── */
@@ -352,10 +377,18 @@ function openEditModal(entryId) {
         const typeOpts = [
             ['payment_received', 'Payment Received (Credit — money IN)'],
             ['payment_sent',     'Payment Sent (Debit — money OUT)'],
+            ['invoice_raised',   'Invoice Raised (Debit — bill sent to client)'],
+            ['invoice_received', 'Invoice Received (Credit — bill from supplier)'],
+            ['purchase',         'Purchase (Debit — goods/services bought)'],
+            ['sale',            'Sale (Credit — goods/services sold)'],
+            ['expense',         'Expense (Debit — business expense)'],
+            ['income',          'Income (Credit — business income)'],
+            ['opening_balance', 'Opening Balance'],
+            ['closing_balance', 'Closing Balance'],
             ['adjustment',       'Adjustment'],
         ].map(([v, l]) => `<option value="${v}"${v === e.entry_type ? ' selected' : ''}>${l}</option>`).join('');
 
-        const adjDisplay = e.entry_type === 'adjustment' ? 'block' : 'none';
+        const adjDisplay = ['adjustment', 'opening_balance', 'closing_balance'].includes(e.entry_type) ? 'block' : 'none';
         const adjCredit  = e.direction !== 'debit' ? 'selected' : '';
         const adjDebit   = e.direction === 'debit'  ? 'selected' : '';
 
@@ -445,14 +478,30 @@ function openViewModal(entryId) {
         const typeLabels = {
             'payment_received': 'Payment Received',
             'payment_sent': 'Payment Sent',
-            'adjustment': 'Adjustment'
+            'adjustment': 'Adjustment',
+            'invoice_raised': 'Invoice Raised',
+            'invoice_received': 'Invoice Received',
+            'purchase': 'Purchase',
+            'sale': 'Sale',
+            'expense': 'Expense',
+            'income': 'Income',
+            'opening_balance': 'Opening Balance',
+            'closing_balance': 'Closing Balance'
         };
         const typeLabel = typeLabels[e.entry_type] || e.entry_type;
         
         const typeColors = {
             'payment_received': { bg: '#d1fae5', color: '#065f46' },
             'payment_sent': { bg: '#fee2e2', color: '#991b1b' },
-            'adjustment': { bg: '#fef3c7', color: '#92400e' }
+            'adjustment': { bg: '#fef3c7', color: '#92400e' },
+            'invoice_raised': { bg: '#dbeafe', color: '#1e40af' },
+            'invoice_received': { bg: '#e0e7ff', color: '#3730a3' },
+            'purchase': { bg: '#fce7f3', color: '#be185d' },
+            'sale': { bg: '#dcfce7', color: '#166534' },
+            'expense': { bg: '#fed7d7', color: '#b91c1c' },
+            'income': { bg: '#d1fae5', color: '#047857' },
+            'opening_balance': { bg: '#f3e8ff', color: '#7c3aed' },
+            'closing_balance': { bg: '#fef3c7', color: '#a16207' }
         };
         const typeStyle = typeColors[e.entry_type] || { bg: '#f3f4f6', color: '#374151' };
         
