@@ -85,6 +85,8 @@ ob_start();
                             'income'          => ['Income',            '#d1fae5', '#047857'],
                             'opening_balance' => ['Opening Balance',   '#f3e8ff', '#7c3aed'],
                             'closing_balance' => ['Closing Balance',   '#fef3c7', '#a16207'],
+                            'fees_paid'       => ['Fees Paid',         '#fef2f2', '#dc2626'],
+                            'penalties_paid'  => ['Penalties Paid',    '#fef2f2', '#b91c1c'],
                         ];
                         [$typeLabel, $typeBg, $typeColor] = $typeMap[$e['entry_type']] ?? [$e['entry_type'], '#f3f4f6', '#374151'];
                         ?>
@@ -145,13 +147,15 @@ ob_start();
                     'income'          => ['Income',            '#d1fae5', '#047857'],
                     'opening_balance' => ['Opening Balance',   '#f3e8ff', '#7c3aed'],
                     'closing_balance' => ['Closing Balance',   '#fef3c7', '#a16207'],
+                    'fees_paid'       => ['Fees Paid',         '#fef2f2', '#dc2626'],
+                    'penalties_paid'  => ['Penalties Paid',    '#fef2f2', '#b91c1c'],
                 ];
                 [$typeLabel, $typeBg, $typeColor] = $typeMap[$e['entry_type']] ?? [$e['entry_type'], '#f3f4f6', '#374151'];
                 ?>
                 <div class="task-card">
                     <div class="task-card__header">
                         <div>
-                            <span class="task-card__priority badge badge--<?= in_array($e['entry_type'], ['payment_received', 'sale', 'income']) ? 'success' : (in_array($e['entry_type'], ['payment_sent', 'purchase', 'expense']) ? 'danger' : 'warning') ?>" style="background:<?= $typeBg ?>;color:<?= $typeColor ?>;">
+                            <span class="task-card__priority badge badge--<?= in_array($e['entry_type'], ['payment_received', 'income']) ? 'success' : (in_array($e['entry_type'], ['payment_sent', 'purchase', 'sale', 'expense', 'fees_paid', 'penalties_paid']) ? 'danger' : 'warning') ?>" style="background:<?= $typeBg ?>;color:<?= $typeColor ?>;">
                                 <?= $typeLabel ?>
                             </span>
                         </div>
@@ -215,11 +219,13 @@ ob_start();
                     <option value="invoice_raised">Invoice Raised (Debit — bill sent to client)</option>
                     <option value="invoice_received">Invoice Received (Credit — bill from supplier)</option>
                     <option value="purchase">Purchase (Debit — goods/services bought)</option>
-                    <option value="sale">Sale (Credit — goods/services sold)</option>
+                    <option value="sale">Sale (Debit — goods/services sold)</option>
                     <option value="expense">Expense (Debit — business expense)</option>
                     <option value="income">Income (Credit — business income)</option>
                     <option value="opening_balance">Opening Balance</option>
                     <option value="closing_balance">Closing Balance</option>
+                    <option value="fees_paid">Fees Paid (Debit — fees/charges paid)</option>
+                    <option value="penalties_paid">Penalties Paid (Debit — penalties/fines paid)</option>
                     <option value="adjustment">Adjustment</option>
                 </select>
             </div>
@@ -380,9 +386,11 @@ function openEditModal(entryId) {
             ['invoice_raised',   'Invoice Raised (Debit — bill sent to client)'],
             ['invoice_received', 'Invoice Received (Credit — bill from supplier)'],
             ['purchase',         'Purchase (Debit — goods/services bought)'],
-            ['sale',            'Sale (Credit — goods/services sold)'],
+            ['sale',            'Sale (Debit — goods/services sold)'],
             ['expense',         'Expense (Debit — business expense)'],
             ['income',          'Income (Credit — business income)'],
+            ['fees_paid',       'Fees Paid (Debit — fees/charges paid)'],
+            ['penalties_paid',  'Penalties Paid (Debit — penalties/fines paid)'],
             ['opening_balance', 'Opening Balance'],
             ['closing_balance', 'Closing Balance'],
             ['adjustment',       'Adjustment'],
@@ -486,7 +494,9 @@ function openViewModal(entryId) {
             'expense': 'Expense',
             'income': 'Income',
             'opening_balance': 'Opening Balance',
-            'closing_balance': 'Closing Balance'
+            'closing_balance': 'Closing Balance',
+            'fees_paid': 'Fees Paid',
+            'penalties_paid': 'Penalties Paid'
         };
         const typeLabel = typeLabels[e.entry_type] || e.entry_type;
         
@@ -501,7 +511,9 @@ function openViewModal(entryId) {
             'expense': { bg: '#fed7d7', color: '#b91c1c' },
             'income': { bg: '#d1fae5', color: '#047857' },
             'opening_balance': { bg: '#f3e8ff', color: '#7c3aed' },
-            'closing_balance': { bg: '#fef3c7', color: '#a16207' }
+            'closing_balance': { bg: '#fef3c7', color: '#a16207' },
+            'fees_paid': { bg: '#fef2f2', color: '#dc2626' },
+            'penalties_paid': { bg: '#fef2f2', color: '#b91c1c' }
         };
         const typeStyle = typeColors[e.entry_type] || { bg: '#f3f4f6', color: '#374151' };
         

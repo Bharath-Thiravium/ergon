@@ -62,7 +62,9 @@ function runMigration() {
                     'expense',
                     'income',
                     'opening_balance',
-                    'closing_balance'
+                    'closing_balance',
+                    'fees_paid',
+                    'penalties_paid'
                 ) NOT NULL
             ";
             
@@ -102,9 +104,11 @@ function runMigration() {
             'invoice_raised' => 'Invoice Raised (Debit — bill sent to client)',
             'invoice_received' => 'Invoice Received (Credit — bill from supplier)',
             'purchase' => 'Purchase (Debit — goods/services bought)',
-            'sale' => 'Sale (Credit — goods/services sold)',
+            'sale' => 'Sale (Debit — goods/services sold)',
             'expense' => 'Expense (Debit — business expense)',
             'income' => 'Income (Credit — business income)',
+            'fees_paid' => 'Fees Paid (Debit — fees/charges paid)',
+            'penalties_paid' => 'Penalties Paid (Debit — penalties/fines paid)',
             'opening_balance' => 'Opening Balance (configurable direction)',
             'closing_balance' => 'Closing Balance (configurable direction)',
             'adjustment' => 'Adjustment (configurable direction)'

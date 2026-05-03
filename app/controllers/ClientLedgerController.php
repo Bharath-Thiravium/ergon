@@ -24,7 +24,7 @@ class ClientLedgerController extends Controller {
             CREATE TABLE IF NOT EXISTS client_ledgers (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 client_id INT NOT NULL,
-                entry_type ENUM('payment_received','payment_sent','adjustment','invoice_raised','invoice_received','purchase','sale','expense','income','opening_balance','closing_balance') NOT NULL,
+                entry_type ENUM('payment_received','payment_sent','adjustment','invoice_raised','invoice_received','purchase','sale','expense','income','opening_balance','closing_balance','fees_paid','penalties_paid') NOT NULL,
                 direction ENUM('debit','credit') NOT NULL,
                 amount DECIMAL(12,2) NOT NULL,
                 balance_after DECIMAL(12,2) NOT NULL,
@@ -289,7 +289,7 @@ $db   = $this->getDb();
         $description = trim($_POST['description'] ?? '');
         $referenceNo = trim($_POST['reference_no'] ?? '');
 
-        $validTypes = ['payment_received', 'payment_sent', 'adjustment', 'invoice_raised', 'invoice_received', 'purchase', 'sale', 'expense', 'income', 'opening_balance', 'closing_balance'];
+        $validTypes = ['payment_received', 'payment_sent', 'adjustment', 'invoice_raised', 'invoice_received', 'purchase', 'sale', 'expense', 'income', 'opening_balance', 'closing_balance', 'fees_paid', 'penalties_paid'];
         if (!in_array($entryType, $validTypes) || $amount <= 0 || !$txDate) {
             $this->json(['success' => false, 'error' => 'Invalid input'], 422);
         }
@@ -301,11 +301,13 @@ $db   = $this->getDb();
             'invoice_raised'   => 'debit',
             'invoice_received' => 'credit',
             'purchase'         => 'debit',
-            'sale'            => 'credit',
+            'sale'            => 'debit',
             'expense'         => 'debit',
             'income'          => 'credit',
             'opening_balance' => $_POST['adjustment_direction'] ?? 'credit',
             'closing_balance' => $_POST['adjustment_direction'] ?? 'credit',
+            'fees_paid'       => 'debit',
+            'penalties_paid'  => 'debit',
         ];
         $direction = $directionMap[$entryType];
         if (!in_array($direction, ['debit', 'credit'])) $direction = 'credit';
@@ -404,7 +406,7 @@ $db = $this->getDb();
         $description   = trim($_POST['description'] ?? '');
         $referenceNo   = trim($_POST['reference_no'] ?? '');
 
-        $validTypes = ['payment_received', 'payment_sent', 'adjustment', 'invoice_raised', 'invoice_received', 'purchase', 'sale', 'expense', 'income', 'opening_balance', 'closing_balance'];
+        $validTypes = ['payment_received', 'payment_sent', 'adjustment', 'invoice_raised', 'invoice_received', 'purchase', 'sale', 'expense', 'income', 'opening_balance', 'closing_balance', 'fees_paid', 'penalties_paid'];
         if (!$clientId || !in_array($entryType, $validTypes) || $amount <= 0 || !$txDate) {
             $this->redirect('/client-ledger?error=invalid_input');
         }
@@ -416,16 +418,18 @@ $db = $this->getDb();
             'invoice_raised'   => 'debit',
             'invoice_received' => 'credit',
             'purchase'         => 'debit',
-            'sale'            => 'credit',
+            'sale'            => 'debit',
             'expense'         => 'debit',
             'income'          => 'credit',
             'opening_balance' => $_POST['adjustment_direction'] ?? 'credit',
             'closing_balance' => $_POST['adjustment_direction'] ?? 'credit',
+            'fees_paid'       => 'debit',
+            'penalties_paid'  => 'debit',
         ];
         $direction = $directionMap[$entryType];
         if (!in_array($direction, ['debit', 'credit'])) $direction = 'credit';
 
-$db = $this->getDb();
+        $db = $this->getDb();
         $this->ensureTables($db);
 
         // Handle attachment upload
