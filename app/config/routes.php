@@ -178,6 +178,11 @@ $router->get('/api/project-subcategories/{projectId}', 'ProjectSubcategoryContro
 $router->get('/ledgers/user/{id}', 'LedgerController', 'userLedger');
 $router->get('/ledgers/user/{id}/download-csv', 'LedgerController', 'downloadCsv');
 $router->get('/ledgers/project', 'LedgerController', 'projectLedger');
+// Project Ledger CRUD
+$router->get('/ledgers/project/entry/{id}', 'LedgerController', 'editProjectEntry');
+$router->post('/ledgers/project/entry/{id}/update', 'LedgerController', 'updateProjectEntry');
+$router->post('/ledgers/project/entry/{id}/delete', 'LedgerController', 'deleteProjectEntry');
+
 // Approved expenses admin listing
 $router->get('/approved-expenses', 'ApprovedExpensesController', 'index');
 

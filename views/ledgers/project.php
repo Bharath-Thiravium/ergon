@@ -202,9 +202,21 @@ ob_start();
                             <th>Credit</th>
                             <th>Debit</th>
                             <th>Paid Date</th>
-                            <th>Status</th>
+<th>Status</th>
+                            <th style="text-align:center;">Actions</th>
+                        </tr>
+<tr id="filterRow">
+                            <td><input class="col-filter" data-col="0" placeholder="Date..." /></td>
+                            <td><input class="col-filter" data-col="1" placeholder="Employee..." /></td>
+                            <td><input class="col-filter" data-col="2" placeholder="Type..." /></td>
+                            <td><input class="col-filter" data-col="3" placeholder="Description..." /></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
                         </tr>
                     </thead>
+
                     <tbody>
 
                         <?php foreach ($entries as $e): ?>
