@@ -300,29 +300,23 @@ class LedgerController extends Controller {
                 $stmt->execute([$project_id]);
                 $project = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                $stmt = $db->prepare("
-                    SELECT 'expense' as type, 'credit' as entry_type, e.id, e.user_id, u.name as user_name, e.description, 
-                           COALESCE(ae.approved_amount, e.amount) as amount, e.status, e.created_at
-                    FROM expenses e
-                    JOIN users u ON e.user_id = u.id
-                    LEFT JOIN approved_expenses ae ON e.id = ae.expense_id
-                    WHERE e.project_id = ? AND e.status = 'approved'
-                    UNION ALL
+$stmt = $db->prepare("
                     SELECT 'expense' as type, 'debit' as entry_type, e.id, e.user_id, u.name as user_name, e.description, 
-                           COALESCE(ae.approved_amount, e.amount) as amount, e.status, e.created_at
+                           COALESCE(ae.approved_amount, e.amount) as amount, e.status, e.created_at, e.paid_at
                     FROM expenses e
                     JOIN users u ON e.user_id = u.id
                     LEFT JOIN approved_expenses ae ON e.id = ae.expense_id
                     WHERE e.project_id = ? AND e.status = 'paid'
                     UNION ALL
                     SELECT 'advance' as type, 'debit' as entry_type, a.id, a.user_id, u.name as user_name, a.reason as description, 
-                           COALESCE(a.approved_amount, a.amount) as amount, a.status, a.created_at
+                           COALESCE(a.approved_amount, a.amount) as amount, a.status, a.created_at, a.paid_at
                     FROM advances a
                     JOIN users u ON a.user_id = u.id
                     WHERE a.project_id = ? AND a.status = 'paid'
                     ORDER BY created_at DESC
                 ");
-                $stmt->execute([$project_id, $project_id, $project_id]);
+                $stmt->execute([$project_id, $project_id]);
+
                 $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 $total_credits = array_sum(array_column(array_filter($entries, fn($e) => $e['entry_type'] === 'credit'), 'amount'));
@@ -351,17 +345,9 @@ class LedgerController extends Controller {
                 $data['utilization'] = $budget > 0 ? ($total_debits / $budget) * 100 : 0;
             } else {
                 // Show consolidated data for all projects
-                $stmt = $db->query("
-                    SELECT 'expense' as type, 'credit' as entry_type, e.id, e.user_id, u.name as user_name, e.description, 
-                           COALESCE(ae.approved_amount, e.amount) as amount, e.status, e.created_at, p.name as project_name
-                    FROM expenses e
-                    JOIN users u ON e.user_id = u.id
-                    LEFT JOIN projects p ON e.project_id = p.id
-                    LEFT JOIN approved_expenses ae ON e.id = ae.expense_id
-                    WHERE e.status = 'approved'
-                    UNION ALL
+$stmt = $db->query("
                     SELECT 'expense' as type, 'debit' as entry_type, e.id, e.user_id, u.name as user_name, e.description, 
-                           COALESCE(ae.approved_amount, e.amount) as amount, e.status, e.created_at, p.name as project_name
+                           COALESCE(ae.approved_amount, e.amount) as amount, e.status, e.created_at, p.name as project_name, e.paid_at
                     FROM expenses e
                     JOIN users u ON e.user_id = u.id
                     LEFT JOIN projects p ON e.project_id = p.id
@@ -369,13 +355,14 @@ class LedgerController extends Controller {
                     WHERE e.status = 'paid'
                     UNION ALL
                     SELECT 'advance' as type, 'debit' as entry_type, a.id, a.user_id, u.name as user_name, a.reason as description, 
-                           COALESCE(a.approved_amount, a.amount) as amount, a.status, a.created_at, p.name as project_name
+                           COALESCE(a.approved_amount, a.amount) as amount, a.status, a.created_at, p.name as project_name, a.paid_at
                     FROM advances a
                     JOIN users u ON a.user_id = u.id
                     LEFT JOIN projects p ON a.project_id = p.id
                     WHERE a.status = 'paid'
                     ORDER BY created_at DESC
                 ");
+
                 $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 $stmt = $db->query("SELECT COALESCE(SUM(budget), 0) as total_budget FROM projects");

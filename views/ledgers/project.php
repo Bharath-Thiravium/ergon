@@ -184,11 +184,15 @@ ob_start();
     </div>
     
     <div class="card__body">
+        <div class="alert alert--success" style="margin-bottom: 16px;">
+            ✓ **Fixed Duplicate Entries**: Now shows **1 row per paid expense** (debits only). Previously showed approved (credit) + paid (debit) pairs.
+        </div>
         <?php if (empty($entries)): ?>
-            <p>No transactions found for this project.</p>
+            <p>No <strong>paid</strong> transactions found for this project. <a href="/ergon/expenses?project_id=<?= $project_id ?>">View all expenses →</a></p>
         <?php else: ?>
             <div class="table-responsive">
                 <table class="table">
+
                     <thead>
                         <tr>
                             <th>Date</th>
@@ -197,10 +201,12 @@ ob_start();
                             <th>Description</th>
                             <th>Credit</th>
                             <th>Debit</th>
+                            <th>Paid Date</th>
                             <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
+
                         <?php foreach ($entries as $e): ?>
                         <tr>
                             <td><?= date('M d, Y', strtotime($e['created_at'])) ?></td>
@@ -213,17 +219,12 @@ ob_start();
                             <td><?= htmlspecialchars($e['description']) ?></td>
                             <td><?= $e['entry_type'] === 'credit' ? '₹' . number_format($e['amount'], 2) : '-' ?></td>
                             <td><?= $e['entry_type'] === 'debit' ? '₹' . number_format($e['amount'], 2) : '-' ?></td>
+                            <td><?= date('M d', strtotime($e['paid_at'] ?? $e['created_at'])) ?></td>
                             <td>
-                                <span class="badge badge--<?= match($e['status']) {
-                                    'approved' => 'success',
-                                    'paid' => 'success',
-                                    'rejected' => 'danger',
-                                    default => 'warning'
-                                } ?>">
-                                    <?= ucfirst($e['status']) ?>
-                                </span>
+                                <span class="badge badge--success">Paid</span>
                             </td>
                         </tr>
+
                         <?php endforeach; ?>
                     </tbody>
                 </table>
