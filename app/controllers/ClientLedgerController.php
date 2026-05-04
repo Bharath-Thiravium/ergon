@@ -9,6 +9,7 @@ class ClientLedgerController extends Controller {
     }
 
     private function ensureTables(PDO $db): void {
+        // clients table
         $db->exec("
             CREATE TABLE IF NOT EXISTS clients (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -20,11 +21,13 @@ class ClientLedgerController extends Controller {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+
+        // client_ledgers — create with VARCHAR so it never needs an ALTER for new types
         $db->exec("
             CREATE TABLE IF NOT EXISTS client_ledgers (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 client_id INT NOT NULL,
-                entry_type ENUM('payment_received','payment_sent','adjustment','invoice_raised','invoice_received','purchase','sale','expense','income','opening_balance','closing_balance','fees_paid','penalties_paid') NOT NULL,
+                entry_type VARCHAR(50) NOT NULL,
                 direction ENUM('debit','credit') NOT NULL,
                 amount DECIMAL(12,2) NOT NULL,
                 balance_after DECIMAL(12,2) NOT NULL,
@@ -37,6 +40,28 @@ class ClientLedgerController extends Controller {
                 FOREIGN KEY (client_id) REFERENCES clients(id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+
+        // If the table already existed with the old ENUM column, migrate it to VARCHAR
+        $col = $db->query("
+            SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME   = 'client_ledgers'
+              AND COLUMN_NAME  = 'entry_type'
+        ")->fetchColumn();
+        if ($col && stripos($col, 'enum') !== false) {
+            $db->exec("ALTER TABLE client_ledgers MODIFY COLUMN entry_type VARCHAR(50) NOT NULL");
+        }
+
+        // Add attachment column if missing (tables created before that feature)
+        $hasAttachment = $db->query("
+            SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME   = 'client_ledgers'
+              AND COLUMN_NAME  = 'attachment'
+        ")->fetchColumn();
+        if (!$hasAttachment) {
+            $db->exec("ALTER TABLE client_ledgers ADD COLUMN attachment VARCHAR(500) NULL AFTER reference_no");
+        }
     }
 
     private function getUploadDir(): string {
@@ -153,12 +178,16 @@ class ClientLedgerController extends Controller {
 
         $entries = $this->fetchLedgerEntries($db, $clientId);
 
+        // Totals and current balance — compute from all entries
         $totalCredits = 0.0;
         $totalDebits  = 0.0;
         foreach ($entries as $e) {
-            if ($e['direction'] === 'credit') $totalCredits += $e['amount'];
-            else                               $totalDebits  += $e['amount'];
+            if ($e['direction'] === 'credit') $totalCredits += floatval($e['amount']);
+            else                               $totalDebits  += floatval($e['amount']);
         }
+        // entries are DESC; the chronologically last entry is the last element
+        // but balance_after is stored correctly per row, so the first element
+        // (most recent date) holds the final running balance
         $currentBalance = empty($entries) ? 0.0 : floatval($entries[0]['balance_after']);
 
         $this->view('client_ledger/ledger', [
@@ -406,7 +435,7 @@ $db = $this->getDb();
         $description   = trim($_POST['description'] ?? '');
         $referenceNo   = trim($_POST['reference_no'] ?? '');
 
-        $validTypes = ['payment_received', 'payment_sent', 'adjustment', 'invoice_raised', 'invoice_received', 'purchase', 'sale', 'expense', 'income', 'opening_balance', 'closing_balance', 'fees_paid', 'penalties_paid'];
+        $validTypes = ['payment_received','payment_sent','adjustment','invoice_raised','invoice_received','purchase','sale','expense','income','opening_balance','closing_balance','fees_paid','penalties_paid'];
         if (!$clientId || !in_array($entryType, $validTypes) || $amount <= 0 || !$txDate) {
             $this->redirect('/client-ledger?error=invalid_input');
         }
@@ -453,39 +482,38 @@ $db = $this->getDb();
 
         $db->beginTransaction();
         try {
-            $stmt = $db->prepare("
-                SELECT balance_after FROM client_ledgers
-                WHERE client_id = ?
-                ORDER BY transaction_date DESC, id DESC
-                LIMIT 1
-                FOR UPDATE
-            ");
-            $stmt->execute([$clientId]);
-            $prevBalance = floatval($stmt->fetchColumn() ?: 0);
-
-            $newBalance = $direction === 'credit'
-                ? $prevBalance + $amount
-                : $prevBalance - $amount;
-
             $ins = $db->prepare("
                 INSERT INTO client_ledgers
                     (client_id, entry_type, direction, amount, balance_after, description, reference_no, attachment, transaction_date, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
             ");
             $ins->execute([
-                $clientId, $entryType, $direction, $amount, $newBalance,
+                $clientId, $entryType, $direction, $amount,
                 $description ?: null, $referenceNo ?: null, $attachment, $txDate,
                 $_SESSION['user_id'] ?? null,
             ]);
+
+            // Recalculate balance_after for ALL entries in chronological order
+            // so inserting a back-dated entry keeps every subsequent balance correct
+            $all = $db->prepare("
+                SELECT id, direction, amount FROM client_ledgers
+                WHERE client_id = ?
+                ORDER BY transaction_date ASC, id ASC
+                FOR UPDATE
+            ");
+            $all->execute([$clientId]);
+            $running = 0.0;
+            $updBal  = $db->prepare('UPDATE client_ledgers SET balance_after = ? WHERE id = ?');
+            foreach ($all->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $running += $r['direction'] === 'credit' ? floatval($r['amount']) : -floatval($r['amount']);
+                $updBal->execute([$running, $r['id']]);
+            }
 
             $db->commit();
         } catch (Exception $e) {
             $db->rollBack();
             error_log('ClientLedger store error: ' . $e->getMessage());
-            // Delete uploaded file on failure
-            if ($attachment) {
-                $this->deleteAttachmentFile($attachment);
-            }
+            if ($attachment) $this->deleteAttachmentFile($attachment);
             $this->redirect('/client-ledger/' . $clientId . '?error=save_failed');
         }
 
