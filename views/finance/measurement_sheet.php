@@ -115,6 +115,39 @@ function filterTable() {
     document.getElementById('poCount').textContent = v + ' POs';
 }
 </script>
+
+<script>
+function toggleDropdown(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    const button = dropdown ? dropdown.previousElementSibling : null;
+    
+    if (!dropdown) return;
+    
+    // Close all other dropdowns first
+    document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
+        if (menu !== dropdown) {
+            menu.classList.remove('show');
+        }
+    });
+    document.querySelectorAll('.nav-dropdown-btn').forEach(function(btn) {
+        if (btn !== button) {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Toggle current dropdown
+    const isOpen = dropdown.classList.contains('show');
+    if (isOpen) {
+        dropdown.classList.remove('show');
+        if (button) button.classList.remove('active');
+    } else {
+        dropdown.classList.add('show');
+        if (button) button.classList.add('active');
+    }
+}
+window.toggleDropdown = toggleDropdown;
+</script>
+
 <?php
 $content = ob_get_clean();
 include __DIR__ . '/../layouts/dashboard.php';

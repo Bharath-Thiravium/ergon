@@ -1,4 +1,4 @@
-﻿/* ðŸ¢ ergon Corporate Design System - Optimized */
+﻿/* 🏢 ergon Corporate Design System - Optimized */
 
 :root {
   /* Colors */
@@ -894,12 +894,12 @@ canvas { width: 100% !important; height: auto !important; }
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-sm);
-  overflow: visible; /* was: hidden â€” clips fixed-position modal overlays */
+overflow: visible; /* was: hidden — clips fixed-position modal overlays */
   transition: var(--transition);
 }
 
 .card:hover {
-  /* Removed transform:translateY(-1px) â€” a transform creates a stacking
+  /* Removed transform:translateY(-1px) — a transform creates a stacking
      context that traps position:fixed descendants (modal overlays) inside
      the card instead of the viewport. Use box-shadow lift instead. */
   box-shadow: var(--shadow);
@@ -6788,4 +6788,5 @@ body.modal-open {
         justify-content: center;
     }
 }
+
 

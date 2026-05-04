@@ -306,7 +306,7 @@ class LedgerController extends Controller {
                     FROM expenses e
                     JOIN users u ON e.user_id = u.id
                     LEFT JOIN approved_expenses ae ON e.id = ae.expense_id
-                    WHERE e.project_id = ? AND e.status IN ('approved', 'paid')
+                    WHERE e.project_id = ? AND e.status = 'approved'
                     UNION ALL
                     SELECT 'expense' as type, 'debit' as entry_type, e.id, e.user_id, u.name as user_name, e.description, 
                            COALESCE(ae.approved_amount, e.amount) as amount, e.status, e.created_at
@@ -358,7 +358,7 @@ class LedgerController extends Controller {
                     JOIN users u ON e.user_id = u.id
                     LEFT JOIN projects p ON e.project_id = p.id
                     LEFT JOIN approved_expenses ae ON e.id = ae.expense_id
-                    WHERE e.status IN ('approved', 'paid')
+                    WHERE e.status = 'approved'
                     UNION ALL
                     SELECT 'expense' as type, 'debit' as entry_type, e.id, e.user_id, u.name as user_name, e.description, 
                            COALESCE(ae.approved_amount, e.amount) as amount, e.status, e.created_at, p.name as project_name

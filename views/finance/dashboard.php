@@ -2,6 +2,7 @@
  $title = 'Finance Dashboard';
  $active_page = 'finance';
  ob_start();
+ echo "<!DOCTYPE html>";
  error_log('Finance Dashboard: ob_start called'); 
  // Finance-specific styles are merged into `assets/css/ergon-overrides.css`
 
@@ -1716,7 +1717,8 @@ async function loadAllStatCardsData() {
     }
 }
 </script>
-<style>
+
+<style>
 .data-list {
     margin-top: 1rem;
     max-height: 300px;
@@ -2527,4 +2529,39 @@ async function loadAllStatCardsData() {
 
 <?php
 $content = ob_get_clean();
+?>
+
+<script>
+function toggleDropdown(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    const button = dropdown ? dropdown.previousElementSibling : null;
+    
+    if (!dropdown) return;
+    
+    // Close all other dropdowns first
+    document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
+        if (menu !== dropdown) {
+            menu.classList.remove('show');
+        }
+    });
+    document.querySelectorAll('.nav-dropdown-btn').forEach(function(btn) {
+        if (btn !== button) {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Toggle current dropdown
+    const isOpen = dropdown.classList.contains('show');
+    if (isOpen) {
+        dropdown.classList.remove('show');
+        if (button) button.classList.remove('active');
+    } else {
+        dropdown.classList.add('show');
+        if (button) button.classList.add('active');
+    }
+}
+window.toggleDropdown = toggleDropdown;
+</script>
+
+<?php
 require_once __DIR__ . '/../layouts/dashboard.php';

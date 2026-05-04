@@ -6,26 +6,28 @@ ob_start();
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
     <div>
-        <h1 style="margin:0;font-size:22px;font-weight:700;">🧾 Customer Ledger</h1>
+        <h1 style="margin:0;font-size:22px;font-weight:700;">Customer Ledger</h1>
         <p style="margin:4px 0 0;color:#6b7280;font-size:14px;">Track payments sent to and received from clients</p>
     </div>
-    <div style="display:flex;gap:10px;">
-        <button onclick="document.getElementById('addEntryModal').style.display='flex'" class="btn btn--primary" style="display:flex;align-items:center;gap:6px;">
-            <i class="bi bi-plus-lg"></i> Add Entry
-        </button>
-        <button onclick="document.getElementById('addClientModal').style.display='flex'" class="btn btn--secondary" style="display:flex;align-items:center;gap:6px;">
-            <i class="bi bi-person-plus"></i> New Client
-        </button>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div style="display:flex;gap:10px;">
+            <button onclick="document.getElementById('addEntryModal').style.display='flex'" class="btn btn--primary" style="display:flex;align-items:center;gap:6px;">
+                <i class="bi bi-plus-lg"></i> Add Entry
+            </button>
+            <button onclick="document.getElementById('addClientModal').style.display='flex'" class="btn btn--secondary" style="display:flex;align-items:center;gap:6px;">
+                <i class="bi bi-person-plus"></i> New Client
+            </button>
+        </div>
     </div>
 </div>
 
 <?php if (isset($_GET['success'])): ?>
 <div class="alert alert--success" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;">
-    <?= $_GET['success'] === 'client_created' ? '✅ Client created successfully.' : ($_GET['success'] === 'client_updated' ? '✅ Client updated successfully.' : '✅ Entry saved successfully.') ?>
+    <?= $_GET['success'] === 'client_created' ? 'Client created successfully.' : ($_GET['success'] === 'client_updated' ? 'Client updated successfully.' : 'Entry saved successfully.') ?>
 </div>
 <?php elseif (isset($_GET['error'])): ?>
 <div class="alert alert--error" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">
-    ❌ <?= htmlspecialchars($_GET['error'] === 'invalid_input' ? 'Invalid input. Please check all fields.' : $_GET['error']) ?>
+Error: <?= htmlspecialchars($_GET['error'] === 'invalid_input' ? 'Invalid input. Please check all fields.' : $_GET['error']) ?>
 </div>
 <?php endif; ?>
 
@@ -36,21 +38,35 @@ ob_start();
             <table class="table table--striped" style="margin:0;">
                 <thead>
                     <tr>
-                        <th>Client</th>
-                        <th>Company</th>
-                        <th style="text-align:right;">Total Credits</th>
-                        <th style="text-align:right;">Total Debits</th>
-                        <th style="text-align:right;">Balance</th>
-                        <th style="text-align:center;">Status</th>
+                        <th class="th-sort" data-col="0" data-type="str">Client <span class="sort-icon">&#8597;</span></th>
+                        <th class="th-sort" data-col="1" data-type="str">Company <span class="sort-icon">&#8597;</span></th>
+                        <th class="th-sort" data-col="2" data-type="num" style="text-align:right;">Total Credits <span class="sort-icon">&#8597;</span></th>
+                        <th class="th-sort" data-col="3" data-type="num" style="text-align:right;">Total Debits <span class="sort-icon">&#8597;</span></th>
+                        <th class="th-sort" data-col="4" data-type="num" style="text-align:right;">Balance <span class="sort-icon">&#8597;</span></th>
+                        <th class="th-sort" data-col="5" data-type="str" style="text-align:center;">Status <span class="sort-icon">&#8597;</span></th>
                         <th style="text-align:center;">Action</th>
                     </tr>
+<tr id="filterRow">
+                        <td><input class="col-filter" data-col="0" placeholder="Client..." /></td>
+                        <td><input class="col-filter" data-col="1" placeholder="Company..." /></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td><select class="col-filter" data-col="5">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select></td>
+                        <td></td>
+                    </tr>
+
                 </thead>
-                <tbody>
+                <tbody id="clientsTableBody">
                 <?php if (empty($clients)): ?>
                     <tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af;">No clients yet. Add your first client.</td></tr>
                 <?php else: ?>
                     <?php foreach ($clients as $c): ?>
-                    <tr>
+                    <tr class="client-row" data-status="<?= $c['status'] ?>" data-name="<?= strtolower($c['name']) ?>" data-balance="<?= $c['current_balance'] ?>" data-credits="<?= $c['total_credits'] ?>" data-debits="<?= $c['total_debits'] ?>">
                         <td>
                             <a href="/ergon/client-ledger/<?= $c['id'] ?>" style="font-weight:600;color:#1d4ed8;text-decoration:none;">
                                 <?= htmlspecialchars($c['name']) ?>
@@ -91,12 +107,12 @@ ob_start();
         </div>
         
         <!-- Mobile Card View -->
-        <div class="mobile-card-view" style="display:none;padding:16px;">
+        <div class="mobile-card-view" style="display:none;padding:16px;" id="mobileCardsContainer">
             <?php if (empty($clients)): ?>
                 <div style="text-align:center;padding:40px;color:#9ca3af;">No clients yet. Add your first client.</div>
             <?php else: ?>
                 <?php foreach ($clients as $c): ?>
-                <div class="task-card">
+                <div class="task-card client-card" data-status="<?= $c['status'] ?>" data-name="<?= strtolower($c['name']) ?>" data-balance="<?= $c['current_balance'] ?>" data-credits="<?= $c['total_credits'] ?>" data-debits="<?= $c['total_debits'] ?>">
                     <div class="task-card__header">
                         <div>
                             <div class="task-card__title">
@@ -290,17 +306,55 @@ ob_start();
 </div>
 
 <script>
+(function() {
+    const tbody = document.getElementById('clientsTableBody');
+    let sortCol = -1, sortAsc = true;
+
+    document.querySelectorAll('.th-sort').forEach(th => {
+        th.addEventListener('click', function() {
+            const col = +this.dataset.col, type = this.dataset.type;
+            sortAsc = (sortCol === col) ? !sortAsc : true;
+            sortCol = col;
+            document.querySelectorAll('.th-sort .sort-icon').forEach(i => i.textContent = '⇅');
+            this.querySelector('.sort-icon').textContent = sortAsc ? '↑' : '↓';
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort((a, b) => {
+                const av = a.cells[col]?.textContent.trim() || '';
+                const bv = b.cells[col]?.textContent.trim() || '';
+                const cmp = type === 'num'
+                    ? (parseFloat(av.replace(/[^0-9.-]/g,'')) || 0) - (parseFloat(bv.replace(/[^0-9.-]/g,'')) || 0)
+                    : av.localeCompare(bv);
+                return sortAsc ? cmp : -cmp;
+            });
+            rows.forEach(r => tbody.appendChild(r));
+        });
+    });
+
+    document.querySelectorAll('.col-filter').forEach(f => {
+        f.addEventListener('input', applyFilters);
+        f.addEventListener('change', applyFilters);
+        f.addEventListener('click', e => e.stopPropagation());
+    });
+
+    function applyFilters() {
+        const filters = Array.from(document.querySelectorAll('.col-filter')).map(f => ({ col: +f.dataset.col, val: f.value.toLowerCase() }));
+        Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+            row.style.display = filters.every(f => !f.val || row.cells[f.col]?.textContent.toLowerCase().includes(f.val)) ? '' : 'none';
+        });
+    }
+})();
+
 function toggleAdjDirMain() {
     const v = document.getElementById('entryTypeSelectMain').value;
     document.getElementById('adjDirRowMain').style.display = v === 'adjustment' ? 'block' : 'none';
 }
+
 ['addEntryModal','addClientModal'].forEach(function(id) {
     document.getElementById(id).addEventListener('click', function(e) {
         if (e.target === this) this.style.display = 'none';
     });
 });
 
-/* ── Edit Client Modal ────────────────────────────────────────── */
 function openEditClientModal(clientId, name, companyName, email, phone) {
     document.getElementById('editClientId').value = clientId;
     document.getElementById('editClientName').value = name;
@@ -309,63 +363,44 @@ function openEditClientModal(clientId, name, companyName, email, phone) {
     document.getElementById('editClientPhone').value = phone;
     document.getElementById('editClientModal').style.display = 'flex';
 }
-
-function closeEditClientModal() {
-    document.getElementById('editClientModal').style.display = 'none';
-}
-
-document.getElementById('editClientModal')?.addEventListener('click', function(e) {
-    if (e.target === this) closeEditClientModal();
-});
+function closeEditClientModal() { document.getElementById('editClientModal').style.display = 'none'; }
+document.getElementById('editClientModal')?.addEventListener('click', function(e) { if (e.target === this) closeEditClientModal(); });
 
 function submitEditClient(e) {
     e.preventDefault();
-    const form = document.getElementById('editClientForm');
-    const formData = new FormData(form);
     const btn = document.getElementById('editClientSubmitBtn');
     const errDiv = document.getElementById('editClientErr');
-    
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
+    btn.disabled = true; btn.textContent = 'Saving...';
     if (errDiv) errDiv.style.display = 'none';
-    
     fetch('/ergon/client-ledger/update-client', {
-        method: 'POST',
-        credentials: 'same-origin',
+        method: 'POST', credentials: 'same-origin',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        body: formData
+        body: new FormData(document.getElementById('editClientForm'))
     })
     .then(r => r.json())
     .then(data => {
-        if (data.success) {
-            window.location.href = '/ergon/client-ledger?success=client_updated';
-        } else {
-            if (errDiv) { errDiv.textContent = data.error || 'Failed to update client'; errDiv.style.display = 'block'; }
-            btn.disabled = false;
-            btn.textContent = 'Update Client';
-        }
+        if (data.success) { window.location.href = '/ergon/client-ledger?success=client_updated'; }
+        else { if (errDiv) { errDiv.textContent = data.error || 'Failed to update client'; errDiv.style.display = 'block'; } btn.disabled = false; btn.textContent = 'Update Client'; }
     })
-    .catch(() => {
-        if (errDiv) { errDiv.textContent = 'Network error'; errDiv.style.display = 'block'; }
-        btn.disabled = false;
-        btn.textContent = 'Update Client';
-    });
+    .catch(() => { if (errDiv) { errDiv.textContent = 'Network error'; errDiv.style.display = 'block'; } btn.disabled = false; btn.textContent = 'Update Client'; });
 }
 </script>
 
 <style>
+.th-sort { cursor:pointer; user-select:none; white-space:nowrap; }
+.th-sort:hover { background:#f1f5f9; }
+.th-sort .sort-icon { font-size:11px; color:#9ca3af; margin-left:4px; }
+#filterRow td { padding:4px 8px; background:#f8fafc; }
+#filterRow input, #filterRow select { width:100%; padding:4px 6px; font-size:12px; border:1px solid #d1d5db; border-radius:4px; box-sizing:border-box; }
+
 @media (max-width: 768px) {
     .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .table { min-width: 600px; }
     .ab-container { gap: 2px; }
-    
-    /* Show mobile card view, hide desktop table */
     .desktop-view { display: none !important; }
     .mobile-card-view { display: block !important; }
 }
-
 @media (min-width: 769px) {
-    /* Show desktop table, hide mobile card view */
     .desktop-view { display: block !important; }
     .mobile-card-view { display: none !important; }
 }

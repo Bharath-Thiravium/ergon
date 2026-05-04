@@ -1,0 +1,150 @@
+/* ============================================================================
+   TABLE HEADERS FIX - Clean Sort & Filter Icons
+   ============================================================================ */
+
+/* Table header cell structure */
+.table-header__cell {
+    position: relative;
+    padding: 12px 8px;
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+    font-weight: 600;
+    font-size: 13px;
+    color: #374151;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.table-header__cell:hover {
+    background: #f1f5f9;
+}
+
+.table-header__cell--sorted {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.table-header__cell--filtered {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Header content layout */
+.table-header__content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.table-header__text {
+    flex: 1;
+    font-weight: 600;
+}
+
+.table-header__controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+/* Sort icon - clean Unicode arrow */
+.table-header__sort {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    color: #6b7280;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.table-header__sort:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #374151;
+}
+
+.table-header__cell--sorted .table-header__sort {
+    color: #0369a1;
+    background: rgba(3, 105, 161, 0.1);
+}
+
+/* Filter icon - clean Unicode dots */
+.table-header__filter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 16px;
+    color: #6b7280;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.table-header__filter:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #374151;
+}
+
+.table-header__cell--filtered .table-header__filter {
+    color: #92400e;
+    background: rgba(146, 64, 14, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-header__cell {
+        padding: 8px 6px;
+        font-size: 12px;
+    }
+    
+    .table-header__controls {
+        gap: 2px;
+    }
+    
+    .table-header__sort,
+    .table-header__filter {
+        width: 18px;
+        height: 18px;
+        font-size: 12px;
+    }
+}
+
+/* Dark theme support */
+[data-theme='dark'] .table-header__cell {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+}
+
+[data-theme='dark'] .table-header__cell:hover {
+    background: #374151;
+}
+
+[data-theme='dark'] .table-header__cell--sorted {
+    background: #1e3a8a;
+    color: #93c5fd;
+}
+
+[data-theme='dark'] .table-header__cell--filtered {
+    background: #92400e;
+    color: #fbbf24;
+}
+
+[data-theme='dark'] .table-header__sort,
+[data-theme='dark'] .table-header__filter {
+    color: #9ca3af;
+}
+
+[data-theme='dark'] .table-header__sort:hover,
+[data-theme='dark'] .table-header__filter:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f3f4f6;
+}

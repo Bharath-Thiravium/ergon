@@ -19,11 +19,11 @@ ob_start();
 
 <?php if (isset($_GET['success'])): ?>
 <div id="flashMsg" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;">
-    ✅ <?= $_GET['success'] === 'updated' ? 'Entry updated successfully.' : ($_GET['success'] === 'deleted' ? 'Entry deleted successfully.' : 'Entry saved successfully.') ?>
+Success: <?= $_GET['success'] === 'updated' ? 'Entry updated successfully.' : ($_GET['success'] === 'deleted' ? 'Entry deleted successfully.' : 'Entry saved successfully.') ?>
 </div>
 <?php elseif (isset($_GET['error'])): ?>
 <div id="flashMsg" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">
-    ❌ <?= $_GET['error'] === 'duplicate_reference' ? 'That reference number already exists for this client.' : 'Failed to save entry. Please try again.' ?>
+Error: <?= $_GET['error'] === 'duplicate_reference' ? 'That reference number already exists for this client.' : 'Failed to save entry. Please try again.' ?>
 </div>
 <?php endif; ?>
 
@@ -57,15 +57,26 @@ ob_start();
             <table class="table table--striped" style="margin:0;">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>Description</th>
-                        <th>Reference</th>
-                        <th style="text-align:right;">Debit</th>
-                        <th style="text-align:right;">Credit</th>
-                        <th style="text-align:right;">Balance</th>
+                        <th class="th-sort" data-col="0" data-type="str">Date <span class="sort-icon">&#8597;</span></th>
+                        <th class="th-sort" data-col="1" data-type="str">Type <span class="sort-icon">&#8597;</span></th>
+                        <th class="th-sort" data-col="2" data-type="str">Description <span class="sort-icon">&#8597;</span></th>
+                        <th class="th-sort" data-col="3" data-type="str">Reference <span class="sort-icon">&#8597;</span></th>
+                        <th class="th-sort" data-col="4" data-type="num" style="text-align:right;">Debit <span class="sort-icon">&#8597;</span></th>
+                        <th class="th-sort" data-col="5" data-type="num" style="text-align:right;">Credit <span class="sort-icon">&#8597;</span></th>
+                        <th class="th-sort" data-col="6" data-type="num" style="text-align:right;">Balance <span class="sort-icon">&#8597;</span></th>
                         <th style="text-align:center;">Actions</th>
                     </tr>
+<tr id="filterRow">
+                        <td><input class="col-filter" data-col="0" placeholder="Date..." /></td>
+                        <td><input class="col-filter" data-col="1" placeholder="Type..." /></td>
+                        <td><input class="col-filter" data-col="2" placeholder="Description..." /></td>
+                        <td><input class="col-filter" data-col="3" placeholder="Reference..." /></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+
                 </thead>
                 <tbody>
                     <?php if (empty($entries)): ?>
@@ -258,8 +269,8 @@ ob_start();
                     placeholder="Invoice / Cheque / UTR..."
                     oninput="checkRefDuplicate('add', 0)"
                     style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;">
-<div id="addRefErr" style="display:none;margin-top:4px;font-size:12px;color:#dc2626;font-weight:600;">
-                    ⚠️ This reference number already exists for this client.
+    <div id="addRefErr" style="display:none;margin-top:4px;font-size:12px;color:#dc2626;font-weight:600;">
+                    Warning: This reference number already exists for this client.
                 </div>
             </div>
             <div style="margin-bottom:20px;">
@@ -327,6 +338,50 @@ function toggleAdjDir(prefix) {
     const needsDirection = ['adjustment', 'opening_balance', 'closing_balance'];
     document.getElementById(prefix + 'AdjRow').style.display = needsDirection.includes(v) ? 'block' : 'none';
 }
+
+// ── Sort & Filter ───────────────────────────────────────────────
+(function() {
+    const tbody = document.querySelector('table.table tbody');
+    if (!tbody) return;
+    let sortCol = -1, sortAsc = true;
+
+    document.querySelectorAll('.th-sort').forEach(th => {
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', function() {
+            const col = +this.dataset.col;
+            const type = this.dataset.type;
+            sortAsc = (sortCol === col) ? !sortAsc : true;
+            sortCol = col;
+            document.querySelectorAll('.th-sort .sort-icon').forEach(i => i.textContent = '\u21C5');
+            this.querySelector('.sort-icon').textContent = sortAsc ? '\u2191' : '\u2193';
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort((a, b) => {
+                const av = a.cells[col]?.textContent.trim() || '';
+                const bv = b.cells[col]?.textContent.trim() || '';
+                const cmp = type === 'num'
+                    ? (parseFloat(av.replace(/[^0-9.-]/g,'')) || 0) - (parseFloat(bv.replace(/[^0-9.-]/g,'')) || 0)
+                    : av.localeCompare(bv);
+                return sortAsc ? cmp : -cmp;
+            });
+            rows.forEach(r => tbody.appendChild(r));
+        });
+    });
+
+    document.querySelectorAll('.col-filter').forEach(input => {
+        input.addEventListener('input', applyFilters);
+        input.addEventListener('click', e => e.stopPropagation());
+    });
+
+    function applyFilters() {
+        const filters = Array.from(document.querySelectorAll('.col-filter')).map(f => ({
+            col: +f.dataset.col, val: f.value.toLowerCase()
+        }));
+        Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+            const show = filters.every(f => !f.val || (row.cells[f.col]?.textContent.toLowerCase().includes(f.val)));
+            row.style.display = show ? '' : 'none';
+        });
+    }
+})();
 
 /* ── reference duplicate check (debounced) ─────────────────────── */
 const _refTimers = {};
@@ -441,7 +496,7 @@ const existingAttachment = e.attachment ? `<a href="/ergon/client-ledger/view/${
                     oninput="checkRefDuplicate('edit', ${entryId})"
                     style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;">
                 <div id="editRefErr" style="display:none;margin-top:4px;font-size:12px;color:#dc2626;font-weight:600;">
-                    ⚠️ This reference number already exists for this client.
+                    Warning: This reference number already exists for this client.
                 </div>
             </div>
             <div style="margin-bottom:20px;">
@@ -619,13 +674,13 @@ function submitEdit(e, entryId) {
             const msg = data.error === 'duplicate_reference'
                 ? '⚠️ That reference number already exists for this client.'
                 : '❌ ' + (data.error || 'Failed to update. Please try again.');
-            if (formErr) { formErr.textContent = msg; formErr.style.display = 'block'; }
+            if (formErr) { formErr.textContent = 'Error: ' + (data.error || 'Failed to update. Please try again.'); formErr.style.display = 'block'; }
             btn.disabled = false;
             btn.textContent = 'Update Entry';
         }
     })
     .catch(() => {
-        if (formErr) { formErr.textContent = '❌ Network error. Please try again.'; formErr.style.display = 'block'; }
+        if (formErr) { formErr.textContent = 'Error: Network error. Please try again.'; formErr.style.display = 'block'; }
         btn.disabled = false;
         btn.textContent = 'Update Entry';
     });
@@ -664,18 +719,20 @@ if (flash) setTimeout(() => flash.style.display = 'none', 4000);
 </script>
 
 <style>
+.th-sort { cursor:pointer; user-select:none; white-space:nowrap; }
+.th-sort:hover { background:#f1f5f9; }
+.th-sort .sort-icon { font-size:11px; color:#9ca3af; margin-left:4px; }
+#filterRow td { padding:4px 8px; background:#f8fafc; }
+#filterRow input { width:100%; padding:4px 6px; font-size:12px; border:1px solid #d1d5db; border-radius:4px; box-sizing:border-box; }
+
 @media (max-width: 768px) {
     .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .table { min-width: 700px; }
     .ab-container { gap: 2px; }
-    
-    /* Show mobile card view, hide desktop table */
     .desktop-view { display: none !important; }
     .mobile-card-view { display: block !important; }
 }
-
 @media (min-width: 769px) {
-    /* Show desktop table, hide mobile card view */
     .desktop-view { display: block !important; }
     .mobile-card-view { display: none !important; }
 }

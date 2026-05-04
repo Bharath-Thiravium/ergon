@@ -201,11 +201,41 @@ ob_end_clean();
         .attendance-notification{top:10px;right:10px;left:10px;max-width:none;transform:translateY(-100%)}
         .attendance-notification.show{transform:translateY(0)}
     }
+    /* Global Table Sort & Filter */
+    .th-sort{cursor:pointer;user-select:none;white-space:nowrap;}
+    .th-sort:hover{background:#f1f5f9;}
+    .th-sort .sort-icon{font-size:11px;color:#9ca3af;margin-left:4px;}
+    #filterRow td,tr#filterRow td{padding:3px 6px;background:#f8fafc;}
+    .col-filter{width:100%;padding:3px 5px;font-size:11px;border:1px solid #d1d5db;border-radius:3px;box-sizing:border-box;position:relative;cursor:pointer;background:linear-gradient(45deg,transparent 30%,rgba(59,130,246,0.1) 31%,rgba(59,130,246,0.1) 70%,transparent 71%);background-size:20px 100%;background-repeat:no-repeat;background-position:right 4px center;}
+    .col-filter::after{content:'↓';position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text-muted);pointer-events:none;}
+    
+    /* Multi-Filter Dropdown */
+    .filter-dropdown{position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:8px;box-shadow:var(--shadow-lg);max-height:300px;overflow-y:auto;display:none;}
+    .filter-dropdown.show{display:block;}
+    .filter-search{width:100%;padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;margin-bottom:8px;box-sizing:border-box;}
+    .filter-options{max-height:200px;overflow-y:auto;}
+    .filter-option{display:flex;align-items:center;padding:8px 12px;cursor:pointer;border-radius:6px;font-size:14px;gap:8px;}
+    .filter-option:hover{background:var(--bg-hover);}
+    .filter-option input[type="checkbox"]{margin:0;flex-shrink:0;}
+    .filter-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+    .filter-chip{display:inline-flex;align-items:center;background:var(--primary);color:white;padding:4px 8px;border-radius:16px;font-size:12px;font-weight:500;gap:4px;}
+    .filter-chip .remove-btn{background:none;border:none;color:white;font-size:14px;cursor:pointer;line-height:1;padding:0;margin-left:4px;}
+    .filter-clear{padding:6px 12px;background:transparent;border:1px solid var(--border-color);border-radius:6px;cursor:pointer;font-size:13px;color:var(--text-secondary);width:100%;margin-top:8px;}
+    .filter-clear:hover{background:var(--bg-hover);}
+    
+    /* Dark mode */
+    [data-theme="dark"] .filter-dropdown{background:var(--gray-800);border-color:var(--gray-700);}
+    [data-theme="dark"] .filter-search{background:var(--gray-700);border-color:var(--gray-600);color:var(--white);}
+    [data-theme="dark"] .filter-option:hover{background:var(--gray-700);}
+    [data-theme="dark"] .filter-clear{color:var(--gray-400);border-color:var(--gray-600);}
+    [data-theme="dark"] .filter-clear:hover{background:var(--gray-700);}
     </style>
     
     <!-- 2 CSS requests instead of 12 -->
     <link rel="stylesheet" href="<?= Environment::asset('assets/css/bootstrap-icons.min.css') ?>?v=<?= ASSET_VER ?>">
     <link rel="stylesheet" href="<?= Environment::asset('assets/css/ergon.bundle.css') ?>?v=<?= ASSET_VER ?>">
+    <!-- Table Headers Fix - Universal Solution -->
+    <link rel="stylesheet" href="<?= Environment::asset('assets/css/table-headers-fix.css') ?>?v=<?= ASSET_VER ?>">
     <?php if (isset($active_page) && $active_page === 'dashboard' && isset($_SESSION['role']) && $_SESSION['role'] === 'owner'): ?>
     <link rel="stylesheet" href="<?= Environment::asset('assets/css/dashboard-owner.css') ?>?v=<?= ASSET_VER ?>">
     <?php endif; ?>
@@ -215,6 +245,8 @@ ob_end_clean();
 
     <!-- 1 JS bundle instead of 9 (chart.js loaded per-page only where needed) -->
     <script src="<?= Environment::asset('assets/js/ergon.bundle.js') ?>?v=<?= ASSET_VER ?>" defer></script>
+    <!-- Table Headers Fix - Universal Solution -->
+    <script src="<?= Environment::asset('assets/js/table-headers-fix.js') ?>?v=<?= ASSET_VER ?>" defer></script>
     <!-- PWA -->
     <script src="/ergon/assets/js/pwa-install.js" defer></script>
     <?php if (isset($additional_js)): ?>
@@ -403,7 +435,7 @@ ob_end_clean();
                                 Ledgers
                             </a>
                             <a href="/ergon/client-ledger" class="nav-dropdown-item <?= ($active_page ?? '') === 'client_ledger' ? 'nav-dropdown-item--active' : '' ?>">
-                                <span class="nav-icon">🧾</span>
+<span class="nav-icon"><i class="bi bi-receipt"></i></span>
                                 Customer Ledger
                             </a>
                             <a href="/ergon/attendance" class="nav-dropdown-item <?= ($active_page ?? '') === 'attendance' ? 'nav-dropdown-item--active' : '' ?>">
@@ -770,7 +802,7 @@ ob_end_clean();
                     Ledgers
                 </a>
                 <a href="/ergon/client-ledger" class="sidebar__link <?= ($active_page ?? '') === 'client_ledger' ? 'sidebar__link--active' : '' ?>">
-                    <span class="sidebar__icon">🧾</span>
+<span class="sidebar__icon"><i class="bi bi-receipt"></i></span>
                     Customer Ledger
                 </a>
                 <a href="/ergon/attendance" class="sidebar__link <?= ($active_page ?? '') === 'attendance' ? 'sidebar__link--active' : '' ?>">
@@ -1226,32 +1258,6 @@ ob_end_clean();
     // Make functions globally accessible
     window.toggleProfile = toggleProfile;
     
-    // Navigation dropdown toggle function
-    function toggleDropdown(dropdownId) {
-        const dropdown = document.getElementById(dropdownId);
-        const button = dropdown ? dropdown.previousElementSibling : null;
-        
-        // Close all other dropdowns
-        document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
-            if (menu.id !== dropdownId) {
-                menu.classList.remove('show');
-            }
-        });
-        document.querySelectorAll('.nav-dropdown-btn').forEach(function(btn) {
-            if (btn !== button) {
-                btn.classList.remove('active');
-            }
-        });
-        
-        // Toggle current dropdown
-        if (dropdown) {
-            dropdown.classList.toggle('show');
-            if (button) {
-                button.classList.toggle('active');
-            }
-        }
-    }
-    
     // Define missing dropdown functions
     function showDropdown(element) {
         if (element && element.nextElementSibling) {
@@ -1292,7 +1298,8 @@ ob_end_clean();
     
     window.showDropdown = showDropdown;
     window.hideDropdown = hideDropdown;
-    window.toggleDropdown = toggleDropdown;
+    window.toggleDropdown = function(dropdownId) { toggleDropdown(dropdownId); };
+
     
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.header__controls')) {
@@ -1797,7 +1804,292 @@ ob_end_clean();
         }
     });
 
-    // ── Secure logout: revoke persistent token before redirecting ─────────────
+// ── Table Multi-Filter Init ──────────────────────────────────────
+window.initTableFilters = function(tableSelector = 'table.table') {
+    // Observer for dynamic tables
+    const observer = new MutationObserver(() => {
+        document.querySelectorAll(tableSelector + ' .col-filter:not([data-filter-init])').forEach(input => initSingleFilter(input));
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    // Init existing
+    document.querySelectorAll(tableSelector + ' .col-filter:not([data-filter-init])').forEach(input => initSingleFilter(input));
+    
+    function initSingleFilter(input) {
+        if (input.dataset.filterInit) return;
+        input.dataset.filterInit = 'true';
+        input.title = 'Click to filter by unique values';
+        
+        const col = parseInt(input.dataset.col);
+        const table = input.closest('table');
+        const tbody = table.querySelector('tbody');
+        if (!tbody) return;
+        
+        // Extract unique values from column (only visible rows)
+        const uniqueValues = new Set();
+        Array.from(tbody.querySelectorAll('tr:not([style*="display: none"])')).forEach(row => {
+            const cell = row.cells[col];
+            if (cell) {
+                const cellText = cell.textContent.trim().toLowerCase().replace(/[^\w\s]/g, '');
+                if (cellText) uniqueValues.add(cellText);
+            }
+        });
+        
+        const valuesArray = Array.from(uniqueValues).sort((a,b) => a.localeCompare(b));
+        
+        // Create dropdown if doesn't exist
+        let dropdown = input.parentNode.querySelector('.filter-dropdown');
+        if (!dropdown) {
+            dropdown = document.createElement('div');
+            dropdown.className = 'filter-dropdown';
+            input.parentNode.appendChild(dropdown);
+        }
+        
+        dropdown.innerHTML = `
+            <input type="text" class="filter-search" placeholder="Type to filter... (${valuesArray.length} values)" />
+            <div class="filter-options">
+                ${valuesArray.slice(0,50).map(val => `<div class="filter-option" title="${val}">
+                    <input type="checkbox" value="${val}">
+                    <span>${val.charAt(0).toUpperCase() + val.slice(1)}</span>
+                </div>`).join('')}
+                ${valuesArray.length > 50 ? `<div class="filter-option" style="font-style:italic;color:var(--text-muted);">+${valuesArray.length-50} more...</div>` : ''}
+            </div>
+            <div class="filter-chips"></div>
+            <button type="button" class="filter-clear">Clear (${valuesArray.length})</button>
+        `;
+        
+        let selected = [];
+        
+        // Event handlers
+        const searchInput = dropdown.querySelector('.filter-search');
+        const options = dropdown.querySelectorAll('.filter-option input[type="checkbox"]');
+        
+        input.addEventListener('click', toggleDropdown);
+        searchInput.addEventListener('input', handleSearch);
+        dropdown.querySelector('.filter-clear').addEventListener('click', handleClear);
+        options.forEach(cb => cb.addEventListener('change', handleCheckboxChange));
+        
+        function toggleDropdown(e) {
+            e.stopPropagation();
+            const isOpen = dropdown.classList.contains('show');
+            document.querySelectorAll('.filter-dropdown.show').forEach(d => d.classList.remove('show'));
+            if (!isOpen) {
+                dropdown.classList.add('show');
+                searchInput.focus();
+            }
+        }
+        
+        function handleSearch(e) {
+            const term = e.target.value.toLowerCase();
+            dropdown.querySelectorAll('.filter-option:not(.filter-clear)').forEach(opt => {
+                const matches = opt.textContent.toLowerCase().includes(term);
+                opt.style.display = matches ? '' : 'none';
+            });
+        }
+        
+        function handleCheckboxChange() {
+            selected = Array.from(options).filter(cb => cb.checked).map(cb => cb.value);
+            updateChips();
+            input.value = selected.length ? `${selected.length} selected` : '';
+            input.dataset.filterValues = JSON.stringify(selected);
+            applyFilters(table);
+            dropdown.classList.remove('show');
+        }
+        
+        function handleClear() {
+            options.forEach(cb => cb.checked = false);
+            selected = [];
+            updateChips();
+            input.value = '';
+            input.dataset.filterValues = '[]';
+            applyFilters(table);
+            searchInput.value = '';
+            dropdown.classList.remove('show');
+        }
+        
+        function updateChips() {
+            const chipsContainer = dropdown.querySelector('.filter-chips');
+            chipsContainer.innerHTML = selected.map(val => {
+                return `<span class="filter-chip" title="Remove ${val}">
+                    ${val.substring(0,20)}${val.length > 20 ? '...' : ''}
+                    <button class="remove-btn" data-val="${val}">×</button>
+                </span>`;
+            }).join('');
+            
+            chipsContainer.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const val = btn.dataset.val;
+                    const cb = Array.from(options).find(c => c.value === val);
+                    if (cb) cb.checked = false;
+                    handleCheckboxChange();
+                });
+            });
+        }
+        
+        function applyFilters(table) {
+            const allFilters = table.querySelectorAll('.col-filter');
+            const tbody = table.querySelector('tbody');
+            Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+                let visible = true;
+                allFilters.forEach(filter => {
+                    const col = parseInt(filter.dataset.col);
+                    const values = JSON.parse(filter.dataset.filterValues || '[]');
+                    const cellText = row.cells[col]?.textContent?.trim().toLowerCase() || '';
+                    if (values.length > 0 && !values.some(v => cellText.includes(v))) {
+                        visible = false;
+                    }
+                });
+                row.style.display = visible ? '' : 'none';
+            });
+        }
+        
+        // Close dropdown on outside click (per table)
+        document.addEventListener('click', (e) => {
+            if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+    }
+};
+        
+        const col = parseInt(input.dataset.col);
+        const tbody = input.closest('table').querySelector('tbody');
+        if (!tbody) return;
+        
+        // Extract unique values from column
+        const uniqueValues = new Set();
+        Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+            const cellText = row.cells[col]?.textContent?.trim().toLowerCase() || '';
+            if (cellText) uniqueValues.add(cellText);
+        });
+        
+        const valuesArray = Array.from(uniqueValues).sort();
+        
+        // Create dropdown
+        const dropdown = document.createElement('div');
+        dropdown.className = 'filter-dropdown';
+        dropdown.innerHTML = `
+            <input type="text" class="filter-search" placeholder="Search values..." />
+            <div class="filter-options">
+                ${valuesArray.map(val => `<div class="filter-option">
+                    <input type="checkbox" value="${val}" data-orig="${val}">
+                    <span>${val}</span>
+                </div>`).join('')}
+            </div>
+            <div class="filter-chips"></div>
+            <button type="button" class="filter-clear">Clear All</button>
+        `;
+        
+        input.parentNode.appendChild(dropdown);
+        input.style.cursor = 'pointer';
+        
+        let selected = [];
+        
+        // Toggle dropdown
+        input.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = dropdown.classList.contains('show');
+            document.querySelectorAll('.filter-dropdown.show').forEach(d => d.classList.remove('show'));
+            if (!isOpen) dropdown.classList.add('show');
+        });
+        
+        // Search
+        dropdown.querySelector('.filter-search').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            dropdown.querySelectorAll('.filter-option').forEach(opt => {
+                opt.style.display = opt.textContent.toLowerCase().includes(term) ? '' : 'none';
+            });
+        });
+        
+        // Select option
+        dropdown.querySelectorAll('.filter-option input').forEach(cb => {
+            cb.addEventListener('change', () => {
+                const val = cb.value;
+                if (cb.checked) {
+                    selected.push(val);
+                } else {
+                    selected = selected.filter(v => v !== val);
+                }
+                updateChips();
+                input.dataset.filterValues = JSON.stringify(selected);
+                input.value = selected.length ? `${selected.length} selected` : '';
+                triggerFilter(input);
+            });
+        });
+        
+        // Clear
+        dropdown.querySelector('.filter-clear').addEventListener('click', () => {
+            selected = [];
+            dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            updateChips();
+            input.dataset.filterValues = '[]';
+            input.value = '';
+            triggerFilter(input);
+        });
+        
+        function updateChips() {
+            const chips = dropdown.querySelector('.filter-chips');
+            chips.innerHTML = selected.map(val => `
+                <span class="filter-chip">
+                    ${val}
+                    <button class="remove-btn" data-val="${val}">×</button>
+                </span>
+            `).join('');
+            
+            chips.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const val = btn.dataset.val;
+                    selected = selected.filter(v => v !== val);
+                    dropdown.querySelector(`input[value="${val}"]`).checked = false;
+                    updateChips();
+                    input.dataset.filterValues = JSON.stringify(selected);
+                    input.value = selected.length ? `${selected.length} selected` : '';
+                    triggerFilter(input);
+                });
+            });
+        }
+        
+        function triggerFilter(changedInput) {
+            // Trigger existing filter logic
+            if (typeof applyFilters === 'function') applyFilters();
+            
+            // Custom multi-value filtering
+            const allFilters = Array.from(document.querySelectorAll('.col-filter'));
+            const table = changedInput.closest('table');
+            const tbody = table.querySelector('tbody');
+            Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+                let show = true;
+                allFilters.forEach(f => {
+                    const col = parseInt(f.dataset.col);
+                    const filterVals = JSON.parse(f.dataset.filterValues || '[]');
+                    const cellText = row.cells[col]?.textContent?.trim().toLowerCase() || '';
+                    if (filterVals.length && !filterVals.some(v => cellText.includes(v))) {
+                        show = false;
+                    }
+                });
+                row.style.display = show ? '' : 'none';
+            });
+        }
+        
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+    });
+};
+
+// ── Auto-init on DOM ready ───────────────────────────────────────
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => initTableFilters());
+} else {
+    initTableFilters();
+}
+
+// ── Secure logout: revoke persistent token before redirecting ─────────────
     function handleLogout(e) {
         e.preventDefault();
         var token = '';
