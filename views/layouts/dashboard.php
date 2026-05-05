@@ -1229,30 +1229,16 @@ ob_end_clean();
     });
 
     function toggleProfile() {
-        console.log('toggleProfile called'); // Debug log
         var menu = document.getElementById('profileMenu');
+        if (!menu) return;
         
-        if (!menu) {
-            console.error('Profile menu not found');
-            return;
-        }
-        
-        // Close other dropdowns
-        document.querySelectorAll('.nav-dropdown-menu').forEach(function(dropdown) {
-            dropdown.classList.remove('show');
-        });
-        document.querySelectorAll('.nav-dropdown-btn').forEach(function(btn) {
-            btn.classList.remove('active');
-        });
-        
-        // Close notification dropdown
-        var notificationDropdown = document.getElementById('notificationDropdown');
-        if (notificationDropdown) {
-            notificationDropdown.style.display = 'none';
-        }
+        // Close nav dropdowns and notification dropdown
+        document.querySelectorAll('.nav-dropdown-menu').forEach(function(d) { d.classList.remove('show'); });
+        document.querySelectorAll('.nav-dropdown-btn').forEach(function(b) { b.classList.remove('active'); });
+        var notifDropdown = document.getElementById('notificationDropdown');
+        if (notifDropdown) notifDropdown.style.display = 'none';
         
         menu.classList.toggle('show');
-        console.log('Profile menu toggled, show class:', menu.classList.contains('show'));
     }
     
     // Make functions globally accessible
@@ -1277,34 +1263,29 @@ ob_end_clean();
         
         if (!dropdown) return;
         
-        // Close all other dropdowns first
+        const isCurrentlyShowing = dropdown.classList.contains('show');
+
+        // Close ALL dropdowns first
         document.querySelectorAll('.nav-dropdown-menu').forEach(function(menu) {
-            if (menu !== dropdown) {
-                menu.classList.remove('show');
-            }
+            menu.classList.remove('show');
         });
         document.querySelectorAll('.nav-dropdown-btn').forEach(function(btn) {
-            if (btn !== button) {
-                btn.classList.remove('active');
-            }
+            btn.classList.remove('active');
         });
-        
-        // Toggle current dropdown
-        const isShowing = dropdown.classList.contains('show');
-        if (!isShowing && button) {
+
+        // If it wasn't showing, open it and position it under its button
+        if (!isCurrentlyShowing && button) {
             const rect = button.getBoundingClientRect();
-            dropdown.style.top = rect.bottom + 'px';
+            dropdown.style.top  = rect.bottom + 'px';
             dropdown.style.left = rect.left + 'px';
-        }
-        dropdown.classList.toggle('show');
-        if (button) {
-            button.classList.toggle('active');
+            dropdown.classList.add('show');
+            button.classList.add('active');
         }
     }
     
     window.showDropdown = showDropdown;
     window.hideDropdown = hideDropdown;
-    window.toggleDropdown = function(dropdownId) { toggleDropdown(dropdownId); };
+    window.toggleDropdown = toggleDropdown;
 
     
     document.addEventListener('click', function(e) {
