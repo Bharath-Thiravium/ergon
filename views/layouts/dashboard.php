@@ -1290,6 +1290,12 @@ ob_end_clean();
         });
         
         // Toggle current dropdown
+        const isShowing = dropdown.classList.contains('show');
+        if (!isShowing && button) {
+            const rect = button.getBoundingClientRect();
+            dropdown.style.top = rect.bottom + 'px';
+            dropdown.style.left = rect.left + 'px';
+        }
         dropdown.classList.toggle('show');
         if (button) {
             button.classList.toggle('active');
@@ -1952,137 +1958,7 @@ window.initTableFilters = function(tableSelector = 'table.table') {
         });
     }
 };
-        
-        const col = parseInt(input.dataset.col);
-        const tbody = input.closest('table').querySelector('tbody');
-        if (!tbody) return;
-        
-        // Extract unique values from column
-        const uniqueValues = new Set();
-        Array.from(tbody.querySelectorAll('tr')).forEach(row => {
-            const cellText = row.cells[col]?.textContent?.trim().toLowerCase() || '';
-            if (cellText) uniqueValues.add(cellText);
-        });
-        
-        const valuesArray = Array.from(uniqueValues).sort();
-        
-        // Create dropdown
-        const dropdown = document.createElement('div');
-        dropdown.className = 'filter-dropdown';
-        dropdown.innerHTML = `
-            <input type="text" class="filter-search" placeholder="Search values..." />
-            <div class="filter-options">
-                ${valuesArray.map(val => `<div class="filter-option">
-                    <input type="checkbox" value="${val}" data-orig="${val}">
-                    <span>${val}</span>
-                </div>`).join('')}
-            </div>
-            <div class="filter-chips"></div>
-            <button type="button" class="filter-clear">Clear All</button>
-        `;
-        
-        input.parentNode.appendChild(dropdown);
-        input.style.cursor = 'pointer';
-        
-        let selected = [];
-        
-        // Toggle dropdown
-        input.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isOpen = dropdown.classList.contains('show');
-            document.querySelectorAll('.filter-dropdown.show').forEach(d => d.classList.remove('show'));
-            if (!isOpen) dropdown.classList.add('show');
-        });
-        
-        // Search
-        dropdown.querySelector('.filter-search').addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
-            dropdown.querySelectorAll('.filter-option').forEach(opt => {
-                opt.style.display = opt.textContent.toLowerCase().includes(term) ? '' : 'none';
-            });
-        });
-        
-        // Select option
-        dropdown.querySelectorAll('.filter-option input').forEach(cb => {
-            cb.addEventListener('change', () => {
-                const val = cb.value;
-                if (cb.checked) {
-                    selected.push(val);
-                } else {
-                    selected = selected.filter(v => v !== val);
-                }
-                updateChips();
-                input.dataset.filterValues = JSON.stringify(selected);
-                input.value = selected.length ? `${selected.length} selected` : '';
-                triggerFilter(input);
-            });
-        });
-        
-        // Clear
-        dropdown.querySelector('.filter-clear').addEventListener('click', () => {
-            selected = [];
-            dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-            updateChips();
-            input.dataset.filterValues = '[]';
-            input.value = '';
-            triggerFilter(input);
-        });
-        
-        function updateChips() {
-            const chips = dropdown.querySelector('.filter-chips');
-            chips.innerHTML = selected.map(val => `
-                <span class="filter-chip">
-                    ${val}
-                    <button class="remove-btn" data-val="${val}">×</button>
-                </span>
-            `).join('');
-            
-            chips.querySelectorAll('.remove-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const val = btn.dataset.val;
-                    selected = selected.filter(v => v !== val);
-                    dropdown.querySelector(`input[value="${val}"]`).checked = false;
-                    updateChips();
-                    input.dataset.filterValues = JSON.stringify(selected);
-                    input.value = selected.length ? `${selected.length} selected` : '';
-                    triggerFilter(input);
-                });
-            });
-        }
-        
-        function triggerFilter(changedInput) {
-            // Trigger existing filter logic
-            if (typeof applyFilters === 'function') applyFilters();
-            
-            // Custom multi-value filtering
-            const allFilters = Array.from(document.querySelectorAll('.col-filter'));
-            const table = changedInput.closest('table');
-            const tbody = table.querySelector('tbody');
-            Array.from(tbody.querySelectorAll('tr')).forEach(row => {
-                let show = true;
-                allFilters.forEach(f => {
-                    const col = parseInt(f.dataset.col);
-                    const filterVals = JSON.parse(f.dataset.filterValues || '[]');
-                    const cellText = row.cells[col]?.textContent?.trim().toLowerCase() || '';
-                    if (filterVals.length && !filterVals.some(v => cellText.includes(v))) {
-                        show = false;
-                    }
-                });
-                row.style.display = show ? '' : 'none';
-            });
-        }
-        
-        // Close on outside click
-        document.addEventListener('click', (e) => {
-            if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-                dropdown.classList.remove('show');
-            }
-        });
-    });
-};
-
-// ── Auto-init on DOM ready ───────────────────────────────────────
+// ── Auto-init on DOM ready ───────────────────────────────────────────────────
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => initTableFilters());
 } else {

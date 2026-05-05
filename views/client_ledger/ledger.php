@@ -121,13 +121,13 @@ Error: <?= $_GET['error'] === 'duplicate_reference' ? 'That reference number alr
                             </td>
                             <td style="text-align:center;">
                                 <div class="ab-container">
-                                    <button class="ab-btn ab-btn--view" onclick="openViewModal(<?= $e['id'] ?>)" data-tooltip="View Details">
+                                    <button type="button" class="ab-btn ab-btn--view" onclick="openViewModal(<?= $e['id'] ?>)" data-tooltip="View Details">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                     </button>
-                                    <button class="ab-btn ab-btn--edit" onclick="openEditModal(<?= $e['id'] ?>)" data-tooltip="Edit Entry">
+                                    <button type="button" class="ab-btn ab-btn--edit" onclick="openEditModal(<?= $e['id'] ?>)" data-tooltip="Edit Entry">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>
                                     </button>
-                                    <button class="ab-btn ab-btn--delete" onclick="confirmDelete(<?= $e['id'] ?>, '<?= date('d M Y', strtotime($e['transaction_date'])) ?>', '<?= number_format($e['amount'], 2) ?>')" data-tooltip="Delete Entry">
+                                    <button type="button" class="ab-btn ab-btn--delete" onclick="confirmDelete(<?= $e['id'] ?>, '<?= date('d M Y', strtotime($e['transaction_date'])) ?>', '<?= number_format($e['amount'], 2) ?>')" data-tooltip="Delete Entry">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                                     </button>
                                 </div>
@@ -195,13 +195,13 @@ Error: <?= $_GET['error'] === 'duplicate_reference' ? 'That reference number alr
                     </div>
                     
                     <div class="task-card__actions">
-                        <button class="ab-btn ab-btn--view" onclick="openViewModal(<?= $e['id'] ?>)" data-tooltip="View Details">
+                        <button type="button" class="ab-btn ab-btn--view" onclick="openViewModal(<?= $e['id'] ?>)" data-tooltip="View Details">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         </button>
-                        <button class="ab-btn ab-btn--edit" onclick="openEditModal(<?= $e['id'] ?>)" data-tooltip="Edit Entry">
+                        <button type="button" class="ab-btn ab-btn--edit" onclick="openEditModal(<?= $e['id'] ?>)" data-tooltip="Edit Entry">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>
                         </button>
-                        <button class="ab-btn ab-btn--delete" onclick="confirmDelete(<?= $e['id'] ?>, '<?= date('d M Y', strtotime($e['transaction_date'])) ?>', '<?= number_format($e['amount'], 2) ?>')" data-tooltip="Delete Entry">
+                        <button type="button" class="ab-btn ab-btn--delete" onclick="confirmDelete(<?= $e['id'] ?>, '<?= date('d M Y', strtotime($e['transaction_date'])) ?>', '<?= number_format($e['amount'], 2) ?>')" data-tooltip="Delete Entry">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                         </button>
                     </div>
@@ -213,11 +213,11 @@ Error: <?= $_GET['error'] === 'duplicate_reference' ? 'That reference number alr
 </div>
 
 <!-- ── ADD ENTRY MODAL ─────────────────────────────────────────── -->
-<div id="addEntryModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+<div id="addEntryModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:12px;padding:28px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;margin:16px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
             <h3 style="margin:0;font-size:18px;font-weight:700;">Add Entry — <?= htmlspecialchars($client['name']) ?></h3>
-            <button onclick="closeModal('addEntryModal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
+            <button type="button" onclick="closeModal('addEntryModal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
         </div>
 <form id="addEntryForm" method="POST" action="/ergon/client-ledger/store" enctype="multipart/form-data" onsubmit="return validateRefBeforeSubmit('addRefErr')">
             <input type="hidden" name="client_id" value="<?= $client['id'] ?>">
@@ -288,22 +288,22 @@ Error: <?= $_GET['error'] === 'duplicate_reference' ? 'That reference number alr
 </div>
 
 <!-- ── EDIT ENTRY MODAL ────────────────────────────────────────── -->
-<div id="editEntryModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+<div id="editEntryModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:12px;padding:28px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;margin:16px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
             <h3 style="margin:0;font-size:18px;font-weight:700;">Edit Entry</h3>
-            <button onclick="closeModal('editEntryModal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
+            <button type="button" onclick="closeModal('editEntryModal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
         </div>
         <div id="editModalBody" style="text-align:center;padding:24px;color:#6b7280;">Loading…</div>
     </div>
 </div>
 
 <!-- ── VIEW ENTRY MODAL ────────────────────────────────────────── -->
-<div id="viewEntryModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+<div id="viewEntryModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:12px;padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;margin:16px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
             <h3 style="margin:0;font-size:18px;font-weight:700;">Entry Details</h3>
-            <button onclick="closeModal('viewEntryModal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
+            <button type="button" onclick="closeModal('viewEntryModal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
         </div>
         <div id="viewModalBody" style="text-align:center;padding:24px;color:#6b7280;">Loading…</div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
@@ -319,16 +319,34 @@ Error: <?= $_GET['error'] === 'duplicate_reference' ? 'That reference number alr
 <script>
 const CLIENT_ID = <?= (int)$client['id'] ?>;
 
+/* ── Teleport modals to <body> to escape .main-content overflow clipping ────
+   .main-content has overflow-y:auto + position:relative + z-index:1 in
+   ergon.css. Any position:fixed child is clipped by that overflow context
+   in Chrome/Safari, making modals appear behind the page or unclickable.
+   Moving them to <body> is the only reliable fix.                        */
+document.addEventListener('DOMContentLoaded', function () {
+    ['addEntryModal', 'editEntryModal', 'viewEntryModal'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el && el.parentElement !== document.body) {
+            document.body.appendChild(el);
+        }
+    });
+});
+
 /* ── modal helpers ─────────────────────────────────────────────── */
 function openAddModal() {
     document.getElementById('addEntryModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
 }
 function closeModal(id) {
     document.getElementById(id).style.display = 'none';
+    document.body.style.overflow = '';
 }
-['addEntryModal','editEntryModal','viewEntryModal'].forEach(function(id) {
-    document.getElementById(id).addEventListener('click', function(e) {
-        if (e.target === this) closeModal(id);
+['addEntryModal', 'editEntryModal', 'viewEntryModal'].forEach(function (id) {
+    // Use event delegation on document since modals may be teleported
+    document.addEventListener('click', function (e) {
+        const modal = document.getElementById(id);
+        if (modal && e.target === modal) closeModal(id);
     });
 });
 
@@ -339,19 +357,18 @@ function toggleAdjDir(prefix) {
     document.getElementById(prefix + 'AdjRow').style.display = needsDirection.includes(v) ? 'block' : 'none';
 }
 
-// ── Sort & Filter ───────────────────────────────────────────────
-(function() {
+// ── Sort & Filter — deferred until DOM is ready ──────────────────
+document.addEventListener('DOMContentLoaded', function () {
     const tbody = document.querySelector('table.table tbody');
     if (!tbody) return;
     let sortCol = -1, sortAsc = true;
 
     document.querySelectorAll('.th-sort').forEach(th => {
-        th.style.cursor = 'pointer';
-        th.addEventListener('click', function() {
-            const col = +this.dataset.col;
+        th.addEventListener('click', function () {
+            const col  = +this.dataset.col;
             const type = this.dataset.type;
-            sortAsc = (sortCol === col) ? !sortAsc : true;
-            sortCol = col;
+            sortAsc  = (sortCol === col) ? !sortAsc : true;
+            sortCol  = col;
             document.querySelectorAll('.th-sort .sort-icon').forEach(i => i.textContent = '\u21C5');
             this.querySelector('.sort-icon').textContent = sortAsc ? '\u2191' : '\u2193';
             const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -359,7 +376,7 @@ function toggleAdjDir(prefix) {
                 const av = a.cells[col]?.textContent.trim() || '';
                 const bv = b.cells[col]?.textContent.trim() || '';
                 const cmp = type === 'num'
-                    ? (parseFloat(av.replace(/[^0-9.-]/g,'')) || 0) - (parseFloat(bv.replace(/[^0-9.-]/g,'')) || 0)
+                    ? (parseFloat(av.replace(/[^0-9.-]/g, '')) || 0) - (parseFloat(bv.replace(/[^0-9.-]/g, '')) || 0)
                     : av.localeCompare(bv);
                 return sortAsc ? cmp : -cmp;
             });
@@ -381,7 +398,7 @@ function toggleAdjDir(prefix) {
             row.style.display = show ? '' : 'none';
         });
     }
-})();
+});
 
 /* ── reference duplicate check (debounced) ─────────────────────── */
 const _refTimers = {};
@@ -425,6 +442,7 @@ function openEditModal(entryId) {
     const body  = document.getElementById('editModalBody');
     body.innerHTML = '<div style="text-align:center;padding:24px;color:#6b7280;">Loading…</div>';
     modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
 
     fetch('/ergon/client-ledger/entry/' + entryId, {
         credentials: 'same-origin',
@@ -516,8 +534,16 @@ const existingAttachment = e.attachment ? `<a href="/ergon/client-ledger/view/${
     .catch(() => { body.innerHTML = '<p style="color:#dc2626;">Network error. Please try again.</p>'; });
 }
 
+/* number_format: locale-aware, accepts 1 arg (decimals always 2) */
 function number_format(num) {
     return Number(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/* formatDate: parse as local date to avoid UTC-midnight timezone shift */
+function formatDate(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return d + ' ' + months[m - 1] + ' ' + y;
 }
 
 /* ── view modal actions ─────────────────────────────────────────── */
@@ -528,6 +554,7 @@ function openViewModal(entryId) {
     const body  = document.getElementById('viewModalBody');
     body.innerHTML = '<div style="text-align:center;padding:24px;color:#6b7280;">Loading…</div>';
     modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
 
     fetch('/ergon/client-ledger/entry/' + entryId, {
         credentials: 'same-origin',
@@ -621,15 +648,9 @@ function openViewModal(entryId) {
     .catch(() => { body.innerHTML = '<p style="color:#dc2626;">Network error. Please try again.</p>'; });
 }
 
-function formatDate(dateStr) {
-    const d = new Date(dateStr);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
-}
-
 function editFromView() {
     if (!_currentViewEntryId) return;
-    closeModal('viewEntryModal');
+    document.getElementById('viewEntryModal').style.display = 'none'; // close without unlocking scroll
     openEditModal(_currentViewEntryId);
 }
 
@@ -719,12 +740,49 @@ if (flash) setTimeout(() => flash.style.display = 'none', 4000);
 </script>
 
 <style>
-.th-sort { cursor:pointer; user-select:none; white-space:nowrap; }
-.th-sort:hover { background:#f1f5f9; }
-.th-sort .sort-icon { font-size:11px; color:#9ca3af; margin-left:4px; }
-#filterRow td { padding:4px 8px; background:#f8fafc; }
-#filterRow input { width:100%; padding:4px 6px; font-size:12px; border:1px solid #d1d5db; border-radius:4px; box-sizing:border-box; }
+/* ── Action button group ───────────────────────────────────────── */
+.ab-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.ab-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    padding: 0;
+    flex-shrink: 0;
+}
+.ab-btn svg {
+    width: 14px;
+    height: 14px;
+    pointer-events: none;   /* prevent SVG child from swallowing the click */
+}
+.ab-btn--view  { color: #2563eb; }
+.ab-btn--edit  { color: #d97706; }
+.ab-btn--delete{ color: #dc2626; }
+.ab-btn--view:hover   { background: #eff6ff; border-color: #93c5fd; }
+.ab-btn--edit:hover   { background: #fffbeb; border-color: #fcd34d; }
+.ab-btn--delete:hover { background: #fef2f2; border-color: #fca5a5; }
 
+/* ── Sort / filter ─────────────────────────────────────────────── */
+.th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.th-sort:hover { background: #f1f5f9; }
+.th-sort .sort-icon { font-size: 11px; color: #9ca3af; margin-left: 4px; }
+#filterRow td { padding: 4px 8px; background: #f8fafc; }
+#filterRow input {
+    width: 100%; padding: 4px 6px; font-size: 12px;
+    border: 1px solid #d1d5db; border-radius: 4px; box-sizing: border-box;
+}
+
+/* ── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .table { min-width: 700px; }
