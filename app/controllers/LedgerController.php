@@ -86,7 +86,7 @@ class LedgerController extends Controller {
                     e.id              AS reference_id,
                     'expense'         AS reference_type,
                     'expense_payment' AS entry_type,
-                    'credit'          AS direction,
+                    'debit'           AS direction,
                     COALESCE(e.approved_amount, e.amount)       AS amount,
                     COALESCE(e.description, 'Expense')          AS description,
                     COALESCE(e.category, 'expense')             AS category,
@@ -173,15 +173,15 @@ class LedgerController extends Controller {
             $totalDebits  = 0.0;
             $expenseCount = 0;
             $advanceCount = 0;
-            $manualCount = 0;
+            $manualCount  = 0;
             foreach ($rawEntries as $entry) {
                 if ($entry['direction'] === 'credit') {
                     $totalCredits += floatval($entry['amount']);
                     if ($entry['reference_type'] === 'advance') $advanceCount++;
-                    if ($entry['reference_type'] === 'expense') $expenseCount++;
                     if ($entry['reference_type'] === 'manual')  $manualCount++;
                 } else {
                     $totalDebits += floatval($entry['amount']);
+                    if ($entry['reference_type'] === 'expense') $expenseCount++;
                 }
             }
 
@@ -189,6 +189,7 @@ class LedgerController extends Controller {
                 'user'            => $user,
                 'entries'         => $entries,
                 'balance'         => $currentBalance,
+                'outstanding'     => $totalCredits - $totalDebits,
                 'totalCredits'    => $totalCredits,
                 'totalDebits'     => $totalDebits,
                 'netActivity'     => $totalCredits - $totalDebits,

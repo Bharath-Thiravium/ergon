@@ -190,6 +190,8 @@ class ClientLedgerController extends Controller {
         // (most recent date) holds the final running balance
         $currentBalance = empty($entries) ? 0.0 : floatval($entries[0]['balance_after']);
 
+        $outstanding = $totalCredits - $totalDebits;
+
         $this->view('client_ledger/ledger', [
             'title'          => 'Ledger: ' . htmlspecialchars($client['name']),
             'active_page'    => 'client_ledger',
@@ -197,6 +199,7 @@ class ClientLedgerController extends Controller {
             'entries'        => $entries,
             'totalCredits'   => $totalCredits,
             'totalDebits'    => $totalDebits,
+            'outstanding'    => $outstanding,
             'currentBalance' => $currentBalance,
         ]);
     }
@@ -330,7 +333,7 @@ $db   = $this->getDb();
             'invoice_raised'   => 'debit',
             'invoice_received' => 'credit',
             'purchase'         => 'debit',
-            'sale'            => 'debit',
+            'sale'            => 'credit',
             'expense'         => 'debit',
             'income'          => 'credit',
             'opening_balance' => $_POST['adjustment_direction'] ?? 'credit',
@@ -447,7 +450,7 @@ $db = $this->getDb();
             'invoice_raised'   => 'debit',
             'invoice_received' => 'credit',
             'purchase'         => 'debit',
-            'sale'            => 'debit',
+            'sale'            => 'credit',
             'expense'         => 'debit',
             'income'          => 'credit',
             'opening_balance' => $_POST['adjustment_direction'] ?? 'credit',

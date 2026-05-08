@@ -84,7 +84,7 @@ ob_start();
         <div class="kpi-card__value <?= $balance >= 0 ? 'text-success' : 'text-danger' ?>">
             ₹<?= number_format(abs($balance), 2) ?>
         </div>
-        <div class="kpi-card__label">Current Balance</div>
+        <div class="kpi-card__label">Running Balance</div>
         <div class="kpi-card__status"><?= $balance >= 0 ? 'Credit' : 'Debit' ?></div>
     </div>
 
@@ -94,7 +94,7 @@ ob_start();
         </div>
         <div class="kpi-card__value" style="color:#059669;">₹<?= number_format($totalCredits, 2) ?></div>
         <div class="kpi-card__label">Total Credits</div>
-        <div class="kpi-card__status"><?= $advanceCount ?> Advance<?= $advanceCount !== 1 ? 's' : '' ?> · <?= $expenseCount ?> Expense<?= $expenseCount !== 1 ? 's' : '' ?> · <?= $manualCount ?? 0 ?> Manual</div>
+        <div class="kpi-card__status"><?= $advanceCount ?> Advance<?= $advanceCount !== 1 ? 's' : '' ?> · <?= $manualCount ?? 0 ?> Manual</div>
     </div>
 
     <div class="kpi-card">
@@ -103,18 +103,18 @@ ob_start();
         </div>
         <div class="kpi-card__value" style="color:#dc2626;">₹<?= number_format($totalDebits, 2) ?></div>
         <div class="kpi-card__label">Total Debits</div>
-        <div class="kpi-card__status"><?= $totalDebits > 0 ? 'Deductions applied' : 'No deductions' ?></div>
+        <div class="kpi-card__status"><?= $expenseCount ?> Expense<?= $expenseCount !== 1 ? 's' : '' ?><?= $totalDebits > 0 ? '' : ' · No deductions' ?></div>
     </div>
 
-    <div class="kpi-card">
+    <div class="kpi-card" style="border:2px solid <?= $outstanding >= 0 ? '#059669' : '#dc2626' ?>;">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">⚖️</div>
         </div>
-        <div class="kpi-card__value <?= $netActivity >= 0 ? 'text-success' : 'text-danger' ?>">
-            ₹<?= number_format(abs($netActivity), 2) ?>
+        <div class="kpi-card__value <?= $outstanding >= 0 ? 'text-success' : 'text-danger' ?>">
+            <?= $outstanding < 0 ? '-' : '' ?>₹<?= number_format(abs($outstanding), 2) ?>
         </div>
-        <div class="kpi-card__label">Net Activity</div>
-        <div class="kpi-card__status"><?= $netActivity >= 0 ? 'Net Credit' : 'Net Debit' ?></div>
+        <div class="kpi-card__label">Outstanding</div>
+        <div class="kpi-card__status">Credit − Debit</div>
     </div>
 </div>
 
@@ -208,9 +208,9 @@ ob_start();
                     <span class="summary-value text-danger">-₹<?= number_format($totalDebits, 2) ?></span>
                 </div>
                 <div class="summary-row summary-row--total">
-                    <span class="summary-label"><strong>Final Balance:</strong></span>
-                    <span class="summary-value <?= $balance >= 0 ? 'text-success' : 'text-danger' ?>">
-                        <strong>₹<?= number_format($balance, 2) ?></strong>
+                    <span class="summary-label"><strong>Outstanding (Credit − Debit):</strong></span>
+                    <span class="summary-value <?= $outstanding >= 0 ? 'text-success' : 'text-danger' ?>">
+                        <strong><?= $outstanding < 0 ? '-' : '' ?>₹<?= number_format(abs($outstanding), 2) ?></strong>
                     </span>
                 </div>
             </div>

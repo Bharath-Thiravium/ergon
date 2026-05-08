@@ -30,18 +30,21 @@ Error: <?= $_GET['error'] === 'duplicate_reference' ? 'That reference number alr
 <!-- Summary Cards -->
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px;">
     <div class="card" style="padding:16px 20px;">
-        <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Current Balance</div>
-        <div style="font-size:24px;font-weight:800;margin-top:4px;color:<?= $currentBalance >= 0 ? '#059669' : '#dc2626' ?>;">
-            <?= $currentBalance < 0 ? '-' : '' ?>₹<?= number_format(abs($currentBalance), 2) ?>
-        </div>
-    </div>
-    <div class="card" style="padding:16px 20px;">
         <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Total Credits</div>
-        <div style="font-size:22px;font-weight:700;margin-top:4px;color:#059669;">₹<?= number_format($totalCredits, 2) ?></div>
+        <div style="font-size:22px;font-weight:700;margin-top:4px;color:#059669;">+₹<?= number_format($totalCredits, 2) ?></div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px;">Payments received / income</div>
     </div>
     <div class="card" style="padding:16px 20px;">
         <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Total Debits</div>
-        <div style="font-size:22px;font-weight:700;margin-top:4px;color:#dc2626;">₹<?= number_format($totalDebits, 2) ?></div>
+        <div style="font-size:22px;font-weight:700;margin-top:4px;color:#dc2626;">-₹<?= number_format($totalDebits, 2) ?></div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px;">Expenses / payments made</div>
+    </div>
+    <div class="card" style="padding:16px 20px;border:2px solid <?= $outstanding >= 0 ? '#059669' : '#dc2626' ?>;">
+        <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Outstanding</div>
+        <div style="font-size:24px;font-weight:800;margin-top:4px;color:<?= $outstanding >= 0 ? '#059669' : '#dc2626' ?>;">
+            <?= $outstanding < 0 ? '-' : '' ?>₹<?= number_format(abs($outstanding), 2) ?>
+        </div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px;">Credit − Debit</div>
     </div>
     <div class="card" style="padding:16px 20px;">
         <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Entries</div>
@@ -91,7 +94,7 @@ Error: <?= $_GET['error'] === 'duplicate_reference' ? 'That reference number alr
                             'invoice_raised'   => ['Invoice Raised',    '#dbeafe', '#1e40af'],
                             'invoice_received' => ['Invoice Received',  '#e0e7ff', '#3730a3'],
                             'purchase'         => ['Purchase',          '#fce7f3', '#be185d'],
-                            'sale'            => ['Sale',              '#dcfce7', '#166534'],
+                            'sale'            => ['Sale',              '#d1fae5', '#047857'],
                             'expense'         => ['Expense',           '#fed7d7', '#b91c1c'],
                             'income'          => ['Income',            '#d1fae5', '#047857'],
                             'opening_balance' => ['Opening Balance',   '#f3e8ff', '#7c3aed'],
@@ -153,7 +156,7 @@ Error: <?= $_GET['error'] === 'duplicate_reference' ? 'That reference number alr
                     'invoice_raised'   => ['Invoice Raised',    '#dbeafe', '#1e40af'],
                     'invoice_received' => ['Invoice Received',  '#e0e7ff', '#3730a3'],
                     'purchase'         => ['Purchase',          '#fce7f3', '#be185d'],
-                    'sale'            => ['Sale',              '#dcfce7', '#166534'],
+                    'sale'            => ['Sale',              '#d1fae5', '#047857'],
                     'expense'         => ['Expense',           '#fed7d7', '#b91c1c'],
                     'income'          => ['Income',            '#d1fae5', '#047857'],
                     'opening_balance' => ['Opening Balance',   '#f3e8ff', '#7c3aed'],
@@ -230,7 +233,7 @@ Error: <?= $_GET['error'] === 'duplicate_reference' ? 'That reference number alr
                     <option value="invoice_raised">Invoice Raised (Debit — bill sent to client)</option>
                     <option value="invoice_received">Invoice Received (Credit — bill from supplier)</option>
                     <option value="purchase">Purchase (Debit — goods/services bought)</option>
-                    <option value="sale">Sale (Debit — goods/services sold)</option>
+                    <option value="sale">Sale (Credit — goods/services sold)</option>
                     <option value="expense">Expense (Debit — business expense)</option>
                     <option value="income">Income (Credit — business income)</option>
                     <option value="opening_balance">Opening Balance</option>
@@ -459,7 +462,7 @@ function openEditModal(entryId) {
             ['invoice_raised',   'Invoice Raised (Debit — bill sent to client)'],
             ['invoice_received', 'Invoice Received (Credit — bill from supplier)'],
             ['purchase',         'Purchase (Debit — goods/services bought)'],
-            ['sale',            'Sale (Debit — goods/services sold)'],
+            ['sale',            'Sale (Credit — goods/services sold)'],
             ['expense',         'Expense (Debit — business expense)'],
             ['income',          'Income (Credit — business income)'],
             ['fees_paid',       'Fees Paid (Debit — fees/charges paid)'],
@@ -589,7 +592,7 @@ function openViewModal(entryId) {
             'invoice_raised': { bg: '#dbeafe', color: '#1e40af' },
             'invoice_received': { bg: '#e0e7ff', color: '#3730a3' },
             'purchase': { bg: '#fce7f3', color: '#be185d' },
-            'sale': { bg: '#dcfce7', color: '#166534' },
+            'sale': { bg: '#d1fae5', color: '#047857' },
             'expense': { bg: '#fed7d7', color: '#b91c1c' },
             'income': { bg: '#d1fae5', color: '#047857' },
             'opening_balance': { bg: '#f3e8ff', color: '#7c3aed' },
