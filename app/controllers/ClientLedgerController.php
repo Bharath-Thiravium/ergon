@@ -761,7 +761,37 @@ public function createClient(): void {
                 return $n >= 0 ? 'Cr' : 'Dr';
             }
             private function truncate(string $s, int $max): string {
-                return mb_strlen($s) > $max ? mb_substr($s, 0, $max - 1) . '…' : $s;
+                return mb_strlen($s) > $max ? mb_substr($s, 0, $max - 1) . '...' : $s;
+            }
+
+            // ── wrap text to fit within colWidth, return array of lines ──
+            private function wrapText(string $s, float $colWidth, float $fs, float $pad): array {
+                $avail = $colWidth - $pad * 2;
+                $words = explode(' ', $s);
+                $lines = [];
+                $line  = '';
+                foreach ($words as $word) {
+                    $test = $line === '' ? $word : $line . ' ' . $word;
+                    if ($this->strW($test, $fs) <= $avail) {
+                        $line = $test;
+                    } else {
+                        if ($line !== '') $lines[] = $line;
+                        // if single word is too wide, hard-break it
+                        while ($this->strW($word, $fs) > $avail) {
+                            $cut = '';
+                            for ($i = 0; $i < mb_strlen($word); $i++) {
+                                $ch = mb_substr($word, $i, 1);
+                                if ($this->strW($cut . $ch, $fs) > $avail) break;
+                                $cut .= $ch;
+                            }
+                            $lines[] = $cut;
+                            $word = mb_substr($word, mb_strlen($cut));
+                        }
+                        $line = $word;
+                    }
+                }
+                if ($line !== '') $lines[] = $line;
+                return $lines ?: [''];
             }
 
             // ── PDF object helpers ────────────────────────────────────────
@@ -801,7 +831,7 @@ public function createClient(): void {
                 return $w * $fs / 1000.0;
             }
 
-            // ── draw one ledger row, return new y ─────────────────────────
+            // ── draw one ledger row with wrapping support, return new y ──
             private function drawRow(
                 string &$ops, float $y, float $rowH,
                 string $date, string $particulars, string $ref,
@@ -809,83 +839,89 @@ public function createClient(): void {
                 string $balance, string $drCr,
                 bool $isHeader = false, bool $isTotal = false
             ): float {
-                $x        = $this->ml;
-                $tableW   = $this->pw - $this->ml - $this->mr;
-                $fs       = $isHeader ? 7.5 : 7.0;
-                $fontCmd  = $isHeader || $isTotal ? '/F2' : '/F1';
-                $pad      = 4.0;
-                $textY    = $y - $rowH + 4.5;
+                $x       = $this->ml;
+                $tableW  = $this->pw - $this->ml - $this->mr;
+                $fs      = $isHeader ? 7.5 : 7.0;
+                $fontCmd = $isHeader || $isTotal ? '/F2' : '/F1';
+                $pad     = 4.0;
+                $lineH   = $fs * 1.4; // line height for wrapped lines
+
+                // wrap Particulars (col 1) only for data rows
+                $partLines = ($isHeader || $isTotal)
+                    ? [$particulars]
+                    : $this->wrapText($particulars, $this->cols[1], $fs, $pad);
+                $numLines = count($partLines);
+                $actualRowH = max($rowH, $pad * 2 + $numLines * $lineH);
 
                 // ── background fill ───────────────────────────────────────
                 if ($isHeader) {
                     $ops .= "0.18 0.36 0.60 rg\n";
-                    $ops .= "$x " . ($y - $rowH) . " $tableW $rowH re f\n";
+                    $ops .= "$x " . ($y - $actualRowH) . " $tableW $actualRowH re f\n";
                     $ops .= "0 0 0 rg\n";
                 } elseif ($isTotal) {
                     $ops .= "0.91 0.91 0.91 rg\n";
-                    $ops .= "$x " . ($y - $rowH) . " $tableW $rowH re f\n";
+                    $ops .= "$x " . ($y - $actualRowH) . " $tableW $actualRowH re f\n";
                     $ops .= "0 0 0 rg\n";
                 }
 
                 // ── outer row border ──────────────────────────────────────
                 $ops .= "0.75 0.75 0.75 RG 0.3 w\n";
-                $ops .= "$x " . ($y - $rowH) . " $tableW $rowH re S\n";
+                $ops .= "$x " . ($y - $actualRowH) . " $tableW $actualRowH re S\n";
 
                 // ── vertical column separators ────────────────────────────
                 $sepColor = $isHeader ? '0.40 0.55 0.75' : '0.82 0.82 0.82';
                 $ops .= "$sepColor RG 0.3 w\n";
                 $cx = $x;
                 foreach ($this->cols as $ci => $cw) {
-                    if ($ci === count($this->cols) - 1) break; // skip last
+                    if ($ci === count($this->cols) - 1) break;
                     $cx += $cw;
-                    $ops .= "$cx " . ($y - $rowH) . " m $cx $y l S\n";
+                    $ops .= "$cx " . ($y - $actualRowH) . " m $cx $y l S\n";
                 }
                 $ops .= "0 0 0 RG\n";
 
-                // ── cell text ─────────────────────────────────────────────
-                $cells  = [$date, $particulars, $ref, $vch, $debit, $credit, $balance . ($balance !== '' ? ' ' . $drCr : '')];
-                $aligns = ['L', 'L', 'L', 'L', 'R', 'R', 'R'];
-                $colors = [
-                    'L' => '0.10 0.10 0.10',
-                    'D' => '0.72 0.08 0.08',
-                    'C' => '0.02 0.50 0.28',
-                ];
-                // balance Dr/Cr colour follows sign
-                $balColor = (strpos($drCr,'Dr') !== false) ? '0.72 0.08 0.08' : '0.02 0.50 0.28';
-                $cx = $x;
-                foreach ($cells as $i => $cell) {
-                    $cw = $this->cols[$i];
-                    if ($cell === '') { $cx += $cw; continue; }
+                // ── single-line cells (all except Particulars) ────────────
+                $balColor = (strpos($drCr, 'Dr') !== false) ? '0.72 0.08 0.08' : '0.02 0.50 0.28';
+                // vertically centre single-line text in the row
+                $textY = $y - $actualRowH / 2 - $fs * 0.35;
 
-                    // pick colour
-                    if ($isHeader) {
-                        $fg = '1 1 1';
-                    } elseif ($isTotal) {
-                        $fg = '0.15 0.15 0.15';
-                    } elseif ($i === 4 && $cell !== '') {
-                        $fg = '0.72 0.08 0.08'; // debit — red
-                    } elseif ($i === 5 && $cell !== '') {
-                        $fg = '0.02 0.50 0.28'; // credit — green
-                    } elseif ($i === 6 && !$isHeader && !$isTotal) {
-                        $fg = $balColor;         // balance colour by sign
-                    } else {
-                        $fg = '0.10 0.10 0.10';
-                    }
+                $singleCells  = [$date, null, $ref, $vch, $debit, $credit, $balance . ($balance !== '' ? ' ' . $drCr : '')];
+                $aligns       = ['L', 'L', 'L', 'L', 'R', 'R', 'R'];
+                $cx = $x;
+                foreach ($singleCells as $i => $cell) {
+                    $cw = $this->cols[$i];
+                    if ($cell === null || $cell === '') { $cx += $cw; continue; }
+
+                    if ($isHeader)       $fg = '1 1 1';
+                    elseif ($isTotal)    $fg = '0.15 0.15 0.15';
+                    elseif ($i === 4)    $fg = '0.72 0.08 0.08';
+                    elseif ($i === 5)    $fg = '0.02 0.50 0.28';
+                    elseif ($i === 6)    $fg = $balColor;
+                    else                 $fg = '0.10 0.10 0.10';
                     $ops .= "$fg rg\n";
 
                     if ($aligns[$i] === 'R') {
-                        // right-align: place text so its right edge = cx+cw-pad
-                        $tw   = $this->strW($cell, $fs);
-                        $tx   = $cx + $cw - $pad - $tw;
-                        if ($tx < $cx + 1.0) $tx = $cx + 1.0; // clamp
+                        $tw = $this->strW($cell, $fs);
+                        $tx = $cx + $cw - $pad - $tw;
+                        if ($tx < $cx + 1.0) $tx = $cx + 1.0;
                     } else {
                         $tx = $cx + $pad;
                     }
-
                     $ops .= "BT $fontCmd $fs Tf $tx $textY Td (" . $this->esc($cell) . ") Tj ET\n";
                     $cx += $cw;
                 }
-                return $y - $rowH;
+
+                // ── Particulars: multi-line wrapped ───────────────────────
+                $fg = $isHeader ? '1 1 1' : ($isTotal ? '0.15 0.15 0.15' : '0.10 0.10 0.10');
+                $ops .= "$fg rg\n";
+                $partX  = $x + $this->cols[0] + $pad;
+                // top of text block, vertically centred
+                $topY   = $y - ($actualRowH - $numLines * $lineH) / 2 - $lineH * 0.75;
+                foreach ($partLines as $li => $line) {
+                    $lineY = $topY - $li * $lineH;
+                    $ops .= "BT $fontCmd $fs Tf $partX $lineY Td (" . $this->esc($line) . ") Tj ET\n";
+                }
+
+                return $y - $actualRowH;
             }
 
             // ── build full PDF ────────────────────────────────────────────
@@ -896,28 +932,41 @@ public function createClient(): void {
                 $tableW   = $this->pw - $this->ml - $this->mr; // 523.28
                 $pages    = [];
                 $rowH     = 15.0;
-                $firstPageHeaderH = 150.0; // title(28) + client-info(~52) + gap(10) + summary-box(58) + gap(8)
-                $contPageHeaderH  = 22.0;  // continuation banner
+                $fs       = 7.0;
+                $pad      = 4.0;
+                $lineH    = $fs * 1.4;
+                $firstPageHeaderH = 160.0;
+                $contPageHeaderH  = 22.0;
                 $colHdrH  = $rowH;
                 $usableH  = $this->ph - $this->mt - $this->mb;
 
-                $rowsPerFirstPage = (int)(($usableH - $firstPageHeaderH - $colHdrH) / $rowH);
-                $rowsPerPage      = (int)(($usableH - $contPageHeaderH - $colHdrH) / $rowH);
-                // safety floor
-                if ($rowsPerFirstPage < 1) $rowsPerFirstPage = 1;
-                if ($rowsPerPage      < 1) $rowsPerPage      = 1;
-
-                $chunks = [];
-                if (!empty($this->chrono)) {
-                    $chunks[] = array_slice($this->chrono, 0, $rowsPerFirstPage);
-                    $offset   = $rowsPerFirstPage;
-                    while ($offset < count($this->chrono)) {
-                        $chunks[] = array_slice($this->chrono, $offset, $rowsPerPage);
-                        $offset  += $rowsPerPage;
-                    }
-                } else {
-                    $chunks[] = [];
+                // pre-compute actual height of each data row
+                $rowHeights = [];
+                foreach ($this->chrono as $e) {
+                    $desc  = $e['description'] ?? '';
+                    $lines = $this->wrapText($desc, $this->cols[1], $fs, $pad);
+                    $rowHeights[] = max($rowH, $pad * 2 + count($lines) * $lineH);
                 }
+
+                // paginate by actual heights
+                $chunks   = [];
+                $chunkH   = [];
+                $pageRows = [];
+                $pageUsed = $firstPageHeaderH + $colHdrH;
+                $avail    = $usableH;
+                $cur      = [];
+                foreach ($this->chrono as $idx => $e) {
+                    $rh = $rowHeights[$idx];
+                    $headerH = count($chunks) === 0 ? $firstPageHeaderH : $contPageHeaderH;
+                    $used    = $headerH + $colHdrH + array_sum(array_map(fn($i) => $rowHeights[$i], array_keys($cur)));
+                    if (!empty($cur) && $used + $rh > $avail) {
+                        $chunks[] = $cur;
+                        $cur = [];
+                    }
+                    $cur[$idx] = $e;
+                }
+                $chunks[] = $cur; // last page (may be empty)
+                if (empty($this->chrono)) $chunks = [[]];
                 $totalPages = count($chunks);
 
                 foreach ($chunks as $pageIdx => $chunk) {
@@ -1040,7 +1089,7 @@ public function createClient(): void {
                         $vch    = $this->typeLabels[$e['entry_type']] ?? $e['entry_type'];
                         $y = $this->drawRow($ops, $y, $rowH,
                             date('d-M-Y', strtotime($e['transaction_date'])),
-                            $this->truncate($e['description'] ?? '', 38),
+                            $e['description'] ?? '',
                             $this->truncate($e['reference_no'] ?? '', 16),
                             $this->truncate($vch, 20),
                             $debit, $credit,
