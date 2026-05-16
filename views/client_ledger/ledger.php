@@ -12,9 +12,23 @@ ob_start();
         <p style="margin:2px 0 0;color:#6b7280;font-size:14px;"><?= htmlspecialchars($client['company_name']) ?></p>
         <?php endif; ?>
     </div>
-    <button onclick="openAddModal()" class="btn btn--primary" style="display:flex;align-items:center;gap:6px;">
-        <i class="bi bi-plus-lg"></i> Add Entry
-    </button>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <a href="/ergon/client-ledger/<?= (int)$client['id'] ?>/download-csv"
+           style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#16a34a;color:#fff;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;border:none;cursor:pointer;"
+           title="Download financial ledger as CSV (Excel-compatible)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSV
+        </a>
+        <a href="/ergon/client-ledger/<?= (int)$client['id'] ?>/download-pdf"
+           style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#dc2626;color:#fff;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;border:none;cursor:pointer;"
+           title="Download financial ledger as PDF">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            PDF
+        </a>
+        <button onclick="openAddModal()" class="btn btn--primary" style="display:flex;align-items:center;gap:6px;">
+            <i class="bi bi-plus-lg"></i> Add Entry
+        </button>
+    </div>
 </div>
 
 <?php if (isset($_GET['success'])): ?>

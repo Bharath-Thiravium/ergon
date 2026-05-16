@@ -441,6 +441,8 @@ $router->post('/client-ledger/update-client', 'ClientLedgerController', 'updateC
 $router->post('/client-ledger/entry/{id}/update', 'ClientLedgerController', 'updateEntry');
 $router->post('/client-ledger/entry/{id}/delete', 'ClientLedgerController', 'deleteEntry');
 $router->get('/client-ledger/{id}', 'ClientLedgerController', 'ledger');
+$router->get('/client-ledger/{id}/download-csv', 'ClientLedgerController', 'downloadCsv');
+$router->get('/client-ledger/{id}/download-pdf', 'ClientLedgerController', 'downloadPdf');
 
 // Finance Module Routes - Main
 $router->get('/finance', 'FinanceController', 'dashboard');

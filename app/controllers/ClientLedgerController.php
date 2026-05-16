@@ -547,6 +547,578 @@ public function createClient(): void {
         $this->redirect('/client-ledger?success=client_created');
     }
 
+    public function downloadCsv(int $clientId): void {
+        $this->requireAdmin();
+        $db = $this->getDb();
+        $this->ensureTables($db);
+
+        $stmt = $db->prepare("SELECT * FROM clients WHERE id = ?");
+        $stmt->execute([$clientId]);
+        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$client) { http_response_code(404); exit('Client not found'); }
+
+        $entries = $this->fetchLedgerEntries($db, $clientId);
+
+        // Compute totals
+        $totalCredits = 0.0;
+        $totalDebits  = 0.0;
+        foreach ($entries as $e) {
+            if ($e['direction'] === 'credit') $totalCredits += floatval($e['amount']);
+            else                               $totalDebits  += floatval($e['amount']);
+        }
+        $outstanding    = $totalCredits - $totalDebits;
+        $currentBalance = empty($entries) ? 0.0 : floatval($entries[0]['balance_after']);
+
+        $clientSlug = preg_replace('/[^a-z0-9]+/', '_', strtolower($client['name']));
+        $filename   = 'ledger_' . $clientSlug . '_' . date('Ymd') . '.csv';
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $out = fopen('php://output', 'w');
+
+        // ── Header block (financial ledger standard) ──────────────────────
+        fputcsv($out, ['CUSTOMER LEDGER STATEMENT']);
+        fputcsv($out, []);
+        fputcsv($out, ['Client Name',   $client['name']]);
+        if (!empty($client['company_name'])) {
+            fputcsv($out, ['Company',   $client['company_name']]);
+        }
+        if (!empty($client['email']))   fputcsv($out, ['Email',   $client['email']]);
+        if (!empty($client['phone']))   fputcsv($out, ['Phone',   $client['phone']]);
+        fputcsv($out, ['Generated On',  date('d M Y, h:i A')]);
+        fputcsv($out, ['Total Entries', count($entries)]);
+        fputcsv($out, []);
+
+        // ── Summary block ─────────────────────────────────────────────────
+        fputcsv($out, ['ACCOUNT SUMMARY']);
+        fputcsv($out, ['Total Credits (Dr)',  number_format($totalCredits, 2)]);
+        fputcsv($out, ['Total Debits (Cr)',   number_format($totalDebits,  2)]);
+        fputcsv($out, ['Outstanding Balance', number_format(abs($outstanding), 2) . ' ' . ($outstanding >= 0 ? 'Cr' : 'Dr')]);
+        fputcsv($out, ['Closing Balance',     number_format(abs($currentBalance), 2) . ' ' . ($currentBalance >= 0 ? 'Cr' : 'Dr')]);
+        fputcsv($out, []);
+
+        // ── Column headers ────────────────────────────────────────────────
+        fputcsv($out, [
+            'Date',
+            'Particulars',
+            'Reference No.',
+            'Vch Type',
+            'Debit (Dr)',
+            'Credit (Cr)',
+            'Balance',
+            'Dr/Cr',
+        ]);
+
+        // ── Entries (chronological ASC for ledger standard) ───────────────
+        $chronological = array_reverse($entries);
+        $typeLabels = [
+            'payment_received' => 'Payment Received',
+            'payment_sent'     => 'Payment Sent',
+            'adjustment'       => 'Adjustment',
+            'invoice_raised'   => 'Invoice Raised',
+            'invoice_received' => 'Invoice Received',
+            'purchase'         => 'Purchase',
+            'sale'             => 'Sale',
+            'expense'          => 'Expense',
+            'income'           => 'Income',
+            'opening_balance'  => 'Opening Balance',
+            'closing_balance'  => 'Closing Balance',
+            'fees_paid'        => 'Fees Paid',
+            'penalties_paid'   => 'Penalties Paid',
+        ];
+        foreach ($chronological as $e) {
+            $bal    = floatval($e['balance_after']);
+            $drCr   = $bal >= 0 ? 'Cr' : 'Dr';
+            $debit  = $e['direction'] === 'debit'  ? number_format($e['amount'], 2) : '';
+            $credit = $e['direction'] === 'credit' ? number_format($e['amount'], 2) : '';
+            fputcsv($out, [
+                date('d-M-Y', strtotime($e['transaction_date'])),
+                $e['description'] ?? '',
+                $e['reference_no'] ?? '',
+                $typeLabels[$e['entry_type']] ?? $e['entry_type'],
+                $debit,
+                $credit,
+                number_format(abs($bal), 2),
+                $drCr,
+            ]);
+        }
+
+        // ── Footer totals ─────────────────────────────────────────────────
+        fputcsv($out, []);
+        fputcsv($out, [
+            'TOTALS', '', '', '',
+            number_format($totalDebits,  2),
+            number_format($totalCredits, 2),
+            number_format(abs($currentBalance), 2),
+            $currentBalance >= 0 ? 'Cr' : 'Dr',
+        ]);
+
+        fclose($out);
+        exit;
+    }
+
+    public function downloadPdf(int $clientId): void {
+        $this->requireAdmin();
+        $db = $this->getDb();
+        $this->ensureTables($db);
+
+        $stmt = $db->prepare("SELECT * FROM clients WHERE id = ?");
+        $stmt->execute([$clientId]);
+        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$client) { http_response_code(404); exit('Client not found'); }
+
+        $entries = $this->fetchLedgerEntries($db, $clientId);
+
+        $totalCredits = 0.0;
+        $totalDebits  = 0.0;
+        foreach ($entries as $e) {
+            if ($e['direction'] === 'credit') $totalCredits += floatval($e['amount']);
+            else                               $totalDebits  += floatval($e['amount']);
+        }
+        $outstanding    = $totalCredits - $totalDebits;
+        $currentBalance = empty($entries) ? 0.0 : floatval($entries[0]['balance_after']);
+        $chronological  = array_reverse($entries);
+
+        $typeLabels = [
+            'payment_received' => 'Payment Received',
+            'payment_sent'     => 'Payment Sent',
+            'adjustment'       => 'Adjustment',
+            'invoice_raised'   => 'Invoice Raised',
+            'invoice_received' => 'Invoice Received',
+            'purchase'         => 'Purchase',
+            'sale'             => 'Sale',
+            'expense'          => 'Expense',
+            'income'           => 'Income',
+            'opening_balance'  => 'Opening Balance',
+            'closing_balance'  => 'Closing Balance',
+            'fees_paid'        => 'Fees Paid',
+            'penalties_paid'   => 'Penalties Paid',
+        ];
+
+        $clientSlug = preg_replace('/[^a-z0-9]+/', '_', strtolower($client['name']));
+        $filename   = 'ledger_' . $clientSlug . '_' . date('Ymd') . '.pdf';
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-cache, no-store');
+        header('Pragma: no-cache');
+
+        // ── Pure-PHP PDF writer (no external library) ─────────────────────
+        // Uses PDF 1.4 spec: manual object construction.
+        $pdf = new class($client, $entries, $chronological, $typeLabels,
+                         $totalCredits, $totalDebits, $outstanding, $currentBalance) {
+
+            private array  $objects  = [];
+            private array  $offsets  = [];
+            private string $buf      = '';
+            private int    $objCount = 0;
+
+            // page geometry (A4 portrait, points)
+            private float $pw = 595.28;
+            private float $ph = 841.89;
+            private float $ml = 36.0;   // margin left
+            private float $mr = 36.0;   // margin right
+            private float $mt = 36.0;   // margin top
+            private float $mb = 36.0;   // margin bottom
+
+            // column widths — 7 cols, total = pw(595.28) - ml(36) - mr(36) = 523.28
+            // Validated against real Helvetica AFM glyph widths at fs=7.0
+            // Date=50 | Particulars=155 | Reference=62 | VchType=72 | Debit=58 | Credit=58 | Balance=68.28
+            private array $cols = [50.0, 155.0, 62.0, 72.0, 58.0, 58.0, 68.28];
+
+            private array  $client;
+            private array  $entries;
+            private array  $chrono;
+            private array  $typeLabels;
+            private float  $totalCredits;
+            private float  $totalDebits;
+            private float  $outstanding;
+            private float  $currentBalance;
+
+            public function __construct($client, $entries, $chrono, $typeLabels,
+                                        $tc, $td, $out, $cb) {
+                $this->client         = $client;
+                $this->entries        = $entries;
+                $this->chrono         = $chrono;
+                $this->typeLabels     = $typeLabels;
+                $this->totalCredits   = $tc;
+                $this->totalDebits    = $td;
+                $this->outstanding    = $out;
+                $this->currentBalance = $cb;
+            }
+
+            // ── helpers ──────────────────────────────────────────────────
+            private function esc(string $s): string {
+                return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $s);
+            }
+            private function fmt(float $n): string {
+                return number_format(abs($n), 2);
+            }
+            private function drCr(float $n): string {
+                return $n >= 0 ? 'Cr' : 'Dr';
+            }
+            private function truncate(string $s, int $max): string {
+                return mb_strlen($s) > $max ? mb_substr($s, 0, $max - 1) . '…' : $s;
+            }
+
+            // ── PDF object helpers ────────────────────────────────────────
+            private function addObj(string $content): int {
+                $this->objCount++;
+                $this->objects[$this->objCount] = $content;
+                return $this->objCount;
+            }
+
+            // ── stream a page's content ───────────────────────────────────
+            private function buildStream(string $ops): int {
+                $len = strlen($ops);
+                return $this->addObj("<< /Length $len >>\nstream\n" . $ops . "\nendstream");
+            }
+
+            // ── Helvetica glyph-width table (1/1000 em units, covers ASCII 32-126)
+            // Source: Adobe Helvetica AFM. Used for accurate right-alignment.
+            private array $hw = [
+                278,278,355,556,556,889,667,222,333,333,389,584,278,333,
+                278,278,556,556,556,556,556,556,556,556,556,556,278,278,
+                584,584,584,556,1015,667,667,722,722,667,611,778,722,278,
+                500,667,556,833,722,778,667,778,722,667,611,722,667,944,
+                667,667,611,278,278,278,469,556,222,556,556,500,556,556,
+                278,556,556,222,222,500,222,833,556,556,556,556,333,500,
+                278,556,500,722,500,500,500,334,260,334,584
+            ];
+
+            // Return string width in points at given font size
+            private function strW(string $s, float $fs): float {
+                $w = 0.0;
+                $len = strlen($s);
+                for ($i = 0; $i < $len; $i++) {
+                    $c = ord($s[$i]);
+                    $idx = $c - 32;
+                    $w += ($idx >= 0 && $idx < count($this->hw)) ? $this->hw[$idx] : 556;
+                }
+                return $w * $fs / 1000.0;
+            }
+
+            // ── draw one ledger row, return new y ─────────────────────────
+            private function drawRow(
+                string &$ops, float $y, float $rowH,
+                string $date, string $particulars, string $ref,
+                string $vch, string $debit, string $credit,
+                string $balance, string $drCr,
+                bool $isHeader = false, bool $isTotal = false
+            ): float {
+                $x        = $this->ml;
+                $tableW   = $this->pw - $this->ml - $this->mr;
+                $fs       = $isHeader ? 7.5 : 7.0;
+                $fontCmd  = $isHeader || $isTotal ? '/F2' : '/F1';
+                $pad      = 4.0;
+                $textY    = $y - $rowH + 4.5;
+
+                // ── background fill ───────────────────────────────────────
+                if ($isHeader) {
+                    $ops .= "0.18 0.36 0.60 rg\n";
+                    $ops .= "$x " . ($y - $rowH) . " $tableW $rowH re f\n";
+                    $ops .= "0 0 0 rg\n";
+                } elseif ($isTotal) {
+                    $ops .= "0.91 0.91 0.91 rg\n";
+                    $ops .= "$x " . ($y - $rowH) . " $tableW $rowH re f\n";
+                    $ops .= "0 0 0 rg\n";
+                }
+
+                // ── outer row border ──────────────────────────────────────
+                $ops .= "0.75 0.75 0.75 RG 0.3 w\n";
+                $ops .= "$x " . ($y - $rowH) . " $tableW $rowH re S\n";
+
+                // ── vertical column separators ────────────────────────────
+                $sepColor = $isHeader ? '0.40 0.55 0.75' : '0.82 0.82 0.82';
+                $ops .= "$sepColor RG 0.3 w\n";
+                $cx = $x;
+                foreach ($this->cols as $ci => $cw) {
+                    if ($ci === count($this->cols) - 1) break; // skip last
+                    $cx += $cw;
+                    $ops .= "$cx " . ($y - $rowH) . " m $cx $y l S\n";
+                }
+                $ops .= "0 0 0 RG\n";
+
+                // ── cell text ─────────────────────────────────────────────
+                $cells  = [$date, $particulars, $ref, $vch, $debit, $credit, $balance . ($balance !== '' ? ' ' . $drCr : '')];
+                $aligns = ['L', 'L', 'L', 'L', 'R', 'R', 'R'];
+                $colors = [
+                    'L' => '0.10 0.10 0.10',
+                    'D' => '0.72 0.08 0.08',
+                    'C' => '0.02 0.50 0.28',
+                ];
+                // balance Dr/Cr colour follows sign
+                $balColor = (strpos($drCr,'Dr') !== false) ? '0.72 0.08 0.08' : '0.02 0.50 0.28';
+                $cx = $x;
+                foreach ($cells as $i => $cell) {
+                    $cw = $this->cols[$i];
+                    if ($cell === '') { $cx += $cw; continue; }
+
+                    // pick colour
+                    if ($isHeader) {
+                        $fg = '1 1 1';
+                    } elseif ($isTotal) {
+                        $fg = '0.15 0.15 0.15';
+                    } elseif ($i === 4 && $cell !== '') {
+                        $fg = '0.72 0.08 0.08'; // debit — red
+                    } elseif ($i === 5 && $cell !== '') {
+                        $fg = '0.02 0.50 0.28'; // credit — green
+                    } elseif ($i === 6 && !$isHeader && !$isTotal) {
+                        $fg = $balColor;         // balance colour by sign
+                    } else {
+                        $fg = '0.10 0.10 0.10';
+                    }
+                    $ops .= "$fg rg\n";
+
+                    if ($aligns[$i] === 'R') {
+                        // right-align: place text so its right edge = cx+cw-pad
+                        $tw   = $this->strW($cell, $fs);
+                        $tx   = $cx + $cw - $pad - $tw;
+                        if ($tx < $cx + 1.0) $tx = $cx + 1.0; // clamp
+                    } else {
+                        $tx = $cx + $pad;
+                    }
+
+                    $ops .= "BT $fontCmd $fs Tf $tx $textY Td (" . $this->esc($cell) . ") Tj ET\n";
+                    $cx += $cw;
+                }
+                return $y - $rowH;
+            }
+
+            // ── build full PDF ────────────────────────────────────────────
+            public function render(): string {
+                $f1 = $this->addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+                $f2 = $this->addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+
+                $tableW   = $this->pw - $this->ml - $this->mr; // 523.28
+                $pages    = [];
+                $rowH     = 15.0;
+                $firstPageHeaderH = 150.0; // title(28) + client-info(~52) + gap(10) + summary-box(58) + gap(8)
+                $contPageHeaderH  = 22.0;  // continuation banner
+                $colHdrH  = $rowH;
+                $usableH  = $this->ph - $this->mt - $this->mb;
+
+                $rowsPerFirstPage = (int)(($usableH - $firstPageHeaderH - $colHdrH) / $rowH);
+                $rowsPerPage      = (int)(($usableH - $contPageHeaderH - $colHdrH) / $rowH);
+                // safety floor
+                if ($rowsPerFirstPage < 1) $rowsPerFirstPage = 1;
+                if ($rowsPerPage      < 1) $rowsPerPage      = 1;
+
+                $chunks = [];
+                if (!empty($this->chrono)) {
+                    $chunks[] = array_slice($this->chrono, 0, $rowsPerFirstPage);
+                    $offset   = $rowsPerFirstPage;
+                    while ($offset < count($this->chrono)) {
+                        $chunks[] = array_slice($this->chrono, $offset, $rowsPerPage);
+                        $offset  += $rowsPerPage;
+                    }
+                } else {
+                    $chunks[] = [];
+                }
+                $totalPages = count($chunks);
+
+                foreach ($chunks as $pageIdx => $chunk) {
+                    $ops = '';
+                    $y   = $this->ph - $this->mt;
+
+                    // ── Page header ─────────────────────────────────────────
+                    if ($pageIdx === 0) {
+                        // title bar
+                        $ops .= "0.18 0.36 0.60 rg\n";
+                        $ops .= $this->ml . " " . ($y - 24) . " $tableW 24 re f\n";
+                        $ops .= "1 1 1 rg\n";
+                        $titleText = 'CUSTOMER LEDGER STATEMENT';
+                        $titleW    = $this->strW($titleText, 13);
+                        $titleX    = $this->ml + ($tableW - $titleW) / 2;
+                        $ops .= "BT /F2 13 Tf $titleX " . ($y - 16) . " Td ($titleText) Tj ET\n";
+                        $ops .= "0 0 0 rg\n";
+                        $y -= 38;
+
+                        // client info (2-column layout)
+                        $lx = $this->ml;
+                        $vx = $this->ml + 52;
+                        $ops .= "BT /F2 8.5 Tf $lx $y Td (Client:) Tj ET\n";
+                        $ops .= "BT /F1 8.5 Tf $vx $y Td (" . $this->esc($this->client['name']) . ") Tj ET\n";
+                        $y -= 13;
+                        if (!empty($this->client['company_name'])) {
+                            $ops .= "BT /F2 8 Tf $lx $y Td (Company:) Tj ET\n";
+                            $ops .= "BT /F1 8 Tf $vx $y Td (" . $this->esc($this->client['company_name']) . ") Tj ET\n";
+                            $y -= 12;
+                        }
+                        if (!empty($this->client['email'])) {
+                            $ops .= "BT /F2 8 Tf $lx $y Td (Email:) Tj ET\n";
+                            $ops .= "BT /F1 8 Tf $vx $y Td (" . $this->esc($this->client['email']) . ") Tj ET\n";
+                            $y -= 12;
+                        }
+                        $ops .= "BT /F2 8 Tf $lx $y Td (Generated:) Tj ET\n";
+                        $ops .= "BT /F1 8 Tf $vx $y Td (" . date('d M Y, h:i A') . ") Tj ET\n";
+                        $y -= 10;
+
+                        // Summary box
+                        $boxH = 50.0;
+                        $ops .= "0.94 0.96 1.00 rg\n";
+                        $ops .= $this->ml . " " . ($y - $boxH) . " $tableW $boxH re f\n";
+                        $ops .= "0.18 0.36 0.60 RG 0.6 w\n";
+                        $ops .= $this->ml . " " . ($y - $boxH) . " $tableW $boxH re S\n";
+                        // vertical divider at midpoint
+                        $midX = $this->ml + $tableW / 2;
+                        $ops .= "0.70 0.78 0.88 RG 0.4 w\n";
+                        $ops .= "$midX " . ($y - $boxH) . " m $midX $y l S\n";
+                        // horizontal divider between row1 and row2
+                        $hDivY = $y - $boxH / 2;
+                        $ops .= $this->ml . " $hDivY m " . ($this->ml + $tableW) . " $hDivY l S\n";
+                        $ops .= "0 0 0 RG\n";
+
+                        // fixed X positions
+                        $lx1 = $this->ml + 8;               // left-half label start
+                        $vx1 = $midX - 8;                   // left-half value right-edge
+                        $lx2 = $midX + 8;                   // right-half label start
+                        $vx2 = $this->ml + $tableW - 8;     // right-half value right-edge
+
+                        // row 1 baseline (upper half centre)
+                        $sy1 = $y - $boxH * 0.28;
+                        // row 2 baseline (lower half centre)
+                        $sy2 = $y - $boxH * 0.72;
+
+                        // row 1 — Total Credits | Total Debits
+                        $ops .= "0.18 0.36 0.60 rg\n";
+                        $ops .= "BT /F2 7.5 Tf $lx1 $sy1 Td (Total Credits:) Tj ET\n";
+                        $v = 'Rs.' . $this->fmt($this->totalCredits) . ' Cr';
+                        $tw = $this->strW($v, 7.5);
+                        $ops .= "0.02 0.50 0.28 rg\n";
+                        $ops .= "BT /F2 7.5 Tf " . ($vx1 - $tw) . " $sy1 Td ($v) Tj ET\n";
+
+                        $ops .= "0.18 0.36 0.60 rg\n";
+                        $ops .= "BT /F2 7.5 Tf $lx2 $sy1 Td (Total Debits:) Tj ET\n";
+                        $v = 'Rs.' . $this->fmt($this->totalDebits) . ' Dr';
+                        $tw = $this->strW($v, 7.5);
+                        $ops .= "0.72 0.08 0.08 rg\n";
+                        $ops .= "BT /F2 7.5 Tf " . ($vx2 - $tw) . " $sy1 Td ($v) Tj ET\n";
+
+                        // row 2 — Outstanding | Closing Balance
+                        $ops .= "0.18 0.36 0.60 rg\n";
+                        $ops .= "BT /F2 7.5 Tf $lx1 $sy2 Td (Outstanding:) Tj ET\n";
+                        $v = 'Rs.' . $this->fmt($this->outstanding) . ' ' . $this->drCr($this->outstanding);
+                        $tw = $this->strW($v, 7.5);
+                        $oc = $this->outstanding >= 0 ? '0.02 0.50 0.28' : '0.72 0.08 0.08';
+                        $ops .= "$oc rg\n";
+                        $ops .= "BT /F2 7.5 Tf " . ($vx1 - $tw) . " $sy2 Td ($v) Tj ET\n";
+
+                        $ops .= "0.18 0.36 0.60 rg\n";
+                        $ops .= "BT /F2 7.5 Tf $lx2 $sy2 Td (Closing Balance:) Tj ET\n";
+                        $v = 'Rs.' . $this->fmt($this->currentBalance) . ' ' . $this->drCr($this->currentBalance);
+                        $tw = $this->strW($v, 7.5);
+                        $bc = $this->currentBalance >= 0 ? '0.02 0.50 0.28' : '0.72 0.08 0.08';
+                        $ops .= "$bc rg\n";
+                        $ops .= "BT /F2 7.5 Tf " . ($vx2 - $tw) . " $sy2 Td ($v) Tj ET\n";
+                        $ops .= "0 0 0 rg\n";
+
+                        $y -= ($boxH + 8);
+                    } else {
+                        // continuation banner
+                        $ops .= "0.18 0.36 0.60 rg\n";
+                        $ops .= $this->ml . " " . ($y - 18) . " $tableW 18 re f\n";
+                        $ops .= "1 1 1 rg\n";
+                        $ops .= "BT /F2 8.5 Tf " . ($this->ml + 5) . " " . ($y - 12) . " Td (CUSTOMER LEDGER  -  " . $this->esc($this->client['name']) . "  -  Continued) Tj ET\n";
+                        $ops .= "0 0 0 rg\n";
+                        $y -= 22;
+                    }
+
+                    // ── Column header row ──────────────────────────────────
+                    $y = $this->drawRow($ops, $y, $rowH,
+                        'Date', 'Particulars', 'Reference No.', 'Vch Type',
+                        'Debit (Dr)', 'Credit (Cr)', 'Balance', 'Dr/Cr', true);
+
+                    // ── Data rows ──────────────────────────────────────────
+                    foreach ($chunk as $e) {
+                        $bal    = floatval($e['balance_after']);
+                        $debit  = $e['direction'] === 'debit'  ? 'Rs.' . $this->fmt($e['amount']) : '';
+                        $credit = $e['direction'] === 'credit' ? 'Rs.' . $this->fmt($e['amount']) : '';
+                        $vch    = $this->typeLabels[$e['entry_type']] ?? $e['entry_type'];
+                        $y = $this->drawRow($ops, $y, $rowH,
+                            date('d-M-Y', strtotime($e['transaction_date'])),
+                            $this->truncate($e['description'] ?? '', 38),
+                            $this->truncate($e['reference_no'] ?? '', 16),
+                            $this->truncate($vch, 20),
+                            $debit, $credit,
+                            'Rs.' . $this->fmt($bal), $this->drCr($bal));
+                    }
+
+                    // ── Totals row (last page only) ────────────────────────
+                    if ($pageIdx === $totalPages - 1) {
+                        $y -= 4;
+                        $y = $this->drawRow($ops, $y, $rowH,
+                            'TOTALS', '', '', '',
+                            'Rs.' . $this->fmt($this->totalDebits),
+                            'Rs.' . $this->fmt($this->totalCredits),
+                            'Rs.' . $this->fmt($this->currentBalance),
+                            $this->drCr($this->currentBalance),
+                            false, true);
+                    }
+
+                    // ── Page number ────────────────────────────────────────
+                    $pgText = 'Page ' . ($pageIdx + 1) . ' of ' . $totalPages;
+                    $pgW    = $this->strW($pgText, 7.0);
+                    $pgX    = $this->ml + ($tableW - $pgW) / 2;
+                    $ops .= "0.50 0.50 0.50 rg\n";
+                    $ops .= "BT /F1 7 Tf $pgX " . ($this->mb - 6) . " Td ($pgText) Tj ET\n";
+                    $ops .= "0 0 0 rg\n";
+
+                    $streamId = $this->buildStream($ops);
+                    $pageId   = $this->addObj(
+                        "<< /Type /Page /Parent 3 0 R\n"
+                        . "   /MediaBox [0 0 " . $this->pw . " " . $this->ph . "]\n"
+                        . "   /Contents $streamId 0 R\n"
+                        . "   /Resources << /Font << /F1 $f1 0 R /F2 $f2 0 R >> >>\n"
+                        . ">>"
+                    );
+                    $pages[] = $pageId;
+                }
+
+                // Pages dict — obj number is whatever addObj assigns next
+                $kidsStr = implode(' 0 R ', $pages) . ' 0 R';
+                $pagesId = $this->addObj(
+                    "<< /Type /Pages /Kids [$kidsStr] /Count " . count($pages) . " >>"
+                );
+                // Catalog
+                $catId = $this->addObj("<< /Type /Catalog /Pages $pagesId 0 R >>");
+
+                // Patch each Page object's /Parent to point at the real pagesId
+                foreach ($pages as $pid) {
+                    $this->objects[$pid] = str_replace(
+                        '/Parent 3 0 R',
+                        "/Parent $pagesId 0 R",
+                        $this->objects[$pid]
+                    );
+                }
+
+                // ── Serialise ──────────────────────────────────────────────
+                $out  = "%PDF-1.4\n";
+                $xref = [];
+                foreach ($this->objects as $id => $body) {
+                    $xref[$id] = strlen($out);
+                    $out .= "$id 0 obj\n$body\nendobj\n";
+                }
+
+                $xrefOffset = strlen($out);
+                $out .= "xref\n0 " . ($this->objCount + 1) . "\n";
+                $out .= "0000000000 65535 f \n";
+                for ($i = 1; $i <= $this->objCount; $i++) {
+                    $out .= str_pad($xref[$i] ?? 0, 10, '0', STR_PAD_LEFT) . " 00000 n \n";
+                }
+                $out .= "trailer\n<< /Size " . ($this->objCount + 1) . " /Root $catId 0 R >>\n";
+                $out .= "startxref\n$xrefOffset\n%%EOF";
+                return $out;
+            }
+        };
+
+        echo $pdf->render();
+        exit;
+    }
+
     public function updateClient(): void {
         $this->requireAdmin();
         if (!$this->isPost()) {
