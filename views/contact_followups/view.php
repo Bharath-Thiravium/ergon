@@ -534,24 +534,27 @@ function rescheduleFollowup(id) {
         dateInput.value = today;
     }
     
-    const form = document.getElementById('rescheduleForm');
-    form.onsubmit = function(e) {
-        e.preventDefault();
+    const submitBtn = document.getElementById('rescheduleSubmitBtn');
+    // Remove previous listener to avoid stacking
+    const newBtn = submitBtn.cloneNode(true);
+    submitBtn.parentNode.replaceChild(newBtn, submitBtn);
+    
+    newBtn.addEventListener('click', function() {
+        const form = document.getElementById('rescheduleForm');
+        const newDate = form.querySelector('input[name="new_date"]').value;
+        if (!newDate) {
+            alert('Please select a new date');
+            return;
+        }
         
         const formData = new FormData(form);
-        const submitBtn = document.querySelector('button[form="rescheduleForm"]');
-        
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Rescheduling...';
-        }
+        newBtn.disabled = true;
+        newBtn.textContent = 'Rescheduling...';
         
         fetch(`/ergon/contacts/followups/reschedule/${id}`, {
             method: 'POST',
             body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(response => response.json())
         .then(data => {
@@ -560,21 +563,17 @@ function rescheduleFollowup(id) {
                 location.reload();
             } else {
                 alert('Error: ' + (data.error || 'Failed to reschedule'));
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '📅 Reschedule';
-                }
+                newBtn.disabled = false;
+                newBtn.textContent = '📅 Reschedule';
             }
         })
         .catch(error => {
             console.error('Error:', error);
             alert('Network error occurred');
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '📅 Reschedule';
-            }
+            newBtn.disabled = false;
+            newBtn.textContent = '📅 Reschedule';
         });
-    };
+    });
 }
 
 function cancelFollowup(id) {
@@ -699,7 +698,7 @@ $cancelFooter = '
 
 // Reschedule Modal Content
 $rescheduleContent = '
-<form method="POST" id="rescheduleForm" action="">
+<form id="rescheduleForm">
     <input type="hidden" name="followup_id" id="rescheduleFollowupId">
     <div style="margin-bottom: 15px;">
         <label style="display: block; margin-bottom: 5px; font-weight: bold;">New Date *</label>
@@ -717,7 +716,7 @@ $rescheduleFooter = '
 <button type="button" onclick="closeModal(\'rescheduleModal\')" class="btn btn--secondary">
     Cancel
 </button>
-<button type="submit" form="rescheduleForm" class="btn btn--warning">
+<button type="button" id="rescheduleSubmitBtn" class="btn btn--warning">
     📅 Reschedule
 </button>';
 
