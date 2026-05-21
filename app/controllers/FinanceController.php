@@ -4,6 +4,50 @@ require_once __DIR__ . '/../services/DataSyncService.php';
 require_once __DIR__ . '/../middlewares/ModuleMiddleware.php';
 
 class FinanceController {
+
+    public function __construct() {
+        $this->ensureMeasurementTables();
+    }
+
+    private function ensureMeasurementTables() {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $db->exec("CREATE TABLE IF NOT EXISTS measurement_sheets (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                work_name VARCHAR(255) NOT NULL,
+                project_name VARCHAR(255) NULL,
+                contractor VARCHAR(255) NULL,
+                po_ref VARCHAR(100) NULL,
+                ra_bill_no VARCHAR(100) NULL,
+                bill_date DATE NULL,
+                status VARCHAR(50) NOT NULL DEFAULT 'draft',
+                created_by INT NULL,
+                project_id INT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            $db->exec("CREATE TABLE IF NOT EXISTS measurement_items (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                sheet_id INT NOT NULL,
+                description TEXT NULL,
+                unit VARCHAR(50) NULL,
+                wo_qty DECIMAL(12,3) DEFAULT 0,
+                wo_rate DECIMAL(12,2) DEFAULT 0,
+                wo_amount DECIMAL(14,2) DEFAULT 0,
+                prev_qty DECIMAL(12,3) DEFAULT 0,
+                prev_amount DECIMAL(14,2) DEFAULT 0,
+                present_qty DECIMAL(12,3) DEFAULT 0,
+                present_amount DECIMAL(14,2) DEFAULT 0,
+                cumulative_qty DECIMAL(12,3) DEFAULT 0,
+                cumulative_amount DECIMAL(14,2) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (sheet_id) REFERENCES measurement_sheets(id) ON DELETE CASCADE
+            )");
+        } catch (Exception $e) {
+            error_log('FinanceController ensureMeasurementTables: ' . $e->getMessage());
+        }
+    }
     
     public function dashboard($request = null) {
         ModuleMiddleware::requireModule('finance');

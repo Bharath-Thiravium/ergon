@@ -200,6 +200,12 @@ $router->get('/settings/map-picker', 'SettingsController', 'mapPicker');
 $router->get('/settings/map-picker', 'SettingsController', 'mapPicker');
 $router->post('/settings', 'SettingsController', 'update');
 $router->post('/settings/save', 'SettingsController', 'update');
+// Backup & Restore
+$router->get('/settings/backup', 'BackupController', 'index');
+$router->post('/settings/backup/create', 'BackupController', 'create');
+$router->post('/settings/backup/restore/{filename}', 'BackupController', 'restore');
+$router->get('/settings/backup/download/{filename}', 'BackupController', 'download');
+$router->post('/settings/backup/delete/{filename}', 'BackupController', 'delete');
 
 // Owner Routes - Complete Management
 $router->get('/owner/approvals', 'OwnerController', 'approvals');

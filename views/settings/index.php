@@ -82,6 +82,18 @@ ob_start();
     <div class="card">
         <div class="card__header">
             <h2 class="card__title">
+                <span>🗄️</span> Database Backup
+            </h2>
+        </div>
+        <div class="card__body">
+            <p style="color:var(--text-secondary); margin-bottom:1rem;">Create and manage database backups. Backups are retained for 45 days.</p>
+            <a href="/ergon/settings/backup" class="btn btn--primary">🗄️ Manage Backups</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card__header">
+            <h2 class="card__title">
                 <span>📊</span> System Information
             </h2>
         </div>

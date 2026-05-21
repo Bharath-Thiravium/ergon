@@ -471,6 +471,10 @@ ob_end_clean();
                                 <span class="nav-icon">⚙️</span>
                                 Settings
                             </a>
+                            <a href="/ergon/settings/backup" class="nav-dropdown-item <?= ($active_page ?? '') === 'backup' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">🗄️</span>
+                                Backup & Restore
+                            </a>
                             <?php else: ?>
                             <span class="nav-dropdown-item nav-dropdown-item--disabled" style="opacity: 0.5; cursor: not-allowed;">
                                 <span class="nav-icon">⚙️</span>

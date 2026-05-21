@@ -1,28 +1,58 @@
-# ── Daily rollover + recurring task generation at midnight ───────────────────
-# Generates due recurring tasks for all users, then rolls over incomplete tasks.
+# ═══════════════════════════════════════════════════════════════════════════════
+# ERGON — Cron Job Setup
+# ═══════════════════════════════════════════════════════════════════════════════
+# Add these lines to your crontab:  crontab -e
+# ───────────────────────────────────────────────────────────────────────────────
+
+# ── Daily task rollover + recurring task generation (midnight) ────────────────
 0 0 * * * /usr/bin/php /path/to/ergon/cron/daily_rollover.php >> /var/log/ergon_rollover.log 2>&1
 
 # ── Finance sync (every 30 minutes) ──────────────────────────────────────────
 */30 * * * * /usr/bin/php /path/to/ergon/cron/auto_sync.php >> /var/log/finance_sync.log 2>&1
 
+# ── Automated daily database backup at 3:00 AM ───────────────────────────────
+# Creates backup_YYYY-MM-DD_auto.sql in storage/backups/
+# Keeps 45 days of backups — day-46 run deletes day-1 backup automatically
+0 3 * * * /usr/bin/php /path/to/ergon/cron/backup_daily.php >> /var/log/ergon_backup.log 2>&1
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# WINDOWS — Task Scheduler Setup (schtasks commands — run as Administrator)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Daily rollover at midnight ────────────────────────────────────────────────
+schtasks /create /tn "Ergon\DailyRollover" /tr "\"C:\laragon\bin\php\php-8.x.x-Win32-vs16-x64\php.exe\" \"C:\laragon\www\ergon\cron\daily_rollover.php\"" /sc daily /st 00:00 /ru SYSTEM /f
+
 # ── Daily backup at 3:00 AM ───────────────────────────────────────────────────
-0 3 * * * /usr/bin/php /path/to/ergon/scripts/backup.php >> /var/log/ergon_backup.log 2>&1
+schtasks /create /tn "Ergon\DailyBackup" /tr "\"C:\laragon\bin\php\php-8.x.x-Win32-vs16-x64\php.exe\" \"C:\laragon\www\ergon\cron\backup_daily.php\"" /sc daily /st 03:00 /ru SYSTEM /f
 
-# ── Cleanup backups older than 48 days at 3:05 AM ────────────────────────────
-5 3 * * * /usr/bin/php /path/to/ergon/scripts/cleanup_backups.php >> /var/log/ergon_backup.log 2>&1
+# ── Finance sync every 30 minutes ────────────────────────────────────────────
+schtasks /create /tn "Ergon\FinanceSync" /tr "\"C:\laragon\bin\php\php-8.x.x-Win32-vs16-x64\php.exe\" \"C:\laragon\www\ergon\cron\auto_sync.php\"" /sc minute /mo 30 /ru SYSTEM /f
 
-# ── Windows Task Scheduler equivalents ───────────────────────────────────────
-# Daily rollover + recurring:
-#   Program:   php.exe
-#   Arguments: C:\laragon\www\ergon\cron\daily_rollover.php
-#   Trigger:   Daily at 00:00
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# WINDOWS — Task Scheduler GUI (manual steps)
+# ═══════════════════════════════════════════════════════════════════════════════
+# 1. Open Task Scheduler → Create Basic Task
+# 2. Name: "Ergon Daily Backup"
+# 3. Trigger: Daily → Start: 3:00 AM
+# 4. Action: Start a program
+#    Program : C:\laragon\bin\php\php-8.x.x-Win32-vs16-x64\php.exe
+#    Arguments: C:\laragon\www\ergon\cron\backup_daily.php
+#    Start in : C:\laragon\www\ergon
+# 5. Finish → check "Open Properties" → General tab → "Run whether user is logged on or not"
 #
-# Backup:
-#   Program:   php.exe
-#   Arguments: C:\laragon\www\ergon\scripts\backup.php
-#   Trigger:   Daily at 03:00
-#
-# Cleanup:
-#   Program:   php.exe
-#   Arguments: C:\laragon\www\ergon\scripts\cleanup_backups.php
-#   Trigger:   Daily at 03:05
+# Verify PHP path with:  where php
+# ───────────────────────────────────────────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BACKUP BEHAVIOUR
+# ═══════════════════════════════════════════════════════════════════════════════
+# - Filename format : backup_YYYY-MM-DD_auto.sql
+# - Retention       : 45 days (rolling window)
+# - Day 46 run      : deletes day-1 backup automatically
+# - Idempotent      : re-running on same day skips creation if file exists
+# - Fallback        : uses PHP-based dump if mysqldump is not in PATH
+# - Log location    : /var/log/ergon_backup.log  (Linux)
+#                     storage/logs/ or redirect stdout in Task Scheduler (Windows)
+# ───────────────────────────────────────────────────────────────────────────────
