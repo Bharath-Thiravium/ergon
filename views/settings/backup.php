@@ -13,7 +13,6 @@ ob_start();
     </div>
     <div style="display:flex; gap:0.75rem; align-items:center;">
         <a href="/ergon/settings" class="btn btn--secondary">← Back to Settings</a>
-        <button class="btn btn--secondary" onclick="runNow()" title="Trigger backup now (same as cron)">⚡ Run Now</button>
         <button class="btn btn--primary" onclick="openCreateModal()">➕ Create Backup</button>
     </div>
 </div>
@@ -156,32 +155,6 @@ ob_start();
 </div>
 
 <script>
-function runNow() {
-    if (!confirm('Run the automated backup now?\nThis creates the same backup the 3AM cron would create.')) return;
-    const btn = event.target;
-    btn.disabled = true;
-    btn.textContent = '⏳ Running...';
-    const fd = new FormData();
-    fd.append('label', 'manual-run');
-    fetch('/ergon/settings/backup/create', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                alert('✅ Backup created: ' + data.filename + ' (' + data.size + ')');
-                location.reload();
-            } else {
-                alert('❌ ' + (data.error || 'Backup failed'));
-                btn.disabled = false;
-                btn.textContent = '⚡ Run Now';
-            }
-        })
-        .catch(() => {
-            alert('Network error.');
-            btn.disabled = false;
-            btn.textContent = '⚡ Run Now';
-        });
-}
-
 function openCreateModal() {
     document.getElementById('createBackupModal').style.display = 'flex';
     document.getElementById('backupLabel').value = '';
