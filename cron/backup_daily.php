@@ -42,7 +42,6 @@ if (!is_dir(BACKUP_DIR)) {
     $log('Created backup directory: ' . BACKUP_DIR);
 }
 
-// Block direct web access
 $htaccess = BACKUP_DIR . '.htaccess';
 if (!file_exists($htaccess)) {
     file_put_contents($htaccess, "Deny from all\n");
@@ -70,13 +69,14 @@ if (file_exists($filepath) && filesize($filepath) > 100) {
 } else {
     $log("Starting backup → {$filename}");
 
+    $dumped    = false;
     $mysqldump = findMysqldump();
 
     if ($mysqldump) {
         $log("Using mysqldump: {$mysqldump}");
         $passArg = $dbPass !== '' ? '-p' . escapeshellarg($dbPass) : '';
         $cmd = sprintf(
-            '%s --no-tablespaces -h %s -u %s %s %s > %s 2>&1',
+            '%s --no-tablespaces --single-transaction --quick -h %s -u %s %s %s > %s 2>/dev/null',
             escapeshellcmd($mysqldump),
             escapeshellarg($dbHost),
             escapeshellarg($dbUser),
@@ -85,27 +85,27 @@ if (file_exists($filepath) && filesize($filepath) > 100) {
             escapeshellarg($filepath)
         );
         exec($cmd, $output, $rc);
-
-        if ($rc !== 0 || !file_exists($filepath) || filesize($filepath) < 100) {
+        if ($rc === 0 && file_exists($filepath) && filesize($filepath) > 100) {
+            $dumped = true;
+        } else {
             $log('mysqldump failed (rc=' . $rc . '). Falling back to PHP dump.');
-            if (!empty($output)) $log('mysqldump output: ' . implode(' | ', $output));
-            phpDump($filepath, $dbName, $log);
         }
-    } else {
-        $log('mysqldump not found. Using PHP dump.');
+    }
+
+    if (!$dumped) {
+        $log('Using PHP streaming dump.');
         phpDump($filepath, $dbName, $log);
     }
 
     if (file_exists($filepath) && filesize($filepath) > 10) {
-        $size = formatSize(filesize($filepath));
-        $log("Backup created successfully. Size: {$size}");
+        $log('Backup created successfully. Size: ' . formatSize(filesize($filepath)));
     } else {
         $log('ERROR: Backup file missing or empty after creation.');
         exit(1);
     }
 }
 
-// ── Prune: delete backups older than RETENTION_DAYS (rolling 45-day window) ──
+// ── Prune: rolling 45-day window ─────────────────────────────────────────────
 $log('Pruning backups older than ' . RETENTION_DAYS . ' days...');
 $cutoff  = time() - (RETENTION_DAYS * 86400);
 $allSql  = glob(BACKUP_DIR . '*.sql') ?: [];
@@ -113,77 +113,110 @@ $deleted = 0;
 
 foreach ($allSql as $file) {
     if (filemtime($file) < $cutoff) {
-        $fname = basename($file);
         if (@unlink($file)) {
-            $log("Deleted expired backup: {$fname}");
+            $log('Deleted expired backup: ' . basename($file));
             $deleted++;
         } else {
-            $log("WARNING: Could not delete {$fname}");
+            $log('WARNING: Could not delete ' . basename($file));
         }
     }
 }
 
 $remaining = count(glob(BACKUP_DIR . '*.sql') ?: []);
-$log("Pruning done. Deleted: {$deleted}. Remaining backups: {$remaining}.");
+$log("Pruning done. Deleted: {$deleted}. Remaining: {$remaining}.");
 $log('Daily backup cron completed successfully.');
 exit(0);
 
 // ── Helper functions ──────────────────────────────────────────────────────────
 
 function findMysqldump(): ?string {
-    $candidates = ['mysqldump'];
-    // Auto-detect Laragon MySQL versions
-    $laragon = glob('C:/laragon/bin/mysql/*/bin/mysqldump.exe') ?: [];
-    $candidates = array_merge($laragon, $candidates, [
-        'C:/xampp/mysql/bin/mysqldump.exe',
-        '/usr/bin/mysqldump',
-        '/usr/local/bin/mysqldump',
-        '/opt/homebrew/bin/mysqldump',
-    ]);
+    $isWin = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+
+    if ($isWin) {
+        $candidates = array_merge(
+            glob('C:/laragon/bin/mysql/*/bin/mysqldump.exe') ?: [],
+            ['C:/xampp/mysql/bin/mysqldump.exe']
+        );
+    } else {
+        $candidates = [
+            '/usr/bin/mysqldump',
+            '/usr/local/bin/mysqldump',
+            '/opt/homebrew/bin/mysqldump',
+            '/usr/local/mysql/bin/mysqldump',
+        ];
+    }
+
     foreach ($candidates as $c) {
-        if (strpos($c, '/') === false && strpos($c, '\\') === false) {
-            // Plain command — check PATH
-            $isWin = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-            exec(($isWin ? 'where ' : 'which ') . escapeshellarg($c) . ' 2>nul', $out, $rc);
-            if ($rc === 0 && !empty($out)) return $c;
-        } elseif (file_exists($c)) {
-            return $c;
+        if (file_exists($c) && is_executable($c)) return $c;
+    }
+
+    // PATH fallback (only if exec is available)
+    if (function_exists('exec')) {
+        $disabled = array_map('trim', explode(',', ini_get('disable_functions') ?? ''));
+        if (!in_array('exec', $disabled)) {
+            $which = $isWin ? 'where' : 'which';
+            exec($which . ' mysqldump 2>/dev/null', $out, $rc);
+            if ($rc === 0 && !empty($out[0])) return trim($out[0]);
         }
     }
     return null;
 }
 
 function phpDump(string $filepath, string $dbName, callable $log): void {
+    @set_time_limit(300);
+    @ini_set('memory_limit', '256M');
+
     try {
         $db = Database::connect();
-        $out  = "-- ERGON Automated Backup\n";
-        $out .= "-- Generated : " . date('Y-m-d H:i:s') . "\n";
-        $out .= "-- Database  : {$dbName}\n\n";
-        $out .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
 
-        $tables = $db->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+        $fh = fopen($filepath, 'w');
+        if (!$fh) {
+            $log('ERROR: Cannot open file for writing: ' . $filepath);
+            return;
+        }
+
+        fwrite($fh, "-- ERGON Automated Backup\n");
+        fwrite($fh, "-- Generated : " . date('Y-m-d H:i:s') . "\n");
+        fwrite($fh, "-- Database  : {$dbName}\n\n");
+        fwrite($fh, "SET FOREIGN_KEY_CHECKS=0;\nSET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n\n");
+
+        $tables = $db->query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'")->fetchAll(PDO::FETCH_COLUMN);
+        $log('Dumping ' . count($tables) . ' tables...');
+
         foreach ($tables as $table) {
             $create = $db->query("SHOW CREATE TABLE `{$table}`")->fetch(PDO::FETCH_NUM);
-            $out .= "DROP TABLE IF EXISTS `{$table}`;\n";
-            $out .= $create[1] . ";\n\n";
+            fwrite($fh, "DROP TABLE IF EXISTS `{$table}`;\n");
+            fwrite($fh, $create[1] . ";\n\n");
 
-            $rows = $db->query("SELECT * FROM `{$table}`")->fetchAll(PDO::FETCH_ASSOC);
-            if ($rows) {
-                $cols = '`' . implode('`, `', array_keys($rows[0])) . '`';
-                foreach (array_chunk($rows, 200) as $chunk) {
-                    $vals = [];
-                    foreach ($chunk as $row) {
-                        $esc   = array_map(fn($v) => $v === null ? 'NULL' : $db->quote((string)$v), $row);
-                        $vals[] = '(' . implode(', ', $esc) . ')';
-                    }
-                    $out .= "INSERT INTO `{$table}` ({$cols}) VALUES\n" . implode(",\n", $vals) . ";\n";
+            $count = (int)$db->query("SELECT COUNT(*) FROM `{$table}`")->fetchColumn();
+            if ($count === 0) continue;
+
+            $cols  = null;
+            $chunk = [];
+            $stmt  = $db->query("SELECT * FROM `{$table}`");
+
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                if ($cols === null) {
+                    $cols = '`' . implode('`, `', array_keys($row)) . '`';
                 }
-                $out .= "\n";
+                $esc     = array_map(fn($v) => $v === null ? 'NULL' : $db->quote((string)$v), $row);
+                $chunk[] = '(' . implode(', ', $esc) . ')';
+
+                if (count($chunk) >= 200) {
+                    fwrite($fh, "INSERT INTO `{$table}` ({$cols}) VALUES\n" . implode(",\n", $chunk) . ";\n");
+                    $chunk = [];
+                }
             }
+            if ($chunk) {
+                fwrite($fh, "INSERT INTO `{$table}` ({$cols}) VALUES\n" . implode(",\n", $chunk) . ";\n");
+            }
+            fwrite($fh, "\n");
         }
-        $out .= "SET FOREIGN_KEY_CHECKS=1;\n";
-        file_put_contents($filepath, $out);
+
+        fwrite($fh, "SET FOREIGN_KEY_CHECKS=1;\n");
+        fclose($fh);
         $log('PHP dump completed for ' . count($tables) . ' tables.');
+
     } catch (Exception $e) {
         $log('PHP dump error: ' . $e->getMessage());
     }
