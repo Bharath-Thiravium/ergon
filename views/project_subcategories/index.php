@@ -14,7 +14,7 @@ $projectId = $selectedProject['id'] ?? null;
         <?php if ($projectId): ?>
         <button onclick="showAddModal()" class="btn btn--primary">➕ Add Subcategory</button>
         <?php endif; ?>
-        <a href="/ergon/projects" class="btn btn--secondary">← Back to Projects</a>
+        <a href="/ergon/project-management" class="btn btn--secondary">← Back to Projects</a>
     </div>
 </div>
 
