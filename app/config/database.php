@@ -11,7 +11,11 @@ $_host    = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
 $_envBase = __DIR__ . '/../..';
 $_envDev  = $_envBase . '/.env';
 if (Environment::isProduction()) {
-    if (strpos($_host, 'aes.') === 0 && file_exists($_envBase . '/.env.production.aes')) {
+    // On each production server, only a plain .env exists (deployed manually).
+    // The .env.production.* files live only in the local dev repo.
+    if (file_exists($_envBase . '/.env')) {
+        $_envFile = $_envBase . '/.env';
+    } elseif (strpos($_host, 'aes.') === 0 && file_exists($_envBase . '/.env.production.aes')) {
         $_envFile = $_envBase . '/.env.production.aes';
     } elseif (file_exists($_envBase . '/.env.production')) {
         $_envFile = $_envBase . '/.env.production';
