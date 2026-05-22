@@ -235,24 +235,38 @@ class SimpleAttendanceController extends Controller {
                         exit;
                     }
                     
-                    // Validate GPS coordinates
                     if (!$latitude || !$longitude) {
                         echo json_encode(['success' => false, 'error' => 'GPS location is required for attendance']);
                         exit;
                     }
+
+                    // Validate against all allowed locations (office + projects)
+                    $allowedLocations = LocationHelper::getAllowedLocations($this->db);
+                    if (!empty($allowedLocations)) {
+                        $validation = LocationHelper::validateMultipleLocations($latitude, $longitude, $allowedLocations);
+                        if (!$validation['allowed']) {
+                            echo json_encode(['success' => false, 'error' => 'You are not at an allowed location. ' . ($validation['error'] ?? '')]);
+                            exit;
+                        }
+                        $locationName = $validation['location']['name'] ?? 'Office';
+                        $projectId    = $validation['location']['project_id'] ?? null;
+                    } else {
+                        // No locations configured — allow but log
+                        $locationName = 'Office';
+                        $projectId    = $this->getProjectIdByGPS($latitude, $longitude);
+                    }
                     
                     $currentTime = (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
                     
-                    // Check for project match based on GPS coordinates
-                    $projectId = $this->getProjectIdByGPS($latitude, $longitude);
-                    
                     $stmt = $this->db->prepare("INSERT INTO attendance (user_id, project_id, check_in, latitude, longitude, location_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                    $result = $stmt->execute([$userId, $projectId, $currentTime, $latitude, $longitude, 'Office', $currentTime]);
+                    $result = $stmt->execute([$userId, $projectId, $currentTime, $latitude, $longitude, $locationName, $currentTime]);
                     
                     echo json_encode([
-                        'success' => $result,
-                        'message' => $result ? 'Clocked in successfully' : 'Failed to clock in'
+                        'success'  => $result,
+                        'message'  => $result ? 'Clocked in successfully at ' . $locationName : 'Failed to clock in',
+                        'location' => $locationName,
                     ]);
+                    exit;
                 } elseif ($type === 'out') {
                     $currentTime = (new DateTime('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
                     $currentDate = TimezoneHelper::getCurrentDate();
