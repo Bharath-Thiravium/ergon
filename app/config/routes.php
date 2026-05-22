@@ -206,6 +206,7 @@ $router->post('/settings/backup/create', 'BackupController', 'create');
 $router->post('/settings/backup/restore/{filename}', 'BackupController', 'restore');
 $router->get('/settings/backup/download/{filename}', 'BackupController', 'download');
 $router->post('/settings/backup/delete/{filename}', 'BackupController', 'delete');
+$router->get('/backup/run', 'BackupController', 'webhook');
 
 // Owner Routes - Complete Management
 $router->get('/owner/approvals', 'OwnerController', 'approvals');

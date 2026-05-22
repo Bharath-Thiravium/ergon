@@ -28,6 +28,74 @@ class BackupController extends Controller {
         }
     }
 
+    public function webhook() {
+        if (ob_get_level()) ob_end_clean();
+        header('Content-Type: application/json');
+        date_default_timezone_set('Asia/Kolkata');
+
+        // Load token from .env via environment config
+        require_once __DIR__ . '/../config/database.php';
+        $expectedToken = $_ENV['BACKUP_WEBHOOK_TOKEN'] ?? getenv('BACKUP_WEBHOOK_TOKEN') ?? '';
+
+        // Fallback: read .env directly
+        if ($expectedToken === '') {
+            $envFile = __DIR__ . '/../../.env';
+            if (file_exists($envFile)) {
+                foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                    if (strpos($line, 'BACKUP_WEBHOOK_TOKEN=') === 0) {
+                        $expectedToken = trim(substr($line, strlen('BACKUP_WEBHOOK_TOKEN=')));
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($expectedToken === '' || ($_GET['token'] ?? '') !== $expectedToken) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Forbidden']);
+            exit;
+        }
+
+        // Skip if today's backup already exists
+        $filename = 'backup_' . date('Y-m-d') . '_auto.sql';
+        $filepath = $this->backupDir . $filename;
+        if (file_exists($filepath) && filesize($filepath) > 100) {
+            echo json_encode(['success' => true, 'message' => "Today's backup already exists", 'skipped' => true]);
+            exit;
+        }
+
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $cfg    = Database::getPostgreSQLConfig()['mysql'];
+            $dbName = $cfg['database'];
+
+            if ($this->execEnabled()) {
+                $dumped = $this->mysqldumpToFile($filepath, $cfg);
+            }
+            if (empty($dumped)) {
+                $this->phpDumpToFile($filepath, $dbName);
+            }
+
+            if (!file_exists($filepath) || filesize($filepath) < 10) {
+                echo json_encode(['success' => false, 'error' => 'Backup file empty or missing']);
+                exit;
+            }
+
+            $this->pruneOldBackups();
+
+            echo json_encode([
+                'success'   => true,
+                'filename'  => $filename,
+                'size'      => $this->formatSize(filesize($filepath)),
+                'timestamp' => date('Y-m-d H:i:s'),
+            ]);
+        } catch (Exception $e) {
+            error_log('Backup webhook error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     public function index() {
         $this->requireOwnerOrAdmin();
         $this->pruneOldBackups();
