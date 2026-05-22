@@ -586,97 +586,67 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function cancelFollowup(id) {
-    console.log('Cancel function called with ID:', id);
-    
-    if (!id || isNaN(id)) {
-        alert('Invalid follow-up ID');
-        return;
-    }
-    
-    showModal('cancelModal');
+    if (!id || isNaN(id)) { alert('Invalid follow-up ID'); return; }
+
+    const modal = document.getElementById('cancelModal');
+    if (!modal) { alert('Cancel modal not found. Please refresh the page.'); return; }
+
     document.getElementById('cancelFollowupId').value = id;
     document.getElementById('cancelForm').action = `/ergon/contacts/followups/cancel/${id}`;
-    
-    // Add form submit handler
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
     const form = document.getElementById('cancelForm');
     form.onsubmit = function(e) {
         e.preventDefault();
-        
         const formData = new FormData(form);
         const reason = formData.get('reason');
+        if (!reason || !reason.trim()) { alert('Please provide a reason for cancellation'); return; }
+
         const submitBtn = document.querySelector('button[form="cancelForm"]');
-        
-        // Validate reason
-        if (!reason || reason.trim().length === 0) {
-            alert('Please provide a reason for cancellation');
-            return;
-        }
-        
-        console.log('Submitting cancel request for ID:', id, 'Reason:', reason);
-        
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Cancelling...';
-        }
-        
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Cancelling...'; }
+
         fetch(form.action, {
             method: 'POST',
             body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
-        .then(response => {
-            console.log('Cancel response status:', response.status);
-            return response.json();
-        })
+        .then(r => r.json())
         .then(data => {
-            console.log('Cancel response data:', data);
-            
             if (data.success) {
                 closeModal('cancelModal');
-                alert('Follow-up cancelled successfully!');
                 location.reload();
             } else {
                 alert('Error: ' + (data.error || 'Failed to cancel follow-up'));
-                console.error('Cancel error:', data);
             }
         })
-        .catch(error => {
-            console.error('Cancel network error:', error);
-            alert('Network error occurred. Please try again.');
-        })
+        .catch(() => alert('Network error occurred. Please try again.'))
         .finally(() => {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '❌ Cancel Follow-up';
-            }
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '❌ Cancel Follow-up'; }
         });
     };
 }
 
 function showHistory(id) {
-    showModal('historyModal');
-    document.getElementById('historyContent').innerHTML = 'Loading...';
-    
+    const modal = document.getElementById('historyModal');
+    if (!modal) { alert('History modal not found. Please refresh the page.'); return; }
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    document.getElementById('historyContent').innerHTML = '<div style="text-align:center;padding:2rem;color:#64748b;">📋 Loading...</div>';
+
     fetch(`/ergon/contacts/followups/history/${id}`, {
-        method: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
-        if (data.success) {
-            const content = data.html || '<div class="history-empty"><div class="history-empty-icon">📋</div><h4>No History Available</h4><p>This follow-up has no recorded history yet.</p></div>';
-            document.getElementById('historyContent').innerHTML = content;
-        } else {
-            document.getElementById('historyContent').innerHTML = '<div class="history-empty"><div class="history-empty-icon">⚠️</div><h4>Error Loading History</h4><p>' + (data.error || 'Failed to load history') + '</p></div>';
-        }
+        document.getElementById('historyContent').innerHTML = data.success
+            ? (data.html || '<div class="history-empty"><div class="history-empty-icon">📋</div><h4>No History Available</h4></div>')
+            : '<div class="history-empty"><div class="history-empty-icon">⚠️</div><h4>Error Loading History</h4><p>' + (data.error || 'Failed to load') + '</p></div>';
     })
-    .catch(error => {
-        console.error('Error loading history:', error);
-        document.getElementById('historyContent').innerHTML = 'Error loading history';
+    .catch(() => {
+        document.getElementById('historyContent').innerHTML = '<div class="history-empty"><div class="history-empty-icon">⚠️</div><h4>Network error</h4></div>';
     });
 }
 </script>
