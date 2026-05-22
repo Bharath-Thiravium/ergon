@@ -673,11 +673,6 @@ function showHistory(id) {
 </script>
 
 <?php
-$content = ob_get_clean();
-include __DIR__ . '/../layouts/dashboard.php';
-?>
-
-<?php
 // Cancel Modal Content
 $cancelContent = '
 <form method="POST" id="cancelForm" action="">
@@ -723,8 +718,11 @@ $rescheduleFooter = '
 // History Modal Content
 $historyContent = '<div id="historyContent" style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: #64748b;">📋 Loading history...</div>';
 
-// Render Modals
+// Render Modals — must be inside ob_start() buffer so they go into $content
 renderModal('cancelModal', 'Cancel Follow-up', $cancelContent, $cancelFooter, ['icon' => '❌']);
 renderModal('rescheduleModal', 'Reschedule Follow-up', $rescheduleContent, $rescheduleFooter, ['icon' => '📅']);
 renderModal('historyModal', 'Follow-up History', $historyContent, '', ['icon' => '📋', 'size' => 'large']);
+
+$content = ob_get_clean();
+include __DIR__ . '/../layouts/dashboard.php';
 ?>
