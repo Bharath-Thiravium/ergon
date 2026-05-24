@@ -105,3 +105,40 @@ async function networkFirstWithFallback(request) {
     });
   }
 }
+
+// ── Push Notifications ─────────────────────────────────────────────────────────────────
+self.addEventListener('push', event => {
+  if (!event.data) return;
+
+  let payload;
+  try { payload = event.data.json(); }
+  catch { payload = { title: 'Ergon', body: event.data.text(), url: '/ergon/notifications' }; }
+
+  const options = {
+    body:    payload.body  || '',
+    icon:    payload.icon  || '/ergon/assets/icons/icon-192.png',
+    badge:   payload.badge || '/ergon/assets/icons/icon-192.png',
+    vibrate: [200, 100, 200],
+    tag:     'ergon-notification',
+    renotify: true,
+    data:    { url: payload.url || '/ergon/notifications' },
+  };
+
+  event.waitUntil(self.registration.showNotification(payload.title || 'Ergon', options));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/ergon/notifications';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const client of list) {
+        if (client.url.includes('/ergon/') && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});

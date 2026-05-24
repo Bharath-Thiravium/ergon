@@ -237,6 +237,9 @@ $router->post('/profile/change-password', 'ProfileController', 'changePassword')
 $router->get('/profile/preferences', 'ProfileController', 'preferences');
 $router->post('/profile/preferences', 'ProfileController', 'preferences');
 
+// Push notification subscription
+$router->post('/api/push/subscribe', 'NotificationController', 'pushSubscribe');
+
 // Notifications
 $router->get('/notifications', 'NotificationController', 'index');
 $router->get('/api/notifications/unread-count', 'NotificationController', 'getUnreadCount');

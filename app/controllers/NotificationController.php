@@ -72,6 +72,74 @@ class NotificationController extends Controller {
         exit;
     }
     
+    public function pushSubscribe() {
+        AuthMiddleware::requireAuth();
+        header('Content-Type: application/json');
+
+        $input  = json_decode(file_get_contents('php://input'), true);
+        $type   = $input['type'] ?? '';
+        $userId = (int)$_SESSION['user_id'];
+
+        try {
+            $db = Database::connect();
+            $db->exec("CREATE TABLE IF NOT EXISTS push_subscriptions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                type ENUM('web','fcm') NOT NULL DEFAULT 'web',
+                endpoint TEXT,
+                p256dh VARCHAR(255),
+                auth VARCHAR(255),
+                fcm_token TEXT,
+                device_info VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+            if ($type === 'web') {
+                $endpoint = $input['endpoint'] ?? '';
+                $p256dh   = $input['keys']['p256dh'] ?? '';
+                $auth     = $input['keys']['auth'] ?? '';
+                if (!$endpoint) { echo json_encode(['success' => false]); exit; }
+
+                $stmt = $db->prepare("SELECT id FROM push_subscriptions WHERE user_id=? AND type='web' AND endpoint=?");
+                $stmt->execute([$userId, $endpoint]);
+                $existing = $stmt->fetchColumn();
+
+                if ($existing) {
+                    $db->prepare("UPDATE push_subscriptions SET p256dh=?,auth=?,updated_at=NOW() WHERE id=?")
+                       ->execute([$p256dh, $auth, $existing]);
+                } else {
+                    $db->prepare("INSERT INTO push_subscriptions (user_id,type,endpoint,p256dh,auth) VALUES (?,?,?,?,?)")
+                       ->execute([$userId,'web',$endpoint,$p256dh,$auth]);
+                }
+
+            } elseif ($type === 'fcm') {
+                $token  = $input['token'] ?? '';
+                $device = $input['device'] ?? '';
+                if (!$token) { echo json_encode(['success' => false]); exit; }
+
+                $stmt = $db->prepare("SELECT id FROM push_subscriptions WHERE user_id=? AND type='fcm' AND fcm_token=?");
+                $stmt->execute([$userId, $token]);
+                $existing = $stmt->fetchColumn();
+
+                if ($existing) {
+                    $db->prepare("UPDATE push_subscriptions SET device_info=?,updated_at=NOW() WHERE id=?")
+                       ->execute([$device, $existing]);
+                } else {
+                    $db->prepare("INSERT INTO push_subscriptions (user_id,type,fcm_token,device_info) VALUES (?,?,?,?)")
+                       ->execute([$userId,'fcm',$token,$device]);
+                }
+            }
+
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            error_log('pushSubscribe error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     public function markAsRead() {
         AuthMiddleware::requireAuth();
         

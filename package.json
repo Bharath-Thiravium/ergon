@@ -11,6 +11,7 @@
     "@capacitor/android": "^8.3.0",
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",
+    "@capacitor/push-notifications": "^8.1.1",
     "ansi-regex": "^5.0.1",
     "ansi-styles": "^4.3.0",
     "braces": "^3.0.3",

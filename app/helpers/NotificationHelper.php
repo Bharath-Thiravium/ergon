@@ -290,18 +290,39 @@ class NotificationHelper {
     public static function notifyUser($senderId, $receiverId, $module, $action, $message, $referenceId = null) {
         try {
             $notification = new Notification();
-            return $notification->create([
-                'sender_id' => $senderId,
-                'receiver_id' => $receiverId,
-                'title' => ucfirst($module) . ' ' . ucfirst($action),
-                'message' => $message,
+            $result = $notification->create([
+                'sender_id'      => $senderId,
+                'receiver_id'    => $receiverId,
+                'title'          => ucfirst($module) . ' ' . ucfirst($action),
+                'message'        => $message,
                 'reference_type' => $module,
-                'reference_id' => $referenceId,
-                'category' => 'system'
+                'reference_id'   => $referenceId,
+                'category'       => 'system'
             ]);
+
+            // Send push notification (Web + FCM)
+            if ($result) {
+                self::sendPush(
+                    (int)$receiverId,
+                    ucfirst($module) . ' ' . ucfirst($action),
+                    $message,
+                    $referenceId ? Environment::getBaseUrl() . "/{$module}s/view/{$referenceId}" : ''
+                );
+            }
+
+            return $result;
         } catch (Exception $e) {
             error_log('NotificationHelper::notifyUser error: ' . $e->getMessage());
             return false;
+        }
+    }
+
+    public static function sendPush(int $userId, string $title, string $body, string $url = ''): void {
+        try {
+            require_once __DIR__ . '/../services/PushService.php';
+            PushService::sendToUser($userId, $title, $body, $url);
+        } catch (Exception $e) {
+            error_log('NotificationHelper::sendPush error: ' . $e->getMessage());
         }
     }
 }

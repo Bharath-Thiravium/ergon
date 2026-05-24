@@ -91,6 +91,7 @@ ob_end_clean();
     <meta name="apple-mobile-web-app-title" content="Ergon">
     <link rel="apple-touch-icon" href="/ergon/assets/icons/icon-192.png">
     <meta name="csrf-token" content="<?= Security::escape(Security::generateCSRFToken()) ?>">
+    <meta name="vapid-public-key" content="<?= htmlspecialchars($_ENV['VAPID_PUBLIC_KEY'] ?? '', ENT_QUOTES) ?>">
     <title><?= $title ?? 'Dashboard' ?> - ergon</title>
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
 
@@ -249,6 +250,8 @@ ob_end_clean();
     <script src="<?= Environment::asset('assets/js/table-headers-fix.js') ?>?v=<?= ASSET_VER ?>" defer></script>
     <!-- PWA -->
     <script src="/ergon/assets/js/pwa-install.js" defer></script>
+    <!-- Push Notifications -->
+    <script src="/ergon/assets/js/push-manager.js?v=<?= ASSET_VER ?>" defer></script>
     <?php if (isset($additional_js)): ?>
     <?= $additional_js ?>
     <?php endif; ?>
