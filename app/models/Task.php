@@ -71,7 +71,7 @@ class Task {
                         INDEX idx_task_id (task_id),
                         INDEX idx_user_id (user_id),
                         INDEX idx_created_at (created_at)
-                    )");
+                    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
                 }
             } catch (Exception $e) {
                 // Let the main update flow continue; error will be logged by outer catch

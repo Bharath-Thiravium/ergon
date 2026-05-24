@@ -899,16 +899,16 @@ class TasksController extends Controller {
             // Get comprehensive task history including progress updates
             $stmt = $db->prepare("
                 SELECT 
-                    'history' as source_type,
+                    'history' COLLATE utf8mb4_unicode_ci as source_type,
                     h.id,
                     h.task_id,
-                    h.action,
-                    h.old_value,
-                    h.new_value,
-                    h.notes,
+                    CONVERT(h.action USING utf8mb4) COLLATE utf8mb4_unicode_ci as action,
+                    CONVERT(h.old_value USING utf8mb4) COLLATE utf8mb4_unicode_ci as old_value,
+                    CONVERT(h.new_value USING utf8mb4) COLLATE utf8mb4_unicode_ci as new_value,
+                    CONVERT(h.notes USING utf8mb4) COLLATE utf8mb4_unicode_ci as notes,
                     h.created_by,
                     h.created_at,
-                    u.name as user_name,
+                    CONVERT(u.name USING utf8mb4) COLLATE utf8mb4_unicode_ci as user_name,
                     NULL as progress_from,
                     NULL as progress_to,
                     NULL as description
@@ -919,19 +919,19 @@ class TasksController extends Controller {
                 UNION ALL
                 
                 SELECT 
-                    'progress' as source_type,
+                    'progress' COLLATE utf8mb4_unicode_ci as source_type,
                     p.id,
                     p.task_id,
-                    'progress_updated' as action,
-                    CONCAT(p.progress_from, '%') as old_value,
-                    CONCAT(p.progress_to, '%') as new_value,
-                    p.description as notes,
+                    'progress_updated' COLLATE utf8mb4_unicode_ci as action,
+                    CONVERT(CONCAT(p.progress_from, '%') USING utf8mb4) COLLATE utf8mb4_unicode_ci as old_value,
+                    CONVERT(CONCAT(p.progress_to, '%') USING utf8mb4) COLLATE utf8mb4_unicode_ci as new_value,
+                    CONVERT(p.description USING utf8mb4) COLLATE utf8mb4_unicode_ci as notes,
                     p.user_id as created_by,
                     p.created_at,
-                    u.name as user_name,
+                    CONVERT(u.name USING utf8mb4) COLLATE utf8mb4_unicode_ci as user_name,
                     p.progress_from,
                     p.progress_to,
-                    p.description
+                    CONVERT(p.description USING utf8mb4) COLLATE utf8mb4_unicode_ci as description
                 FROM task_progress_history p 
                 LEFT JOIN users u ON p.user_id = u.id 
                 WHERE p.task_id = ?
@@ -1602,7 +1602,7 @@ class TasksController extends Controller {
                 INDEX idx_task_id (task_id),
                 INDEX idx_user_id (user_id),
                 INDEX idx_created_at (created_at)
-            )", "Create table");
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", "Create table");
 
             // Add progress_description column to tasks table if not exists
             $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'progress_description'");
@@ -1629,7 +1629,7 @@ class TasksController extends Controller {
                 created_by INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_task_id (task_id)
-            )", "Create table");
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", "Create table");
             
             // Check if we need to populate initial history for existing tasks
             $stmt = $db->prepare("SELECT COUNT(*) as count FROM task_history");
