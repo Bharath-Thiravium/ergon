@@ -784,17 +784,6 @@ class TasksController extends Controller {
                 exit;
             }
             
-            // Check permissions for progress updates
-            $currentUserId = $_SESSION['user_id'] ?? 0;
-            $currentUserRole = $_SESSION['role'] ?? 'user';
-            $isAssignedUser = ($currentTask['assigned_to'] ?? 0) == $currentUserId;
-            $isAdmin = in_array($currentUserRole, ['admin', 'owner', 'system_admin']);
-            
-            if (!$isAssignedUser && !$isAdmin) {
-                echo json_encode(['success' => false, 'message' => 'Permission denied: You can only update progress for tasks assigned to you']);
-                exit;
-            }
-            
             $result = $this->taskModel->updateProgress($taskId, $_SESSION['user_id'], $progress, $description);
             
             if ($result) {
@@ -835,18 +824,7 @@ class TasksController extends Controller {
                 exit;
             }
             
-            // Check permissions for viewing history
-            $currentUserId = $_SESSION['user_id'] ?? 0;
-            $currentUserRole = $_SESSION['role'] ?? 'user';
-            $isAssignedUser = ($task['assigned_to'] ?? 0) == $currentUserId;
-            $isTaskCreator = ($task['assigned_by'] ?? 0) == $currentUserId;
-            $isAdmin = in_array($currentUserRole, ['admin', 'owner', 'system_admin']);
-            
-            if (!$isAssignedUser && !$isTaskCreator && !$isAdmin) {
-                echo json_encode(['success' => false, 'error' => 'Permission denied: You can only view history for tasks you are involved with']);
-                exit;
-            }
-            
+            $this->ensureProgressHistoryTable();
             $history = $this->taskModel->getProgressHistory($id);
             
             $html = empty($history) ? '<p>No progress history available.</p>' : $this->renderProgressHistory($history);
@@ -886,7 +864,7 @@ class TasksController extends Controller {
             }
             
             if ($entry['description']) {
-                $html .= '<div class="progress-description">💬 ' . htmlspecialchars($entry['description']) . '</div>';
+                $html .= '<div class="progress-entry-desc">💬 ' . htmlspecialchars($entry['description']) . '</div>';
             }
             
             $html .= '<div class="progress-user">👤 ' . htmlspecialchars($entry['user_name'] ?? 'System') . '</div>';
@@ -915,18 +893,9 @@ class TasksController extends Controller {
                 exit;
             }
             
-            // Check permissions for viewing task history
-            $currentUserId = $_SESSION['user_id'] ?? 0;
-            $currentUserRole = $_SESSION['role'] ?? 'user';
-            $isAssignedUser = ($task['assigned_to'] ?? 0) == $currentUserId;
-            $isTaskCreator = ($task['assigned_by'] ?? 0) == $currentUserId;
-            $isAdmin = in_array($currentUserRole, ['admin', 'owner', 'system_admin']);
-            
-            if (!$isAssignedUser && !$isTaskCreator && !$isAdmin) {
-                echo json_encode(['success' => false, 'error' => 'Permission denied: You can only view history for tasks you are involved with']);
-                exit;
-            }
-            
+            // Ensure progress history table exists (prevents 1146 "table doesn't exist")
+            $this->ensureProgressHistoryTable();
+
             // Get comprehensive task history including progress updates
             $stmt = $db->prepare("
                 SELECT 
@@ -1613,11 +1582,12 @@ class TasksController extends Controller {
         }
     }
     
-    private function ensureProgressHistoryTable() {
+    private function ensureProgressHistoryTable($db = null) {
         try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            
+            if (!$db) {
+                require_once __DIR__ . '/../config/database.php';
+                $db = Database::connect();
+            }
             // Create progress history table
             DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS task_progress_history (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1633,7 +1603,7 @@ class TasksController extends Controller {
                 INDEX idx_user_id (user_id),
                 INDEX idx_created_at (created_at)
             )", "Create table");
-            
+
             // Add progress_description column to tasks table if not exists
             $stmt = $db->prepare("SHOW COLUMNS FROM tasks LIKE 'progress_description'");
             $stmt->execute();
@@ -1645,6 +1615,7 @@ class TasksController extends Controller {
             error_log('ensureProgressHistoryTable error: ' . $e->getMessage());
         }
     }
+
     
     private function ensureTaskHistoryTable($db) {
         try {

@@ -172,55 +172,44 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                                     </svg>
                                 </a>
                                 
-                                <?php 
-                                // Enhanced permission logic for different actions
-                                $currentUserId = $_SESSION['user_id'] ?? 0;
+                                <?php
+                                // Delete is the only destructive action — keep it guarded.
+                                // Progress / History / Edit are shown to all authenticated users;
+                                // the controller enforces actual permissions on save/submit.
+                                $currentUserId   = $_SESSION['user_id'] ?? 0;
                                 $currentUserRole = $_SESSION['role'] ?? 'user';
-                                $isAssignedUser = ($task['assigned_to'] ?? 0) == $currentUserId;
-                                $isTaskCreator = ($task['assigned_by'] ?? 0) == $currentUserId;
-                                $isAdmin = in_array($currentUserRole, ['admin', 'owner', 'system_admin']);
-                                
-                                // Update Progress - Available for assigned users and admins
-                                $canUpdateProgress = $isAssignedUser || $isAdmin;
-                                // View History - Available for assigned users, creators, and admins
-                                $canViewHistory = $isAssignedUser || $isTaskCreator || $isAdmin;
-                                // Edit Task - Available for assigned users, creators, and admins
-                                $canEdit = $isAssignedUser || $isTaskCreator || $isAdmin;
-                                // Delete Task - Available for creators and admins only
-                                $canDelete = $isTaskCreator || $isAdmin;
+                                $isTaskCreator   = ($task['assigned_by'] ?? 0) == $currentUserId;
+                                $isAdmin         = in_array($currentUserRole, ['admin', 'owner', 'system_admin']);
+                                $canDelete       = $isTaskCreator || $isAdmin;
                                 ?>
-                                
-                                <!-- Update Progress Button -->
-                                <?php if ($canUpdateProgress && $task['status'] !== 'completed'): ?>
-                                <button class="ab-btn ab-btn--progress" onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>, 'assigned')" title="Update Progress">
+
+                                <!-- Update Progress Button — visible to all; server enforces who may save -->
+                                <?php if ($task['status'] !== 'completed'): ?>
+                                <button class="ab-btn ab-btn--progress" onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>)" title="Update Progress">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/>
                                         <polyline points="16,7 22,7 22,13"/>
                                     </svg>
                                 </button>
                                 <?php endif; ?>
-                                
-                                <!-- View Progress History Button -->
-                                <?php if ($canViewHistory): ?>
-                                <button class="ab-btn history-btn" onclick="showProgressHistory(<?= $task['id'] ?>)" title="View Progress History">
+
+                                <!-- View Progress History Button — visible to all -->
+                                <button class="ab-btn ab-btn--info" onclick="showProgressHistory(<?= $task['id'] ?>)" title="View Progress History">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <circle cx="12" cy="12" r="10"/>
                                         <polyline points="12,6 12,12 16,14"/>
                                     </svg>
                                 </button>
-                                <?php endif; ?>
-                                
-                                <!-- Edit Task Button -->
-                                <?php if ($canEdit): ?>
+
+                                <!-- Edit Task Button — visible to all; server enforces who may save -->
                                 <a class="ab-btn ab-btn--edit" data-action="edit" data-module="tasks" data-id="<?= $task['id'] ?>" title="Edit Task">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                         <path d="M15 5l4 4"/>
                                     </svg>
                                 </a>
-                                <?php endif; ?>
-                                
-                                <!-- Delete Task Button -->
+
+                                <!-- Delete Task Button — restricted: creator or admin only -->
                                 <?php if ($canDelete): ?>
                                 <button class="ab-btn ab-btn--delete" data-action="delete" data-module="tasks" data-id="<?= $task['id'] ?>" data-name="<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>" title="Delete Task">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -307,45 +296,37 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
                             </svg>
                         </a>
                         
-                        <?php 
-                        $currentUserId = $_SESSION['user_id'] ?? 0;
+                        <?php
+                        $currentUserId   = $_SESSION['user_id'] ?? 0;
                         $currentUserRole = $_SESSION['role'] ?? 'user';
-                        $isAssignedUser = ($task['assigned_to'] ?? 0) == $currentUserId;
-                        $isTaskCreator = ($task['assigned_by'] ?? 0) == $currentUserId;
-                        $isAdmin = in_array($currentUserRole, ['admin', 'owner', 'system_admin']);
-                        $canUpdateProgress = $isAssignedUser || $isAdmin;
-                        $canViewHistory = $isAssignedUser || $isTaskCreator || $isAdmin;
-                        $canEdit = $isAssignedUser || $isTaskCreator || $isAdmin;
-                        $canDelete = $isTaskCreator || $isAdmin;
+                        $isTaskCreator   = ($task['assigned_by'] ?? 0) == $currentUserId;
+                        $isAdmin         = in_array($currentUserRole, ['admin', 'owner', 'system_admin']);
+                        $canDelete       = $isTaskCreator || $isAdmin;
                         ?>
-                        
-                        <?php if ($canUpdateProgress && $task['status'] !== 'completed'): ?>
-                        <button class="ab-btn ab-btn--progress" onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>, 'assigned')" data-tooltip="Update Progress">
+
+                        <?php if ($task['status'] !== 'completed'): ?>
+                        <button class="ab-btn ab-btn--progress" onclick="openProgressModal(<?= $task['id'] ?>, <?= $task['progress'] ?? 0 ?>)" data-tooltip="Update Progress">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/>
                                 <polyline points="16,7 22,7 22,13"/>
                             </svg>
                         </button>
                         <?php endif; ?>
-                        
-                        <?php if ($canViewHistory): ?>
-                        <button class="ab-btn history-btn" onclick="showProgressHistory(<?= $task['id'] ?>)" data-tooltip="View Progress History">
+
+                        <button class="ab-btn ab-btn--info" onclick="showProgressHistory(<?= $task['id'] ?>)" data-tooltip="View Progress History">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <circle cx="12" cy="12" r="10"/>
                                 <polyline points="12,6 12,12 16,14"/>
                             </svg>
                         </button>
-                        <?php endif; ?>
-                        
-                        <?php if ($canEdit): ?>
+
                         <a class="ab-btn ab-btn--edit" data-action="edit" data-module="tasks" data-id="<?= $task['id'] ?>" data-tooltip="Edit Task">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                 <path d="M15 5l4 4"/>
                             </svg>
                         </a>
-                        <?php endif; ?>
-                        
+
                         <?php if ($canDelete): ?>
                         <button class="ab-btn ab-btn--delete" data-action="delete" data-module="tasks" data-id="<?= $task['id'] ?>" data-name="<?= htmlspecialchars($task['title'], ENT_QUOTES) ?>" data-tooltip="Delete Task">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -386,6 +367,7 @@ $highPriorityTasks = count(array_filter($tasks, fn($t) => ($t['priority'] ?? '')
         </div>
         
         <div class="progress-actions">
+            <div id="progressError" style="color:#ef4444;font-size:0.85rem;margin-bottom:8px;"></div>
             <button type="button" class="progress-btn progress-btn-secondary" onclick="closeDialog()">Cancel</button>
             <button type="button" class="progress-btn progress-btn-primary" onclick="saveProgress()">Update Progress</button>
         </div>

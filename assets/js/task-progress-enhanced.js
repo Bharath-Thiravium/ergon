@@ -1,6 +1,6 @@
 var currentTaskId;
 
-function openProgressModal(taskId, progress, status) {
+function openProgressModal(taskId, progress) {
     currentTaskId = taskId;
     var container = document.querySelector('[data-task-id="' + taskId + '"]');
     var currentProgress = progress;
@@ -18,8 +18,10 @@ function openProgressModal(taskId, progress, status) {
     var dialog = document.getElementById('progressDialog');
     
     if (slider) slider.value = currentProgress;
-    if (valueDisplay) valueDisplay.textContent = currentProgress;
+    if (valueDisplay) valueDisplay.textContent = currentProgress + '%';
     if (description) description.value = '';
+    var errEl = document.getElementById('progressError');
+    if (errEl) errEl.textContent = '';
     if (dialog) dialog.style.display = 'flex';
     
     // Focus on description field
@@ -52,7 +54,7 @@ function saveProgress() {
     }
     
     // Show loading state
-    var saveBtn = document.querySelector('#progressDialog .btn-primary');
+    var saveBtn = document.querySelector('#progressDialog .progress-btn-primary');
     if (saveBtn) {
         var originalText = saveBtn.textContent;
         saveBtn.textContent = 'Updating...';
@@ -114,12 +116,14 @@ function saveProgress() {
             // Show success message
             showNotification('Progress updated successfully!', 'success');
         } else {
-            alert('Error: ' + (data.message || 'Failed to update progress'));
+            var errEl = document.getElementById('progressError');
+            if (errEl) errEl.textContent = data.message || 'Failed to update progress';
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error updating task progress');
+        var errEl = document.getElementById('progressError');
+        if (errEl) errEl.textContent = 'Network error. Please try again.';
     })
     .finally(() => {
         // Reset button state
@@ -146,12 +150,15 @@ function showProgressHistory(taskId) {
             document.getElementById('progressHistoryContent').innerHTML = data.html;
             document.getElementById('progressHistoryDialog').style.display = 'flex';
         } else {
-            alert('Error loading progress history: ' + (data.error || 'Unknown error'));
+            document.getElementById('progressHistoryContent').innerHTML =
+                '<p style="color:#6b7280;padding:1rem;">' + (data.error || 'Unable to load history') + '</p>';
+            document.getElementById('progressHistoryDialog').style.display = 'flex';
         }
     })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error loading progress history');
+    .catch(function() {
+        document.getElementById('progressHistoryContent').innerHTML =
+            '<p style="color:#ef4444;padding:1rem;">Network error. Please try again.</p>';
+        document.getElementById('progressHistoryDialog').style.display = 'flex';
     });
 }
 

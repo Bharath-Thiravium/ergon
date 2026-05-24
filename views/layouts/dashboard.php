@@ -1623,10 +1623,10 @@ ob_end_clean();
         if (!modal || !icon || !titleEl || !messageEl) return;
         
         const config = {
-            success: { icon: '✅', title: title || 'Success!' },
-            error: { icon: '❌', title: title || 'Error!' },
-            warning: { icon: '⚠️', title: title || 'Warning!' },
-            info: { icon: 'ℹ️', title: title || 'Information' }
+            success: { icon: '\u2705', title: title || 'Success!' },
+            error: { icon: '\u274C', title: title || 'Error!' },
+            warning: { icon: '\u26A0\uFE0F', title: title || 'Warning!' },
+            info: { icon: '\u2139\uFE0F', title: title || 'Information' }
         };
         
         const typeConfig = config[type] || config.success;

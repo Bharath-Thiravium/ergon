@@ -143,7 +143,7 @@
     cursor: not-allowed;
 }
 
-/* Progress History Styles */
+/* Progress History Styles — .progress-entry-desc avoids collision with the textarea .progress-description above */
 .progress-timeline {
     max-height: 400px;
     overflow-y: auto;
@@ -216,7 +216,7 @@
     font-weight: 500;
 }
 
-.progress-description {
+.progress-entry-desc {
     background: white;
     padding: 12px;
     border-radius: 6px;

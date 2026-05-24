@@ -54,7 +54,31 @@ class Task {
     
     public function updateProgress($taskId, $userId, $progress, $description = null) {
         try {
+            // Ensure progress history table exists (prevents 1146 "table doesn't exist")
+            try {
+                $check = $this->conn->query("SHOW TABLES LIKE 'task_progress_history'")->fetchColumn();
+                if (!$check) {
+                    $this->conn->exec("CREATE TABLE IF NOT EXISTS task_progress_history (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        task_id INT NOT NULL,
+                        user_id INT NOT NULL,
+                        progress_from INT NOT NULL DEFAULT 0,
+                        progress_to INT NOT NULL,
+                        description TEXT,
+                        status_from VARCHAR(50),
+                        status_to VARCHAR(50),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_task_id (task_id),
+                        INDEX idx_user_id (user_id),
+                        INDEX idx_created_at (created_at)
+                    )");
+                }
+            } catch (Exception $e) {
+                // Let the main update flow continue; error will be logged by outer catch
+            }
+
             // Get current progress and status for history
+
             $query = "SELECT progress, status FROM tasks WHERE id = ?";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([$taskId]);
@@ -68,6 +92,11 @@ class Task {
             $oldStatus = $current['status'];
             $newStatus = $progress >= 100 ? 'completed' : ($progress > 0 ? 'in_progress' : 'assigned');
             
+            // Ensure progress_description column exists
+            try {
+                $this->conn->exec("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS progress_description TEXT");
+            } catch (Exception $e) { /* column already exists */ }
+
             // Update task progress and description
             $query = "UPDATE tasks SET progress = ?, status = ?, progress_description = ?, updated_at = NOW() WHERE id = ?";
             $stmt = $this->conn->prepare($query);
@@ -92,6 +121,26 @@ class Task {
 
     
     public function getProgressHistory($taskId) {
+        // Ensure table exists before querying — prevents 1146 on fresh installs
+        try {
+            $this->conn->exec("CREATE TABLE IF NOT EXISTS task_progress_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                task_id INT NOT NULL,
+                user_id INT NOT NULL,
+                progress_from INT NOT NULL DEFAULT 0,
+                progress_to INT NOT NULL,
+                description TEXT,
+                status_from VARCHAR(50),
+                status_to VARCHAR(50),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_task_id (task_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_created_at (created_at)
+            )");
+        } catch (Exception $e) {
+            error_log('task_progress_history ensure error: ' . $e->getMessage());
+        }
+
         $query = "SELECT h.*, u.name as user_name 
                   FROM task_progress_history h 
                   LEFT JOIN users u ON h.user_id = u.id 
