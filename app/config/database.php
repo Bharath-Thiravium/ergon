@@ -91,6 +91,24 @@ class Database {
         }
         if (self::$instance->conn === null) {
             self::$instance->conn = self::$instance->getConnection();
+            // Ensure push_subscriptions table exists on first connection
+            try {
+                self::$instance->conn->exec("CREATE TABLE IF NOT EXISTS push_subscriptions (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    type ENUM('web','fcm') NOT NULL DEFAULT 'web',
+                    endpoint TEXT,
+                    p256dh VARCHAR(255),
+                    auth VARCHAR(255),
+                    fcm_token TEXT,
+                    device_info VARCHAR(255),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_user_id (user_id)
+                ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            } catch (Exception $e) {
+                error_log('push_subscriptions table init error: ' . $e->getMessage());
+            }
         }
         return self::$instance->conn;
     }

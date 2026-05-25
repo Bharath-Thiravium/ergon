@@ -25,7 +25,8 @@
                 });
             }
 
-            await fetch(SUBSCRIBE_URL, {
+            // Always POST to server — table may not have had this subscription yet
+            const res = await fetch(SUBSCRIBE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -37,6 +38,10 @@
                     },
                 }),
             });
+            const data = await res.json();
+            if (data.success) {
+                console.log('Ergon Push: subscription saved');
+            }
         } catch (e) {
             console.warn('Ergon Push: Web Push failed', e);
         }
