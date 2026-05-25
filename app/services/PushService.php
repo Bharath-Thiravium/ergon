@@ -66,26 +66,31 @@ class PushService {
         // Build VAPID JWT
         $parsedUrl = parse_url($endpoint);
         $audience  = $parsedUrl['scheme'] . '://' . $parsedUrl['host'];
-        $expiry    = time() + 43200; // 12 hours
+        $expiry    = time() + 43200;
 
         $header  = self::base64UrlEncode(json_encode(['typ' => 'JWT', 'alg' => 'ES256']));
         $claims  = self::base64UrlEncode(json_encode(['aud' => $audience, 'exp' => $expiry, 'sub' => $vapidSubject]));
         $signing = $header . '.' . $claims;
 
-        // Sign with private key
         $privateKeyPem = self::vapidPrivateToPem($vapidPrivate);
         $privateKey    = openssl_pkey_get_private($privateKeyPem);
         if (!$privateKey) {
-            error_log('PushService: Failed to load VAPID private key');
+            error_log('PushService: Failed to load VAPID private key: ' . openssl_error_string());
             return;
         }
 
-        openssl_sign($signing, $signature, $privateKey, OPENSSL_ALGO_SHA256);
-        $jwt = $signing . '.' . self::base64UrlEncode($signature);
+        openssl_sign($signing, $derSignature, $privateKey, OPENSSL_ALGO_SHA256);
+
+        // Convert DER signature to raw R||S (64 bytes) for JWT ES256
+        $rawSignature = self::derToRaw($derSignature);
+        $jwt = $signing . '.' . self::base64UrlEncode($rawSignature);
 
         // Encrypt payload
         $encrypted = self::encryptPayload($payload, $p256dh, $auth);
-        if (!$encrypted) return;
+        if (!$encrypted) {
+            error_log('PushService: Payload encryption failed');
+            return;
+        }
 
         $headers = [
             'Authorization: vapid t=' . $jwt . ', k=' . $vapidPublic,
@@ -102,23 +107,45 @@ class PushService {
             CURLOPT_POSTFIELDS     => $encrypted['ciphertext'],
             CURLOPT_HTTPHEADER     => $headers,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_SSL_VERIFYPEER => true,
         ]);
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
-        // Remove expired/invalid subscriptions
+        error_log("PushService Web Push [{$httpCode}] endpoint=" . substr($endpoint, 0, 60) . " response=" . substr($response, 0, 200) . ($curlError ? " curl_error=$curlError" : ''));
+
         if ($httpCode === 404 || $httpCode === 410) {
             try {
                 $db = Database::connect();
                 $db->prepare("DELETE FROM push_subscriptions WHERE endpoint = ?")->execute([$endpoint]);
             } catch (Exception $e) {}
         }
+    }
 
-        if ($httpCode >= 400) {
-            error_log("PushService Web Push failed [{$httpCode}]: {$response}");
-        }
+    // Convert DER-encoded ECDSA signature to raw R||S format required by JWT ES256
+    private static function derToRaw(string $der): string {
+        // DER structure: 0x30 [total-len] 0x02 [r-len] [r-bytes] 0x02 [s-len] [s-bytes]
+        $offset = 2; // skip 0x30 and total length
+        // R
+        $offset++; // skip 0x02
+        $rLen = ord($der[$offset++]);
+        $r = substr($der, $offset, $rLen);
+        $offset += $rLen;
+        // S
+        $offset++; // skip 0x02
+        $sLen = ord($der[$offset++]);
+        $s = substr($der, $offset, $sLen);
+
+        // Pad or trim to exactly 32 bytes each
+        $r = ltrim($r, "\x00");
+        $s = ltrim($s, "\x00");
+        $r = str_pad($r, 32, "\x00", STR_PAD_LEFT);
+        $s = str_pad($s, 32, "\x00", STR_PAD_LEFT);
+
+        return $r . $s;
     }
 
     // ── FCM (Firebase Cloud Messaging) ────────────────────────────────────────
