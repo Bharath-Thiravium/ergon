@@ -1233,6 +1233,9 @@ ob_end_clean();
         
         // Refresh notifications every 30 seconds
         var notificationInterval = setInterval(loadNotificationCount, 30000);
+
+        // Desktop toast poller — shows bottom-right popups for new notifications
+        startNotificationToastPoller();
     });
 
     function toggleProfile() {
@@ -1979,6 +1982,98 @@ if (document.readyState === 'loading') {
         .catch(doLogout);
     }
     window.handleLogout = handleLogout;
+
+    // ── Desktop Toast Notification System (Facebook/WhatsApp style) ──────────
+    (function() {
+        let lastSeenId = parseInt(localStorage.getItem('ergon_last_notif_id') || '0');
+        let toastContainer = null;
+
+        function getOrCreateContainer() {
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'ergon-toast-container';
+                toastContainer.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:999999;display:flex;flex-direction:column-reverse;gap:10px;max-width:360px;pointer-events:none;';
+                document.body.appendChild(toastContainer);
+            }
+            return toastContainer;
+        }
+
+        function showToast(notif) {
+            const container = getOrCreateContainer();
+            const icons = { success:'check-circle-fill', error:'x-circle-fill', warning:'exclamation-triangle-fill', info:'bell-fill', attendance:'geo-alt-fill', task:'check2-square', approval:'clipboard-check', finance:'currency-rupee', reminder:'alarm-fill' };
+            const colors = { success:'#10b981', error:'#ef4444', warning:'#f59e0b', info:'#3b82f6', attendance:'#8b5cf6', task:'#06b6d4', approval:'#f59e0b', finance:'#10b981', reminder:'#ef4444' };
+            const cat = notif.category || 'info';
+            const color = colors[cat] || colors.info;
+            const icon  = icons[cat]  || icons.info;
+
+            const toast = document.createElement('div');
+            toast.style.cssText = `background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.18);padding:14px 16px;display:flex;align-items:flex-start;gap:12px;pointer-events:all;cursor:pointer;border-left:4px solid ${color};min-width:280px;max-width:360px;transform:translateX(120%);transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .35s ease;opacity:0;position:relative;`;
+
+            const url = notif.action_url || '#';
+            toast.innerHTML = `
+                <div style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:${color}22;display:flex;align-items:center;justify-content:center;">
+                    <i class="bi bi-${icon}" style="color:${color};font-size:18px;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;font-size:13px;color:#1f2937;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(notif.title || 'Notification')}</div>
+                    <div style="font-size:12px;color:#6b7280;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(notif.message || '')}</div>
+                    <div style="font-size:11px;color:#9ca3af;margin-top:4px;">${formatTime(notif.created_at)}</div>
+                </div>
+                <button onclick="event.stopPropagation();this.closest('[data-toast]').remove();" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:16px;line-height:1;padding:0;flex-shrink:0;" title="Dismiss">&times;</button>
+            `;
+            toast.dataset.toast = notif.id;
+            toast.addEventListener('click', () => { if (url && url !== '#') window.location.href = url; });
+
+            container.appendChild(toast);
+            // Animate in
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                toast.style.transform = 'translateX(0)';
+                toast.style.opacity = '1';
+            }));
+            // Auto dismiss after 6 seconds
+            setTimeout(() => {
+                toast.style.transform = 'translateX(120%)';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 400);
+            }, 6000);
+        }
+
+        function pollNewNotifications() {
+            fetch(APP_BASE + '/api/notifications/unread-count', {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || !data.notifications) return;
+
+                // Update badge
+                const badge = document.getElementById('notificationBadge');
+                if (badge && data.unread_count !== undefined) {
+                    badge.textContent = data.unread_count;
+                    badge.style.display = data.unread_count > 0 ? 'inline-block' : 'none';
+                    badge.classList.toggle('has-notifications', data.unread_count > 0);
+                }
+
+                // Show toasts for notifications newer than lastSeenId
+                const newOnes = data.notifications.filter(n => parseInt(n.id) > lastSeenId);
+                if (newOnes.length > 0) {
+                    // Show max 3 toasts at once to avoid flooding
+                    newOnes.slice(0, 3).forEach(n => showToast(n));
+                    lastSeenId = Math.max(...newOnes.map(n => parseInt(n.id)));
+                    localStorage.setItem('ergon_last_notif_id', lastSeenId);
+                }
+            })
+            .catch(() => {});
+        }
+
+        window.startNotificationToastPoller = function() {
+            // Initial poll after 2s (let page settle)
+            setTimeout(pollNewNotifications, 2000);
+            // Then every 20 seconds
+            setInterval(pollNewNotifications, 20000);
+        };
+    })();
     </script>
 
 </body>
