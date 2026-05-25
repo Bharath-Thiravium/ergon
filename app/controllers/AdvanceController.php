@@ -535,6 +535,12 @@ class AdvanceController extends Controller {
                     error_log('Auto-expense creation for advance payment failed: ' . $expEx->getMessage());
                 }
 
+                // Notify employee that advance was paid
+                try {
+                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                    NotificationHelper::notifyAdvancePaid($id, $paidByOwnerId);
+                } catch (Exception $ne) { error_log('Advance paid notification: ' . $ne->getMessage()); }
+
                 header('Location: ' . Environment::getBaseUrl() . '/advances?success=Advance marked as paid');
             } else {
                 $db->rollBack();

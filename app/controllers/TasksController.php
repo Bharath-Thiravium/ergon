@@ -392,6 +392,12 @@ class TasksController extends Controller {
                     if (($oldTaskFull['status'] ?? '') !== $taskData['status']) {
                         require_once __DIR__ . '/ContactFollowupController.php';
                         ContactFollowupController::updateLinkedFollowupStatus($id, $taskData['status']);
+
+                        // Notify relevant users of status change
+                        try {
+                            require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                            NotificationHelper::notifyTaskStatusChanged($id, $taskData['status'], $_SESSION['user_id']);
+                        } catch (Exception $ne) { error_log('Task status notification: ' . $ne->getMessage()); }
                     }
                     
                     // Sync with planner (daily_tasks table)
@@ -795,7 +801,13 @@ class TasksController extends Controller {
                 } catch (Exception $e) {
                     error_log('Daily tasks sync error: ' . $e->getMessage());
                 }
-                
+
+                // Notify task assigner of progress update
+                try {
+                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                    NotificationHelper::notifyTaskProgressUpdated($taskId, $progress, $_SESSION['user_id']);
+                } catch (Exception $ne) { error_log('Task progress notification: ' . $ne->getMessage()); }
+
                 echo json_encode(['success' => true, 'message' => 'Progress updated successfully']);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Failed to update progress']);

@@ -94,7 +94,18 @@ class ProjectSubcategoryController extends Controller {
             $this->ensureTable($db);
             $stmt = $db->prepare("INSERT INTO project_subcategories (project_id, name, description, budget, opening_utilised, created_by) VALUES (?, ?, ?, ?, ?, ?)");
             $stmt->execute([$projectId, $name, $desc, $budget, $opening, $_SESSION['user_id']]);
-            echo json_encode(['success' => true, 'id' => $db->lastInsertId()]);
+            $newId = $db->lastInsertId();
+
+            // Check budget on opening utilised
+            if ($opening > 0 && $budget > 0 && $opening > $budget) {
+                $proj = $db->prepare("SELECT name FROM projects WHERE id = ?");
+                $proj->execute([$projectId]);
+                $projName = $proj->fetchColumn() ?: 'Unknown';
+                require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                NotificationHelper::notifyBudgetExceeded($newId, $name, $projName, $budget, $opening);
+            }
+
+            echo json_encode(['success' => true, 'id' => $newId]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }

@@ -783,6 +783,13 @@ class ExpenseController extends Controller {
                 }
                 $db->commit();
                 error_log("Expense paid: id=$id user_id={$expense['user_id']} amount=$ledgerAmount");
+
+                // Notify employee that expense was paid
+                try {
+                    require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                    NotificationHelper::notifyExpensePaid($id, $_SESSION['user_id']);
+                } catch (Exception $ne) { error_log('Expense paid notification: ' . $ne->getMessage()); }
+
                 header('Location: ' . Environment::getBaseUrl() . '/expenses?success=Expense marked as paid');
             } else {
                 $db->rollBack();

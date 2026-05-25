@@ -300,7 +300,6 @@ class NotificationHelper {
                 'category'       => 'system'
             ]);
 
-            // Send push notification (Web + FCM)
             if ($result) {
                 self::sendPush(
                     (int)$receiverId,
@@ -314,6 +313,273 @@ class NotificationHelper {
         } catch (Exception $e) {
             error_log('NotificationHelper::notifyUser error: ' . $e->getMessage());
             return false;
+        }
+    }
+
+    // ── Attendance ──────────────────────────────────────────────────────────
+
+    public static function notifyClockIn($userId, $userName, $locationName, $time) {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $notification = new Notification();
+
+            $msg = "{$userName} clocked in at {$locationName} at {$time}";
+
+            // Notify the user themselves
+            $notification->create([
+                'sender_id'      => $userId,
+                'receiver_id'    => $userId,
+                'type'           => 'success',
+                'category'       => 'attendance',
+                'title'          => 'Clock In Recorded',
+                'message'        => "You clocked in at {$locationName} at {$time}",
+                'reference_type' => 'attendance',
+                'action_url'     => Environment::getBaseUrl() . '/attendance'
+            ]);
+
+            // Notify admins and owners
+            $stmt = $db->prepare("SELECT id FROM users WHERE role IN ('admin','owner','company_owner') AND status='active'");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $approver) {
+                if ($approver['id'] == $userId) continue;
+                $notification->create([
+                    'sender_id'      => $userId,
+                    'receiver_id'    => $approver['id'],
+                    'type'           => 'info',
+                    'category'       => 'attendance',
+                    'title'          => 'Employee Clocked In',
+                    'message'        => $msg,
+                    'reference_type' => 'attendance',
+                    'action_url'     => Environment::getBaseUrl() . '/attendance'
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log('notifyClockIn error: ' . $e->getMessage());
+        }
+    }
+
+    public static function notifyClockOut($userId, $userName, $locationName, $time, $hoursWorked) {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $notification = new Notification();
+
+            $msg = "{$userName} clocked out at {$time} (worked {$hoursWorked})";
+
+            // Notify the user themselves
+            $notification->create([
+                'sender_id'      => $userId,
+                'receiver_id'    => $userId,
+                'type'           => 'success',
+                'category'       => 'attendance',
+                'title'          => 'Clock Out Recorded',
+                'message'        => "You clocked out at {$time}. Total worked: {$hoursWorked}",
+                'reference_type' => 'attendance',
+                'action_url'     => Environment::getBaseUrl() . '/attendance'
+            ]);
+
+            // Notify admins and owners
+            $stmt = $db->prepare("SELECT id FROM users WHERE role IN ('admin','owner','company_owner') AND status='active'");
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $approver) {
+                if ($approver['id'] == $userId) continue;
+                $notification->create([
+                    'sender_id'      => $userId,
+                    'receiver_id'    => $approver['id'],
+                    'type'           => 'info',
+                    'category'       => 'attendance',
+                    'title'          => 'Employee Clocked Out',
+                    'message'        => $msg,
+                    'reference_type' => 'attendance',
+                    'action_url'     => Environment::getBaseUrl() . '/attendance'
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log('notifyClockOut error: ' . $e->getMessage());
+        }
+    }
+
+    // ── Advance Paid ────────────────────────────────────────────────────────
+
+    public static function notifyAdvancePaid($advanceId, $paidByUserId) {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $notification = new Notification();
+
+            $stmt = $db->prepare("SELECT a.*, u.name as user_name, p.name as payer_name FROM advances a JOIN users u ON a.user_id = u.id JOIN users p ON p.id = ? WHERE a.id = ?");
+            $stmt->execute([$paidByUserId, $advanceId]);
+            $advance = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$advance) return;
+
+            $amount = '₹' . number_format($advance['amount'], 2);
+            $notification->create([
+                'sender_id'      => $paidByUserId,
+                'receiver_id'    => $advance['user_id'],
+                'type'           => 'success',
+                'category'       => 'approval',
+                'title'          => 'Advance Payment Received',
+                'message'        => "Your advance of {$amount} has been paid by {$advance['payer_name']}",
+                'reference_type' => 'advance',
+                'reference_id'   => $advanceId,
+                'action_url'     => Environment::getBaseUrl() . "/advances/view/{$advanceId}"
+            ]);
+        } catch (Exception $e) {
+            error_log('notifyAdvancePaid error: ' . $e->getMessage());
+        }
+    }
+
+    // ── Expense Paid ────────────────────────────────────────────────────────
+
+    public static function notifyExpensePaid($expenseId, $paidByUserId) {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $notification = new Notification();
+
+            $stmt = $db->prepare("SELECT e.*, u.name as user_name, p.name as payer_name FROM expenses e JOIN users u ON e.user_id = u.id JOIN users p ON p.id = ? WHERE e.id = ?");
+            $stmt->execute([$paidByUserId, $expenseId]);
+            $expense = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$expense) return;
+
+            $amount = '₹' . number_format($expense['amount'], 2);
+            $notification->create([
+                'sender_id'      => $paidByUserId,
+                'receiver_id'    => $expense['user_id'],
+                'type'           => 'success',
+                'category'       => 'approval',
+                'title'          => 'Expense Payment Received',
+                'message'        => "Your expense of {$amount} has been paid by {$expense['payer_name']}",
+                'reference_type' => 'expense',
+                'reference_id'   => $expenseId,
+                'action_url'     => Environment::getBaseUrl() . "/expenses/view/{$expenseId}"
+            ]);
+        } catch (Exception $e) {
+            error_log('notifyExpensePaid error: ' . $e->getMessage());
+        }
+    }
+
+    // ── Task Status / Progress ──────────────────────────────────────────────
+
+    public static function notifyTaskStatusChanged($taskId, $newStatus, $changedByUserId) {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $notification = new Notification();
+
+            $stmt = $db->prepare("SELECT t.*, u.name as changer_name FROM tasks t JOIN users u ON u.id = ? WHERE t.id = ?");
+            $stmt->execute([$changedByUserId, $taskId]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$task) return;
+
+            // Notify assigner if different from changer
+            $receivers = array_unique(array_filter([$task['assigned_by'], $task['assigned_to']], fn($id) => $id && $id != $changedByUserId));
+            foreach ($receivers as $receiverId) {
+                $notification->create([
+                    'sender_id'      => $changedByUserId,
+                    'receiver_id'    => $receiverId,
+                    'type'           => $newStatus === 'completed' ? 'success' : 'info',
+                    'category'       => 'task',
+                    'title'          => 'Task Status Updated',
+                    'message'        => "{$task['changer_name']} changed task '{$task['title']}' status to " . ucfirst(str_replace('_', ' ', $newStatus)),
+                    'reference_type' => 'task',
+                    'reference_id'   => $taskId,
+                    'action_url'     => Environment::getBaseUrl() . "/tasks/view/{$taskId}"
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log('notifyTaskStatusChanged error: ' . $e->getMessage());
+        }
+    }
+
+    public static function notifyTaskProgressUpdated($taskId, $progress, $updatedByUserId) {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $notification = new Notification();
+
+            $stmt = $db->prepare("SELECT t.*, u.name as updater_name FROM tasks t JOIN users u ON u.id = ? WHERE t.id = ?");
+            $stmt->execute([$updatedByUserId, $taskId]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$task || $task['assigned_by'] == $updatedByUserId) return;
+
+            $notification->create([
+                'sender_id'      => $updatedByUserId,
+                'receiver_id'    => $task['assigned_by'],
+                'type'           => 'info',
+                'category'       => 'task',
+                'title'          => 'Task Progress Updated',
+                'message'        => "{$task['updater_name']} updated '{$task['title']}' progress to {$progress}%",
+                'reference_type' => 'task',
+                'reference_id'   => $taskId,
+                'action_url'     => Environment::getBaseUrl() . "/tasks/view/{$taskId}"
+            ]);
+        } catch (Exception $e) {
+            error_log('notifyTaskProgressUpdated error: ' . $e->getMessage());
+        }
+    }
+
+    // ── Task Deadline Approaching ───────────────────────────────────────────
+
+    public static function notifyTaskDeadlineApproaching($taskId, $hoursLeft) {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $notification = new Notification();
+
+            $stmt = $db->prepare("SELECT * FROM tasks WHERE id = ?");
+            $stmt->execute([$taskId]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$task) return;
+
+            $label = $hoursLeft <= 1 ? 'less than 1 hour' : "{$hoursLeft} hours";
+            foreach (array_unique([$task['assigned_to'], $task['assigned_by']]) as $receiverId) {
+                if (!$receiverId) continue;
+                $notification->create([
+                    'sender_id'      => 1,
+                    'receiver_id'    => $receiverId,
+                    'type'           => 'warning',
+                    'category'       => 'reminder',
+                    'title'          => 'Task Deadline Approaching',
+                    'message'        => "Task '{$task['title']}' is due in {$label}",
+                    'reference_type' => 'task',
+                    'reference_id'   => $taskId,
+                    'action_url'     => Environment::getBaseUrl() . "/tasks/view/{$taskId}",
+                    'priority'       => 2
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log('notifyTaskDeadlineApproaching error: ' . $e->getMessage());
+        }
+    }
+
+    // ── Work Category Budget Exceeded ───────────────────────────────────────
+
+    public static function notifyBudgetExceeded($subcategoryId, $subcategoryName, $projectName, $budget, $spent) {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            $notification = new Notification();
+
+            $stmt = $db->prepare("SELECT id FROM users WHERE role IN ('owner','company_owner') AND status='active'");
+            $stmt->execute();
+            $over = '₹' . number_format($spent - $budget, 2);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $owner) {
+                $notification->create([
+                    'sender_id'      => 1,
+                    'receiver_id'    => $owner['id'],
+                    'type'           => 'error',
+                    'category'       => 'finance',
+                    'title'          => 'Budget Exceeded',
+                    'message'        => "Work category '{$subcategoryName}' in project '{$projectName}' has exceeded budget by {$over}",
+                    'reference_type' => 'subcategory',
+                    'reference_id'   => $subcategoryId,
+                    'action_url'     => Environment::getBaseUrl() . "/project-subcategories/{$subcategoryId}"
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log('notifyBudgetExceeded error: ' . $e->getMessage());
         }
     }
 

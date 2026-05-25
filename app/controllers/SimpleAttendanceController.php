@@ -261,6 +261,17 @@ class SimpleAttendanceController extends Controller {
                     $stmt = $this->db->prepare("INSERT INTO attendance (user_id, project_id, check_in, latitude, longitude, location_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     $result = $stmt->execute([$userId, $projectId, $currentTime, $latitude, $longitude, $locationName, $currentTime]);
                     
+                    if ($result) {
+                        try {
+                            require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                            $nameStmt = $this->db->prepare("SELECT name FROM users WHERE id = ?");
+                            $nameStmt->execute([$userId]);
+                            $userName = $nameStmt->fetchColumn() ?: 'Employee';
+                            $displayTime = (new DateTime($currentTime))->format('h:i A');
+                            NotificationHelper::notifyClockIn($userId, $userName, $locationName, $displayTime);
+                        } catch (Exception $ne) { error_log('Clock-in notification error: ' . $ne->getMessage()); }
+                    }
+
                     echo json_encode([
                         'success'  => $result,
                         'message'  => $result ? 'Clocked in successfully at ' . $locationName : 'Failed to clock in',
@@ -282,7 +293,24 @@ class SimpleAttendanceController extends Controller {
                     
                     $stmt = $this->db->prepare("UPDATE attendance SET check_out = ? WHERE id = ?");
                     $result = $stmt->execute([$currentTime, $attendance['id']]);
-                    
+
+                    if ($result) {
+                        try {
+                            require_once __DIR__ . '/../helpers/NotificationHelper.php';
+                            $nameStmt = $this->db->prepare("SELECT name FROM users WHERE id = ?");
+                            $nameStmt->execute([$userId]);
+                            $userName = $nameStmt->fetchColumn() ?: 'Employee';
+                            // Calculate hours worked
+                            $inStmt = $this->db->prepare("SELECT check_in FROM attendance WHERE id = ?");
+                            $inStmt->execute([$attendance['id']]);
+                            $checkInTime = $inStmt->fetchColumn();
+                            $mins = max(0, (strtotime($currentTime) - strtotime($checkInTime)) / 60);
+                            $hoursWorked = floor($mins/60) . 'h ' . ($mins % 60) . 'm';
+                            $displayTime = (new DateTime($currentTime))->format('h:i A');
+                            NotificationHelper::notifyClockOut($userId, $userName, 'Office', $displayTime, $hoursWorked);
+                        } catch (Exception $ne) { error_log('Clock-out notification error: ' . $ne->getMessage()); }
+                    }
+
                     echo json_encode([
                         'success' => $result,
                         'message' => $result ? 'Clocked out successfully' : 'Failed to clock out'
