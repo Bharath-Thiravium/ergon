@@ -9,16 +9,13 @@ if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !
     ini_set('log_errors', 1);
 }
 
-// Session configuration
+// Session configuration (also sets timezone to Asia/Kolkata)
 require_once __DIR__ . '/app/config/session.php';
 
 // Start session
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-// Set timezone
-date_default_timezone_set('Asia/Kolkata');
 
 require_once __DIR__ . '/app/config/environment.php';
 require_once __DIR__ . '/app/config/database.php';

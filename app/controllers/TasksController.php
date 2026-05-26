@@ -1212,24 +1212,19 @@ class TasksController extends Controller {
     }
     
     private function formatTimeAgo($datetime) {
-        // Convert to DateTime object for better timezone handling
-        $date = new DateTime($datetime);
-        $now = new DateTime();
-        
-        // Calculate the difference
-        $interval = $now->diff($date);
-        
-        // Format the actual date and time in local timezone
+        $tz = new DateTimeZone('Asia/Kolkata');
+        // Timestamps are stored as IST strings; parse them explicitly in IST
+        $date = new DateTime($datetime, $tz);
+        $now  = new DateTime('now', $tz);
+
         $fullDateTime = $date->format('M d, Y \a\t H:i:s');
-        
-        // Calculate total seconds difference
-        $totalSeconds = ($now->getTimestamp() - $date->getTimestamp());
-        
-        if ($totalSeconds < 60) return 'Just now (' . $fullDateTime . ')';
-        if ($totalSeconds < 3600) return floor($totalSeconds/60) . 'm ago (' . $fullDateTime . ')';
-        if ($totalSeconds < 86400) return floor($totalSeconds/3600) . 'h ago (' . $fullDateTime . ')';
-        if ($totalSeconds < 2592000) return $interval->days . 'd ago (' . $fullDateTime . ')';
-        
+        $totalSeconds = $now->getTimestamp() - $date->getTimestamp();
+
+        if ($totalSeconds < 60)     return 'Just now (' . $fullDateTime . ')';
+        if ($totalSeconds < 3600)   return floor($totalSeconds / 60) . 'm ago (' . $fullDateTime . ')';
+        if ($totalSeconds < 86400)  return floor($totalSeconds / 3600) . 'h ago (' . $fullDateTime . ')';
+        if ($totalSeconds < 2592000) return floor($totalSeconds / 86400) . 'd ago (' . $fullDateTime . ')';
+
         return $fullDateTime;
     }
     

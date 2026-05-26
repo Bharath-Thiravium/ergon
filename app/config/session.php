@@ -1,4 +1,7 @@
 <?php
+// Ensure consistent IST timezone across all entry points (main app + standalone API files)
+date_default_timezone_set('Asia/Kolkata');
+
 // Session optimization for Hostinger
 if (session_status() === PHP_SESSION_NONE) {
     // Detect HTTPS correctly behind Hostinger/proxy (HTTPS may not be set directly)
