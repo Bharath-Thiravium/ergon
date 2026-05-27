@@ -570,6 +570,11 @@ ob_end_clean();
                                 Departments
                                 <?php if ($departmentsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
+                            <a href="/ergon/project-management" class="nav-dropdown-item <?= ($active_page ?? '') === 'project-management' ? 'nav-dropdown-item--active' : '' ?> <?= $projectsDisabled ? 'nav-dropdown-item--disabled' : '' ?>">
+                                <span class="nav-icon">📁</span>
+                                Projects
+                                <?php if ($projectsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                            </a>
                         </div>
                     </div>
                     <div class="nav-dropdown">
@@ -883,7 +888,12 @@ ob_end_clean();
                     Departments
                     <?php if ($departmentsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                 </a>
-                
+                <a href="/ergon/project-management" class="sidebar__link <?= ($active_page ?? '') === 'project-management' ? 'sidebar__link--active' : '' ?> <?= $projectsDisabled ? 'sidebar__link--disabled' : '' ?>">
+                    <span class="sidebar__icon">📁</span>
+                    Projects
+                    <?php if ($projectsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                </a>
+
                 <div class="sidebar__divider">Tasks</div>
                 <a href="/ergon/tasks" class="sidebar__link <?= ($active_page ?? '') === 'tasks' ? 'sidebar__link--active' : '' ?> <?= $tasksDisabled ? 'sidebar__link--disabled' : '' ?>">
                     <span class="sidebar__icon">✅</span>
