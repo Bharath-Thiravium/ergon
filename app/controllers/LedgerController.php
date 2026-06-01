@@ -1,4 +1,4 @@
-<?php
+r  as <?php
 require_once __DIR__ . '/../core/Controller.php';
 
 class LedgerController extends Controller {
@@ -86,11 +86,10 @@ class LedgerController extends Controller {
                     e.id              AS reference_id,
                     'expense'         AS reference_type,
                     'expense_payment' AS entry_type,
-                    -- If expense is linked to an advance recovery, it should REDUCE outstanding => debit
-                    CASE 
-                        WHEN (e.source_advance_id IS NOT NULL AND e.source_advance_id != 0) THEN 'debit'
-                        ELSE 'credit'
-                    END AS direction,
+                    'expense_payment' AS entry_type,
+                    -- Requirement: every paid/approved expense reduces outstanding automatically => debit
+                    'debit' AS direction,
+
                     COALESCE(e.approved_amount, e.amount)       AS amount,
 
                     COALESCE(e.description, 'Expense')          AS description,
@@ -208,10 +207,10 @@ class LedgerController extends Controller {
                     FROM advances WHERE user_id = ? AND status IN ('approved','paid')
                     UNION ALL
                     -- Expenses recovered against those advances (reduce outstanding)
-                    -- If an expense is tied to an advance via source_advance_id, it must be treated as a DEBIT.
+                    -- Requirement: every paid/approved expense reduces outstanding automatically => debit
                     SELECT 'debit' AS direction, COALESCE(approved_amount, amount) AS amount
                     FROM expenses WHERE user_id = ? AND status IN ('approved','paid')
-                      AND source_advance_id IS NOT NULL AND source_advance_id != 0
+
                 ) t
             ");
             $outStmt->execute([$id, $id]);

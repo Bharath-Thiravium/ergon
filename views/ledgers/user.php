@@ -14,7 +14,7 @@ ob_start();
     <div class="page-actions">
         <a href="/ergon/users" class="btn btn--secondary">← Back to Users</a>
         <button onclick="refreshLedger()" class="btn btn--info" id="refreshBtn">🔄 Refresh</button>
-        <button onclick="window.print()" class="btn btn--outline">🖨️ Print</button>
+      r   <button onclick="window.print()" class="btn btn--outline">🖨️ Print</button>
         <a href="<?= htmlspecialchars($csvUrl) ?>" class="btn btn--primary">📥 Download CSV</a>
     </div>
 </div>
