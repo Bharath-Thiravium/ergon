@@ -86,7 +86,7 @@ class LedgerController extends Controller {
                     e.id              AS reference_id,
                     'expense'         AS reference_type,
                     'expense_payment' AS entry_type,
-                    'debit'           AS direction,
+                    'credit'          AS direction,
                     COALESCE(e.approved_amount, e.amount)       AS amount,
                     COALESCE(e.description, 'Expense')          AS description,
                     COALESCE(e.category, 'expense')             AS category,
@@ -183,10 +183,11 @@ class LedgerController extends Controller {
                 if ($entry['direction'] === 'credit') {
                     $totalCredits += floatval($entry['amount']);
                     if ($entry['reference_type'] === 'advance') $advanceCount++;
+                    if ($entry['reference_type'] === 'expense') $expenseCount++;
                     if ($entry['reference_type'] === 'manual')  $manualCount++;
                 } else {
                     $totalDebits += floatval($entry['amount']);
-                    if ($entry['reference_type'] === 'expense') $expenseCount++;
+                    if ($entry['reference_type'] === 'manual')  $manualCount++;
                 }
             }
 
@@ -200,7 +201,7 @@ class LedgerController extends Controller {
                     SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
                     FROM advances WHERE user_id = ? AND status IN ('approved','paid')
                     UNION ALL
-                    SELECT 'debit' AS direction, COALESCE(approved_amount, amount) AS amount
+                    SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
                     FROM expenses WHERE user_id = ? AND status IN ('approved','paid')
                       AND (source_advance_id IS NULL OR source_advance_id = 0)
                 ) t

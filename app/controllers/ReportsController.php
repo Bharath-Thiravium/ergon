@@ -50,14 +50,15 @@ class ReportsController extends Controller {
             if ($dow !== 7) $workingDays++;
         }
 
-        // All active users except company_owner
+        // All active users excluding both owner and company_owner
         $users = $db->query("
             SELECT id, name, role
             FROM users
             WHERE status = 'active'
-              AND role NOT IN ('company_owner')
-            ORDER BY FIELD(role,'owner','admin','user'), name
+              AND role NOT IN ('company_owner', 'owner')
+            ORDER BY FIELD(role,'admin','user'), name
         ")->fetchAll(PDO::FETCH_ASSOC);
+
 
         // All attendance for the month
         $stmt = $db->prepare("

@@ -94,7 +94,7 @@ ob_start();
         </div>
         <div class="kpi-card__value" style="color:#059669;">₹<?= number_format($totalCredits, 2) ?></div>
         <div class="kpi-card__label">Total Credits</div>
-        <div class="kpi-card__status"><?= $advanceCount ?> Advance<?= $advanceCount !== 1 ? 's' : '' ?> · <?= $manualCount ?? 0 ?> Manual</div>
+        <div class="kpi-card__status"><?= $advanceCount ?> Advance<?= $advanceCount !== 1 ? 's' : '' ?> · <?= $expenseCount ?? 0 ?> Expense<?= ($expenseCount ?? 0) !== 1 ? 's' : '' ?> · <?= $manualCount ?? 0 ?> Manual</div>
     </div>
 
     <div class="kpi-card">
@@ -103,7 +103,7 @@ ob_start();
         </div>
         <div class="kpi-card__value" style="color:#dc2626;">₹<?= number_format($totalDebits, 2) ?></div>
         <div class="kpi-card__label">Total Debits</div>
-        <div class="kpi-card__status"><?= $expenseCount ?> Expense<?= $expenseCount !== 1 ? 's' : '' ?><?= $totalDebits > 0 ? '' : ' · No deductions' ?></div>
+        <div class="kpi-card__status"><?= $totalDebits > 0 ? 'Salary deductions / manual' : 'No deductions recorded' ?></div>
     </div>
 
     <div class="kpi-card" style="border:2px solid <?= $outstanding >= 0 ? '#059669' : '#dc2626' ?>;">
@@ -113,8 +113,8 @@ ob_start();
         <div class="kpi-card__value <?= $outstanding >= 0 ? 'text-success' : 'text-danger' ?>">
             <?= $outstanding < 0 ? '-' : '' ?>₹<?= number_format(abs($outstanding), 2) ?>
         </div>
-        <div class="kpi-card__label">Outstanding</div>
-        <div class="kpi-card__status">Credit − Debit</div>
+        <div class="kpi-card__label">Outstanding (Company Owes)</div>
+        <div class="kpi-card__status">Advances + Expenses − Deductions</div>
     </div>
 </div>
 
@@ -162,7 +162,7 @@ ob_start();
                                 <?php if ($entry['reference_type'] === 'advance'): ?>
                                     <span class="badge badge--success">💸 Advance</span>
                                 <?php elseif ($entry['reference_type'] === 'expense'): ?>
-                                    <span class="badge badge--warning">💳 Expense</span>
+                                    <span class="badge badge--info">🧾 Expense</span>
                                 <?php else: ?>
                                     <span class="badge badge--info">✏️ Manual</span>
                                 <?php endif; ?>
@@ -208,7 +208,7 @@ ob_start();
                     <span class="summary-value text-danger">-₹<?= number_format($totalDebits, 2) ?></span>
                 </div>
                 <div class="summary-row summary-row--total">
-                    <span class="summary-label"><strong>Outstanding (Credit − Debit):</strong></span>
+                    <span class="summary-label"><strong>Outstanding (Company Owes Employee):</strong></span>
                     <span class="summary-value <?= $outstanding >= 0 ? 'text-success' : 'text-danger' ?>">
                         <strong><?= $outstanding < 0 ? '-' : '' ?>₹<?= number_format(abs($outstanding), 2) ?></strong>
                     </span>
