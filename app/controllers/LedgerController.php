@@ -198,12 +198,15 @@ class LedgerController extends Controller {
                     COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END), 0) AS total_credits,
                     COALESCE(SUM(CASE WHEN direction='debit'  THEN amount ELSE 0 END), 0) AS total_debits
                 FROM (
+                    -- Advances given by the company/user (increase outstanding)
                     SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
                     FROM advances WHERE user_id = ? AND status IN ('approved','paid')
                     UNION ALL
-                    SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
+                    -- Expenses recovered against those advances (reduce outstanding)
+                    -- If an expense is tied to an advance via source_advance_id, it must be treated as a DEBIT.
+                    SELECT 'debit' AS direction, COALESCE(approved_amount, amount) AS amount
                     FROM expenses WHERE user_id = ? AND status IN ('approved','paid')
-                      AND (source_advance_id IS NULL OR source_advance_id = 0)
+                      AND source_advance_id IS NOT NULL AND source_advance_id != 0
                 ) t
             ");
             $outStmt->execute([$id, $id]);
