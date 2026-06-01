@@ -469,6 +469,10 @@ ob_end_clean();
                                 Reports
                                 <?php if ($reportsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
                             </a>
+                            <a href="/ergon/reports/monthly-attendance" class="nav-dropdown-item <?= ($active_page ?? '') === 'monthly-attendance' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📅</span>
+                                Monthly Attendance
+                            </a>
                             <?php if (!$systemAdminDisabled): ?>
                             <a href="/ergon/settings" class="nav-dropdown-item <?= ($active_page ?? '') === 'settings' ? 'nav-dropdown-item--active' : '' ?>">
                                 <span class="nav-icon">⚙️</span>
@@ -645,6 +649,10 @@ ob_end_clean();
                                 <span class="nav-icon">⏱️</span>
                                 Reports
                                 <?php if ($reportsDisabled): ?><span class="premium-icon">🔒</span><?php endif; ?>
+                            </a>
+                            <a href="/ergon/reports/monthly-attendance" class="nav-dropdown-item <?= ($active_page ?? '') === 'monthly-attendance' ? 'nav-dropdown-item--active' : '' ?>">
+                                <span class="nav-icon">📅</span>
+                                Monthly Attendance
                             </a>
                         </div>
                     </div>

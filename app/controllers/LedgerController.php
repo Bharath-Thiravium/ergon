@@ -122,6 +122,8 @@ class LedgerController extends Controller {
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Rows are DESC; reverse to chronological order so running balance is correct
+        $rows = array_reverse($rows);
         $running = 0.0;
         foreach ($rows as &$row) {
             $running += $row['direction'] === 'credit'
@@ -130,6 +132,8 @@ class LedgerController extends Controller {
             $row['balance_after'] = $running;
         }
         unset($row);
+        // Re-reverse back to newest-first for display
+        $rows = array_reverse($rows);
 
         return $rows;
     }
@@ -163,11 +167,12 @@ class LedgerController extends Controller {
             LedgerHelper::ensureTable($db);
             $rawEntries = $this->fetchLedgerEntries($db, (int)$id, $fromDate, $toDate, $transactionType);
 
-            // Current balance = final balance_after from the chronologically-ordered raw entries
-            $currentBalance = empty($rawEntries) ? 0.0 : floatval(end($rawEntries)['balance_after']);
+            // After fix: rows are already newest-first; last element is the oldest.
+            // The true running balance is the balance_after of the first element (most recent).
+            $currentBalance = empty($rawEntries) ? 0.0 : floatval($rawEntries[0]['balance_after']);
 
-            // Reverse for display (most recent first)
-            $entries = array_reverse($rawEntries);
+            // Already newest-first — no reversal needed
+            $entries = $rawEntries;
 
             $totalCredits = 0.0;
             $totalDebits  = 0.0;
@@ -185,11 +190,30 @@ class LedgerController extends Controller {
                 }
             }
 
+            // Outstanding = total advances given minus total expenses recovered — always across ALL time,
+            // regardless of any active date filter, so fetch unfiltered totals separately.
+            $outStmt = $db->prepare("
+                SELECT
+                    COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END), 0) AS total_credits,
+                    COALESCE(SUM(CASE WHEN direction='debit'  THEN amount ELSE 0 END), 0) AS total_debits
+                FROM (
+                    SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
+                    FROM advances WHERE user_id = ? AND status IN ('approved','paid')
+                    UNION ALL
+                    SELECT 'debit' AS direction, COALESCE(approved_amount, amount) AS amount
+                    FROM expenses WHERE user_id = ? AND status IN ('approved','paid')
+                      AND (source_advance_id IS NULL OR source_advance_id = 0)
+                ) t
+            ");
+            $outStmt->execute([$id, $id]);
+            $outRow = $outStmt->fetch(PDO::FETCH_ASSOC);
+            $trueOutstanding = floatval($outRow['total_credits']) - floatval($outRow['total_debits']);
+
             $data = [
                 'user'            => $user,
                 'entries'         => $entries,
                 'balance'         => $currentBalance,
-                'outstanding'     => $totalCredits - $totalDebits,
+                'outstanding'     => $trueOutstanding,
                 'totalCredits'    => $totalCredits,
                 'totalDebits'     => $totalDebits,
                 'netActivity'     => $totalCredits - $totalDebits,

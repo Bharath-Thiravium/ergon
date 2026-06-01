@@ -24,6 +24,187 @@ class ReportsController extends Controller {
         }
     }
     
+    public function monthlyAttendance() {
+        AuthMiddleware::requireAuth();
+        if (!in_array($_SESSION['role'], ['admin', 'owner', 'company_owner'])) {
+            http_response_code(403); echo 'Access denied'; exit;
+        }
+
+        require_once __DIR__ . '/../config/database.php';
+        $db = Database::connect();
+
+        $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+        $year  = isset($_GET['year'])  ? (int)$_GET['year']  : (int)date('Y');
+        $month = max(1, min(12, $month));
+        $year  = max(2020, min((int)date('Y') + 1, $year));
+
+        $firstDay    = new DateTime("$year-$month-01");
+        $lastDay     = new DateTime($firstDay->format('Y-m-t'));
+        $totalDays   = (int)$lastDay->format('d');
+        $monthLabel  = $firstDay->format('F Y');
+
+        // Working days (Mon–Sat, exclude Sun)
+        $workingDays = 0;
+        for ($d = 1; $d <= $totalDays; $d++) {
+            $dow = (int)(new DateTime("$year-$month-$d"))->format('N');
+            if ($dow !== 7) $workingDays++;
+        }
+
+        // All active users except company_owner
+        $users = $db->query("
+            SELECT id, name, role
+            FROM users
+            WHERE status = 'active'
+              AND role NOT IN ('company_owner')
+            ORDER BY FIELD(role,'owner','admin','user'), name
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        // All attendance for the month
+        $stmt = $db->prepare("
+            SELECT user_id,
+                   DATE(check_in)  AS day,
+                   MIN(check_in)   AS first_in,
+                   MAX(check_out)  AS last_out,
+                   ROUND(
+                     SUM(TIMESTAMPDIFF(MINUTE,
+                       check_in,
+                       COALESCE(check_out, NOW())
+                     )) / 60, 2
+                   ) AS hours
+            FROM attendance
+            WHERE DATE(check_in) BETWEEN ? AND ?
+            GROUP BY user_id, DATE(check_in)
+        ");
+        $stmt->execute([$firstDay->format('Y-m-d'), $lastDay->format('Y-m-d')]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Approved leaves for the month
+        $leaveStmt = $db->prepare("
+            SELECT user_id, start_date, end_date
+            FROM leaves
+            WHERE status = 'approved'
+              AND start_date <= ? AND end_date >= ?
+        ");
+        $leaveStmt->execute([$lastDay->format('Y-m-d'), $firstDay->format('Y-m-d')]);
+        $leaves = $leaveStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Build leave lookup: [user_id][date] = true
+        $leaveMap = [];
+        foreach ($leaves as $lv) {
+            $cur = new DateTime($lv['start_date']);
+            $end = new DateTime($lv['end_date']);
+            while ($cur <= $end) {
+                $leaveMap[$lv['user_id']][$cur->format('Y-m-d')] = true;
+                $cur->modify('+1 day');
+            }
+        }
+
+        // Build attendance lookup: [user_id][date] = row
+        $attMap = [];
+        foreach ($rows as $r) {
+            $attMap[$r['user_id']][$r['day']] = $r;
+        }
+
+        // Build day list
+        $days = [];
+        for ($d = 1; $d <= $totalDays; $d++) {
+            $dt  = new DateTime("$year-$month-$d");
+            $dow = (int)$dt->format('N');
+            $days[] = [
+                'date'    => $dt->format('Y-m-d'),
+                'label'   => $dt->format('d'),
+                'day'     => $dt->format('D'),
+                'is_sun'  => $dow === 7,
+                'is_sat'  => $dow === 6,
+            ];
+        }
+
+        // Build summary per user
+        $report = [];
+        foreach ($users as $u) {
+            $uid      = $u['id'];
+            $present  = 0;
+            $absent   = 0;
+            $leave    = 0;
+            $totalHrs = 0;
+            $dayData  = [];
+
+            foreach ($days as $day) {
+                $date   = $day['date'];
+                $isSun  = $day['is_sun'];
+                $att    = $attMap[$uid][$date] ?? null;
+                $onLeave = isset($leaveMap[$uid][$date]);
+
+                if ($isSun) {
+                    $dayData[$date] = 'WO'; // Week Off
+                } elseif ($att) {
+                    $present++;
+                    $totalHrs += floatval($att['hours']);
+                    $dayData[$date] = [
+                        'in'    => date('H:i', strtotime($att['first_in'])),
+                        'out'   => $att['last_out'] ? date('H:i', strtotime($att['last_out'])) : '--',
+                        'hours' => $att['hours'],
+                    ];
+                } elseif ($onLeave) {
+                    $leave++;
+                    $dayData[$date] = 'L';
+                } else {
+                    // Only count as absent if date is not in the future
+                    if ($date <= date('Y-m-d')) {
+                        $absent++;
+                        $dayData[$date] = 'A';
+                    } else {
+                        $dayData[$date] = '-';
+                    }
+                }
+            }
+
+            $report[] = [
+                'id'         => $uid,
+                'name'       => $u['name'],
+                'role'       => $u['role'],
+                'present'    => $present,
+                'absent'     => $absent,
+                'leave'      => $leave,
+                'total_hrs'  => round($totalHrs, 1),
+                'att_pct'    => $workingDays > 0 ? round(($present / $workingDays) * 100) : 0,
+                'days'       => $dayData,
+            ];
+        }
+
+        // CSV export
+        if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment; filename="attendance_' . $year . '_' . str_pad($month, 2, '0', STR_PAD_LEFT) . '.csv"');
+            $out = fopen('php://output', 'w');
+            // Header row
+            $hdr = ['Employee', 'Role', 'Present', 'Absent', 'Leave', 'Total Hrs', 'Att%'];
+            foreach ($days as $day) $hdr[] = $day['label'] . '(' . $day['day'] . ')';
+            fputcsv($out, $hdr);
+            foreach ($report as $r) {
+                $row = [$r['name'], ucfirst($r['role']), $r['present'], $r['absent'], $r['leave'], $r['total_hrs'], $r['att_pct'] . '%'];
+                foreach ($days as $day) {
+                    $d = $r['days'][$day['date']] ?? '-';
+                    $row[] = is_array($d) ? 'P(' . $d['in'] . '-' . $d['out'] . ')' : $d;
+                }
+                fputcsv($out, $row);
+            }
+            fclose($out);
+            exit;
+        }
+
+        $this->view('reports/monthly_attendance', [
+            'report'       => $report,
+            'days'         => $days,
+            'month'        => $month,
+            'year'         => $year,
+            'month_label'  => $monthLabel,
+            'working_days' => $workingDays,
+            'total_days'   => $totalDays,
+            'active_page'  => 'reports',
+        ]);
+    }
+
     public function index() {
         AuthMiddleware::requireAuth();
         

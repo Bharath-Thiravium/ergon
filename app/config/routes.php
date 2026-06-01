@@ -192,6 +192,7 @@ $router->get('/reports/activity', 'ReportsController', 'activity');
 $router->get('/reports/export', 'ReportsController', 'export');
 $router->get('/reports/attendance-export', 'AttendanceController', 'exportAttendance');
 $router->get('/reports/approvals-export', 'ReportsController', 'approvalsExport');
+$router->get('/reports/monthly-attendance', 'ReportsController', 'monthlyAttendance');
 
 // Settings
 $router->get('/settings', 'SettingsController', 'index');
