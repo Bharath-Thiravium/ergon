@@ -23,36 +23,46 @@ class LedgerController extends Controller {
 
         // Owners disburse advances/expenses, so include records where they are payer (paid_by) too.
         if ($isOwner) {
-            $advWhere  = ['(a.user_id = ? OR a.paid_by = ?)', "a.status IN ('approved','paid')"];
-            $expWhere  = ['(e.user_id = ? OR e.paid_by = ?)', "e.status IN ('approved','paid')",
-                          '(e.source_advance_id IS NULL OR e.source_advance_id = 0)'];
-            $advParams = [$id, $id];
-            $expParams = [$id, $id];
+            $advWhere   = ['(a.user_id = ? OR a.paid_by = ?)', "a.status IN ('approved','paid')"];
+            $expWhere   = ['(e.user_id = ? OR e.paid_by = ?)', "e.status IN ('approved','paid')",
+                           '(e.source_advance_id IS NULL OR e.source_advance_id = 0)'];
+            $reimbWhere = ['(e.user_id = ? OR e.paid_by = ?)', "e.status = 'paid'",
+                           '(e.source_advance_id IS NULL OR e.source_advance_id = 0)'];
+            $advParams   = [$id, $id];
+            $expParams   = [$id, $id];
+            $reimbParams = [$id, $id];
         } else {
-            $advWhere  = ['a.user_id = ?', "a.status IN ('approved','paid')"];
-            $expWhere  = ['e.user_id = ?', "e.status IN ('approved','paid')",
-                          '(e.source_advance_id IS NULL OR e.source_advance_id = 0)'];
-            $advParams = [$id];
-            $expParams = [$id];
+            $advWhere   = ['a.user_id = ?', "a.status IN ('approved','paid')"];
+            $expWhere   = ['e.user_id = ?', "e.status IN ('approved','paid')",
+                           '(e.source_advance_id IS NULL OR e.source_advance_id = 0)'];
+            $reimbWhere = ['e.user_id = ?', "e.status = 'paid'",
+                           '(e.source_advance_id IS NULL OR e.source_advance_id = 0)'];
+            $advParams   = [$id];
+            $expParams   = [$id];
+            $reimbParams = [$id];
         }
         $manWhere  = ['ul.user_id = ?', "ul.reference_type = 'manual'"];
         $manParams = [$id];
 
         if ($fromDate) {
-            $advWhere[]  = 'COALESCE(a.requested_date, a.approved_at, a.created_at) >= ?';
-            $expWhere[]  = 'COALESCE(e.expense_date, e.approved_at, e.created_at) >= ?';
-            $manWhere[]  = 'ul.created_at >= ?';
-            $advParams[] = $fromDate . ' 00:00:00';
-            $expParams[] = $fromDate . ' 00:00:00';
-            $manParams[] = $fromDate . ' 00:00:00';
+            $advWhere[]   = 'COALESCE(a.requested_date, a.approved_at, a.created_at) >= ?';
+            $expWhere[]   = 'COALESCE(e.expense_date, e.approved_at, e.created_at) >= ?';
+            $reimbWhere[] = 'COALESCE(e.paid_at, e.approved_at, e.created_at) >= ?';
+            $manWhere[]   = 'ul.created_at >= ?';
+            $advParams[]   = $fromDate . ' 00:00:00';
+            $expParams[]   = $fromDate . ' 00:00:00';
+            $reimbParams[] = $fromDate . ' 00:00:00';
+            $manParams[]   = $fromDate . ' 00:00:00';
         }
         if ($toDate) {
-            $advWhere[]  = 'COALESCE(a.requested_date, a.approved_at, a.created_at) <= ?';
-            $expWhere[]  = 'COALESCE(e.expense_date, e.approved_at, e.created_at) <= ?';
-            $manWhere[]  = 'ul.created_at <= ?';
-            $advParams[] = $toDate . ' 23:59:59';
-            $expParams[] = $toDate . ' 23:59:59';
-            $manParams[] = $toDate . ' 23:59:59';
+            $advWhere[]   = 'COALESCE(a.requested_date, a.approved_at, a.created_at) <= ?';
+            $expWhere[]   = 'COALESCE(e.expense_date, e.approved_at, e.created_at) <= ?';
+            $reimbWhere[] = 'COALESCE(e.paid_at, e.approved_at, e.created_at) <= ?';
+            $manWhere[]   = 'ul.created_at <= ?';
+            $advParams[]   = $toDate . ' 23:59:59';
+            $expParams[]   = $toDate . ' 23:59:59';
+            $reimbParams[] = $toDate . ' 23:59:59';
+            $manParams[]   = $toDate . ' 23:59:59';
         }
 
         $parts  = [];
@@ -76,6 +86,7 @@ class LedgerController extends Controller {
         }
 
         if ($transactionType !== 'advance' && $transactionType !== 'manual') {
+            // Debit: expense incurred (approved or paid)
             $parts[] = "
                 SELECT
                     e.id              AS reference_id,
@@ -90,6 +101,23 @@ class LedgerController extends Controller {
                 FROM expenses e
                 WHERE " . implode(' AND ', $expWhere);
             $params = array_merge($params, $expParams);
+
+            // Credit: reimbursement paid back to employee (only for paid direct expenses)
+            // This credit tallies against the debit so the running balance returns to zero when settled.
+            $parts[] = "
+                SELECT
+                    e.id                    AS reference_id,
+                    'expense'               AS reference_type,
+                    'expense_reimbursement' AS entry_type,
+                    'credit'                AS direction,
+                    COALESCE(e.approved_amount, e.amount)                        AS amount,
+                    CONCAT('Reimbursed: ', COALESCE(e.description, 'Expense'))   AS description,
+                    COALESCE(e.category, 'expense')                              AS category,
+                    e.status,
+                    COALESCE(e.paid_at, e.approved_at, e.created_at)            AS date
+                FROM expenses e
+                WHERE " . implode(' AND ', $reimbWhere);
+            $params = array_merge($params, $reimbParams);
         }
 
         if ($transactionType !== 'advance' && $transactionType !== 'expense') {
@@ -159,16 +187,18 @@ class LedgerController extends Controller {
             // Rows are newest-first; first element carries the most recent running balance.
             $currentBalance = empty($rawEntries) ? 0.0 : floatval($rawEntries[0]['balance_after']);
 
-            $totalCredits = 0.0;
-            $totalDebits  = 0.0;
-            $expenseCount = 0;
-            $advanceCount = 0;
-            $manualCount  = 0;
+            $totalCredits       = 0.0;
+            $totalDebits        = 0.0;
+            $expenseCount       = 0;
+            $advanceCount       = 0;
+            $reimbursementCount = 0;
+            $manualCount        = 0;
             foreach ($rawEntries as $entry) {
                 if ($entry['direction'] === 'credit') {
                     $totalCredits += floatval($entry['amount']);
-                    if ($entry['reference_type'] === 'advance') $advanceCount++;
-                    if ($entry['reference_type'] === 'manual')  $manualCount++;
+                    if ($entry['reference_type'] === 'advance')            $advanceCount++;
+                    if ($entry['entry_type']     === 'expense_reimbursement') $reimbursementCount++;
+                    if ($entry['reference_type'] === 'manual')             $manualCount++;
                 } else {
                     $totalDebits += floatval($entry['amount']);
                     if ($entry['reference_type'] === 'expense') $expenseCount++;
@@ -176,40 +206,55 @@ class LedgerController extends Controller {
                 }
             }
 
-            // Outstanding is always computed across ALL time regardless of date filter.
+            // Outstanding is computed across ALL time regardless of active date filter.
+            // Advances given (credit) minus expenses incurred (debit) plus reimbursements made (credit).
+            // A fully reimbursed set of expenses nets to zero outstanding.
             $outStmt = $db->prepare("
                 SELECT
                     COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END), 0) AS total_credits,
                     COALESCE(SUM(CASE WHEN direction='debit'  THEN amount ELSE 0 END), 0) AS total_debits
                 FROM (
                     SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
-                    FROM advances WHERE user_id = ? AND status IN ('approved','paid')
+                    FROM advances
+                    WHERE user_id = ? AND status IN ('approved','paid')
+
                     UNION ALL
+
                     SELECT 'debit' AS direction, COALESCE(approved_amount, amount) AS amount
-                    FROM expenses WHERE user_id = ? AND status IN ('approved','paid')
+                    FROM expenses
+                    WHERE user_id = ? AND status IN ('approved','paid')
+                      AND (source_advance_id IS NULL OR source_advance_id = 0)
+
+                    UNION ALL
+
+                    SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
+                    FROM expenses
+                    WHERE user_id = ? AND status = 'paid'
+                      AND (source_advance_id IS NULL OR source_advance_id = 0)
                 ) t
             ");
-            $outStmt->execute([$id, $id]);
+            $outStmt->execute([$id, $id, $id]);
             $outRow          = $outStmt->fetch(PDO::FETCH_ASSOC);
             $trueOutstanding = floatval($outRow['total_credits']) - floatval($outRow['total_debits']);
 
             $this->view('ledgers/user', [
-                'user'            => $user,
-                'entries'         => $rawEntries,
-                'balance'         => $currentBalance,
-                'outstanding'     => $trueOutstanding,
-                'totalCredits'    => $totalCredits,
-                'totalDebits'     => $totalDebits,
-                'netActivity'     => $totalCredits - $totalDebits,
-                'expenseCount'    => $expenseCount,
-                'advanceCount'    => $advanceCount,
-                'manualCount'     => $manualCount,
-                'user_id'         => $id,
-                'fromDate'        => $fromDate,
-                'toDate'          => $toDate,
-                'transactionType' => $transactionType,
-                'isFiltered'      => ($fromDate || $toDate || $transactionType),
-                'active_page'     => 'ledgers',
+                'user'               => $user,
+                'entries'            => $rawEntries,
+                'balance'            => $currentBalance,
+                'outstanding'        => $trueOutstanding,
+                'totalCredits'       => $totalCredits,
+                'totalDebits'        => $totalDebits,
+                'netActivity'        => $totalCredits - $totalDebits,
+                'expenseCount'       => $expenseCount,
+                'advanceCount'       => $advanceCount,
+                'reimbursementCount' => $reimbursementCount,
+                'manualCount'        => $manualCount,
+                'user_id'            => $id,
+                'fromDate'           => $fromDate,
+                'toDate'             => $toDate,
+                'transactionType'    => $transactionType,
+                'isFiltered'         => ($fromDate || $toDate || $transactionType),
+                'active_page'        => 'ledgers',
             ]);
         } catch (Exception $e) {
             error_log('Ledger view error: ' . $e->getMessage());
@@ -253,11 +298,12 @@ class LedgerController extends Controller {
             header('Expires: 0');
 
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Date', 'Type', 'Direction', 'Amount', 'Description', 'Category', 'Status', 'Balance']);
+            fputcsv($out, ['Date', 'Type', 'Entry Type', 'Direction', 'Amount', 'Description', 'Category', 'Status', 'Balance']);
             foreach ($rows as $row) {
                 fputcsv($out, [
                     $safe($row['date']),
                     $safe($row['reference_type']),
+                    $safe($row['entry_type']),
                     $safe($row['direction']),
                     number_format($row['amount'], 2, '.', ''),
                     $safe($row['description']),
@@ -326,18 +372,18 @@ class LedgerController extends Controller {
                 $budget_remaining = $budget - $total_debits;
 
                 $data = array_merge($data, [
-                    'project_id'        => $project_id,
-                    'project_name'      => $project['project_name'] ?? 'Unknown',
-                    'budget'            => $budget,
-                    'entries'           => $entries,
-                    'total_credits'     => $total_credits,
-                    'total_debits'      => $total_debits,
-                    'balance_type'      => $budget_remaining >= 0 ? 'Credit' : 'Debit',
-                    'balance_amount'    => abs($budget_remaining),
-                    'net_balance_type'  => $total_debits > 0 ? 'Debit' : 'Credit',
-                    'net_balance_amount'=> $total_debits,
-                    'budget_remaining'  => $budget_remaining,
-                    'utilization'       => $budget > 0 ? ($total_debits / $budget) * 100 : 0,
+                    'project_id'         => $project_id,
+                    'project_name'       => $project['project_name'] ?? 'Unknown',
+                    'budget'             => $budget,
+                    'entries'            => $entries,
+                    'total_credits'      => $total_credits,
+                    'total_debits'       => $total_debits,
+                    'balance_type'       => $budget_remaining >= 0 ? 'Credit' : 'Debit',
+                    'balance_amount'     => abs($budget_remaining),
+                    'net_balance_type'   => $total_debits > 0 ? 'Debit' : 'Credit',
+                    'net_balance_amount' => $total_debits,
+                    'budget_remaining'   => $budget_remaining,
+                    'utilization'        => $budget > 0 ? ($total_debits / $budget) * 100 : 0,
                 ]);
             } else {
                 $stmt = $db->query("
@@ -368,18 +414,18 @@ class LedgerController extends Controller {
                 $budget_remaining = $budget - $total_debits;
 
                 $data = array_merge($data, [
-                    'project_id'        => null,
-                    'project_name'      => 'All Projects',
-                    'budget'            => $budget,
-                    'entries'           => $entries,
-                    'total_credits'     => 0.0,
-                    'total_debits'      => $total_debits,
-                    'balance_type'      => $budget_remaining >= 0 ? 'Credit' : 'Debit',
-                    'balance_amount'    => abs($budget_remaining),
-                    'net_balance_type'  => $total_debits > 0 ? 'Debit' : 'Credit',
-                    'net_balance_amount'=> $total_debits,
-                    'budget_remaining'  => $budget_remaining,
-                    'utilization'       => $budget > 0 ? ($total_debits / $budget) * 100 : 0,
+                    'project_id'         => null,
+                    'project_name'       => 'All Projects',
+                    'budget'             => $budget,
+                    'entries'            => $entries,
+                    'total_credits'      => 0.0,
+                    'total_debits'       => $total_debits,
+                    'balance_type'       => $budget_remaining >= 0 ? 'Credit' : 'Debit',
+                    'balance_amount'     => abs($budget_remaining),
+                    'net_balance_type'   => $total_debits > 0 ? 'Debit' : 'Credit',
+                    'net_balance_amount' => $total_debits,
+                    'budget_remaining'   => $budget_remaining,
+                    'utilization'        => $budget > 0 ? ($total_debits / $budget) * 100 : 0,
                 ]);
             }
 
