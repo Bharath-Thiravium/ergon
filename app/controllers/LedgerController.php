@@ -187,6 +187,45 @@ class LedgerController extends Controller {
             // Rows are newest-first; first element carries the most recent running balance.
             $currentBalance = empty($rawEntries) ? 0.0 : floatval($rawEntries[0]['balance_after']);
 
+            // Opening balance for the filtered period (before any entries in the range)
+            $openingBalance = 0.0;
+            if ($fromDate || $toDate) {
+                $openStmt = $db->prepare("
+                    SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END) -
+                                   SUM(CASE WHEN direction='debit' THEN amount ELSE 0 END), 0)
+                    FROM (
+                        SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
+                        FROM advances
+                        WHERE user_id = ? AND status IN ('approved','paid')
+                          AND COALESCE(requested_date, approved_at, created_at) < ?
+
+                        UNION ALL
+
+                        SELECT 'debit' AS direction, COALESCE(approved_amount, amount) AS amount
+                        FROM expenses
+                        WHERE user_id = ? AND status IN ('approved','paid')
+                          AND (source_advance_id IS NULL OR source_advance_id = 0)
+                          AND COALESCE(expense_date, approved_at, created_at) < ?
+
+                        UNION ALL
+
+                        SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
+                        FROM expenses
+                        WHERE user_id = ? AND status = 'paid'
+                          AND (source_advance_id IS NULL OR source_advance_id = 0)
+                          AND COALESCE(paid_at, approved_at, created_at) < ?
+
+                        UNION ALL
+
+                        SELECT direction, amount FROM user_ledgers
+                        WHERE user_id = ? AND created_at < ?
+                    ) t
+                ");
+                $filterStartDate = ($fromDate ?? '1900-01-01') . ' 00:00:00';
+                $openStmt->execute([$id, $filterStartDate, $id, $filterStartDate, $id, $filterStartDate, $id, $filterStartDate]);
+                $openingBalance = floatval($openStmt->fetchColumn());
+            }
+
             $totalCredits       = 0.0;
             $totalDebits        = 0.0;
             $expenseCount       = 0;
@@ -241,6 +280,7 @@ class LedgerController extends Controller {
                 'user'               => $user,
                 'entries'            => $rawEntries,
                 'balance'            => $currentBalance,
+                'openingBalance'     => $openingBalance,
                 'outstanding'        => $trueOutstanding,
                 'totalCredits'       => $totalCredits,
                 'totalDebits'        => $totalDebits,
@@ -318,6 +358,109 @@ class LedgerController extends Controller {
             error_log('Ledger CSV error: ' . $e->getMessage());
             http_response_code(500);
             exit('Export failed');
+        }
+    }
+
+    public function createManualAdjustment($id = null) {
+        $this->requireAuth();
+        if (!$id || !is_numeric($id)) {
+            http_response_code(400);
+            $this->json(['success' => false, 'error' => 'Invalid user']);
+            return;
+        }
+
+        // Only owners/admins can create adjustments
+        if (!in_array($_SESSION['role'] ?? '', ['owner', 'company_owner', 'admin'])) {
+            http_response_code(403);
+            $this->json(['success' => false, 'error' => 'Access denied']);
+            return;
+        }
+
+        if (!$this->isPost()) {
+            http_response_code(400);
+            $this->json(['success' => false, 'error' => 'POST required']);
+            return;
+        }
+
+        try {
+            require_once __DIR__ . '/../helpers/LedgerHelper.php';
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+            LedgerHelper::ensureTable($db);
+
+            $amount    = floatval($_POST['amount'] ?? 0);
+            $direction = $_POST['direction'] ?? 'credit';
+            $reason    = trim($_POST['reason'] ?? 'Manual adjustment');
+
+            if ($amount <= 0) {
+                $this->json(['success' => false, 'error' => 'Amount must be positive']);
+                return;
+            }
+
+            if (!in_array($direction, ['credit', 'debit'])) {
+                $this->json(['success' => false, 'error' => 'Invalid direction']);
+                return;
+            }
+
+            $userId = intval($_SESSION['user_id']);
+            $result = LedgerHelper::recordManualAdjustment(
+                $id,
+                $amount,
+                $direction,
+                $reason,
+                'adjustment',
+                $db,
+                $userId
+            );
+
+            if ($result) {
+                $this->json(['success' => true, 'message' => 'Adjustment recorded']);
+            } else {
+                $this->json(['success' => false, 'error' => 'Failed to record adjustment'], 500);
+            }
+        } catch (Exception $e) {
+            error_log('Ledger adjustment error: ' . $e->getMessage());
+            $this->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function reverseEntry($entryId = null) {
+        $this->requireAuth();
+        if (!$entryId || !is_numeric($entryId)) {
+            http_response_code(400);
+            $this->json(['success' => false, 'error' => 'Invalid entry']);
+            return;
+        }
+
+        // Only owners/admins can reverse entries
+        if (!in_array($_SESSION['role'] ?? '', ['owner', 'company_owner', 'admin'])) {
+            http_response_code(403);
+            $this->json(['success' => false, 'error' => 'Access denied']);
+            return;
+        }
+
+        if (!$this->isPost()) {
+            http_response_code(400);
+            $this->json(['success' => false, 'error' => 'POST required']);
+            return;
+        }
+
+        try {
+            require_once __DIR__ . '/../helpers/LedgerHelper.php';
+            require_once __DIR__ . '/../config/database.php';
+            $db = Database::connect();
+
+            $userId = intval($_SESSION['user_id']);
+            $result = LedgerHelper::reverseEntry($entryId, 'Reversed by admin', $db, $userId);
+
+            if ($result) {
+                $this->json(['success' => true, 'message' => 'Entry reversed']);
+            } else {
+                $this->json(['success' => false, 'error' => 'Failed to reverse entry'], 500);
+            }
+        } catch (Exception $e) {
+            error_log('Ledger reversal error: ' . $e->getMessage());
+            $this->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 

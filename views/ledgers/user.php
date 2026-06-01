@@ -75,6 +75,34 @@ ob_start();
     </div>
 </div>
 
+<!-- Period Summary (when filtered) -->
+<?php if ($isFiltered ?? false): ?>
+<div class="card" style="background: #f8f9fa; margin-bottom: 1.5rem;">
+    <div class="card__body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+            <div>
+                <small style="color: #6c757d; font-weight: 500;">📍 Opening Balance</small>
+                <div style="font-size: 1.3rem; font-weight: 600; color: <?= $openingBalance >= 0 ? '#059669' : '#dc2626' ?>;">
+                    <?= $openingBalance < 0 ? '-' : '' ?>₹<?= number_format(abs($openingBalance), 2) ?>
+                </div>
+            </div>
+            <div>
+                <small style="color: #6c757d; font-weight: 500;">📊 Net Activity</small>
+                <div style="font-size: 1.3rem; font-weight: 600; color: <?= $netActivity >= 0 ? '#059669' : '#dc2626' ?>;">
+                    <?= $netActivity >= 0 ? '+' : '-' ?>₹<?= number_format(abs($netActivity), 2) ?>
+                </div>
+            </div>
+            <div>
+                <small style="color: #6c757d; font-weight: 500;">🎯 Closing Balance</small>
+                <div style="font-size: 1.3rem; font-weight: 600; color: <?= $balance >= 0 ? '#059669' : '#dc2626' ?>;">
+                    <?= $balance < 0 ? '-' : '' ?>₹<?= number_format(abs($balance), 2) ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Summary Cards -->
 <div class="dashboard-grid" style="margin-bottom: 1.5rem;">
     <div class="kpi-card">
@@ -142,6 +170,33 @@ ob_start();
                 <p>This user has no ledger entries yet. Transactions will appear here once advances are paid or expenses are processed.</p>
             </div>
         <?php else: ?>
+            <!-- Ledger Logic Explanation -->
+            <div style="background: linear-gradient(135deg, #e7f3ff 0%, #f0f8ff 100%); border-left: 4px solid #0ea5e9; padding: 1.5rem; margin-bottom: 1.5rem; border-radius: 4px;">
+                <strong style="color: #0284c7; display: block; margin-bottom: 1rem; font-size: 1rem;">📖 How This Ledger Works</strong>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; font-size: 0.9rem;">
+                    <div style="padding: 0.75rem; background: rgba(255,255,255,0.8); border-radius: 4px; border-left: 3px solid #dc2626;">
+                        <strong style="color: #dc2626;">🧾 Expense (Pending)</strong><br/>
+                        <small>Employee paid out of pocket</small><br/>
+                        <span style="color: #dc2626; font-weight: 600;">-DEBIT</span>
+                    </div>
+                    <div style="padding: 0.75rem; background: rgba(255,255,255,0.8); border-radius: 4px; border-left: 3px solid #059669;">
+                        <strong style="color: #059669;">✅ Reimbursed</strong><br/>
+                        <small>Company paid them back</small><br/>
+                        <span style="color: #059669; font-weight: 600;">+CREDIT</span>
+                    </div>
+                    <div style="padding: 0.75rem; background: rgba(255,255,255,0.8); border-radius: 4px; border-left: 3px solid #059669;">
+                        <strong style="color: #059669;">💸 Advance</strong><br/>
+                        <small>Company gave them upfront</small><br/>
+                        <span style="color: #059669; font-weight: 600;">+CREDIT</span>
+                    </div>
+                    <div style="padding: 0.75rem; background: rgba(255,255,255,0.8); border-radius: 4px; border-left: 3px solid #0ea5e9;">
+                        <strong style="color: #0284c7;">⚖️ Balance</strong><br/>
+                        <small>₹0 = Settled</small><br/>
+                        <small>+ = Company owes them</small><br/>
+                        <small>- = They owe company</small>
+                    </div>
+                </div>
+            </div>
             <div class="table-responsive">
                 <table class="table table--striped">
                     <thead>
@@ -194,7 +249,13 @@ ob_start();
                             </td>
                             <td>
                                 <span class="status-badge status-badge--<?= strtolower($entry['status'] ?? 'unknown') ?>">
-                                    <?= ucfirst($entry['status'] ?? 'Unknown') ?>
+                                    <?php if ($entry['status'] === 'approved'): ?>
+                                        ⏳ Approved
+                                    <?php elseif ($entry['status'] === 'paid'): ?>
+                                        ✅ Paid
+                                    <?php else: ?>
+                                        <?= ucfirst($entry['status'] ?? 'Unknown') ?>
+                                    <?php endif; ?>
                                 </span>
                             </td>
                         </tr>
@@ -306,10 +367,11 @@ ob_start();
 }
 
 .status-badge--paid { background: #d4edda; color: #155724; }
-.status-badge--approved { background: #cce5ff; color: #004085; }
+.status-badge--approved { background: #fff3cd; color: #856404; }
 .status-badge--pending { background: #fff3cd; color: #856404; }
 .status-badge--rejected { background: #f8d7da; color: #721c24; }
 .status-badge--unknown { background: #e2e3e5; color: #383d41; }
+.status-badge--manual { background: #cce5ff; color: #004085; }
 
 .ledger-summary {
     margin-top: 1rem;
