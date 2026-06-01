@@ -86,8 +86,13 @@ class LedgerController extends Controller {
                     e.id              AS reference_id,
                     'expense'         AS reference_type,
                     'expense_payment' AS entry_type,
-                    'credit'          AS direction,
+                    -- If expense is linked to an advance recovery, it should REDUCE outstanding => debit
+                    CASE 
+                        WHEN (e.source_advance_id IS NOT NULL AND e.source_advance_id != 0) THEN 'debit'
+                        ELSE 'credit'
+                    END AS direction,
                     COALESCE(e.approved_amount, e.amount)       AS amount,
+
                     COALESCE(e.description, 'Expense')          AS description,
                     COALESCE(e.category, 'expense')             AS category,
                     e.status,
