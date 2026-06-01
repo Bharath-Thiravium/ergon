@@ -14,7 +14,7 @@ ob_start();
     <div class="page-actions">
         <a href="/ergon/users" class="btn btn--secondary">← Back to Users</a>
         <button onclick="refreshLedger()" class="btn btn--info" id="refreshBtn">🔄 Refresh</button>
-      r   <button onclick="window.print()" class="btn btn--outline">🖨️ Print</button>
+        <button onclick="window.print()" class="btn btn--outline">🖨️ Print</button>
         <a href="<?= htmlspecialchars($csvUrl) ?>" class="btn btn--primary">📥 Download CSV</a>
     </div>
 </div>
@@ -94,7 +94,7 @@ ob_start();
         </div>
         <div class="kpi-card__value" style="color:#059669;">₹<?= number_format($totalCredits, 2) ?></div>
         <div class="kpi-card__label">Total Credits</div>
-        <div class="kpi-card__status"><?= $advanceCount ?> Advance<?= $advanceCount !== 1 ? 's' : '' ?> · <?= $expenseCount ?? 0 ?> Expense<?= ($expenseCount ?? 0) !== 1 ? 's' : '' ?> · <?= $manualCount ?? 0 ?> Manual</div>
+        <div class="kpi-card__status"><?= $advanceCount ?> Advance<?= $advanceCount !== 1 ? 's' : '' ?> · <?= $manualCount ?? 0 ?> Manual</div>
     </div>
 
     <div class="kpi-card">
@@ -103,7 +103,7 @@ ob_start();
         </div>
         <div class="kpi-card__value" style="color:#dc2626;">₹<?= number_format($totalDebits, 2) ?></div>
         <div class="kpi-card__label">Total Debits</div>
-        <div class="kpi-card__status"><?= $totalDebits > 0 ? 'Salary deductions / manual' : 'No deductions recorded' ?></div>
+        <div class="kpi-card__status"><?= $expenseCount ?> Expense<?= $expenseCount !== 1 ? 's' : '' ?> · <?= $manualCount ?? 0 ?> Manual</div>
     </div>
 
         <div class="kpi-card" style="border:2px solid <?= $outstanding >= 0 ? '#059669' : '#dc2626' ?>;">
@@ -156,7 +156,7 @@ ob_start();
                         <?php foreach ($entries as $entry): ?>
                         <tr class="ledger-entry ledger-entry--<?= $entry['direction'] ?>">
                             <td class="ledger-date">
-                                <strong><?= date('M d, Y', strtotime($entry['date'])) ?></strong></strong>
+                                <strong><?= date('M d, Y', strtotime($entry['date'])) ?></strong>
                             </td>
                             <td>
                                 <?php if ($entry['reference_type'] === 'advance'): ?>

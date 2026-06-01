@@ -184,9 +184,6 @@ ob_start();
     </div>
     
     <div class="card__body">
-        <div class="alert alert--success" style="margin-bottom: 16px;">
-            ✓ **Fixed Duplicate Entries**: Now shows **1 row per paid expense** (debits only). Previously showed approved (credit) + paid (debit) pairs.
-        </div>
         <?php if (empty($entries)): ?>
             <p>No <strong>paid</strong> transactions found for this project. <a href="/ergon/expenses?project_id=<?= $project_id ?>">View all expenses →</a></p>
         <?php else: ?>
@@ -202,14 +199,15 @@ ob_start();
                             <th>Credit</th>
                             <th>Debit</th>
                             <th>Paid Date</th>
-<th>Status</th>
-                            <th style="text-align:center;">Actions</th>
+                            <th>Status</th>
+                            <th style="text-align:center;">View</th>
                         </tr>
-<tr id="filterRow">
+                        <tr id="filterRow">
                             <td><input class="col-filter" data-col="0" placeholder="Date..." /></td>
                             <td><input class="col-filter" data-col="1" placeholder="Employee..." /></td>
                             <td><input class="col-filter" data-col="2" placeholder="Type..." /></td>
                             <td><input class="col-filter" data-col="3" placeholder="Description..." /></td>
+                            <td></td>
                             <td></td>
                             <td></td>
                             <td></td>
@@ -228,15 +226,16 @@ ob_start();
                                     <?= $e['type'] === 'expense' ? '💰 Expense' : '💳 Advance' ?>
                                 </span>
                             </td>
-                            <td><?= htmlspecialchars($e['description']) ?></td>
-                            <td><?= $e['entry_type'] === 'credit' ? '₹' . number_format($e['amount'], 2) : '-' ?></td>
-                            <td><?= $e['entry_type'] === 'debit' ? '₹' . number_format($e['amount'], 2) : '-' ?></td>
-                            <td><?= date('M d', strtotime($e['paid_at'] ?? $e['created_at'])) ?></td>
-                            <td>
-                                <span class="badge badge--success">Paid</span>
+                            <td><?= htmlspecialchars($e['description'] ?? '') ?></td>
+                            <td>-</td>
+                            <td>₹<?= number_format($e['amount'], 2) ?></td>
+                            <td><?= !empty($e['paid_at']) ? date('M d', strtotime($e['paid_at'])) : date('M d', strtotime($e['created_at'])) ?></td>
+                            <td><span class="badge badge--success">Paid</span></td>
+                            <td style="text-align:center;">
+                                <a href="/ergon/<?= $e['type'] === 'expense' ? 'expenses' : 'advances' ?>/view/<?= $e['id'] ?>"
+                                   class="btn btn--sm btn--secondary" title="View <?= ucfirst($e['type']) ?>">🔍</a>
                             </td>
                         </tr>
-
                         <?php endforeach; ?>
                     </tbody>
                 </table>
