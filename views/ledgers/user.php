@@ -106,7 +106,7 @@ ob_start();
         <div class="kpi-card__status"><?= $totalDebits > 0 ? 'Salary deductions / manual' : 'No deductions recorded' ?></div>
     </div>
 
-    <div class="kpi-card" style="border:2px solid <?= $outstanding >= 0 ? '#059669' : '#dc2626' ?>;">
+        <div class="kpi-card" style="border:2px solid <?= $outstanding >= 0 ? '#059669' : '#dc2626' ?>;">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">⚖️</div>
         </div>
@@ -114,7 +114,7 @@ ob_start();
             <?= $outstanding < 0 ? '-' : '' ?>₹<?= number_format(abs($outstanding), 2) ?>
         </div>
         <div class="kpi-card__label">Outstanding (Company Owes)</div>
-        <div class="kpi-card__status">Advances + Expenses − Deductions</div>
+        <div class="kpi-card__status">Advances - Paid Expenses (recovered from advances)</div>
     </div>
 </div>
 
