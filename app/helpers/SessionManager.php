@@ -39,7 +39,8 @@ class SessionManager {
         if (!isset($_SESSION['last_activity'])) {
             return true;
         }
-        return (time() - $_SESSION['last_activity']) > 3600;
+        // MUST match Controller::requireAuth() timeout (28800 seconds = 8 hours)
+        return (time() - $_SESSION['last_activity']) > 28800;
     }
 }
 ?>

@@ -14,6 +14,12 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.cookie_httponly', 1);
     ini_set('session.cookie_secure', $isHttps ? 1 : 0);
     ini_set('session.use_strict_mode', 1);
-    ini_set('session.gc_maxlifetime', 28800);
+    ini_set('session.gc_maxlifetime', 28800);  // 8 hours — MUST match Controller::requireAuth() timeout
+
+    // Prevent session locking during concurrent AJAX requests by releasing lock after read
+    // (only for PHP 7.0+, safely ignored on older versions)
+    if (PHP_VERSION_ID >= 70000) {
+        ini_set('session.read_and_close', 1);  // Close session after read to allow parallel requests
+    }
 }
 ?>

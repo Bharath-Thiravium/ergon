@@ -38,6 +38,7 @@ class Controller {
     }
     
     protected function requireAuth() {
+        // Session not started or user not logged in
         if (!isset($_SESSION['user_id'])) {
             if ($this->isAjaxRequest()) {
                 http_response_code(401);
@@ -46,6 +47,36 @@ class Controller {
                 exit;
             }
             $this->redirect('/login');
+        }
+
+        // Check session timeout (8 hours = 28800 seconds)
+        if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 28800)) {
+            // Session expired — destroy it
+            if (ini_get('session.use_cookies')) {
+                $params = session_get_cookie_params();
+                setcookie(session_name(), '', time() - 42000,
+                    $params['path'], $params['domain'],
+                    $params['secure'], $params['httponly']
+                );
+            }
+            session_unset();
+            session_destroy();
+
+            if ($this->isAjaxRequest()) {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Session expired', 'redirect' => '/ergon/login']);
+                exit;
+            }
+            $this->redirect('/login?timeout=1');
+        }
+
+        // Update last activity timestamp on every request (prevents timeout during active use)
+        $_SESSION['last_activity'] = time();
+
+        // Ensure role is set (fallback)
+        if (empty($_SESSION['role'])) {
+            $_SESSION['role'] = 'user';
         }
     }
     
