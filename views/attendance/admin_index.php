@@ -217,8 +217,15 @@ ob_start();
         <h2 class="card__title">
             <span>📊</span> Employee Attendance Status
         </h2>
-        <div class="card__actions">
-            <input type="date" id="attendanceDate" value="<?= $filter_date ?? date('Y-m-d') ?>" onchange="filterByDate(this.value)" class="form-control" style="width: auto;">
+        <div class="card__actions attendance-toolbar">
+            <div class="attendance-toolbar__left">
+                <input type="date" id="attendanceDate" value="<?= $filter_date ?? date('Y-m-d') ?>" onchange="filterByDate(this.value)" class="form-control attendance-date-input" style="width: auto;">
+            </div>
+            <div class="attendance-toolbar__right">
+                <button class="btn btn--warning attendance-mark-holiday-btn" onclick="openHolidayModal()" title="Mark a holiday for all employees">
+                    <span>🗓️</span> Mark Holiday
+                </button>
+            </div>
         </div>
     </div>
     <div class="card__body">
@@ -391,6 +398,19 @@ function markManualAttendance(employeeId) {
     });
 }
 
+function openHolidayModal() {
+    sessionStorage.setItem('holidayMarked', 'true');
+    window.location.href = '/ergon/holidays';
+}
+
+function ensureHolidayModalRefresh() {
+    // Auto-refresh attendance after returning from holiday modal
+    if (sessionStorage.getItem('holidayMarked')) {
+        sessionStorage.removeItem('holidayMarked');
+        refreshAttendance();
+    }
+}
+
 function adminClockAction(type) {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -435,6 +455,7 @@ function performAdminClock(type, latitude, longitude) {
 </script>
 
 <style>
+/* Empty State */
 .empty-state {
     text-align: center;
     padding: 3rem 1rem;
@@ -450,6 +471,7 @@ function performAdminClock(type, latitude, longitude) {
     vertical-align: middle;
 }
 
+/* Badge Colors */
 .badge--success {
     background-color: #dcfce7;
     color: #166534;
@@ -467,10 +489,176 @@ function performAdminClock(type, latitude, longitude) {
     color: #92400e;
     border: 1px solid #fcd34d;
 }
+
+/* Attendance Toolbar */
+.attendance-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.attendance-toolbar__left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.attendance-toolbar__right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.attendance-date-input {
+    padding: 0.625rem 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    height: 40px;
+    min-width: 150px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.attendance-date-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Mark Holiday Button */
+.attendance-mark-holiday-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+    color: white;
+    border: 1px solid #ea580c;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 40px;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+
+.attendance-mark-holiday-btn:hover {
+    background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    transform: translateY(-1px);
+}
+
+.attendance-mark-holiday-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2);
+}
+
+.attendance-mark-holiday-btn span {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+/* Button classes for standard styling */
+.btn--warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+    color: white;
+    border: 1px solid #ea580c;
+}
+
+.btn--warning:hover {
+    background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .attendance-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .attendance-toolbar__left,
+    .attendance-toolbar__right {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .attendance-date-input {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .attendance-mark-holiday-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .attendance-toolbar {
+        gap: 0.5rem;
+    }
+    
+    .attendance-date-input,
+    .attendance-mark-holiday-btn {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+        height: 36px;
+    }
+    
+    .attendance-mark-holiday-btn span {
+        font-size: 1rem;
+    }
+    
+    .attendance-date-input {
+        min-width: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    .attendance-toolbar {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .attendance-toolbar__left,
+    .attendance-toolbar__right {
+        width: 100%;
+    }
+    
+    .attendance-date-input,
+    .attendance-mark-holiday-btn {
+        width: 100%;
+        font-size: 0.8rem;
+        padding: 0.5rem;
+        height: 36px;
+    }
+    
+    .attendance-mark-holiday-btn {
+        justify-content: center;
+    }
+}
 </style>
 
+<link rel="stylesheet" href="/ergon/assets/css/mark-holiday-button.css?v=<?= time() ?>">
 <link rel="stylesheet" href="/ergon/assets/css/enhanced-table-utils.css?v=<?= time() ?>">
 <script src="/ergon/assets/js/table-utils.js?v=<?= time() ?>"></script>
+
+<script>
+// Auto-refresh after returning from holiday marking
+window.addEventListener('pageshow', function(event) {
+    if (sessionStorage.getItem('holidayMarked')) {
+        sessionStorage.removeItem('holidayMarked');
+        setTimeout(function() {
+            refreshAttendance();
+        }, 500);
+    }
+});
+</script>
 
 <?php
 $content = ob_get_clean();

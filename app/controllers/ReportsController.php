@@ -100,6 +100,22 @@ class ReportsController extends Controller {
             }
         }
 
+        // Get holidays for the month
+        $holidayStmt = $db->prepare("
+            SELECT DISTINCT holiday_date
+            FROM holidays
+            WHERE is_active = 1
+              AND holiday_date BETWEEN ? AND ?
+        ");
+        $holidayStmt->execute([$firstDay->format('Y-m-d'), $lastDay->format('Y-m-d')]);
+        $holidays = $holidayStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Build holiday lookup: [date] = true
+        $holidayMap = [];
+        foreach ($holidays as $hol) {
+            $holidayMap[$hol['holiday_date']] = true;
+        }
+
         // Build attendance lookup: [user_id][date] = row
         $attMap = [];
         foreach ($rows as $r) {
@@ -135,9 +151,12 @@ class ReportsController extends Controller {
                 $isSun  = $day['is_sun'];
                 $att    = $attMap[$uid][$date] ?? null;
                 $onLeave = isset($leaveMap[$uid][$date]);
+                $isHoliday = isset($holidayMap[$date]);
 
                 if ($isSun) {
                     $dayData[$date] = 'WO'; // Week Off
+                } elseif ($isHoliday) {
+                    $dayData[$date] = 'H'; // Holiday
                 } elseif ($att) {
                     $present++;
                     $totalHrs += floatval($att['hours']);

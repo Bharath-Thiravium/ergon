@@ -1,0 +1,188 @@
+/* Mark Holiday Button Styling */
+
+/* Attendance Toolbar Container */
+.attendance-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    width: 43%;
+}
+
+.attendance-toolbar__left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.attendance-toolbar__right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Date Input Styling */
+.attendance-date-input {
+    padding: 0.625rem 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    height: 40px;
+    min-width: 150px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background-color: white;
+}
+
+.attendance-date-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Mark Holiday Button Styling */
+.attendance-mark-holiday-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    padding: 0.625rem 1.25rem !important;
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%) !important;
+    color: white !important;
+    border: 1px solid #ea580c !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    height: 40px !important;
+    white-space: nowrap !important;
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2) !important;
+    text-decoration: none !important;
+}
+
+.attendance-mark-holiday-btn:hover {
+    background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%) !important;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3) !important;
+    transform: translateY(-1px) !important;
+    text-decoration: none !important;
+    color: white !important;
+}
+
+.attendance-mark-holiday-btn:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2) !important;
+}
+
+.attendance-mark-holiday-btn:focus {
+    outline: 2px solid #f59e0b !important;
+    outline-offset: 2px !important;
+}
+
+.attendance-mark-holiday-btn span {
+    font-size: 1.1rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Override Bootstrap button styles */
+.attendance-mark-holiday-btn.btn {
+    padding: 0.625rem 1.25rem !important;
+    height: 40px;
+    display: inline-flex !important;
+    align-items: center !important;
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%) !important;
+}
+
+.attendance-mark-holiday-btn.btn:hover {
+    background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%) !important;
+}
+
+/* Responsive Design - Tablet */
+@media (max-width: 1024px) {
+    .attendance-toolbar {
+        flex-direction: row;
+        gap: 0.75rem;
+    }
+    
+    .attendance-toolbar__left {
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .attendance-toolbar__right {
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .attendance-date-input {
+        min-width: 100%;
+    }
+    
+    .attendance-mark-holiday-btn {
+        width: auto;
+        min-width: 150px;
+    }
+}
+
+/* Responsive Design - Mobile */
+@media (max-width: 768px) {
+    .attendance-toolbar {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    .attendance-toolbar__left,
+    .attendance-toolbar__right {
+        width: 100%;
+    }
+    
+    .attendance-date-input {
+        width: 100%;
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+        height: 36px;
+        min-width: auto;
+    }
+    
+    .attendance-mark-holiday-btn {
+        width: 100% !important;
+        font-size: 0.875rem !important;
+        padding: 0.5rem 0.75rem !important;
+        height: 36px !important;
+        justify-content: center !important;
+    }
+    
+    .attendance-mark-holiday-btn span {
+        font-size: 1rem;
+    }
+}
+
+/* Responsive Design - Small Phone */
+@media (max-width: 480px) {
+    .attendance-toolbar {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    .attendance-toolbar__left,
+    .attendance-toolbar__right {
+        width: 100%;
+    }
+    
+    .attendance-date-input,
+    .attendance-mark-holiday-btn {
+        width: 100% !important;
+        font-size: 0.8rem !important;
+        padding: 0.5rem !important;
+        height: 36px !important;
+        min-width: auto;
+    }
+    
+    .attendance-mark-holiday-btn {
+        justify-content: center !important;
+    }
+}

@@ -30,15 +30,20 @@ ob_start();
         <p>Track employee attendance and working hours</p>
         <?php endif; ?>
     </div>
-    <div class="page-actions">
+    <div class="page-actions attendance-toolbar">
         <?php if (in_array($user_role ?? '', ['owner', 'admin'])): ?>
-        <input type="date" id="dateFilter" name="date_filter" value="<?= $selected_date ?? TimezoneHelper::getCurrentDate() ?>" onchange="filterByDate(this.value)" class="form-input" style="margin-right: 1rem;">
-        <select id="filterSelect" onchange="filterAttendance(this.value)" class="form-input">
-            <option value="today" <?= ($current_filter ?? 'today') === 'today' ? 'selected' : '' ?>>Today</option>
-            <option value="week" <?= ($current_filter ?? '') === 'week' ? 'selected' : '' ?>>One Week</option>
-            <option value="two_weeks" <?= ($current_filter ?? '') === 'two_weeks' ? 'selected' : '' ?>>Two Weeks</option>
-            <option value="month" <?= ($current_filter ?? '') === 'month' ? 'selected' : '' ?>>One Month</option>
-        </select>
+        <div class="attendance-toolbar__left">
+            <input type="date" id="dateFilter" name="date_filter" value="<?= $selected_date ?? TimezoneHelper::getCurrentDate() ?>" onchange="filterByDate(this.value)" class="form-input attendance-date-input">
+            <select id="filterSelect" onchange="filterAttendance(this.value)" class="form-input" style="min-width: 120px;">
+                <option value="today" <?= ($current_filter ?? 'today') === 'today' ? 'selected' : '' ?>>Today</option>
+                <option value="week" <?= ($current_filter ?? '') === 'week' ? 'selected' : '' ?>>One Week</option>
+                <option value="two_weeks" <?= ($current_filter ?? '') === 'two_weeks' ? 'selected' : '' ?>>Two Weeks</option>
+                <option value="month" <?= ($current_filter ?? '') === 'month' ? 'selected' : '' ?>>One Month</option>
+            </select>
+        </div>
+        <button id="markHolidayBtn" class="btn attendance-mark-holiday-btn" onclick="openHolidayModal()" title="Mark Holiday">
+            <span>📅</span> Mark Holiday
+        </button>
         <?php endif; ?>
         <a href="/ergon/attendance/clock" class="btn btn--primary">
             <span>🕰️</span> Clock In/Out
@@ -474,6 +479,299 @@ ob_start();
 </div>
 
 <script>
+// Holiday Modal Functions
+function openHolidayModal() {
+    document.querySelectorAll('.holiday-modal-overlay').forEach(m => m.remove());
+    
+    const modal = document.createElement('div');
+    modal.className = 'holiday-modal-overlay';
+    modal.setAttribute('data-visible', 'true');
+    modal.innerHTML = `
+        <div class="holiday-modal-content">
+            <div class="holiday-modal__header">
+                <h2 class="holiday-modal__title">📅 Mark Holiday</h2>
+                <button class="holiday-modal__close" onclick="closeHolidayModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="holiday-modal__body">
+                <div class="form-group">
+                    <label for="holiday-date" class="form-label">Holiday Date:</label>
+                    <input type="date" id="holiday-date" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="holiday-name" class="form-label">Holiday Name:</label>
+                    <input type="text" id="holiday-name" class="form-input" placeholder="e.g., New Year" required>
+                </div>
+                <div class="form-group">
+                    <label for="holiday-type" class="form-label">Holiday Type:</label>
+                    <select id="holiday-type" class="form-input" required>
+                        <option value="">Select Type</option>
+                        <option value="National">National Holiday</option>
+                        <option value="Festival">Festival</option>
+                        <option value="Company">Company Holiday</option>
+                        <option value="Emergency">Emergency Holiday</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="holiday-description" class="form-label">Description (Optional):</label>
+                    <textarea id="holiday-description" class="form-input" rows="3" placeholder="Add any additional details..."></textarea>
+                </div>
+                <div class="form-group form-group--checkbox">
+                    <input type="checkbox" id="holiday-apply-all" class="form-checkbox" checked>
+                    <label for="holiday-apply-all" class="form-label form-label--checkbox">Apply to All Employees</label>
+                </div>
+            </div>
+            <div class="holiday-modal__footer">
+                <button class="btn btn--secondary" onclick="closeHolidayModal()">Cancel</button>
+                <button class="btn btn--primary" onclick="submitHoliday()">Save Holiday</button>
+            </div>
+        </div>
+    `;
+    
+    ensureHolidayModalStyles();
+    document.body.appendChild(modal);
+}
+
+function closeHolidayModal() {
+    const modal = document.querySelector('.holiday-modal-overlay');
+    if (modal) {
+        modal.style.animation = 'fadeOut 0.2s ease';
+        setTimeout(() => modal.remove(), 200);
+    }
+}
+
+function submitHoliday() {
+    const holidayDate = document.getElementById('holiday-date').value;
+    const holidayName = document.getElementById('holiday-name').value;
+    const holidayType = document.getElementById('holiday-type').value;
+    const description = document.getElementById('holiday-description').value;
+    const applyToAll = document.getElementById('holiday-apply-all').checked;
+    
+    if (!holidayDate) {
+        alert('Please select a holiday date');
+        return;
+    }
+    if (!holidayName.trim()) {
+        alert('Please enter a holiday name');
+        return;
+    }
+    if (!holidayType) {
+        alert('Please select a holiday type');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('holiday_date', holidayDate);
+    formData.append('holiday_name', holidayName);
+    formData.append('holiday_type', holidayType);
+    formData.append('description', description);
+    formData.append('applies_to', applyToAll ? 'All' : 'Department');
+    formData.append('repeat_yearly', 'off');
+    
+    fetch('/ergon/holiday/create', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Holiday marked successfully!');
+            closeHolidayModal();
+            setTimeout(() => location.reload(), 500);
+        } else {
+            alert('Error: ' + (data.error || 'Failed to mark holiday'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Network error occurred');
+    });
+}
+
+function ensureHolidayModalStyles() {
+    if (!document.getElementById('holiday-modal-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'holiday-modal-styles';
+        styles.textContent = `
+            .holiday-modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10002;
+                animation: fadeIn 0.2s ease;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+            .holiday-modal-content {
+                background: white;
+                border-radius: 8px;
+                width: 500px;
+                max-width: 90vw;
+                max-height: 90vh;
+                overflow-y: auto;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+                animation: slideUp 0.3s ease;
+            }
+            @keyframes slideUp {
+                from { transform: translateY(20px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            .holiday-modal__header {
+                padding: 1.5rem;
+                border-bottom: 1px solid #e5e7eb;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #f9fafb;
+            }
+            .holiday-modal__title {
+                margin: 0;
+                font-size: 1.25rem;
+                font-weight: 600;
+                color: #1f2937;
+            }
+            .holiday-modal__close {
+                background: none;
+                border: none;
+                font-size: 28px;
+                cursor: pointer;
+                color: #6b7280;
+                transition: color 0.2s ease;
+                padding: 0;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .holiday-modal__close:hover {
+                color: #1f2937;
+            }
+            .holiday-modal__body {
+                padding: 1.5rem;
+            }
+            .form-group {
+                margin-bottom: 1rem;
+            }
+            .form-group:last-of-type:not(.form-group--checkbox) {
+                margin-bottom: 0.75rem;
+            }
+            .form-label {
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 500;
+                font-size: 0.875rem;
+                color: #374151;
+            }
+            .form-label--checkbox {
+                display: inline;
+                margin-left: 0.5rem;
+                font-weight: 400;
+            }
+            .form-input {
+                width: 100%;
+                padding: 0.625rem 0.875rem;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                font-size: 0.875rem;
+                font-family: inherit;
+                transition: border-color 0.2s ease, box-shadow 0.2s ease;
+                box-sizing: border-box;
+            }
+            .form-input:focus {
+                outline: none;
+                border-color: #f59e0b;
+                box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+            }
+            .form-input::placeholder {
+                color: #9ca3af;
+            }
+            .form-group--checkbox {
+                display: flex;
+                align-items: center;
+                margin: 1rem 0 0 0;
+            }
+            .form-checkbox {
+                width: 18px;
+                height: 18px;
+                cursor: pointer;
+                accent-color: #f59e0b;
+            }
+            .holiday-modal__footer {
+                padding: 1.5rem;
+                border-top: 1px solid #e5e7eb;
+                display: flex;
+                gap: 0.75rem;
+                justify-content: flex-end;
+                background: #f9fafb;
+            }
+            .btn {
+                padding: 0.625rem 1.25rem;
+                border-radius: 6px;
+                font-weight: 500;
+                font-size: 0.875rem;
+                cursor: pointer;
+                border: none;
+                transition: all 0.2s ease;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .btn--primary {
+                background: #f59e0b;
+                color: white;
+                border: 1px solid #ea580c;
+            }
+            .btn--primary:hover {
+                background: #f97316;
+                box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+            }
+            .btn--secondary {
+                background: #e5e7eb;
+                color: #374151;
+                border: 1px solid #d1d5db;
+            }
+            .btn--secondary:hover {
+                background: #d1d5db;
+            }
+            @media (max-width: 768px) {
+                .holiday-modal-content {
+                    width: 95vw;
+                }
+                .holiday-modal__body {
+                    padding: 1rem;
+                }
+                .holiday-modal__header,
+                .holiday-modal__footer {
+                    padding: 1rem;
+                }
+                .form-input {
+                    font-size: 16px;
+                }
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+}
+
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('holiday-modal-overlay')) {
+        closeHolidayModal();
+    }
+});
+
 function filterAttendance(filter) {
     const currentDate = document.getElementById('dateFilter')?.value || '';
     let url = '/ergon/attendance?filter=' + filter;
@@ -973,6 +1271,7 @@ function terminateUser(userId) {
 </script>
 
 <link rel="stylesheet" href="/ergon/assets/css/enhanced-table-utils.css?v=<?= time() ?>">
+<link rel="stylesheet" href="/ergon/assets/css/mark-holiday-button.css?v=<?= time() ?>">
 <script src="/ergon/assets/js/action-buttons.js?v=<?= time() ?>"></script>
 <script src="/ergon/assets/js/table-utils.js?v=<?= time() ?>"></script>
 <script src="/ergon/assets/js/attendance-auto-refresh.js?v=<?= time() ?>"></script>
