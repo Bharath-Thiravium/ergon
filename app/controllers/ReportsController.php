@@ -49,13 +49,12 @@ class ReportsController extends Controller {
             if ($dow !== 7) $workingDays++;
         }
 
-        // All active users excluding only 'owner' role (FIXED: was excluding company_owner)
+        // All active users including all roles (admin, user, company_owner, owner)
         $users = $db->query("
             SELECT id, name, role
             FROM users
             WHERE status = 'active'
-              AND role NOT IN ('owner')
-            ORDER BY FIELD(role,'admin','user','company_owner'), name
+            ORDER BY FIELD(role,'admin','owner','company_owner','user'), name
         ")->fetchAll(PDO::FETCH_ASSOC);
 
 

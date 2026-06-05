@@ -186,13 +186,13 @@ class ExpenseController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // FIXED: Include company_owner in admin view (was: WHERE (u.role = 'user' OR e.user_id = ?))
+            // Include user, company_owner, and owner roles in admin view
             $sql = "SELECT e.*, u.name as user_name, u.role as user_role, p.name as project_name, pt.name as paid_to_user_name, e.paid_to_name
                     FROM expenses e
                     JOIN users u ON e.user_id = u.id
                     LEFT JOIN projects p ON e.project_id = p.id
                     LEFT JOIN users pt ON e.paid_to_user_id = pt.id
-                    WHERE (u.role IN ('user', 'company_owner') OR e.user_id = ?)";
+                    WHERE (u.role IN ('user', 'company_owner', 'owner') OR e.user_id = ?)";
             $params = [$adminUserId];
 
             if ($projectId) {
