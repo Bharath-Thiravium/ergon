@@ -54,26 +54,46 @@ if (isset($_GET['success'])): ?>
         </div>
         <div class="kpi-card__value"><?= $total_users_kpi ?? 0 ?></div>
         <div class="kpi-card__label">Total Users</div>
-        <div class="kpi-card__status">Active</div>
+        <div class="kpi-card__status">All Roles</div>
     </div>
     
     <div class="kpi-card">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">🔑</div>
+            <div class="kpi-card__icon">👑</div>
+            <div class="kpi-card__trend">↗ Owners</div>
+        </div>
+        <div class="kpi-card__value"><?= $owner_count ?? 0 ?></div>
+        <div class="kpi-card__label">Company Owners</div>
+        <div class="kpi-card__status">Top Level</div>
+    </div>
+    
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">🛡️</div>
             <div class="kpi-card__trend">↗ Admins</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($users ?? [], fn($u) => ($u['role'] ?? '') === 'admin' && ($u['status'] ?? '') === 'active')) ?></div>
+        <div class="kpi-card__value"><?= $admin_count ?? 0 ?></div>
         <div class="kpi-card__label">Admin Users</div>
         <div class="kpi-card__status">Elevated</div>
     </div>
     
     <div class="kpi-card">
         <div class="kpi-card__header">
-            <div class="kpi-card__icon">👤</div>
-            <div class="kpi-card__trend">— Regular</div>
+            <div class="kpi-card__icon">👨💼</div>
+            <div class="kpi-card__trend">↗ HR</div>
         </div>
-        <div class="kpi-card__value"><?= count(array_filter($users ?? [], fn($u) => ($u['role'] ?? '') === 'user' && ($u['status'] ?? '') === 'active')) ?></div>
-        <div class="kpi-card__label">Regular Users</div>
+        <div class="kpi-card__value"><?= $hr_count ?? 0 ?></div>
+        <div class="kpi-card__label">HR Users</div>
+        <div class="kpi-card__status">Support</div>
+    </div>
+    
+    <div class="kpi-card">
+        <div class="kpi-card__header">
+            <div class="kpi-card__icon">👤</div>
+            <div class="kpi-card__trend">— Employees</div>
+        </div>
+        <div class="kpi-card__value"><?= $employee_count ?? 0 ?></div>
+        <div class="kpi-card__label">Regular Employees</div>
         <div class="kpi-card__status">Standard</div>
     </div>
 </div>
@@ -88,326 +108,117 @@ if (isset($_GET['success'])): ?>
         </div>
     </div>
     <div class="card__body">
-            <div id="listView" class="table-responsive view--active">
-                <?php if (!is_array($users) || empty($users)): ?>
-                    <div class="empty-state">
-                        <div class="empty-icon">👥</div>
-                        <h3>No Users Found</h3>
-                        <p>No users have been registered yet.</p>
-                    </div>
-                <?php else: ?>
-                    <?php if ($_SESSION['role'] === 'owner'): ?>
-                        <?php 
-                        $owners = array_filter($users, fn($u) => $u['role'] === 'owner');
-                        $companyOwners = array_filter($users, fn($u) => $u['role'] === 'company_owner');
-                        $admins = array_filter($users, fn($u) => $u['role'] === 'admin');
-                        $regularUsers = array_filter($users, fn($u) => $u['role'] === 'user');
-                        ?>
-                        
-                        <?php if (!empty($owners)): ?>
-                        <h3 class="section-title">👑 Owners</h3>
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($owners as $user): ?>
-                                    <?php include 'user_row.php'; ?>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                        <?php endif; ?>
-                        
-                        <?php if (!empty($companyOwners)): ?>
-                        <h3 class="section-title">🏢 Company Owners</h3>
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($companyOwners as $user): ?>
-                                    <?php include 'user_row.php'; ?>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                        <?php endif; ?>
-                        
-                        <?php if (!empty($admins)): ?>
-                        <h3 class="section-title">🔑 Administrators</h3>
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($admins as $user): ?>
-                                    <?php include 'user_row.php'; ?>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                        <?php endif; ?>
-                        
-                        <?php if (!empty($regularUsers)): ?>
-                        <h3 class="section-title">👤 Regular Users</h3>
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($regularUsers as $user): ?>
-                                    <?php include 'user_row.php'; ?>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($users as $user): 
-                                    // Hide owners and other admins from admin users
-                                    if ($_SESSION['role'] === 'admin' && in_array($user['role'], ['owner', 'admin'])) {
-                                        continue;
-                                    }
-                                ?>
+        <div id="listView" class="table-responsive view--active">
+            <?php if (!is_array($users) || empty($users)): ?>
+                <div class="empty-state">
+                    <div class="empty-icon">👥</div>
+                    <h3>No Users Found</h3>
+                    <p>No users have been registered yet.</p>
+                </div>
+            <?php else: ?>
+                <table class="table">
+                    <thead>
                         <tr>
-                            <td>
-                                <div class="user-info">
-                                    <div class="user-avatar"><?= strtoupper(substr($user['name'], 0, 1)) ?></div>
-                                    <div>
-                                        <strong><?= htmlspecialchars($user['name']) ?></strong>
-                                        <br><small class="text-muted">ID: <?= $user['id'] ?></small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td data-sort-value="<?= $user['email'] ?>"><?= htmlspecialchars($user['email']) ?></td>
-                            <td data-sort-value="<?= $user['role'] ?>"><span class="badge badge--<?= $user['role'] === 'admin' ? 'success' : 'info' ?>"><?= ucfirst($user['role']) ?></span></td>
-                            <td data-sort-value="<?= $user['status'] ?>"><span class="badge badge--<?= $user['status'] === 'inactive' ? 'inactive' : ($user['status'] === 'suspended' ? 'suspended' : ($user['status'] === 'terminated' ? 'terminated' : 'success')) ?>"><?= ucfirst($user['status']) ?></span></td>
-                            <td>
-                                <?php 
-                                $userStatus = $user['status'] ?? 'active';
-                                $userId = $user['id'];
-                                $userName = htmlspecialchars($user['name']);
-                                ?>
-                                <div class="ab-container">
-                                    <button class="ab-btn ab-btn--view" onclick="viewUser(<?= $user['id'] ?>)" data-tooltip="View Details">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                            <circle cx="12" cy="12" r="3"/>
-                                        </svg>
-                                    </button>
-                                    <?php if (($_SESSION['role'] ?? '') === 'admin' && in_array(($user['role'] ?? 'user'), ['admin', 'owner'])): ?>
-                                        <!-- Admins cannot manage other admins/owners -->
-                                        <span class="text-muted">Protected</span>
-                                    <?php elseif ($userStatus === 'terminated'): ?>
-                                        <!-- Terminated Users: Only view for admins, owners can reactivate -->
-                                        <?php if (($_SESSION['role'] ?? '') === 'owner'): ?>
-                                        <button class="ab-btn ab-btn--success" onclick="activateUser(<?= $user['id'] ?>, '<?= $userName ?>')" data-tooltip="Reactivate User">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M9 12l2 2 4-4"/>
-                                                <circle cx="12" cy="12" r="10"/>
-                                            </svg>
-                                        </button>
-                                        <?php endif; ?>
-                                        <span class="text-muted">Terminated</span>
-                                    <?php elseif (($_SESSION['role'] ?? '') === 'owner' || (($_SESSION['role'] ?? '') === 'admin' && ($user['role'] ?? 'user') === 'user')): ?>
-                                        <!-- Status-based buttons for manageable users -->
-                                        <?php if ($userStatus === 'suspended'): ?>
-                                            <button class="ab-btn ab-btn--success" onclick="activateUser(<?= $user['id'] ?>, '<?= $userName ?>')" data-tooltip="Activate User">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                    <path d="M9 12l2 2 4-4"/>
-                                                    <circle cx="12" cy="12" r="10"/>
-                                                </svg>
-                                            </button>
-                                        <?php elseif ($userStatus === 'inactive'): ?>
-                                            <button class="ab-btn ab-btn--success" onclick="activateUser(<?= $user['id'] ?>, '<?= $userName ?>')" data-tooltip="Activate User">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                    <path d="M9 12l2 2 4-4"/>
-                                                    <circle cx="12" cy="12" r="10"/>
-                                                </svg>
-                                            </button>
-                                        <?php elseif ($userStatus === 'active'): ?>
-                                            <button class="ab-btn ab-btn--warning" onclick="deactivateUser(<?= $user['id'] ?>, '<?= $userName ?>')" data-tooltip="Deactivate User">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                    <circle cx="12" cy="12" r="10"/>
-                                                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-                                                </svg>
-                                            </button>
-                                            <button class="ab-btn ab-btn--danger" onclick="suspendUser(<?= $user['id'] ?>, '<?= $userName ?>')" data-tooltip="Suspend User">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                                    <circle cx="9" cy="7" r="4"/>
-                                                    <line x1="22" y1="11" x2="16" y2="11"/>
-                                                </svg>
-                                            </button>
-                                        <?php endif; ?>
-                                        <button class="ab-btn ab-btn--edit" onclick="editUser(<?= $user['id'] ?>)" data-tooltip="Edit User">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                                <path d="M15 5l4 4"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--progress" onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Reset Password">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/>
-                                                <circle cx="16.5" cy="7.5" r=".5"/>
-                                            </svg>
-                                        </button>
-                                        <button class="ab-btn ab-btn--delete" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Terminate User">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                                <circle cx="9" cy="7" r="4"/>
-                                                <line x1="17" y1="8" x2="22" y2="13"/>
-                                                <line x1="22" y1="8" x2="17" y2="13"/>
-                                            </svg>
-                                        </button>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Department</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
                         </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    <?php endif; ?>
-                <?php endif; ?>
-            </div>
-        <div id="gridView" class="user-grid view--hidden">
-            <?php foreach ($users as $user): 
-                // Hide owners and other admins from admin users
-                if ($_SESSION['role'] === 'admin' && in_array($user['role'], ['owner', 'admin'])) {
-                    continue;
-                }
-            ?>
-            <div class="user-card">
-                <div class="user-card__header">
-                    <div class="user-avatar"><?= strtoupper(substr($user['name'], 0, 1)) ?></div>
-                    <div class="user-card__badges">
-                        <span class="badge badge--<?= $user['role'] === 'admin' ? 'success' : 'info' ?>">
-                            <?= ucfirst($user['role']) ?>
-                        </span>
-                    </div>
-                </div>
-                <h3 class="user-card__name"><?= htmlspecialchars($user['name']) ?></h3>
-                <p class="user-card__email"><?= htmlspecialchars($user['email']) ?></p>
-                <p class="user-card__role"><?= ucfirst($user['role']) ?></p>
-                <div class="ab-container">
-                    <button class="ab-btn ab-btn--view" onclick="viewUser(<?= $user['id'] ?>)" data-tooltip="View Details">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
-                        </svg>
-                    </button>
-                    <?php 
-                    $userStatus = $user['status'] ?? 'active';
-                    $userName = htmlspecialchars($user['name']);
-                    ?>
-                    <?php if (($_SESSION['role'] ?? '') === 'admin' && in_array(($user['role'] ?? 'user'), ['admin', 'owner'])): ?>
-                        <span class="text-muted">Protected</span>
-                    <?php elseif ($userStatus === 'terminated'): ?>
-                        <?php if (($_SESSION['role'] ?? '') === 'owner'): ?>
-                        <button class="ab-btn ab-btn--success" onclick="activateUser(<?= $user['id'] ?>, '<?= $userName ?>')" data-tooltip="Reactivate User">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M9 12l2 2 4-4"/>
-                                <circle cx="12" cy="12" r="10"/>
-                            </svg>
-                        </button>
-                        <?php endif; ?>
-                        <span class="text-muted">Terminated</span>
-                    <?php elseif (($_SESSION['role'] ?? '') === 'owner' || (($_SESSION['role'] ?? '') === 'admin' && ($user['role'] ?? 'user') === 'user')): ?>
-                        <?php if ($userStatus === 'suspended'): ?>
-                            <button class="ab-btn ab-btn--success" onclick="activateUser(<?= $user['id'] ?>, '<?= $userName ?>')" data-tooltip="Activate User">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <path d="M9 12l2 2 4-4"/>
-                                    <circle cx="12" cy="12" r="10"/>
-                                </svg>
-                            </button>
-                        <?php elseif ($userStatus === 'inactive'): ?>
-                            <button class="ab-btn ab-btn--success" onclick="activateUser(<?= $user['id'] ?>, '<?= $userName ?>')" data-tooltip="Activate User">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <path d="M9 12l2 2 4-4"/>
-                                    <circle cx="12" cy="12" r="10"/>
-                                </svg>
-                            </button>
-                        <?php elseif ($userStatus === 'active'): ?>
-                            <button class="ab-btn ab-btn--warning" onclick="deactivateUser(<?= $user['id'] ?>, '<?= $userName ?>')" data-tooltip="Deactivate User">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-                                </svg>
-                            </button>
-                            <button class="ab-btn ab-btn--danger" onclick="suspendUser(<?= $user['id'] ?>, '<?= $userName ?>')" data-tooltip="Suspend User">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                    <circle cx="9" cy="7" r="4"/>
-                                    <line x1="22" y1="11" x2="16" y2="11"/>
-                                </svg>
-                            </button>
-                        <?php endif; ?>
-                        <button class="ab-btn ab-btn--edit" onclick="editUser(<?= $user['id'] ?>)" data-tooltip="Edit User">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                <path d="M15 5l4 4"/>
-                            </svg>
-                        </button>
-                        <button class="ab-btn ab-btn--progress" onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Reset Password">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/>
-                                <circle cx="16.5" cy="7.5" r=".5"/>
-                            </svg>
-                        </button>
-                        <button class="ab-btn ab-btn--delete" onclick="deleteUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Terminate User">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                                <line x1="17" y1="8" x2="22" y2="13"/>
-                                <line x1="22" y1="8" x2="17" y2="13"/>
-                            </svg>
-                        </button>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endforeach; ?>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($users as $user): ?>
+                            <tr>
+                                <td>
+                                    <div class="user-info">
+                                        <div class="user-avatar"><?= strtoupper(substr($user['name'], 0, 1)) ?></div>
+                                        <div>
+                                            <strong><?= htmlspecialchars($user['name']) ?></strong>
+                                            <br><small class="text-muted">ID: <?= $user['id'] ?></small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><?= htmlspecialchars($user['email']) ?></td>
+                                <td><?= htmlspecialchars($user['department_name'] ?? '-') ?></td>
+                                <td>
+                                    <?php 
+                                    $roleBadgeClass = 'badge-info';
+                                    $roleIcon = '👤';
+                                    $roleDisplay = ucfirst($user['role']);
+                                    
+                                    switch($user['role']) {
+                                        case 'company_owner':
+                                        case 'owner':
+                                            $roleBadgeClass = 'badge-danger';
+                                            $roleIcon = '👑';
+                                            $roleDisplay = $user['role'] === 'company_owner' ? 'Company Owner' : 'Owner';
+                                            break;
+                                        case 'admin':
+                                            $roleBadgeClass = 'badge-success';
+                                            $roleIcon = '🛡️';
+                                            break;
+                                        case 'hr':
+                                            $roleBadgeClass = 'badge-primary';
+                                            $roleIcon = '👨💼';
+                                            $roleDisplay = 'HR';
+                                            break;
+                                        case 'user':
+                                        default:
+                                            $roleBadgeClass = 'badge-info';
+                                            $roleIcon = '👤';
+                                            $roleDisplay = 'Employee';
+                                            break;
+                                    }
+                                    ?>
+                                    <span class="badge <?= $roleBadgeClass ?>"><?= $roleIcon ?> <?= $roleDisplay ?></span>
+                                </td>
+                                <td>
+                                    <?php 
+                                    $statusBadgeClass = 'badge-success';
+                                    switch($user['status']) {
+                                        case 'active':
+                                            $statusBadgeClass = 'badge-success';
+                                            break;
+                                        case 'inactive':
+                                            $statusBadgeClass = 'badge-secondary';
+                                            break;
+                                        case 'suspended':
+                                            $statusBadgeClass = 'badge-warning';
+                                            break;
+                                        case 'terminated':
+                                            $statusBadgeClass = 'badge-danger';
+                                            break;
+                                    }
+                                    ?>
+                                    <span class="badge <?= $statusBadgeClass ?>"><?= ucfirst($user['status']) ?></span>
+                                </td>
+                                <td>
+                                    <div class="ab-container">
+                                        <button class="ab-btn ab-btn--view" onclick="viewUser(<?= $user['id'] ?>)" data-tooltip="View Details">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        </button>
+                                        <?php if (($_SESSION['role'] ?? '') === 'owner'): ?>
+                                            <button class="ab-btn ab-btn--edit" onclick="editUser(<?= $user['id'] ?>)" data-tooltip="Edit User">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>
+                                            </button>
+                                            <button class="ab-btn ab-btn--progress" onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Reset Password">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg>
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
         </div>
     </div>
 </div>
 
-
-
 <script>
-// Dropdown functions
 function showDropdown(element) {
-    // Simple tooltip-like functionality
     const tooltip = element.getAttribute('title');
     if (tooltip) {
         element.setAttribute('data-original-title', tooltip);
@@ -416,7 +227,6 @@ function showDropdown(element) {
 }
 
 function hideDropdown(element) {
-    // Restore tooltip
     const originalTitle = element.getAttribute('data-original-title');
     if (originalTitle) {
         element.setAttribute('title', originalTitle);
@@ -629,7 +439,8 @@ function showAddUserModal() {
                         <div>
                             <label>Role</label>
                             <select name="role" class="form-input">
-                                <option value="user">User</option>
+                                <option value="user">Employee</option>
+                                <option value="hr">HR</option>
                                 <option value="admin">Admin</option>
                                 <option value="owner">Owner</option>
                                 <option value="company_owner">Company Owner</option>
@@ -799,7 +610,6 @@ function showAddUserModal() {
 }
 
 window.showEditUserModal = function(userId) {
-    // Show modal immediately
     if (!document.getElementById('modal-styles')) {
         const styles = document.createElement('style');
         styles.id = 'modal-styles';
@@ -813,7 +623,6 @@ window.showEditUserModal = function(userId) {
     modal.innerHTML = `<div class="modal-content" style="width:600px"><div class="modal-header"><h3>✏️ Edit User</h3><button class="modal-close" onclick="hideClosestModal(this)">&times;</button></div><div class="modal-body"><div style="text-align:center;padding:20px">Loading...</div></div><div class="modal-footer"><button class="btn btn--secondary" onclick="hideClosestModal(this)">Cancel</button></div></div>`;
     document.body.appendChild(modal);
     
-    // Load data after modal is shown
     fetch(`/ergon/api/users/${userId}`)
     .then(response => {
         if (!response.ok) {
@@ -837,7 +646,7 @@ window.showEditUserModal = function(userId) {
         }
         
         const user = data.user;
-        modal.querySelector('.modal-body').innerHTML = `<form id="userForm"><input type="hidden" name="user_id" value="${user.id}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Full Name *</label><input type="text" name="name" class="form-input" value="${user.name||''}" required></div><div><label>Email *</label><input type="email" name="email" class="form-input" value="${user.email||''}" required></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Phone</label><input type="tel" name="phone" class="form-input" value="${user.phone||''}"></div><div><label>Date of Birth</label><input type="date" name="date_of_birth" class="form-input" value="${user.date_of_birth||''}"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Gender</label><select name="gender" class="form-input"><option value="">Select Gender</option><option value="male" ${user.gender==='male'?'selected':''}>Male</option><option value="female" ${user.gender==='female'?'selected':''}>Female</option><option value="other" ${user.gender==='other'?'selected':''}>Other</option></select></div><div><label>Role</label><select name="role" class="form-input"><option value="user" ${user.role==='user'?'selected':''}>User</option><option value="admin" ${user.role==='admin'?'selected':''}>Admin</option><option value="owner" ${user.role==='owner'?'selected':''}>Owner</option><option value="company_owner" ${user.role==='company_owner'?'selected':''}>Company Owner</option></select></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Department</label><select name="department_id" class="form-input"><option value="">Loading...</option></select></div><div><label>Designation</label><input type="text" name="designation" class="form-input" value="${user.designation||''}"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Joining Date</label><input type="date" name="joining_date" class="form-input" value="${user.joining_date||''}"></div><div><label>Salary</label><input type="number" name="salary" class="form-input" step="0.01" value="${user.salary||''}"></div></div><div><label>Address</label><textarea name="address" class="form-input" rows="2">${user.address||''}</textarea></div><div><label>Emergency Contact</label><input type="text" name="emergency_contact" class="form-input" value="${user.emergency_contact||''}"></div><div><label>Status</label><select name="status" class="form-input"><option value="active" ${user.status==='active'?'selected':''}>Active</option><option value="inactive" ${user.status==='inactive'?'selected':''}>Inactive</option><option value="suspended" ${user.status==='suspended'?'selected':''}>Suspended</option><option value="terminated" ${user.status==='terminated'?'selected':''}>Terminated</option></select></div><div><label>Documents</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label style="font-size:0.9em;color:#666">Passport Photo</label><input type="file" name="passport_photo" class="form-input" accept=".jpg,.jpeg,.png,.pdf"></div><div><label style="font-size:0.9em;color:#666">Aadhar Card</label><input type="file" name="aadhar" class="form-input" accept=".jpg,.jpeg,.png,.pdf"></div><div><label style="font-size:0.9em;color:#666">PAN Card</label><input type="file" name="pan" class="form-input" accept=".jpg,.jpeg,.png,.pdf"></div><div><label style="font-size:0.9em;color:#666">Resume</label><input type="file" name="resume" class="form-input" accept=".pdf,.doc,.docx"></div><div><label style="font-size:0.9em;color:#666">Education Docs</label><input type="file" name="education_docs[]" class="form-input" multiple accept=".pdf,.jpg,.jpeg,.png"></div><div><label style="font-size:0.9em;color:#666">Experience Certs</label><input type="file" name="experience_certs[]" class="form-input" multiple accept=".pdf,.jpg,.jpeg,.png"></div></div><small style="color:#666;font-size:0.8em">Max 5MB per file. JPG/PNG for photos, PDF/DOC for documents.</small></div></form>`;
+        modal.querySelector('.modal-body').innerHTML = `<form id="userForm"><input type="hidden" name="user_id" value="${user.id}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Full Name *</label><input type="text" name="name" class="form-input" value="${user.name||''}" required></div><div><label>Email *</label><input type="email" name="email" class="form-input" value="${user.email||''}" required></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Phone</label><input type="tel" name="phone" class="form-input" value="${user.phone||''}"></div><div><label>Date of Birth</label><input type="date" name="date_of_birth" class="form-input" value="${user.date_of_birth||''}"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Gender</label><select name="gender" class="form-input"><option value="">Select Gender</option><option value="male" ${user.gender==='male'?'selected':''}>Male</option><option value="female" ${user.gender==='female'?'selected':''}>Female</option><option value="other" ${user.gender==='other'?'selected':''}>Other</option></select></div><div><label>Role</label><select name="role" class="form-input"><option value="user" ${user.role==='user'?'selected':''}>Employee</option><option value="hr" ${user.role==='hr'?'selected':''}>HR</option><option value="admin" ${user.role==='admin'?'selected':''}>Admin</option><option value="owner" ${user.role==='owner'?'selected':''}>Owner</option><option value="company_owner" ${user.role==='company_owner'?'selected':''}>Company Owner</option></select></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Department</label><select name="department_id" class="form-input"><option value="">Loading...</option></select></div><div><label>Designation</label><input type="text" name="designation" class="form-input" value="${user.designation||''}"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Joining Date</label><input type="date" name="joining_date" class="form-input" value="${user.joining_date||''}"></div><div><label>Salary</label><input type="number" name="salary" class="form-input" step="0.01" value="${user.salary||''}"></div></div><div><label>Address</label><textarea name="address" class="form-input" rows="2">${user.address||''}</textarea></div><div><label>Emergency Contact</label><input type="text" name="emergency_contact" class="form-input" value="${user.emergency_contact||''}"></div><div><label>Status</label><select name="status" class="form-input"><option value="active" ${user.status==='active'?'selected':''}>Active</option><option value="inactive" ${user.status==='inactive'?'selected':''}>Inactive</option><option value="suspended" ${user.status==='suspended'?'selected':''}>Suspended</option><option value="terminated" ${user.status==='terminated'?'selected':''}>Terminated</option></select></div></form>`;
         modal.querySelector('.modal-footer').innerHTML = `<button class="btn btn--secondary" onclick="hideClosestModal(this)">Cancel</button><button class="btn btn--primary" onclick="submitUserForm(true)">Update User</button>`;
         loadDepartments(user.department_id);
     })
@@ -888,9 +697,6 @@ function loadDepartments(selectedDept = null) {
     });
 }
 
-
-
-// Modal utility function
 function hideClosestModal(element) {
     const modal = element.closest('.modal-overlay');
     if (modal && modal.parentNode) {
@@ -902,12 +708,10 @@ function submitUserForm(isEdit = false) {
     const form = document.getElementById('userForm');
     const formData = new FormData(form);
     
-    // Add selected projects
     const selectedProjects = Array.from(document.querySelectorAll('input[name="projects[]"]:checked')).map(cb => cb.value);
     formData.delete('projects[]');
     selectedProjects.forEach(projectId => formData.append('projects[]', projectId));
     
-    // Add ajax flag for proper response handling
     formData.append('ajax', '1');
     
     const url = isEdit ? '/ergon/users/edit' : '/ergon/users/create';
@@ -980,7 +784,6 @@ function submitUserForm(isEdit = false) {
     color: white;
 }
 
-/* Alert Messages */
 .alert {
     padding: 12px 16px;
     border-radius: 8px;

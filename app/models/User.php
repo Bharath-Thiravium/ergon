@@ -317,6 +317,57 @@ class User {
         }
     }
     
+    public function getComprehensiveUserList() {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT id, name, email, role, department, status, created_at 
+                FROM {$this->table} 
+                WHERE status != 'deleted' 
+                ORDER BY 
+                    CASE role
+                        WHEN 'owner' THEN 1
+                        WHEN 'company_owner' THEN 2
+                        WHEN 'admin' THEN 3
+                        WHEN 'user' THEN 4
+                        ELSE 5
+                    END,
+                    status DESC,
+                    name ASC
+            ");
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('getComprehensiveUserList error: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
+    public function getUserStatsByAllRoles() {
+        try {
+            $stats = [];
+            $roles = ['owner', 'company_owner', 'admin', 'user'];
+            
+            foreach ($roles as $role) {
+                $stmt = $this->conn->prepare("
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+                        SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive,
+                        SUM(CASE WHEN status = 'suspended' THEN 1 ELSE 0 END) as suspended,
+                        SUM(CASE WHEN status = 'terminated' THEN 1 ELSE 0 END) as terminated
+                    FROM {$this->table} WHERE role = ?
+                ");
+                $stmt->execute([$role]);
+                $stats[$role] = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            
+            return $stats;
+        } catch (Exception $e) {
+            error_log('getUserStatsByAllRoles error: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
     public function getByDepartment($departmentId) {
         try {
             $stmt = $this->conn->prepare("
