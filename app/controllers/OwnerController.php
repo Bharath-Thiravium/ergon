@@ -365,87 +365,88 @@ class OwnerController extends Controller {
     }
 
     /**
-     * Fetch all company-wide paid expenses + advances with optional filters.
+     * Fetch all company-wide ledger entries (single source of truth).
+     * Queries user_ledgers table instead of source tables to ensure single-entry-per-transaction model.
      * Returns rows in chronological ASC order with balance_after attached.
      */
     private function fetchOwnerLedgerEntries(PDO $db, ?string $fromDate, ?string $toDate, ?string $transactionType, ?int $projectId): array {
-        $expenseDateClause  = '';
-        $advanceDateClause  = '';
-        $expenseProjectClause = '';
-        $advanceProjectClause = '';
-        $dateParams         = [];
-
+        $whereClauses = [];
+        $params       = [];
+        
+        if ($transactionType) {
+            $whereClauses[] = "ul.reference_type = ?";
+            $params[] = $transactionType;
+        } else {
+            $whereClauses[] = "ul.reference_type IN ('expense', 'advance')";
+        }
+        
         if ($fromDate) {
-            $expenseDateClause .= " AND COALESCE(e.expense_date, e.created_at) >= ?";
-            $advanceDateClause .= " AND COALESCE(a.requested_date, a.paid_at, a.created_at) >= ?";
-            $dateParams[]       = $fromDate;
+            $whereClauses[] = "ul.created_at >= ?";
+            $params[] = $fromDate . ' 00:00:00';
         }
         if ($toDate) {
-            $expenseDateClause .= " AND COALESCE(e.expense_date, e.created_at) <= ?";
-            $advanceDateClause .= " AND COALESCE(a.requested_date, a.paid_at, a.created_at) <= ?";
-            $dateParams[]       = $toDate . ' 23:59:59';
+            $whereClauses[] = "ul.created_at <= ?";
+            $params[] = $toDate . ' 23:59:59';
         }
-        if ($projectId) {
-            $expenseProjectClause = " AND e.project_id = ?";
-            $advanceProjectClause = " AND a.project_id = ?";
-        }
-
-        $parts  = [];
-        $params = [];
-
-        if ($transactionType !== 'advance') {
-            $parts[]  = "
-                SELECT e.id as reference_id, 'expense' as reference_type, 'debit' as direction,
-                       COALESCE(e.approved_amount, e.amount) as amount,
-                       e.description, e.category, e.status,
-                       COALESCE(e.expense_date, e.created_at) as created_at,
-                       u.name as employee_name,
-                       COALESCE(p.name, '') as project_name
-                FROM expenses e
-                JOIN users u ON e.user_id = u.id
-                LEFT JOIN projects p ON e.project_id = p.id
-                WHERE e.status = 'paid'
-                  AND (e.source_advance_id IS NULL OR e.source_advance_id = 0)
-                  {$expenseDateClause}
-                  {$expenseProjectClause}";
-            foreach ($dateParams as $p) $params[] = $p;
-            if ($projectId) $params[] = $projectId;
-        }
-
-        if ($transactionType !== 'expense') {
-            $parts[]  = "
-                SELECT a.id as reference_id, 'advance' as reference_type, 'debit' as direction,
-                       COALESCE(a.approved_amount, a.amount) as amount,
-                       COALESCE(a.reason, CONCAT('Advance – ', a.type)) as description,
-                       a.type as category, a.status,
-                       COALESCE(a.requested_date, a.paid_at, a.created_at) as created_at,
-                       u.name as employee_name,
-                       COALESCE(p.name, '') as project_name
-                FROM advances a
-                JOIN users u ON a.user_id = u.id
-                LEFT JOIN projects p ON a.project_id = p.id
-                WHERE a.status = 'paid'
-                  {$advanceDateClause}
-                  {$advanceProjectClause}";
-            foreach ($dateParams as $p) $params[] = $p;
-            if ($projectId) $params[] = $projectId;
-        }
-
-        if (empty($parts)) return [];
-
-        $sql  = implode(" UNION ALL ", $parts) . " ORDER BY created_at ASC";
+        
+        $whereClause = !empty($whereClauses) ? "WHERE " . implode(" AND ", $whereClauses) : "";
+        
+        $projectData = [];
+        try {
+            $pstmt = $db->query("SELECT id, name FROM projects");
+            while ($p = $pstmt->fetch(PDO::FETCH_ASSOC)) {
+                $projectData[$p['id']] = $p['name'];
+            }
+        } catch (Exception $e) {}
+        
+        $sql = "
+            SELECT ul.id, ul.reference_id, ul.reference_type, ul.entry_type, 
+                   ul.direction, ul.amount, ul.balance_after, ul.created_at,
+                   u.name as employee_name,
+                   u.id as user_id
+            FROM user_ledgers ul
+            JOIN users u ON ul.user_id = u.id
+            $whereClause
+            ORDER BY ul.created_at ASC
+        ";
+        
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        // Attach running balance (all owner entries are debits from company cash)
-        $balance = 0;
+        
         foreach ($rows as &$row) {
-            $balance -= $row['amount'];   // every paid expense/advance is a cash outflow
-            $row['balance_after'] = $balance;
+            $row['project_name'] = '';
+            $row['description'] = '';
+            $row['category'] = '';
+            
+            if ($row['reference_type'] === 'expense') {
+                try {
+                    $estmt = $db->prepare("SELECT category, description, project_id FROM expenses WHERE id = ? LIMIT 1");
+                    $estmt->execute([$row['reference_id']]);
+                    if ($erow = $estmt->fetch(PDO::FETCH_ASSOC)) {
+                        $row['category'] = $erow['category'] ?? '';
+                        $row['description'] = $erow['description'] ?? '';
+                        if ($erow['project_id'] && isset($projectData[$erow['project_id']])) {
+                            $row['project_name'] = $projectData[$erow['project_id']];
+                        }
+                    }
+                } catch (Exception $e) {}
+            } elseif ($row['reference_type'] === 'advance') {
+                try {
+                    $astmt = $db->prepare("SELECT type, reason, project_id FROM advances WHERE id = ? LIMIT 1");
+                    $astmt->execute([$row['reference_id']]);
+                    if ($arow = $astmt->fetch(PDO::FETCH_ASSOC)) {
+                        $row['category'] = $arow['type'] ?? '';
+                        $row['description'] = $arow['reason'] ?? '';
+                        if ($arow['project_id'] && isset($projectData[$arow['project_id']])) {
+                            $row['project_name'] = $projectData[$arow['project_id']];
+                        }
+                    }
+                } catch (Exception $e) {}
+            }
         }
         unset($row);
-
+        
         return $rows;
     }
 

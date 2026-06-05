@@ -689,13 +689,6 @@ class ExpenseController extends Controller {
 
             $stmt = $db->prepare("UPDATE expenses SET status = 'paid', payment_proof = ?, payment_remarks = ?, paid_by = ?, paid_at = NOW() WHERE id = ?");
 
-            $stmt2 = $db->prepare("SELECT approved_amount FROM approved_expenses WHERE expense_id = ? ORDER BY id DESC LIMIT 1");
-            $stmt2->execute([$id]);
-            $approvedRow  = $stmt2->fetch(PDO::FETCH_ASSOC);
-            $ledgerAmount = !empty($approvedRow['approved_amount'])
-                ? floatval($approvedRow['approved_amount'])
-                : (!empty($expense['approved_amount']) ? floatval($expense['approved_amount']) : floatval($expense['amount']));
-
             $db->beginTransaction();
             $result = $stmt->execute([$proof, $paymentRemarks, $_SESSION['user_id'], $id]);
 
@@ -703,11 +696,15 @@ class ExpenseController extends Controller {
                 $upd = $db->prepare("UPDATE approved_expenses SET payment_proof = ?, paid_at = NOW() WHERE expense_id = ?");
                 $upd->execute([$proof, $id]);
 
+                // CRITICAL: Do NOT create a new ledger entry here
+                // Ledger entry was created at approval with 'expense_payment' type
+                // Status change (approved→paid) does NOT create a second row
+                // Single-entry model: one ledger row per business transaction
                 if (empty($expense['ledger_synced'])) {
                     error_log("WARNING: Expense id=$id marked paid but ledger_synced flag not set (should have been set at approval)");
                 }
                 $db->commit();
-                error_log("Expense paid: id=$id user_id={$expense['user_id']} amount=$ledgerAmount");
+                error_log("Expense marked paid (status update only, no new ledger entry): id=$id user_id={$expense['user_id']}");
 
                 try {
                     require_once __DIR__ . '/../helpers/NotificationHelper.php';

@@ -42,7 +42,7 @@ class AuthMiddleware {
         $userRole = $_SESSION['role'];
         
         // Allow company_owner to access owner resources
-        if ($requiredRole === 'owner' && $userRole === 'company_owner') {
+        if ($requiredRole === 'owner' && in_array($userRole, ['owner', 'company_owner'])) {
             return;
         }
         

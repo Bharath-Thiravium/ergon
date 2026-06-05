@@ -458,35 +458,17 @@ class AdvanceController extends Controller {
             $result = $stmt->execute([$proof, $paymentRemarks, $paidByOwnerId, $id]);
 
             if ($result) {
-                // Ledger was already created at approval (ledger_synced = 1).
-                // Only create it here as a safety net if somehow missed.
+                // Ledger entry was created at approval (ledger_synced = 1)
+                // Status change from approved→paid should not create a new entry
                 if (empty($advance['ledger_synced'])) {
-                    require_once __DIR__ . '/../helpers/LedgerHelper.php';
-                    $ledgerOk = LedgerHelper::recordEntry($advance['user_id'], 'advance_payment', 'advance', $id, $ledgerAmount, 'credit', $advance['requested_date'], $db);
-                    if (!$ledgerOk) {
-                        throw new Exception("Ledger safety-net entry failed for advance id=$id");
-                    }
-                    error_log("Advance markPaid: safety-net ledger created for id=$id");
+                    error_log("WARNING: Advance id=$id marked paid but ledger_synced flag not set (should have been set at approval)");
                 }
                 $db->commit();
                 error_log("Advance paid: id=$id user_id={$advance['user_id']} amount=$ledgerAmount");
 
-                // Auto-create expense entry for the paying owner
-                try {
-                    // Get employee name for description
-                    $empStmt = $db->prepare("SELECT name FROM users WHERE id = ?");
-                    $empStmt->execute([$advance['user_id']]);
-                    $empName = $empStmt->fetchColumn() ?: 'Employee';
-
-                    $advType = $advance['type'] ?? 'General Advance';
-                    $expDesc = "Advance paid to {$empName} ({$advType})";
-                    if ($paymentRemarks) $expDesc .= ' - ' . $paymentRemarks;
-
-                    $expStmt = $db->prepare("INSERT INTO expenses (user_id, category, amount, description, expense_date, status, paid_by, paid_at, paid_to_user_id, source_advance_id, payment_proof, payment_remarks, created_at) VALUES (?, 'work_advance', ?, ?, NOW(), 'paid', ?, NOW(), ?, ?, ?, ?, NOW())");
-                    $expStmt->execute([$paidByOwnerId, $ledgerAmount, $expDesc, $paidByOwnerId, $advance['user_id'], $id, $proof, $paymentRemarks]);
-                } catch (Exception $expEx) {
-                    error_log('Auto-expense creation for advance payment failed: ' . $expEx->getMessage());
-                }
+                // NOTE: Removed auto-expense generation to prevent duplicate cash flow entries
+                // Advances and their payments are tracked in the ledger system only
+                // Do not create additional expense records that would create duplicate ledger entries
 
                 // Notify employee that advance was paid
                 try {
