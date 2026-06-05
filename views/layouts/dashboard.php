@@ -246,6 +246,8 @@ ob_end_clean();
 
     <!-- 1 JS bundle instead of 9 (chart.js loaded per-page only where needed) -->
     <script src="<?= Environment::asset('assets/js/ergon.bundle.js') ?>?v=<?= ASSET_VER ?>" defer></script>
+    <!-- Global Modal Utilities -->
+    <script src="<?= Environment::asset('assets/js/modal-utilities.js') ?>?v=<?= ASSET_VER ?>" defer></script>
     <!-- Table Headers Fix - Universal Solution -->
     <script src="<?= Environment::asset('assets/js/table-headers-fix.js') ?>?v=<?= ASSET_VER ?>" defer></script>
     <!-- PWA -->

@@ -355,11 +355,160 @@ try {
     $completedSteps++;
     
     // ============================================
+    // STEP 9: Create Ledger Table
+    // ============================================
+    $totalSteps++;
+    log_message('Step 9: Creating user_ledgers table...', 'info');
+    
+    $stmt = $db->query("SHOW TABLES LIKE 'user_ledgers'");
+    if ($stmt->rowCount() == 0) {
+        $sql = "CREATE TABLE user_ledgers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            reference_type VARCHAR(50) NOT NULL,
+            reference_id INT NOT NULL,
+            entry_type VARCHAR(50) NOT NULL,
+            direction VARCHAR(10) NOT NULL,
+            amount DECIMAL(12,2) NOT NULL,
+            balance_after DECIMAL(12,2) NULL,
+            created_by INT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_user_id (user_id),
+            KEY idx_reference (reference_type, reference_id),
+            KEY idx_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $db->exec($sql);
+        log_message('✓ User ledgers table created', 'success');
+    } else {
+        log_message('→ User ledgers table already exists. Checking for missing columns...', 'warning');
+        
+        // Check if created_by column exists
+        $stmt = $db->query("SHOW COLUMNS FROM user_ledgers LIKE 'created_by'");
+        if ($stmt->rowCount() == 0) {
+            try {
+                $db->exec("ALTER TABLE user_ledgers ADD COLUMN created_by INT NULL");
+                log_message('✓ Added created_by column to user_ledgers', 'success');
+            } catch (Exception $e) {
+                log_message('! Could not add created_by column: ' . $e->getMessage(), 'warning');
+            }
+        }
+    }
+    $completedSteps++;
+    
+    // ============================================
+    // STEP 10: Verify Advances Table Columns
+    // ============================================
+    $totalSteps++;
+    log_message('Step 10: Verifying advances table columns...', 'info');
+    
+    $advanceColumns = ['approval_remarks', 'approved_amount', 'payment_proof', 'paid_by', 'paid_at', 'approval_remarks', 'payment_remarks', 'paid_to_user_id', 'source_advance_id', 'paid_to_name', 'ledger_synced'];
+    
+    foreach ($advanceColumns as $col) {
+        $stmt = $db->query("SHOW COLUMNS FROM advances LIKE '$col'");
+        if ($stmt->rowCount() == 0) {
+            try {
+                switch ($col) {
+                    case 'approval_remarks':
+                        $db->exec("ALTER TABLE advances ADD COLUMN approval_remarks TEXT NULL");
+                        break;
+                    case 'approved_amount':
+                        $db->exec("ALTER TABLE advances ADD COLUMN approved_amount DECIMAL(10,2) NULL");
+                        break;
+                    case 'payment_proof':
+                        $db->exec("ALTER TABLE advances ADD COLUMN payment_proof VARCHAR(255) NULL");
+                        break;
+                    case 'paid_by':
+                        $db->exec("ALTER TABLE advances ADD COLUMN paid_by INT NULL");
+                        break;
+                    case 'paid_at':
+                        $db->exec("ALTER TABLE advances ADD COLUMN paid_at DATETIME NULL");
+                        break;
+                    case 'payment_remarks':
+                        $db->exec("ALTER TABLE advances ADD COLUMN payment_remarks TEXT NULL");
+                        break;
+                    case 'paid_to_user_id':
+                        $db->exec("ALTER TABLE advances ADD COLUMN paid_to_user_id INT NULL");
+                        break;
+                    case 'source_advance_id':
+                        $db->exec("ALTER TABLE advances ADD COLUMN source_advance_id INT NULL");
+                        break;
+                    case 'paid_to_name':
+                        $db->exec("ALTER TABLE advances ADD COLUMN paid_to_name VARCHAR(255) NULL");
+                        break;
+                    case 'ledger_synced':
+                        $db->exec("ALTER TABLE advances ADD COLUMN ledger_synced INT DEFAULT 0");
+                        break;
+                }
+                log_message("✓ Added column '$col' to advances table", 'success');
+            } catch (Exception $e) {
+                log_message("! Could not add column '$col': " . $e->getMessage(), 'warning');
+            }
+        }
+    }
+    $completedSteps++;
+    
+    // ============================================
+    // STEP 11: Verify Expenses Table Columns
+    // ============================================
+    $totalSteps++;
+    log_message('Step 11: Verifying expenses table columns...', 'info');
+    
+    $expenseColumns = ['claimed_amount', 'approved_amount', 'payment_proof', 'paid_by', 'paid_at', 'approval_remarks', 'payment_remarks', 'paid_to_user_id', 'source_advance_id', 'paid_to_name', 'ledger_synced'];
+    
+    foreach ($expenseColumns as $col) {
+        $stmt = $db->query("SHOW COLUMNS FROM expenses LIKE '$col'");
+        if ($stmt->rowCount() == 0) {
+            try {
+                switch ($col) {
+                    case 'claimed_amount':
+                        $db->exec("ALTER TABLE expenses ADD COLUMN claimed_amount DECIMAL(10,2) NULL");
+                        break;
+                    case 'approved_amount':
+                        $db->exec("ALTER TABLE expenses ADD COLUMN approved_amount DECIMAL(10,2) NULL");
+                        break;
+                    case 'payment_proof':
+                        $db->exec("ALTER TABLE expenses ADD COLUMN payment_proof VARCHAR(255) NULL");
+                        break;
+                    case 'paid_by':
+                        $db->exec("ALTER TABLE expenses ADD COLUMN paid_by INT NULL");
+                        break;
+                    case 'paid_at':
+                        $db->exec("ALTER TABLE expenses ADD COLUMN paid_at DATETIME NULL");
+                        break;
+                    case 'approval_remarks':
+                        $db->exec("ALTER TABLE expenses ADD COLUMN approval_remarks TEXT NULL");
+                        break;
+                    case 'payment_remarks':
+                        $db->exec("ALTER TABLE expenses ADD COLUMN payment_remarks TEXT NULL");
+                        break;
+                    case 'paid_to_user_id':
+                        $db->exec("ALTER TABLE expenses ADD COLUMN paid_to_user_id INT NULL");
+                        break;
+                    case 'source_advance_id':
+                        $db->exec("ALTER TABLE expenses ADD COLUMN source_advance_id INT NULL");
+                        break;
+                    case 'paid_to_name':
+                        $db->exec("ALTER TABLE expenses ADD COLUMN paid_to_name VARCHAR(255) NULL");
+                        break;
+                    case 'ledger_synced':
+                        $db->exec("ALTER TABLE expenses ADD COLUMN ledger_synced INT DEFAULT 0");
+                        break;
+                }
+                log_message("✓ Added column '$col' to expenses table", 'success');
+            } catch (Exception $e) {
+                log_message("! Could not add column '$col': " . $e->getMessage(), 'warning');
+            }
+        }
+    }
+    $completedSteps++;
+    
+    // ============================================
     // FINAL: Verification
     // ============================================
-    log_message('Step 9: Verifying all tables...', 'info');
+    log_message('Step 12: Verifying all tables...', 'info');
     
-    $requiredTables = ['users', 'departments', 'attendance', 'leaves', 'holidays', 'projects', 'settings', 'tasks'];
+    $requiredTables = ['users', 'departments', 'attendance', 'leaves', 'holidays', 'projects', 'settings', 'tasks', 'user_ledgers'];
     $missingTables = [];
     
     foreach ($requiredTables as $table) {

@@ -25,38 +25,8 @@ class AdvanceController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Ensure table exists with all required columns
-            DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS advances (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL,
-                project_id INT NULL,
-                type VARCHAR(50) DEFAULT 'General Advance',
-                amount DECIMAL(10,2) NOT NULL,
-                reason TEXT NOT NULL,
-                requested_date DATE NULL,
-                repayment_date DATE NULL,
-                repayment_months INT DEFAULT 1,
-                status VARCHAR(20) DEFAULT 'pending',
-                approved_by INT NULL,
-                approved_at DATETIME NULL,
-                payment_proof VARCHAR(255) NULL,
-                paid_by INT NULL,
-                paid_at DATETIME NULL,
-                rejection_reason TEXT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                rejected_by INT NULL,
-                rejected_at TIMESTAMP NULL
-            )", "Create table");
+            // Tables are managed by migrations/run_migration.php
             
-            // Add missing columns if they don't exist
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN project_id INT NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN repayment_date DATE NULL", "Alter table"); } catch (Exception $e) {}
-            // Ensure payment columns exist
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN payment_proof VARCHAR(255) NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN paid_by INT NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN paid_at DATETIME NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN approved_amount DECIMAL(10,2) NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN ledger_synced TINYINT(1) NOT NULL DEFAULT 0", "Alter table"); } catch (Exception $e) {}
             
             if ($role === 'user') {
                 $sql = "SELECT a.*, u.name as user_name, u.role as user_role, p.name as project_name, pb.name as paid_by_name
@@ -281,8 +251,6 @@ class AdvanceController extends Controller {
     }
     
     public function approve($id = null) {
-        
-        
         // Check authentication first
         if (!isset($_SESSION['user_id'])) {
             if ($_SERVER['REQUEST_METHOD'] === 'POST' || $this->isAjaxRequest()) {
@@ -346,19 +314,17 @@ class AdvanceController extends Controller {
                 $approvedAmount  = isset($_POST['approved_amount']) && $_POST['approved_amount'] > 0 ? floatval($_POST['approved_amount']) : floatval($advance['amount']);
                 $approvalRemarks = trim($_POST['approval_remarks'] ?? '');
 
-                try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN approval_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
-
                 require_once __DIR__ . '/../helpers/LedgerHelper.php';
-                LedgerHelper::ensureTable($db); // DDL must run before beginTransaction
+                LedgerHelper::ensureTable($db);
                 $db->beginTransaction();
 
                 $stmt = $db->prepare("UPDATE advances SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, approval_remarks = ? WHERE id = ?");
                 $result = $stmt->execute([$_SESSION['user_id'], $approvedAmount, $approvalRemarks, $id]);
 
                 if ($result && $stmt->rowCount() > 0) {
-                    // Ledger entry at approval — construction mode: approval = financial acknowledgment
-                    $ledgerOk = LedgerHelper::recordEntry($advance['user_id'], 'advance_payment', 'advance', $id, $approvedAmount, 'credit', $advance['requested_date'], $db);
+                    $ledgerOk = LedgerHelper::recordEntry($advance['user_id'], 'advance_payment', 'advance', $id, $approvedAmount, 'credit', $advance['requested_date'] ?? date('Y-m-d'), $db, $_SESSION['user_id']);
                     if (!$ledgerOk) {
+                        $db->rollBack();
                         throw new Exception("Ledger entry failed for advance id=$id");
                     }
 
@@ -380,20 +346,13 @@ class AdvanceController extends Controller {
                 exit;
             }
             
-            // GET request - check if it's an AJAX request or direct browser access
-            if ($this->isAjaxRequest()) {
-                // AJAX request - return JSON for modal
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'success' => true,
-                    'advance' => $advance
-                ]);
-                exit;
-            } else {
-                // Direct browser access - show approval page
-                $this->view('advances/approve', ['advance' => $advance, 'active_page' => 'advances']);
-                exit;
-            }
+            // GET request - always return JSON for AJAX modal handling
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'advance' => $advance
+            ]);
+            exit;
             
         } catch (Exception $e) {
             logAdvanceError('Advance approval error: ' . $e->getMessage(), [
@@ -403,12 +362,13 @@ class AdvanceController extends Controller {
                 'is_ajax' => $this->isAjaxRequest(),
                 'trace' => $e->getTraceAsString()
             ]);
-            if ($_SERVER['REQUEST_METHOD'] === 'POST' || $this->isAjaxRequest()) {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'error' => 'Approval failed: ' . $e->getMessage()]);
-            } else {
-                header('Location: ' . Environment::getBaseUrl() . '/advances?error=Approval failed');
-            }
+            header('Content-Type: application/json');
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Approval failed',
+                'details' => $e->getMessage()
+            ]);
         }
         exit;
     }
@@ -490,9 +450,6 @@ class AdvanceController extends Controller {
                 }
             }
 
-            // Add payment columns if they don't exist
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE advances ADD COLUMN payment_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
-
             $ledgerAmount = !empty($advance['approved_amount']) ? floatval($advance['approved_amount']) : floatval($advance['amount']);
 
             $db->beginTransaction();
@@ -516,10 +473,6 @@ class AdvanceController extends Controller {
 
                 // Auto-create expense entry for the paying owner
                 try {
-                    // Ensure paid_to_user_id column exists in expenses
-                    try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_to_user_id INT NULL", "Alter table"); } catch (Exception $ex) {}
-                    try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN source_advance_id INT NULL", "Alter table"); } catch (Exception $ex) {}
-
                     // Get employee name for description
                     $empStmt = $db->prepare("SELECT name FROM users WHERE id = ?");
                     $empStmt->execute([$advance['user_id']]);
