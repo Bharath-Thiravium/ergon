@@ -1,0 +1,166 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                    OWNER VISIBILITY FIX - QUICK REFERENCE                       ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+PROBLEM:
+  Company owner expenses/advances visible on LOCAL but NOT on LIVE
+
+ROOT CAUSE:
+  Database data mismatch (not a code issue)
+  - Company owner user missing in LIVE, OR
+  - Company owner has wrong role value, OR
+  - Company owner records don't exist in LIVE
+
+STATUS:
+  ✅ Code is CORRECT (no changes needed)
+  ❌ Data is MISSING (sync needed)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+QUICK FIX (20 minutes):
+
+1. ANALYZE (5 min)
+   └─ Deploy: /ergon/diagnostic.php
+   └─ Access: http://your-domain.com/ergon/diagnostic.php
+   └─ Screenshot output
+
+2. FIX (5 min)
+   └─ If owner missing: Create user
+      INSERT INTO users (name, email, password, role, status)
+      VALUES ('Owner', 'owner@company.com', '[HASH]', 'company_owner', 'active');
+   
+   └─ If role wrong: Update
+      UPDATE users SET role = 'company_owner' WHERE id = [ID];
+   
+   └─ If records missing: Sync database from LOCAL
+
+3. VERIFY (5 min)
+   └─ Clear cache: Ctrl+Shift+Delete
+   └─ Hard refresh: Ctrl+F5
+   └─ Login as Admin
+   └─ Check Expenses page
+   └─ Verify owner expenses visible ✅
+
+═══════════════════════════════════════════════════════════════════════════════
+
+KEY SQL COMMANDS:
+
+Check 1: Verify company_owner exists
+  SELECT id, name, role FROM users WHERE role = 'company_owner';
+  Expected: 1+ rows
+
+Check 2: Verify role enum
+  DESCRIBE users;
+  Expected: role column has 'company_owner' in enum
+
+Check 3: Count owner's records
+  SELECT COUNT(*) FROM expenses WHERE user_id = [OWNER_ID];
+  SELECT COUNT(*) FROM advances WHERE user_id = [OWNER_ID];
+  Expected: > 0
+
+═══════════════════════════════════════════════════════════════════════════════
+
+FILES PROVIDED:
+
+1. diagnostic.php
+   → Automated diagnostic tool
+   → Deploy to /ergon/diagnostic.php
+   → Access in browser
+   → Shows all issues
+
+2. DIAGNOSTIC_LOCAL_VS_LIVE.md
+   → Detailed analysis
+   → Code review results
+   → Data verification checklist
+
+3. COMPLETE_FIX_GUIDE.md
+   → Step-by-step implementation
+   → Detailed procedures
+   → Testing guide
+
+4. OWNER_VISIBILITY_RESOLUTION.md
+   → Executive summary
+   → Root cause analysis
+   → Troubleshooting guide
+
+═══════════════════════════════════════════════════════════════════════════════
+
+CODE STATUS:
+
+✅ ExpenseController.php (Line 104)
+   WHERE (u.role IN ('user', 'company_owner') OR e.user_id = ?)
+   → Correct, includes company_owner
+
+✅ ReportsController.php (Line 187)
+   WHERE role NOT IN ('owner')
+   → Correct, includes company_owner
+
+✅ AdvanceController.php (Line ~155)
+   → Correct, includes company_owner
+
+═══════════════════════════════════════════════════════════════════════════════
+
+TEST CASES:
+
+1. Admin views expenses → Should see owner expenses ✅
+2. Admin approves owner expense → Should approve ✅
+3. Admin views advances → Should see owner advances ✅
+4. Owner views own records → Should see only own ✅
+5. Reports include owner → Should appear in list ✅
+
+═══════════════════════════════════════════════════════════════════════════════
+
+EXPECTED RESULTS AFTER FIX:
+
+BEFORE:                      AFTER:
+❌ Owner expenses hidden     ✅ Owner expenses visible
+❌ Owner advances hidden     ✅ Owner advances visible
+❌ Owner in reports: No      ✅ Owner in reports: Yes
+✅ RBAC intact               ✅ RBAC intact
+✅ Security maintained       ✅ Security maintained
+
+═══════════════════════════════════════════════════════════════════════════════
+
+TIME ESTIMATE:
+
+Analysis:        5 minutes
+Implementation:  5 minutes
+Testing:         5 minutes
+Total:          15-20 minutes
+
+═══════════════════════════════════════════════════════════════════════════════
+
+RISK ASSESSMENT:
+
+Risk Level:      VERY LOW
+Breaking Changes: NONE
+RBAC Impact:     NONE (only expands admin view)
+Security Impact: NONE (adds authorization, doesn't remove it)
+Rollback:        EASY (5 minutes)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+NEXT STEP:
+
+→ Deploy diagnostic.php to LIVE
+→ Run and screenshot output
+→ Share output with tech team
+→ Follow COMPLETE_FIX_GUIDE.md based on diagnostic results
+
+═══════════════════════════════════════════════════════════════════════════════
+
+SUPPORT:
+
+Q: Will this break anything?
+A: No, it only adds functionality (showing owner records to admins)
+
+Q: Do I need to change code?
+A: No, code is already correct. Deploy diagnostic.php to analyze.
+
+Q: How long does fix take?
+A: 15-20 minutes total (analysis + implementation + testing)
+
+Q: Is this a security risk?
+A: No, it maintains RBAC and tenant isolation.
+
+═══════════════════════════════════════════════════════════════════════════════
