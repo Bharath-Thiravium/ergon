@@ -186,7 +186,7 @@ class ExpenseController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // FIXED: Include company_owner in admin view (was: WHERE (u.role = 'user' OR e.user_id = ?))
+            // FIXED: Include company_owner in admin view
             $sql = "SELECT e.*, u.name as user_name, u.role as user_role, p.name as project_name, pt.name as paid_to_user_name, e.paid_to_name
                     FROM expenses e
                     JOIN users u ON e.user_id = u.id
@@ -684,7 +684,6 @@ class ExpenseController extends Controller {
             exit;
         }
 
-        // Only admin/owner/company_owner can mark paid
         if (!in_array($_SESSION['role'] ?? 'user', ['admin','owner','company_owner'])) {
             header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Unauthorized');
             exit;

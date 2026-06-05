@@ -17,7 +17,6 @@ class ReportsController extends Controller {
             $this->taskModel = new Task();
         } catch (Exception $e) {
             error_log('ReportsController init error: ' . $e->getMessage());
-            // Initialize with null but create fallback methods
             $this->userModel = null;
             $this->attendanceModel = null;
             $this->taskModel = null;
@@ -50,13 +49,13 @@ class ReportsController extends Controller {
             if ($dow !== 7) $workingDays++;
         }
 
-        // All active users excluding both owner and company_owner
+        // All active users excluding only 'owner' role (FIXED: was excluding company_owner)
         $users = $db->query("
             SELECT id, name, role
             FROM users
             WHERE status = 'active'
-              AND role NOT IN ('company_owner', 'owner')
-            ORDER BY FIELD(role,'admin','user'), name
+              AND role NOT IN ('owner')
+            ORDER BY FIELD(role,'admin','user','company_owner'), name
         ")->fetchAll(PDO::FETCH_ASSOC);
 
 
@@ -331,7 +330,6 @@ class ReportsController extends Controller {
             $db = Database::connect();
             $this->ensureTablesExist();
             
-            // Get attendance data for the last 30 days
             $stmt = $db->query("SELECT a.*, u.name as user_name, u.employee_id FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.check_in >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) ORDER BY a.check_in DESC");
             $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
@@ -386,7 +384,6 @@ class ReportsController extends Controller {
             
             $csv = "ERGON Approvals Report - " . date('Y-m-d H:i:s') . "\n\n";
             
-            // Leave Requests
             try {
                 $stmt = $db->query("SELECT l.*, u.name as user_name FROM leaves l JOIN users u ON l.user_id = u.id ORDER BY l.created_at DESC LIMIT 100");
                 $leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -400,7 +397,6 @@ class ReportsController extends Controller {
                 $csv .= ($leave['user_name'] ?? 'N/A') . "," . ($leave['leave_type'] ?? 'N/A') . "," . ($leave['start_date'] ?? 'N/A') . "," . ($leave['end_date'] ?? 'N/A') . "," . ($leave['days_requested'] ?? 0) . "," . ($leave['status'] ?? 'N/A') . "," . ($leave['created_at'] ?? 'N/A') . "\n";
             }
             
-            // Expense Claims
             try {
                 $stmt = $db->query("SELECT e.*, u.name as user_name FROM expenses e JOIN users u ON e.user_id = u.id ORDER BY e.created_at DESC LIMIT 100");
                 $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -453,7 +449,6 @@ class ReportsController extends Controller {
             if ($this->taskModel) {
                 $stats = $this->taskModel->getTaskStats();
             } else {
-                // Fallback direct database query
                 require_once __DIR__ . '/../config/database.php';
                 $db = Database::connect();
                 $sql = "SELECT 
@@ -555,7 +550,6 @@ class ReportsController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Ensure attendance table exists
             $stmt = $db->query("SHOW TABLES LIKE 'attendance'");
             if ($stmt->rowCount() == 0) {
                 $sql = "CREATE TABLE attendance (
@@ -569,10 +563,10 @@ class ReportsController extends Controller {
                     status VARCHAR(20) DEFAULT 'present',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )";
+                require_once __DIR__ . '/../helpers/DatabaseHelper.php';
                 DatabaseHelper::safeExec($db, $sql, "Execute SQL");
             }
             
-            // Ensure tasks table exists
             $stmt = $db->query("SHOW TABLES LIKE 'tasks'");
             if ($stmt->rowCount() == 0) {
                 $sql = "CREATE TABLE tasks (
@@ -588,10 +582,10 @@ class ReportsController extends Controller {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 )";
+                require_once __DIR__ . '/../helpers/DatabaseHelper.php';
                 DatabaseHelper::safeExec($db, $sql, "Execute SQL");
             }
             
-            // Ensure leaves table exists
             $stmt = $db->query("SHOW TABLES LIKE 'leaves'");
             if ($stmt->rowCount() == 0) {
                 $sql = "CREATE TABLE leaves (
@@ -605,10 +599,10 @@ class ReportsController extends Controller {
                     status VARCHAR(20) DEFAULT 'pending',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )";
+                require_once __DIR__ . '/../helpers/DatabaseHelper.php';
                 DatabaseHelper::safeExec($db, $sql, "Execute SQL");
             }
             
-            // Ensure expenses table exists
             $stmt = $db->query("SHOW TABLES LIKE 'expenses'");
             if ($stmt->rowCount() == 0) {
                 $sql = "CREATE TABLE expenses (
@@ -620,6 +614,7 @@ class ReportsController extends Controller {
                     status VARCHAR(20) DEFAULT 'pending',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )";
+                require_once __DIR__ . '/../helpers/DatabaseHelper.php';
                 DatabaseHelper::safeExec($db, $sql, "Execute SQL");
             }
         } catch (Exception $e) {
