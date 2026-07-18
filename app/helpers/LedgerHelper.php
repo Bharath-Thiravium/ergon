@@ -27,12 +27,14 @@ class LedgerHelper {
     /**
      * Record a ledger entry with audit trail and duplicate prevention.
      *
+     * Single-entry model: One ledger row per business transaction.
+     * Status changes (approved→paid) UPDATE the same row instead of creating new entries.
      * Duplicate guard uses the source table's ledger_synced flag AND content matching
      * to prevent double-entry errors. For manual entries, validates uniqueness by
      * reference and entry_type combination.
      *
      * @param int         $userId        Employee user_id (NOT the approver)
-     * @param string      $entryType     'advance_payment' | 'expense_payment' | 'expense_reimbursement' | manual type
+     * @param string      $entryType     'advance_payment' | 'expense_payment' | manual type
      * @param string      $referenceType 'advance' | 'expense' | 'manual'
      * @param int         $referenceId   advances.id | expenses.id | 0 for manual
      * @param float       $amount        Approved amount
@@ -64,7 +66,8 @@ class LedgerHelper {
                     return true;
                 }
 
-                // Secondary guard: check if entry already exists for this reference+entry_type combo
+                // CRITICAL: Check if entry already exists for this reference+entry_type combo
+                // If exists, DON'T CREATE ANOTHER ROW — we follow single-entry model
                 $chk2 = $db->prepare("
                     SELECT id FROM user_ledgers
                     WHERE user_id = ? AND reference_type = ? AND reference_id = ? AND entry_type = ?
@@ -120,12 +123,12 @@ class LedgerHelper {
                 $db->prepare("UPDATE {$sourceTable} SET ledger_synced = 1 WHERE id = ?")->execute([$referenceId]);
                 error_log("LedgerHelper: entry created user=$userId $referenceType/$referenceId type=$entryType dir=$direction amount=$amount balance=$balanceAfter");
 
-                // Post-insert integrity check
+                // Post-insert integrity check — enforce single entry per transaction
                 $verify = $db->prepare("SELECT COUNT(*) FROM user_ledgers WHERE reference_type = ? AND reference_id = ? AND entry_type = ?");
                 $verify->execute([$referenceType, $referenceId, $entryType]);
                 $count = (int) $verify->fetchColumn();
                 if ($count !== 1) {
-                    error_log("LedgerHelper: WARNING integrity — found $count rows for $referenceType/$referenceId type=$entryType (expected 1)");
+                    error_log("LedgerHelper: ERROR integrity violation — found $count rows for $referenceType/$referenceId type=$entryType (expected 1)");
                 }
             } elseif ($result) {
                 error_log("LedgerHelper: manual entry created user=$userId amount=$amount dir=$direction balance=$balanceAfter created_by=$createdBy");

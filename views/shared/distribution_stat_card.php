@@ -36,7 +36,7 @@ $formattedValue = match($valueFormat) {
     <div class="kpi-card__label"><?= htmlspecialchars($primaryLabel ?: $title) ?></div>
     
     <?php if ($hasData): ?>
-        <div class="kpi-card__chart" id="chart_<?= md5($title . $index) ?>" style="height: 80px; margin-top: 8px;">
+        <div class="kpi-card__chart" id="chart_<?= md5($title . md5(json_encode($distributionData))) ?>" style="height: 80px; margin-top: 8px;">
             <?php if ($chartType === 'donut'): ?>
                 <!-- Donut Chart -->
                 <div class="donut-chart">
@@ -46,12 +46,12 @@ $formattedValue = match($valueFormat) {
                         $radius = 15.915;
                         $circumference = 2 * pi() * $radius;
                         
-                        foreach ($distributionData as $index => $item):
+                        foreach ($distributionData as $segmentIndex => $item):
                             $percentage = ($item['value'] / $total) * 100;
                             $strokeDasharray = ($percentage / 100) * $circumference;
                             $strokeDashoffset = -$offset;
                             $offset += $strokeDasharray;
-                            $color = $colors[$index % count($colors)];
+                            $color = $colors[$segmentIndex % count($colors)];
                         ?>
                         <circle cx="21" cy="21" r="<?= $radius ?>" 
                                 fill="transparent" 
@@ -60,7 +60,7 @@ $formattedValue = match($valueFormat) {
                                 stroke-dasharray="<?= $strokeDasharray ?> <?= $circumference ?>"
                                 stroke-dashoffset="<?= $strokeDashoffset ?>"
                                 transform="rotate(-90 21 21)"
-                                class="chart-segment" data-index="<?= $index ?>"
+                                class="chart-segment" data-index="<?= $segmentIndex ?>"
                                 style="cursor: pointer; transition: all 0.2s ease;"
                                 title="<?= htmlspecialchars($item['label']) ?>: <?= number_format(($item['value'] / $total) * 100, 1) ?>%">
                         </circle>
@@ -83,12 +83,12 @@ $formattedValue = match($valueFormat) {
             
             <!-- Legend -->
             <div class="chart-legend" style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px;">
-                <?php foreach ($distributionData as $index => $item): 
+                <?php foreach ($distributionData as $legendIndex => $item): 
                     $percentage = isset($item['value']) ? $item['value'] : (($item['amount'] ?? $item['count'] ?? 0) / $total) * 100;
-                    $color = $colors[$index % count($colors)];
+                    $color = $colors[$legendIndex % count($colors)];
                     $shortLabel = strlen($item['label']) > 10 ? substr($item['label'], 0, 10) . '...' : $item['label'];
                 ?>
-                <div class="legend-item" data-index="<?= $index ?>"
+                <div class="legend-item" data-index="<?= $legendIndex ?>"
                      style="display: flex; align-items: center; gap: 3px; font-size: 10px; cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: all 0.2s ease;" 
                      title="<?= htmlspecialchars($item['label']) ?>: <?= number_format($percentage, 1) ?>%">
                     <div style="width: 8px; height: 8px; background: <?= $color ?>; border-radius: 50%;"></div>

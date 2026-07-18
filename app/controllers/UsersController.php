@@ -19,26 +19,40 @@ class UsersController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
-            // Get users with DISTINCT to prevent duplicates
-            $stmt = $db->prepare("SELECT DISTINCT u.*, d.name as department_name FROM users u LEFT JOIN departments d ON u.department_id = d.id WHERE u.status != ? ORDER BY u.created_at DESC");
-            $stmt->execute(['deleted']);
+            // Get ALL users (no role filtering) - ordered by role hierarchy
+            $stmt = $db->prepare("SELECT u.*, d.name as department_name FROM users u LEFT JOIN departments d ON u.department_id = d.id WHERE u.status != 'deleted' ORDER BY CASE WHEN u.role IN ('company_owner', 'owner') THEN 1 WHEN u.role = 'admin' THEN 2 WHEN u.role = 'hr' THEN 3 ELSE 4 END, u.name ASC");
+            $stmt->execute();
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Remove any potential duplicates by ID
-            $uniqueUsers = [];
-            foreach ($users as $user) {
-                $uniqueUsers[$user['id']] = $user;
-            }
-            $users = array_values($uniqueUsers);
-            
-            // KPI: count only active user/admin roles, excluding owner/company_owner and terminated/deleted
-            $kpiStmt = $db->prepare("SELECT COUNT(*) FROM users WHERE role IN ('user', 'admin') AND status = 'active'");
+            // Count ALL users (not deleted) - INCLUDE ALL ROLES
+            $kpiStmt = $db->prepare("SELECT COUNT(*) FROM users WHERE status != 'deleted'");
             $kpiStmt->execute();
             $totalUsersKpi = (int) $kpiStmt->fetchColumn();
+            
+            // Count by role for breakdown - INCLUDE ALL ROLES
+            $ownerCountStmt = $db->prepare("SELECT COUNT(*) FROM users WHERE role IN ('owner', 'company_owner') AND status != 'deleted'");
+            $ownerCountStmt->execute();
+            $ownerCount = (int) $ownerCountStmt->fetchColumn();
+            
+            $adminCountStmt = $db->prepare("SELECT COUNT(*) FROM users WHERE role = 'admin' AND status != 'deleted'");
+            $adminCountStmt->execute();
+            $adminCount = (int) $adminCountStmt->fetchColumn();
+            
+            $hrCountStmt = $db->prepare("SELECT COUNT(*) FROM users WHERE role = 'hr' AND status != 'deleted'");
+            $hrCountStmt->execute();
+            $hrCount = (int) $hrCountStmt->fetchColumn();
+            
+            $employeeCountStmt = $db->prepare("SELECT COUNT(*) FROM users WHERE role = 'user' AND status != 'deleted'");
+            $employeeCountStmt->execute();
+            $employeeCount = (int) $employeeCountStmt->fetchColumn();
             
             $data = [
                 'users' => $users,
                 'total_users_kpi' => $totalUsersKpi,
+                'owner_count' => $ownerCount,
+                'admin_count' => $adminCount,
+                'hr_count' => $hrCount,
+                'employee_count' => $employeeCount,
                 'active_page' => 'users'
             ];
             
@@ -286,8 +300,8 @@ class UsersController extends Controller {
                 // Ensure users table has all required columns
                 $this->ensureUserColumns($db);
                 
-                // Validate role
-                $allowedRoles = ['user', 'admin', 'owner', 'company_owner', 'system_admin'];
+                // Validate role - INCLUDE HR ROLE
+                $allowedRoles = ['user', 'admin', 'owner', 'company_owner', 'system_admin', 'hr'];
                 $role = $_POST['role'] ?? 'user';
                 if (!in_array($role, $allowedRoles)) {
                     $role = 'user';
@@ -843,10 +857,10 @@ class UsersController extends Controller {
                 error_log('Status column update error: ' . $e->getMessage());
             }
             
-            // Update role column to support all roles including company_owner
+            // Update role column to support all roles including company_owner and hr
             try {
-                DatabaseHelper::safeExec($db, "ALTER TABLE users MODIFY COLUMN role ENUM('user', 'admin', 'owner', 'company_owner', 'system_admin') DEFAULT 'user'", 'Update role column');
-                error_log("Updated role column to support company_owner");
+                DatabaseHelper::safeExec($db, "ALTER TABLE users MODIFY COLUMN role ENUM('user', 'admin', 'owner', 'company_owner', 'system_admin', 'hr') DEFAULT 'user'", 'Update role column');
+                error_log("Updated role column to support all roles");
             } catch (Exception $e) {
                 error_log('Role column update error: ' . $e->getMessage());
             }

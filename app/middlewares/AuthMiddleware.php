@@ -41,12 +41,9 @@ class AuthMiddleware {
         
         $userRole = $_SESSION['role'];
         
-        // Allow role aliases to access owner resources
-        if ($requiredRole === 'owner') {
-            $ownerAliases = ['owner', 'company_owner', 'ROLE_OWNER', 'admin_owner'];
-            if (in_array($userRole, $ownerAliases, true)) {
-                return;
-            }
+        // Allow company_owner to access owner resources
+        if ($requiredRole === 'owner' && in_array($userRole, ['owner', 'company_owner'])) {
+            return;
         }
 
         if ($userRole !== $requiredRole) {

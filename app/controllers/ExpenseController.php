@@ -15,70 +15,7 @@ class ExpenseController extends Controller {
     }
     
     private function ensureExpenseTables() {
-        try {
-            require_once __DIR__ . '/../config/database.php';
-            $db = Database::connect();
-            
-            $sql = "CREATE TABLE IF NOT EXISTS expenses (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL DEFAULT 1,
-                category VARCHAR(100) NOT NULL DEFAULT 'general',
-                amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                description TEXT,
-                expense_date DATE NOT NULL DEFAULT (CURDATE()),
-                attachment VARCHAR(255) NULL,
-                payment_proof VARCHAR(255) NULL,
-                paid_by INT NULL,
-                paid_at DATETIME NULL,
-                status VARCHAR(20) NOT NULL DEFAULT 'pending',
-                approved_by INT NULL,
-                approved_at TIMESTAMP NULL,
-                rejection_reason TEXT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            )";
-            
-            DatabaseHelper::safeExec($db, $sql, "Execute SQL");
-            
-            // Check if attachment column exists in existing table
-            $stmt = $db->query("SHOW COLUMNS FROM expenses LIKE 'attachment'");
-            if ($stmt->rowCount() == 0) {
-                DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN attachment VARCHAR(255) NULL", "Alter table");
-                error_log('Added attachment column to existing expenses table');
-            }
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN payment_proof VARCHAR(255) NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_by INT NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_at DATETIME NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN approved_amount DECIMAL(10,2) NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN approval_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN payment_remarks TEXT NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses MODIFY COLUMN status ENUM('pending','approved','rejected','paid') DEFAULT 'pending'", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_to_user_id INT NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN source_advance_id INT NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN paid_to_name VARCHAR(255) NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE expenses ADD COLUMN ledger_synced TINYINT(1) NOT NULL DEFAULT 0", "Alter table"); } catch (Exception $e) {}
-            // Create approved_expenses table to store approved/processed expense records separately
-            DatabaseHelper::safeExec($db, "CREATE TABLE IF NOT EXISTS approved_expenses (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                expense_id INT NOT NULL,
-                user_id INT NOT NULL,
-                category VARCHAR(100) NOT NULL,
-                claimed_amount DECIMAL(10,2) NOT NULL,
-                approved_amount DECIMAL(10,2) NULL,
-                description TEXT,
-                approved_by INT NULL,
-                approved_at DATETIME NULL,
-                payment_proof VARCHAR(255) NULL,
-                paid_at DATETIME NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )", "Create table");
-            // Ensure columns exist for backward compatibility
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE approved_expenses ADD COLUMN claimed_amount DECIMAL(10,2) NULL", "Alter table"); } catch (Exception $e) {}
-            try { DatabaseHelper::safeExec($db, "ALTER TABLE approved_expenses ADD COLUMN approved_amount DECIMAL(10,2) NULL", "Alter table"); } catch (Exception $e) {}
-            
-        } catch (Exception $e) {
-            error_log('Error ensuring expense tables: ' . $e->getMessage());
-        }
+        // Tables are now managed by migrations/run_migration.php
     }
     
     public function index() {
@@ -186,12 +123,13 @@ class ExpenseController extends Controller {
             require_once __DIR__ . '/../config/database.php';
             $db = Database::connect();
             
+            // Include user, company_owner, and owner roles in admin view
             $sql = "SELECT e.*, u.name as user_name, u.role as user_role, p.name as project_name, pt.name as paid_to_user_name, e.paid_to_name
                     FROM expenses e
                     JOIN users u ON e.user_id = u.id
                     LEFT JOIN projects p ON e.project_id = p.id
                     LEFT JOIN users pt ON e.paid_to_user_id = pt.id
-                    WHERE (u.role = 'user' OR e.user_id = ?)";
+                    WHERE (u.role IN ('user', 'company_owner', 'owner') OR e.user_id = ?)";
             $params = [$adminUserId];
 
             if ($projectId) {
@@ -562,20 +500,19 @@ class ExpenseController extends Controller {
                 $approvalRemarks = trim($_POST['approval_remarks'] ?? '');
 
                 require_once __DIR__ . '/../helpers/LedgerHelper.php';
-                LedgerHelper::ensureTable($db); // DDL must run before beginTransaction
+                LedgerHelper::ensureTable($db);
                 $db->beginTransaction();
 
                 $stmt = $db->prepare("UPDATE expenses SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, approval_remarks = ? WHERE id = ?");
                 $result = $stmt->execute([$_SESSION['user_id'], $approvedAmount, $approvalRemarks, $id]);
 
                 if ($result && $stmt->rowCount() > 0) {
-                    // Insert into approved_expenses for amount audit trail
                     $ins = $db->prepare("INSERT INTO approved_expenses (expense_id, user_id, category, claimed_amount, approved_amount, description, approved_by, approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
                     $ins->execute([$id, $expense['user_id'], $expense['category'], $expense['amount'], $approvedAmount, $expense['description'], $_SESSION['user_id']]);
 
-                    // Ledger entry at approval — construction mode: approval = financial acknowledgment
-                    $ledgerOk = LedgerHelper::recordEntry($expense['user_id'], 'expense_payment', 'expense', $id, $approvedAmount, 'credit', $expense['expense_date'], $db);
+                    $ledgerOk = LedgerHelper::recordEntry($expense['user_id'], 'expense_payment', 'expense', $id, $approvedAmount, 'credit', $expense['expense_date'] ?? date('Y-m-d'), $db, $_SESSION['user_id']);
                     if (!$ledgerOk) {
+                        $db->rollBack();
                         throw new Exception("Ledger entry failed for expense id=$id");
                     }
 
@@ -597,7 +534,6 @@ class ExpenseController extends Controller {
                 exit;
             }
 
-            // GET — return expense data for modal
             header('Content-Type: application/json');
             echo json_encode(['success' => true, 'expense' => $expense]);
             exit;
@@ -605,11 +541,13 @@ class ExpenseController extends Controller {
         } catch (Exception $e) {
             if (isset($db) && $db->inTransaction()) $db->rollBack();
             error_log('Expense approval error: ' . $e->getMessage());
-            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                echo json_encode(['success' => false, 'error' => 'Approval failed']);
-            } else {
-                header('Location: ' . Environment::getBaseUrl() . '/expenses?error=Approval failed');
-            }
+            header('Content-Type: application/json');
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Approval failed',
+                'details' => $e->getMessage()
+            ]);
         }
         exit;
     }
@@ -641,13 +579,11 @@ class ExpenseController extends Controller {
                 
                 $db->beginTransaction();
                 
-                // Check if expense was already approved and has accounting entries
                 $stmt = $db->prepare("SELECT status, journal_entry_id FROM expenses WHERE id = ?");
                 $stmt->execute([$id]);
                 $expense = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($expense && $expense['status'] === 'approved' && $expense['journal_entry_id']) {
-                    // Reverse accounting entries
                     AccountingHelper::reverseExpenseEntry($id);
                 }
                 
@@ -655,7 +591,6 @@ class ExpenseController extends Controller {
                 $result = $stmt->execute([$reason, $id]);
                 
                 if ($result && $stmt->rowCount() > 0) {
-                    // Create notification for user
                     try {
                         require_once __DIR__ . '/../helpers/NotificationHelper.php';
                         NotificationHelper::notifyExpenseStatusChange($id, 'rejected', $_SESSION['user_id']);
@@ -711,14 +646,12 @@ class ExpenseController extends Controller {
             $proof = null;
             $paymentRemarks = trim($_POST['payment_remarks'] ?? '');
             
-            // Validate that either proof or remarks is provided
             $hasFile = isset($_FILES['proof']) && $_FILES['proof']['error'] === 0;
             if (!$hasFile && empty($paymentRemarks)) {
                 header('Location: ' . Environment::getBaseUrl() . '/expenses/view/' . $id . '?error=Either payment proof or payment details must be provided');
                 exit;
             }
 
-            // Handle file upload if provided
             if ($hasFile) {
                 $file = $_FILES['proof'];
                 $allowedMime = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
@@ -754,10 +687,8 @@ class ExpenseController extends Controller {
                 }
             }
 
-            // Update expense with payment details
             $stmt = $db->prepare("UPDATE expenses SET status = 'paid', payment_proof = ?, payment_remarks = ?, paid_by = ?, paid_at = NOW() WHERE id = ?");
 
-            // Single source of truth: approved_expenses.approved_amount → expenses.approved_amount → expenses.amount
             $stmt2 = $db->prepare("SELECT approved_amount FROM approved_expenses WHERE expense_id = ? ORDER BY id DESC LIMIT 1");
             $stmt2->execute([$id]);
             $approvedRow  = $stmt2->fetch(PDO::FETCH_ASSOC);
@@ -772,19 +703,12 @@ class ExpenseController extends Controller {
                 $upd = $db->prepare("UPDATE approved_expenses SET payment_proof = ?, paid_at = NOW() WHERE expense_id = ?");
                 $upd->execute([$proof, $id]);
 
-                // Ledger was already created at approval (ledger_synced = 1).
-                // Only create it here as a safety net if somehow missed.
                 if (empty($expense['ledger_synced'])) {
-                    $ledgerOk = LedgerHelper::recordEntry($expense['user_id'], 'expense_payment', 'expense', $id, $ledgerAmount, 'credit', $expense['expense_date'], $db);
-                    if (!$ledgerOk) {
-                        throw new Exception("Ledger safety-net entry failed for expense id=$id");
-                    }
-                    error_log("Expense markPaid: safety-net ledger created for id=$id");
+                    error_log("WARNING: Expense id=$id marked paid but ledger_synced flag not set (should have been set at approval)");
                 }
                 $db->commit();
                 error_log("Expense paid: id=$id user_id={$expense['user_id']} amount=$ledgerAmount");
 
-                // Notify employee that expense was paid
                 try {
                     require_once __DIR__ . '/../helpers/NotificationHelper.php';
                     NotificationHelper::notifyExpensePaid($id, $_SESSION['user_id']);
@@ -804,8 +728,6 @@ class ExpenseController extends Controller {
     }
     
     public function apiCreate() {
-        
-        
         if (!isset($_SESSION['user_id'])) {
             echo json_encode(['success' => false, 'error' => 'Unauthorized']);
             return;

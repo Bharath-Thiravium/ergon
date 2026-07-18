@@ -90,11 +90,22 @@ class Controller {
         }
     }
     
-    protected function requireRole($role) {
+    protected function requireRole($roles) {
         $this->requireAuth();
-        if ($_SESSION['role'] !== $role) {
+        
+        // Handle both string and array input
+        if (is_string($roles)) {
+            $roles = [$roles];
+        }
+        
+        if (!in_array($_SESSION['role'], $roles)) {
             http_response_code(403);
-            echo "Access denied";
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Access denied']);
+            } else {
+                echo "Access denied";
+            }
             exit;
         }
     }

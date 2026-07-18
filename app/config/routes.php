@@ -426,6 +426,17 @@ $router->post('/followups/delete/{id}', 'FollowupController', 'delete');
 
 // Legacy followup routes removed - use /contacts/followups instead
 
+// Holiday Management Routes
+$router->get('/holidays', 'HolidayController', 'index');
+$router->post('/holiday/create', 'HolidayController', 'create');
+$router->post('/holiday/update', 'HolidayController', 'update');
+$router->post('/holiday/delete', 'HolidayController', 'delete');
+$router->get('/holiday/get', 'HolidayController', 'get');
+$router->get('/holiday/today', 'HolidayController', 'today');
+$router->get('/holiday/upcoming', 'HolidayController', 'upcoming');
+$router->get('/holiday/calendar', 'HolidayController', 'calendar');
+$router->get('/holiday/verify-attendance', 'HolidayController', 'verifyAttendance');
+
 // Gamification Routes
 $router->get('/gamification/team-competition', 'GamificationController', 'teamCompetition');
 $router->get('/gamification/individual', 'GamificationController', 'individual');
