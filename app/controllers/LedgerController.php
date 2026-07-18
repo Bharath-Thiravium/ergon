@@ -23,31 +23,25 @@ class LedgerController extends Controller {
 
         $advWhere   = ['a.user_id = ?', "a.status IN ('approved','paid')"];
         $expWhere   = ['e.user_id = ?', "e.status IN ('approved','paid')"];
-        $reimbWhere = ['e.user_id = ?', "e.status = 'paid'"];
         $advParams   = [$id];
         $expParams   = [$id];
-        $reimbParams = [$id];
         $manWhere  = ['ul.user_id = ?', "ul.reference_type = 'manual'"];
         $manParams = [$id];
 
         if ($fromDate) {
             $advWhere[]   = 'COALESCE(a.requested_date, a.approved_at, a.created_at) >= ?';
             $expWhere[]   = 'COALESCE(e.expense_date, e.approved_at, e.created_at) >= ?';
-            $reimbWhere[] = 'COALESCE(e.paid_at, e.approved_at, e.created_at) >= ?';
             $manWhere[]   = 'ul.created_at >= ?';
             $advParams[]   = $fromDate . ' 00:00:00';
             $expParams[]   = $fromDate . ' 00:00:00';
-            $reimbParams[] = $fromDate . ' 00:00:00';
             $manParams[]   = $fromDate . ' 00:00:00';
         }
         if ($toDate) {
             $advWhere[]   = 'COALESCE(a.requested_date, a.approved_at, a.created_at) <= ?';
             $expWhere[]   = 'COALESCE(e.expense_date, e.approved_at, e.created_at) <= ?';
-            $reimbWhere[] = 'COALESCE(e.paid_at, e.approved_at, e.created_at) <= ?';
             $manWhere[]   = 'ul.created_at <= ?';
             $advParams[]   = $toDate . ' 23:59:59';
             $expParams[]   = $toDate . ' 23:59:59';
-            $reimbParams[] = $toDate . ' 23:59:59';
             $manParams[]   = $toDate . ' 23:59:59';
         }
 
@@ -87,26 +81,6 @@ class LedgerController extends Controller {
                 FROM expenses e
                 WHERE " . implode(' AND ', $expWhere);
             $params = array_merge($params, $expParams);
-
-            // Credit: reimbursement paid back to employee (only for non-owner users).
-            // Owners disburse cash — the reimbursement credit is a company-internal mirror
-            // entry that makes no sense in the owner's own ledger view.
-            if (!$isOwner) {
-                $parts[] = "
-                    SELECT
-                        e.id                    AS reference_id,
-                        'expense'               AS reference_type,
-                        'expense_reimbursement' AS entry_type,
-                        'credit'                AS direction,
-                        COALESCE(e.approved_amount, e.amount)                        AS amount,
-                        CONCAT('Reimbursed: ', COALESCE(e.description, 'Expense'))   AS description,
-                        COALESCE(e.category, 'expense')                              AS category,
-                        e.status,
-                        COALESCE(e.paid_at, e.approved_at, e.created_at)            AS date
-                    FROM expenses e
-                    WHERE " . implode(' AND ', $reimbWhere);
-                $params = array_merge($params, $reimbParams);
-            }
         }
 
         if ($transactionType !== 'advance' && $transactionType !== 'expense') {
@@ -202,16 +176,6 @@ class LedgerController extends Controller {
             // Opening balance for the filtered period (before any entries in the range)
             $openingBalance = 0.0;
             if ($fromDate || $toDate) {
-                $isOwnerUser = in_array($user['role'] ?? '', ['owner', 'company_owner']);
-                $reimbSql = $isOwnerUser ? '' : "
-                        UNION ALL
-
-                        SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
-                        FROM expenses
-                        WHERE user_id = ? AND status = 'paid'
-                          AND COALESCE(paid_at, approved_at, created_at) < ?
-                ";
-
                 $openStmt = $db->prepare("
                     SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END) -
                                    SUM(CASE WHEN direction='debit' THEN amount ELSE 0 END), 0)
@@ -228,8 +192,6 @@ class LedgerController extends Controller {
                         WHERE user_id = ? AND status IN ('approved','paid')
                           AND COALESCE(expense_date, approved_at, created_at) < ?
 
-                        {$reimbSql}
-
                         UNION ALL
 
                         SELECT direction, amount FROM user_ledgers
@@ -237,10 +199,7 @@ class LedgerController extends Controller {
                     ) t
                 ");
                 $filterStartDate = ($fromDate ?? '1900-01-01') . ' 00:00:00';
-                $openParams = [$id, $filterStartDate, $id, $filterStartDate];
-                if (!$isOwnerUser) $openParams = array_merge($openParams, [$id, $filterStartDate]);
-                $openParams = array_merge($openParams, [$id, $filterStartDate]);
-                $openStmt->execute($openParams);
+                $openStmt->execute([$id, $filterStartDate, $id, $filterStartDate, $id, $filterStartDate]);
                 $openingBalance = floatval($openStmt->fetchColumn());
             }
 

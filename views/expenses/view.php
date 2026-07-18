@@ -34,7 +34,7 @@ ob_start();
         <a href="/ergon/expenses" class="btn btn--secondary">
             <span>←</span> Back to Expenses
         </a>
-        <?php if (in_array($userRole, ['admin','owner']) && ($expense['status'] ?? '') === 'approved'): ?>
+        <?php if (in_array($userRole, ['admin','owner','company_owner']) && ($expense['status'] ?? '') === 'approved'): ?>
         <button class="btn btn--success" onclick="showMarkPaidModal(<?= $expense['id'] ?>)" style="margin-left:.5rem;">
             <span>✅</span> Mark Paid
         </button>
