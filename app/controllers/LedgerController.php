@@ -19,24 +19,14 @@ class LedgerController extends Controller {
         $roleStmt = $db->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
         $roleStmt->execute([$id]);
         $role    = $roleStmt->fetchColumn();
-        $isOwner = in_array($role, ['owner', 'company_owner', 'admin']);
+        $isOwner = in_array($role, ['owner', 'company_owner']);
 
-        // Owners and admins disburse advances/expenses, so include records where they are payer (paid_by) too.
-        if ($isOwner) {
-            $advWhere   = ['(a.user_id = ? OR a.paid_by = ?)', "a.status IN ('approved','paid')"];
-            $expWhere   = ['(e.user_id = ? OR e.paid_by = ?)', "e.status IN ('approved','paid')"];
-            $reimbWhere = ['(e.user_id = ? OR e.paid_by = ?)', "e.status = 'paid'"];
-            $advParams   = [$id, $id];
-            $expParams   = [$id, $id];
-            $reimbParams = [$id, $id];
-        } else {
-            $advWhere   = ['a.user_id = ?', "a.status IN ('approved','paid')"];
-            $expWhere   = ['e.user_id = ?', "e.status IN ('approved','paid')"];
-            $reimbWhere = ['e.user_id = ?', "e.status = 'paid'"];
-            $advParams   = [$id];
-            $expParams   = [$id];
-            $reimbParams = [$id];
-        }
+        $advWhere   = ['a.user_id = ?', "a.status IN ('approved','paid')"];
+        $expWhere   = ['e.user_id = ?', "e.status IN ('approved','paid')"];
+        $reimbWhere = ['e.user_id = ?', "e.status = 'paid'"];
+        $advParams   = [$id];
+        $expParams   = [$id];
+        $reimbParams = [$id];
         $manWhere  = ['ul.user_id = ?', "ul.reference_type = 'manual'"];
         $manParams = [$id];
 
@@ -251,44 +241,23 @@ class LedgerController extends Controller {
             }
 
             // Outstanding = advances given minus expenses incurred (all time, no double-counting)
-            $isOwnerUser = in_array($user['role'] ?? '', ['owner', 'company_owner', 'admin']);
-            if ($isOwnerUser) {
-                $outStmt = $db->prepare("
-                    SELECT
-                        COALESCE(SUM(CASE WHEN src='advance' THEN amount ELSE 0 END), 0) AS advances_given,
-                        COALESCE(SUM(CASE WHEN src='expense' THEN amount ELSE 0 END), 0) AS expenses_incurred
-                    FROM (
-                        SELECT 'advance' AS src, COALESCE(approved_amount, amount) AS amount
-                        FROM advances
-                        WHERE (user_id = ? OR paid_by = ?) AND status IN ('approved','paid')
+            $outStmt = $db->prepare("
+                SELECT
+                    COALESCE(SUM(CASE WHEN src='advance' THEN amount ELSE 0 END), 0) AS advances_given,
+                    COALESCE(SUM(CASE WHEN src='expense' THEN amount ELSE 0 END), 0) AS expenses_incurred
+                FROM (
+                    SELECT 'advance' AS src, COALESCE(approved_amount, amount) AS amount
+                    FROM advances
+                    WHERE user_id = ? AND status IN ('approved','paid')
 
-                        UNION ALL
+                    UNION ALL
 
-                        SELECT 'expense' AS src, COALESCE(approved_amount, amount) AS amount
-                        FROM expenses
-                        WHERE (user_id = ? OR paid_by = ?) AND status IN ('approved','paid')
-                    ) t
-                ");
-                $outStmt->execute([$id, $id, $id, $id]);
-            } else {
-                $outStmt = $db->prepare("
-                    SELECT
-                        COALESCE(SUM(CASE WHEN src='advance' THEN amount ELSE 0 END), 0) AS advances_given,
-                        COALESCE(SUM(CASE WHEN src='expense' THEN amount ELSE 0 END), 0) AS expenses_incurred
-                    FROM (
-                        SELECT 'advance' AS src, COALESCE(approved_amount, amount) AS amount
-                        FROM advances
-                        WHERE user_id = ? AND status IN ('approved','paid')
-
-                        UNION ALL
-
-                        SELECT 'expense' AS src, COALESCE(approved_amount, amount) AS amount
-                        FROM expenses
-                        WHERE user_id = ? AND status IN ('approved','paid')
-                    ) t
-                ");
-                $outStmt->execute([$id, $id]);
-            }
+                    SELECT 'expense' AS src, COALESCE(approved_amount, amount) AS amount
+                    FROM expenses
+                    WHERE user_id = ? AND status IN ('approved','paid')
+                ) t
+            ");
+            $outStmt->execute([$id, $id]);
             $outRow          = $outStmt->fetch(PDO::FETCH_ASSOC);
             // Positive = employee still has company money (advance > expenses)
             // Negative = company owes employee (expenses > advances)
