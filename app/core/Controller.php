@@ -26,8 +26,18 @@ class Controller {
     }
     
     protected function redirect($url) {
-        if (strpos($url, 'http') !== 0 && strpos($url, '/ergon/') !== 0) {
+// Support deployments under both:
+        // - /ergon
+        // - /demo/ergon
+        $hasPrefix = strpos($url, '/ergon/') === 0 || strpos($url, '/demo/ergon/') === 0;
+        if (strpos($url, 'http') !== 0 && !$hasPrefix) {
             $url = '/ergon' . $url;
+        }
+
+        // If we are currently under /demo/ergon, keep redirects consistent.
+        $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+        if (strpos($currentPath, '/demo/ergon') === 0 && strpos($url, '/ergon/') === 0) {
+            $url = '/demo' . $url;
         }
         header("Location: {$url}");
         exit;

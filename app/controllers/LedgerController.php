@@ -245,36 +245,31 @@ class LedgerController extends Controller {
                 }
             }
 
-            // Outstanding is computed across ALL time regardless of active date filter.
-            // Advances given (credit) minus expenses incurred (debit) plus reimbursements made (credit).
-            // A fully reimbursed set of expenses nets to zero outstanding.
+            // Outstanding = advances received - expenses incurred (all time, regardless of filter)
+            // Simple rule: what the company gave (advances) minus what the employee spent (expenses)
+            // Reimbursements are internal entries and do NOT affect outstanding.
             $outStmt = $db->prepare("
                 SELECT
-                    COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END), 0) AS total_credits,
-                    COALESCE(SUM(CASE WHEN direction='debit'  THEN amount ELSE 0 END), 0) AS total_debits
+                    COALESCE(SUM(CASE WHEN src='advance' THEN amount ELSE 0 END), 0) AS advances_given,
+                    COALESCE(SUM(CASE WHEN src='expense' THEN amount ELSE 0 END), 0) AS expenses_incurred
                 FROM (
-                    SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
+                    SELECT 'advance' AS src, COALESCE(approved_amount, amount) AS amount
                     FROM advances
                     WHERE user_id = ? AND status IN ('approved','paid')
 
                     UNION ALL
 
-                    SELECT 'debit' AS direction, COALESCE(approved_amount, amount) AS amount
+                    SELECT 'expense' AS src, COALESCE(approved_amount, amount) AS amount
                     FROM expenses
                     WHERE user_id = ? AND status IN ('approved','paid')
                       AND (source_advance_id IS NULL OR source_advance_id = 0)
-
-                    UNION ALL
-
-                    SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
-                    FROM expenses
-                    WHERE user_id = ? AND status = 'paid'
-                      AND (source_advance_id IS NULL OR source_advance_id = 0)
                 ) t
             ");
-            $outStmt->execute([$id, $id, $id]);
+            $outStmt->execute([$id, $id]);
             $outRow          = $outStmt->fetch(PDO::FETCH_ASSOC);
-            $trueOutstanding = floatval($outRow['total_credits']) - floatval($outRow['total_debits']);
+            // Positive = employee still has company money (advance > expenses)
+            // Negative = company owes employee (expenses > advances)
+            $trueOutstanding = floatval($outRow['advances_given']) - floatval($outRow['expenses_incurred']);
 
             $this->view('ledgers/user', [
                 'user'               => $user,

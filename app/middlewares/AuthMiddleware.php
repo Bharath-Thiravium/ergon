@@ -41,21 +41,37 @@ class AuthMiddleware {
         
         $userRole = $_SESSION['role'];
         
-        // Allow company_owner to access owner resources
-        if ($requiredRole === 'owner' && $userRole === 'company_owner') {
-            return;
+        // Allow role aliases to access owner resources
+        if ($requiredRole === 'owner') {
+            $ownerAliases = ['owner', 'company_owner', 'ROLE_OWNER', 'admin_owner'];
+            if (in_array($userRole, $ownerAliases, true)) {
+                return;
+            }
         }
-        
+
         if ($userRole !== $requiredRole) {
             if (!headers_sent()) {
-                header('Location: /ergon/dashboard');
+                $prefix = self::getBasePrefix();
+                header('Location: ' . $prefix . '/dashboard');
             }
             exit;
         }
     }
     
+    private static function getBasePrefix(): string {
+        // Support both:
+        //  - /ergon
+        //  - /demo/ergon
+        $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+        if (strpos($currentPath, '/demo/ergon') === 0) {
+            return '/demo/ergon';
+        }
+        return '/ergon';
+    }
+
     private static function redirectToLogin($query = '') {
-        $url = '/ergon/login';
+        $prefix = self::getBasePrefix();
+        $url = $prefix . '/login';
         if ($query) {
             $url .= '?' . $query;
         }

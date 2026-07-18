@@ -239,7 +239,7 @@ class AuthController extends Controller {
 
         require_once __DIR__ . '/../config/environment.php';
         $baseUrl = Environment::getBaseUrl();
-        header('Location: ' . $baseUrl . '/login?logout=1');
+header('Location: ' . $baseUrl . '/login');
         exit;
     }
 
@@ -430,18 +430,19 @@ class AuthController extends Controller {
     private function getRedirectUrl($role) {
         require_once __DIR__ . '/../config/environment.php';
         $baseUrl = Environment::getBaseUrl();
-        
-        switch ($role) {
-            case ROLE_OWNER:
-            case 'company_owner':
-                return $baseUrl . '/dashboard';
-            case ROLE_ADMIN:
-                return $baseUrl . '/dashboard';
-            case ROLE_USER:
-                return $baseUrl . '/dashboard';
-            default:
-                return $baseUrl . '/dashboard';
+
+        $ownerTarget = $baseUrl . '/owner/dashboard';
+        $defaultTarget = $baseUrl . '/dashboard';
+
+        $roleNorm = strtolower((string)$role);
+
+        // Map DB/legacy role values to the correct route
+        $ownerAliases = ['owner', 'company_owner', 'role_owner', 'admin_owner'];
+        if (in_array($roleNorm, $ownerAliases, true)) {
+            return $ownerTarget;
         }
+
+        return $defaultTarget;
     }
 }
 ?>

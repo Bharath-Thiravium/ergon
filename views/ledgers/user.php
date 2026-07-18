@@ -138,15 +138,15 @@ ob_start();
         <div class="kpi-card__status"><?= $expenseCount ?> Expense<?= $expenseCount !== 1 ? 's' : '' ?> · <?= $manualCount ?? 0 ?> Manual</div>
     </div>
 
-        <div class="kpi-card" style="border:2px solid <?= $outstanding >= 0 ? '#059669' : '#dc2626' ?>;">
+        <div class="kpi-card" style="border:2px solid <?= $outstanding == 0 ? '#6b7280' : ($outstanding > 0 ? '#dc2626' : '#059669') ?>;">
         <div class="kpi-card__header">
             <div class="kpi-card__icon">⚖️</div>
         </div>
-        <div class="kpi-card__value <?= $outstanding >= 0 ? 'text-success' : 'text-danger' ?>">
-            <?= $outstanding < 0 ? '-' : '' ?>₹<?= number_format(abs($outstanding), 2) ?>
+        <div class="kpi-card__value <?= $outstanding == 0 ? 'text-muted' : ($outstanding > 0 ? 'text-danger' : 'text-success') ?>">
+            ₹<?= number_format(abs($outstanding), 2) ?>
         </div>
-        <div class="kpi-card__label">Outstanding Balance</div>
-        <div class="kpi-card__status"><?= $outstanding == 0 ? 'Fully settled' : ($outstanding > 0 ? 'Company owes employee' : 'Employee owes company') ?></div>
+        <div class="kpi-card__label">Outstanding</div>
+        <div class="kpi-card__status"><?= $outstanding == 0 ? 'Fully settled' : ($outstanding > 0 ? '🔴 Employee owes company' : '🟢 Company owes employee') ?></div>
     </div>
 </div>
 
@@ -197,71 +197,39 @@ ob_start();
                     </div>
                 </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table--striped">
-                    <thead>
-                        <tr>
-                            <th>📅 Date</th>
-                            <th>🏷️ Type</th>
-                            <th>📄 Reference</th>
-                            <th>📝 Description</th>
-                            <th>📊 Category</th>
-                            <th>💰 Amount</th>
-                            <th>⚖️ Balance</th>
-                            <th>📈 Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($entries as $entry): ?>
-                        <tr class="ledger-entry ledger-entry--<?= $entry['direction'] ?>">
-                            <td class="ledger-date">
-                                <strong><?= date('M d, Y', strtotime($entry['date'])) ?></strong>
-                            </td>
-                            <td>
-                                <?php if ($entry['reference_type'] === 'advance'): ?>
-                                    <span class="badge badge--success">💸 Advance</span>
-                                <?php elseif ($entry['entry_type'] === 'expense_reimbursement'): ?>
-                                    <span class="badge badge--success">✅ Reimbursed</span>
-                                <?php elseif ($entry['reference_type'] === 'expense'): ?>
-                                    <span class="badge badge--warning">🧾 Expense</span>
-                                <?php else: ?>
-                                    <span class="badge badge--info">✏️ Manual</span>
-                                <?php endif; ?>
-                            </td>
-                            <td class="ledger-reference">
-                                <strong><?= strtoupper($entry['reference_type']) ?> #<?= $entry['reference_id'] ?></strong>
-                            </td>
-                            <td class="ledger-description">
-                                <div class="description-text"><?= htmlspecialchars($entry['description'] ?? 'N/A') ?></div>
-                            </td>
-                            <td>
-                                <span class="category-tag"><?= htmlspecialchars($entry['category'] ?? 'N/A') ?></span>
-                            </td>
-                            <td class="ledger-amount">
-                                <span class="amount amount--<?= $entry['direction'] ?>">
-                                    <?= $entry['direction'] === 'credit' ? '+' : '-' ?>₹<?= number_format($entry['amount'], 2) ?>
-                                </span>
-                            </td>
-                            <td class="ledger-balance">
-                                <strong class="balance-amount <?= $entry['balance_after'] >= 0 ? 'text-success' : 'text-danger' ?>">
-                                    ₹<?= number_format($entry['balance_after'], 2) ?>
-                                </strong>
-                            </td>
-                            <td>
-                                <span class="status-badge status-badge--<?= strtolower($entry['status'] ?? 'unknown') ?>">
-                                    <?php if ($entry['status'] === 'approved'): ?>
-                                        ⏳ Approved
-                                    <?php elseif ($entry['status'] === 'paid'): ?>
-                                        ✅ Paid
-                                    <?php else: ?>
-                                        <?= ucfirst($entry['status'] ?? 'Unknown') ?>
-                                    <?php endif; ?>
-                                </span>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+            <div class="ledger-entries">
+                <?php foreach ($entries as $entry): ?>
+                <div class="ledger-card ledger-card--<?= $entry['direction'] ?>">
+                    <div class="ledger-card__left">
+                        <div class="ledger-card__date"><?= date('d M Y', strtotime($entry['date'])) ?></div>
+                        <div class="ledger-card__ref"><?= strtoupper($entry['reference_type']) ?> #<?= $entry['reference_id'] ?></div>
+                        <div class="ledger-card__desc"><?= htmlspecialchars($entry['description'] ?? 'N/A') ?></div>
+                        <div class="ledger-card__meta">
+                            <?php if ($entry['reference_type'] === 'advance'): ?>
+                                <span class="lc-badge lc-badge--advance">💸 Advance</span>
+                            <?php elseif ($entry['entry_type'] === 'expense_reimbursement'): ?>
+                                <span class="lc-badge lc-badge--reimburse">✅ Reimbursed</span>
+                            <?php elseif ($entry['reference_type'] === 'expense'): ?>
+                                <span class="lc-badge lc-badge--expense">🧾 Expense</span>
+                            <?php else: ?>
+                                <span class="lc-badge lc-badge--manual">✏️ Manual</span>
+                            <?php endif; ?>
+                            <span class="lc-cat"><?= htmlspecialchars($entry['category'] ?? '') ?></span>
+                            <span class="lc-status lc-status--<?= strtolower($entry['status'] ?? 'unknown') ?>">
+                                <?= $entry['status'] === 'paid' ? '✅ Paid' : ($entry['status'] === 'approved' ? '⏳ Approved' : ucfirst($entry['status'] ?? '')) ?>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="ledger-card__right">
+                        <div class="ledger-card__amount ledger-card__amount--<?= $entry['direction'] ?>">
+                            <?= $entry['direction'] === 'credit' ? '+' : '-' ?>₹<?= number_format($entry['amount'], 2) ?>
+                        </div>
+                        <div class="ledger-card__balance <?= $entry['balance_after'] >= 0 ? 'bal-pos' : 'bal-neg' ?>">
+                            Bal: ₹<?= number_format($entry['balance_after'], 2) ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
             </div>
             
             <!-- Summary Footer -->
@@ -276,14 +244,14 @@ ob_start();
                 </div>
                 <div class="summary-row summary-row--total">
                     <span class="summary-label"><strong>Outstanding Balance:</strong></span>
-                    <span class="summary-value <?= $outstanding == 0 ? 'text-muted' : ($outstanding > 0 ? 'text-success' : 'text-danger') ?>">
+                    <span class="summary-value <?= $outstanding == 0 ? 'text-muted' : ($outstanding > 0 ? 'text-danger' : 'text-success') ?>">
                         <strong>
                             <?php if ($outstanding == 0): ?>
                                 ₹0.00 (Settled)
                             <?php elseif ($outstanding > 0): ?>
-                                +₹<?= number_format($outstanding, 2) ?> (Company owes employee)
+                                ₹<?= number_format($outstanding, 2) ?> 🔴 Employee owes company
                             <?php else: ?>
-                                -₹<?= number_format(abs($outstanding), 2) ?> (Employee owes company)
+                                ₹<?= number_format(abs($outstanding), 2) ?> 🟢 Company owes employee
                             <?php endif; ?>
                         </strong>
                     </span>
@@ -294,153 +262,93 @@ ob_start();
 </div>
 
 <style>
-.btn--info { background: #0ea5e9; color: #fff; border: none; cursor: pointer; }
-.btn--info:hover { background: #0284c7; }
-.btn--info:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn--sm { padding: 0.25rem 0.6rem; font-size: 0.8rem; }
-/* Ledger-specific styles */
-.filter-section { margin-bottom: 2rem; }
-.filter-form { margin: 0; }
-.filter-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; }
-.filter-group { display: flex; flex-direction: column; min-width: 150px; }
-.filter-group label { font-size: 0.9rem; font-weight: 500; margin-bottom: 0.25rem; color: #495057; }
-.filter-group input, .filter-group select { padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.9rem; }
-.filter-group input:focus, .filter-group select:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.25); }
-.filter-actions { display: flex; gap: 0.5rem; align-items: end; }
-.filter-actions .btn { white-space: nowrap; }
+.btn--info { background:#0ea5e9;color:#fff;border:none;cursor:pointer; }
+.btn--info:hover { background:#0284c7; }
+.btn--info:disabled { opacity:.6;cursor:not-allowed; }
+.btn--sm { padding:.25rem .6rem;font-size:.8rem; }
 
-.ledger-entry--credit {
-    background-color: rgba(40, 167, 69, 0.05);
+/* Filter */
+.filter-section { margin-bottom:1.5rem; }
+.filter-form { margin:0; }
+.filter-row { display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end; }
+.filter-group { display:flex;flex-direction:column;min-width:140px;flex:1; }
+.filter-group label { font-size:.85rem;font-weight:500;margin-bottom:.25rem;color:#495057; }
+.filter-group input,.filter-group select { padding:.45rem .5rem;border:1px solid #ced4da;border-radius:4px;font-size:.85rem; }
+.filter-actions { display:flex;gap:.5rem;align-items:flex-end; }
+
+/* Ledger cards */
+.ledger-entries { display:flex;flex-direction:column;gap:.5rem; }
+
+.ledger-card {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    padding:.75rem 1rem;
+    border-radius:8px;
+    border:1px solid #e5e7eb;
+    border-left:4px solid #e5e7eb;
+    background:#fff;
+    gap:.75rem;
 }
+.ledger-card--credit { border-left-color:#10b981;background:#f0fdf4; }
+.ledger-card--debit  { border-left-color:#ef4444;background:#fef2f2; }
 
-.ledger-entry--debit {
-    background-color: rgba(220, 53, 69, 0.05);
-}
+.ledger-card__left { flex:1;min-width:0; }
+.ledger-card__date { font-size:.75rem;color:#6b7280;margin-bottom:2px; }
+.ledger-card__ref  { font-size:.7rem;font-family:monospace;color:#9ca3af;margin-bottom:3px; }
+.ledger-card__desc { font-size:.88rem;font-weight:600;color:#1f2937;margin-bottom:5px;word-break:break-word; }
+.ledger-card__meta { display:flex;flex-wrap:wrap;gap:.35rem;align-items:center; }
 
-.ledger-date {
-    white-space: nowrap;
-}
+.ledger-card__right { text-align:right;flex-shrink:0; }
+.ledger-card__amount { font-size:1rem;font-weight:700; }
+.ledger-card__amount--credit { color:#059669; }
+.ledger-card__amount--debit  { color:#dc2626; }
+.ledger-card__balance { font-size:.75rem;margin-top:3px;font-weight:500; }
+.bal-pos { color:#059669; }
+.bal-neg { color:#dc2626; }
 
-.ledger-reference strong {
-    font-family: monospace;
-    font-size: 0.9rem;
-}
+/* Badges */
+.lc-badge { display:inline-block;padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:600; }
+.lc-badge--advance   { background:#d1fae5;color:#065f46; }
+.lc-badge--expense   { background:#fef3c7;color:#92400e; }
+.lc-badge--reimburse { background:#dbeafe;color:#1e40af; }
+.lc-badge--manual    { background:#e0e7ff;color:#3730a3; }
+.lc-cat    { font-size:.7rem;color:#6b7280;background:#f3f4f6;padding:2px 6px;border-radius:8px; }
+.lc-status { font-size:.7rem;padding:2px 6px;border-radius:8px;font-weight:600; }
+.lc-status--paid     { background:#d1fae5;color:#065f46; }
+.lc-status--approved { background:#fef3c7;color:#92400e; }
+.lc-status--pending  { background:#fef3c7;color:#92400e; }
+.lc-status--rejected { background:#fee2e2;color:#991b1b; }
+.lc-status--manual   { background:#e0e7ff;color:#3730a3; }
 
-.ledger-description {
-    max-width: 200px;
-}
+/* Summary footer */
+.ledger-summary { margin-top:1rem;padding:1rem;background:#f8f9fa;border-radius:6px;border-top:2px solid #dee2e6; }
+.summary-row { display:flex;justify-content:space-between;margin-bottom:.4rem;font-size:.9rem; }
+.summary-row--total { border-top:1px solid #dee2e6;padding-top:.5rem;margin-top:.5rem; }
 
-.description-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
+.text-success { color:#28a745!important; }
+.text-danger  { color:#dc3545!important; }
+.text-muted   { color:#6c757d!important; }
 
-.category-tag {
-    background: #f8f9fa;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    border: 1px solid #dee2e6;
-}
+.empty-state { text-align:center;padding:3rem 1rem;color:#6c757d; }
+.empty-state__icon { font-size:3rem;margin-bottom:1rem;opacity:.5; }
 
-.amount--credit {
-    color: #28a745;
-    font-weight: bold;
-}
-
-.amount--debit {
-    color: #dc3545;
-    font-weight: bold;
-}
-
-.balance-amount {
-    font-family: monospace;
-}
-
-.status-badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    font-weight: bold;
-}
-
-.status-badge--paid { background: #d4edda; color: #155724; }
-.status-badge--approved { background: #fff3cd; color: #856404; }
-.status-badge--pending { background: #fff3cd; color: #856404; }
-.status-badge--rejected { background: #f8d7da; color: #721c24; }
-.status-badge--unknown { background: #e2e3e5; color: #383d41; }
-.status-badge--manual { background: #cce5ff; color: #004085; }
-
-.ledger-summary {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 2px solid #dee2e6;
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 4px;
-}
-
-.summary-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-}
-
-.summary-row--total {
-    border-top: 1px solid #dee2e6;
-    padding-top: 0.5rem;
-    margin-top: 0.5rem;
-}
-
-.text-success { color: #28a745 !important; }
-.text-danger { color: #dc3545 !important; }
-.text-muted { color: #6c757d !important; }
-
-.empty-state {
-    text-align: center;
-    padding: 3rem 1rem;
-    color: #6c757d;
-}
-
-.empty-state__icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.5;
-}
-
-.empty-state h3 {
-    margin-bottom: 0.5rem;
-    color: #495057;
-}
-
-@media (max-width: 768px) {
-    .filter-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .filter-group {
-        min-width: auto;
-    }
-    
-    .filter-actions {
-        justify-content: center;
-        margin-top: 1rem;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
+/* Mobile tweaks */
+@media(max-width:480px) {
+    .filter-group { min-width:100%;flex:none; }
+    .filter-actions { width:100%;justify-content:stretch; }
+    .filter-actions .btn { flex:1; }
+    .ledger-card { padding:.6rem .75rem; }
+    .ledger-card__amount { font-size:.9rem; }
+    .page-actions { flex-wrap:wrap;gap:.4rem; }
+    .page-actions .btn { font-size:.78rem;padding:.35rem .6rem; }
 }
 
 @media print {
-    body * { visibility: hidden; }
-    #ledger-section, #ledger-section * { visibility: visible; }
-    #ledger-section { position: absolute; top: 0; left: 0; width: 100%; }
-    .filter-section, .card__actions, .btn { display: none !important; }
-    .stat-card { break-inside: avoid; }
+    body * { visibility:hidden; }
+    #ledger-section, #ledger-section * { visibility:visible; }
+    #ledger-section { position:absolute;top:0;left:0;width:100%; }
+    .filter-section,.card__actions,.btn { display:none!important; }
 }
 </style>
 
