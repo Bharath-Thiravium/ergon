@@ -24,19 +24,15 @@ class LedgerController extends Controller {
         // Owners disburse advances/expenses, so include records where they are payer (paid_by) too.
         if ($isOwner) {
             $advWhere   = ['(a.user_id = ? OR a.paid_by = ?)', "a.status IN ('approved','paid')"];
-            $expWhere   = ['(e.user_id = ? OR e.paid_by = ?)', "e.status IN ('approved','paid')",
-                           '(e.source_advance_id IS NULL OR e.source_advance_id = 0)'];
-            $reimbWhere = ['(e.user_id = ? OR e.paid_by = ?)', "e.status = 'paid'",
-                           '(e.source_advance_id IS NULL OR e.source_advance_id = 0)'];
+            $expWhere   = ['(e.user_id = ? OR e.paid_by = ?)', "e.status IN ('approved','paid')"];
+            $reimbWhere = ['(e.user_id = ? OR e.paid_by = ?)', "e.status = 'paid'"];
             $advParams   = [$id, $id];
             $expParams   = [$id, $id];
             $reimbParams = [$id, $id];
         } else {
             $advWhere   = ['a.user_id = ?', "a.status IN ('approved','paid')"];
-            $expWhere   = ['e.user_id = ?', "e.status IN ('approved','paid')",
-                           '(e.source_advance_id IS NULL OR e.source_advance_id = 0)'];
-            $reimbWhere = ['e.user_id = ?', "e.status = 'paid'",
-                           '(e.source_advance_id IS NULL OR e.source_advance_id = 0)'];
+            $expWhere   = ['e.user_id = ?', "e.status IN ('approved','paid')"];
+            $reimbWhere = ['e.user_id = ?', "e.status = 'paid'"];
             $advParams   = [$id];
             $expParams   = [$id];
             $reimbParams = [$id];
@@ -200,7 +196,6 @@ class LedgerController extends Controller {
                         SELECT 'credit' AS direction, COALESCE(approved_amount, amount) AS amount
                         FROM expenses
                         WHERE user_id = ? AND status = 'paid'
-                          AND (source_advance_id IS NULL OR source_advance_id = 0)
                           AND COALESCE(paid_at, approved_at, created_at) < ?
                 ";
 
@@ -218,7 +213,6 @@ class LedgerController extends Controller {
                         SELECT 'debit' AS direction, COALESCE(approved_amount, amount) AS amount
                         FROM expenses
                         WHERE user_id = ? AND status IN ('approved','paid')
-                          AND (source_advance_id IS NULL OR source_advance_id = 0)
                           AND COALESCE(expense_date, approved_at, created_at) < ?
 
                         {$reimbSql}
@@ -272,7 +266,6 @@ class LedgerController extends Controller {
                     SELECT 'expense' AS src, COALESCE(approved_amount, amount) AS amount
                     FROM expenses
                     WHERE user_id = ? AND status IN ('approved','paid')
-                      AND (source_advance_id IS NULL OR source_advance_id = 0)
                 ) t
             ");
             $outStmt->execute([$id, $id]);
