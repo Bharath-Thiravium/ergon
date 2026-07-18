@@ -108,14 +108,14 @@ ob_start();
 
     <div class="kpi-card">
         <div class="kpi-card__header"><div class="kpi-card__icon">💸</div></div>
-        <div class="kpi-card__value" style="color:#059669;">₹<?= number_format($totalCredits, 2) ?></div>
+        <div class="kpi-card__value" style="color:#059669;">₹<?= number_format($advancesGiven, 2) ?></div>
         <div class="kpi-card__label">Advances Received</div>
         <div class="kpi-card__status"><?= $advanceCount ?> advance<?= $advanceCount !== 1 ? 's' : '' ?></div>
     </div>
 
     <div class="kpi-card">
         <div class="kpi-card__header"><div class="kpi-card__icon">🧾</div></div>
-        <div class="kpi-card__value" style="color:#dc2626;">₹<?= number_format($totalDebits, 2) ?></div>
+        <div class="kpi-card__value" style="color:#dc2626;">₹<?= number_format($expensesIncurred, 2) ?></div>
         <div class="kpi-card__label">Expenses Incurred</div>
         <div class="kpi-card__status"><?= $expenseCount ?> expense<?= $expenseCount !== 1 ? 's' : '' ?></div>
     </div>
@@ -225,11 +225,11 @@ ob_start();
             <div class="ledger-summary">
                 <div class="summary-row">
                     <span class="summary-label">Advances Received:</span>
-                    <span class="summary-value text-success">+₹<?= number_format($totalCredits, 2) ?></span>
+                    <span class="summary-value text-success">+₹<?= number_format($advancesGiven, 2) ?></span>
                 </div>
                 <div class="summary-row">
                     <span class="summary-label">Expenses Incurred:</span>
-                    <span class="summary-value text-danger">-₹<?= number_format($totalDebits, 2) ?></span>
+                    <span class="summary-value text-danger">-₹<?= number_format($expensesIncurred, 2) ?></span>
                 </div>
                 <div class="summary-row summary-row--total">
                     <span class="summary-label"><strong>Outstanding:</strong></span>

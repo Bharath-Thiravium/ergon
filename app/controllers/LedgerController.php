@@ -282,9 +282,9 @@ class LedgerController extends Controller {
             ");
             $outStmt->execute([$id, $id]);
             $outRow          = $outStmt->fetch(PDO::FETCH_ASSOC);
-            // Positive = employee still has company money (advance > expenses)
-            // Negative = company owes employee (expenses > advances)
-            $trueOutstanding = floatval($outRow['advances_given']) - floatval($outRow['expenses_incurred']);
+            $advancesGiven      = floatval($outRow['advances_given']);
+            $expensesIncurred   = floatval($outRow['expenses_incurred']);
+            $trueOutstanding    = $advancesGiven - $expensesIncurred;
 
             $this->view('ledgers/user', [
                 'user'               => $user,
@@ -292,6 +292,8 @@ class LedgerController extends Controller {
                 'balance'            => $currentBalance,
                 'openingBalance'     => $openingBalance,
                 'outstanding'        => $trueOutstanding,
+                'advancesGiven'      => $advancesGiven,
+                'expensesIncurred'   => $expensesIncurred,
                 'totalCredits'       => $totalCredits,
                 'totalDebits'        => $totalDebits,
                 'netActivity'        => $totalCredits - $totalDebits,
