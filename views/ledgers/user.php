@@ -511,13 +511,99 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="ledger-card__right">
                     <div class="ledger-card__amount" style="color:#d97706;">₹<?= number_format($p['amount'], 2) ?></div>
+                    <?php if (in_array($_SESSION['role'] ?? '', ['owner', 'company_owner'])): ?>
+                    <div style="display:flex;gap:.4rem;margin-top:.5rem;justify-content:flex-end;">
+                        <button onclick="ledgerApprove('<?= $p['reference_type'] ?>', <?= $p['reference_id'] ?>, <?= $p['amount'] ?>)"
+                                class="btn btn--sm" style="background:#059669;color:#fff;border:none;cursor:pointer;">✅ Approve</button>
+                        <button onclick="ledgerReject('<?= $p['reference_type'] ?>', <?= $p['reference_id'] ?>)"
+                                class="btn btn--sm" style="background:#dc2626;color:#fff;border:none;cursor:pointer;">❌ Reject</button>
+                    </div>
+                    <?php else: ?>
                     <div style="font-size:.7rem;color:#92400e;margin-top:3px;">Awaiting approval</div>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endforeach; ?>
         </div>
     </div>
 </div>
+
+<?php if (in_array($_SESSION['role'] ?? '', ['owner', 'company_owner'])): ?>
+<!-- Approve Modal -->
+<div id="ledgerApproveModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:8px;padding:1.5rem;width:90%;max-width:400px;">
+        <h3 style="margin:0 0 1rem;">✅ Approve</h3>
+        <div style="margin-bottom:1rem;">
+            <label style="font-size:.85rem;font-weight:500;">Approved Amount (₹)</label>
+            <input type="number" id="lapproveAmount" step="0.01" style="width:100%;padding:.45rem;border:1px solid #ced4da;border-radius:4px;margin-top:.25rem;box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:1rem;">
+            <label style="font-size:.85rem;font-weight:500;">Remarks (optional)</label>
+            <input type="text" id="lapproveRemarks" style="width:100%;padding:.45rem;border:1px solid #ced4da;border-radius:4px;margin-top:.25rem;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+            <button onclick="closeLedgerModals()" class="btn btn--secondary">Cancel</button>
+            <button onclick="submitLedgerApprove()" class="btn btn--primary">Approve</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="ledgerRejectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:8px;padding:1.5rem;width:90%;max-width:400px;">
+        <h3 style="margin:0 0 1rem;">❌ Reject</h3>
+        <div style="margin-bottom:1rem;">
+            <label style="font-size:.85rem;font-weight:500;">Reason <span style="color:red;">*</span></label>
+            <input type="text" id="lrejectReason" style="width:100%;padding:.45rem;border:1px solid #ced4da;border-radius:4px;margin-top:.25rem;box-sizing:border-box;" placeholder="Enter rejection reason">
+        </div>
+        <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+            <button onclick="closeLedgerModals()" class="btn btn--secondary">Cancel</button>
+            <button onclick="submitLedgerReject()" style="background:#dc2626;color:#fff;border:none;padding:.45rem 1rem;border-radius:4px;cursor:pointer;">Reject</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let _lType, _lId;
+
+function ledgerApprove(type, id, amount) {
+    _lType = type; _lId = id;
+    document.getElementById('lapproveAmount').value = amount;
+    document.getElementById('lapproveRemarks').value = '';
+    const m = document.getElementById('ledgerApproveModal');
+    m.style.display = 'flex';
+}
+function ledgerReject(type, id) {
+    _lType = type; _lId = id;
+    document.getElementById('lrejectReason').value = '';
+    const m = document.getElementById('ledgerRejectModal');
+    m.style.display = 'flex';
+}
+function closeLedgerModals() {
+    document.getElementById('ledgerApproveModal').style.display = 'none';
+    document.getElementById('ledgerRejectModal').style.display = 'none';
+}
+function submitLedgerApprove() {
+    const amount  = document.getElementById('lapproveAmount').value;
+    const remarks = document.getElementById('lapproveRemarks').value;
+    const url = '/ergon/' + _lType + 's/approve/' + _lId;
+    const body = new URLSearchParams({approved_amount: amount, approval_remarks: remarks});
+    fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body})
+        .then(r => r.json())
+        .then(d => { if (d.success) location.reload(); else alert(d.error || 'Approval failed'); })
+        .catch(() => alert('Request failed'));
+}
+function submitLedgerReject() {
+    const reason = document.getElementById('lrejectReason').value.trim();
+    if (!reason) { alert('Rejection reason is required'); return; }
+    const url = '/ergon/' + _lType + 's/reject/' + _lId;
+    const body = new URLSearchParams({rejection_reason: reason});
+    fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body})
+        .then(() => location.reload())
+        .catch(() => alert('Request failed'));
+}
+</script>
+<?php endif; ?>
 <?php endif; ?>
 
 <?php
