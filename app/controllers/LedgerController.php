@@ -222,7 +222,8 @@ class LedgerController extends Controller {
                 }
             }
 
-            // Outstanding = advances given minus expenses incurred (all time, no double-counting)
+            // Outstanding = advances given minus ONLY approved (unreimbursed) expenses
+            // paid expenses = already reimbursed to employee, no longer outstanding
             $outStmt = $db->prepare("
                 SELECT
                     COALESCE(SUM(CASE WHEN src='advance' THEN amount ELSE 0 END), 0) AS advances_given,
@@ -236,7 +237,7 @@ class LedgerController extends Controller {
 
                     SELECT 'expense' AS src, COALESCE(approved_amount, amount) AS amount
                     FROM expenses
-                    WHERE user_id = ? AND status IN ('approved','paid')
+                    WHERE user_id = ? AND status = 'approved'
                 ) t
             ");
             $outStmt->execute([$id, $id]);

@@ -116,7 +116,7 @@ ob_start();
     <div class="kpi-card">
         <div class="kpi-card__header"><div class="kpi-card__icon">🧾</div></div>
         <div class="kpi-card__value" style="color:#dc2626;">₹<?= number_format($expensesIncurred, 2) ?></div>
-        <div class="kpi-card__label">Expenses Incurred</div>
+        <div class="kpi-card__label">Expenses Pending Reimbursement</div>
         <div class="kpi-card__status"><?= $expenseCount ?> expense<?= $expenseCount !== 1 ? 's' : '' ?></div>
     </div>
 
@@ -164,7 +164,8 @@ ob_start();
                 <strong>📖 How this ledger works:</strong>
                 &nbsp;💸 <strong>Advance</strong> = company gave money (+credit) &nbsp;|&nbsp;
                 🧾 <strong>Expense</strong> = employee spent money (−debit) &nbsp;|&nbsp;
-                ⚖️ <strong>Outstanding</strong> = advances − expenses
+                ✅ <strong>Paid expense</strong> = already reimbursed (history only) &nbsp;|&nbsp;
+                ⚖️ <strong>Outstanding</strong> = advances − approved (unreimbursed) expenses
             </div>
             <div class="ledger-entries">
                 <?php foreach ($entries as $entry): ?>
@@ -208,7 +209,7 @@ ob_start();
                     <span class="summary-value text-success">+₹<?= number_format($advancesGiven, 2) ?></span>
                 </div>
                 <div class="summary-row">
-                    <span class="summary-label">Expenses Incurred:</span>
+                    <span class="summary-label">Expenses Pending Reimbursement:</span>
                     <span class="summary-value text-danger">-₹<?= number_format($expensesIncurred, 2) ?></span>
                 </div>
                 <div class="summary-row summary-row--total">
