@@ -105,49 +105,38 @@ ob_start();
 
 <!-- Summary Cards -->
 <div class="dashboard-grid" style="margin-bottom: 1.5rem;">
-    <div class="kpi-card">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">💳</div>
-        </div>
-        <div class="kpi-card__value <?= $balance >= 0 ? 'text-success' : 'text-danger' ?>">
-            ₹<?= number_format(abs($balance), 2) ?>
-        </div>
-        <div class="kpi-card__label">Running Balance</div>
-        <div class="kpi-card__status"><?= $balance >= 0 ? 'Credit' : 'Debit' ?></div>
-    </div>
 
     <div class="kpi-card">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">📈</div>
-        </div>
+        <div class="kpi-card__header"><div class="kpi-card__icon">💸</div></div>
         <div class="kpi-card__value" style="color:#059669;">₹<?= number_format($totalCredits, 2) ?></div>
-        <div class="kpi-card__label">Total Credits</div>
-        <div class="kpi-card__status">
-            <?= $advanceCount ?> Advance<?= $advanceCount !== 1 ? 's' : '' ?>
-            <?php if ($reimbursementCount ?? 0): ?> · <?= $reimbursementCount ?> Reimbursement<?= $reimbursementCount !== 1 ? 's' : '' ?><?php endif; ?>
-            <?php if ($manualCount ?? 0): ?> · <?= $manualCount ?> Manual<?php endif; ?>
-        </div>
+        <div class="kpi-card__label">Advances Received</div>
+        <div class="kpi-card__status"><?= $advanceCount ?> advance<?= $advanceCount !== 1 ? 's' : '' ?></div>
     </div>
 
     <div class="kpi-card">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">📉</div>
-        </div>
+        <div class="kpi-card__header"><div class="kpi-card__icon">🧾</div></div>
         <div class="kpi-card__value" style="color:#dc2626;">₹<?= number_format($totalDebits, 2) ?></div>
-        <div class="kpi-card__label">Total Debits</div>
-        <div class="kpi-card__status"><?= $expenseCount ?> Expense<?= $expenseCount !== 1 ? 's' : '' ?> · <?= $manualCount ?? 0 ?> Manual</div>
+        <div class="kpi-card__label">Expenses Incurred</div>
+        <div class="kpi-card__status"><?= $expenseCount ?> expense<?= $expenseCount !== 1 ? 's' : '' ?></div>
     </div>
 
-        <div class="kpi-card" style="border:2px solid <?= $outstanding == 0 ? '#6b7280' : ($outstanding > 0 ? '#dc2626' : '#059669') ?>;">
-        <div class="kpi-card__header">
-            <div class="kpi-card__icon">⚖️</div>
-        </div>
+    <div class="kpi-card" style="border:2px solid <?= $outstanding == 0 ? '#6b7280' : ($outstanding > 0 ? '#dc2626' : '#059669') ?>;">
+        <div class="kpi-card__header"><div class="kpi-card__icon">⚖️</div></div>
         <div class="kpi-card__value <?= $outstanding == 0 ? 'text-muted' : ($outstanding > 0 ? 'text-danger' : 'text-success') ?>">
             ₹<?= number_format(abs($outstanding), 2) ?>
         </div>
         <div class="kpi-card__label">Outstanding</div>
-        <div class="kpi-card__status"><?= $outstanding == 0 ? 'Fully settled' : ($outstanding > 0 ? '🔴 Employee owes company' : '🟢 Company owes employee') ?></div>
+        <div class="kpi-card__status">
+            <?php if ($outstanding == 0): ?>
+                ✅ Fully settled
+            <?php elseif ($outstanding > 0): ?>
+                🔴 Employee owes company
+            <?php else: ?>
+                🟢 Company owes employee
+            <?php endif; ?>
+        </div>
     </div>
+
 </div>
 
 <!-- Ledger Entries -->
@@ -235,19 +224,19 @@ ob_start();
             <!-- Summary Footer -->
             <div class="ledger-summary">
                 <div class="summary-row">
-                    <span class="summary-label">Total Credits:</span>
+                    <span class="summary-label">Advances Received:</span>
                     <span class="summary-value text-success">+₹<?= number_format($totalCredits, 2) ?></span>
                 </div>
                 <div class="summary-row">
-                    <span class="summary-label">Total Debits:</span>
+                    <span class="summary-label">Expenses Incurred:</span>
                     <span class="summary-value text-danger">-₹<?= number_format($totalDebits, 2) ?></span>
                 </div>
                 <div class="summary-row summary-row--total">
-                    <span class="summary-label"><strong>Outstanding Balance:</strong></span>
+                    <span class="summary-label"><strong>Outstanding:</strong></span>
                     <span class="summary-value <?= $outstanding == 0 ? 'text-muted' : ($outstanding > 0 ? 'text-danger' : 'text-success') ?>">
                         <strong>
                             <?php if ($outstanding == 0): ?>
-                                ₹0.00 (Settled)
+                                ₹0.00 ✅ Settled
                             <?php elseif ($outstanding > 0): ?>
                                 ₹<?= number_format($outstanding, 2) ?> 🔴 Employee owes company
                             <?php else: ?>
