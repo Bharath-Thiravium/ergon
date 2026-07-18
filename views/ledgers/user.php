@@ -160,31 +160,11 @@ ob_start();
             </div>
         <?php else: ?>
             <!-- Ledger Logic Explanation -->
-            <div style="background: linear-gradient(135deg, #e7f3ff 0%, #f0f8ff 100%); border-left: 4px solid #0ea5e9; padding: 1.5rem; margin-bottom: 1.5rem; border-radius: 4px;">
-                <strong style="color: #0284c7; display: block; margin-bottom: 1rem; font-size: 1rem;">📖 How This Ledger Works</strong>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; font-size: 0.9rem;">
-                    <div style="padding: 0.75rem; background: rgba(255,255,255,0.8); border-radius: 4px; border-left: 3px solid #dc2626;">
-                        <strong style="color: #dc2626;">🧾 Expense (Pending)</strong><br/>
-                        <small>Employee paid out of pocket</small><br/>
-                        <span style="color: #dc2626; font-weight: 600;">-DEBIT</span>
-                    </div>
-                    <div style="padding: 0.75rem; background: rgba(255,255,255,0.8); border-radius: 4px; border-left: 3px solid #059669;">
-                        <strong style="color: #059669;">✅ Reimbursed</strong><br/>
-                        <small>Company paid them back</small><br/>
-                        <span style="color: #059669; font-weight: 600;">+CREDIT</span>
-                    </div>
-                    <div style="padding: 0.75rem; background: rgba(255,255,255,0.8); border-radius: 4px; border-left: 3px solid #059669;">
-                        <strong style="color: #059669;">💸 Advance</strong><br/>
-                        <small>Company gave them upfront</small><br/>
-                        <span style="color: #059669; font-weight: 600;">+CREDIT</span>
-                    </div>
-                    <div style="padding: 0.75rem; background: rgba(255,255,255,0.8); border-radius: 4px; border-left: 3px solid #0ea5e9;">
-                        <strong style="color: #0284c7;">⚖️ Balance</strong><br/>
-                        <small>₹0 = Settled</small><br/>
-                        <small>+ = Company owes them</small><br/>
-                        <small>- = They owe company</small>
-                    </div>
-                </div>
+            <div style="background: linear-gradient(135deg, #e7f3ff 0%, #f0f8ff 100%); border-left: 4px solid #0ea5e9; padding: 1rem 1.5rem; margin-bottom: 1.5rem; border-radius: 4px; font-size: 0.85rem; color: #0284c7;">
+                <strong>📖 How this ledger works:</strong>
+                &nbsp;💸 <strong>Advance</strong> = company gave money (+credit) &nbsp;|&nbsp;
+                🧾 <strong>Expense</strong> = employee spent money (−debit) &nbsp;|&nbsp;
+                ⚖️ <strong>Outstanding</strong> = advances − expenses
             </div>
             <div class="ledger-entries">
                 <?php foreach ($entries as $entry): ?>
