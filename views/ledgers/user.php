@@ -485,6 +485,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </div><!-- /#ledger-section -->
 
+<?php if (!empty($pendingEntries)): ?>
+<div class="card" style="margin-top:1.5rem;">
+    <div class="card__header">
+        <h2 class="card__title">⏳ Pending Approvals</h2>
+        <span class="badge badge--warning"><?= count($pendingEntries) ?> Pending</span>
+    </div>
+    <div class="card__body">
+        <div class="ledger-entries">
+            <?php foreach ($pendingEntries as $p): ?>
+            <div class="ledger-card" style="border-left-color:#f59e0b;background:#fffbeb;">
+                <div class="ledger-card__left">
+                    <div class="ledger-card__date"><?= $p['date'] ? date('d M Y', strtotime($p['date'])) : '—' ?></div>
+                    <div class="ledger-card__ref"><?= strtoupper($p['reference_type']) ?> #<?= $p['reference_id'] ?></div>
+                    <div class="ledger-card__desc"><?= htmlspecialchars($p['description']) ?></div>
+                    <div class="ledger-card__meta">
+                        <?php if ($p['reference_type'] === 'advance'): ?>
+                            <span class="lc-badge lc-badge--advance">💸 Advance</span>
+                        <?php else: ?>
+                            <span class="lc-badge lc-badge--expense">🧾 Expense</span>
+                        <?php endif; ?>
+                        <span class="lc-cat"><?= htmlspecialchars($p['category']) ?></span>
+                        <span class="lc-status lc-status--pending">⏳ Pending</span>
+                    </div>
+                </div>
+                <div class="ledger-card__right">
+                    <div class="ledger-card__amount" style="color:#d97706;">₹<?= number_format($p['amount'], 2) ?></div>
+                    <div style="font-size:.7rem;color:#92400e;margin-top:3px;">Awaiting approval</div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php
 $content = ob_get_clean();
 include __DIR__ . '/../layouts/dashboard.php';

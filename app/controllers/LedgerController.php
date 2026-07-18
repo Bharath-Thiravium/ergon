@@ -173,6 +173,29 @@ class LedgerController extends Controller {
 
             $rawEntries = $this->fetchLedgerEntries($db, (int)$id, $fromDate, $toDate, $transactionType);
 
+            // Pending entries (separate section, no balance calc)
+            $pendingStmt = $db->prepare("
+                SELECT 'advance' AS reference_type, id AS reference_id,
+                       COALESCE(reason, 'Advance') AS description,
+                       COALESCE(type, 'advance') AS category,
+                       amount, requested_date AS date
+                FROM advances
+                WHERE user_id = ? AND status = 'pending'
+
+                UNION ALL
+
+                SELECT 'expense' AS reference_type, id AS reference_id,
+                       COALESCE(description, 'Expense') AS description,
+                       COALESCE(category, 'expense') AS category,
+                       amount, COALESCE(expense_date, created_at) AS date
+                FROM expenses
+                WHERE user_id = ? AND status = 'pending'
+
+                ORDER BY date DESC
+            ");
+            $pendingStmt->execute([$id, $id]);
+            $pendingEntries = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
+
             // Rows are newest-first; first element carries the most recent running balance.
             $currentBalance = empty($rawEntries) ? 0.0 : floatval($rawEntries[0]['balance_after']);
 
@@ -282,6 +305,7 @@ class LedgerController extends Controller {
                 'transactionType'    => $transactionType,
                 'isFiltered'         => ($fromDate || $toDate || $transactionType),
                 'active_page'        => 'ledgers',
+                'pendingEntries'     => $pendingEntries,
             ]);
         } catch (Exception $e) {
             error_log('Ledger view error: ' . $e->getMessage());
