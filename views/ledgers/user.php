@@ -135,11 +135,11 @@ ob_start();
         <div class="kpi-card__label">Outstanding</div>
         <div class="kpi-card__status">
             <?php if ($outstanding == 0): ?>
-                ✅ Fully settled
+                ✅ Fully Settled
             <?php elseif ($outstanding > 0): ?>
-                🔴 Employee owes company
+                🔴 Yet to recover from employee
             <?php else: ?>
-                🟢 Company owes employee
+                🟢 Yet to pay employee
             <?php endif; ?>
         </div>
     </div>
@@ -217,22 +217,24 @@ ob_start();
                 </div>
                 <div class="summary-row">
                     <span class="summary-label">Total Expenses Spent:</span>
-                </div>
-                <div class="summary-row">
-                    <span class="summary-label">Pending Reimbursement:</span>
-                    <span class="summary-value text-danger">-₹<?= number_format($expensesPendingReimburse, 2) ?></span>
                     <span class="summary-value text-danger">-₹<?= number_format($expensesIncurred, 2) ?></span>
                 </div>
+                <?php if ($expensesPendingReimburse > 0): ?>
+                <div class="summary-row" style="font-size:.82rem;color:#d97706;">
+                    <span>↳ Pending reimbursement:</span>
+                    <span>-₹<?= number_format($expensesPendingReimburse, 2) ?></span>
+                </div>
+                <?php endif; ?>
                 <div class="summary-row summary-row--total">
                     <span class="summary-label"><strong>Outstanding:</strong></span>
                     <span class="summary-value <?= $outstanding == 0 ? 'text-muted' : ($outstanding > 0 ? 'text-danger' : 'text-success') ?>">
                         <strong>
                             <?php if ($outstanding == 0): ?>
-                                ₹0.00 ✅ Settled
+                                ₹0.00 ✅ Fully Settled
                             <?php elseif ($outstanding > 0): ?>
-                                ₹<?= number_format($outstanding, 2) ?> 🔴 Employee owes company
+                                ₹<?= number_format($outstanding, 2) ?> 🔴 Company yet to recover from employee
                             <?php else: ?>
-                                ₹<?= number_format(abs($outstanding), 2) ?> 🟢 Company owes employee
+                                ₹<?= number_format(abs($outstanding), 2) ?> 🟢 Company yet to pay employee
                             <?php endif; ?>
                         </strong>
                     </span>
