@@ -226,8 +226,9 @@ class LedgerController extends Controller {
             // paid expenses = already reimbursed to employee, no longer outstanding
             $outStmt = $db->prepare("
                 SELECT
-                    COALESCE(SUM(CASE WHEN src='advance' THEN amount ELSE 0 END), 0) AS advances_given,
-                    COALESCE(SUM(CASE WHEN src='expense' THEN amount ELSE 0 END), 0) AS expenses_incurred
+                    COALESCE(SUM(CASE WHEN src='advance' THEN amount ELSE 0 END), 0)                    AS advances_given,
+                    COALESCE(SUM(CASE WHEN src='expense' THEN amount ELSE 0 END), 0)                    AS expenses_total,
+                    COALESCE(SUM(CASE WHEN src='expense_approved' THEN amount ELSE 0 END), 0)           AS expenses_pending_reimbursement
                 FROM (
                     SELECT 'advance' AS src, COALESCE(approved_amount, amount) AS amount
                     FROM advances
@@ -237,14 +238,21 @@ class LedgerController extends Controller {
 
                     SELECT 'expense' AS src, COALESCE(approved_amount, amount) AS amount
                     FROM expenses
+                    WHERE user_id = ? AND status IN ('approved','paid')
+
+                    UNION ALL
+
+                    SELECT 'expense_approved' AS src, COALESCE(approved_amount, amount) AS amount
+                    FROM expenses
                     WHERE user_id = ? AND status = 'approved'
                 ) t
             ");
-            $outStmt->execute([$id, $id]);
-            $outRow          = $outStmt->fetch(PDO::FETCH_ASSOC);
-            $advancesGiven      = floatval($outRow['advances_given']);
-            $expensesIncurred   = floatval($outRow['expenses_incurred']);
-            $trueOutstanding    = $advancesGiven - $expensesIncurred;
+            $outStmt->execute([$id, $id, $id]);
+            $outRow                     = $outStmt->fetch(PDO::FETCH_ASSOC);
+            $advancesGiven              = floatval($outRow['advances_given']);
+            $expensesIncurred           = floatval($outRow['expenses_total']);
+            $expensesPendingReimburse   = floatval($outRow['expenses_pending_reimbursement']);
+            $trueOutstanding            = $advancesGiven - $expensesPendingReimburse;
 
             $this->view('ledgers/user', [
                 'user'               => $user,
@@ -252,8 +260,9 @@ class LedgerController extends Controller {
                 'balance'            => $currentBalance,
                 'openingBalance'     => $openingBalance,
                 'outstanding'        => $trueOutstanding,
-                'advancesGiven'      => $advancesGiven,
-                'expensesIncurred'   => $expensesIncurred,
+                'advancesGiven'              => $advancesGiven,
+                'expensesIncurred'           => $expensesIncurred,
+                'expensesPendingReimburse'   => $expensesPendingReimburse,
                 'totalCredits'       => $totalCredits,
                 'totalDebits'        => $totalDebits,
                 'netActivity'        => $totalCredits - $totalDebits,

@@ -116,8 +116,15 @@ ob_start();
     <div class="kpi-card">
         <div class="kpi-card__header"><div class="kpi-card__icon">🧾</div></div>
         <div class="kpi-card__value" style="color:#dc2626;">₹<?= number_format($expensesIncurred, 2) ?></div>
-        <div class="kpi-card__label">Expenses Pending Reimbursement</div>
-        <div class="kpi-card__status"><?= $expenseCount ?> expense<?= $expenseCount !== 1 ? 's' : '' ?></div>
+        <div class="kpi-card__label">Total Expenses Spent</div>
+        <div class="kpi-card__status">
+            <?= $expenseCount ?> expense<?= $expenseCount !== 1 ? 's' : '' ?>
+            <?php if ($expensesPendingReimburse > 0): ?>
+                &nbsp;·&nbsp;<span style="color:#d97706;font-weight:600;">₹<?= number_format($expensesPendingReimburse, 2) ?> pending</span>
+            <?php else: ?>
+                &nbsp;·&nbsp;<span style="color:#059669;font-weight:600;">All reimbursed</span>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div class="kpi-card" style="border:2px solid <?= $outstanding == 0 ? '#6b7280' : ($outstanding > 0 ? '#dc2626' : '#059669') ?>;">
@@ -209,7 +216,11 @@ ob_start();
                     <span class="summary-value text-success">+₹<?= number_format($advancesGiven, 2) ?></span>
                 </div>
                 <div class="summary-row">
-                    <span class="summary-label">Expenses Pending Reimbursement:</span>
+                    <span class="summary-label">Total Expenses Spent:</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Pending Reimbursement:</span>
+                    <span class="summary-value text-danger">-₹<?= number_format($expensesPendingReimburse, 2) ?></span>
                     <span class="summary-value text-danger">-₹<?= number_format($expensesIncurred, 2) ?></span>
                 </div>
                 <div class="summary-row summary-row--total">
